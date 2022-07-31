@@ -145,7 +145,7 @@ class PlacementPassTest {
       if (node->IsOp()) {
         auto* op = node->Op();
         if (op->HasAttr("use_mkldnn") &&
-            BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn"))) {
+            PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn"))) {
           ++use_mkldnn_true_count;
         }
       }

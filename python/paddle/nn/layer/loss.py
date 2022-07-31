@@ -1691,3 +1691,74 @@ class TripletMarginLoss(Layer):
                                      swap=self.swap,
                                      reduction=self.reduction,
                                      name=self.name)
+
+
+class SoftMarginLoss(Layer):
+    r"""
+    Creates a criterion that measures a two-class soft margin loss between input predictions ``input``
+    and target labels ``label`` . It can be described as:
+
+    .. math::
+        Out = log(1 + exp((-label * input)))
+
+    Parameters:
+
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
+
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shapes:
+
+        Input (Tensor): The input tensor with shape: [N, *],
+        N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
+        Available dtype is float32, float64.
+
+        Label (Tensor): The target labels tensor with the same shape as
+        ``input``. The target labels which values should be numbers -1 or 1.
+        Available dtype is int32, int64, float32, float64.
+
+        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``input`` , else the shape of output is [1].
+
+    Returns:
+        A callable object of SoftMarginLoss.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
+            label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
+            soft_margin_loss = paddle.nn.SoftMarginLoss()
+            output = soft_margin_loss(input, label)
+
+            input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
+            label_np = np.random.randint(0, 2, size=(5, 5)).astype(np.int64)
+            label_np[label_np==0]=-1
+            input = paddle.to_tensor(input_np)
+            label = paddle.to_tensor(label_np)
+            soft_margin_loss = paddle.nn.SoftMarginLoss(reduction='none')
+            output = soft_margin_loss(input, label)
+    """
+
+    def __init__(self, reduction='mean', name=None):
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in SoftMarginLoss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction)
+
+        super(SoftMarginLoss, self).__init__()
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input, label):
+        out = paddle.nn.functional.soft_margin_loss(input, label,
+                                                    self.reduction, self.name)
+        return out

@@ -1,4 +1,4 @@
-#    Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ import unittest
 import numpy as np
 import math
 import sys
+import paddle
+
 from op_test import OpTest
 
 
@@ -162,6 +164,63 @@ class TestDistributeFPNProposalsOpNoOffset(
         self.canonical_level = 4
         self.images_shape = [512, 512]
         self.pixel_offset = False
+
+
+class TestDistributeFpnProposalsAPI(unittest.TestCase):
+
+    def setUp(self):
+        np.random.seed(678)
+        self.rois_np = np.random.rand(10, 4).astype('float32')
+        self.rois_num_np = np.array([4, 6]).astype('int32')
+
+    def test_dygraph_with_static(self):
+        paddle.enable_static()
+        rois = paddle.static.data(name='rois', shape=[10, 4], dtype='float32')
+        rois_num = paddle.static.data(name='rois_num',
+                                      shape=[None],
+                                      dtype='int32')
+        multi_rois, restore_ind, rois_num_per_level = paddle.vision.ops.distribute_fpn_proposals(
+            fpn_rois=rois,
+            min_level=2,
+            max_level=5,
+            refer_level=4,
+            refer_scale=224,
+            rois_num=rois_num)
+        fetch_list = multi_rois + [restore_ind] + rois_num_per_level
+
+        exe = paddle.static.Executor()
+        output_stat = exe.run(paddle.static.default_main_program(),
+                              feed={
+                                  'rois': self.rois_np,
+                                  'rois_num': self.rois_num_np
+                              },
+                              fetch_list=fetch_list,
+                              return_numpy=False)
+        output_stat_np = []
+        for output in output_stat:
+            output_np = np.array(output)
+            if len(output_np) > 0:
+                output_stat_np.append(output_np)
+
+        paddle.disable_static()
+        rois_dy = paddle.to_tensor(self.rois_np)
+        rois_num_dy = paddle.to_tensor(self.rois_num_np)
+        multi_rois_dy, restore_ind_dy, rois_num_per_level_dy = paddle.vision.ops.distribute_fpn_proposals(
+            fpn_rois=rois_dy,
+            min_level=2,
+            max_level=5,
+            refer_level=4,
+            refer_scale=224,
+            rois_num=rois_num_dy)
+        output_dy = multi_rois_dy + [restore_ind_dy] + rois_num_per_level_dy
+        output_dy_np = []
+        for output in output_dy:
+            output_np = output.numpy()
+            if len(output_np) > 0:
+                output_dy_np.append(output_np)
+
+        for res_stat, res_dy in zip(output_stat_np, output_dy_np):
+            self.assertTrue(np.allclose(res_stat, res_dy))
 
 
 if __name__ == '__main__':

@@ -333,6 +333,7 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       forward_output_orig_names)}});
   {% endfor %}
 
+  grad_op->SetAttrMap(this->Attrs());
   {% for attr in api["attrs"] %}
     {% set attr_name = attr["name"] %}
     {% if attr_name in forward_attr_names %}
@@ -342,7 +343,6 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       {% elif attr["typename"] == "Scalar" %}
     grad_op->SetInput("{{attr_name | to_pascal_case}}Tensor", this->Input("{{attr_name | to_pascal_case}}Tensor"));
       {% endif %}
-    grad_op->SetAttr("{{attr_name}}", this->GetAttr("{{forward_attr_orig_names[forward_attr_names.index(attr_name)]}}"));
     {% else %}{# maybe something wrong: backward op has more attrs than the forward one#}
     grad_op->AddAttr<{{attr["typename"] | to_op_attr_type}}>({{attr_name}}, "({{attr["typename"] | to_op_attr_type}}), exceptional attr {{attr_name}}");
     grad_op->SetAttr("{{attr_name}}", {{process_default_value(attr)}});
@@ -358,15 +358,15 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
   input_orig_names, output_orig_names) %}{# inline #}
   {% if name in input_names %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}
-Input("{{name_in_forward_orig | to_pascal_case}}")
+Input("{{name_in_forward_orig}}")
   {%- elif name in output_names %}
     {% set name_in_forward_orig = output_orig_names[output_names.index(name)]%}
-Output("{{name | to_pascal_case}}")
+Output("{{name}}")
   {%- elif name.endswith("_grad") %}{# output grad#}
     {% set name_in_forward = name[:-5] %}
     {% if name_in_forward in output_names %}
       {% set name_in_forward_orig = output_orig_names[output_names.index(name_in_forward)] %}
-OutputGrad("{{name_in_forward_orig | to_pascal_case}}")
+OutputGrad("{{name_in_forward_orig}}")
     {%- endif %}
   {%- endif %}
 {%- endmacro %}
@@ -376,11 +376,11 @@ OutputGrad("{{name_in_forward_orig | to_pascal_case}}")
   {% if name[:-5] in input_names %}
     {% set name_in_forward = name[:-5] %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
-InputGrad("{{name[:-5] | to_pascal_case}}")
+InputGrad("{{name[:-5]}}")
   {%- elif (name | to_input_name) in input_names %}
     {% set name_in_forward = name | to_input_name %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
-InputGrad("{{name | to_input_name | to_pascal_case}}")
+InputGrad("{{name | to_input_name}}")
   {%- endif %}
 {%- endmacro %}
 

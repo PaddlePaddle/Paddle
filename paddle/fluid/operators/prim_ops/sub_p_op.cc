@@ -57,8 +57,8 @@ class SubPrimOpShapeInference : public framework::InferShapeBase {
     framework::InferShapeVarPtr y_var_ptr = ctx->GetInputVarPtrs("Y")[0];
     framework::InferShapeVarPtr z_var_ptr = ctx->GetOutputVarPtrs("Z")[0];
 
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
-    framework::VarDesc *y_var = BOOST_GET(framework::VarDesc *, y_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *y_var = PADDLE_GET(framework::VarDesc *, y_var_ptr);
     auto x_shape = x_var->GetShape();
     auto y_shape = y_var->GetShape();
     size_t x_rank = x_shape.size();
@@ -82,7 +82,7 @@ class SubPrimOpShapeInference : public framework::InferShapeBase {
               y_shape[i]));
     }
 
-    BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
+    PADDLE_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
   }
 };
 

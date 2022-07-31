@@ -553,6 +553,11 @@ int main(int argc, char* argv[]) {
     std::ofstream out(path + "op_function" + std::to_string(i + 1) + ".cc.tmp",
                       std::ios::out);
 
+    out << "#if defined(_MSC_VER)\n"
+        << "#include <BaseTsd.h>\n"
+        << "typedef SSIZE_T ssize_t;\n"
+        << "#endif\n";
+
     for (auto& header : headers) {
       out << "#include  " + header + "\n";
     }

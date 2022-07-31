@@ -16,10 +16,17 @@
 
 #include <set>
 
+#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/fluid/jit/executor_function.h"
+#include "paddle/fluid/jit/layer.h"
+#include "paddle/fluid/jit/pe_function.h"
+#include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/serializer_utils.h"
+
+DECLARE_string(jit_engine_type);
 
 namespace paddle {
 namespace jit {
@@ -52,12 +59,22 @@ Layer Deserializer::operator()(const std::string& path,
   ReadTensorData(path + PDPARAMS_SUFFIX, param_names_set, place, &params_dict);
   // ReadAttributeData();
 
-  Layer layer = Layer(infos, params_dict, place);
+  Layer layer = Layer(params_dict, place);
 
   for (auto& info : infos) {
-    layer.SetFunction(
-        info->FunctionName(),
-        utils::MakeFunction<ExecutorFunction>(info, params_dict, place));
+    if (FLAGS_jit_engine_type == "Executor") {
+      VLOG(3) << "Add function type: ExecutorFunction.";
+      layer.SetFunction(
+          info->FunctionName(),
+          utils::MakeFunction<ExecutorFunction>(info, params_dict, place));
+    } else if (FLAGS_jit_engine_type == "PE") {
+      VLOG(3) << "Add function type: PEFunction.";
+      layer.SetFunction(
+          info->FunctionName(),
+          utils::MakeFunction<PEFunction>(info, params_dict, place));
+    } else {
+      PD_THROW("Invalid JitLayer funciton type.");
+    }
   }
 
   return layer;
@@ -77,7 +94,7 @@ void Deserializer::ReadTensorData(const std::string& file_name,
     // TODO(dev): Support framework::Vocab
     DenseTensor* dense_tesnor = v.GetMutable<DenseTensor>();
     framework::DeserializeFromStream(fin, dense_tesnor, dev_ctx);
-    (*params_dict)[*it] = v;
+    (*params_dict)[*it] = std::make_shared<Variable>(v);
   }
 }
 
@@ -85,7 +102,7 @@ void Deserializer::ReadAttributeData(const std::string& file_path,
                                      Name2VariableMap* attrs_dict) const {}
 
 framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
-  VLOG(3) << "LoadProgram " << file_name;
+  VLOG(3) << "LoadProgram from: " << file_name;
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');

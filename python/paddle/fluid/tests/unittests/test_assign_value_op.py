@@ -18,9 +18,12 @@ import unittest
 import numpy
 
 import op_test
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
+
+paddle.enable_static()
 
 
 class TestAssignValueOp(op_test.OpTest):

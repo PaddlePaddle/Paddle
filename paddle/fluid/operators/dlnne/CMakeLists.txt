@@ -39,7 +39,6 @@ op_library(
   DEPS
   ${GLOB_OPERATOR_DEPS}
   framework_proto
-  boost
   device_context
   op_registry
   scope)

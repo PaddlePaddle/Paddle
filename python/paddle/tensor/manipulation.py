@@ -640,6 +640,7 @@ def crop(x, shape=None, offsets=None, name=None):
             # if offsets = [1, 1], out = [[5,6], [8,9]]
 
     """
+
     helper = LayerHelper('crop_tensor', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'crop_tensor')
@@ -649,6 +650,9 @@ def crop(x, shape=None, offsets=None, name=None):
 
     if offsets is None:
         offsets = [0] * len(x.shape)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_crop_tensor(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
@@ -1128,7 +1132,9 @@ def broadcast_tensors(input, name=None):
     """
 
     num_inputs = len(input)
-    if paddle.in_dynamic_mode():
+    if paddle.framework.in_dygraph_mode():
+        return _C_ops.final_state_broadcast_tensors(input)
+    if paddle.framework._non_static_mode():
         return _C_ops.broadcast_tensors(input, num_inputs)
 
     check_type(input, 'input', (list, tuple), 'broadcast_tensors')
@@ -1731,7 +1737,7 @@ def split(x, num_or_sections, axis=0, name=None):
     Split the input tensor into multiple sub-Tensors.
     
     Args:
-        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, uint8, int8, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections`` 
             indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
@@ -1808,9 +1814,10 @@ def split(x, num_or_sections, axis=0, name=None):
         _C_ops.split(input, out, *attrs)
         return out
 
-    check_variable_and_dtype(
-        input, 'input',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'split')
+    check_variable_and_dtype(input, 'input', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8',
+        'int8'
+    ], 'split')
     check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
     check_type(dim, 'dim', (int, Variable), 'split')
     if isinstance(dim, Variable):
@@ -2705,8 +2712,7 @@ def scatter_nd_add(x, index, updates, name=None):
             # [3, 5, 9, 10]
     """
     if in_dygraph_mode():
-        op = getattr(_C_ops, 'scatter_nd_add')
-        return op(x, index, updates)
+        return _C_ops.final_state_scatter_nd_add(x, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')
@@ -2853,8 +2859,7 @@ def tile(x, repeat_times, name=None):
     """
     if in_dygraph_mode():
         if isinstance(repeat_times, core.eager.Tensor):
-            assert (repeat_times.ndim == 1,
-                    "Only support ndim == 1 while repeat_times is a Tensor.")
+            assert repeat_times.ndim == 1, "Only support ndim == 1 while repeat_times is a Tensor."
             repeat_times = repeat_times.numpy().tolist()
 
         return _C_ops.final_state_tile(x, repeat_times)
@@ -3002,7 +3007,9 @@ def broadcast_to(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_expand(x, shape)
+    if _in_legacy_dygraph():
         return _C_ops.expand_v2(x, 'shape', shape)
 
     if isinstance(shape, Variable):
@@ -3878,8 +3885,10 @@ def as_complex(x, name=None):
             # [[ 0. +1.j  2. +3.j  4. +5.j]
             #  [ 6. +7.j  8. +9.j 10.+11.j]]
     """
-    if paddle.in_dynamic_mode():
-        return paddle._C_ops.as_complex(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_as_complex(x)
+    if _in_legacy_dygraph():
+        return _C_ops.as_complex(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
     op_type = "as_complex"
@@ -3927,8 +3936,10 @@ def as_real(x, name=None):
             #   [ 8.  9.]
             #   [10. 11.]]]
     """
-    if paddle.in_dynamic_mode():
-        return paddle._C_ops.as_real(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_as_real(x)
+    if _in_legacy_dygraph():
+        return _C_ops.as_real(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
     op_type = "as_real"

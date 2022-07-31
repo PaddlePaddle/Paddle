@@ -39,7 +39,8 @@ set(PYBIND_DEPS
     phi_utils
     tcp_store
     new_profiler
-    jit_layer)
+    jit_layer
+    jit_property)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -84,10 +85,6 @@ endif()
 
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
-  set(PYBIND_DEPS ${PYBIND_DEPS} mmap_allocator)
-  if(WITH_GPU)
-    set(PYBIND_DEPS ${PYBIND_DEPS} cuda_ipc_allocator)
-  endif()
   if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
     set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)

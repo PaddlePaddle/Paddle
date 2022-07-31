@@ -254,7 +254,6 @@ void MultiTrainer::Finalize() {
   if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
-
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable* root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
@@ -297,8 +296,12 @@ void MultiTrainer::Finalize() {
   if (communicator == nullptr) {
     VLOG(0) << "MultiTrainer::Finalize communicator is null!";
   } else {
-    communicator->_worker_ptr->Flush();
-    VLOG(1) << "MultiTrainer::Finalize ps client flush done";
+    if (communicator->_worker_ptr != nullptr) {
+      communicator->_worker_ptr->Flush();
+      VLOG(1) << "MultiTrainer::Finalize ps client flush done";
+    } else {
+      VLOG(0) << "communicator->_worker_ptr is null";
+    }
   }
 #endif
   root_scope_->DropKids();
