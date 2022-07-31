@@ -39,6 +39,15 @@ class RenormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "int,the dimension to slice over to get the sub-tensors");
     AddAttr<float>("max_norm", "(float, the norm upper-bound");
+    AddAttr<bool>("use_cudnn",
+                  "(bool, default false) Only used in cudnn kernel, need "
+                  "install cudnn")
+        .SetDefault(false)
+        .AsExtra();
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Renorm Operator.
 
@@ -75,13 +84,11 @@ DECLARE_INFER_SHAPE_FUNCTOR(renorm,
                             RenormInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
-DECLARE_INFER_SHAPE_FUNCTOR(renorm_grad,
-                            RenormGradInferShapeFunctor,
-                            PD_INFER_META(phi::UnchangedInferMeta));
-
 REGISTER_OPERATOR(renorm,
                   ops::RenormOp,
                   ops::RenormOpMaker,
                   ops::RenormGradMaker<paddle::framework::OpDesc>,
                   ops::RenormGradMaker<paddle::imperative::OpBase>,
                   RenormInferShapeFunctor)
+
+REGISTER_OPERATOR(renorm_grad, ops::RenormGradOp, RenormGradInferShapeFunctor);
