@@ -23,6 +23,8 @@ from .parallel_with_gloo import gloo_init_parallel_env
 from .parallel_with_gloo import gloo_barrier
 from .parallel_with_gloo import gloo_release
 
+from .parallel_with_mpi import mpi_init_parallel_env
+
 from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
 from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
 from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401

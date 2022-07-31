@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/MPITools.h"
+#include <mpi-ext.h>
 #include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/Types.h"
 
@@ -34,18 +35,8 @@ MPI_Op ToMPIRedType(ReduceOp reduction) {
   return it->second;
 }
 
-bool CheckMpiCudaAware() {
-// Run time check
-#if defined(MPIX_CUDA_AWARE_SUPPORT)
-  if (MPIX_Query_cuda_support() == 1) {
-    return true;
-  } else {
-    return false;
-  }
-#else
-  return false;
-#endif
-}
+// NOTE: MPI dose not support CUDA aware now.
+bool CheckMpiCudaAware() { return false; }
 
 void CheckValidInputs(const std::vector<phi::DenseTensor>& tensors) {
   PADDLE_ENFORCE_EQ(
