@@ -1009,25 +1009,26 @@ class PostTrainingQuantization(object):
         else:
             scale_dict = self._quantized_threshold
 
-        for tensor_list in self._same_scale_tensor_list:
-            max_scale = None
-            for tensor_name in tensor_list:
-                if not max_scale:
-                    max_scale = scale_dict[tensor_name]
-                else:
-                    max_scale = max(max_scale, scale_dict[tensor_name])
-                if '#' in tensor_name:
-                    real_tensor_name, opera, scalar = tensor_name.split('#')
-                    if opera == '*':
-                        scale_dict[real_tensor_name] = float(
-                            scale_dict[real_tensor_name]) * float(scalar)
-                    elif opera == '/':
-                        scale_dict[real_tensor_name] = float(
-                            scale_dict[real_tensor_name]) / float(scalar)
-                    tensor_name = real_tensor_name
-                max_scale = scale_dict[
-                    tensor_name] if max_scale is None else max(
-                        max_scale, scale_dict[tensor_name])
+        if _same_scale_tensor_list is not None:
+            for tensor_list in self._same_scale_tensor_list:
+                max_scale = None
+                for tensor_name in tensor_list:
+                    if not max_scale:
+                        max_scale = scale_dict[tensor_name]
+                    else:
+                        max_scale = max(max_scale, scale_dict[tensor_name])
+                    if '#' in tensor_name:
+                        real_tensor_name, opera, scalar = tensor_name.split('#')
+                        if opera == '*':
+                            scale_dict[real_tensor_name] = float(
+                                scale_dict[real_tensor_name]) * float(scalar)
+                        elif opera == '/':
+                            scale_dict[real_tensor_name] = float(
+                                scale_dict[real_tensor_name]) / float(scalar)
+                        tensor_name = real_tensor_name
+                    max_scale = scale_dict[
+                        tensor_name] if max_scale is None else max(
+                            max_scale, scale_dict[tensor_name])
 
             for tensor_name in tensor_list:
                 scale_dict[tensor_name] = max_scale
