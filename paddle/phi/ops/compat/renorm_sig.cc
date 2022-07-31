@@ -17,10 +17,12 @@
 namespace phi {
 
 KernelSignature RenormOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  VLOG(3) << "in renrom arguments mapping";
   return KernelSignature("renorm", {"X"}, {"p", "axis", "max_norm"}, {"Out"});
 }
 
 KernelSignature RenormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  VLOG(3) << "in renrom grad arguments mapping";
   return KernelSignature(
       "renorm_grad", {"X", "Out@GRAD"}, {"p", "axis", "max_norm"}, {"X@GRAD"});
 }
