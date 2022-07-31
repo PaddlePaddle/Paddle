@@ -85,5 +85,3 @@ REGISTER_OPERATOR(renorm,
                   ops::RenormGradMaker<paddle::framework::OpDesc>,
                   ops::RenormGradMaker<paddle::imperative::OpBase>,
                   RenormInferShapeFunctor)
-
-REGISTER_OPERATOR(renorm_grad, ops::RenormGradOp, RenormGradInferShapeFunctor);
