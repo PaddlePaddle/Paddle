@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
-#include "paddle/phi/kernels/funcs/repeat_interleave_with_tensor_index_grad.h"
+#include "paddle/phi/kernels/repeat_interleave_with_tensor_index_grad.h"
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -61,8 +61,8 @@ __global__ void index_select_grad_init(T* input_grad, int64_t N) {
 template <typename T, typename Context>
 void RepeatInterleaveWithTensorIndexGradKernel(
     const Context& dev_ctx,
-    const DenseTensor& out_grad,
     const DenseTensor& repeats_tensor,
+    const DenseTensor& out_grad,
     int dim,
     DenseTensor* out_grad) {
   auto place = ctx.GetPlace();

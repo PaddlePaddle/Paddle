@@ -1856,7 +1856,7 @@
 
 - api : repeat_interleave
   args : (Tensor x, int repeats, int dim)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : RepeatInterleaveInferMeta
     param : [x,repeats, dim]
@@ -1866,7 +1866,7 @@
 
 - api : repeat_interleave_with_tensor_index
   args : (Tensor x, Tensor repeats, int dim)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : RepeatInterleaveWithTensorIndexInferMeta
     param : [x,repeats, dim]
