@@ -1009,7 +1009,7 @@ class PostTrainingQuantization(object):
         else:
             scale_dict = self._quantized_threshold
 
-        if _same_scale_tensor_list is not None:
+        if self._same_scale_tensor_list is not None:
             for tensor_list in self._same_scale_tensor_list:
                 max_scale = None
                 for tensor_name in tensor_list:
