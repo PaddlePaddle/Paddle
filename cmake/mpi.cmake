@@ -5,19 +5,24 @@ endif()
 if(WITH_MPI)
   find_package(MPI)
   if(MPI_CXX_FOUND)
-    message(STATUS "==========MPI support found========")
     message(STATUS "MPI compile flags: " ${MPI_CXX_COMPILE_FLAGS})
     message(STATUS "MPI include path: " ${MPI_CXX_INCLUDE_PATH})
     message(STATUS "MPI LINK flags path: " ${MPI_CXX_LINK_FLAGS})
     message(STATUS "MPI libraries: " ${MPI_CXX_LIBRARIES})
     include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
-    string(REGEX REPLACE "(.+)\\libmpi.so" "\\1" MPI_CXX_LIBRARIES_ROOT ${MPI_CXX_LIBRARIES})
-    message(STATUS "MPI libraries root: " ${MPI_CXX_LIBRARIES_ROOT})
-    
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${MPI_CXX_LINK_FLAGS}")
-    
-    add_definitions(-DMPI_CXX_LIBRARIES_ROOT=\"${MPI_CXX_LIBRARIES_ROOT}\")
     add_definitions("-DPADDLE_WITH_MPI")
+    find_program(OMPI_INFO
+      NAMES ompi_info
+      HINTS ${MPI_CXX_LIBRARIES}/../bin)
+    if(OMPI_INFO)
+      execute_process(COMMAND ${OMPI_INFO}
+                      OUTPUT_VARIABLE output_)
+      if(output_ MATCHES "smcuda")
+        add_definitions("-DPADDLE_WITH_MPI_AWARE")
+      endif()
+    endif()
+
   else()
     set(WITH_MPI OFF CACHE STRING "Disable MPI" FORCE)
     message(WARNING "Not found MPI support in current system")

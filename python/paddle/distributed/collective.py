@@ -229,7 +229,7 @@ def _new_process_group_impl(backend,
                             group_id=0,
                             src_rank=None,
                             dst_rank=None,
-                            src_ranks=None):
+                            src_ranks=[]):
     pg = None
     genv = _get_global_env()
     if backend != 'heter':
@@ -247,8 +247,7 @@ def _new_process_group_impl(backend,
         place = core.NPUPlace(genv.device_id)
         pg = core.ProcessGroupHCCL(store, rank, world_size, place, group_id)
     elif backend == "mpi":
-        pg = core.ProcessGroupMPI.create(
-            list(range(world_size)) if src_ranks is None else src_ranks, gid)
+        pg = core.ProcessGroupMPI.create(src_ranks, group_id)
     elif backend == "heter":
         place = None
         if core.is_compiled_with_cuda():

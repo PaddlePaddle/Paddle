@@ -261,7 +261,11 @@ void BindDistributed(py::module *m) {
              int gid) -> std::shared_ptr<distributed::ProcessGroupMPI> {
             return paddle::distributed::ProcessGroupMPI::createProcessGroupMPI(
                 ranks, gid);
-          });
+          })
+      .def("get_rank", &distributed::ProcessGroup::GetRank,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_world_size", &distributed::ProcessGroup::GetSize,
+           py::call_guard<py::gil_scoped_release>());
 #endif
 
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
