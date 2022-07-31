@@ -284,6 +284,21 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
+void PriorBoxInferMeta(const MetaTensor& input,
+                       const MetaTensor& image,
+                       const std::vector<float>& min_sizes,
+                       const std::vector<float>& aspect_ratios,
+                       const std::vector<float>& variances,
+                       const std::vector<float>& max_sizes,
+                       bool flip,
+                       bool clip,
+                       float step_w,
+                       float step_h,
+                       float offset,
+                       bool min_max_aspect_ratios_order,
+                       MetaTensor* out,
+                       MetaTensor* var);
+
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
                            bool out_int32,
@@ -315,6 +330,15 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                               bool transpose,
                               bool unitriangular,
                               MetaTensor* out);
+
+void LstsqInferMeta(const MetaTensor& x,
+                    const MetaTensor& y,
+                    const Scalar& rcond,
+                    const std::string& driver,
+                    MetaTensor* solution,
+                    MetaTensor* residuals,
+                    MetaTensor* rank,
+                    MetaTensor* singular_values);
 
 void YoloBoxInferMeta(const MetaTensor& x,
                       const MetaTensor& img_size,

@@ -246,6 +246,20 @@
   inplace : (output -> out)
   backward : assign_out__grad
 
+# assgin_value
+- api : assign_value_
+  args : (Tensor output, int[] shape, DataType dtype, Scalar[] values, Place place = {})
+  output : Tensor(out)
+  inplace: (output -> out)
+  infer_meta :
+    func : AssignValueInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : assign_value
+    param : [shape, dtype, values]
+    data_type : dtype
+    backend : place > output
+
 # atan
 - api : atan
   args : (Tensor x)
@@ -1411,6 +1425,24 @@
     func : logsumexp
   backward : logsumexp_grad
 
+- api : lstsq
+  args : (Tensor x, Tensor y, Scalar rcond, str driver)
+  output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
+  infer_meta :
+    func : LstsqInferMeta
+    dtype : x
+  kernel :
+    func : lstsq
+
+- api : lu
+  args : (Tensor x, bool pivot)
+  output : Tensor(out), Tensor(pivots), Tensor(infos)
+  infer_meta :
+    func : LUInferMeta
+  kernel :
+    func : lu
+  backward : lu_grad
+
 - api : margin_cross_entropy
   args : (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
   output : Tensor(softmax), Tensor(loss)
@@ -1602,6 +1634,15 @@
     func : multi_dot
   backward : multi_dot_grad
 
+- api : multiclass_nms3
+  args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
+  output : Tensor(out), Tensor(index), Tensor(nms_rois_num)
+  infer_meta :
+    func : MultiClassNMSInferMeta
+  kernel :
+    func : multiclass_nms3
+  optional : rois_num
+
 # multinomial
 - api : multinomial
   args : (Tensor x, int num_samples, bool replacement)
@@ -1759,6 +1800,14 @@
   kernel :
     func : prelu
   backward : prelu_grad
+
+- api : prior_box
+  args : (Tensor input, Tensor image, float[] min_sizes, float[] aspect_ratios, float[] variances, float[] max_sizes = {}, bool flip=true, bool clip=true, float step_w=0.0, float step_h=0.0, float offset=0.5, bool min_max_aspect_ratios_order=false)
+  output : Tensor(out), Tensor(var)
+  infer_meta :
+    func : PriorBoxInferMeta
+  kernel :
+    func : prior_box
 
 - api : psroi_pool
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, int output_channels, float spatial_scale)
@@ -2162,6 +2211,27 @@
     use_gpudnn : true
   backward : softmax_grad
 
+- api : softplus
+  args : (Tensor x, float beta, float threshold)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softplus
+  backward : softplus_grad
+
+# softsign
+- api : softsign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softsign
+  backward : softsign_grad
+
 - api : spectral_norm
   args : (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps)
   output : Tensor
@@ -2541,6 +2611,15 @@
   kernel:
     func: broadcast_tensors
   backward: broadcast_tensors_grad
+
+# dirichlet
+- api: dirichlet
+  args: (Tensor alpha)
+  output: Tensor
+  infer_meta:
+    func: DirichletInferMeta
+  kernel:
+    func: dirichlet
 
 # eig
 - api: eig

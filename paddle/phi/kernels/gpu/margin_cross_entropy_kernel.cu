@@ -29,9 +29,6 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/gpu/reduce.h"
-#include "paddle/phi/kernels/impl/softmax_kernel_impl.h"
-#include "paddle/phi/kernels/margin_cross_entropy_kernel.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
@@ -72,7 +69,7 @@ void GetClassInterval(const gpuStream_t& stream,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   Tensor num_classes_per_device;
   paddle::framework::TensorFromVector(
-      shard_dim_vec, ctx, &num_classes_per_device);
+      shard_dim_vec, dev_ctx, &num_classes_per_device);
   int* num_classes_per_device_ptr = num_classes_per_device.data<int>();
 
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();

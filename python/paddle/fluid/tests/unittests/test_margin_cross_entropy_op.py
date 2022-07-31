@@ -86,7 +86,7 @@ def python_api(logits,
                                                      margin3=margin3,
                                                      scale=scale,
                                                      group=None,
-                                                     reduction='mean')
+                                                     reduction=None)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -96,6 +96,7 @@ class TestMarginCrossEntropyOp(OpTest):
     def initParams(self):
         self.op_type = "margin_cross_entropy"
         self.python_api = python_api
+        self.python_out_sig = ["Loss"]
         self.axis = -1
         self.batch_dim = 5
         self.feat_dim = 41

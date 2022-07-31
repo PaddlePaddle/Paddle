@@ -21,10 +21,9 @@ namespace cub = hipcub;
 #endif
 
 #include <vector>
-#include "paddle/phi/core/dense_tensor.h"
-
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -62,7 +61,7 @@ static inline int NumBlocks(const int N) {
 template <typename T, typename Context>
 void GetClassInterval(const gpuStream_t& stream,
                       const phi::Place& place,
-                      const Context& ctx,
+                      const Context& dev_ctx,
                       const int rid,
                       const int rank,
                       const int nranks,
@@ -71,7 +70,7 @@ void GetClassInterval(const gpuStream_t& stream,
   std::vector<int> shard_dim_vec(nranks + 1, 0);
   shard_dim_vec[rank + 1] = D;
   if (nranks <= 1) {
-    paddle::framework::TensorFromVector(shard_dim_vec, ctx, class_interval);
+    paddle::framework::TensorFromVector(shard_dim_vec, dev_ctx, class_interval);
     return;
   }
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
