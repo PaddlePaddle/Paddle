@@ -53,6 +53,11 @@ extern void* mpi_dso_handle;
   __macro(MPI_Allgather);              \
   __macro(MPI_Reduce);                 \
   __macro(MPI_Bcast);                  \
+  __macro(MPI_Barrier);                \
+  __macro(MPI_Alltoall);               \
+  __macro(MPI_Scatter);                \
+  __macro(MPI_Isend);                  \
+  __macro(MPI_Irecv);                  \
   __macro(MPI_Send);                   \
   __macro(MPI_Recv);                   \
   __macro(MPI_Finalized);
