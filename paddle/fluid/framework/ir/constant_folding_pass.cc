@@ -154,11 +154,9 @@ auto PickOneOut = [&](Node* node) -> Node* {
   }
   return nullptr;
 };
-    auto* last_op = iter_op;
     auto* last_persis_node = op_out;
     while(iter_op)
     {
-      last_op = iter_op;
       if (ValidateOp(iter_op)) {
         remove_nodes.emplace(iter_op);
         for (auto in_node : iter_op->inputs) {
