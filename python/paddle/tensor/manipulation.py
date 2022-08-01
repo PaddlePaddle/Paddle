@@ -4053,7 +4053,7 @@ def moveaxis(x, source, destination, name=None):
             # [4, 3, 2]
 
             x = paddle.ones([2, 3])
-            paddle.moveaxis(x, 0, 1) # equivalent to paddle.t(x)
+            paddle.moveaxis(x, 0, 1).shape # equivalent to paddle.t(x)
             # [3, 2]  
     """
     src = [source] if isinstance(source, int) else source
