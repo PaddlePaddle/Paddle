@@ -1416,7 +1416,12 @@ class TransformForMobilePass(object):
 
 class OutScaleForTrainingPass(object):
 
-    def __init__(self, scope=None, place=None, moving_rate=0.9, is_test=None):
+    def __init__(self,
+                 scope=None,
+                 place=None,
+                 moving_rate=0.9,
+                 is_test=None,
+                 scale_dict=None):
         """
         This pass is used for calculating output scales of some operators.
         These output scales may be used by tensorRT or some other inference engines.
@@ -1433,6 +1438,7 @@ class OutScaleForTrainingPass(object):
         self._moving_rate = moving_rate
         self._is_test = is_test
         self._teller_set = utils._out_scale_op_list
+        self._scale_dict = scale_dict
 
     def apply(self, graph):
         """
@@ -1460,22 +1466,29 @@ class OutScaleForTrainingPass(object):
                     if in_node.dtype() not in \
                         [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]:
                         continue
+
                     data_type = 'float64' if in_node.dtype() \
                         == core.VarDesc.VarType.FP64 else 'float32'
                     try:
-                        graph._find_node_by_name(
+                        scale_node = graph._find_node_by_name(
                             graph.all_var_nodes(),
                             self._scale_name(in_node.name()))
-                        continue
                     except:
                         scale_node = graph.create_persistable_node(
                             name=self._scale_name(in_node.name()),
                             var_type=core.VarDesc.VarType.LOD_TENSOR,
                             shape=[1],
                             var_dtype=in_node.dtype())
-                        _init_var_node(scale_node, np.ones([1],
-                                                           dtype=data_type),
-                                       self._scope, self._place)
+                        if self._scale_dict is not None:
+                            try:
+                                scale_value = np.array(
+                                    [self._scale_dict[in_node.name()]])
+                            except:
+                                scale_value = np.ones([1], dtype=data_type)
+                        else:
+                            scale_value = np.ones([1], dtype=data_type)
+                        _init_var_node(scale_node, scale_value, self._scope,
+                                       self._place)
 
                     ins = {'X': in_node}
                     outs = {'OutScale': scale_node}
