@@ -199,6 +199,9 @@ class PD_INFER_DECL Tensor {
   void SetOrtBinding(const std::shared_ptr<Ort::IoBinding> binding);
 
   template <typename T>
+  T* ORTGetMutableData();
+
+  template <typename T>
   void ORTCopyFromCpu(const T* data);
 
   template <typename T>
