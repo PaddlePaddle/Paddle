@@ -1497,7 +1497,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         auto *ln_scale_data = ln_scales[i]->data<U>();
         auto *ln_bias_data = ln_biases[i]->data<U>();
         auto *out_linear_bias_data = out_linear_biases[i]->data<T>();
-        auto *residual_data = i == 0 ? x_data : buf1->data<T>();
+        auto *residual_data = (i == 0 ? x_data : buf1->data<T>());
         fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
             dev_ctx,
             buf0->data<T>(),
