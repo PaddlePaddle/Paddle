@@ -102,7 +102,7 @@
   kernel :
     func : affine_grid_grad
     param : [output_grad, outputShape, align_corners]
-    use_gpudnn: use_cudnn 
+    use_gpudnn: use_cudnn
 
 - backward_api : amax_grad
   forward: amax (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
