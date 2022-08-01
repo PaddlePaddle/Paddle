@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-template <typename T>
-using CUDAReduceMaxGradKernel =
-    ops::ReduceCudaAMaxAMinGradKernel<T, kps::IdentityFunctor>;
-REGISTER_OP_CUDA_KERNEL(reduce_amax_grad,
-                        CUDAReduceMaxGradKernel<int>,
-                        CUDAReduceMaxGradKernel<int64_t>,
-                        CUDAReduceMaxGradKernel<float>,
-                        CUDAReduceMaxGradKernel<double>);
+#include "paddle/phi/kernels/impl/lu_unpack_kernel_impl.h"
+#include "paddle/phi/kernels/lu_unpack_kernel.h"
+
+PD_REGISTER_KERNEL(
+    lu_unpack, GPU, ALL_LAYOUT, phi::LUUnpackKernel, float, double) {}

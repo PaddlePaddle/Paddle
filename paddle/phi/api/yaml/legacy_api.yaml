@@ -129,6 +129,24 @@
   kernel :
     func : allclose
 
+- api : amax
+  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : amax
+  backward : amax_grad
+
+- api : amin
+  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : amin
+  backward : amin_grad
+
 - api : angle
   args : (Tensor x)
   output : Tensor
@@ -871,7 +889,7 @@
     func : FrameInferMeta
   kernel :
     func : frame
-  backward : frame_grad 
+  backward : frame_grad
 
 - api : frobenius_norm
   args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
@@ -1443,6 +1461,16 @@
     func : lu
   backward : lu_grad
 
+- api : lu_unpack
+  args : (Tensor x, Tensor pivots, bool unpack_ludata, bool unpack_pivots)
+  output : Tensor(pmat), Tensor(l), Tensor(u)
+  infer_meta :
+    func : LUUnpackInferMeta
+  kernel :
+    func : lu_unpack
+    data_type : x
+  backward : lu_unpack_grad
+
 # masked_select
 - api : masked_select
   args : (Tensor x, Tensor mask)
@@ -1671,6 +1699,15 @@
     data_type : input
   optional : weight
   backward : nll_loss_grad
+
+- api : nms
+  args : (Tensor x, float threshold)
+  output : Tensor(out)
+  infer_meta :
+    func : NMSInferMeta
+  kernel :
+    func : nms
+    data_type : x
 
 - api : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
@@ -2230,7 +2267,7 @@
   kernel :
     func : spectralnorm
     data_type : weight
-  backward : spectral_norm_grad 
+  backward : spectral_norm_grad
 
 - api : split
   args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
@@ -2538,6 +2575,16 @@
   intermediate : xshape
   backward : unsqueeze_grad
 
+# unstack
+- api : unstack
+  args : (Tensor x, int axis, int num)
+  output : Tensor[]{num}
+  infer_meta :
+    func : UnStackInferMeta
+  kernel :
+    func : unstack
+  backward : unstack_grad
+
 # viterbi_decode
 - api : viterbi_decode
   args : (Tensor input, Tensor transition, Tensor length, bool include_bos_eos_tag)
@@ -2601,7 +2648,7 @@
   kernel:
     func: broadcast_tensors
   backward: broadcast_tensors_grad
-  
+
 # dirichlet
 - api: dirichlet
   args: (Tensor alpha)
@@ -2620,3 +2667,13 @@
   kernel:
     func: eig
   backward: eig_grad
+
+# overlap_add
+- api: overlap_add
+  args: (Tensor x, int hop_length, int axis)
+  output: Tensor
+  infer_meta:
+    func: OverlapAddInferMeta
+  kernel:
+    func: overlap_add
+  backward: overlap_add_grad
