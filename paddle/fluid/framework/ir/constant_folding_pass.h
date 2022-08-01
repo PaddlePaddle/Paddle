@@ -22,20 +22,13 @@ namespace ir {
 
 class Graph;
 
-//     |(rank 4)   |(rank 2)                    |(rank 4)    |(rank 2)
-//     |       unsqueeze2(axes=[2,3])           |            |
-//     |           |                    fuse     \          /
-//     |------elementwise_mul(axis=-1)   ->   elementwise_mul(axis=0)
-//                 |                                   |
-//                 |                                   |
-//
 // Notice:
 // the rank of input is obtained from var_desc,
 // it maybe change in runtime.
-class DeleteUnsqueezePass : public FusePassBase {
+class ConstantFoldingPass : public FusePassBase {
  public:
-  DeleteUnsqueezePass();
-  virtual ~DeleteUnsqueezePass() {}
+  ConstantFoldingPass();
+  virtual ~ConstantFoldingPass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

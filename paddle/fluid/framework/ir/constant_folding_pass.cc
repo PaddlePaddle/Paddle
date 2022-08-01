@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/delete_unsqueeze_pass.h"
+#include "paddle/fluid/framework/ir/constant_folding_pass.h"
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "glog/logging.h"
@@ -38,9 +38,9 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-struct DeleteUnsqueeze : public PatternBase {
-  DeleteUnsqueeze(PDPattern *pattern, const std::string &name_scope)
-      : PatternBase(pattern, name_scope, "delete_unsqueeze_pass") {}
+struct ConstantFolding : public PatternBase {
+  ConstantFolding(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "constant_folding_pass") {}
 
   PDNode *operator()(PDNode *x);
 
@@ -51,7 +51,7 @@ struct DeleteUnsqueeze : public PatternBase {
   PATTERN_DECL_NODE(common_op_out);
 };
 
-PDNode *DeleteUnsqueeze::operator()(PDNode *persis_x) {
+PDNode *ConstantFolding::operator()(PDNode *persis_x) {
   
   auto assert_ops = std::unordered_set<std::string>{"unsqueeze2", "reshape2"};
   persis_x->assert_is_ops_input(assert_ops);
@@ -70,17 +70,15 @@ PDNode *DeleteUnsqueeze::operator()(PDNode *persis_x) {
 
 }  // namespace patterns
 
-DeleteUnsqueezePass::DeleteUnsqueezePass() {
+ConstantFoldingPass::ConstantFoldingPass() {
 }
 
 static bool ValidateOp(Node* op) 
 {
-  if(op->inputs.size() == 1)
-  {
+  if(op->inputs.size() == 1) {
     return true;
   }
-  else if(op->inputs.size() == 2)
-  {
+  else if(op->inputs.size() == 2) {
     for (int i = 0; i < 2; i++) {
       auto input_i_persis = op->inputs[i]->Var()->Persistable();
       auto input_i_outnum = op->inputs[i]->outputs.size();
@@ -92,10 +90,10 @@ static bool ValidateOp(Node* op)
   }
 }
 
-void DeleteUnsqueezePass::ApplyImpl(ir::Graph *graph) const {
+void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
-  FusePassBase::Init("delete_unsqueeze2", graph);
+  FusePassBase::Init("constant_folding", graph);
   int found_subgraph_count = 0;
   GraphPatternDetector gpd;
 
@@ -104,7 +102,7 @@ void DeleteUnsqueezePass::ApplyImpl(ir::Graph *graph) const {
                 ->AsInput()
                 ->assert_is_persistable_var();
 
-  patterns::DeleteUnsqueeze fused_pattern(gpd.mutable_pattern(), "delete_unsqueeze2");
+  patterns::ConstantFolding fused_pattern(gpd.mutable_pattern(), "constant_folding");
   fused_pattern(persis_x_node);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -113,13 +111,12 @@ void DeleteUnsqueezePass::ApplyImpl(ir::Graph *graph) const {
       LOG(WARNING) << "The subgraph is empty.";
       return;
     }
-    VLOG(4) << "handle DeleteUnsqueeze fuse";
+    VLOG(4) << "handle ConstantFolding pass";
 
     GET_IR_NODE_FROM_SUBGRAPH(op, common_op, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(op_out, common_op_out, fused_pattern);
 
     auto x_shape = subgraph.at(persis_x_node)->Var()->GetShape();
-    std::cout << subgraph.at(persis_x_node)->Name() << std::endl;
    
     auto* scope = param_scope();
     auto* persis_x_tensor = scope->FindVar(subgraph.at(persis_x_node)->Name())->GetMutable<LoDTensor>();
@@ -184,7 +181,6 @@ auto PickOneOut = [&](Node* node) -> Node* {
         break;
       }
     }
-    std::cout <<last_op->Op()->Type() << std::endl;
 
     for (size_t i = 0; i < ops.size(); i++) {
       ops[i]->Run(*new_scope, platform::CPUPlace());
@@ -215,5 +211,5 @@ auto PickOneOut = [&](Node* node) -> Node* {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(delete_unsqueeze_pass,
-              paddle::framework::ir::DeleteUnsqueezePass);
+REGISTER_PASS(constant_folding_pass,
+              paddle::framework::ir::ConstantFoldingPass);

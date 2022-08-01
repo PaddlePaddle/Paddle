@@ -89,7 +89,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "shuffle_channel_detect_pass",           //
       "quant_conv2d_dequant_fuse_pass",        //
       "delete_fill_constant_op_pass",          //
-      "delete_unsqueeze_pass",
+      "constant_folding_pass",
       "delete_quant_dequant_op_pass",          //
       "delete_quant_dequant_filter_op_pass",   //
       "delete_weight_dequant_linear_op_pass",  //
@@ -188,7 +188,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "gpu_cpu_flatten2_matmul_fuse_pass",      //
         "gpu_cpu_map_matmul_v2_to_mul_pass",      //
         "gpu_cpu_map_matmul_v2_to_matmul_pass",   //
-        "delete_unsqueeze_pass",
+        "constant_folding_pass",
         "matmul_scale_fuse_pass",                 //
         "multihead_matmul_fuse_pass_v3",          //
         "gpu_cpu_map_matmul_to_mul_pass",         //
@@ -243,7 +243,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "layer_norm_fuse_pass",
                   "attention_lstm_fuse_pass",       //
                   "seqconv_eltadd_relu_fuse_pass",  //
-                  "delete_unsqueeze_pass",
+                  "constant_folding_pass",
                   // "seqpool_concat_fuse_pass",    //
                   "seqpool_cvm_concat_fuse_pass",  //
                   // "embedding_fc_lstm_fuse_pass", //
