@@ -197,6 +197,15 @@ class TestMultipleWithGloo(unittest.TestCase):
             time.sleep(3)
 
 
+class TestMultipleWithMPI(unittest.TestCase):
+    def run_mnist_2cpu(self, target_file_name):
+        cmd = [
+            'mpirun', '--allow-run-as-root', '-n', '2',
+            sys.executable.split('/')[-1]
+        ]
+        os.execve('/bin/sh', cmd, target_file_name)
+
+
 class TestDataParallelGradientCheck(TestMultipleGpus):
     def test_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('parallel_dygraph_gradient_check.py')
