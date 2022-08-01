@@ -924,6 +924,7 @@ void OpDesc::CheckAttrs() {
 void OpDesc::InferShape(const BlockDesc &block) {
   try {
     VLOG(3) << "CompileTime infer shape on " << Type();
+    auto &op_info = OpInfoMap::Instance().Get(this->Type());
     this->CheckAttrs();
     auto &infer_shape = op_info.infer_shape_;
     PADDLE_ENFORCE_EQ(
@@ -947,7 +948,6 @@ void OpDesc::InferShape(const BlockDesc &block) {
       sout << "]";
       VLOG(10) << sout.str();
     }
-    // TODO(dev): need to deal with attr_vars
     infer_shape(&ctx);
   } catch (platform::EnforceNotMet &exception) {
     framework::AppendErrorOpHint(Type(), &exception);

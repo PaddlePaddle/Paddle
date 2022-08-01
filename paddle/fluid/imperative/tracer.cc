@@ -238,7 +238,7 @@ void Tracer::TraceOpImpl(const std::string& type,
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
-    attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
+    attr_checker->Check(&attrs, nullptr, true, /*only_check_exist_value=*/true);
   }
 
   static paddle::framework::AttributeMap empty_attrs_map = {};
@@ -498,7 +498,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
-    attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
+    attr_checker->Check(&attrs, nullptr, true, /*only_check_exist_value=*/true);
   }
   static paddle::framework::AttributeMap empty_attrs_map = {};
   const paddle::framework::AttributeMap& default_attrs =
