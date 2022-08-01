@@ -402,14 +402,31 @@ std::vector<uint8_t> TCPStore::get(const std::string& key) {
   return _client->receive_vector<uint8_t>();
 }
 
-void TCPStore::wait(const std::string& key) {
+void TCPStore::wait(const std::string& key, int refresh_interval) {
   ReplyType reply;
   VLOG(3) << "TCPStore wait.";
+  auto begin = std::chrono::steady_clock::now();
   do {
+    // if waiting time exceed timeout, log and break
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - begin);
+    if (elapsed.count() > _timeout) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "TCPStore wait timeout. The following two things may cause this "
+          "problem:\n"
+          "1. The key you want to get from TCPStore may not exist. [High "
+          "Probability]\n"
+          "2. The waiting time is to short. You can use "
+          "'export FLAGS_stop_check_timeout=3600'"
+          " to change the timeout value in seconds. The default one is "
+          "900."));
+      break;
+    }
+
     _client->send_command_for_key(Command::WAIT, _key_prefix + key);
 
     reply = _client->receive_value<ReplyType>();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(refresh_interval));
   } while (reply != ReplyType::STOP_WAIT);
 }
 

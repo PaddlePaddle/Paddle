@@ -37,7 +37,7 @@ class Store {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Implement the add method in the subclass."));
   }
-  virtual void wait(const std::string& key) {
+  virtual void wait(const std::string& key, int refresh_interval = 500) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Implement the add method in the subclass."));
   }

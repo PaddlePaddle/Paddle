@@ -130,7 +130,7 @@ class TCPStore : public Store {
 
   int64_t add(const std::string& key, int64_t value) override;
   std::vector<uint8_t> get(const std::string& key) override;
-  void wait(const std::string& key) override;
+  void wait(const std::string& key, int refresh_interval = 500) override;
   void set(const std::string& key, const std::vector<uint8_t>& value) override;
 
  private:
