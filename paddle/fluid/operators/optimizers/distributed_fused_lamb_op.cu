@@ -1617,11 +1617,15 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     const auto &ring_ids = ctx.Attr<std::vector<int>>("ring_id");
     auto use_master_param_norm = ctx.Attr<bool>("use_master_param_norm");
     auto is_grad_scaled_by_nranks = ctx.Attr<bool>("is_grad_scaled_by_nranks");
+    auto use_hierarchical_allreduce =
+        ctx.Attr<bool>("use_hierarchical_allreduce");
     VLOG(10) << "max_global_grad_norm = " << max_global_grad_norm
              << " , clip_after_allreduce = " << clip_after_allreduce
              << " , use_master_param_norm = " << use_master_param_norm
              << " , is_grad_scaled_by_nranks = " << is_grad_scaled_by_nranks
-             << " , local_shard = " << local_shard;
+             << " , local_shard = " << local_shard
+             << " , use_hierarchical_allreduce = "
+             << use_hierarchical_allreduce;
 
     // Step 6: allreduce + global norm gradient clip
     int64_t global_rank = 0, local_rank = 0;
@@ -1797,22 +1801,61 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         }
         // (3) Do ReduceScatter with scale
         if (local_shard) {
-          NCCLAllReduceWithScale(fp32_grad,
-                                 fp32_sum_grad,
-                                 fp32_numel,
-                                 nranks,
-                                 global_comm,
-                                 stream,
-                                 dev_ctx,
-                                 fp32_scale);
-          NCCLAllReduceWithScale(fp16_grad,
-                                 fp16_sum_grad,
-                                 fp16_numel,
-                                 nranks,
-                                 global_comm,
-                                 stream,
-                                 dev_ctx,
-                                 fp16_scale);
+          if (use_hierarchical_allreduce) {
+            auto external_comm = platform::NCCLCommContext::Instance()
+                                     .Get(ring_ids[2], place)
+                                     ->comm();
+            NCCLAllReduceWithScale(fp32_grad,
+                                   fp32_sum_grad,
+                                   fp32_numel,
+                                   nranks / num_devices,
+                                   external_comm,
+                                   stream,
+                                   dev_ctx,
+                                   fp32_scale);
+            NCCLReduceScatterWithScale(
+                fp32_sum_grad,
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_numel_each_device,
+                num_devices,
+                local_comm,
+                stream,
+                dev_ctx);
+
+            NCCLAllReduceWithScale(fp16_grad,
+                                   fp16_sum_grad,
+                                   fp16_numel,
+                                   nranks / num_devices,
+                                   external_comm,
+                                   stream,
+                                   dev_ctx,
+                                   fp16_scale);
+            NCCLReduceScatterWithScale(
+                fp16_sum_grad,
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_numel_each_device,
+                num_devices,
+                local_comm,
+                stream,
+                dev_ctx);
+          } else {
+            NCCLAllReduceWithScale(fp32_grad,
+                                   fp32_sum_grad,
+                                   fp32_numel,
+                                   nranks,
+                                   global_comm,
+                                   stream,
+                                   dev_ctx,
+                                   fp32_scale);
+            NCCLAllReduceWithScale(fp16_grad,
+                                   fp16_sum_grad,
+                                   fp16_numel,
+                                   nranks,
+                                   global_comm,
+                                   stream,
+                                   dev_ctx,
+                                   fp16_scale);
+          }
           fp32_sum_grad += (local_rank * fp32_numel_each_device);
           fp16_sum_grad += (local_rank * fp16_numel_each_device);
         } else {
