@@ -79,7 +79,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
       }
       trans_x_grad.Resize(phi::make_ddim(x_grad_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x_grad);
-      TransCompute<Context, T>(
+      phi::funcs::TransCompute<Context, T>(
           perm_x_grad.size(), dev_ctx, *x_grad, &trans_x_grad, perm_x_grad);
     } else {
       std::vector<int> perm_d_out{1, 0};
@@ -89,7 +89,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
       }
       trans_out_grad.Resize(phi::make_ddim(out_grad_dims_vec));
       dev_ctx.template Alloc<T>(&trans_out_grad);
-      TransCompute<Context, T>(
+      phi::funcs::TransCompute<Context, T>(
           perm_d_out.size(), dev_ctx, out_grad_, &trans_out_grad, perm_d_out);
 
       std::vector<int> perm_x_grad{2, 1, 0};
@@ -99,7 +99,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
       }
       trans_x_grad.Resize(phi::make_ddim(x_grad_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x_grad);
-      TransCompute<Context, T>(
+      phi::funcs::TransCompute<Context, T>(
           perm_x_grad.size(), dev_ctx, *x_grad, &trans_x_grad, perm_x_grad);
     }
   } else {
@@ -120,11 +120,11 @@ void OverlapAddGradKernel(const Context& dev_ctx,
   if (axis == 0) {
     if (out_grad_rank == 1U) {
       std::vector<int> perm_x_grad{1, 0};
-      TransCompute<Context, T>(
+      phi::funcs::TransCompute<Context, T>(
           perm_x_grad.size(), dev_ctx, trans_x_grad, x_grad, perm_x_grad);
     } else {
       std::vector<int> perm_x_grad{2, 1, 0};
-      TransCompute<Context, T>(
+      phi::funcs::TransCompute<Context, T>(
           perm_x_grad.size(), dev_ctx, trans_x_grad, x_grad, perm_x_grad);
     }
   }

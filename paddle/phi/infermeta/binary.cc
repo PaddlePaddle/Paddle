@@ -2300,17 +2300,6 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_lod(x);
 }
 
-void OverlapAddGradInferMeta(const MetaTensor& x,
-                             const MetaTensor& out_grad,
-                             int hop_length,
-                             int axis,
-                             MetaTensor* x_grad) {
-  const auto x_dims = x.dims();
-  if (x_grad != nullptr) {
-    x_grad->set_dims(x_dims);
-  }
-}
-
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);

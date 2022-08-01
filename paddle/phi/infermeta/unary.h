@@ -235,6 +235,12 @@ void NormInferMeta(const MetaTensor& x,
                    MetaTensor* out,
                    MetaTensor* norm);
 
+void OverlapAddInferMeta(const MetaTensor& x,
+                         int hop_length,
+                         int axis,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
+
 void PadInferMeta(const MetaTensor& input,
                   const std::vector<int>& paddings,
                   float pad_value,
@@ -542,11 +548,5 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                              MetaTensor* out);
 
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
-
-void OverlapAddInferMeta(const MetaTensor& x,
-                         int hop_length,
-                         int axis,
-                         MetaTensor* out,
-                         MetaConfig config = MetaConfig());
 
 }  // namespace phi
