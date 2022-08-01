@@ -170,7 +170,7 @@ if(WITH_TESTING)
   if(NOT WIN32)
     add_custom_target(
       download_data
-      COMMAND wget -nc --no-check-certificate
+      COMMAND wget -nc
               https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar
       COMMAND tar -xf buddy_allocator_test_data.tar)
     add_dependencies(buddy_allocator_test download_data)

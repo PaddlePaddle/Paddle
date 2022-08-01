@@ -22,14 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace framework {
-
-const int CUDA_NUM_THREADS = platform::PADDLE_CUDA_NUM_THREADS;
-#define GET_BLOCK(N) ((N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS)
-#define CUDA_BLOCK(N) GET_BLOCK(N), CUDA_NUM_THREADS, 0
 
 __global__ void CopyKeysKernel(uint64_t** src_keys,
                                uint64_t* dest_total_keys,
@@ -98,44 +93,6 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
   cudaStreamSynchronize(stream);
 }
 
-__global__ void CopyKeysKernel2(const int total_len,
-                                uint64_t** src_keys,
-                                uint64_t* dest_total_keys,
-                                const int slot_num,
-                                const int64_t* slot_lens,
-                                int* key2slots) {
-  CUDA_KERNEL_LOOP(i, total_len) {
-    int low = 0;
-    int high = slot_num - 1;
-    while (low < high) {
-      int mid = (low + high) / 2;
-      if (i < slot_lens[mid + 1]) {
-        high = mid;
-      } else {
-        low = mid + 1;
-      }
-    }
-    key2slots[i] = low;
-    int y = i - slot_lens[low];
-    dest_total_keys[i] = src_keys[low][y];
-  }
-}
-
-void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
-                            uint64_t** origin_keys,
-                            uint64_t* total_keys,
-                            const int64_t* slot_lens,
-                            int slot_num,
-                            int total_len,
-                            int* key2slot) {
-  auto stream = dynamic_cast<platform::CUDADeviceContext*>(
-                    platform::DeviceContextPool::Instance().Get(place))
-                    ->stream();
-  CopyKeysKernel2<<<CUDA_BLOCK(total_len), stream>>>(
-      total_len, origin_keys, total_keys, slot_num, slot_lens, key2slot);
-  cudaStreamSynchronize(stream);
-}
-
 void PSGPUWrapper::SetSparseSGD(float nonclk_coeff,
                                 float clk_coeff,
                                 float min_bound,
@@ -166,9 +123,7 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
                                 float mf_max_bound,
                                 float mf_beta1_decay_rate,
                                 float mf_beta2_decay_rate,
-                                float mf_ada_epsilon,
-                                float nodeid_slot,
-                                float feature_learning_rate) {
+                                float mf_ada_epsilon) {
   optimizer_config_.set_embedx_sgd(mf_create_thresholds,
                                    mf_learning_rate,
                                    mf_initial_g2sum,
@@ -177,9 +132,7 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
                                    mf_max_bound,
                                    mf_beta1_decay_rate,
                                    mf_beta2_decay_rate,
-                                   mf_ada_epsilon,
-                                   nodeid_slot,
-                                   feature_learning_rate);
+                                   mf_ada_epsilon);
 }
 
 }  // end namespace framework

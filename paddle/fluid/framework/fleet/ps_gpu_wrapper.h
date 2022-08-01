@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #ifdef PADDLE_WITH_HETERPS
 
 #include <atomic>
@@ -97,61 +98,20 @@ class AfsWrapper {
 #endif
 
 class PSGPUWrapper {
-  class DCacheBuffer {
-   public:
-    DCacheBuffer() : buf_(nullptr) {}
-    ~DCacheBuffer() {}
-    /**
-     * @Brief get data
-     */
-    template <typename T>
-    T* mutable_data(const size_t total_bytes,
-                    const paddle::platform::Place& place) {
-      if (buf_ == nullptr) {
-        buf_ = memory::AllocShared(place, total_bytes);
-      } else if (buf_->size() < total_bytes) {
-        buf_.reset();
-        buf_ = memory::AllocShared(place, total_bytes);
-      }
-      return reinterpret_cast<T*>(buf_->ptr());
-    }
-    template <typename T>
-    T* data() {
-      return reinterpret_cast<T*>(buf_->ptr());
-    }
-    size_t memory_size() {
-      if (buf_ == nullptr) {
-        return 0;
-      }
-      return buf_->size();
-    }
-    bool IsInitialized(void) { return (buf_ != nullptr); }
-
-   private:
-    std::shared_ptr<memory::Allocation> buf_ = nullptr;
-  };
-  struct PSDeviceData {
-    DCacheBuffer keys_tensor;
-    DCacheBuffer dims_tensor;
-    DCacheBuffer keys_ptr_tensor;
-    DCacheBuffer values_ptr_tensor;
-    DCacheBuffer pull_push_tensor;
-
-    DCacheBuffer slot_lens;
-    DCacheBuffer d_slot_vector;
-    DCacheBuffer keys2slot;
-
-    int64_t total_key_length = 0;
-    int64_t dedup_key_length = 0;
-  };
-  PSDeviceData* device_caches_ = nullptr;
-
  public:
   ~PSGPUWrapper();
 
   PSGPUWrapper() {
     HeterPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
+    pull_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
+      pull_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+    hbm_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
   }
 
   void PullSparse(const paddle::platform::Place& place,
@@ -180,13 +140,6 @@ class PSGPUWrapper {
                 const int64_t* gpu_len,
                 int slot_num,
                 int total_len);
-  void CopyKeys(const paddle::platform::Place& place,
-                uint64_t** origin_keys,
-                uint64_t* total_keys,
-                const int64_t* gpu_len,
-                int slot_num,
-                int total_len,
-                int* key2slot);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
@@ -211,11 +164,6 @@ class PSGPUWrapper {
     pre_build_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
-    HeterPs_->show_table_collisions();
-    if (device_caches_ != nullptr) {
-      delete[] device_caches_;
-      device_caches_ = nullptr;
-    }
   }
 
   void InitializeGPU(const std::vector<int>& dev_ids) {
@@ -225,7 +173,6 @@ class PSGPUWrapper {
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
       keys_tensor.resize(resource_->total_device());
-      device_caches_ = new PSDeviceData[resource_->total_device()];
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {
@@ -309,9 +256,7 @@ class PSGPUWrapper {
                     float mf_max_bound,
                     float mf_beta1_decay_rate,
                     float mf_beta2_decay_rate,
-                    float mf_ada_epsilon,
-                    float nodeid_slot,
-                    float feature_learning_rate);
+                    float mf_ada_epsilon);
 
 #ifdef PADDLE_WITH_PSCORE
   void add_sparse_optimizer(
@@ -363,21 +308,6 @@ class PSGPUWrapper {
   void InitializeGPUServer(paddle::distributed::PSParameter ps_param) {
     auto sparse_table =
         ps_param.server_param().downpour_server_param().downpour_table_param(0);
-    // set build thread_num and shard_num
-    thread_keys_thread_num_ = sparse_table.shard_num();
-    thread_keys_shard_num_ = sparse_table.shard_num();
-    VLOG(1) << "ps_gpu build phase thread_num:" << thread_keys_thread_num_
-            << " shard_num:" << thread_keys_shard_num_;
-
-    pull_thread_pool_.resize(thread_keys_shard_num_);
-    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
-      pull_thread_pool_[i].reset(new ::ThreadPool(1));
-    }
-    hbm_thread_pool_.resize(thread_keys_shard_num_);
-    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
-      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
-    }
-
     auto sparse_table_accessor = sparse_table.accessor();
     auto sparse_table_accessor_parameter =
         sparse_table_accessor.ctr_accessor_param();
@@ -389,11 +319,6 @@ class PSGPUWrapper {
     config["clk_coeff"] = sparse_table_accessor_parameter.click_coeff();
     config["mf_create_thresholds"] = sparse_table_accessor.embedx_threshold();
 
-    config["nodeid_slot"] =
-        sparse_table_accessor.graph_sgd_param().nodeid_slot();
-    config["feature_learning_rate"] =
-        sparse_table_accessor.graph_sgd_param().feature_learning_rate();
-
     if (accessor_class_ == "CtrDymfAccessor") {
       // optimizer config for embed_w and embedx
       add_sparse_optimizer(config, sparse_table_accessor.embed_sgd_param());
@@ -402,8 +327,8 @@ class PSGPUWrapper {
     }
 
     fleet_config_ = config;
-    GlobalAccessorFactory::GetInstance().Init(accessor_class_);
-    GlobalAccessorFactory::GetInstance().GetAccessorWrapper()->Configure(
+    GlobalAccessorTransfor::GetInstance().Init(accessor_class_);
+    GlobalAccessorTransfor::GetInstance().GetAccessorWrapper()->Configure(
         config);
     InitializeGPUServer(config);
   }
@@ -469,16 +394,6 @@ class PSGPUWrapper {
     float mf_ada_epsilon = (config.find("mf_ada_epsilon") == config.end())
                                ? 1e-8
                                : config["mf_ada_epsilon"];
-
-    float feature_learning_rate =
-        (config.find("feature_learning_rate") == config.end())
-            ? 0.05
-            : config["feature_learning_rate"];
-
-    float nodeid_slot = (config.find("nodeid_slot") == config.end())
-                            ? 9008
-                            : config["nodeid_slot"];
-
     this->SetSparseSGD(nonclk_coeff,
                        clk_coeff,
                        min_bound,
@@ -497,18 +412,12 @@ class PSGPUWrapper {
                        mf_max_bound,
                        mf_beta1_decay_rate,
                        mf_beta2_decay_rate,
-                       mf_ada_epsilon,
-                       nodeid_slot,
-                       feature_learning_rate);
+                       mf_ada_epsilon);
 
     // set optimizer type(naive,adagrad,std_adagrad,adam,share_adam)
     optimizer_type_ = (config.find("optimizer_type") == config.end())
                           ? 1
-                          : int(config["optimizer_type"]);
-
-    VLOG(0) << "InitializeGPUServer optimizer_type_:" << optimizer_type_
-            << " nodeid_slot:" << nodeid_slot
-            << " feature_learning_rate:" << feature_learning_rate;
+                          : static_cast<int>(config["optimizer_type"]);
   }
 
   void SetDate(int year, int month, int day) {
@@ -599,13 +508,11 @@ class PSGPUWrapper {
     }
 
     auto accessor_wrapper_ptr =
-        GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
+        GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
     val_type_size_ = accessor_wrapper_ptr->GetFeatureValueSize(max_mf_dim_);
     grad_type_size_ = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
-    pull_type_size_ = accessor_wrapper_ptr->GetPullValueSize(max_mf_dim_);
     VLOG(0) << "InitSlotInfo: val_type_size_" << val_type_size_
-            << " grad_type_size_:" << grad_type_size_
-            << " pull_type_size_:" << pull_type_size_;
+            << " grad_type_size_:" << grad_type_size_;
     slot_info_initialized_ = true;
   }
 #endif
@@ -657,7 +564,6 @@ class PSGPUWrapper {
   int max_mf_dim_{0};
   size_t val_type_size_{0};
   size_t grad_type_size_{0};
-  size_t pull_type_size_{0};
 
   double time_1 = 0.0;
   double time_2 = 0.0;
@@ -667,7 +573,6 @@ class PSGPUWrapper {
   int multi_node_{0};
   int node_size_;
   uint64_t table_id_;
-  int gpu_graph_mode_ = 0;
 #ifdef PADDLE_WITH_CUDA
   std::vector<ncclComm_t> inner_comms_;
   std::vector<ncclComm_t> inter_comms_;

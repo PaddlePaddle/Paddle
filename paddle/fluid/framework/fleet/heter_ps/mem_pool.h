@@ -20,7 +20,6 @@ limitations under the License. */
 #include <iostream>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/managed.cuh"
-#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -61,9 +60,9 @@ class HBMMemoryPool : public managed {
     block_size_ = mem_pool->block_size();
     VLOG(3) << "hbm memory pool with capacity" << capacity_
             << " bs: " << block_size_;
-    CUDA_CHECK(cudaMalloc(&mem_, block_size_ * capacity_));
-    CUDA_CHECK(cudaMemcpy(
-        mem_, mem_pool->mem(), mem_pool->byte_size(), cudaMemcpyHostToDevice));
+    cudaMalloc(&mem_, block_size_ * capacity_);
+    cudaMemcpy(
+        mem_, mem_pool->mem(), mem_pool->byte_size(), cudaMemcpyHostToDevice);
   }
 
   ~HBMMemoryPool() {
@@ -79,8 +78,8 @@ class HBMMemoryPool : public managed {
     cudaFree(mem_);
     mem_ = NULL;
     capacity_ = capacity;
-    CUDA_CHECK(cudaMalloc(&mem_, (block_size_ * capacity / 8 + 1) * 8));
-    CUDA_CHECK(cudaMemset(mem_, 0, block_size_ * capacity));
+    cudaMalloc(&mem_, (block_size_ * capacity / 8 + 1) * 8);
+    cudaMemset(mem_, 0, block_size_ * capacity);
   }
 
   char* mem() { return mem_; }

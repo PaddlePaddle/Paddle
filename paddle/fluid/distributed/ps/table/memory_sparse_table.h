@@ -112,7 +112,7 @@ class MemorySparseTable : public Table {
   virtual int32_t LoadPatch(const std::vector<std::string>& file_list,
                             int save_param);
 
-  int _task_pool_size = 24;
+  const int _task_pool_size = 24;
   int _avg_local_shard_num;
   int _real_local_shard_num;
   int _sparse_table_shard_num;

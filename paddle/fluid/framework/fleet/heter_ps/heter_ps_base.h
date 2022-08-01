@@ -54,7 +54,6 @@ class HeterPsBase {
 #endif
   virtual void end_pass() = 0;
   virtual void show_one_table(int gpu_num) = 0;
-  virtual void show_table_collisions() = 0;
   virtual void push_sparse(int num,
                            FeatureKey* d_keys,
                            float* d_grads,
@@ -66,22 +65,10 @@ class HeterPsBase {
   static HeterPsBase* get_instance(
       size_t capacity,
       std::shared_ptr<HeterPsResource> resource,
+      //  CommonFeatureValueAccessor feature_value_accessor,
       std::unordered_map<std::string, float> fleet_config,
       std::string accessor_type,
       int optimizer_type);
-#if defined(PADDLE_WITH_CUDA)
-  // dedup
-  virtual int dedup_keys_and_fillidx(const int gpu_id,
-                                     const int total_fea_num,
-                                     const FeatureKey* d_keys,   // input
-                                     FeatureKey* d_merged_keys,  // output
-                                     FeatureKey* d_sorted_keys,
-                                     uint32_t* d_restore_idx,
-                                     uint32_t* d_sorted_idx,
-                                     uint32_t* d_offset,
-                                     uint32_t* d_merged_cnts,
-                                     bool filter_zero) = 0;
-#endif
 };
 
 }  // end namespace framework

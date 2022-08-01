@@ -41,54 +41,16 @@ struct DynamicGradMerger {
     return out;
   }
 
-  template <typename GPUAccessor>
-  __device__ __forceinline__ void update_one(float* output,
-                                             const float* input,
-                                             GPUAccessor& gpu_accessor) {
-    gpu_accessor.PushValueFill(output, input);
+  template <typename FVAccessor>
+  __device__ __forceinline__ void update_one(
+      float* output, const float* input, FVAccessor& feature_value_accessor) {
+    feature_value_accessor.PushValueFill(output, input);
   }
 
-  template <typename GPUAccessor>
-  __device__ __forceinline__ void merge_one(float* output,
-                                            const float* input,
-                                            GPUAccessor& gpu_accessor) {
-    gpu_accessor.MergePushValue(output, input);
-  }
-
-  template <typename GPUAccessor>
-  __device__ __forceinline__ void update_basic(float* output,
-                                               const float* input,
-                                               GPUAccessor& fv_accessor) {
-    fv_accessor.PushValueFillBasic(output, input);
-  }
-
-  template <typename GPUAccessor>
-  __device__ __forceinline__ void merge_basic(float* output,
-                                              const float* input,
-                                              GPUAccessor& fv_accessor) {
-    fv_accessor.MergePushValueBasic(output, input);
-  }
-
-  template <typename GPUAccessor>
-  __device__ __forceinline__ void update_embedx(float* output,
-                                                const float* input,
-                                                size_t embedx_idx,
-                                                GPUAccessor& fv_accessor) {
-    if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
-      output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] =
-          input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
-    }
-  }
-
-  template <typename GPUAccessor>
-  __device__ __forceinline__ void merge_embedx(float* output,
-                                               const float* input,
-                                               size_t embedx_idx,
-                                               GPUAccessor& fv_accessor) {
-    if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
-      output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] +=
-          input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
-    }
+  template <typename FVAccessor>
+  __device__ __forceinline__ void merge_one(
+      float* output, const float* input, FVAccessor& feature_value_accessor) {
+    feature_value_accessor.MergePushValue(output, input);
   }
 };
 
@@ -177,7 +139,7 @@ class HeterCommKernel {
   template <typename KeyType,
             typename T,
             typename StreamType,
-            typename GPUAccessor>
+            typename FVAccessor>
   void dy_mf_fill_shard_grads(KeyType* d_shard_keys,
                               KeyType* d_keys,
                               float* d_shard_grads,
@@ -186,72 +148,28 @@ class HeterCommKernel {
                               long long len,
                               size_t grad_value_size,
                               const StreamType& stream,
-                              GPUAccessor& gpu_accessor);
+                              FVAccessor& feature_value_accessor);
 
-  template <typename KeyType, typename StreamType, typename GPUAccessor>
-  void merge_gradient(const KeyType* d_shard_keys,
-                      const uint32_t* offset,
+  template <typename StreamType, typename FVAccessor>
+  void merge_gradient(const uint32_t* offset,
                       const uint32_t* fea_num,
                       const uint32_t* index,
                       const char* input,
                       char* output,
                       int n,
-                      size_t grad_dim,
                       size_t grad_value_size,
-                      DynamicGradMerger& merger,
+                      DynamicGradMerger& merger_,
                       const StreamType& stream,
-                      GPUAccessor& gpu_accessor);
+                      FVAccessor& feature_value_accessor);
 
-  template <typename T, typename StreamType>
+  template <typename T, typename StreamType, typename FVAccessor>
   void dy_mf_fill_dvals(float* d_shard_vals,
                         float* d_vals,
                         T* idx,
                         long long len,
                         size_t val_size,
-                        const StreamType& stream);
-
-  template <typename StreamType>
-  void split_segments(const uint32_t* d_fea_num_info,
-                      size_t len,
-                      uint32_t* d_segments,
-                      uint32_t* d_segments_num,
-                      size_t segment_size,
-                      const StreamType& stream);
-
-  template <typename StreamType>
-  void expand_segments(const uint32_t* d_fea_num_info,
-                       const uint32_t* d_segments_offset,
-                       size_t segments_num,
-                       uint32_t* d_segments_fea_num_info,
-                       uint32_t segment_size,
-                       const StreamType& stream);
-
-  template <typename KeyType, typename StreamType>
-  void shrink_keys(const KeyType* d_keys,
-                   const uint32_t* d_segments_offset,
-                   KeyType* d_segments_keys,
-                   size_t segments_num,
-                   const StreamType& stream);
-
-  template <typename KeyType, typename StreamType>
-  void fill_restore_idx(bool filter_zero,
-                        const size_t total_num,
-                        const size_t merge_size,
-                        const KeyType* d_keys,
-                        const uint32_t* d_sorted_idx,
-                        const uint32_t* d_offset,
-                        const uint32_t* d_merged_cnts,
-                        uint32_t* d_restore_idx,
-                        const StreamType& stream);
-
-  template <typename KeyType, typename StreamType>
-  void unpack_merged_vals(size_t n,
-                          const KeyType* d_keys,
-                          const void* d_merged_vals,
-                          const uint32_t* d_restore_idx,
-                          void* d_vals,
-                          size_t val_size,
-                          const StreamType& stream);
+                        const StreamType& stream,
+                        FVAccessor& feature_value_accessor);
 
  private:
   int block_size_{256};
