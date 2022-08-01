@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
