@@ -37,8 +37,7 @@ set(PY_TEST_CASES
     test_fleet_rolemaker_new
     test_fleet_unitaccessor)
 foreach(CASE ${PY_TEST_CASES})
-  set_py_test_module(${CASE} TEST_CASES ${TEST_CASES} ENVS
-                     "FLAGS_enable_eager_mode=1")
+  set_py_test_module(${CASE} TEST_CASES ${TEST_CASES} ENVS ${dist_ENVS})
 endforeach()
 
 set(SINGLE_GPU_TESTS test_fleet_meta_optimizer_base test_fleet_amp_init
@@ -64,4 +63,5 @@ if(WITH_GPU)
       ENVS
       "PADDLE_DIST_UT_PORT=${dist_ut_port}")
   endforeach()
+
 endif()
