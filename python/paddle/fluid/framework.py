@@ -2850,10 +2850,10 @@ class Operator(object):
                     self._update_desc_attr(ipu_stage_attr_name,
                                            global_ipu_stage)
 
-            # self.desc.check_attrs()
+            self.desc.check_attrs()
             if self._has_kernel(type):
                 self.desc.infer_var_type(self.block.desc)
-                # self.desc.infer_shape(self.block.desc)
+                self.desc.infer_shape(self.block.desc)
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
