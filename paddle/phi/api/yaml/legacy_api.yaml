@@ -1443,6 +1443,16 @@
     func : lu
   backward : lu_grad
 
+- api : lu_unpack
+  args : (Tensor x, Tensor pivots, bool unpack_ludata, bool unpack_pivots)
+  output : Tensor(pmat), Tensor(l), Tensor(u)
+  infer_meta :
+    func : LUUnpackInferMeta
+  kernel :
+    func : lu_unpack
+    data_type : x
+  backward : lu_unpack_grad
+
 # masked_select
 - api : masked_select
   args : (Tensor x, Tensor mask)
