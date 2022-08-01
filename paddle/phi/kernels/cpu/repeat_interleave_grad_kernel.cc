@@ -16,8 +16,40 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/repeat_interleave_grad_kernel_impl.h"
+#include "paddle/phi/kernels/cpu/index_select_impl.h"
+#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
+//#include "paddle/phi/kernels/impl/repeat_interleave_grad_kernel_impl.h"
 
+namespace phi {
+
+template <typename T, typename Context>
+void RepeatInterleaveGradKernel(const Context& ctx,
+                                const DenseTensor& out_grad,
+                                int repeats,
+                                int dim,
+                                DenseTensor* x_grad) {
+  //   auto place = ctx.GetPlace();
+  //   auto cpu_place = phi::CPUPlace();
+
+  auto input_dim = x_grad->dims();
+  if (dim < 0) {
+    dim += input_dim.size();
+  }
+
+  DenseTensor index;
+  int64_t index_size = x_grad->dims()[dim] * repeats;
+  std::vector<int> index_vec(index_size);
+  for (int i = 0; i < x_grad->dims()[dim]; i++) {
+    std::fill_n(index_vec.begin() + i * repeats, repeats, i);
+  }
+  index.Resize(phi::make_ddim({index_size}));
+  // auto ctx_tmp=
+  // paddle::experimental::DeviceContextPool::Instance().Get(place);
+  paddle::framework::TensorFromVector<int>(index_vec, &index);
+  const DenseTensor index_copy = index;
+  IndexSelectGradInner<Context, T, int>(ctx, out_grad, index_copy, x_grad, dim);
+}
+}  // namespace phi
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    CPU,
                    ALL_LAYOUT,

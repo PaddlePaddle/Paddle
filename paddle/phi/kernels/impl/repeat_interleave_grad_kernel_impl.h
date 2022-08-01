@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
 #include "paddle/phi/kernels/repeat_interleave_grad_kernel.h"
@@ -77,60 +78,62 @@ void RepeatInterleaveGradKernel(const Context& ctx,
   }
 
   DenseTensor index;
-  if (place == cpu_place) {
-    int64_t index_size = x_grad->dims()[dim] * repeats;
-    std::vector<int> index_vec(index_size);
-    for (int i = 0; i < x_grad->dims()[dim]; i++) {
-      std::fill_n(index_vec.begin() + i * repeats, repeats, i);
-    }
-    index.Resize(phi::make_ddim({index_size}));
-    paddle::framework::TensorFromVector<int>(index_vec, &index);
-    IndexSelectGradInner<Context, T, int>(ctx, out_grad, index, x_grad, dim);
-  }
+  // if (place == cpu_place) {
+  //   int64_t index_size = x_grad->dims()[dim] * repeats;
+  //   std::vector<int> index_vec(index_size);
+  //   for (int i = 0; i < x_grad->dims()[dim]; i++) {
+  //     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
+  //   }
+  //   index.Resize(phi::make_ddim({index_size}));
+  //   auto ctx_tmp=
+  //   paddle::experimental::DeviceContextPool::Instance().Get(place);
+  //   paddle::framework::TensorFromVector<int>(index_vec, &index);
+  //   const DenseTensor index_copy = index;
+  //   IndexSelectGradInner<CPUContext, T, int>(*ctx_tmp, out_grad, index_copy,
+  //   x_grad, dim);
+  // }
 #if defined(__NVCC__) || defined(__HIPCC__)
-  else {
-    auto output_dim = out_grad.dims();
-    auto stride_dim = phi::stride(input_dim);
-    int64_t stride = stride_dim[dim];
-    int64_t size = output_dim[dim];
-    int64_t delta = input_dim[dim] - size;
-    int64_t numel = x_grad->numel();
-    int64_t out_nums = out_grad.numel();
-    auto* out_grad_data = out_grad.data<T>();
-    ctx.template Alloc<T>(x_grad);
-    auto* in_grad_data = x_grad->data<T>();
-    auto stream = ctx.stream();
-    index_select_grad_init<T>
-        <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-           PADDLE_CUDA_NUM_THREADS,
-           0,
-           stream>>>(in_grad_data, numel);
-    int64_t index_size = x_grad->dims()[dim] * repeats;
-    std::vector<int> index_vec(index_size);
-    for (int i = 0; i < x_grad->dims()[dim]; i++) {
-      std::fill_n(index_vec.begin() + i * repeats, repeats, i);
-    }
-    index.Resize(phi::make_ddim({index_size}));
-    // auto ctx =
-    //     paddle::platform::DeviceContextPool::Instance().Get(context.GetPlace());
-    paddle::framework::TensorFromVector<int>(index_vec, ctx, &index);
-
-    const int* index_data = index.data<int>();
-    int64_t index_nums = index.numel();
-    index_select_grad_cuda_kernel<T, int>
-        <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-           PADDLE_CUDA_NUM_THREADS,
-           0,
-           stream>>>(out_grad_data,
-                     in_grad_data,
-                     index_data,
-                     index_nums,
-                     out_nums,
-                     stride,
-                     size,
-                     delta);
-    // platform::GpuStreamSync(stream);
+  auto output_dim = out_grad.dims();
+  auto stride_dim = phi::stride(input_dim);
+  int64_t stride = stride_dim[dim];
+  int64_t size = output_dim[dim];
+  int64_t delta = input_dim[dim] - size;
+  int64_t numel = x_grad->numel();
+  int64_t out_nums = out_grad.numel();
+  auto* out_grad_data = out_grad.data<T>();
+  ctx.template Alloc<T>(x_grad);
+  auto* in_grad_data = x_grad->data<T>();
+  auto stream = ctx.stream();
+  index_select_grad_init<T>
+      <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+         PADDLE_CUDA_NUM_THREADS,
+         0,
+         stream>>>(in_grad_data, numel);
+  int64_t index_size = x_grad->dims()[dim] * repeats;
+  std::vector<int> index_vec(index_size);
+  for (int i = 0; i < x_grad->dims()[dim]; i++) {
+    std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
+  index.Resize(phi::make_ddim({index_size}));
+  // auto ctx =
+  //     paddle::platform::DeviceContextPool::Instance().Get(context.GetPlace());
+  paddle::framework::TensorFromVector<int>(index_vec, ctx, &index);
+
+  const int* index_data = index.data<int>();
+  int64_t index_nums = index.numel();
+  index_select_grad_cuda_kernel<T, int>
+      <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+         PADDLE_CUDA_NUM_THREADS,
+         0,
+         stream>>>(out_grad_data,
+                   in_grad_data,
+                   index_data,
+                   index_nums,
+                   out_nums,
+                   stride,
+                   size,
+                   delta);
+  // platform::GpuStreamSync(stream);
 #endif
 }
 }  // namespace phi

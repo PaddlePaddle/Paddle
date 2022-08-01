@@ -21,37 +21,40 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
 namespace phi {
 
-template <typename RepeatsT = int>
-void RepeatsTensor2IndexTensor(const DenseTensor& repeats, DenseTensor* index) {
-  DenseTensor repeats_cpu_copy;
-  if (!paddle::platform::is_cpu_place(repeats.place())) {
-    paddle::framework::TensorCopySync(
-        repeats, paddle::platform::CPUPlace(), &repeats_cpu_copy);
-  }
-  const RepeatsT* repeats_data = paddle::platform::is_cpu_place(repeats.place())
-                                     ? repeats.data<RepeatsT>()
-                                     : repeats_cpu_copy.data<RepeatsT>();
+// template <typename RepeatsT = int>
+// void RepeatsTensor2IndexTensor(const DenseTensor& repeats, DenseTensor*
+// index) {
+//   DenseTensor repeats_cpu_copy;
+//   if (!paddle::platform::is_cpu_place(repeats.place())) {
+//     paddle::framework::TensorCopySync(
+//         repeats, paddle::platform::CPUPlace(), &repeats_cpu_copy);
+//   }
+//   const RepeatsT* repeats_data =
+//   paddle::platform::is_cpu_place(repeats.place())
+//                                      ? repeats.data<RepeatsT>()
+//                                      : repeats_cpu_copy.data<RepeatsT>();
 
-  int64_t index_size = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
-    index_size += repeats_data[i];
-  }
-  std::vector<RepeatsT> index_vec(index_size);
-  int offset = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
-    std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
-    offset += repeats_data[i];
-  }
-  index->Resize(phi::make_ddim({index_size}));
+//   int64_t index_size = 0;
+//   for (int i = 0; i < repeats.dims()[0]; i++) {
+//     index_size += repeats_data[i];
+//   }
+//   std::vector<RepeatsT> index_vec(index_size);
+//   int offset = 0;
+//   for (int i = 0; i < repeats.dims()[0]; i++) {
+//     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
+//     offset += repeats_data[i];
+//   }
+//   index->Resize(phi::make_ddim({index_size}));
 
-  paddle::framework::TensorFromVector<RepeatsT>(index_vec, index);
-}
+//   paddle::framework::TensorFromVector<RepeatsT>(index_vec, index);
+// }
 #if defined(__NVCC__) || defined(__HIPCC__)
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename IndexT>
@@ -117,13 +120,13 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
   auto x_copy = x;
   if (place == cpu_place) {
     if (index_type == paddle::framework::proto::VarType::INT32) {
-      RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
+      phi::funcs::RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
       auto output_dim = phi::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
       out->Resize(phi::make_ddim(output_dim));
       IndexSelectInner<Context, T, int>(ctx, &x_copy, index, out, dim);
     } else if (index_type == paddle::framework::proto::VarType::INT64) {
-      RepeatsTensor2IndexTensor<int64_t>(repeats_tensor, &index);
+      phi::funcs::RepeatsTensor2IndexTensor<int64_t>(repeats_tensor, &index);
       auto output_dim = phi::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
       out->Resize(phi::make_ddim(output_dim));
@@ -139,7 +142,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
     //     paddle::platform::DeviceContextPool::Instance().Get(context.GetPlace());
     auto* in_data = x.data<T>();
     if (index_type == paddle::framework::proto::VarType::INT64) {
-      RepeatsTensor2IndexTensor<int64_t>(repeats_tensor, &index);
+      phi::funcs::RepeatsTensor2IndexTensor<int64_t>(repeats_tensor, &index);
 
       const int64_t* index_data = index.data<int64_t>();
       auto output_dim = phi::vectorize(x.dims());
@@ -157,7 +160,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
              stream>>>(
               in_data, out_data, index_data, numel, stride, size, delta);
     } else {
-      RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
+      phi::funcs::RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
 
       const int* index_data = index.data<int>();
       auto output_dim = phi::vectorize(x.dims());
