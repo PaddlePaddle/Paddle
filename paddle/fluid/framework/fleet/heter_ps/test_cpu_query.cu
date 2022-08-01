@@ -27,9 +27,6 @@
 
 using namespace paddle::framework;
 namespace platform = paddle::platform;
-// paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph
-// paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
-//     std::vector<int64_t> ids)
 
 std::string edges[] = {
     std::string("0\t1"),
@@ -121,13 +118,13 @@ TEST(TEST_FLEET, test_cpu_cache) {
       std::make_shared<HeterPsResource>(device_id_mapping);
   resource->enable_p2p();
   int use_nv = 1;
-  GpuPsGraphTable g(resource, use_nv);
+  GpuPsGraphTable g(resource, 1, 2);
   g.init_cpu_table(table_proto);
-  g.cpu_graph_table->Load(node_file_name, "nuser");
-  g.cpu_graph_table->Load(node_file_name, "nitem");
+  g.cpu_graph_table_->Load(node_file_name, "nuser");
+  g.cpu_graph_table_->Load(node_file_name, "nitem");
   std::remove(node_file_name);
   std::vector<paddle::framework::GpuPsCommGraph> vec;
-  std::vector<int64_t> node_ids;
+  std::vector<uint64_t> node_ids;
   node_ids.push_back(37);
   node_ids.push_back(96);
   std::vector<std::vector<std::string>> node_feat(2,
@@ -135,38 +132,29 @@ TEST(TEST_FLEET, test_cpu_cache) {
   std::vector<std::string> feature_names;
   feature_names.push_back(std::string("c"));
   feature_names.push_back(std::string("d"));
-  g.cpu_graph_table->get_node_feat(0, node_ids, feature_names, node_feat);
+  g.cpu_graph_table_->get_node_feat(0, node_ids, feature_names, node_feat);
   VLOG(0) << "get_node_feat: " << node_feat[0][0];
   VLOG(0) << "get_node_feat: " << node_feat[0][1];
   VLOG(0) << "get_node_feat: " << node_feat[1][0];
   VLOG(0) << "get_node_feat: " << node_feat[1][1];
   int n = 10;
-  std::vector<int64_t> ids0, ids1;
+  std::vector<uint64_t> ids0, ids1;
   for (int i = 0; i < n; i++) {
-    g.cpu_graph_table->add_comm_edge(0, i, (i + 1) % n);
-    g.cpu_graph_table->add_comm_edge(0, i, (i - 1 + n) % n);
+    g.cpu_graph_table_->add_comm_edge(0, i, (i + 1) % n);
+    g.cpu_graph_table_->add_comm_edge(0, i, (i - 1 + n) % n);
     if (i % 2 == 0) ids0.push_back(i);
   }
-  g.cpu_graph_table->build_sampler(0);
+  g.cpu_graph_table_->build_sampler(0);
   ids1.push_back(5);
   ids1.push_back(7);
-  vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(0, ids0));
-  vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(0, ids1));
+  vec.push_back(g.cpu_graph_table_->make_gpu_ps_graph(0, ids0));
+  vec.push_back(g.cpu_graph_table_->make_gpu_ps_graph(0, ids1));
   vec[0].display_on_cpu();
   vec[1].display_on_cpu();
   // g.build_graph_from_cpu(vec);
-  g.build_graph_on_single_gpu(vec[0], 0);
-  g.build_graph_on_single_gpu(vec[1], 1);
-  int64_t cpu_key[3] = {0, 1, 2};
-  /*
-  std::vector<std::shared_ptr<char>> buffers(3);
-  std::vector<int> actual_sizes(3,0);
-  g.cpu_graph_table->random_sample_neighbors(cpu_key,2,buffers,actual_sizes,false);
-  for(int i = 0;i < 3;i++){
-    VLOG(0)<<"sample from cpu key->"<<cpu_key[i]<<" actual sample size =
-  "<<actual_sizes[i]/sizeof(int64_t);
-  }
-  */
+  g.build_graph_on_single_gpu(vec[0], 0, 0);
+  g.build_graph_on_single_gpu(vec[1], 1, 0);
+  uint64_t cpu_key[3] = {0, 1, 2};
   void *key;
   int device_len = 2;
   for (int i = 0; i < 2; i++) {
@@ -178,7 +166,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
     int step = 2;
     int cur = 0;
     while (true) {
-      auto node_query_res = g.query_node_list(i, cur, step);
+      auto node_query_res = g.query_node_list(i, 0, cur, step);
       node_query_res.display();
       if (node_query_res.get_len() == 0) {
         VLOG(0) << "no more ids,break";
@@ -187,19 +175,20 @@ TEST(TEST_FLEET, test_cpu_cache) {
       cur += node_query_res.get_len();
       NeighborSampleQuery query;
       query.initialize(
-          i, node_query_res.get_val(), 1, node_query_res.get_len());
+          i, 0, node_query_res.get_val(), 1, node_query_res.get_len());
       query.display();
       auto c = g.graph_neighbor_sample_v3(query, false);
       c.display();
     }
   }
-  g.cpu_graph_table->set_search_level(2);
-  // g.cpu_graph_table->Load_to_ssd(edge_file_name,"e>u2u");
-  g.cpu_graph_table->Load(edge_file_name, "e>u2u");
-  g.cpu_graph_table->make_partitions(0, 64, 2);
+  g.cpu_graph_table_->clear_graph(0);
+  g.cpu_graph_table_->set_search_level(2);
+  g.cpu_graph_table_->Load(edge_file_name, "e>u2u");
+  g.cpu_graph_table_->make_partitions(0, 64, 2);
   int index = 0;
-  while (g.cpu_graph_table->load_next_partition(0) != -1) {
-    auto all_ids = g.cpu_graph_table->get_all_id(0, 0, device_len);
+  /*
+  while (g.cpu_graph_table_->load_next_partition(0) != -1) {
+    auto all_ids = g.cpu_graph_table_->get_all_id(0, 0, device_len);
     for (auto x : all_ids) {
       for (auto y : x) {
         VLOG(0) << "part " << index << " " << y;
@@ -207,19 +196,19 @@ TEST(TEST_FLEET, test_cpu_cache) {
     }
     for (int i = 0; i < all_ids.size(); i++) {
       GpuPsCommGraph sub_graph =
-          g.cpu_graph_table->make_gpu_ps_graph(0, all_ids[i]);
-      g.build_graph_on_single_gpu(sub_graph, i);
+          g.cpu_graph_table_->make_gpu_ps_graph(0, all_ids[i]);
+      g.build_graph_on_single_gpu(sub_graph, i, 0);
       VLOG(2) << "sub graph on gpu " << i << " is built";
     }
     VLOG(0) << "start to iterate gpu graph node";
-    g.cpu_graph_table->make_complementary_graph(0, 64);
+    g.cpu_graph_table_->make_complementary_graph(0, 64);
     for (int i = 0; i < 2; i++) {
       // platform::CUDADeviceGuard guard(i);
       LOG(0) << "query on card " << i;
       int step = 2;
       int cur = 0;
       while (true) {
-        auto node_query_res = g.query_node_list(i, cur, step);
+        auto node_query_res = g.query_node_list(i, 0, cur, step);
         node_query_res.display();
         if (node_query_res.get_len() == 0) {
           VLOG(0) << "no more ids,break";
@@ -227,23 +216,23 @@ TEST(TEST_FLEET, test_cpu_cache) {
         }
         cur += node_query_res.get_len();
         NeighborSampleQuery query, q1;
-        query.initialize(
-            i, node_query_res.get_val(), 4, node_query_res.get_len());
+        query.initialize(i, 0, node_query_res.get_val(), 4,
+                         node_query_res.get_len());
         query.display();
         auto c = g.graph_neighbor_sample_v3(query, true);
         c.display();
         platform::CUDADeviceGuard guard(i);
-        int64_t *key;
+        uint64_t *key;
         VLOG(0) << "sample key 1 globally";
-        g.cpu_graph_table->set_search_level(2);
-        cudaMalloc((void **)&key, sizeof(int64_t));
-        int64_t t_key = 1;
-        cudaMemcpy(key, &t_key, sizeof(int64_t), cudaMemcpyHostToDevice);
-        q1.initialize(i, (int64_t)key, 2, 1);
+        g.cpu_graph_table_->set_search_level(2);
+        cudaMalloc((void **)&key, sizeof(uint64_t));
+        uint64_t t_key = 1;
+        cudaMemcpy(key, &t_key, sizeof(uint64_t), cudaMemcpyHostToDevice);
+        q1.initialize(i, 0, (uint64_t)key, 2, 1);
         auto d = g.graph_neighbor_sample_v3(q1, true);
         d.display();
         cudaFree(key);
-        g.cpu_graph_table->set_search_level(1);
+        g.cpu_graph_table_->set_search_level(1);
       }
     }
     index++;
@@ -253,4 +242,5 @@ TEST(TEST_FLEET, test_cpu_cache) {
   device.push_back(0);
   device.push_back(1);
   iter->set_device(device);
+  */
 }
