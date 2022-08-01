@@ -456,7 +456,6 @@ class TestNearestNeighborInterpCase2Uint8(TestNearestInterpOpUint8):
         self.align_corners = True
 
 
-
 class TestNearestInterpOpFloat16(OpTest):
 
     def setUp(self):

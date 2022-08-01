@@ -28,12 +28,14 @@ namespace funcs {
 
 template <typename T>
 HOSTDEVICE inline T CubicConvolution1(T x, T A) {
-  return ((A + static_cast<T>(2)) * x - (A + static_cast<T>(3))) * x * x + static_cast<T>(1);
+  return ((A + static_cast<T>(2)) * x - (A + static_cast<T>(3))) * x * x +
+         static_cast<T>(1);
 }
 
 template <typename T>
 HOSTDEVICE inline T CubicConvolution2(T x, T A) {
-  return ((A * x - static_cast<T>(5) * A) * x + static_cast<T>(8) * A) * x - static_cast<T>(4) * A;
+  return ((A * x - static_cast<T>(5) * A) * x + static_cast<T>(8) * A) * x -
+         static_cast<T>(4) * A;
 }
 
 template <typename T>

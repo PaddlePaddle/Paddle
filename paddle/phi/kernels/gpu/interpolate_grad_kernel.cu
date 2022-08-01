@@ -80,8 +80,8 @@ __global__ void KeLinearInterpBw(T* in,
 
     float src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
     src_w = (src_w > 0) ? src_w : 0;
-    T w1lambda =
-        static_cast<T>(align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx);
+    T w1lambda = static_cast<T>(
+        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx);
     T w2lambda = static_cast<T>(1) - w1lambda;
 
     T* in_pos;
@@ -267,8 +267,12 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
 
     int in_img_idx, in_img_idy, w_id, h_id;
     T w1lambda, h1lambda, w2lambda, h2lambda;
-    T src_w = static_cast<T>(ratio_w) * (static_cast<T>(out_img_idx) + align_type_value) - align_type_value;
-    T src_h = static_cast<T>(ratio_h) * (static_cast<T>(out_img_idy) + align_type_value) - align_type_value;
+    T src_w = static_cast<T>(ratio_w) *
+                  (static_cast<T>(out_img_idx) + align_type_value) -
+              align_type_value;
+    T src_h = static_cast<T>(ratio_h) *
+                  (static_cast<T>(out_img_idy) + align_type_value) -
+              align_type_value;
 
     PreCalculatorForLinearInterpInputIndex(
         &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_w);
@@ -368,13 +372,17 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
 
     int h1, y_id;
     T h1lambda, h0lambda;
-    T src_y = static_cast<T>(ratio_h) * (static_cast<T>(h2) + align_type_value) - align_type_value;
+    T src_y =
+        static_cast<T>(ratio_h) * (static_cast<T>(h2) + align_type_value) -
+        align_type_value;
 
     PreCalculatorForLinearInterpInputIndex(
         &h1, &y_id, &h1lambda, &h0lambda, src_y, in_h);
     int w1, x_id;
     T w1lambda, w0lambda;
-    T src_x = static_cast<T>(ratio_w) * (static_cast<T>(w2) + align_type_value) - align_type_value;
+    T src_x =
+        static_cast<T>(ratio_w) * (static_cast<T>(w2) + align_type_value) -
+        align_type_value;
     PreCalculatorForLinearInterpInputIndex(
         &w1, &x_id, &w1lambda, &w0lambda, src_x, in_w);
 
@@ -426,8 +434,12 @@ __global__ void KeBilinearInterpBw(T* in,
 
     int in_img_idx, in_img_idy, w_id, h_id;
     T w1lambda, h1lambda, w2lambda, h2lambda;
-    T src_w = static_cast<T>(ratio_w) * (static_cast<T>(out_img_idx) + align_type_value) - align_type_value;
-    T src_h = static_cast<T>(ratio_h) * (static_cast<T>(out_img_idy) + align_type_value) - align_type_value;
+    T src_w = static_cast<T>(ratio_w) *
+                  (static_cast<T>(out_img_idx) + align_type_value) -
+              align_type_value;
+    T src_h = static_cast<T>(ratio_h) *
+                  (static_cast<T>(out_img_idy) + align_type_value) -
+              align_type_value;
 
     PreCalculatorForLinearInterpInputIndex(
         &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_w);
@@ -580,8 +592,8 @@ __global__ void KeTrilinearInterpBw(T* in,
     int d_id = (in_img_idt < in_img_d - 1) ? 1 : 0;
     float src_d = ratio_d * (out_img_idt + 0.5) - 0.5;
     src_d = (src_d > 0) ? src_d : 0;
-    T d1lambda =
-        static_cast<T>(align_flag ? src_d - in_img_idt : ratio_d * out_img_idt - in_img_idt);
+    T d1lambda = static_cast<T>(
+        align_flag ? src_d - in_img_idt : ratio_d * out_img_idt - in_img_idt);
     T d2lambda = static_cast<T>(1) - d1lambda;
 
     int in_img_idy = align_flag
@@ -591,8 +603,8 @@ __global__ void KeTrilinearInterpBw(T* in,
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
     float src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
     src_h = (src_h > 0) ? src_h : 0;
-    T h1lambda =
-        static_cast<T>(align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy);
+    T h1lambda = static_cast<T>(
+        align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy);
     T h2lambda = static_cast<T>(1) - h1lambda;
 
     int in_img_idx = align_flag
@@ -602,8 +614,8 @@ __global__ void KeTrilinearInterpBw(T* in,
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
     float src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
     src_w = (src_w > 0) ? src_w : 0;
-    T w1lambda =
-        static_cast<T>(align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx);
+    T w1lambda = static_cast<T>(
+        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx);
     T w2lambda = static_cast<T>(1) - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
@@ -1031,7 +1043,8 @@ static void Interpolate2DCUDABwd(
                                                          interp_divmods);
     }
   } else if ("bilinear" == interp_method) {
-    const T align_type_value = static_cast<T>((align_mode == 0 && !align_corners) ? 0.5f : 0);
+    const T align_type_value =
+        static_cast<T>((align_mode == 0 && !align_corners) ? 0.5f : 0);
     bool is_nchw = (data_layout == DataLayout::kNCHW) ? true : false;
     bool optimize_flag = false;
 #ifndef __HIPCC__
@@ -1583,7 +1596,7 @@ PD_REGISTER_KERNEL(nearest_interp_v2_grad,
                    ALL_LAYOUT,
                    phi::NearestInterpGradKernel,
                    phi::dtype::float16,
-				   float,
+                   float,
                    double) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
