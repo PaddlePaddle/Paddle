@@ -29,7 +29,7 @@ from .layer_function_generator import _generate_doc_string_, generate_activation
 
 import paddle
 from ..static import Variable
-from ..framework import core, in_dygraph_mode, _non_static_mode, LayerHelper
+from ..framework import core, in_dygraph_mode, _non_static_mode, LayerHelper, _in_legacy_dygraph
 from ..fluid.framework import _in_legacy_dygraph
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
@@ -1315,6 +1315,72 @@ def nanmean(x, axis=None, keepdim=False, name=None):
     return paddle.divide(paddle.nansum(x, axis=axis, keepdim=keepdim, name=name), cnt.astype(x.dtype))
 
 
+def count_nonzero(x, axis=None, keepdim=False, name=None):
+    r"""
+    Counts the number of non-zero values in the tensor x along the specified axis.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
+        axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
+            :attr:`None`, sum all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Results of count operation on the specified axis of input Tensor `x`, it's data type is `'int64'`.
+
+    Examples:
+
+        .. code-block:: python
+            :name: count_nonzero-example
+
+            import paddle
+            # x is a 2-D Tensor:
+            x = paddle.to_tensor([[0., 1.1, 1.2], [0., 0., 1.3], [0., 0., 0.]])
+            out1 = paddle.count_nonzero(x)
+            # [3]
+            out2 = paddle.count_nonzero(x, axis=0)
+            # [0, 1, 2]
+            out3 = paddle.count_nonzero(x, axis=0, keepdim=True)
+            # [[0, 1, 2]]
+            out4 = paddle.count_nonzero(x, axis=1)
+            # [2, 1, 0]
+            out5 = paddle.count_nonzero(x, axis=1, keepdim=True)
+            #[[2],
+            # [1],
+            # [0]]
+
+            # y is a 3-D Tensor:
+            y = paddle.to_tensor([[[0., 1.1, 1.2], [0., 0., 1.3], [0., 0., 0.]],
+                                  [[0., 2.5, 2.6], [0., 0., 2.4], [2.1, 2.2, 2.3]]])
+            out6 = paddle.count_nonzero(y, axis=[1, 2])
+            # [3, 6]
+            out7 = paddle.count_nonzero(y, axis=[0, 1])
+            # [1, 3, 5]
+    """
+
+
+    if axis is not None:
+        if isinstance(axis, int):
+            axis = [axis]
+        dims = len(x.shape)
+        for i in range(len(axis)):
+            if not isinstance(axis[i], int) or not (axis[i] < dims and axis[i] >= -dims):
+                raise ValueError(
+                    "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
+                )
+
+    bool_tensor = paddle.cast(x, 'bool')
+    int_tensor = paddle.cast(bool_tensor, 'int64')
+    return paddle.sum(int_tensor, axis=axis, keepdim=keepdim, name=name)
+
+
 @templatedoc(op_type="sum")
 def add_n(inputs, name=None):
     """
@@ -2268,7 +2334,11 @@ def amax(x, axis=None, keepdim=False, name=None):
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_amax(x,  axis,  keepdim)
+    if _in_legacy_dygraph():
         return _C_ops.reduce_amax(x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all)
 
     helper = LayerHelper('amax', **locals())
@@ -2380,9 +2450,12 @@ def amin(x, axis=None, keepdim=False, name=None):
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_amin(x, axis, keepdim)
+    elif _in_legacy_dygraph():
         return _C_ops.reduce_amin(x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all)
-
     helper = LayerHelper('amin', **locals())
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'amin')

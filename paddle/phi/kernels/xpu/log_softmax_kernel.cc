@@ -25,6 +25,7 @@ void LogSoftmaxKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       int axis,
                       DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   const int rank = x.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
 
@@ -32,11 +33,16 @@ void LogSoftmaxKernel(const Context& dev_ctx,
     auto x_shape = phi::vectorize<int>(x.dims());
     dev_ctx.template Alloc<T>(out);
     if (axis < 0) axis += rank;
-    int r = xpu::softmax<T>(
-        dev_ctx.x_context(), x.data<T>(), out->data<T>(), x_shape, axis);
+    int r = xpu::softmax<XPUType>(dev_ctx.x_context(),
+                                  reinterpret_cast<const XPUType*>(x.data<T>()),
+                                  reinterpret_cast<XPUType*>(out->data<T>()),
+                                  x_shape,
+                                  axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
-    r = xpu::log<T>(
-        dev_ctx.x_context(), out->data<T>(), out->data<T>(), out->numel());
+    r = xpu::log<XPUType>(dev_ctx.x_context(),
+                          reinterpret_cast<const XPUType*>(out->data<T>()),
+                          reinterpret_cast<XPUType*>(out->data<T>()),
+                          out->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "log");
   }
 }

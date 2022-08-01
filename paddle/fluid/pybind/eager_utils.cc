@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/scope_guard.h"
@@ -1427,5 +1428,54 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
   return framework::TransToPhiDataType(type);
 }
+
+paddle::experimental::Tensor PyTensorHook::operator()(
+    const paddle::experimental::Tensor& var) {
+  py::gil_scoped_acquire gil;
+  VLOG(3) << "Call PyTensorHook for var " << var.name();
+
+  PyObject* res = nullptr;
+  try {
+    PyObject* p_tmp_var = ToPyObject(var);
+    res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
+    Py_DECREF(p_tmp_var);
+  } catch (platform::EnforceNotMet& e) {
+    throw std::move(e);
+  } catch (std::exception& e) {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Hook function of Tensor raises an exception: %s.", e.what()));
+  } catch (...) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Hook function of Tensor raises an unknown exception."));
+  }
+
+  PADDLE_ENFORCE_NOT_NULL(res,
+                          platform::errors::Unavailable(
+                              "Hook function of Tensor return a nullptr."));
+  if (res == Py_None) {
+    return var;
+  }
+  auto res_tensor = reinterpret_cast<TensorObject*>(res)->tensor;
+  Py_DECREF(res);
+  return res_tensor;
+}
+
+void PyVoidHook::operator()() {
+  py::gil_scoped_acquire gil;
+  VLOG(3) << "Call PyVoidHook";
+
+  try {
+    PyObject_CallFunctionObjArgs(py_func_, nullptr);
+  } catch (platform::EnforceNotMet& e) {
+    throw std::move(e);
+  } catch (std::exception& e) {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Hook function of Tensor raises an exception: %s.", e.what()));
+  } catch (...) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Hook function of Tensor raises an unknown exception."));
+  }
+}
+
 }  // namespace pybind
 }  // namespace paddle
