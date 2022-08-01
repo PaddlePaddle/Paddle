@@ -1725,6 +1725,90 @@ void NormInferMeta(const MetaTensor& x,
   }
 }
 
+void OverlapAddInferMeta(const MetaTensor& x,
+                         int hop_length,
+                         int axis,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  const auto x_dims = x.dims();
+  const int x_rank = x_dims.size();
+
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      errors::InvalidArgument(
+          "Input(X) of OverlapAddOp should be a tensor which contains "
+          "at least 2 dimensions, but got rank %s.",
+          x_rank));
+
+  PADDLE_ENFORCE_GT(
+      hop_length,
+      0,
+      errors::InvalidArgument(
+          "Attribute(hop_length) of OverlapAddOp should be greater "
+          "than 0, but got %s.",
+          hop_length));
+
+  PADDLE_ENFORCE_EQ(
+      (axis == 0 || axis == -1),
+      true,
+      errors::InvalidArgument(
+          "Attribute(axis) of OverlapAddOp should 0 or -1, but got %s.", axis));
+
+  std::vector<int64_t> output_shape;
+  int n_frames;
+  int frame_length;
+  int seq_length;
+
+  int start_axis;
+  int end_axis;
+  if (axis == 0) {
+    n_frames = x_dims[0];
+    frame_length = x_dims[1];
+    start_axis = 2;
+    end_axis = x_rank - 1;
+  } else {
+    n_frames = x_dims[x_rank - 1];
+    frame_length = x_dims[x_rank - 2];
+    start_axis = 0;
+    end_axis = x_rank - 3;
+  }
+
+  bool contain_unknown_dim = phi::contain_unknown_dim(x_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+  if (check) {
+    PADDLE_ENFORCE_LE(
+        hop_length,
+        frame_length,
+        errors::InvalidArgument(
+            "Attribute(hop_length) of OverlapAddOp should be less or equal "
+            "than frame_length, but got hop_length(%s) > frame_length(%s).",
+            hop_length,
+            frame_length));
+  }
+
+  if (n_frames == -1) {
+    seq_length = -1;
+  } else {
+    seq_length = (n_frames - 1) * hop_length + frame_length;
+  }
+
+  // It won't go into for loop when x_rank == 2U.
+  for (int i = start_axis; i <= end_axis; i++) {
+    output_shape.push_back(x_dims[i]);
+  }
+
+  if (axis == 0) {
+    // (seq_length, ...)
+    output_shape.insert(output_shape.begin(), seq_length);
+  } else {
+    // (..., seq_length)
+    output_shape.push_back(seq_length);
+  }
+
+  out->set_dims(phi::make_ddim(output_shape));
+}
+
 void PadInferMeta(const MetaTensor& input,
                   const std::vector<int>& paddings,
                   float pad_value,
