@@ -416,7 +416,7 @@ void BindDistributed(py::module *m) {
           "create",
           [](std::vector<int> ranks,
              int gid) -> std::shared_ptr<distributed::ProcessGroupMPI> {
-            return paddle::distributed::ProcessGroupMPI::createProcessGroupMPI(
+            return paddle::distributed::ProcessGroupMPI::CreateProcessGroupMPI(
                 ranks, gid);
           })
       .def("get_rank", &distributed::ProcessGroup::GetRank,

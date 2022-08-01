@@ -34,6 +34,7 @@ from paddle.distributed.collective import _set_group_map
 from paddle.distributed.collective import _set_group_map_by_name
 from paddle.distributed.collective import _get_group_map_by_name
 from paddle.distributed.collective import _group_map_by_name
+from paddle.distributed.collective import _set_group_map_backend
 from paddle.distributed.collective import _default_group_name
 from paddle.distributed.collective import _valid_backend_list
 from paddle.distributed.collective import _set_default_backend
@@ -140,5 +141,7 @@ def mpi_init_parallel_env():
         name=_default_group_name)
     _set_group_map_by_name(_default_group_name, group)
     _set_group_map(0, group)
+    _set_group_map_backend(group, backend)
     parallel_helper._set_parallel_ctx(True)
     print("MPI init done!  rank: {}  world_size: {}".format(rank, world_size))
+    return group

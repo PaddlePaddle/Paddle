@@ -18,7 +18,6 @@
 #include <mpi.h>
 #include <iostream>
 #include <string>
-#include "boost/variant.hpp"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
