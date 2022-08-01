@@ -293,8 +293,10 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
   auto *new_mask = engine_->DeclareInput(
       "new_mask", nvinfer1::DataType::kHALF, nvinfer1::Dims4{-1, 1, 2, 2});
   plugin::FusedTokenPrunePluginDynamic *plugin =
-      new plugin::FusedTokenPrunePluginDynamic(
-          true, /*keep_first_token*/ false, /*keep_order*/ true);
+      new plugin::FusedTokenPrunePluginDynamic(true,
+                                               /*keep_first_token*/ false,
+                                               /*keep_order*/ true,
+                                               /*flag_varseqlen*/ false);
   std::vector<nvinfer1::ITensor *> itensors = {attn, x, mask, new_mask};
   auto *layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
   PADDLE_ENFORCE_NOT_NULL(layer,
