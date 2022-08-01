@@ -72,7 +72,6 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
             bias_np = np.random.uniform(0.1, 1, [right]).astype('float32')
             ref_y_np, ref_mean_np, ref_variance_np = ref_layer_norm(
                 x_np, scale_np, bias_np, self.epsilon, self.begin_norm_axis)
-
             ref_y_np = ref_y_np.astype(self.dtype)
 
             self.inputs = {'X': x_np, 'Scale': scale_np, 'Bias': bias_np}
