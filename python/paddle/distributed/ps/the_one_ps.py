@@ -155,6 +155,12 @@ class Accessor:
         if not accessor_proto.HasField("embedx_threshold"):
             accessor_proto.embedx_threshold = 0
 
+        graph_sgd_param = accessor_proto.graph_sgd_param
+        if not graph_sgd_param.HasField("nodeid_slot"):
+            graph_sgd_param.nodeid_slot = 9008
+        if not graph_sgd_param.HasField("feature_learning_rate"):
+            graph_sgd_param.feature_learning_rate = 0.05
+
         ctr_accessor_param = accessor_proto.ctr_accessor_param
         if not ctr_accessor_param.HasField("nonclk_coeff"):
             ctr_accessor_param.nonclk_coeff = 0.1

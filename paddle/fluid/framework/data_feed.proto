@@ -27,6 +27,19 @@ message MultiSlotDesc {
   optional string uid_slot = 2;
 }
 
+message GraphConfig {
+  optional int32 walk_degree = 1 [ default = 1 ];
+  optional int32 walk_len = 2 [ default = 20 ];
+  optional int32 window = 3 [ default = 5 ];
+  optional int32 once_sample_startid_len = 4 [ default = 8000 ];
+  optional int32 sample_times_one_chunk = 5 [ default = 10 ];
+  optional int32 batch_size = 6 [ default = 1 ];
+  optional int32 debug_mode = 7 [ default = 0 ];
+  optional string first_node_type = 8;
+  optional string meta_path = 9;
+  optional bool gpu_graph_training = 10 [ default = true ];
+}
+
 message DataFeedDesc {
   optional string name = 1;
   optional int32 batch_size = 2 [ default = 32 ];
@@ -37,4 +50,5 @@ message DataFeedDesc {
   optional int32 pv_batch_size = 7 [ default = 32 ];
   optional int32 input_type = 8 [ default = 0 ];
   optional string so_parser_name = 9;
+  optional GraphConfig graph_config = 10;
 }

@@ -271,11 +271,9 @@ struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
 class CudnnWorkspaceHandle;
 class EigenCudaStreamDevice;
 
-using CUDADeviceContext = phi::GPUContext;
-
 class CudnnWorkspaceHandle {
  public:
-  inline CudnnWorkspaceHandle(const CUDADeviceContext& dev_ctx, std::mutex* mtx)
+  inline CudnnWorkspaceHandle(const phi::GPUContext& dev_ctx, std::mutex* mtx)
       : device_context_(dev_ctx), mtx_(mtx) {}
 
   template <typename Callback>
@@ -318,13 +316,13 @@ class CudnnWorkspaceHandle {
 
  private:
   memory::allocation::AllocationPtr allocation_;
-  const CUDADeviceContext& device_context_;
+  const phi::GPUContext& device_context_;
   std::mutex* mtx_;
 };
 
 template <>
 struct DefaultDeviceContextType<platform::CUDAPlace> {
-  using TYPE = CUDADeviceContext;
+  using TYPE = phi::GPUContext;
 };
 
 // Currently, CUDAPinnedDeviceContext is only used to data copying.

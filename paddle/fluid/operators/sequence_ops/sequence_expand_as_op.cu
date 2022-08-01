@@ -66,9 +66,9 @@ static __global__ void sequence_expand_as_grad_kernel(
 }
 
 template <typename T>
-struct SequenceExpandAsFunctor<platform::CUDADeviceContext, T> {
+struct SequenceExpandAsFunctor<phi::GPUContext, T> {
   void operator()(
-      const platform::CUDADeviceContext &context,
+      const phi::GPUContext &context,
       const LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       LoDTensor *out) {
@@ -97,8 +97,8 @@ struct SequenceExpandAsFunctor<platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-struct SequenceExpandAsGradFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &context,
+struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &context,
                   const LoDTensor &dout,
                   const framework::Vector<size_t> &ref_lod, /*expand based lod*/
                   LoDTensor *dx) {
@@ -133,17 +133,14 @@ struct SequenceExpandAsGradFunctor<platform::CUDADeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sequence_expand_as,
-    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(sequence_expand_as,
+                        ops::SequenceExpandAsKernel<phi::GPUContext, float>,
+                        ops::SequenceExpandAsKernel<phi::GPUContext, double>,
+                        ops::SequenceExpandAsKernel<phi::GPUContext, int>,
+                        ops::SequenceExpandAsKernel<phi::GPUContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     sequence_expand_as_grad,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext,
-                                    double>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext,
-                                    int64_t>);
+    ops::SequenceExpandAsGradKernel<phi::GPUContext, float>,
+    ops::SequenceExpandAsGradKernel<phi::GPUContext, double>,
+    ops::SequenceExpandAsGradKernel<phi::GPUContext, int>,
+    ops::SequenceExpandAsGradKernel<phi::GPUContext, int64_t>);

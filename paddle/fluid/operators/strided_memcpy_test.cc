@@ -86,7 +86,7 @@ TEST(StridedMemcpy, GPUCrop) {
   platform::CUDAPlace gpu0(0);
   platform::CPUPlace cpu;
 
-  platform::CUDADeviceContext ctx(gpu0);
+  phi::GPUContext ctx(gpu0);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(gpu0, ctx.stream())
                        .get());
@@ -128,7 +128,7 @@ TEST(StridedMemcpy, GPUConcat) {
 
   platform::CUDAPlace gpu0(0);
   platform::CPUPlace cpu;
-  platform::CUDADeviceContext ctx(gpu0);
+  phi::GPUContext ctx(gpu0);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(gpu0, ctx.stream())
                        .get());
