@@ -266,7 +266,7 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
     return std::make_pair(bbox_sel, scores_filter);
   }
 
-  DenseTensor keep_nms = paddle::operators::NMS<T>(
+  DenseTensor keep_nms = phi::funcs::NMS<T>(
       ctx, &bbox_sel, &scores_filter, nms_thresh, eta, pixel_offset);
 
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
