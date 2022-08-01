@@ -546,7 +546,7 @@ class TestFusedMultiTransformerOpGenCacheKVFp16(TestFusedMultiTransformerOp):
         self.gen_cache_kv = True
         self.x_type = np.float16
         self.layers = 3  # odd layers
- 
+
 
 class TestFusedMultiTransformerOpPostLayerNormFp16(TestFusedMultiTransformerOp):
 
