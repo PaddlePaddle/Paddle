@@ -31,7 +31,7 @@ class TestDistMnistGradMerge(TestDistBase):
     def test_dist_train(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist_gradient_merge.py",
-                                  delta=1e-5,
+                                  delta=1.1e-5,
                                   check_error_log=True,
                                   log_name=flag_name)
 
@@ -68,7 +68,7 @@ class TestDistMnistGradMergeRawOptimizerBase(TestDistBase):
             avg = str(self.enable_avg())
             log_name = flag_name + "_raw_optimizer_gm_avg_" + avg
             self.check_with_place("dist_mnist_gradient_merge_raw_optimizer.py",
-                                  delta=1e-5,
+                                  delta=1.1e-5,
                                   check_error_log=True,
                                   log_name=log_name,
                                   need_envs={
