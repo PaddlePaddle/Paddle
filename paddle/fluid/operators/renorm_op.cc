@@ -84,6 +84,10 @@ DECLARE_INFER_SHAPE_FUNCTOR(renorm,
                             RenormInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
+DECLARE_INFER_SHAPE_FUNCTOR(renorm_grad,
+                            RenormGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 REGISTER_OPERATOR(renorm,
                   ops::RenormOp,
                   ops::RenormOpMaker,
