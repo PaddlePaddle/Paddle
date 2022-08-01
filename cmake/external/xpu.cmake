@@ -17,7 +17,7 @@ endif()
 # ubuntu and centos: use output by XDNN API team
 if(NOT DEFINED XPU_XDNN_BASE_URL)
   SET(XPU_XDNN_BASE_URL_WITHOUT_DATE "https://klx-sdk-release-public.su.bcebos.com/xdnn_train/dev")
-  SET(XPU_XDNN_BASE_URL "${XPU_XDNN_BASE_URL_WITHOUT_DATE}/20220715")
+  SET(XPU_XDNN_BASE_URL "${XPU_XDNN_BASE_URL_WITHOUT_DATE}/20220801")
 else()
   SET(XPU_XDNN_BASE_URL "${XPU_XDNN_BASE_URL}")
 endif()

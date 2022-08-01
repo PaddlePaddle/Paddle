@@ -249,6 +249,7 @@ void HashTable<uint32_t, FeatureValue>::insert(const paddle::platform::Place& pl
   FeatureValue* d_vals_out = container_->get_vals();
   uint32_t xpu_idx = container_->get_xpu_idx();
   uint32_t xpu_num = container_->get_xpu_num();
+  uint32_t capacity = container_->capacity();
 
   ctx_xpu->xpu_stream = stream;
 
@@ -259,6 +260,7 @@ void HashTable<uint32_t, FeatureValue>::insert(const paddle::platform::Place& pl
       d_keys_out,
       reinterpret_cast<xpu::FeatureValue*>(d_vals_out),
       len,
+      capacity,
       xpu_idx,
       xpu_num);
   PADDLE_ENFORCE_EQ(
