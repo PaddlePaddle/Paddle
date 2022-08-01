@@ -532,7 +532,7 @@ def add(x, y, name=None):
     Returns:
         N-dimension tensor. A location into which the result is stored. It’s dimension equals with x
 
-        Examples:
+    Examples:
 
         ..  code-block:: python
 
@@ -542,10 +542,6 @@ def add(x, y, name=None):
             y = paddle.to_tensor([1, 5, 2], 'float64')
             z = paddle.add(x, y)
             print(z)  # [3., 8., 6. ]
-
-    Return type:
-        out (Tensor)
-
     """
 
     if in_dygraph_mode():
