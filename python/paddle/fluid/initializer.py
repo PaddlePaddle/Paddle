@@ -23,6 +23,7 @@ from .core import VarDesc
 from . import unique_name
 from .data_feeder import check_variable_and_dtype, check_type, check_dtype
 from paddle import _C_ops
+import paddle
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
@@ -139,9 +140,8 @@ class ConstantInitializer(Initializer):
 
         if in_dygraph_mode():
             place = _current_expected_place()
-            _C_ops.final_state_fill_constant_(var, var.shape,
-                                              float(self._value), var.dtype,
-                                              place)
+            _C_ops.final_state_fill_constant_(var, var.shape, self._value,
+                                              var.dtype, place)
             return None
         elif _in_legacy_dygraph():
             _C_ops.fill_constant(var, 'value', float(self._value),
