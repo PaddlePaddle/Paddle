@@ -150,7 +150,7 @@ class DistributedOpsPass(PassBase):
             print('ShowClickEntry not configured, will not use')
             show = _program.global_block().create_var(
                 name="show",
-                dtype=core.VarDesc.VarType.INT64,
+                dtype=core.VarDesc.VarType.FP32,
                 persistable=False,
                 stop_gradient=True)
             _program.global_block()._insert_op(index=0,
@@ -165,7 +165,7 @@ class DistributedOpsPass(PassBase):
 
             clk = _program.global_block().create_var(
                 name="clk",
-                dtype=core.VarDesc.VarType.INT64,
+                dtype=core.VarDesc.VarType.FP32,
                 persistable=False,
                 stop_gradient=True)
             _program.global_block()._insert_op(index=0,
@@ -190,6 +190,9 @@ class DistributedOpsPass(PassBase):
             padding_idx = ops[0].attr("padding_idx")
             is_distributed = ops[0].attr("is_distributed")
             op_type = ops[0].type
+
+            slots = [op.attr("slot") for op in ops]
+            print('debug zcb slots: ', slots)
             outputs = [
                 _program.global_block().vars[op.input("Out@GRAD")[0]]
                 for op in ops
@@ -204,7 +207,7 @@ class DistributedOpsPass(PassBase):
                                                   'W': w,
                                                   "Outputs": outputs,
                                                   "Shows": show,
-                                                  "Clicks": clk
+                                                  "Clicks": clk,
                                               },
                                               outputs={"Outputs": outputs},
                                               attrs={
@@ -213,7 +216,8 @@ class DistributedOpsPass(PassBase):
                                                   "padding_idx": padding_idx,
                                                   "table_id": table_id,
                                                   "size": self.emb_size[param],
-                                                  "use_cvm_op": use_cvm_op
+                                                  "use_cvm_op": use_cvm_op,
+                                                  "slots": slots
                                               })
 
     def _pull_sparse_fuse(self, _program, pull_sparse_ops, attrs, send_ctx):

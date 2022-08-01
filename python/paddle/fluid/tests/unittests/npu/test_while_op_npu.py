@@ -90,7 +90,7 @@ class TestWhileOp(unittest.TestCase):
                 layers.array_write(result2, i=j, array=mem_array)
                 layers.less_than(x=j, y=array_len2, cond=cond2)
         sum_result = layers.array_read(array=mem_array, i=j)
-        loss = layers.mean(sum_result)
+        loss = paddle.mean(sum_result)
         return loss, sum_result
 
     def test_simple_net(self):

@@ -69,7 +69,8 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
 #undef REG_DL_DATA_TYPE
 }
 
-struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
+struct DLDeviceVisitor
+    : public std::unary_function<const platform::Place &, ::DLDevice> {
   inline ::DLDevice operator()(const platform::CPUPlace &place) const {
     ::DLDevice device;
     device.device_type = kDLCPU;

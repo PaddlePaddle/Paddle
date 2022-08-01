@@ -208,6 +208,23 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"trilinear_interp", {"X", "OutSize"}},
     {"nearest_interp", {"X", "OutSize"}},
     {"bicubic_interp", {"X", "OutSize"}},
+    {"resnet_basic_block",
+     {"X",
+      "Filter1",
+      "Scale1",
+      "Bias1",
+      "Mean1",
+      "Var1",
+      "Filter2",
+      "Scale2",
+      "Bias2",
+      "Mean2",
+      "Var2",
+      "Filter3",
+      "Scale3",
+      "Bias3",
+      "Mean3",
+      "Var3"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -228,6 +245,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
       "SavedMean",
       "SavedVariance",
       "ReserveSpace"}},
+    {"lstsq", {"Solution", "Residuals", "Rank", "SingularValues"}},
     {"inplace_abn",
      {"Y",
       "MeanOut",
@@ -309,6 +327,12 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
       "Beta2PowOut",
       "MasterParamOut"}},
     {"fused_multi_transformer", {"CacheKVOut", "Out"}},
+    {"resnet_basic_block",
+     {"Y",         "Conv1",     "SavedMean1", "SavedInvstd1", "Mean1Out",
+      "Var1Out",   "Conv2",     "SavedMean2", "SavedInvstd2", "Mean2Out",
+      "Var2Out",   "Conv3",     "SavedMean3", "SavedInvstd3", "Mean3Out",
+      "Var3Out",   "MaxInput1", "MaxFilter1", "MaxInput2",    "MaxFilter2",
+      "MaxInput3", "MaxFilter3"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -408,6 +432,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"concat", {"Out"}},
     {"fused_multi_transformer", {"CacheKVOut"}},
     {"group_norm", {"Mean", "Variance"}},
+    {"resnet_basic_block",
+     {"Mean1Out", "Var1Out", "Mean2Out", "Var2Out", "Mean3Out", "Var3Out"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.

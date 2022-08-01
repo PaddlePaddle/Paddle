@@ -21,11 +21,11 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import slice_is_num
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import SplitAssignTransformer
 
-from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 
-
-class ListTransformer(gast.NodeTransformer):
+class ListTransformer(BaseTransformer):
     """
     This class transforms python list used in control flow into Static Graph Ast.
     """

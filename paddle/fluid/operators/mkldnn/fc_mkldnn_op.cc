@@ -22,13 +22,6 @@ class DenseTensor;
 }  // namespace phi
 
 namespace paddle {
-namespace framework {}  // namespace framework
-namespace platform {
-class MKLDNNDeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 
 using dnnl::inner_product_forward;
@@ -170,6 +163,9 @@ class FCPrimitiveFactory {
     // In case of 2 dims, we set the only possible format, nc
     if (dim_num == 2) {
       out->set_format(MKLDNNMemoryFormat::nc);
+      out->set_mem_desc({phi::vectorize(out->dims()),
+                         platform::MKLDNNGetDataType<T_out>(),
+                         out->format()});
       // In case of 3 dims, we generate a format that is based on number
       // of output dims and the layout of input format (nchw or nhwc).
     } else if (dim_num == 3) {
@@ -185,9 +181,6 @@ class FCPrimitiveFactory {
     } else {
       out->set_format(in_format);
     }
-    out->set_mem_desc({phi::vectorize(out->dims()),
-                       platform::MKLDNNGetDataType<T_out>(),
-                       out->format()});
   }
 
   void UpdateDataPointers(const ExecutionContext& ctx,
@@ -209,7 +202,7 @@ class FCPrimitiveFactory {
       const Tensor* bias,
       LoDTensor* output,
       const ExecutionContext& ctx) {
-    auto src_desc = CreateMemDescriptor<T_in>(input, input->format());
+    auto src_desc = CreateMemDescriptor<T_in>(input, MKLDNNMemoryFormat::any);
     auto weight_dims = Get2DWeightDimsForDNNL(weights);
     auto weights_desc =
         CreateMemDescriptor<T_w>(weight_dims, MKLDNNMemoryFormat::any);
@@ -236,7 +229,8 @@ class FCPrimitiveFactory {
     auto input_dims = phi::vectorize(input->dims());
     std::vector<int64_t> new_input_dims = {
         input_dims[0] * input_dims[1], input_dims[2], 1};
-    auto src_desc = CreateMemDescriptor<T_in>(new_input_dims, input->format());
+    auto src_desc =
+        CreateMemDescriptor<T_in>(new_input_dims, MKLDNNMemoryFormat::any);
 
     auto weight_dims = Get3DWeightDimsForDNNL(weights);
     auto weights_desc =
@@ -267,7 +261,7 @@ class FCPrimitiveFactory {
       const Tensor* bias,
       LoDTensor* output,
       const ExecutionContext& ctx) {
-    auto src_desc = CreateMemDescriptor<T_in>(input, input->format());
+    auto src_desc = CreateMemDescriptor<T_in>(input, MKLDNNMemoryFormat::any);
     // Since MKL-DNN doesn't support 4D column-major data formats in
     // inner_product primitive, transpose the weights to be in
     // row-major format

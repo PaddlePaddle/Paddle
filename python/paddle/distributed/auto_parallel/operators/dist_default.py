@@ -31,6 +31,9 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
+from ..cost import _g_op_cost_factory
+from ..cost import build_comp_desc_from_dist_op, build_dp_costs
+from ..cost import build_comp_costs_from_descs
 
 __op_not_need_param_init__ = ["while", "cond"]
 
@@ -98,6 +101,74 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         super(DistributedDefaultImpl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
+
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        """Calculate the cost by the op role."""
+        cost = None
+        if int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        else:
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        op_type = dist_op.serial_op.type
+        cost_mapping = build_comp_costs_from_descs(_g_op_cost_factory[op_type],
+                                                   ctx, processes, desc_mapping,
+                                                   cluster)
+        res_cost = [cost_mapping]
+
+        return res_cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        res = []
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        dist_attr = dist_op.dist_attr
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
+        backward_op = dist_op.serial_op
+        op_type = backward_op.type
+        cost_mapping = build_comp_costs_from_descs(_g_op_cost_factory[op_type],
+                                                   ctx, processes, desc_mapping,
+                                                   cluster)
+        res.append(cost_mapping)
+
+        main_block = backward_op.block
+        vars = main_block.vars
+        need_gradient_allreduce = False
+        for input_name in backward_op.desc.input_names():
+            for varname in backward_op.desc.input(input_name):
+                if "@GRAD" not in varname and not is_parameter_related(
+                        varname, main_block):
+                    var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
+                    mesh_shape = process_mesh.topology
+                    batch_size_axis = var_dim_mapping[0]
+                    if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+                        need_gradient_allreduce = True
+                        break
+
+        if need_gradient_allreduce:
+            for input_name in backward_op.desc.input_names():
+                for varname in backward_op.desc.input(input_name):
+                    if "@GRAD" not in varname and is_parameter_related(
+                            varname, main_block):
+                        var_dim_mapping = dist_attr.get_input_dims_mapping(
+                            varname)
+                        mesh_shape = process_mesh.topology
+                        batch_size_axis = var_dim_mapping[0]
+                        parallel_axis = batch_size_axis
+                        attrs = {"use_calc_stream": True}
+                        var_names = [varname + "@GRAD"]
+                        build_dp_costs(res, dist_op, ctx, var_names, attrs,
+                                       parallel_axis, cluster)
+        return res
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -363,15 +434,13 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 output_name)
 
         # replicate op in dist program
-        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc = main_block.append_op(type='nop').desc
         dist_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
         for input_name in src_op.desc.input_names():
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
-
-        main_block._sync_with_cpp()
 
         # data parallel synchronization for primtive operators
         from paddle.incubate.autograd import prim_enabled
@@ -431,8 +500,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         op_attr.set_input_dims_mapping(param.name, dims_mapping)
                         ctx.set_op_dist_attr_for_program(new_op, op_attr)
 
-                startup_block._sync_with_cpp()
-
     @staticmethod
     def backward(ctx, *args, **kwargs):
 
@@ -461,7 +528,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 output_name)
 
         # replicate op in dist program
-        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc = main_block.append_op(type='nop').desc
         dist_op_desc.copy_from(backward_op.desc)
         # Refer to the related dist op
         set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
@@ -469,8 +536,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in backward_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
-
-        main_block._sync_with_cpp()
 
         # check if need gradient allreduce
         # if there is a non-gradient & non-parameter input and its batch dimension is splited,
@@ -490,8 +555,10 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         rank_id = _get_corresponding_rank(
                             ctx, process_mesh, rank_id)
 
+                    # NOTE: consider that the variable's shape is None
                     mesh_shape = process_mesh.topology
-                    batch_size_axis = var_dim_mapping[0]
+                    batch_size_axis = var_dim_mapping[0] if len(
+                        var_dim_mapping) > 0 else -1
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         need_gradient_allreduce = True
                         group_ranks = _get_comm_group(process_mesh.processes,
@@ -551,8 +618,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         op_attr.set_input_dims_mapping(grad_var.name,
                                                        dims_mapping)
                         ctx.set_op_dist_attr_for_program(op, op_attr)
-
-                main_block._sync_with_cpp()
 
 
 register_distributed_operator_impl(

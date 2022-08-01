@@ -18,8 +18,8 @@
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-#include "paddle/fluid/memory/detail/buddy_allocator.h"
-#include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/memory/allocation/buddy_allocator.h"
+#include "paddle/fluid/memory/allocation/system_allocator.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -59,7 +59,7 @@ uint64_t Release(const Place &place);
 template <typename Place>
 size_t Used(const Place &place);
 
-struct Usage : public boost::static_visitor<size_t> {
+struct Usage {
   size_t operator()(const platform::CPUPlace &cpu) const;
   size_t operator()(const platform::CUDAPlace &gpu) const;
   size_t operator()(const platform::CUDAPinnedPlace &cuda_pinned) const;
@@ -180,7 +180,7 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place,
                               void *p,
                               size_t size) {
 #ifdef PADDLE_WITH_XPU
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
 
   platform::XPUDeviceGuard gurad(place.device);
@@ -764,7 +764,7 @@ class BuddyAllocatorList {
  private:
   explicit BuddyAllocatorList(const std::string &device_type)
       : device_type_(device_type) {
-    auto devices = phi::DeviceManager::GetDeviceList(device_type);
+    auto devices = phi::DeviceManager::GetSelectedDeviceList(device_type);
     for (auto dev_id : devices) {
       init_flags_[dev_id].reset(new std::once_flag());
     }
@@ -894,7 +894,7 @@ size_t Used<platform::CustomPlace>(const platform::CustomPlace &place) {
 #endif
 }
 
-struct AllocVisitor : public boost::static_visitor<void *> {
+struct AllocVisitor : std::unary_function<const Place, void *> {
   inline explicit AllocVisitor(size_t size) : size_(size) {}
 
   template <typename Place>
@@ -906,7 +906,7 @@ struct AllocVisitor : public boost::static_visitor<void *> {
   size_t size_;
 };
 
-struct FreeVisitor : public boost::static_visitor<void> {
+struct FreeVisitor : public std::unary_function<const Place, void> {
   inline explicit FreeVisitor(void *ptr, size_t size)
       : ptr_(ptr), size_(size) {}
 
@@ -920,7 +920,7 @@ struct FreeVisitor : public boost::static_visitor<void> {
   size_t size_;
 };
 
-struct ReleaseVisitor : public boost::static_visitor<uint64_t> {
+struct ReleaseVisitor : std::unary_function<const Place, uint64_t> {
   template <typename Place>
   inline uint64_t operator()(const Place &place) const {
     return Release<Place>(place);

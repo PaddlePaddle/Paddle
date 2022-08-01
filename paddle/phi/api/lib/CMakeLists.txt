@@ -4,17 +4,17 @@ if(WITH_GPU)
   nv_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
@@ -93,6 +93,14 @@ set(wrapped_infermeta_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.h)
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
+
+# op extra info file
+set(ops_extra_info_gen_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/ops_extra_info_gen.py)
+set(api_compat_yaml_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/api_compat.yaml)
+set(ops_extra_info_file
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.h)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
@@ -211,6 +219,13 @@ else()
   message("remove ${generated_argument_mapping_path}")
 endif()
 
+# generate ops extra info
+execute_process(
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${ops_extra_info_gen_file} --api_compat_yaml_path
+    ${api_compat_yaml_file} --ops_extra_info_path ${ops_extra_info_file})
+message("generate ${ops_extra_info_file}")
+
 # generate forward api
 add_custom_command(
   OUTPUT ${api_header_file} ${api_source_file}
@@ -242,8 +257,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_source_file_tmp}
           ${bw_api_source_file}
   COMMENT "copy_if_different ${bw_api_header_file} ${bw_api_source_file}"
-  DEPENDS ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} ${bw_api_gen_file}
-          ${api_gen_base}
+  DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
+          ${legacy_bw_api_yaml_file}
   VERBATIM)
 
 # generate sparse api
@@ -310,8 +325,8 @@ add_custom_command(
           ${dygraph_api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_source_file_tmp}
           ${dygraph_api_source_file}
-  DEPENDS ${api_yaml_file} ${sparse_api_yaml_file} ${im_api_gen_file}
-          ${api_gen_base} ${api_gen_file}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${sparse_api_yaml_file}
+          ${im_api_gen_file} ${api_gen_base} ${api_gen_file}
   VERBATIM)
 
 # generate wrapped infermeta
@@ -336,12 +351,12 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_context phi_enforce place init)
+  DEPS phi_backends phi_enforce place init)
 
 cc_library(
   kernel_dispatch
   SRCS kernel_dispatch.cc
-  DEPS phi_tensor_raw phi_context kernel_factory context_pool)
+  DEPS phi_tensor_raw phi_backends kernel_factory context_pool)
 cc_library(
   api_gen_utils
   SRCS api_gen_utils.cc

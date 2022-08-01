@@ -32,7 +32,7 @@ ops_to_fill_zero_for_empty_grads = set([
     "square_double_grad", "celu_double_grad", "pad_double_grad",
     "pad3d_double_grad", "squeeze_double_grad", "unsqueeze_double_grad",
     "instance_norm_double_grad", "conv3d_double_grad",
-    "depthwise_conv2d_grad_grad"
+    "depthwise_conv2d_grad_grad", "concat_double_grad"
 ])
 
 # For API dispatch used at python-level
@@ -45,6 +45,7 @@ yaml_types_mapping = {
     'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
     'str' : 'std::string', \
+    'str[]' : 'std::vector<std::string>', 'float[]' : 'std::vector<float>', \
     'Place' : 'paddle::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
     'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
@@ -55,6 +56,7 @@ yaml_types_mapping = {
     'Scalar(int64_t)' : 'paddle::experimental::Scalar',
     'Scalar(float)' : 'paddle::experimental::Scalar',
     'Scalar(double)' : 'paddle::experimental::Scalar',
+    'Scalar[]' : 'std::vector<phi::Scalar>',
     'IntArray' : 'paddle::experimental::IntArray'
 }
 

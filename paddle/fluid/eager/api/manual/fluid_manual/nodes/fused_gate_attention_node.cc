@@ -40,12 +40,12 @@ fused_gate_attentionGradNodeCompat::operator()(
 
   bool merge_qkv = true;
   if (attr_map_.count("merge_qkv")) {
-    merge_qkv = BOOST_GET_CONST(bool, attr_map_.at("merge_qkv"));
+    merge_qkv = PADDLE_GET_CONST(bool, attr_map_.at("merge_qkv"));
   }
 
   bool has_gating = true;
   if (attr_map_.count("has_gating")) {
-    has_gating = BOOST_GET_CONST(bool, attr_map_.at("has_gating"));
+    has_gating = PADDLE_GET_CONST(bool, attr_map_.at("has_gating"));
   }
 
   std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> ins0 =

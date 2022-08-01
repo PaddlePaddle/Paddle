@@ -39,6 +39,9 @@
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace paddle {
 namespace imperative {
@@ -79,7 +82,8 @@ static void MoveOrCopyVar(framework::Variable* dst,
 }
 
 template <typename T>
-class TensorAddFunctor : public boost::static_visitor<> {
+class TensorAddFunctor
+    : public std::unary_function<const platform::Place&, void> {
  public:
   TensorAddFunctor(int64_t numel, const T* x, T* y)
       : numel_(numel), x_(x), y_(y) {}
@@ -188,10 +192,19 @@ class TensorAddFunctor : public boost::static_visitor<> {
         place));
   }
   void operator()(const platform::CustomPlace& place) const {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    platform::CustomDeviceContext* ctx =
+        dynamic_cast<platform::CustomDeviceContext*>(
+            platform::DeviceContextPool::Instance().Get(place));
+    phi::stream::Stream stream(place, ctx->stream());
+    auto device = phi::DeviceManager::GetDeviceWithPlace(place);
+    device->BlasAXPBY<T>(stream, static_cast<size_t>(numel_), 1., x_, 1., y_);
+#else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
         place));
+#endif
   }
 
  private:
@@ -350,15 +363,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
     return;
   }
 #endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (platform::is_custom_place(place)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Gradient accumulation of data type (%s) on place (%s) is not "
-        "supported in imperative mode",
-        framework::DataTypeToString(data_type),
-        place));
-  }
-#endif
+
 #ifdef PADDLE_WITH_XPU
   if (platform::is_xpu_place(place)) {
     if (data_type == framework::DataTypeTrait<float>::DataType()) {

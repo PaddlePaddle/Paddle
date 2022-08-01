@@ -244,6 +244,14 @@ class PartialProgramLayer:
         return _hash_with_id(self._infer_program, self)
 
     @LazyInitialized
+    def _infer_pure_fp16_program_id(self):
+        return _hash_with_id(self._infer_pure_fp16_program, self)
+
+    @LazyInitialized
+    def _infer_amp_program_id(self):
+        return _hash_with_id(self._infer_amp_program, self)
+
+    @LazyInitialized
     def _train_program_id(self):
         program_id = _hash_with_id(self._train_program, self)
         core._set_cached_executor_build_strategy(program_id,
@@ -341,7 +349,7 @@ class PartialProgramLayer:
         elif _in_pure_fp16_guard():
             infer_program = self._infer_pure_fp16_program
         else:
-            infer_program = self._infer_program
+            infer_program = self.infer_program
         return infer_program.desc.block(0).op_size()
 
     def __call__(self, inputs):
@@ -380,14 +388,9 @@ class PartialProgramLayer:
     @property
     def program(self):
         if self.training:
-            if _in_amp_guard():
-                return self._train_amp_program
-            elif _in_pure_fp16_guard():
-                return self._train_pure_fp16_program
-            else:
-                return self._train_program
+            return self.train_program
         else:
-            return self._infer_program
+            return self.infer_program
 
     @property
     def program_id(self):
@@ -399,7 +402,30 @@ class PartialProgramLayer:
             else:
                 return self._train_program_id
         else:
-            return self._infer_program_id
+            if _in_amp_guard():
+                return self._infer_amp_program_id
+            elif _in_pure_fp16_guard():
+                return self._infer_pure_fp16_program_id
+            else:
+                return self._infer_program_id
+
+    @property
+    def train_program(self):
+        if _in_amp_guard():
+            return self._train_amp_program
+        elif _in_pure_fp16_guard():
+            return self._train_pure_fp16_program
+        else:
+            return self._train_program
+
+    @property
+    def infer_program(self):
+        if _in_amp_guard():
+            return self._infer_amp_program
+        elif _in_pure_fp16_guard():
+            return self._infer_pure_fp16_program
+        else:
+            return self._infer_program
 
     def _prepare(self, inputs):
         """
@@ -441,11 +467,18 @@ class PartialProgramLayer:
                 continue
             input_vars.append(var)
 
+        # mapping from name(string) -> VarBase
+        out_varbase_map = {}
+
         def create_out(var_id):
             var = self._outputs[var_id]
             assert isinstance(var, framework.Variable)
             var_desc = var.desc
             varbase = None
+
+            if var_desc.name() in out_varbase_map:
+                return out_varbase_map[var_desc.name()]
+
             if not framework._in_eager_mode_:
                 var_base = core.VarBase(var_desc.dtype(), var_desc.shape(),
                                         var_desc.name(), var_desc.type(), False)
@@ -453,6 +486,7 @@ class PartialProgramLayer:
                 var_base = core.eager.Tensor(var_desc.dtype(), var_desc.shape(),
                                              var_desc.name(), var_desc.type(),
                                              False)
+            out_varbase_map[var_desc.name()] = var_base
             return var_base
 
         # Create VarBase to receive output data.

@@ -124,4 +124,5 @@ PD_REGISTER_KERNEL(depthwise_conv2d,
                    ALL_LAYOUT,
                    phi::DepthwiseConvKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
