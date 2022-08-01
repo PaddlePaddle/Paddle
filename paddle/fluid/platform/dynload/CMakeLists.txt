@@ -23,6 +23,11 @@ if(WITH_ROCM)
   list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc hipfft.cc)
 endif()
 
+if(WITH_MPI)
+  list(APPEND MPI_SRCS mpi_comm.cc)
+  cc_library(dynload_mpi SRCS ${MPI_SRCS} DEPS dynamic_loader phi_dynload_mpi)
+endif()
+
 # There is no macOS version of NCCL.
 # Disable nvrtc and cuda_driver api on MacOS, and only do a early test on Linux and Windows.
 if(NOT APPLE)

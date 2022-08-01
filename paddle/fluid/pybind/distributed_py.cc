@@ -35,6 +35,10 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #endif
 
+#if defined(PADDLE_WITH_MPI)
+#include "paddle/fluid/distributed/collective/ProcessGroupMPI.h"
+#endif
+
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
 #endif
@@ -402,6 +406,23 @@ void BindDistributed(py::module *m) {
   processGroupNCCL.def_static(
       "group_end", []() { distributed::ProcessGroupNCCL::GroupEnd(); });
 
+#endif
+
+#if defined(PADDLE_WITH_MPI)
+  py::class_<distributed::ProcessGroupMPI,
+             std::shared_ptr<distributed::ProcessGroupMPI>>(
+      *m, "ProcessGroupMPI", ProcessGroup)
+      .def_static(
+          "create",
+          [](std::vector<int> ranks,
+             int gid) -> std::shared_ptr<distributed::ProcessGroupMPI> {
+            return paddle::distributed::ProcessGroupMPI::createProcessGroupMPI(
+                ranks, gid);
+          })
+      .def("get_rank", &distributed::ProcessGroup::GetRank,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_world_size", &distributed::ProcessGroup::GetSize,
+           py::call_guard<py::gil_scoped_release>());
 #endif
 
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \

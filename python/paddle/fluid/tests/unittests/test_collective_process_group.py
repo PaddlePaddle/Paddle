@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+from test_parallel_dygraph_dataparallel import TestMultipleGpus, TestMultipleWithMPI
 
 
 class TestProcessGroup(TestMultipleGpus):
@@ -28,6 +28,11 @@ class TestProcessGroup(TestMultipleGpus):
 
     def test_init_process_group(self):
         self.run_mnist_2gpu('init_process_group.py')
+
+
+class TestProcessGroupWithMPI(TestMultipleWithMPI):
+    def test_process_group_mpi(self):
+        self.run_mnist_2cpu("process_group_mpi.py")
 
 
 if __name__ == "__main__":
