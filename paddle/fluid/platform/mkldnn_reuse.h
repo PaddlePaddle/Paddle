@@ -860,8 +860,18 @@ class ReductionMKLDNNHandler
 };
 
 template <typename T>
+constexpr bool IsInt8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
+
+template <typename T>
+constexpr bool IsBfloat16() {
+  return std::is_same<T, paddle::platform::bfloat16>::value;
+}
+
+template <typename XT, typename YT, typename OT>
 class MatMulV2MKLDNNHandler
-    : public paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul> {
+    : public paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
   MatMulV2MKLDNNHandler(const framework::ExecutionContext& ctx,
                         const dnnl::engine engine,
@@ -873,8 +883,8 @@ class MatMulV2MKLDNNHandler
                         bool is_output_fused,
                         const std::vector<int64_t>& x_strides_override,
                         const std::vector<int64_t>& y_strides_override)
-      : paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul>(engine,
-                                                                   cpu_place) {
+      : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
+                                                                    cpu_place) {
     // M X K * K X N
     std::vector<int64_t> x_dims(x_org_dims);
     std::vector<int64_t> y_dims(y_org_dims);
@@ -934,28 +944,42 @@ class MatMulV2MKLDNNHandler
       out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
     }
 
-    if (is_output_fused) {
+    if (!IsInt8<OT>() && !IsBfloat16<OT>() && is_output_fused) {
       out_strides = FakeTransposeStrides(out_ddims);
     }
 
-    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
-    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
-    auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<T>(), out_strides);
+    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<XT>(), x_strides);
+    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<YT>(), y_strides);
+    auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<OT>(), out_strides);
 
     const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
 
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
-  // TODO(jczaja) : Adapt to int8
+  float ComputeOutputScale(const framework::ExecutionContext& ctx) {
+    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
+    if (ctx.HasAttr("Scale_x") && ctx.HasAttr("Scale_y") &&
+        ctx.HasAttr("Scale_out")) {
+      float scale_x = ctx.Attr<float>("Scale_x");
+      float scale_y = ctx.Attr<float>("Scale_y");
+      bool force_fp32_out = ctx.HasAttr("force_fp32_output")
+                                ? ctx.Attr<bool>("force_fp32_output")
+                                : false;
+      float scale_out = force_fp32_out ? 1.f : ctx.Attr<float>("Scale_out");
+      alpha *= scale_out / (scale_x * scale_y);
+    }
+    return alpha;
+  }
+
   dnnl::primitive_attr CreateMatmulAttrs(
       const framework::ExecutionContext& ctx) {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 
-    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
-    if (alpha != 1.0f) {
-      matmul_attrs.set_output_scales(0, {alpha});
+    float scale_out = ComputeOutputScale(ctx);
+    if (scale_out != 1.0f) {
+      matmul_attrs.set_output_scales(0, {scale_out});
     }
 
     AppendActivation(ctx, post_operations);
@@ -983,9 +1007,23 @@ class MatMulV2MKLDNNHandler
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
-    const T* input_data = input->data<T>();
+    const YT* input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                            to_void_cast<T>(input_data));
+                                            to_void_cast<YT>(input_data));
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(
+      paddle::framework::Tensor* output) {
+    // We cannot use base AcquireDstMemory as it makes an allocation request
+    // base on DST memory primitive size. This is fine in general, but in MatMul
+    // we have primitive that covers only one batch of Data and then shift
+    // pointer for every new batch. Hence Tensor size is bigger that dst memory
+    // primitive size. So would we request less memory that is there and it
+    // triggers an
+    // assertion.  So as there is no 'any' format here we can leave default size
+    // of Tensor as computed in ComputeInferShape
+    OT* ptr = output->mutable_data<OT>(this->place_);
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
 
@@ -1089,11 +1127,11 @@ class ActivationMKLDNNHandler
 static std::unordered_map<std::string, std::string> GetAttributeMap(
     std::string act_type) {
   std::unordered_map<std::string, std::string> attr_map;
-  if (act_type == "swish")
+  if (act_type == "swish") {
     attr_map.emplace("beta", "fuse_alpha");
-  else if (act_type == "relu6")
+  } else if (act_type == "relu6") {
     attr_map.emplace("threshold", "fuse_alpha");
-  else if (act_type == "hard_sigmoid") {
+  } else if (act_type == "hard_sigmoid") {
     attr_map.emplace("slope", "fuse_alpha");
     attr_map.emplace("offset", "fuse_beta");
   } else if (act_type == "clip") {
