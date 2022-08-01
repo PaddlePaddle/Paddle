@@ -728,30 +728,6 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   }
 }
 
-void Yolov3LossGradInferMeta(const MetaTensor& x,
-                             const MetaTensor& gt_box,
-                             const MetaTensor& gt_label,
-                             const MetaTensor& gt_score,
-                             const MetaTensor& objectness_mask,
-                             const MetaTensor& gt_match_mask,
-                             const MetaTensor& loss_grad,
-                             const std::vector<int>& anchors,
-                             const std::vector<int>& anchor_mask,
-                             int class_num,
-                             float ignore_thresh,
-                             int downsample_ratio,
-                             bool use_label_smooth,
-                             float scale_x_y,
-                             MetaTensor* x_grad,
-                             MetaTensor* gt_box_grad,
-                             MetaTensor* gt_label_grad,
-                             MetaTensor* gt_score_grad) {
-  if (x_grad) {
-    x_grad->set_dims(x.dims());
-    x_grad->set_dtype(x.dtype());
-  }
-}
-
 void SpectralNormGradInferMeta(const MetaTensor& weight,
                                const MetaTensor& u,
                                const MetaTensor& v,
@@ -850,6 +826,30 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
   vec.insert(vec.begin() + axis, input_dims.size());
   x_grad->set_dims(phi::make_ddim(vec));
   x_grad->set_dtype(out_grad[0]->dtype());
+}
+
+void Yolov3LossGradInferMeta(const MetaTensor& x,
+                             const MetaTensor& gt_box,
+                             const MetaTensor& gt_label,
+                             const MetaTensor& gt_score,
+                             const MetaTensor& objectness_mask,
+                             const MetaTensor& gt_match_mask,
+                             const MetaTensor& loss_grad,
+                             const std::vector<int>& anchors,
+                             const std::vector<int>& anchor_mask,
+                             int class_num,
+                             float ignore_thresh,
+                             int downsample_ratio,
+                             bool use_label_smooth,
+                             float scale_x_y,
+                             MetaTensor* x_grad,
+                             MetaTensor* gt_box_grad,
+                             MetaTensor* gt_label_grad,
+                             MetaTensor* gt_score_grad) {
+  if (x_grad) {
+    x_grad->set_dims(x.dims());
+    x_grad->set_dtype(x.dtype());
+  }
 }
 
 }  // namespace phi

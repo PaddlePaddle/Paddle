@@ -324,6 +324,10 @@ void StackGradInferMeta(const MetaTensor& out_grad,
                         int axis,
                         std::vector<MetaTensor*> x_grad);
 
+void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
+                          int axis,
+                          MetaTensor* x_grad);
+
 void Yolov3LossGradInferMeta(const MetaTensor& x,
                              const MetaTensor& gt_box,
                              const MetaTensor& gt_label,
@@ -342,9 +346,5 @@ void Yolov3LossGradInferMeta(const MetaTensor& x,
                              MetaTensor* gt_box_grad,
                              MetaTensor* gt_label_grad,
                              MetaTensor* gt_score_grad);
-
-void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
-                          int axis,
-                          MetaTensor* x_grad);
 
 }  // namespace phi
