@@ -1443,6 +1443,16 @@
     func : lu
   backward : lu_grad
 
+- api : lu_unpack
+  args : (Tensor x, Tensor pivots, bool unpack_ludata, bool unpack_pivots)
+  output : Tensor(pmat), Tensor(l), Tensor(u)
+  infer_meta :
+    func : LUUnpackInferMeta
+  kernel :
+    func : lu_unpack
+    data_type : x
+  backward : lu_unpack_grad
+
 - api : margin_cross_entropy
   args : (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
   output : Tensor(softmax), Tensor(loss)

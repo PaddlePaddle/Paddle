@@ -1254,6 +1254,15 @@
   kernel :
     func : lu_grad
 
+- backward_api : lu_unpack_grad
+  forward : lu_unpack (Tensor x, Tensor pivots, bool unpack_ludata, bool unpack_pivots) -> Tensor(pmat), Tensor(l), Tensor(u)
+  args : (Tensor x, Tensor pivots, Tensor l, Tensor u, Tensor pmat, Tensor l_grad, Tensor u_grad, bool unpack_ludata, bool unpack_pivots)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : LUUnpackGradInferMeta
+  kernel :
+    func : lu_unpack_grad
+
 - backward_api : margin_cross_entropy_grad
   forward : margin_cross_entropy (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale) -> Tensor(softmax), Tensor(loss)
   args : (Tensor logits, Tensor label, Tensor softmax, Tensor loss_grad, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
