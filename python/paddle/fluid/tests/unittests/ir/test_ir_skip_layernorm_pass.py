@@ -42,8 +42,8 @@ class SkipLayerNormFusePassTest(PassTest):
         self.fused_op_type = "skip_layernorm"
         self.num_fused_ops = 1
         self.graph_attrs = {
-            "embedding_eltwise_layernorm_fuse_pass_flag": True,
-            "multihead_matmul_fuse_pass_flag": True
+            "with_dynamic_shape": True,
+            #     "multihead_matmul_fuse_pass_flag": True
         }
 
     def test_check_program(self):
