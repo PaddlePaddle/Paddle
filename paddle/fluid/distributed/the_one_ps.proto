@@ -239,3 +239,29 @@ message GraphFeature {
   repeated string dtype = 2;
   repeated int32 shape = 3;
 }
+
+message FLParameter {
+  optional FLStrategy fl_strategy = 1;
+  optional FLClientInfo client_info = 2;
+}
+
+message FLStrategy {
+  optional uint64 iteration_num = 1;
+  optional uint64 client_id = 2;
+  optional string next_state = 3 [default = "JOIN"];
+  optional string init_gflags = 4 [ default = "" ];
+}
+
+message FLClientInfo {
+  optional uint32 client_id = 1;
+  optional string device_type = 2;
+  optional int32 compute_capacity = 3;
+  optional int32 bandwidth = 4;
+  optional LocalTrainingResult local_training_result = 5;
+  optional string init_gflags = 6 [ default = "" ];
+}
+
+message LocalTrainingResult {
+  optional double acc = 1;
+  optional double loss = 2;
+}

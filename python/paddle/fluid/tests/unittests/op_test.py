@@ -1457,6 +1457,7 @@ class OpTest(unittest.TestCase):
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
                     self.op_test.assertTrue(actual_np.size == 0)  # }}}
+                # print("actual_np, expect_np", actual_np, expect_np)
                 self._compare_numpy(name, actual_np, expect_np)
                 if isinstance(expect, tuple):
                     self._compare_list(name, actual, expect)

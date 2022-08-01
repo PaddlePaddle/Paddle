@@ -24,12 +24,6 @@
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 
 namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 class GarbageCollector;
 class Scope;
