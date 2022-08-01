@@ -60,12 +60,14 @@ class PRChecker(object):
         last_commit = None
         ix = 0
         while True:
-            commits = self.pr.get_commits().get_page(ix)
-            for c in commits:
-                last_commit = c.commit
-            else:
+            try:
+                commits = self.pr.get_commits().get_page(ix)
+                for c in commits:
+                    last_commit = c.commit
+            except Exception as e:
                 break
-            ix = ix + 1
+            else:
+                ix = ix + 1
         if last_commit.message.find('test=allcase') != -1:
             print('PREC test=allcase is set')
             self.full_case = True
