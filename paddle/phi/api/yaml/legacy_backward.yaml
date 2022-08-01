@@ -914,10 +914,10 @@
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
   args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
   output : Tensor(x_grad), Tensor(grid_grad)
-  infer_meta : 
+  infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, grid]
-  kernel : 
+  kernel :
     func : grid_sample_grad
     data_type : x
 
@@ -1551,6 +1551,16 @@
     param : [x]
   kernel :
     func : norm_grad
+
+- backward_api : overlap_add_grad
+  forward : overlap_add(Tensor x, int hop_length, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int hop_length, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : OverlapAddGradInferMeta
+  kernel :
+    func : overlap_add_grad
+    data_type : x
 
 - backward_api : p_norm_grad
   forward : p_norm(Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false) -> Tensor(out)

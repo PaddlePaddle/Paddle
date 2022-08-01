@@ -609,6 +609,18 @@ void NllLossGradInferMeta(const MetaTensor& x,
   }
 }
 
+void OverlapAddGradInferMeta(const MetaTensor& x,
+                             const MetaTensor& out_grad,
+                             int hop_length,
+                             int axis,
+                             MetaTensor* x_grad) {
+  const auto x_dims = x.dims();
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
+  }
+}
+
 void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
                                  int downscale_factor,
                                  const std::string& data_format,
