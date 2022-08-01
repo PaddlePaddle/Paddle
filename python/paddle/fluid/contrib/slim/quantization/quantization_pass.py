@@ -1801,6 +1801,7 @@ class InsertQuantizeLinear(object):
                  quant_bits=8,
                  quant_axis=-1,
                  channel_wise=False,
+                 moving_rate=0.9,
                  is_test=True):
         self._place = place
         self._scope = scope
@@ -1808,15 +1809,16 @@ class InsertQuantizeLinear(object):
         self.quant_axis = quant_axis
         self.channel_wise = channel_wise
         self._is_test = is_test
+        self._moving_rate = moving_rate
 
-    def insert_quant_op(self, graph, var_node):
+    def insert_quant_op(self, graph, var_node, var_name=None):
         assert var_node.is_var(), '{} is not a var'.format(var_node.name())
-
-        quant_var_node = graph.create_var_node(name=self._quantized_var_name(
-            var_node.name()),
-                                               var_type=var_node.type(),
-                                               shape=var_node.shape(),
-                                               var_dtype=var_node.dtype())
+        var_name = var_node.name() if not var_name else var_name
+        quant_var_node = graph.create_var_node(
+            name=self._quantized_var_name(var_name),
+            var_type=var_node.type(),
+            shape=var_node.shape(),
+            var_dtype=var_node.dtype())
         data_type = 'float64' if var_node.dtype(
         ) == core.VarDesc.VarType.FP64 else 'float32'
         if self.channel_wise:
@@ -1828,7 +1830,7 @@ class InsertQuantizeLinear(object):
             scale_var_type = var_node.type()
             init_scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_var_node = graph.create_persistable_node(
-            name=self._quantized_scale_name(var_node.name()),
+            name=self._quantized_scale_name(var_name),
             var_type=scale_var_type,
             shape=[scale_var_shape],
             var_dtype=var_node.dtype())
@@ -1851,13 +1853,39 @@ class InsertQuantizeLinear(object):
             inputs["ZeroPoint"] = zero_point_node
 
         attrs = {"quant_axis": self.quant_axis, "bit_length": self.quant_bits}
+        attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
         outputs = {"Y": quant_var_node}
         if not self._is_test:
-            attrs["is_test"] = self._is_test
-            attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
             scale_out_node = graph.create_var_node_from_desc(
                 scale_var_node.var())
+            state_in_node = graph.create_persistable_node(
+                name=unique_name.generate('state'),
+                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_dtype=var_node.dtype(),
+                shape=[1])
+            data_type = 'float64' if var_node.dtype(
+            ) == core.VarDesc.VarType.FP64 else 'float32'
+            _init_var_node(state_in_node, np.ones([1], dtype=data_type),
+                           self._scope, self._place)
+            accum_in_node = graph.create_persistable_node(
+                name=unique_name.generate('accum'),
+                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_dtype=var_node.dtype(),
+                shape=[1])
+            _init_var_node(accum_in_node, np.ones([1], dtype=data_type),
+                           self._scope, self._place)
+            state_out_node = graph.create_var_node_from_desc(
+                state_in_node.var())
+            accum_out_node = graph.create_var_node_from_desc(
+                accum_in_node.var())
+
             outputs["OutScale"] = scale_out_node
+            inputs['InState'] = state_in_node
+            inputs['InAccum'] = accum_in_node
+            outputs['OutState'] = state_out_node
+            outputs['OutAccum'] = accum_out_node
+            attrs["is_test"] = self._is_test
+            attrs['moving_rate'] = self._moving_rate
 
         quant_op_node = graph.create_op_node(op_type="quantize_linear",
                                              attrs=attrs,
@@ -1870,6 +1898,10 @@ class InsertQuantizeLinear(object):
             graph.link_to(zero_point_node, quant_op_node)
         graph.link_to(quant_op_node, quant_var_node)
         if not self._is_test:
+            graph.link_to(state_in_node, quant_op_node)
+            graph.link_to(accum_in_node, quant_op_node)
+            graph.link_to(quant_op_node, state_out_node)
+            graph.link_to(quant_op_node, accum_out_node)
             graph.link_to(quant_op_node, scale_out_node)
         return quant_var_node, scale_var_node
 
@@ -1898,8 +1930,7 @@ class InsertQuantizeLinear(object):
             inputs["ZeroPoint"] = zero_point_node
 
         attrs = {"quant_axis": self.quant_axis, "bit_length": self.quant_bits}
-        if not self._is_test:
-            attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
+        attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
 
         quant_op_node = graph.create_op_node(op_type="dequantize_linear",
                                              attrs=attrs,
@@ -2100,6 +2131,182 @@ class QuantizationTransformPassV2(object):
             op_node.op()._set_attr("skip_quant", True)
             op_node.op()._set_attr("with_quant_attr", True)
 
+    def _create_new_node(self, graph, in_node):
+        """
+        create a node that same with in_node in graph
+        Args:
+            graph(IrGraph): create node in graph.
+            in_node(IrVarNode): create node that same with in_node.
+        Returns:
+            created new node
+        """
+        key = ''
+        for inp in in_node.inputs:
+            key = key + inp.name()
+        key = key + in_node.name()
+        for inp in in_node.outputs:
+            key = key + inp.name()
+
+        if key in self.create_var_map.keys():
+            new_node = self.create_var_map[key]
+        elif in_node.is_ctrl_var():
+            new_node = graph.create_control_dep_var()
+            self.create_var_map[key] = new_node
+        else:
+            new_node = graph.create_var_node_from_desc(in_node.node.var())
+            self.create_var_map[key] = new_node
+        return new_node
+
+    def _copy_graph(self, graph, source_graph, op_node):
+        """
+        copy op_node in source_graph to graph. And will run recursively 
+        for next ops that link to op_node's outputs.
+        Args:
+            graph(IrGraph): target graph to copy.
+            source_graph(IrGraph): source graph to copy.
+            op_node(IrOpNode): op node in source_graph.
+        Returns:
+            None
+
+        """
+        key = ''
+        for inp in op_node.inputs:
+            key = key + inp.name()
+        key = key + op_node.name()
+        for inp in op_node.outputs:
+            key = key + inp.name()
+        has_created = False
+        if key in self.create_op_map.keys():
+            new_op_node = self.create_op_map[key]
+            has_created = True
+        else:
+            new_op_node = graph.create_op_node_from_desc(op_node.node.op())
+            self.create_op_map[key] = new_op_node
+        if has_created:
+            return
+        for in_node in op_node.inputs:
+            new_node = self._create_new_node(graph, in_node)
+            graph.link_to(new_node, new_op_node)
+        for in_node in op_node.outputs:
+            new_node = self._create_new_node(graph, in_node)
+            graph.link_to(new_op_node, new_node)
+        for var_node in op_node.outputs:
+            for next_op_node in var_node.outputs:
+                self._copy_graph(graph, source_graph, next_op_node)
+        return
+
+    def _insert_func(self, graph, func, var_node, op):
+        """
+        Insert a tmp program that returned by func between var_node and op.
+
+        Args:
+            graph(IrGraph): target graph to insert tmp program.
+            func(Function): function to define a tmp program
+            var_node(IrVarNode): node in target graph.
+            op(IrOpNode): op in target graph.
+        Returns:
+            op's new input that replaces var_node
+        """
+        tmp_program = Program()
+        startup_program = Program()
+        with program_guard(tmp_program, startup_program):
+            with unique_name.guard(var_node.name() + "_"):
+                in_node = data(var_node.name() + '_tmp_input',
+                               shape=var_node.shape(),
+                               dtype='float32')
+                out_node = func(in_node)
+                graph.out_node_mapping_table[out_node.name] = var_node.name()
+                # loss shape must be 1 when minimize
+                loss = mean(out_node)
+                if not graph._for_test:
+                    assert self._optimizer, "optimizer_func must be set when graph is test graph"
+                    in_node.stop_gradient = False
+                    optimizer = self._optimizer()
+                    optimizer.minimize(loss)
+        with scope_guard(self._scope):
+            self._exe.run(startup_program)
+
+        tmp_graph = IrGraph(core.Graph(tmp_program.desc),
+                            for_test=graph._for_test)
+        in_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
+                                               in_node.name)
+        out_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
+                                                out_node.name)
+
+        in_node_params = []
+        in_op_node = []
+        # copy tmp graph to graph, after that, we can insert tmp graph's copy to graph.
+        for node in tmp_graph.all_var_nodes():
+            if node.inputs == [] and node.persistable():
+                in_node_params.append(node)
+        for node in tmp_graph.all_op_nodes():
+            if node.inputs == []:
+                in_op_node.append(node)
+        for node in in_node.outputs:
+            self._copy_graph(graph, tmp_graph, node)
+        for node in in_node_params:
+            for op_node in node.outputs:
+                self._copy_graph(graph, tmp_graph, op_node)
+        for node in in_op_node:
+            self._copy_graph(graph, tmp_graph, node)
+
+        target_in_node = graph._find_node_by_name(graph.all_var_nodes(),
+                                                  in_node.name())
+        target_out_node = graph._find_node_by_name(graph.all_var_nodes(),
+                                                   out_node.name())
+        loss_node = graph._find_node_by_name(graph.all_var_nodes(), loss.name)
+        outputs = target_in_node.outputs
+        for node in outputs:
+            graph.update_input_link(target_in_node, var_node, node)
+        graph.update_input_link(var_node, target_out_node, op)
+
+        # update grad
+        if not graph._for_test:
+            op_out = op.outputs[0]
+            op_out_grad = graph._find_node_by_name(graph.all_var_nodes(),
+                                                   op_out.name() + "@GRAD")
+            # find op's gradient op, such as conv2d_grad
+            op_grad = op_out_grad.outputs[0]
+            target_out_grad_node = graph._find_node_by_name(
+                graph.all_var_nodes(),
+                target_out_node.name() + "@GRAD")
+            in_node_grad = graph._find_node_by_name(
+                graph.all_var_nodes(),
+                target_in_node.name() + "@GRAD")
+            in_node_grad_op = in_node_grad.inputs
+            # update op_grad's input
+            graph.update_input_link(var_node, target_out_node, op_grad)
+
+            op_grad_out = None
+            # find var_node's corresponding grad node
+            for node in op_grad.outputs:
+                if var_node.name() + "@GRAD" in node.name():
+                    op_grad_out = node
+            # update op_grad's output
+            if op_grad_out is not None:
+                graph.update_output_link(op_grad_out, target_out_grad_node,
+                                         op_grad)
+            else:
+                graph.link_to(op_grad, target_out_grad_node)
+
+            for node in in_node_grad_op:
+                graph.update_input_link(target_in_node, var_node, node)
+                if op_grad_out:
+                    graph.update_output_link(in_node_grad, op_grad_out, node)
+            # remove useless nodes
+            mean_grad = target_out_grad_node.inputs[0]
+            mean_out_grad = mean_grad.inputs[0]
+            fill_constant_node = mean_out_grad.inputs[0]
+            graph.safe_remove_nodes(mean_grad)
+            graph.safe_remove_nodes(mean_out_grad)
+            graph.safe_remove_nodes(fill_constant_node)
+            graph.safe_remove_nodes(in_node_grad)
+
+        graph.safe_remove_nodes(loss_node.inputs[0])
+        graph.safe_remove_nodes(loss_node)
+        graph.safe_remove_nodes(target_in_node)
+        return target_out_node
+
     def _transform_forward(self, graph, op):
         op.op()._set_attr("quantization_type", "qat_with_weight")
         inputs = op.inputs
@@ -2137,13 +2344,13 @@ class QuantizationTransformPassV2(object):
                 if is_weight and self._weight_quantize_func is not None:
                     target_out_node = self._insert_func(
                         graph, self._weight_quantize_func, var_node, op)
-                    processed_vars.append(name)
+                    self.processed_vars.append(name)
                     continue
                 elif not is_weight and self._act_quantize_func is not None:
                     target_out_node = self._insert_func(graph,
                                                         self._act_quantize_func,
                                                         var_node, op)
-                    processed_vars.append(name)
+                    self.processed_vars.append(name)
                     continue
 
                 quant_bits = self._weight_bits if var_node.name() in self.persistable_vars \
@@ -2162,9 +2369,10 @@ class QuantizationTransformPassV2(object):
                     quant_bits=quant_bits,
                     quant_axis=quant_axis,
                     channel_wise=channel_wise,
+                    moving_rate=self._moving_rate,
                     is_test=self._is_test)
                 quant_var_node, scale_var_node = insert_quant_pass.insert_quant_op(
-                    graph, var_node)
+                    graph, var_node, var_name=name)
                 dequant_var_node = insert_quant_pass.insert_dequant_op(
                     graph, quant_var_node, scale_var_node)
 
@@ -2384,6 +2592,7 @@ class AddQuantDequantPassV2(object):
                                 quant_bits=self._quant_bits,
                                 quant_axis=-1,
                                 channel_wise=False,
+                                moving_rate=self._moving_rate,
                                 is_test=self._is_test)
                             quant_var_node, scale_var_node = insert_quant_pass.insert_quant_op(
                                 graph, in_node)
