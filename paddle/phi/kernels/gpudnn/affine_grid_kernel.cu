@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef PADDLE_WITH_HIP
 
+#include "paddle/phi/kernels/affine_grid_kernel.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -72,3 +74,4 @@ PD_REGISTER_KERNEL(affine_grid,
                    phi::AffineGridCudnnKernel,
                    float,
                    double){};
+#endif

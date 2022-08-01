@@ -14,6 +14,8 @@
 
 #ifndef PADDLE_WITH_HIP
 
+#include "paddle/phi/kernels/affine_grid_grad_kernel.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
