@@ -38,6 +38,10 @@ else()
                blas mixed_vector)
 endif()
 
+if(WITH_XPU)
+  cc_library(beam_search_xpu SRCS beam_search_xpu.cc)
+endif()
+
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 math_library(sequence_scale)
@@ -56,10 +60,6 @@ math_library(vol2col)
 math_library(prelu)
 math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
-
-if(WITH_XPU)
-  cc_library(beam_search_xpu SRCS beam_search_xpu.cc)
-endif()
 
 cc_test(
   selected_rows_functor_test
