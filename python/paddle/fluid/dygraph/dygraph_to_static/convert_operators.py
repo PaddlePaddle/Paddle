@@ -415,7 +415,7 @@ def convert_len(var):
             # but it probably represents batch size which can be variant.
             # so we return a variable dynamically inferred from var.shape.
             if var.shape[
-                    0] == -1 and var.type == core.VarDesc.VarType.LOD_TENSOR:
+                    0] != -1 and var.type == core.VarDesc.VarType.LOD_TENSOR:
                 return var.shape[0]
             return nn.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
