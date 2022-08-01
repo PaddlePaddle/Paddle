@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"

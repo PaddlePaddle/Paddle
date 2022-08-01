@@ -3,7 +3,7 @@ proto_library(paddle_jit_property_proto SRCS property.proto)
 cc_library(
   jit_property
   SRCS property.cc
-  DEPS paddle_jit_property_proto)
+  DEPS paddle_jit_property_proto tensor)
 
 cc_library(
   jit_serializer

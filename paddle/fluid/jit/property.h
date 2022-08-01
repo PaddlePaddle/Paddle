@@ -20,10 +20,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/jit/property.pb.h"
 
 namespace paddle {
+namespace framework {
+class Variable;
+}
 namespace jit {
 
 using Variable = paddle::framework::Variable;
