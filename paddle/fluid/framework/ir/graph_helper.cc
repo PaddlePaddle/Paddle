@@ -28,6 +28,7 @@ PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
                               "",
                               "FLAGS_print_sub_graph_dir is used "
                               "to print the nodes of sub_graphs.");
+// yoki: only for test3
 
 namespace paddle {
 namespace framework {
@@ -618,6 +619,7 @@ static void GraphToBlock(const Graph &graph,
 void GraphToProgram(const Graph &graph,
                     ProgramDesc *program,
                     const SortKind *sort_kind) {
+  VLOG(4) << "yoki: only for test3";
   PADDLE_ENFORCE_EQ(graph.IsMainGraph(),
                     true,
                     platform::errors::InvalidArgument(

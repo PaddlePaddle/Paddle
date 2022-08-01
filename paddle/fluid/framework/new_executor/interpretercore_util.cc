@@ -29,6 +29,8 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+// yoki: only for test2
+
 // The difference between "sequential_run" and "serial_run":
 // "sequential_run" dispatches OPs one by one according to the sequence in the
 // Program, while "serial_run" ensures that all Ops are scheduled in a singal
@@ -54,7 +56,6 @@ namespace interpreter {
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 constexpr size_t kPrepareWorkQueueIdx = 2;
 const char blocking_queue_prefix[] = "lod_tensor_blocking_queue";
-VLOG(4) << "yoki: only for test2";
 
 const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
     size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {
@@ -420,6 +421,7 @@ void build_op_func_list(const platform::Place& place,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope,
                         bool use_local_scope) {
+  VLOG(4) << "yoki: only for test2";
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>

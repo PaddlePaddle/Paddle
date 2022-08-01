@@ -46,6 +46,8 @@ DECLARE_bool(fast_eager_deletion_mode);
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 constexpr const char* kTaskCompletion = "TaskCompletion";
 
+// yoki: only for test
+
 namespace paddle {
 namespace framework {
 // NOTE(Aurelius84): Need a better strategy to determine it.
