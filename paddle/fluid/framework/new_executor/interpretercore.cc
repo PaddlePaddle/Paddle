@@ -284,16 +284,17 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
 }
 
 void InterpreterCore::BuildInplace() {
-  // coalesce_tensor_op output a FusedOutput Tensor and a list of Output Tensors
-  // where Output Tensors is sliced from FusedOutput. These outputs sholud not
-  // be the outvar of the inplace var-pair since memory reuse between
-  // FusedOutput and Output Tensors is assumed. For the following example:
+  // NOTE(Ruibiao):
+  // coalesce_tensor_op outputs a FusedOutput Tensor and a list of Output
+  // Tensors which are sliced from the FusedOutput. These outputs sholud not be
+  // the outvar of the in-place var-pair since memory reuse between FusedOutput
+  // and Output Tensors is assumed. For the following example:
   // fused_var, var1, var2, var3 = coalesce_tensor(var1, var2, var3)
   // var1 = sum(var4, var5)
   // ...
   //
   // After running coalesce_tensor_op, var1 is assumed to share the buffer
-  // slices from fused_var. However, if sum op is inplace, than the var1 would
+  // slices from fused_var. However, if sum_op is in-place, then var1 would
   // re-share the buffer with var4 instead of fused_var.
   std::set<std::string> skip_inplace_outvars;
   for (Instruction& instr : vec_instruction_) {
