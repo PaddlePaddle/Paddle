@@ -465,6 +465,24 @@ void LUGradInferMeta(const MetaTensor& x,
   }
 }
 
+void LUUnpackGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& pivots,
+                           const MetaTensor& l,
+                           const MetaTensor& u,
+                           const MetaTensor& pmat,
+                           const MetaTensor& l_grad,
+                           const MetaTensor& u_grad,
+                           bool unpack_ludata,
+                           bool unpack_pivots,
+                           MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+
+  if (x_grad) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
+  }
+}
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
@@ -597,6 +615,18 @@ void NllLossGradInferMeta(const MetaTensor& x,
   if (dx) {
     dx->set_dims(x_dims);
     dx->set_dtype(x.dtype());
+  }
+}
+
+void OverlapAddGradInferMeta(const MetaTensor& x,
+                             const MetaTensor& out_grad,
+                             int hop_length,
+                             int axis,
+                             MetaTensor* x_grad) {
+  const auto x_dims = x.dims();
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
   }
 }
 
@@ -764,6 +794,48 @@ void StackGradInferMeta(const MetaTensor& out_grad,
       x_grad[i]->set_dtype(out_grad.dtype());
     }
   }
+}
+
+void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
+                          int axis,
+                          MetaTensor* x_grad) {
+  std::vector<phi::DDim> input_dims(out_grad.size());
+  for (size_t i = 0; i < out_grad.size(); ++i) {
+    input_dims[i] = out_grad[i]->dims();
+  }
+  for (size_t i = 1; i < input_dims.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        input_dims[i],
+        input_dims[0],
+        phi::errors::InvalidArgument(
+            "The dimensions of all Inputs(Y@Grad) must be the same,"
+            "but received Inputs(Y@Grad)'s %d-th dimension is %d, "
+            "Inputs(Y@Grad)'s 0-th to %d-th dimension is %d.",
+            i,
+            input_dims[i],
+            i - 1,
+            input_dims[0]));
+  }
+
+  int rank = input_dims[0].size();
+  PADDLE_ENFORCE_GE(axis,
+                    -(rank + 1),
+                    phi::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be "
+                        "inside [-(rank+1), rank+1), where rank = %d",
+                        rank));
+  PADDLE_ENFORCE_LT(axis,
+                    rank + 1,
+                    phi::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be "
+                        "inside [-(rank+1), rank+1), where rank = %d",
+                        rank));
+  if (axis < 0) axis += (rank + 1);
+
+  auto vec = phi::vectorize<int>(input_dims[0]);
+  vec.insert(vec.begin() + axis, input_dims.size());
+  x_grad->set_dims(phi::make_ddim(vec));
+  x_grad->set_dtype(out_grad[0]->dtype());
 }
 
 }  // namespace phi

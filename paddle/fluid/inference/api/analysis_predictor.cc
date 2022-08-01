@@ -393,7 +393,7 @@ void AnalysisPredictor::InitDeviceContexts() {
         place_, std::async(std::launch::deferred, [=] {
           auto *gpu_resource =
               ResourceManager::Instance().GetGPUResource(predictor_stream_);
-          auto *gpu_context = new InferGPUContext();
+          auto *gpu_context = new InferGPUContext(place_);
           gpu_context->SetAllocator(
               memory::allocation::AllocatorFacade::Instance()
                   .GetAllocator(place_, gpu_resource->GetStream())
