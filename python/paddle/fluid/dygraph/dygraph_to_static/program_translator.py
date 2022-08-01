@@ -257,6 +257,9 @@ class StaticFunction(object):
             self._dygraph_function = getattr(function, '__func__')
             self._class_instance = getattr(function, '__self__')
 
+            if not hasattr(self._class_instance, '_original_funcs'):
+                setattr(self._class_instance, '_original_funcs',
+                        collections.OrderedDict())
             self._class_instance._original_funcs[
                 function.__name__] = self._dygraph_function
         else:
