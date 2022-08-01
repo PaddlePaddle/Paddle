@@ -54,6 +54,7 @@ namespace interpreter {
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 constexpr size_t kPrepareWorkQueueIdx = 2;
 const char blocking_queue_prefix[] = "lod_tensor_blocking_queue";
+VLOG(4) << "yoki: only for test2";
 
 const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
     size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {

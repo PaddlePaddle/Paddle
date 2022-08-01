@@ -14,6 +14,8 @@
 
 import numpy as np
 import os
+import pickle
+import io
 from datetime import timedelta
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable
@@ -927,9 +929,9 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 
     Args:
         tensor_list (list): A list of output Tensors. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
         tensor (Tensor): The Tensor to send. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
@@ -941,7 +943,6 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
 
@@ -949,20 +950,25 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             init_parallel_env()
             tensor_list = []
             if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data1 = np.array([[4, 5, 6], [4, 5, 6]])
-                np_data2 = np.array([[4, 5, 6], [4, 5, 6]])
-                data1 = paddle.to_tensor(np_data1)
-                data2 = paddle.to_tensor(np_data2)
+                data1 = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
                 paddle.distributed.all_gather(tensor_list, data1)
             else:
-                np_data1 = np.array([[1, 2, 3], [1, 2, 3]])
-                np_data2 = np.array([[1, 2, 3], [1, 2, 3]])
-                data1 = paddle.to_tensor(np_data1)
-                data2 = paddle.to_tensor(np_data2)
+                data2 = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
                 paddle.distributed.all_gather(tensor_list, data2)
     """
     if group is not None and not group.is_member():
         return
+
+    def convert_to_complex(list_of_tensor):
+        list_of_complex = []
+        for tensor in list_of_tensor:
+            list_of_complex.append(paddle.as_complex(tensor))
+        return list_of_complex
+
+    is_input_complex = (tensor.dtype == paddle.complex64
+                        or tensor.dtype == paddle.complex128)
+    if is_input_complex:
+        tensor = paddle.as_real(tensor)
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
@@ -975,7 +981,11 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
         task = group.process_group.all_gather(tensor, out)
         task.wait()
         tensor_list.clear()
-        tensor_list.extend(paddle.split(out, group.nranks, 0))
+        list_of_tensor = paddle.split(out, group.nranks, 0)
+        if is_input_complex:
+            tensor_list.extend(convert_to_complex(list_of_tensor))
+        else:
+            tensor_list.extend(list_of_tensor)
         return
 
     ring_id = 0 if group is None else group.id
@@ -992,13 +1002,14 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             raise ValueError("The type of 'tensor_list' for all_gather "
                              "should be list.")
         for elem in tensor_list:
-            check_variable_and_dtype(
-                elem, 'tensor_list',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
-                'all_gather')
-        check_variable_and_dtype(
-            tensor, 'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'], 'all_gather')
+            check_variable_and_dtype(elem, 'tensor_list', [
+                'float16', 'float32', 'float64', 'int32', 'int64', 'bool',
+                'int8', 'uint8', 'complex64', 'complex128'
+            ], 'all_gather')
+        check_variable_and_dtype(tensor, 'tensor', [
+            'float16', 'float32', 'float64', 'int32', 'int64', 'bool', 'int8',
+            'uint8', 'complex64', 'complex128'
+        ], 'all_gather')
         helper.append_op(type=op_type,
                          inputs={'X': [tensor]},
                          outputs={'Out': [out]},
@@ -1008,7 +1019,82 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
                              'nranks': nranks
                          })
 
-    tensor_list.extend(paddle.split(out, nranks, 0))
+    list_of_tensor = paddle.split(out, nranks, 0)
+    if is_input_complex:
+        tensor_list.extend(convert_to_complex(list_of_tensor))
+    else:
+        tensor_list.extend(list_of_tensor)
+
+
+def _convert_object_to_tensor(obj):
+    _pickler = pickle.Pickler
+    f = io.BytesIO()
+    _pickler(f).dump(obj)
+    data = np.frombuffer(f.getvalue(), dtype=np.uint8)
+    tensor = paddle.to_tensor(data)
+    return tensor, tensor.numel()
+
+
+def _convert_tensor_to_object(tensor, len_of_tensor):
+    _unpickler = pickle.Unpickler
+    return _unpickler(io.BytesIO(tensor.numpy()[:len_of_tensor])).load()
+
+
+def all_gather_object(object_list, obj, group=None):
+    """
+
+    Gather picklable objects from all participators and all get the result. Similiar to all_gather(), but python object can be passed in.
+
+    Args:
+        object_list (list): A list of output object. The datatype of every element in the list is same as the input obj.
+        obj (Any): The picklable object to send.
+        group (Group): The group instance return by new_group or None for global default group.
+
+    Returns:
+        None.
+
+    Warning:
+        This API only supports the dygraph mode.
+
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import paddle
+            import paddle.distributed as dist
+
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            dist.init_parallel_env()
+            object_list = []
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                obj = {"foo": [1, 2, 3]}
+                paddle.distributed.all_gather_object(object_list, obj)
+            else:
+                obj = {"bar": [4, 5, 6]}
+                paddle.distributed.all_gather_object(object_list, obj)
+    """
+    assert in_dygraph_mode(
+    ), "all_gather_object doesn't support static graph mode."
+
+    tensor, len_of_tensor = _convert_object_to_tensor(obj)
+
+    # gather len_of_tensor from all ranks
+    list_len_of_tensor = []
+    all_gather(list_len_of_tensor, len_of_tensor, group)
+    # get the max length from list
+    max_len_of_tensor = int(max(list_len_of_tensor).item())
+    # resize the input tensor to max length avoid hang in all gather
+    # Note(liyurui): Maybe we should support various length all_gather?
+    # Now this operation is efficient for we don't support resize in python.
+    numpy_data = tensor.numpy()
+    numpy_data = np.resize(numpy_data, [max_len_of_tensor])
+    input_tensor = paddle.to_tensor(numpy_data)
+
+    tensor_list = []
+    all_gather(tensor_list, input_tensor, group)
+    for i, tensor in enumerate(tensor_list):
+        object_list.append(
+            _convert_tensor_to_object(tensor, list_len_of_tensor[i]))
 
 
 def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):

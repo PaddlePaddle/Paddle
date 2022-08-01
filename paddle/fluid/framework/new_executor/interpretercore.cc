@@ -67,6 +67,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       skip_gc_vars_(skip_gc_vars),
       var_scope_(scope),
       stream_analyzer_(place) {
+  VLOG(4) << "yoki: only for test";
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   is_build_ = false;
