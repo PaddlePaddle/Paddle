@@ -198,9 +198,6 @@ class ONNXRuntimePredictor : public PaddlePredictor {
 
   std::shared_ptr<framework::Scope> scope_;
 
- protected:
-  const void *GetDeviceContexts() const override;
-
  private:
   ///
   /// \brief Whether to find in/out by name.
