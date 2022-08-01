@@ -4557,7 +4557,10 @@ def frac(x, name=None):
 
 def sgn(x, name=None):
     """
-    This API returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
+    For complex tensor, this API returns a new tensor whose elements have the same angles as the corresponding
+    elements of input and absolute values of one.
+    For other dtype tensor,
+    this API returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero, same as paddle.sign.
 
     Args:
         x (Tensor): The input tensor, which data type should be float32, float64, complex64, complex128.
@@ -4570,9 +4573,14 @@ def sgn(x, name=None):
         .. code-block:: Python
 
             import paddle
+            import numpy as np
 
-            input = paddle.rand([3, 5], 'float32')
+            np_x = np.array(
+                [[3 + 4j, 7 - 24j, 0, 1 + 2j], [3 + 4j, 7 - 24j, 0, 1 + 2j]], dtype='complex64')
+            x = paddle.to_tensor(np_x)
             print(paddle.sgn(x))
+            #[[0.6+0.8j       0.28-0.96j      0.+0.j      0.4472136+0.8944272j]
+            # [0.6+0.8j       0.28-0.96j      0.+0.j      0.4472136+0.8944272j]]
 
     """
     if x.dtype not in [paddle.float16, paddle.float32, paddle.float64, paddle.complex64, paddle.complex128]:
@@ -4581,9 +4589,6 @@ def sgn(x, name=None):
                 .format(x.dtype))
     if paddle.is_complex(x):
         expand_x = paddle.as_real(x)
-        real, img = paddle.chunk(expand_x, 2, axis=-1)
-        exp_zero = expand_x == 0
-        zero_mask = paddle.all(exp_zero, axis=-1)
         x_abs = paddle.abs(x)
         x_abs = paddle.unsqueeze(x_abs, axis=-1)
         output = expand_x / x_abs
