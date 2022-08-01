@@ -34,29 +34,56 @@ namespace tensorrt {
 class FcOpConverter : public OpConverter {
  public:
   nvinfer1::ILayer* reshape_before_fc(nvinfer1::ITensor* before_fc,
-                                      nvinfer1::Dims x_dim, int x_num_col_dims,
+                                      nvinfer1::Dims x_dim,
+                                      int x_num_col_dims,
                                       std::string output_name) {
     // add shuffle before fc
     nvinfer1::Dims reshape_before_fc_dim;
     reshape_before_fc_dim.nbDims = x_num_col_dims + 3;
     // padding shape "* x q x 1 x 1"
-    for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
-      reshape_before_fc_dim.d[i] = 1;
-    }
-    for (int i = 0; i < x_dim.nbDims; i++) {
-      if (i < x_num_col_dims) {
-        reshape_before_fc_dim.d[i] = 0;
-      } else {
-        if (x_dim.d[i] < 0) {
-          reshape_before_fc_dim.d[x_num_col_dims] = -1;
-          break;
-        }
-        reshape_before_fc_dim.d[x_num_col_dims] *= x_dim.d[i];
+
+    nvinfer1::ITensor* filal_reshape_before_fc_shape_tensor = nullptr;
+
+    if (!engine_->with_dynamic_shape()) {
+      for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
+        reshape_before_fc_dim.d[i] = 1;
       }
+      for (int i = 0; i < x_dim.nbDims; i++) {
+        if (i < x_num_col_dims) {
+          reshape_before_fc_dim.d[i] = 0;
+        } else {
+          reshape_before_fc_dim.d[x_num_col_dims] *= x_dim.d[i];
+        }
+      }
+    } else {
+      std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
+      nvinfer1::ITensor* input_shape_tensor = Shape(before_fc);
+
+      for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
+        reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
+      }
+      for (int i = 0; i < x_dim.nbDims; i++) {
+        if (i < x_num_col_dims) {
+          reshape_before_fc_shape_tensor[i] =
+              GetEleTensorOfShape(input_shape_tensor, i);
+        } else {
+          reshape_before_fc_shape_tensor[x_num_col_dims] =
+              Prod(GetEleTensorOfShape(input_shape_tensor, i),
+                   reshape_before_fc_shape_tensor[x_num_col_dims]);
+        }
+      }
+      filal_reshape_before_fc_shape_tensor =
+          Concat(reshape_before_fc_shape_tensor);
     }
+
     auto* reshape_before_fc_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *before_fc);
-    reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
+    if (!engine_->with_dynamic_shape()) {
+      reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
+    } else {
+      reshape_before_fc_layer->setInput(1,
+                                        *filal_reshape_before_fc_shape_tensor);
+    }
     reshape_before_fc_layer->setName(
         ("fc_op_reshape_before_fc: Shuffle (Output: " + output_name + ")")
             .c_str());
@@ -64,21 +91,37 @@ class FcOpConverter : public OpConverter {
   }
 
   nvinfer1::ILayer* reshape_after_fc(nvinfer1::ITensor* after_fc,
-                                     nvinfer1::Dims x_dim, int x_num_col_dims) {
+                                     nvinfer1::Dims x_dim,
+                                     int x_num_col_dims) {
     // add shuffle after fc
     nvinfer1::Dims reshape_after_fc_dim;
     reshape_after_fc_dim.nbDims = x_num_col_dims + 1;
-    for (int i = 0; i < reshape_after_fc_dim.nbDims; i++) {
-      reshape_after_fc_dim.d[i] = 0;
+
+    nvinfer1::ITensor* filal_reshape_after_fc_shape_tensor = nullptr;
+    if (!engine_->with_dynamic_shape()) {
+      for (int i = 0; i < reshape_after_fc_dim.nbDims; i++) {
+        reshape_after_fc_dim.d[i] = 0;
+      }
+    } else {
+      std::vector<int> gather_indices(x_num_col_dims + 1);
+      std::iota(gather_indices.begin(), gather_indices.end(), 0);
+      filal_reshape_after_fc_shape_tensor =
+          Gather(Shape(after_fc), gather_indices);
     }
+
     auto* reshape_after_fc_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *after_fc);
-    reshape_after_fc_layer->setReshapeDimensions(reshape_after_fc_dim);
+    if (!engine_->with_dynamic_shape()) {
+      reshape_after_fc_layer->setReshapeDimensions(reshape_after_fc_dim);
+    } else {
+      reshape_after_fc_layer->setInput(1, *filal_reshape_after_fc_shape_tensor);
+    }
     return reshape_after_fc_layer;
   }
 
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid fc op to tensorrt fc layer without bias";
     framework::OpDesc op_desc(op, nullptr);
     auto output_name = op_desc.Output("Out").front();
@@ -96,8 +139,9 @@ class FcOpConverter : public OpConverter {
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
     PADDLE_ENFORCE_NOT_NULL(
-        Y_v, platform::errors::NotFound(
-                 "Can not find %s presistale var of fc in scope.", w_name));
+        Y_v,
+        platform::errors::NotFound(
+            "Can not find %s presistale var of fc in scope.", w_name));
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
@@ -128,7 +172,8 @@ class FcOpConverter : public OpConverter {
     }
     weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t);
 
-    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL,
+    PADDLE_ENFORCE_EQ(Y_t->dims().size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "The fc's weight should be a matrix with 2 dims, but "
                           "it's %d-dimensional.",
@@ -143,7 +188,8 @@ class FcOpConverter : public OpConverter {
       }
     };
 
-    auto regist_fc = [&](nvinfer1::ITensor* inputs, int n_output,
+    auto regist_fc = [&](nvinfer1::ITensor* inputs,
+                         int n_output,
                          TensorRTEngine::Weight& weight,
                          TensorRTEngine::Weight& bias) {
       if (enable_int8 || support_int8) {
@@ -151,7 +197,8 @@ class FcOpConverter : public OpConverter {
         float out_scale = 0;
         if (enable_int8) {
           PADDLE_ENFORCE_EQ(
-              op_desc.HasAttr("out_threshold"), true,
+              op_desc.HasAttr("out_threshold"),
+              true,
               platform::errors::InvalidArgument(
                   "must have out threshold in fc layers in int8 mode"));
           out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -159,9 +206,13 @@ class FcOpConverter : public OpConverter {
           out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
         }
         nvinfer1::DimsHW nv_ksize(1, 1);
-        auto* fc_layer_int8 =
-            TRT_ENGINE_ADD_LAYER(engine_, Convolution, *inputs, n_output,
-                                 nv_ksize, weight.get(), bias.get());
+        auto* fc_layer_int8 = TRT_ENGINE_ADD_LAYER(engine_,
+                                                   Convolution,
+                                                   *inputs,
+                                                   n_output,
+                                                   nv_ksize,
+                                                   weight.get(),
+                                                   bias.get());
         fc_layer_int8->setName(
             ("fc_op_int8_conv1x1: Convolution (Output: " + output_name + ")")
                 .c_str());
@@ -174,21 +225,29 @@ class FcOpConverter : public OpConverter {
                   .c_str());
           engine_->SetTensorDynamicRange(fc_after_reshape_int8->getOutput(0),
                                          out_scale);
-          nvinfer1::IActivationLayer* relu_layer_int8 = TRT_ENGINE_ADD_LAYER(
-              engine_, Activation, *(fc_after_reshape_int8->getOutput(0)),
-              nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer_int8, "relu_after_fc_shuffle",
-                                   {output_name}, test_mode);
+          nvinfer1::IActivationLayer* relu_layer_int8 =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   Activation,
+                                   *(fc_after_reshape_int8->getOutput(0)),
+                                   nvinfer1::ActivationType::kRELU);
+          RreplenishLayerAndOutput(relu_layer_int8,
+                                   "relu_after_fc_shuffle",
+                                   {output_name},
+                                   test_mode);
         } else {
           RreplenishLayerAndOutput(fc_after_reshape_int8,
                                    "fc_op_int8_reshape_after_fc: Shuffle",
-                                   {output_name}, test_mode);
+                                   {output_name},
+                                   test_mode);
         }
       } else {
         // add fc layer
-        auto* fc_layer_float =
-            TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *inputs, n_output,
-                                 weight.get(), bias.get());
+        auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(engine_,
+                                                    FullyConnected,
+                                                    *inputs,
+                                                    n_output,
+                                                    weight.get(),
+                                                    bias.get());
         fc_layer_float->setName(
             ("fc_op_float: FullyConnected (Output: " + output_name + ")")
                 .c_str());
@@ -198,14 +257,20 @@ class FcOpConverter : public OpConverter {
           fc_after_reshape_float->setName(
               ("float_reshape_after_fc: Shuffle (Output: " + output_name + ")")
                   .c_str());
-          nvinfer1::IActivationLayer* relu_layer_float = TRT_ENGINE_ADD_LAYER(
-              engine_, Activation, *(fc_after_reshape_float->getOutput(0)),
-              nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer_float, "relu_after_fc_shuffle",
-                                   {output_name}, test_mode);
+          nvinfer1::IActivationLayer* relu_layer_float =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   Activation,
+                                   *(fc_after_reshape_float->getOutput(0)),
+                                   nvinfer1::ActivationType::kRELU);
+          RreplenishLayerAndOutput(relu_layer_float,
+                                   "relu_after_fc_shuffle",
+                                   {output_name},
+                                   test_mode);
         } else {
-          RreplenishLayerAndOutput(fc_after_reshape_float, "shuffle_after_fc",
-                                   {output_name}, test_mode);
+          RreplenishLayerAndOutput(fc_after_reshape_float,
+                                   "shuffle_after_fc",
+                                   {output_name},
+                                   test_mode);
         }
       }
     };
@@ -255,15 +320,20 @@ class FcOpConverter : public OpConverter {
       if (enable_int8 || support_int8) {
         // add conv1x1 layer
         nvinfer1::DimsHW nv_ksize(1, 1);
-        auto* fc_layer_int8 =
-            TRT_ENGINE_ADD_LAYER(engine_, Convolution, *X, n_output, nv_ksize,
-                                 weight.get(), bias.get());
+        auto* fc_layer_int8 = TRT_ENGINE_ADD_LAYER(engine_,
+                                                   Convolution,
+                                                   *X,
+                                                   n_output,
+                                                   nv_ksize,
+                                                   weight.get(),
+                                                   bias.get());
         if (activation_type == "relu") {
           fc_layer_int8->setName(
               ("ernie_fc_op_int8: Convolution (Output: " + output_name + ")")
                   .c_str());
           PADDLE_ENFORCE_EQ(
-              op_desc.HasAttr("out_threshold"), true,
+              op_desc.HasAttr("out_threshold"),
+              true,
               platform::errors::InvalidArgument(
                   "must have out threshold in fc layers in int8 mode"));
           float out_scale = 0;
@@ -275,15 +345,20 @@ class FcOpConverter : public OpConverter {
           }
           engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0),
                                          out_scale);
-          nvinfer1::IActivationLayer* relu_layer_int8 = TRT_ENGINE_ADD_LAYER(
-              engine_, Activation, *(fc_layer_int8->getOutput(0)),
-              nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer_int8, "relu_after_ernie_fc_int8",
-                                   {output_name}, test_mode);
+          nvinfer1::IActivationLayer* relu_layer_int8 =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   Activation,
+                                   *(fc_layer_int8->getOutput(0)),
+                                   nvinfer1::ActivationType::kRELU);
+          RreplenishLayerAndOutput(relu_layer_int8,
+                                   "relu_after_ernie_fc_int8",
+                                   {output_name},
+                                   test_mode);
         } else {
           RreplenishLayerAndOutput(fc_layer_int8,
                                    "ernie_fc_op_int8: Convolution",
-                                   {output_name}, test_mode);
+                                   {output_name},
+                                   test_mode);
         }
       } else {
         // add fc layer
@@ -292,25 +367,30 @@ class FcOpConverter : public OpConverter {
         if (activation_type == "relu") {
           fc_layer_float->setName(
               ("ernie_fc_op_float: (Output: " + output_name + ")").c_str());
-          nvinfer1::IActivationLayer* relu_layer_float = TRT_ENGINE_ADD_LAYER(
-              engine_, Activation, *(fc_layer_float->getOutput(0)),
-              nvinfer1::ActivationType::kRELU);
+          nvinfer1::IActivationLayer* relu_layer_float =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   Activation,
+                                   *(fc_layer_float->getOutput(0)),
+                                   nvinfer1::ActivationType::kRELU);
           RreplenishLayerAndOutput(relu_layer_float,
-                                   "relu_after_ernie_fc_float", {output_name},
+                                   "relu_after_ernie_fc_float",
+                                   {output_name},
                                    test_mode);
         } else {
-          RreplenishLayerAndOutput(fc_layer_float, "ernie_fc_op_float",
-                                   {output_name}, test_mode);
+          RreplenishLayerAndOutput(
+              fc_layer_float, "ernie_fc_op_float", {output_name}, test_mode);
         }
       }
     } else {  // need reshape input before and after fc
       PADDLE_ENFORCE_GT(
-          x_dim.nbDims, x_num_col_dims,
+          x_dim.nbDims,
+          x_num_col_dims,
           platform::errors::InvalidArgument(
               "Params and input dims mismatch. Paddle-TRT FC "
               "converter expects x_dim.nbDims > x_num_col_dims, but "
               "x_dim.nbDims : %d, x_num_col_dims : %d.",
-              x_dim.nbDims, x_num_col_dims));
+              x_dim.nbDims,
+              x_num_col_dims));
       auto* reshape_before_fc_layer =
           reshape_before_fc(X, x_dim, x_num_col_dims, output_name);
       auto* reshape_itensor = reshape_before_fc_layer->getOutput(0);
