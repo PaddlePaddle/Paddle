@@ -2621,6 +2621,15 @@
   kernel:
     func: dirichlet
 
+# dirichlet
+- api: dirichlet
+  args: (Tensor alpha)
+  output: Tensor
+  infer_meta:
+    func: DirichletInferMeta
+  kernel:
+    func: dirichlet
+
 # eig
 - api: eig
   args: (Tensor x)
