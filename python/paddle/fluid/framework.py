@@ -1262,6 +1262,17 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
                             True if persistable else False)
 
 
+def _all_is_type(vals, expected_type):
+    """
+    Return True if type of each element is expected_type.
+
+    NOTE: BuiltIn all() will always return True if vals is empty.
+    """
+    assert isinstance(vals, (list, tuple))
+    if not vals: return False
+    return all(isinstance(v, expected_type) for v in vals)
+
+
 class VariableMetaClass(type):
 
     @classmethod
@@ -2935,11 +2946,22 @@ class Operator(object):
                 continue
 
             attr_type = self.desc.attr_type(name)
-            # TODO(dev): add GetAttrVarName in OpDesc
             if attr_type == core.AttrType.VAR:
-                a = "{name} = Var[{value}]".format(name=name,
-                                                   type=attr_type,
-                                                   value=name)
+                attr_var_name = self.desc.attr(name, True).name()
+                a = "{name} = Var['{value}']".format(name=name,
+                                                     type=attr_type,
+                                                     value=attr_var_name)
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
+            if attr_type == core.AttrType.VARS:
+                attr_var_names = [
+                    "'%s'" % var.name() for var in self.desc.attr(name, True)
+                ]
+                a = "{name} = Vars[{value}]".format(
+                    name=name, type=attr_type, value=','.join(attr_var_name))
                 attrs_str += a
                 if i != len(attr_names) - 1:
                     attrs_str += ", "
@@ -3140,13 +3162,11 @@ class Operator(object):
         """
         if isinstance(val, Variable):
             self.desc.set_var_attr(name, val.desc)
-        elif isinstance(val, list) and all(
-                isinstance(v, Variable) for v in val):
+        elif isinstance(val, list) and _all_is_type(val, Variable):
             self.desc.set_vars_attr(name, [v.desc for v in val])
         elif isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and all(
-                isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             self.desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
@@ -4409,13 +4429,11 @@ class IrOpNode(IrNode):
         desc = self.node.op()
         if isinstance(val, Variable):
             desc.set_var_attr(name, val.desc)
-        elif isinstance(val, list) and all(
-                isinstance(v, Variable) for v in val):
+        elif isinstance(val, list) and _all_is_type(val, Variable):
             desc.set_vars_attr(name, [v.desc for v in val])
         elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and \
-                all(isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
@@ -4872,13 +4890,11 @@ class IrGraph(object):
         """
         if isinstance(val, Variable):
             desc.set_var_attr(name, val.desc)
-        elif isinstance(val, list) and all(
-                isinstance(v, Variable) for v in val):
+        elif isinstance(val, list) and _all_is_type(val, Variable):
             desc.set_vars_attr(name, [v.desc for v in val])
         elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and all(
-                isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
