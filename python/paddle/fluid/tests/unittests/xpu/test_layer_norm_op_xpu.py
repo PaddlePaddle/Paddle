@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+from __future__ import print_function
+
 import numpy as np
-import sys
 import unittest
-from functools import reduce
+import sys
 
 sys.path.append("..")
 from op_test import OpTest
-from op_test_xpu import XPUOpTest
+from functools import reduce
 from operator import mul
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from test_layer_norm_op import _reference_layer_norm_naive, _reference_layer_norm_grad
 
 paddle.enable_static()
 
