@@ -95,6 +95,7 @@ int AfsWrapper::mv(const std::string& old_path, const std::string& dest_path) {
 
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
+std::mutex PSGPUWrapper::ins_mutex;
 #ifdef PADDLE_WITH_PSLIB
 void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
                               const std::string& fs_user,

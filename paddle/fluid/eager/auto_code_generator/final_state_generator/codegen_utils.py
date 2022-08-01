@@ -56,6 +56,7 @@ yaml_types_mapping = {
     'Scalar(int64_t)' : 'paddle::experimental::Scalar',
     'Scalar(float)' : 'paddle::experimental::Scalar',
     'Scalar(double)' : 'paddle::experimental::Scalar',
+    'Scalar[]' : 'std::vector<phi::Scalar>',
     'IntArray' : 'paddle::experimental::IntArray'
 }
 

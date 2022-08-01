@@ -470,7 +470,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'cipher_utils_test',
     'test_program_code',
     'test_save_model_without_var',
-    'program_processing_test',
+    'program_utils_test',
     'test_fleet_distributed_strategy',
     'test_hybrid_parallel_topology',
     'test_ascend_trigger',
@@ -671,8 +671,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_trt_convert_reduce_sum',
     'save_quant2_model_lstm',
     'test_trt_convert_slice',
-    'test_quant2_int8_lstm_mkldnn',
-    'test_dist_fleet_ps13'
+    'test_quant2_int8_lstm_mkldnn'
 ]
 
 # mem=0 but always timeout or failed : It run 15 job each time in Single cases;
@@ -1720,7 +1719,7 @@ CPU_PARALLEL_JOB = [
     'test_sum_api',
     'test_op_compat_sensible_pass',
     'test_generate_pass_cc',
-    'program_processing_test',
+    'program_utils_test',
     'build_strategy_test',
     'test_fc_rnn_mkldnn_fuse_pass',
     'scope_guard_test',
