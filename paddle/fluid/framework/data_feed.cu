@@ -89,7 +89,7 @@ void SlotRecordInMemoryDataFeed::FillSlotValueOffset(
     const int float_slot_size,
     const UsedSlotGpuType *used_slots) {
   auto stream =
-      dynamic_cast<platform::CUDADeviceContext *>(
+      dynamic_cast<phi::GPUContext *>(
           paddle::platform::DeviceContextPool::Instance().Get(this->place_))
           ->stream();
   FillSlotValueOffsetKernel<<<GET_BLOCKS(used_slot_num),
@@ -168,7 +168,7 @@ void SlotRecordInMemoryDataFeed::CopyForTensor(
     const int float_slot_size,
     const UsedSlotGpuType *used_slots) {
   auto stream =
-      dynamic_cast<platform::CUDADeviceContext *>(
+      dynamic_cast<phi::GPUContext *>(
           paddle::platform::DeviceContextPool::Instance().Get(this->place_))
           ->stream();
 

@@ -92,9 +92,8 @@ REGISTER_OP_WITHOUT_GRADIENT(
     paddle::framework::OpKernelTestProtoAndCheckerMaker);
 REGISTER_OP_CPU_KERNEL(test_op,
                        paddle::framework::TestKernel<phi::CPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    test_op,
-    paddle::framework::TestKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(test_op,
+                        paddle::framework::TestKernel<phi::GPUContext, float>);
 
 static void BuildVar(const std::string& param_name,
                      std::initializer_list<const char*> arguments,

@@ -45,7 +45,6 @@ namespace paddle {
 namespace distributed {
 
 using Place = paddle::platform::Place;
-using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
 class ProcessGroupNCCL : public ProcessGroup {
  public:
@@ -174,8 +173,7 @@ class ProcessGroupNCCL : public ProcessGroup {
 
   std::unordered_map<std::string, std::vector<EventManager>> places_to_events_;
 
-  std::unordered_map<std::string,
-                     std::vector<std::unique_ptr<CUDADeviceContext>>>
+  std::unordered_map<std::string, std::vector<std::unique_ptr<phi::GPUContext>>>
       places_to_ctx_;
 
   std::set<int> used_place_ids_;
