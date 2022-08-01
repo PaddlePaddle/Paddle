@@ -18,7 +18,7 @@ import paddle
 from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
                       matmul, mul, neg, reduce, reshape, scatter_add, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose)
+                      transpose, log)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -164,6 +164,11 @@ def cos_orig2prim(op, x):
 @REGISTER_ORIG2PRIM('exp')
 def exp_orig2prim(op, x):
     return exp(x)
+
+
+@REGISTER_ORIG2PRIM('log')
+def exp_orig2prim(op, x):
+    return log(x)
 
 
 @REGISTER_ORIG2PRIM('fill_zeros_like')
@@ -331,6 +336,11 @@ def cos_prim2orig(op, x):
 @REGISTER_PRIM2ORIG('exp_p')
 def exp_prim2orig(op, x):
     return paddle.exp(x)
+
+
+@REGISTER_PRIM2ORIG('log_p')
+def exp_prim2orig(op, x):
+    return paddle.log(x)
 
 
 @REGISTER_PRIM2ORIG('reshape_p')
@@ -507,6 +517,14 @@ def exp_jvp(op, x_dot):
         return None
     y = op_position_output(op)
     return mul(x_dot, y)
+
+
+@REGISTER_JVP('log_p')
+def exp_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    x = op_position_inputs(op)
+    return div(x_dot, x)
 
 
 @REGISTER_JVP('reshape_p')

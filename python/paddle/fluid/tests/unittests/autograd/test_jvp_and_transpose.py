@@ -364,6 +364,35 @@ class TestExpPJVPAndTranspose(TestAddPJVPAndTranspose):
         ]
 
 
+class TestLogPJVPAndTranspose(TestAddPJVPAndTranspose):
+
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'log_p'
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
+        self.prim_input = {
+            'X': X,
+        }
+        self.prim_output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.prim_attrs = {}
+
+        # Set JVP
+        X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
+
+        self.all_ops = [
+            # prim op:
+            'log_p',
+            # jvp op:
+            'dev_p',
+            # transpose op:
+        ]
+
+
 class TestReshapePJVPAndTranspose(TestAddPJVPAndTranspose):
 
     def init_data(self):
