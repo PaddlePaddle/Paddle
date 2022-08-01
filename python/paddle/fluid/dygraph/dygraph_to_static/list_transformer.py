@@ -47,7 +47,7 @@ class ListTransformer(BaseTransformer):
         self.scope_var_type_dict = var_env.get_scope_var_type()
 
     def transform(self):
-        SplitAssignTransformer(self.root).transform()
+        #SplitAssignTransformer(self.root).transform()
         self.visit(self.root)
         self.replace_list_with_tensor_array(self.root)
 
