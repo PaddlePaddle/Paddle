@@ -99,11 +99,6 @@ class PEFunction : public BaseFunction {
     int64_t start_op_index = 0;
     int64_t end_op_index = static_cast<int64_t>(global_block.OpSize());
 
-    PADDLE_ENFORCE_GT(end_op_index,
-                      start_op_index,
-                      platform::errors::PreconditionNotMet(
-                          "There is no operator in ProgramDesc."));
-
     graph_ =
         std::make_shared<Graph>(program_desc, start_op_index, end_op_index);
     inner_pe_ = std::make_shared<ParallelExecutor>(

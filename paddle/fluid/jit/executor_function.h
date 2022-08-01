@@ -45,7 +45,6 @@ class ExecutorFunction : public BaseFunction {
             "There is no operator in ProgramDesc."));
     utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, &scope_);
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
-    info_->RemoveDescFeedFetch();
   }
 
   ~ExecutorFunction() noexcept {}
