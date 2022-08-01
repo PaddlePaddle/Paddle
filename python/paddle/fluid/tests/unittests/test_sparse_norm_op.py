@@ -79,7 +79,8 @@ class TestSparseBatchNorm(unittest.TestCase):
         batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
         batch_norm_out = batch_norm(sparse_x)
         dense_bn = paddle.nn.BatchNorm1D(channels)
-        dense_out = dense_bn(dense_x.reshape([-1, x.shape[-1]]))
+        dense_x = dense_x.reshape((-1, dense_x.shape[-1]))
+        dense_out = dense_bn(dense_x)
         assert np.allclose(dense_out.numpy(), batch_norm_out.values().numpy())
         # [1, 6, 6, 6, 3]
 
@@ -90,16 +91,17 @@ class TestSyncBatchNorm(unittest.TestCase):
         x = np.array([[[[0.3, 0.4], [0.3, 0.07]],
                        [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
         x = paddle.to_tensor(x)
-        x = x.to_sparse_coo(len(x.shape) - 1)
+        sparse_x = x.to_sparse_coo(len(x.shape) - 1)
 
         if paddle.is_compiled_with_cuda():
             sparse_sync_bn = nn.SyncBatchNorm(2)
-            sparse_hidden = sparse_sync_bn(x)
+            sparse_hidden = sparse_sync_bn(sparse_x)
 
             dense_sync_bn = paddle.nn.SyncBatchNorm(2)
-            dense_hidden = dense_sync_bn(x.reshape([-1, x.shape[-1]]))
-            assert np.allcose(sparse_hidden.values().numpy(),
-                              dense_hidden.numpy())
+            x = x.reshape((-1, x.shape[-1]))
+            dense_hidden = dense_sync_bn(x)
+            assert np.allclose(sparse_hidden.values().numpy(),
+                               dense_hidden.numpy())
 
     def test_convert(self):
         base_model = paddle.nn.Sequential(nn.Conv3D(3, 5, 3), nn.BatchNorm(5),
