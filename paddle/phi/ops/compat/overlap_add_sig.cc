@@ -16,21 +16,15 @@
 
 namespace phi {
 
-KernelSignature MultiClassNMS3OpArgumentMapping(
+KernelSignature OverlapAddGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("multiclass_nms3",
-                         {"BBoxes", "Scores", "RoisNum"},
-                         {"score_threshold",
-                          "nms_top_k",
-                          "keep_top_k",
-                          "nms_threshold",
-                          "normalized",
-                          "nms_eta",
-                          "background_label"},
-                         {"Out", "Index", "NmsRoisNum"});
+  return KernelSignature("overlap_add_grad",
+                         {"X", "Out@GRAD"},
+                         {"hop_length", "axis"},
+                         {"X@GRAD"});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(multiclass_nms3,
-                           phi::MultiClassNMS3OpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(overlap_add_grad,
+                           phi::OverlapAddGradOpArgumentMapping);

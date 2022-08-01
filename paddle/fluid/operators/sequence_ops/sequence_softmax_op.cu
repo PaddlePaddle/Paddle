@@ -121,8 +121,8 @@ __global__ void sequence_softmax_grad_kernel(const T *softmax_grad_data,
 }
 
 template <typename T>
-struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &context,
+struct SequenceSoftmaxFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &context,
                   const LoDTensor &x,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *out) {
@@ -146,8 +146,8 @@ struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &context,
+struct SequenceSoftmaxGradFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &context,
                   const LoDTensor &dout,
                   const LoDTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
@@ -177,12 +177,10 @@ struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sequence_softmax,
-    ops::SequenceSoftmaxKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceSoftmaxKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(sequence_softmax,
+                        ops::SequenceSoftmaxKernel<phi::GPUContext, float>,
+                        ops::SequenceSoftmaxKernel<phi::GPUContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     sequence_softmax_grad,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CUDADeviceContext,
-                                   double>);
+    ops::SequenceSoftmaxGradKernel<phi::GPUContext, float>,
+    ops::SequenceSoftmaxGradKernel<phi::GPUContext, double>);

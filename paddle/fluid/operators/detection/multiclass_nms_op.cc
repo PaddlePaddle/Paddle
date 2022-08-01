@@ -13,10 +13,8 @@ limitations under the License. */
 
 #include <glog/logging.h>
 
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/nms_util.h"
-#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -611,6 +609,12 @@ class MultiClassNMS3Op : public MultiClassNMS2Op {
                    const framework::VariableNameMap& outputs,
                    const framework::AttributeMap& attrs)
       : MultiClassNMS2Op(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    MultiClassNMS2Op::InferShape(ctx);
+
+    ctx->SetOutputDim("NmsRoisNum", {-1});
+  }
 };
 
 class MultiClassNMS3OpMaker : public MultiClassNMS2OpMaker {
@@ -628,10 +632,6 @@ class MultiClassNMS3OpMaker : public MultiClassNMS2OpMaker {
 
 }  // namespace operators
 }  // namespace paddle
-
-DECLARE_INFER_SHAPE_FUNCTOR(multiclass_nms3,
-                            MultiClassNMSShapeFunctor,
-                            PD_INFER_META(phi::MultiClassNMSInferMeta));
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
@@ -658,5 +658,7 @@ REGISTER_OPERATOR(
     ops::MultiClassNMS3Op,
     ops::MultiClassNMS3OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    MultiClassNMSShapeFunctor);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OP_CPU_KERNEL(multiclass_nms3,
+                       ops::MultiClassNMSKernel<float>,
+                       ops::MultiClassNMSKernel<double>);
