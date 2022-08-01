@@ -24,7 +24,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid multihead_mamul op to a corresponding tensorrt "
+    VLOG(3) << "convert a fluid multihead_matmul op to a corresponding tensorrt "
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -327,9 +327,34 @@ class MultiheadMatMulOpConverter : public OpConverter {
                 "but it's (%d) now.",
                 input->getDimensions().nbDims));
         // transpose weight_data from m * n to  n * m
-        auto* input_bias_qk =
-            engine_->GetITensor(op_desc.Input("BiasQK").front());
 
+        bool is_BiasQK_directInput=false;
+        if (op_desc.HasAttr("BiasQK_directInput")) {
+          is_BiasQK_directInput=PADDLE_GET_CONST(bool, op_desc.GetAttr("BiasQK_directInput"));
+        }
+        VLOG(3)<<"@@@ is_BiasQK_directInput:"<<is_BiasQK_directInput;
+        nvinfer1::ILayer* biasQK_constLayer = nullptr;
+        if (is_BiasQK_directInput){
+          auto biasqk_name=op_desc.Input("BiasQK").front();
+          //auto biasqk_constlayer_outputname=biasqk_name+".cl";
+          auto* biasqk_v = scope.FindVar(biasqk_name);
+          auto* biasqk_t = biasqk_v->GetMutable<framework::LoDTensor>();
+          nvinfer1::Dims biasqk_dims;
+          biasqk_dims.nbDims=0;
+          for(int i = 0; i<biasqk_t->dims().size();++i){
+            biasqk_dims.d[biasqk_dims.nbDims++]=biasqk_t->dims()[i];
+          }
+          auto biasqk_const_weight =
+            engine_->GetFp32TrtWeight(biasqk_name, *biasqk_t);
+          biasQK_constLayer = TRT_ENGINE_ADD_LAYER(
+            engine_, Constant, biasqk_dims, biasqk_const_weight.get());
+          engine_->SetITensor(biasqk_name,biasQK_constLayer->getOutput(0));
+          op_desc.SetInput("BiasQK",{biasqk_name});
+        }
+
+        nvinfer1::ITensor* input_bias_qk = 
+              engine_->GetITensor(op_desc.Input("BiasQK").front());
+        
         TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                       static_cast<void*>(weight_data),
                                       static_cast<size_t>(weight_t->numel())};

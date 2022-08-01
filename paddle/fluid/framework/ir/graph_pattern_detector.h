@@ -1361,7 +1361,7 @@ struct PriorBox : public PatternBase {
 };
 
 struct SwinAttention1Fuse : public PatternBase{
-  SwinAttention1(PDPattern* pattern, const std::string& name_scope)
+  SwinAttention1Fuse(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "swin_attention1_fuse") {}
   PDNode* operator()(PDNode* atten1_in);
   PATTERN_DECL_NODE(matmul_00_op);

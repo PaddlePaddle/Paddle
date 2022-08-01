@@ -2252,111 +2252,119 @@ std::unordered_set<std::string> conv_act_set({"identity", "relu"});
 
 PDNode *patterns::SwinAttention1Fuse::operator()(PDNode *atten1_in){
   atten1_in->AsInput();
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  // std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
   auto matmul_00_op=pattern->NewNode(matmul_00_op_repr())
-                           ->assert_is_ops(matmul_ops);
-  auto matmul_00_in_y=pattern->NewNode(matmul_00_in_y_repr())->AsInput()
-                             ->assert_is_ops_input(matmul_ops,"Y");
-  auto matmul_00_out=pattern->NewNode(matmul_00_out_reper())
-                            ->assert_is_ops_output(matmul_ops,"Out")
+                           ->assert_is_op("matmul_v2");
+  auto matmul_00_in_y=pattern->NewNode(matmul_00_in_y_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("matmul_v2","Y");
+  auto matmul_00_out=pattern->NewNode(matmul_00_out_repr())
+                            ->assert_is_op_output("matmul_v2","Out")
                             ->assert_is_op_input("elementwise_add","X")
                             ->AsIntermediate();
   
   auto elementwise_10_op=pattern->NewNode(elementwise_10_op_repr())
-                                ->assert_is_ops("elementwise_add");
+                                ->assert_is_op("elementwise_add");
   auto elementwise_10_in_y=pattern->NewNode(elementwise_10_in_y_repr())
                                   ->AsInput()
-                                  ->assert_is_ops_input("elementwise_add","Y");
-  auto elementwise_10_out=pattern->NewNode(elementwise_10_out_reper())
-                            ->assert_is_ops_output("elementwise_add","Out")
+                                  ->assert_is_op_input("elementwise_add","Y");
+  auto elementwise_10_out=pattern->NewNode(elementwise_10_out_repr())
+                            ->assert_is_op_output("elementwise_add","Out")
                             ->assert_is_op_input("reshape2","X")
                             ->AsIntermediate();
 
   auto reshape_20_op=pattern->NewNode(reshape_20_op_repr())
-                            ->assert_is_ops("reshape2");
-  auto reshape_20_out=pattern->NewNode(reshape_20_out_reper())
-                             ->assert_is_ops_output("reshape2","Out")
+                            ->assert_is_op("reshape2");
+  auto reshape_20_out=pattern->NewNode(reshape_20_out_repr())
+                             ->assert_is_op_output("reshape2","Out")
                              ->assert_is_op_input("transpose2","X")
                              ->AsIntermediate();
 
   auto transpose_30_op=pattern->NewNode(transpose_30_op_repr())
-                                ->assert_is_ops("transpose2");
-  auto transpose_30_out=pattern->NewNode(transpose_30_out_reper())
-                            ->assert_is_ops_output("transpose2","Out")
-                            ->assert_is_op_input("slice","X") 
+                                ->assert_is_op("transpose2");
+  auto transpose_30_out=pattern->NewNode(transpose_30_out_repr())
+                            ->assert_is_op_output("transpose2","Out")
+                            ->assert_is_op_input("slice","Input") 
                             ->AsIntermediate();
 
   auto slice_40_op=pattern->NewNode(slice_40_op_repr())
-                                ->assert_is_ops("slice");
-  auto slice_40_out=pattern->NewNode(slice_40_out_reper())
-                            ->assert_is_ops_output("slice","Out")
+                                ->assert_is_op("slice");
+  auto slice_40_out=pattern->NewNode(slice_40_out_repr())
+                            ->assert_is_op_output("slice","Out")
                             ->assert_is_op_input("matmul_v2","Y") 
-                            ->AsIntermediate();
+                            ->AsOutput();
 
   auto slice_41_op=pattern->NewNode(slice_41_op_repr())
-                                ->assert_is_ops("slice");
-  auto slice_41_out=pattern->NewNode(slice_41_out_reper())
-                            ->assert_is_ops_output("slice","Out")
+                                ->assert_is_op("slice");
+  auto slice_41_out=pattern->NewNode(slice_41_out_repr())
+                            ->assert_is_op_output("slice","Out")
                             ->assert_is_op_input("scale","X") 
                             ->AsIntermediate();
 
   auto slice_42_op=pattern->NewNode(slice_42_op_repr())
-                                ->assert_is_ops("slice");
-  auto slice_42_out=pattern->NewNode(slice_42_out_reper())
-                            ->assert_is_ops_output("slice","Out")
-                            ->assert_is_op_input("transpose2","X") 
+                                ->assert_is_op("slice");
+  auto slice_42_out=pattern->NewNode(slice_42_out_repr())
+                            ->assert_is_op_output("slice","Out")
+                            ->assert_is_op_input("transpose2","X")
                             ->AsIntermediate();
 
   auto scale_50_op=pattern->NewNode(scale_50_op_repr())
-                                ->assert_is_ops("scale");
-  auto scale_50_out=pattern->NewNode(scale_50_out_reper())
-                            ->assert_is_ops_output("scale","Out")
-                            ->assert_is_op_input("matmul_v2","X") 
+                                ->assert_is_op("scale");
+  auto scale_50_out=pattern->NewNode(scale_50_out_repr())
+                            ->assert_is_op_output("scale","Out")
+                            ->assert_is_op_input("matmul_v2","X")
                             ->AsIntermediate();
 
   auto transpose_51_op=pattern->NewNode(transpose_51_op_repr())
-                                ->assert_is_ops("transpose2");
-  auto transpose_51_out=pattern->NewNode(transpose_51_out_reper())
-                                ->assert_is_ops_output("transpose2","Out")
-                                ->assert_is_op_input("matmul_v2","Y") 
+                                ->assert_is_op("transpose2");
+  auto transpose_51_out=pattern->NewNode(transpose_51_out_repr())
+                                ->assert_is_op_output("transpose2","Out")
+                                ->assert_is_op_input("matmul_v2","Y")
                                 ->AsIntermediate();
 
   auto matmul_60_op=pattern->NewNode(matmul_60_op_repr())
-                                ->assert_is_ops("matmul_v2");
-  auto matmul_60_out=pattern->NewNode(matmul_60_out_reper())
-                                ->assert_is_ops_output("matmul_v2","Out")
+                                ->assert_is_op("matmul_v2");
+  auto matmul_60_out=pattern->NewNode(matmul_60_out_repr())
+                                ->assert_is_op_output("matmul_v2","Out")
                                 ->assert_is_op_input("elementwise_add","X") 
                                 ->AsIntermediate();
 
   auto elementwise_70_op=pattern->NewNode(elementwise_70_op_repr())
-                                ->assert_is_ops("elementwise_add");
+                                ->assert_is_op("elementwise_add");
   auto elementwise_70_in_y=pattern->NewNode(elementwise_70_in_y_repr())
                                   ->AsInput()
-                                  ->assert_is_ops_input("elementwise_add","Y");
-  auto elementwise_70_out=pattern->NewNode(elementwise_70_out_reper())
-                            ->assert_is_ops_output("elementwise_add","Out")
+                                  ->assert_is_op_input("elementwise_add","Y");
+  auto elementwise_70_out=pattern->NewNode(elementwise_70_out_repr())
+                            ->assert_is_op_output("elementwise_add","Out")
                             ->assert_is_op_input("softmax","X")
-                            ->AsIntermediate();
+                            ->AsOutput();
+
+  auto softmax_80_op=pattern->NewNode(softmax_80_op_repr())
+                            ->assert_is_op("softmax");
+  auto softmax_80_out=pattern->NewNode(softmax_80_out_repr())
+                             ->assert_is_op_output("softmax","Out")
+                             ->assert_is_op_input("matmul_v2","X")
+                             ->AsOutput();
 
   auto matmul_90_op=pattern->NewNode(matmul_90_op_repr())
-                                ->assert_is_ops("matmul_v2");
-  auto matmul_90_out=pattern->NewNode(matmul_90_out_reper())
-                                ->assert_is_ops_output("matmul_v2","Out")
+                                ->assert_is_op("matmul_v2");
+  auto matmul_90_out=pattern->NewNode(matmul_90_out_repr())
+                                ->assert_is_op_output("matmul_v2","Out")
                                 ->assert_is_op_input("transpose2","X") 
                                 ->AsIntermediate();
 
   auto transpose_a0_op=pattern->NewNode(transpose_a0_op_repr())
-                              ->assert_is_ops("transpose2");
-  auto transpose_a0_out=pattern->NewNode(transpose_a0_out_reper())
-                              ->assert_is_ops_output("transpose2","Out")
+                              ->assert_is_op("transpose2");
+  auto transpose_a0_out=pattern->NewNode(transpose_a0_out_repr())
+                              ->assert_is_op_output("transpose2","Out")
                               ->assert_is_op_input("reshape2","X") 
                               ->AsIntermediate();
 
   auto reshape_b0_op=pattern->NewNode(reshape_b0_op_repr())
-                            ->assert_is_ops("reshape2");
-  auto reshape_b0_out=pattern->NewNode(reshape_b0_out_reper())
-                             ->assert_is_ops_output("reshape2","Out")
-                             ->assert_is_op_input(matmul_ops,"X")
+                            ->assert_is_op("reshape2");
+  auto reshape_b0_out=pattern->NewNode(reshape_b0_out_repr())
+                             ->assert_is_op_output("reshape2","Out")
+                             ->assert_is_op_input("matmul_v2","X")
                              ->AsOutput();
 
   matmul_00_op->LinksFrom({atten1_in,matmul_00_in_y});
@@ -2389,13 +2397,13 @@ PDNode *patterns::SwinAttention1Fuse::operator()(PDNode *atten1_in){
   matmul_60_op->LinksFrom({scale_50_out,transpose_51_out});
   matmul_60_out->LinksFrom({matmul_60_op});
 
-  elementwise_70_op->LinksFrom({matmul_60_op,elementwise_70_in_y});
+  elementwise_70_op->LinksFrom({matmul_60_out,elementwise_70_in_y});
   elementwise_70_out->LinksFrom({elementwise_70_op});
 
   softmax_80_op->LinksFrom({elementwise_70_out});
   softmax_80_out->LinksFrom({softmax_80_op});
 
-  matmul_90_op->LinksFrom({slice_40_out,softmax_80_out});
+  matmul_90_op->LinksFrom({softmax_80_out,slice_40_out});
   matmul_90_out->LinksFrom({matmul_90_op});
 
   transpose_a0_op->LinksFrom({matmul_90_out});
@@ -2404,6 +2412,9 @@ PDNode *patterns::SwinAttention1Fuse::operator()(PDNode *atten1_in){
   reshape_b0_op->LinksFrom({transpose_a0_out});
   reshape_b0_out->LinksFrom({reshape_b0_op});
   return reshape_b0_out;
+
+  // for debug
+  //return matmul_60_out;
 }
 
 PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {

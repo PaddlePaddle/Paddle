@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework{
@@ -27,7 +30,7 @@ class SwinAttention1FusePass : public FusePassBase {
         virtual ~SwinAttention1FusePass(){}
     protected:
         void ApplyImpl(ir::Graph* graph) const override;
-}
+};
 
 } // namespace ir
 } // namespace framework

@@ -426,7 +426,7 @@ PADDLE_DEFINE_EXPORTED_double(
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
+static constexpr char kDefaultAllocatorStrategy[] = "naive_best_fit";
 PADDLE_DEFINE_EXPORTED_string(
     allocator_strategy,
     kDefaultAllocatorStrategy,
