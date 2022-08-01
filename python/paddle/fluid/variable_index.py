@@ -494,11 +494,20 @@ def _getitem_impl_(var, item):
         if paddle.fluid.framework.in_dygraph_mode():
             if op_type == "strided_slice":
                 out = paddle._C_ops.final_state_strided_slice(
-                    var, axes, starts, ends, steps)
+                    var, axes, attrs['starts'], attrs['ends'], attrs['strides'])
 
             if op_type == "slice":
-                out = paddle._C_ops.final_state_slice(var, axes, starts, ends,
-                                                      infer_flags, [])
+                if "StartsTensorList" in inputs.keys():
+                    st = inputs['StartsTensorList']
+                else:
+                    st = attrs['starts']
+                if "EndsTensorList" in inputs.keys():
+                    end = inputs['EndsTensorList']
+                else:
+                    end = attrs['ends']
+                out = paddle._C_ops.final_state_slice(var, axes, st, end,
+                                                      attrs['infer_flags'],
+                                                      attrs['decrease_axis'])
         else:
             target_block = default_main_program().current_block()
 
