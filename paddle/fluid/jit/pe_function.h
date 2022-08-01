@@ -53,7 +53,7 @@ class PEFunction : public BaseFunction {
             "There is no operator in ProgramDesc."));
     utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, &scope_);
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
-    CreateParallelExecutor();
+    CreateGraphAndPE();
   }
 
   ~PEFunction() noexcept {}
@@ -90,7 +90,7 @@ class PEFunction : public BaseFunction {
     return execution_strategy;
   }
 
-  void CreateParallelExecutor() {
+  void CreateGraphAndPE() {
     framework::details::BuildStrategy build_strategy;
     auto execution_strategy = GetExecutionStrategy(place_);
 
@@ -106,11 +106,10 @@ class PEFunction : public BaseFunction {
 
     graph_ =
         std::make_shared<Graph>(program_desc, start_op_index, end_op_index);
-
     inner_pe_ = std::make_shared<ParallelExecutor>(
         place_, &scope_, execution_strategy, build_strategy, graph_.get());
-
     inner_pe_->PrepareVariables(&scope_);
+    inner_pe_->SkipMemoryReuse(/*scope_idx=*/0, info_->InputArgNames());
   }
 
   std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) {
@@ -120,7 +119,6 @@ class PEFunction : public BaseFunction {
 
   std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs) {
     utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
-    inner_pe_->SkipMemoryReuse(/*scope_idx=*/0, info_->InputArgNames());
 
     // update op_handle scope_map in pe->executor_->Graph
     std::unordered_map<framework::Scope *, framework::Scope *> scope_map = {
