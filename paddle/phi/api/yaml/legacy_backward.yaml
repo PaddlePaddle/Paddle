@@ -92,6 +92,26 @@
   kernel :
     func : addmm_grad
 
+- backward_api : amax_grad
+  forward: amax (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : amax_grad
+
+- backward_api : amin_grad
+  forward: amin (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : amin_grad
+
 - backward_api : angle_grad
   forward : angle (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -894,10 +914,10 @@
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
   args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
   output : Tensor(x_grad), Tensor(grid_grad)
-  infer_meta : 
+  infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, grid]
-  kernel : 
+  kernel :
     func : grid_sample_grad
     data_type : x
 
@@ -1254,6 +1274,15 @@
   kernel :
     func : lu_grad
 
+- backward_api : lu_unpack_grad
+  forward : lu_unpack (Tensor x, Tensor pivots, bool unpack_ludata, bool unpack_pivots) -> Tensor(pmat), Tensor(l), Tensor(u)
+  args : (Tensor x, Tensor pivots, Tensor l, Tensor u, Tensor pmat, Tensor l_grad, Tensor u_grad, bool unpack_ludata, bool unpack_pivots)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : LUUnpackGradInferMeta
+  kernel :
+    func : lu_unpack_grad
+
 - backward_api : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
   args : (Tensor x, Tensor mask, Tensor out_grad)
@@ -1522,6 +1551,16 @@
     param : [x]
   kernel :
     func : norm_grad
+
+- backward_api : overlap_add_grad
+  forward : overlap_add(Tensor x, int hop_length, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int hop_length, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : OverlapAddGradInferMeta
+  kernel :
+    func : overlap_add_grad
+    data_type : x
 
 - backward_api : p_norm_grad
   forward : p_norm(Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false) -> Tensor(out)
@@ -2046,6 +2085,18 @@
     func : softmax_grad
     use_gpudnn : true
 
+# softplus
+- backward_api : softplus_grad
+  forward : softplus (Tensor x, float beta, float threshold) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float beta, float threshold)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softplus_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_api : softsign_grad
   forward : softsign (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -2447,6 +2498,16 @@
     param: [xshape, out_grad]
   inplace : (out_grad -> x_grad)
   backward : unsqueeze_double_grad
+
+- backward_api : unstack_grad
+  forward : unstack (Tensor x, int axis, int num) -> Tensor[](out)
+  args : (Tensor[] out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnStackGradInferMeta
+    param : [out_grad, axis]
+  kernel :
+    func : unstack_grad
 
 - backward_api : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times) -> Tensor(loss), Tensor(warpctcgrad)

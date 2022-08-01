@@ -35,7 +35,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -50,6 +49,10 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/pybind/cuda_streams_py.h"
+#endif
 
 namespace paddle {
 namespace pybind {
@@ -673,8 +676,7 @@ static PyObject* eager_api_async_read(PyObject* self,
                     platform::errors::InvalidArgument(
                         "`index` tensor should be one-dimensional."));
 
-  auto stream =
-      paddle::platform::stream::get_current_stream(deviceId)->raw_stream();
+  auto stream = paddle::platform::get_current_stream(deviceId)->raw_stream();
 
   int64_t numel = 0;  // total copy length
   int64_t copy_flag = offset_tensor.dims()[0];
@@ -828,8 +830,7 @@ static PyObject* eager_api_async_write(PyObject* self,
                           "except for the first dimension."));
   }
 
-  auto stream =
-      paddle::platform::stream::get_current_stream(deviceId)->raw_stream();
+  auto stream = paddle::platform::get_current_stream(deviceId)->raw_stream();
 
   int64_t size = src_tensor.numel() / src_tensor.dims()[0];
   auto* src_data = src_tensor.data<float>();

@@ -22,6 +22,8 @@ namespace operators {
 
 template <typename T>
 class LarsMomentumOpXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     bool multi_precision = ctx.Attr<bool>("multi_precision");
@@ -35,14 +37,14 @@ class LarsMomentumOpXPUKernel : public framework::OpKernel<T> {
     auto master_param = ctx.MultiInput<framework::LoDTensor>("MasterParam");
     auto master_param_out =
         ctx.MultiOutput<framework::LoDTensor>("MasterParamOut");
-    T mu = static_cast<T>(ctx.Attr<float>("mu"));
-    T lars_coeff = ctx.Attr<float>("lars_coeff");
-    T epsilon = ctx.Attr<float>("epsilon");
-    T rescale_grad = ctx.Attr<float>("rescale_grad");
+    float mu = static_cast<T>(ctx.Attr<float>("mu"));
+    float lars_coeff = ctx.Attr<float>("lars_coeff");
+    float epsilon = ctx.Attr<float>("epsilon");
+    float rescale_grad = ctx.Attr<float>("rescale_grad");
 
-    std::vector<T*> param_list;
-    std::vector<T*> grad_list;
-    std::vector<T*> param_out_list;
+    std::vector<XPUType*> param_list;
+    std::vector<XPUType*> grad_list;
+    std::vector<XPUType*> param_out_list;
     std::vector<float*> velocity_list;
     std::vector<float*> velocity_out_list;
     std::vector<float*> lrs;
@@ -52,9 +54,12 @@ class LarsMomentumOpXPUKernel : public framework::OpKernel<T> {
     std::vector<float*> master_param_out_list;
     int op_num = param.size();
     for (int i = 0; i < op_num; ++i) {
-      param_list.push_back(const_cast<T*>(param[i]->data<T>()));
-      grad_list.push_back(const_cast<T*>(grad[i]->data<T>()));
-      param_out_list.push_back(param_out[i]->mutable_data<T>(ctx.GetPlace()));
+      param_list.push_back(
+          reinterpret_cast<XPUType*>(const_cast<T*>((param[i]->data<T>()))));
+      grad_list.push_back(
+          reinterpret_cast<XPUType*>(const_cast<T*>(grad[i]->data<T>())));
+      param_out_list.push_back(reinterpret_cast<XPUType*>(
+          param_out[i]->mutable_data<T>(ctx.GetPlace())));
       velocity_list.push_back(const_cast<float*>(velocity[i]->data<float>()));
       velocity_out_list.push_back(
           velocity_out[i]->mutable_data<float>(ctx.GetPlace()));
@@ -111,5 +116,7 @@ class LarsMomentumOpXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(lars_momentum, ops::LarsMomentumOpXPUKernel<float>);
+REGISTER_OP_XPU_KERNEL(lars_momentum,
+                       ops::LarsMomentumOpXPUKernel<paddle::platform::float16>,
+                       ops::LarsMomentumOpXPUKernel<float>);
 #endif
