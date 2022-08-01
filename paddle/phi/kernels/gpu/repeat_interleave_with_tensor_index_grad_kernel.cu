@@ -14,14 +14,14 @@
 
 #include "paddle/phi/kernels/repeat_interleave_with_tensor_index_grad_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/repeat_interleave_with_tensor_index_grad_impl.h"
+#include "paddle/phi/kernels/impl/repeat_interleave_with_tensor_index_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::RepeatInterleaveWithTensorGradKernel,
+                   phi::RepeatInterleaveWithTensorIndexGradKernel,
                    float,
                    double,
                    int,

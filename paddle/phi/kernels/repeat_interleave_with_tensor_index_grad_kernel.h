@@ -24,5 +24,5 @@ void RepeatInterleaveWithTensorIndexGradKernel(
     const DenseTensor& repeats_tensor,
     const DenseTensor& out_grad,
     int dim,
-    DenseTensor* out_grad);
+    DenseTensor* x_grad);
 }

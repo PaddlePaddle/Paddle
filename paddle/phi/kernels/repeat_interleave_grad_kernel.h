@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/repeat_interleave_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/repeat_interleave_kernel_impl.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-PD_REGISTER_KERNEL(repeat_interleave,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::RepeatInterleaveKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+namespace phi {
+
+template <typename T, typename Context>
+void RepeatInterleaveGradKernel(const Context& dev_ctx,
+                                const DenseTensor& out_grad,
+                                int repeats,
+                                int dim,
+                                DenseTensor* x_grad);
+
+}

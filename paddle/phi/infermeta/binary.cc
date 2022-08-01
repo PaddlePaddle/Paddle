@@ -1809,13 +1809,16 @@ void PReluInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x, const MetaTensor& repeats, int dim, MetaTensor* out)){
-  const auto& input_dims = x.dims();
+void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
+                                              const MetaTensor& repeats,
+                                              int dim,
+                                              MetaTensor* out) {
+  const auto& input_dim = x.dims();
   auto output_dim = phi::vectorize(input_dim);
   PADDLE_ENFORCE_EQ(
       dim < input_dim.size() && dim >= (0 - input_dim.size()),
       true,
-      platform::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "Attr(dim) is out of range, It's expected "
           "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
           input_dim.size(),
@@ -1828,7 +1831,7 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x, const MetaTen
       repeats_dim.size() == 1 ||
           (repeats_dim.size() == 2 && repeats_dim[1] == 1),
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The 'shape' of Input(RepeatsTensor) must be 1-D tensor. "
           "But received: the 'shape' of Input(Index) is [%s], "
           "the dimension of Input(Index) is [%d].",
@@ -1837,7 +1840,7 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x, const MetaTen
 
   PADDLE_ENFORCE_EQ(repeats_dim[0] != 0,
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The length of Input(RepeatsTensor) can't be 0."));
   if (dim < 0) {
     dim += input_dim.size();

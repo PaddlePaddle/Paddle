@@ -16,13 +16,15 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
-#include "paddle/phi/kernels/funcs/repeat_interleave.h"
+#include "paddle/phi/kernels/repeat_interleave_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
 namespace phi {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename IndexT>
 __global__ void index_select_cuda_kernel(const T* input,
                                          T* output,
@@ -45,7 +47,7 @@ __global__ void index_select_cuda_kernel(const T* input,
 #endif
 
 template <typename T, typename Context>
-void RepeatInterleaveKernel(const Context& dev_ctx,
+void RepeatInterleaveKernel(const Context& ctx,
                             const DenseTensor& x,
                             int repeats,
                             int dim,
@@ -53,35 +55,36 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
   auto place = ctx.GetPlace();
   auto cpu_place = phi::CPUPlace();
 
-  auto input_dims = x.dims();
+  auto input_dim = x.dims();
   if (dim < 0) {
-    dim += input_dims.size();
+    dim += input_dim.size();
   }
 
   DenseTensor index;
-  int64_t index_size = input_dims[dim] * repeats;
+  DenseTensor x_copy = x;
+  int64_t index_size = input_dim[dim] * repeats;
   std::vector<int> index_vec(index_size);
-  for (int i = 0; i < input_dims[dim]; i++) {
+  for (int i = 0; i < input_dim[dim]; i++) {
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(phi::make_ddim({index_size}));
   if (place == cpu_place) {
     paddle::framework::TensorFromVector<int>(index_vec, &index);
 
-    auto output_dim = phi::vectorize(inputs.dims());
+    auto output_dim = phi::vectorize(x.dims());
     output_dim[dim] = index_size;
     out->Resize(phi::make_ddim(output_dim));
-    IndexSelectInner<Context, T, int>(dev_ctx, &inputs, index, out, dim);
+    phi::IndexSelectInner<Context, T, int>(ctx, &x_copy, index, out, dim);
   }
 #if defined(__NVCC__) || defined(__HIPCC__)
   else {
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];
-    auto ctx =
-        paddle::platform::DeviceContextPool::Instance().Get(context.GetPlace());
-    paddle::framework::TensorFromVector<int>(index_vec, *ctx, &index);
+    // auto ctx =
+    //     paddle::platform::DeviceContextPool::Instance().Get(context.GetPlace());
+    paddle::framework::TensorFromVector<int>(index_vec, ctx, &index);
     auto stream = ctx.stream();
-    auto output_dim = phi::vectorize(in->dims());
+    auto output_dim = phi::vectorize(x.dims());
     output_dim[dim] = index_size;
     out->Resize(phi::make_ddim(output_dim));
     ctx.template Alloc<T>(out);
@@ -96,8 +99,9 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
         <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
            PADDLE_CUDA_NUM_THREADS,
            0,
-           stream>>>(in_data, out_data, index_data, numel, stride, size, delta);
-    platform::GpuStreamSync(stream);
+           stream>>>(
+            x.data<T>(), out_data, index_data, numel, stride, size, delta);
+    // platform::GpuStreamSync(stream);
   }
 #endif
 }

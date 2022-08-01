@@ -16,18 +16,53 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
-#include "paddle/phi/kernels/repeat_interleave_with_tensor_index_grad.h"
+#include "paddle/phi/kernels/repeat_interleave_with_tensor_index_grad_kernel.h"
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
+#ifdef __NVCC__
+#include "cub/cub.cuh"
+#else
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #endif
 
 namespace phi {
+template <typename RepeatsT = int>
+void RepeatsTensor2IndexTensor(const DenseTensor& repeats, DenseTensor* index) {
+  DenseTensor repeats_cpu_copy;
+  if (!paddle::platform::is_cpu_place(repeats.place())) {
+    paddle::framework::TensorCopySync(
+        repeats, paddle::platform::CPUPlace(), &repeats_cpu_copy);
+  }
+  const RepeatsT* repeats_data = paddle::platform::is_cpu_place(repeats.place())
+                                     ? repeats.data<RepeatsT>()
+                                     : repeats_cpu_copy.data<RepeatsT>();
 
+  int64_t index_size = 0;
+  for (int i = 0; i < repeats.dims()[0]; i++) {
+    index_size += repeats_data[i];
+  }
+  std::vector<RepeatsT> index_vec(index_size);
+  int offset = 0;
+  for (int i = 0; i < repeats.dims()[0]; i++) {
+    std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
+    offset += repeats_data[i];
+  }
+  index->Resize(phi::make_ddim({index_size}));
+
+  // auto ctx =
+  //     paddle::platform::DeviceContextPool::Instance().Get(repeats.place());
+  paddle::framework::TensorFromVector<RepeatsT>(index_vec, index);
+}
 #if defined(__NVCC__) || defined(__HIPCC__)
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+
 template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               T* input_grad,
@@ -60,53 +95,53 @@ __global__ void index_select_grad_init(T* input_grad, int64_t N) {
 #endif
 template <typename T, typename Context>
 void RepeatInterleaveWithTensorIndexGradKernel(
-    const Context& dev_ctx,
+    const Context& ctx,
     const DenseTensor& repeats_tensor,
     const DenseTensor& out_grad,
     int dim,
-    DenseTensor* out_grad) {
+    DenseTensor* x_grad) {
   auto place = ctx.GetPlace();
   auto cpu_place = phi::CPUPlace();
 
-  auto input_dims = x_grad.dims();
+  auto input_dim = x_grad->dims();
   if (dim < 0) {
-    dim += input_dims.size();
+    dim += input_dim.size();
   }
 
   DenseTensor index;
-  PADDLE_ENFORCE_EQ(repeats_tensor.dims()[0] == x.dims()[dim],
+  PADDLE_ENFORCE_EQ(repeats_tensor.dims()[0] == x_grad->dims()[dim],
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The length of Input(RepeatsTensor) must be the "
                         "same as length of Input(X) in axis. "
                         "But received: [%s], required: [%d].",
                         repeats_tensor.dims()[0],
-                        x.dims()[dim]));
+                        x_grad->dims()[dim]));
 
   const auto& index_type =
-      framework::TransToProtoVarType(repeats_tensor->dtype());
+      paddle::framework::TransToProtoVarType(repeats_tensor.dtype());
 
-  bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                          index_type == framework::proto::VarType::INT64;
-  PADDLE_ENFORCE_EQ(
-      index_type_match,
-      true,
-      platform::errors::InvalidArgument(
-          "Input(Repeats) holds the wrong type, it holds %s, but "
-          "desires to be %s or %s",
-          paddle::framework::DataTypeToString(index_type),
-          paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
-          paddle::framework::DataTypeToString(
-              framework::proto::VarType::INT64)));
+  bool index_type_match =
+      index_type == paddle::framework::proto::VarType::INT32 ||
+      index_type == paddle::framework::proto::VarType::INT64;
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Input(Repeats) holds the wrong type, it holds %s, but "
+                        "desires to be %s or %s",
+                        paddle::framework::DataTypeToString(index_type),
+                        paddle::framework::DataTypeToString(
+                            paddle::framework::proto::VarType::INT32),
+                        paddle::framework::DataTypeToString(
+                            paddle::framework::proto::VarType::INT64)));
   if (place == cpu_place) {
-    if (index_type == framework::proto::VarType::INT32) {
-      RepeatsTensor2IndexTensor<int>(*repeats_tensor, &index);
-      IndexSelectGradInner<Context, T, int>(
-          context, *out_grad, index, x_grad, dim);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      RepeatsTensor2IndexTensor<int64_t>(*repeats_tensor, &index);
+    if (index_type == paddle::framework::proto::VarType::INT32) {
+      RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
+      IndexSelectGradInner<Context, T, int>(ctx, out_grad, index, x_grad, dim);
+    } else if (index_type == paddle::framework::proto::VarType::INT64) {
+      RepeatsTensor2IndexTensor<int64_t>(repeats_tensor, &index);
       IndexSelectGradInner<Context, T, int64_t>(
-          context, *out_grad, index, x_grad, dim);
+          ctx, out_grad, index, x_grad, dim);
     }
   }
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -116,9 +151,9 @@ void RepeatInterleaveWithTensorIndexGradKernel(
     int64_t stride = stride_dim[dim];
     int64_t size = output_dim[dim];
     int64_t delta = input_dim[dim] - size;
-    int64_t numel = x_grad.numel();
-    int64_t out_nums = out_grad->numel();
-    auto* out_grad_data = out_grad->data<T>();
+    int64_t numel = x_grad->numel();
+    int64_t out_nums = out_grad.numel();
+    auto* out_grad_data = out_grad.data<T>();
     ctx.template Alloc<T>(x_grad);
     auto* in_grad_data = x_grad->data<T>();
     auto stream = ctx.stream();
@@ -128,68 +163,58 @@ void RepeatInterleaveWithTensorIndexGradKernel(
            0,
            stream>>>(in_grad_data, numel);
 
-    int repeats = context.Attr<int>("Repeats");
-    framework::LoDTensor index;
-    if (context.HasInput("RepeatsTensor")) {
-      auto repeats_tensor =
-          context.Input<framework::LoDTensor>("RepeatsTensor");
+    const auto& index_type =
+        paddle::framework::TransToProtoVarType(repeats_tensor.dtype());
+    bool index_type_match =
+        index_type == paddle::framework::proto::VarType::INT64 ||
+        index_type == paddle::framework::proto::VarType::INT32;
+    PADDLE_ENFORCE_EQ(index_type_match,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Input(Index) holds the wrong type, it holds %s, but "
+                          "desires to be %s or %s",
+                          paddle::framework::DataTypeToString(index_type),
+                          paddle::framework::DataTypeToString(
+                              paddle::framework::proto::VarType::INT32),
+                          paddle::framework::DataTypeToString(
+                              paddle::framework::proto::VarType::INT64)));
 
-      const auto& index_type =
-          framework::TransToProtoVarType(repeats_tensor->dtype());
-      bool index_type_match = index_type == framework::proto::VarType::INT64 ||
-                              index_type == framework::proto::VarType::INT32;
-      PADDLE_ENFORCE_EQ(
-          index_type_match,
-          true,
-          platform::errors::InvalidArgument(
-              "Input(Index) holds the wrong type, it holds %s, but "
-              "desires to be %s or %s",
-              paddle::framework::DataTypeToString(index_type),
-              paddle::framework::DataTypeToString(
-                  framework::proto::VarType::INT32),
-              paddle::framework::DataTypeToString(
-                  framework::proto::VarType::INT64)));
+    if (index_type == paddle::framework::proto::VarType::INT64) {
+      RepeatsTensor2IndexTensor<int64_t>(repeats_tensor, &index);
+      int64_t index_nums = index.numel();
 
-      if (index_type == framework::proto::VarType::INT64) {
-        RepeatsTensor2IndexTensor<DeviceContext, int64_t>(*repeats_tensor,
-                                                          &index);
-        int64_t index_nums = index.numel();
+      const int64_t* index_data = index.data<int64_t>();
+      index_select_grad_cuda_kernel<T, int64_t>
+          <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+             PADDLE_CUDA_NUM_THREADS,
+             0,
+             stream>>>(out_grad_data,
+                       in_grad_data,
+                       index_data,
+                       index_nums,
+                       out_nums,
+                       stride,
+                       size,
+                       delta);
+    } else {
+      RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
+      int64_t index_nums = index.numel();
 
-        const int64_t* index_data = index.data<int64_t>();
-        index_select_grad_cuda_kernel<T, int64_t>
-            <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) /
-                   PADDLE_CUDA_NUM_THREADS,
-               PADDLE_CUDA_NUM_THREADS,
-               0,
-               stream>>>(output_grad_data,
-                         in_grad_data,
-                         index_data,
-                         index_nums,
-                         out_nums,
-                         stride,
-                         size,
-                         delta);
-        platform::GpuStreamSync(stream);
-      } else {
-        RepeatsTensor2IndexTensor<DeviceContext, int>(*repeats_tensor, &index);
-        int64_t index_nums = index.numel();
-
-        const int* index_data = index.data<int>();
-        index_select_grad_cuda_kernel<T, int>
-            <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) /
-                   PADDLE_CUDA_NUM_THREADS,
-               PADDLE_CUDA_NUM_THREADS,
-               0,
-               stream>>>(output_grad_data,
-                         in_grad_data,
-                         index_data,
-                         index_nums,
-                         out_nums,
-                         stride,
-                         size,
-                         delta);
-        platform::GpuStreamSync(stream);
-      }
+      const int* index_data = index.data<int>();
+      index_select_grad_cuda_kernel<T, int>
+          <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+             PADDLE_CUDA_NUM_THREADS,
+             0,
+             stream>>>(out_grad_data,
+                       in_grad_data,
+                       index_data,
+                       index_nums,
+                       out_nums,
+                       stride,
+                       size,
+                       delta);
     }
-#endif
   }
+
+#endif
+}

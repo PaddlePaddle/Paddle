@@ -16,14 +16,22 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
-#include "paddle/phi/kernels/funcs/repeat_interleave.h"
+#include "paddle/phi/kernels/repeat_interleave_grad_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
+#ifdef __NVCC__
+#include "cub/cub.cuh"
+#else
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #endif
 
 namespace phi {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               T* input_grad,
@@ -55,7 +63,7 @@ __global__ void index_select_grad_init(T* input_grad, int64_t N) {
 }
 #endif
 template <typename T, typename Context>
-void RepeatInterleaveGradKernel(const Context& dev_ctx,
+void RepeatInterleaveGradKernel(const Context& ctx,
                                 const DenseTensor& out_grad,
                                 int repeats,
                                 int dim,
@@ -63,9 +71,9 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
   auto place = ctx.GetPlace();
   auto cpu_place = phi::CPUPlace();
 
-  auto input_dims = x_grad.dims();
+  auto input_dim = x_grad->dims();
   if (dim < 0) {
-    dim += input_dims.size();
+    dim += input_dim.size();
   }
 
   DenseTensor index;
@@ -77,13 +85,7 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
     }
     index.Resize(phi::make_ddim({index_size}));
     paddle::framework::TensorFromVector<int>(index_vec, &index);
-    IndexSelectGradInner(const Context& ctx,
-                         const DenseTensor& out_grad,
-                         const DenseTensor& index,
-                         DenseTensor* x_grad,
-                         int dim)
-        IndexSelectGradInner<Context, T, int>(
-            ctx, *out_grad, index, x_grad, dim);
+    IndexSelectGradInner<Context, T, int>(ctx, out_grad, index, x_grad, dim);
   }
 #if defined(__NVCC__) || defined(__HIPCC__)
   else {
@@ -93,8 +95,8 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
     int64_t size = output_dim[dim];
     int64_t delta = input_dim[dim] - size;
     int64_t numel = x_grad->numel();
-    int64_t out_nums = out_grad->numel();
-    auto* out_grad_data = out_grad->data<T>();
+    int64_t out_nums = out_grad.numel();
+    auto* out_grad_data = out_grad.data<T>();
     ctx.template Alloc<T>(x_grad);
     auto* in_grad_data = x_grad->data<T>();
     auto stream = ctx.stream();
@@ -109,9 +111,9 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
       std::fill_n(index_vec.begin() + i * repeats, repeats, i);
     }
     index.Resize(phi::make_ddim({index_size}));
-    auto ctx =
-        paddle::platform::DeviceContextPool::Instance().Get(context.GetPlace());
-    paddle::framework::TensorFromVector<int>(index_vec, *ctx, &index);
+    // auto ctx =
+    //     paddle::platform::DeviceContextPool::Instance().Get(context.GetPlace());
+    paddle::framework::TensorFromVector<int>(index_vec, ctx, &index);
 
     const int* index_data = index.data<int>();
     int64_t index_nums = index.numel();
@@ -119,7 +121,7 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
         <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
            PADDLE_CUDA_NUM_THREADS,
            0,
-           stream>>>(output_grad_data,
+           stream>>>(out_grad_data,
                      in_grad_data,
                      index_data,
                      index_nums,
@@ -127,7 +129,8 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
                      stride,
                      size,
                      delta);
-    platform::GpuStreamSync(stream);
+    // platform::GpuStreamSync(stream);
   }
 #endif
 }
+}  // namespace phi

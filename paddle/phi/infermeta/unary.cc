@@ -2144,12 +2144,12 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,
                                int dim,
                                MetaTensor* out) {
-  const auto& input_dims = x.dims();
+  const auto& input_dim = x.dims();
   auto output_dim = phi::vectorize(input_dim);
   PADDLE_ENFORCE_EQ(
       dim < input_dim.size() && dim >= (0 - input_dim.size()),
       true,
-      platform::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "Attr(dim) is out of range, It's expected "
           "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
           input_dim.size(),
@@ -2158,7 +2158,7 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       repeats > 0,
       true,
-      platform::errors::InvalidArgument("repeats should be larger than zero"));
+      phi::errors::InvalidArgument("repeats should be larger than zero"));
   output_dim[dim] = input_dim[dim] * repeats;
   out->set_dims(phi::make_ddim(output_dim));
   out->share_lod(x);
