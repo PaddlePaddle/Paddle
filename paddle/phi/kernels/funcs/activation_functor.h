@@ -2134,10 +2134,6 @@ struct CudaExpFunctor<double> : public BaseActivationFunctor<double> {
 
 template <typename T>
 struct CudaSeluFunctor : public BaseActivationFunctor<T> {
-  float scale;
-  float alpha;
-  T zero = static_cast<T>(0.0f);
-
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"scale", &scale}, {"alpha", &alpha}};
   }
@@ -2150,14 +2146,15 @@ struct CudaSeluFunctor : public BaseActivationFunctor<T> {
     res *= scale;
     return res;
   }
+
+ private:
+  float scale;
+  float alpha;
+  T zero = static_cast<T>(0.0f);
 };
 
 template <>
 struct CudaSeluFunctor<double> : public BaseActivationFunctor<double> {
-  float scale;
-  float alpha;
-  double zero = static_cast<double>(0.0f);
-
   typename BaseActivationFunctor<double>::AttrPair GetAttrs() {
     return {{"scale", &scale}, {"alpha", &alpha}};
   }
@@ -2172,6 +2169,11 @@ struct CudaSeluFunctor<double> : public BaseActivationFunctor<double> {
     res *= scale_cast;
     return res;
   }
+
+ private:
+  float scale;
+  float alpha;
+  double zero = static_cast<double>(0.0f);
 };
 
 template <typename T>
