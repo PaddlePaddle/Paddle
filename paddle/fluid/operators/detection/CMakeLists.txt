@@ -126,6 +126,6 @@ cc_test(
 cc_library(
   gpc
   SRCS gpc.cc
-  DEPS op_registry)
+  DEPS enforce op_registry)
 detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS
                   mask_util)
