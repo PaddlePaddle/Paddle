@@ -267,7 +267,7 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
                               "ONNXPredictor.",
                               name));
   std::unique_ptr<ZeroCopyTensor> res(
-      new ZeroCopyTensor(static_cast<void *>(scope_.get()), this));
+      new ZeroCopyTensor(static_cast<void *>(scope_.get())));
   res->input_or_output_ = true;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
