@@ -89,7 +89,6 @@ void AffineGridCUDAKernel(const Context& dev_ctx,
                           const IntArray& outputShape,
                           bool align_corners,
                           DenseTensor* output) {
-  // auto* theta = ctx.Input<Tensor>("Theta");
   auto* theta = &input;
   int n = theta->dims()[0];
   auto& size_attr = outputShape.GetData();

@@ -55,7 +55,6 @@ void AffineGridKernel(const Context& dev_ctx,
   w = size_attr[3];
   output->Resize(phi::make_ddim({n, h, w, 2}));
   dev_ctx.template Alloc<T>(output);
-  // output->mutable_data<T>({n, h, w, 2}, ctx.GetPlace());
   phi::funcs::SetConstant<Context, T>()(dev_ctx, output, static_cast<T>(0));
   DenseTensor grid;
   GetIdxMap<Context, T>(n, h, w, align_corners, &grid, dev_ctx);
