@@ -108,10 +108,10 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
 
     const auto& place = ctx.GetPlace();
     const auto& comm = platform::NCCLCommContext::Instance().Get(rid, place);
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     // use global calculate stream
-    const auto stream = static_cast<platform::CUDADeviceContext*>(
+    const auto stream = static_cast<phi::GPUContext*>(
                             platform::DeviceContextPool::Instance().Get(place))
                             ->stream();
 
@@ -136,8 +136,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
 
     // step 1, obtain logit_max
     Tensor logits_max;
-    logits_max =
-        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
+    logits_max = ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     void* logits_max_buff = logits_max.mutable_data<T>(place);
 
     auto eigen_logits_max = math::EigenMatrix<T>::From(logits_max);
@@ -166,7 +165,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     // step 3, obtain predict target
     Tensor predicted_logits;
     predicted_logits =
-        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
+        ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     predicted_logits.mutable_data<T>(place);
 
     auto t = framework::EigenVector<T>::Flatten(predicted_logits);
@@ -217,8 +216,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
 
     // step 5, obtain sum_exp_logits
     Tensor sum_exp_logits;
-    sum_exp_logits =
-        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
+    sum_exp_logits = ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     void* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
 
     auto eigen_sum_exp_logits = math::EigenMatrix<T>::From(sum_exp_logits);
@@ -262,7 +260,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     const int rank = ctx.Attr<int>("rank");
 
     const auto& place = ctx.GetPlace();
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     distributed::ProcessGroup* pg = map->get(rid);
@@ -290,8 +288,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     // step 1, obtain logit_max
     Tensor logits_max;
-    logits_max =
-        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
+    logits_max = ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
 
     auto eigen_logits_max = math::EigenMatrix<T>::From(logits_max);
     Eigen::DSizes<int, 1> along_axis(1);
@@ -314,7 +311,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     // step 3, obtain predict target
     Tensor predicted_logits;
     predicted_logits =
-        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
+        ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     predicted_logits.mutable_data<T>(place);
 
     auto t = framework::EigenVector<T>::Flatten(predicted_logits);
@@ -358,8 +355,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     // step 5, obtain sum_exp_logits
     Tensor sum_exp_logits;
-    sum_exp_logits =
-        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
+    sum_exp_logits = ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     void* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
 
     auto eigen_sum_exp_logits = math::EigenMatrix<T>::From(sum_exp_logits);
@@ -395,8 +391,7 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
         context.Output<Tensor>(framework::GradVarName("Logits"));
     const Tensor* softmax = context.Input<Tensor>("Softmax");
     const int rank = context.Attr<int>("rank");
-    auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::GPUContext>();
 
     if (logit_grad != softmax) {
       framework::TensorCopy(

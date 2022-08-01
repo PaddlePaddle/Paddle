@@ -16,21 +16,22 @@
 
 namespace phi {
 
-KernelSignature MultiClassNMS3OpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("multiclass_nms3",
-                         {"BBoxes", "Scores", "RoisNum"},
-                         {"score_threshold",
-                          "nms_top_k",
-                          "keep_top_k",
-                          "nms_threshold",
-                          "normalized",
-                          "nms_eta",
-                          "background_label"},
-                         {"Out", "Index", "NmsRoisNum"});
+KernelSignature PriorBoxOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("prior_box",
+                         {"Input", "Image"},
+                         {"min_sizes",
+                          "aspect_ratios",
+                          "variances",
+                          "max_sizes",
+                          "flip",
+                          "clip",
+                          "step_w",
+                          "step_h",
+                          "offset",
+                          "min_max_aspect_ratios_order"},
+                         {"Boxes", "Variances"});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(multiclass_nms3,
-                           phi::MultiClassNMS3OpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(prior_box, phi::PriorBoxOpArgumentMapping);

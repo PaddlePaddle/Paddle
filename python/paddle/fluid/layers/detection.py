@@ -22,7 +22,7 @@ import paddle
 from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, _non_static_mode, static_only
+from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
@@ -1794,18 +1794,20 @@ def ssd_loss(location,
     return loss
 
 
-def prior_box(input,
-              image,
-              min_sizes,
-              max_sizes=None,
-              aspect_ratios=[1.],
-              variance=[0.1, 0.1, 0.2, 0.2],
-              flip=False,
-              clip=False,
-              steps=[0.0, 0.0],
-              offset=0.5,
-              name=None,
-              min_max_aspect_ratios_order=False):
+def prior_box(
+    input,
+    image,
+    min_sizes,
+    max_sizes=None,
+    aspect_ratios=[1.],
+    variance=[0.1, 0.1, 0.2, 0.2],
+    flip=False,
+    clip=False,
+    steps=[0.0, 0.0],
+    offset=0.5,
+    name=None,
+    min_max_aspect_ratios_order=False,
+):
     """
 
     This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
@@ -1905,6 +1907,15 @@ def prior_box(input,
 		# [6L, 9L, 1L, 4L]
 
     """
+
+    if in_dygraph_mode():
+        step_w, step_h = steps
+        if max_sizes == None:
+            max_sizes = []
+        return _C_ops.final_state_prior_box(input, image, min_sizes,
+                                            aspect_ratios, variance, max_sizes,
+                                            flip, clip, step_w, step_h, offset,
+                                            min_max_aspect_ratios_order)
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
     check_variable_and_dtype(input, 'input',

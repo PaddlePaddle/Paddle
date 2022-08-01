@@ -19,19 +19,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiClassNMSKernel(const Context& ctx,
-                         const DenseTensor& bboxes,
-                         const DenseTensor& scores,
-                         const paddle::optional<DenseTensor>& rois_num,
-                         float score_threshold,
-                         int nms_top_k,
-                         int keep_top_k,
-                         float nms_threshold,
-                         bool normalized,
-                         float nms_eta,
-                         int background_label,
-                         DenseTensor* out,
-                         DenseTensor* index,
-                         DenseTensor* nms_rois_num);
+void LUUnpackGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& pivots,
+                        const DenseTensor& l,
+                        const DenseTensor& u,
+                        const DenseTensor& pmat,
+                        const DenseTensor& l_grad,
+                        const DenseTensor& u_grad,
+                        bool unpack_ludata,
+                        bool unpack_pivots,
+                        DenseTensor* x_grad);
 
 }  // namespace phi

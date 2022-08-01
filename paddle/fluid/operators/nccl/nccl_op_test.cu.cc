@@ -58,7 +58,7 @@ class NCCLTester : public ::testing::Test {
     paddle::platform::CPUPlace cpu_place;
     for (size_t i = 0; i < gpu_list_.size(); ++i) {
       p::CUDAPlace place(i);
-      auto *ctx = new p::CUDADeviceContext(place);
+      auto *ctx = new phi::GPUContext(place);
       ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(place, ctx->stream())
                             .get());
@@ -184,7 +184,7 @@ void NCCLTester::testNcclAllReduceOp() {
     result_tensor->Resize(kDims);
     auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
-    auto *dev_ctx = static_cast<p::CUDADeviceContext *>(dev_ctxs_[i]);
+    auto *dev_ctx = static_cast<phi::GPUContext *>(dev_ctxs_[i]);
     paddle::memory::Copy(cpu_place,
                          ct,
                          p::CUDAPlace(gpu_list_[i]),
@@ -296,7 +296,7 @@ void NCCLTester::testNcclBcastOp() {
   result_tensor->Resize(kDims);
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
-  auto *dev_ctx = static_cast<p::CUDADeviceContext *>(dev_ctxs_[idx]);
+  auto *dev_ctx = static_cast<phi::GPUContext *>(dev_ctxs_[idx]);
   paddle::memory::Copy(cpu_place,
                        ct,
                        p::CUDAPlace(gpu_list_[idx]),

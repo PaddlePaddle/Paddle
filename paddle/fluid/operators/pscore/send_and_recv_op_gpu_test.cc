@@ -100,8 +100,7 @@ void InitTensorsOnClient(framework::Scope* scope,
   //    ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}),
   //    *place);
   // for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
-  auto stream =
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
 
   auto micro_id_var =
       scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
@@ -245,7 +244,7 @@ TEST(SENDANDRECV, GPU) {
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())
                        .get());
