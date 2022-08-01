@@ -100,5 +100,8 @@ REGISTER_OP_CUDA_KERNEL(c_allgather,
                         ops::CAllGatherOpCUDAKernel<plat::bfloat16>,
 #endif
                         ops::CAllGatherOpCUDAKernel<int>,
+                        ops::CAllGatherOpCUDAKernel<uint8_t>,
+                        ops::CAllGatherOpCUDAKernel<int8_t>,
                         ops::CAllGatherOpCUDAKernel<int64_t>,
+                        ops::CAllGatherOpCUDAKernel<bool>,
                         ops::CAllGatherOpCUDAKernel<plat::float16>);

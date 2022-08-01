@@ -19,6 +19,12 @@ limitations under the License. */
 
 namespace phi {
 
+void AngleGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& out_grad,
+                        MetaTensor* x_grad) {
+  UnchangedInferMeta(x, x_grad);
+}
+
 void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         const MetaTensor& y,
                                         const MetaTensor& weight,
@@ -67,6 +73,17 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
   }
 }
 
+void BmmGradInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      const MetaTensor& out_grad,
+                      MetaTensor* x_grad,
+                      MetaTensor* y_grad) {
+  x_grad->set_dims(x.dims());
+  y_grad->set_dims(y.dims());
+  x_grad->set_dtype(x.dtype());
+  y_grad->set_dtype(y.dtype());
+}
+
 void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
                                  int groups,
                                  const std::string& data_format,
@@ -81,6 +98,23 @@ void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
   auto dx_dims = do_dims;
   x_grad->set_dims(dx_dims);
   x_grad->set_dtype(out_grad.dtype());
+}
+
+void ComplexGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& dout,
+                          MetaTensor* dx,
+                          MetaTensor* dy) {
+  auto x_dims = x.dims();
+  if (dx) {
+    dx->set_dims(x_dims);
+    dx->set_dtype(x.dtype());
+  }
+  auto y_dims = y.dims();
+  if (dy) {
+    dy->set_dims(y_dims);
+    dy->set_dtype(y.dtype());
+  }
 }
 
 void ConvTransposeGradInferMeta(const MetaTensor& x,
@@ -119,6 +153,18 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
 
   if (ddout) {
     ddout->share_meta(dout);
+  }
+}
+
+void CropTensorGradInferMeta(const MetaTensor& out_grad,
+                             const MetaTensor& x,
+                             const IntArray& offsets,
+                             MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
   }
 }
 
@@ -203,6 +249,18 @@ void DeformableConvGradInferMeta(const MetaTensor& x,
   GeneralTernaryGradInferMeta(x, offset, filter, dx, offset_grad, filter_grad);
   if (mask) {
     UnchangedInferMeta(mask, mask_grad);
+  }
+}
+
+void EigGradInferMeta(const MetaTensor& out_w,
+                      const MetaTensor& out_v,
+                      const MetaTensor& dout_w,
+                      const MetaTensor& dout_v,
+                      MetaTensor* dx) {
+  auto dims = out_v.dims();
+
+  if (dx) {
+    dx->set_dims(dims);
   }
 }
 
@@ -368,11 +426,52 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
   }
 }
 
+void InverseGradInferMeta(const MetaTensor& out,
+                          const MetaTensor& dout,
+                          MetaTensor* dx) {
+  if (dx) {
+    dx->set_dims(dout.dims());
+    dx->set_dtype(out.dtype());
+  }
+}
+
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx) {
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
   dx->set_dims(x_dims);
   dx->share_lod(xshape);
+}
+
+void LUGradInferMeta(const MetaTensor& x,
+                     const MetaTensor& out,
+                     const MetaTensor& pivots,
+                     const MetaTensor& out_grad,
+                     bool pivot,
+                     MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+
+  if (x_grad) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
+  }
+}
+
+void LUUnpackGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& pivots,
+                           const MetaTensor& l,
+                           const MetaTensor& u,
+                           const MetaTensor& pmat,
+                           const MetaTensor& l_grad,
+                           const MetaTensor& u_grad,
+                           bool unpack_ludata,
+                           bool unpack_pivots,
+                           MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+
+  if (x_grad) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
+  }
 }
 
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
@@ -615,6 +714,21 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   if (x_grad) {
     x_grad->set_dims(out_grad.dims());
     x_grad->set_dtype(dtype);
+  }
+}
+
+void SpectralNormGradInferMeta(const MetaTensor& weight,
+                               const MetaTensor& u,
+                               const MetaTensor& v,
+                               const MetaTensor& out_grad,
+                               int dim,
+                               int power_iters,
+                               float eps,
+                               MetaTensor* weight_grad) {
+  auto dim_x = weight.dims();
+  if (weight_grad) {
+    weight_grad->set_dims(dim_x);
+    weight_grad->set_dtype(out_grad.dtype());
   }
 }
 

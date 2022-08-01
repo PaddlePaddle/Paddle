@@ -255,12 +255,6 @@ class TestMLPReshard(unittest.TestCase):
                                       "dims_mapping": [-1, -1]
                                   })
 
-            # y = paddle.distributed.shard_op(paddle.matmul, process_mesh, {
-            #     x.name: [-1, -1],
-            #     w.name: [-1, -1]
-            # }, **{"x": x,
-            #       "y": w})[0]
-
             y = paddle.distributed.shard_op(paddle.matmul,
                                             dist_attr={
                                                 "process_mesh": process_mesh,
@@ -270,7 +264,7 @@ class TestMLPReshard(unittest.TestCase):
                                                 w: {
                                                     "dims_mapping": [-1, -1]
                                                 }
-                                            })(x, w)[0]
+                                            })(x, w)
 
         rank_id = 0
         dist_context = DistributedContext()

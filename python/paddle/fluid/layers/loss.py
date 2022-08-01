@@ -546,6 +546,15 @@ def warpctc(input,
                                   fetch_list=[cost.name])
             print(output)
     """
+    if in_dygraph_mode():
+        if input_length is None or label_length is None:
+            raise ValueError(
+                "input_length and label_length must not be None in dygraph mode!"
+            )
+        loss_out = _C_ops.final_state_warpctc(input, label, input_length,
+                                              label_length, blank,
+                                              norm_by_times)
+        return loss_out
     if _non_static_mode():
         if input_length is None or label_length is None:
             raise ValueError(

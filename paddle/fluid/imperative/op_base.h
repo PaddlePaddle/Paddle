@@ -147,7 +147,7 @@ class OpBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return BOOST_GET_CONST(T, GetAttr(name));
+    return PADDLE_GET_CONST(T, GetAttr(name));
   }
 
   size_t id() const { return id_; }

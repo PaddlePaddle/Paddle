@@ -16,16 +16,17 @@ from __future__ import print_function
 import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle
+import sys
+
+sys.path.append("..")
 from op_test import OpTest
 
 import numpy as np
 import unittest
-import sys
-
-sys.path.append("..")
 
 paddle.enable_static()
-SEED = 2020
+SEED = 2021
+np.random.seed(SEED)
 
 
 def scalarToType(val, data_type):

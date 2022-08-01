@@ -14,23 +14,30 @@
 
 #include "paddle/fluid/jit/layer.h"
 
+#include "paddle/fluid/framework/variable.h"
+
+#include "paddle/fluid/jit/base_function.h"
+#include "paddle/fluid/jit/compilation_unit.h"
+#include "paddle/fluid/jit/function_schema.h"
+
 namespace paddle {
 namespace jit {
-// TODO(dev): Make vector<string>, num_slot as in argument
-// Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
-// {}
-Layer::Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
-             const Name2VariableMap& params_dict,
-             const phi::Place& place)
+Layer::Layer(const Name2VariableMap& params_dict, const phi::Place& place)
     : params_dict_(params_dict) {
-  VLOG(3) << "infos size: " << infos.size();
+  unit_.reset(new CompilationUnit());
 }
 
 std::shared_ptr<BaseFunction> Layer::Function(const std::string& name) const {
-  return unit_.Function(name);
+  return unit_->Function(name);
 }
 
-std::vector<Variable> Layer::forward(const std::vector<Variable>& inputs) {
+std::vector<Tensor> Layer::forward(const std::vector<Tensor>& inputs) {
+  auto func = Function("forward");
+  return (*func)(inputs);
+}
+
+std::vector<DenseTensor> Layer::forward(
+    const std::vector<DenseTensor>& inputs) {
   auto func = Function("forward");
   return (*func)(inputs);
 }
@@ -39,15 +46,15 @@ void Layer::to(const phi::Place& place) {}
 
 void Layer::SetFunction(const std::string& name,
                         const std::shared_ptr<BaseFunction>& function) {
-  unit_.SetFunction(name, function);
+  unit_->SetFunction(name, function);
 }
 
 std::vector<std::string> Layer::FunctionNames() const {
-  return unit_.FunctionNames();
+  return unit_->FunctionNames();
 }
 
 const Name2FunctionMap& Layer::FunctionMap() const {
-  return unit_.FunctionMap();
+  return unit_->FunctionMap();
 }
 
 }  // namespace jit

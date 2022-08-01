@@ -578,8 +578,8 @@ class TestOpNumWithTensorShapeInFor1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_with_for_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 22
-        self.expected_shape_op_num = 3
+        self.expected_op_num = 29
+        self.expected_shape_op_num = 2
         self.expected_slice_op_num = 3
 
 
@@ -589,7 +589,7 @@ class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_with_while_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 22
+        self.expected_op_num = 21
         self.expected_shape_op_num = 3
         self.expected_slice_op_num = 3
 

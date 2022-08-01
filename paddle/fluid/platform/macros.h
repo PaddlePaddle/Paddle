@@ -29,9 +29,3 @@ limitations under the License. */
 #define FLT_MAX __FLT_MAX__
 #endif  // __FLT_MAX__
 #endif  // PADDLE_WITH_MUSL
-
-#if defined(__NVCC__) || defined(__HIPCC__)
-#define PADDLE_RESTRICT __restrict__
-#else
-#define PADDLE_RESTRICT
-#endif

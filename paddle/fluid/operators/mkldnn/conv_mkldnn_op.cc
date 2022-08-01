@@ -553,10 +553,6 @@ class ConvMKLDNNHandlerT
     dnnl::primitive_attr conv_attr;
     dnnl::post_ops post_operations;
 
-    const std::string fuse_activation =
-        ctx.Attr<std::string>("fuse_activation");
-    const float fuse_alpha = ctx.Attr<float>("fuse_alpha");
-    const float fuse_beta = ctx.Attr<float>("fuse_beta");
     const bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
 
     float sum_scale = 1.0f;
@@ -587,19 +583,7 @@ class ConvMKLDNNHandlerT
       post_operations.append_sum(sum_scale);
     }
 
-    if (fuse_activation == "hard_sigmoid") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_linear,
-                                     fuse_alpha,
-                                     fuse_beta);
-      post_operations.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
-    } else if (fuse_activation != "") {
-      const auto activation_algorithm =
-          platform::AcquireActivationAlgorithm(fuse_activation);
-      post_operations.append_eltwise(
-          activation_scale, activation_algorithm, fuse_alpha, fuse_beta);
-    }
+    platform::AppendActivation(ctx, post_operations, activation_scale);
 
     conv_attr.set_post_ops(post_operations);
     return conv_attr;

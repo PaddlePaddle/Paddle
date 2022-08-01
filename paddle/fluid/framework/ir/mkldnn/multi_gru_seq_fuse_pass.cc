@@ -103,8 +103,8 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
       multi_gru_desc.SetAttr(attr.first, attr.second);
     }
 
-    auto layers = BOOST_GET_CONST(int, gru1->Op()->GetAttr("layers")) +
-                  BOOST_GET_CONST(int, gru2->Op()->GetAttr("layers"));
+    auto layers = PADDLE_GET_CONST(int, gru1->Op()->GetAttr("layers")) +
+                  PADDLE_GET_CONST(int, gru2->Op()->GetAttr("layers"));
     multi_gru_desc.SetAttr("layers", layers);
 
     auto multi_gru =

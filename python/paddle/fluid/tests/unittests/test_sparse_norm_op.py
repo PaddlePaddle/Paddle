@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
+from paddle.incubate.sparse import nn
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
 import copy
@@ -56,11 +57,10 @@ class TestSparseBatchNorm(unittest.TestCase):
 
             # test backward
             sparse_y.backward(sparse_y)
-            assert np.allclose(
-                dense_x.grad.flatten().numpy(),
-                sparse_x.grad.values().flatten().numpy(),
-                atol=1e-5,
-                rtol=1e-5)
+            assert np.allclose(dense_x.grad.flatten().numpy(),
+                               sparse_x.grad.values().flatten().numpy(),
+                               atol=1e-5,
+                               rtol=1e-5)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_error_layout(self):
@@ -84,6 +84,35 @@ class TestSparseBatchNorm(unittest.TestCase):
             batch_norm_out = batch_norm(sparse_x)
             print(batch_norm_out.shape)
             # [1, 6, 6, 6, 3]
+
+
+class TestSyncBatchNorm(unittest.TestCase):
+
+    def test_sync_batch_norm(self):
+        with _test_eager_guard():
+            x = np.array([[[[0.3, 0.4], [0.3, 0.07]],
+                           [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
+            x = paddle.to_tensor(x)
+            x = x.to_sparse_coo(len(x.shape) - 1)
+
+            if paddle.is_compiled_with_cuda():
+                sync_batch_norm = nn.SyncBatchNorm(2)
+                hidden1 = sync_batch_norm(x)
+                print(hidden1)
+
+    def test_convert(self):
+        base_model = paddle.nn.Sequential(nn.Conv3D(3, 5, 3), nn.BatchNorm(5),
+                                          nn.BatchNorm(5))
+
+        model = paddle.nn.Sequential(
+            nn.Conv3D(3, 5, 3), nn.BatchNorm(5),
+            nn.BatchNorm(5,
+                         weight_attr=fluid.ParamAttr(name='bn.scale'),
+                         bias_attr=fluid.ParamAttr(name='bn.bias')))
+        model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        for idx, sublayer in enumerate(base_model.sublayers()):
+            if isinstance(sublayer, nn.BatchNorm):
+                self.assertEqual(isinstance(model[idx], nn.SyncBatchNorm), True)
 
 
 if __name__ == "__main__":
