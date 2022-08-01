@@ -1585,6 +1585,9 @@ def nms(boxes,
     """
 
     def _nms(boxes, iou_threshold):
+        if in_dygraph_mode():
+            return _C_ops.final_state_nms(boxes, iou_threshold)
+
         if _non_static_mode():
             return _C_ops.nms(boxes, 'iou_threshold', iou_threshold)
 
