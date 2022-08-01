@@ -309,7 +309,7 @@ void PrivateQueueDataFeed<T>::ReadThread() {
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
-    fp_ = fs_open_read(filename, &err_no, pipe_command_);
+    fp_ = fs_open_read(filename, &err_no, pipe_command_, true);
     __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
     T instance;
     while (ParseOneInstanceFromPipe(&instance)) {
@@ -538,7 +538,7 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
     } else {
 #endif
       int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
 #ifdef PADDLE_WITH_BOX_PS
     }
 #endif
@@ -574,7 +574,7 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
     (defined PADDLE_WITH_PSLIB)
   VLOG(3) << "LoadIntoMemoryFromSo() begin, thread_id=" << thread_id_;
   int buf_len = 1024 * 1024 * 10;
-  char* buf = (char*)malloc(buf_len + 10);
+  char* buf = reinterpret_cast<char*>(malloc(buf_len + 10));
   auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
 
   paddle::framework::CustomParser* parser =
@@ -681,7 +681,7 @@ void MultiSlotDataFeed::ReadThread() {
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
-    fp_ = fs_open_read(filename, &err_no, pipe_command_);
+    fp_ = fs_open_read(filename, &err_no, pipe_command_, true);
     CHECK(fp_ != nullptr);
     __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
     std::vector<MultiSlotType> instance;
@@ -2175,7 +2175,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
             lines);
       } else {
         int err_no = 0;
-        this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+        this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
 
         CHECK(this->fp_ != nullptr);
         __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
@@ -2265,7 +2265,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
 
     do {
       int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
       CHECK(this->fp_ != nullptr);
       __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
       lines = line_reader.read_file(this->fp_.get(), line_func, lines);
@@ -2314,7 +2314,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByCommand(void) {
 
     do {
       int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
       CHECK(this->fp_ != nullptr);
       __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
 

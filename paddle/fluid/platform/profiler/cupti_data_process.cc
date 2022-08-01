@@ -52,6 +52,10 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
   event.kernel_info.queued = kernel->queued;
   event.kernel_info.submitted = kernel->submitted;
   event.kernel_info.completed = kernel->completed;
+#ifdef PADDLE_WITH_HIP
+  event.kernel_info.kernelFunc = kernel->kernelFunc;
+  event.kernel_info.launchType = kernel->launchType;
+#endif
   collector->AddDeviceEvent(std::move(event));
 }
 
@@ -279,7 +283,11 @@ void AddApiRecord(const CUpti_ActivityAPI* api,
   } else {
     tid = iter->second;
   }
+#ifdef PADDLE_WITH_HIP
+  event.thread_id = api->threadId;
+#else
   event.thread_id = tid;
+#endif
   event.correlation_id = api->correlationId;
   event.callback_id = api->cbid;
   collector->AddRuntimeEvent(std::move(event));

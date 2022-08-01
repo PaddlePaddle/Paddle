@@ -28,6 +28,10 @@ namespace phi {
 //
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AngleGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& out_grad,
+                        MetaTensor* x_grad);
+
 void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         const MetaTensor& y,
                                         const MetaTensor& weight,
@@ -36,6 +40,12 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dy,
                                         MetaTensor* dweight,
                                         MetaTensor* dbias);
+
+void BmmGradInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      const MetaTensor& out_grad,
+                      MetaTensor* x_grad,
+                      MetaTensor* y_grad);
 
 void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
                                  int groups,
@@ -79,6 +89,11 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dfilter,
                                         MetaTensor* ddout);
 
+void CropTensorGradInferMeta(const MetaTensor& out_grad,
+                             const MetaTensor& x,
+                             const IntArray& offsets,
+                             MetaTensor* x_grad);
+
 void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
                                           const MetaTensor& softmax,
                                           const MetaTensor& loss_grad,
@@ -105,6 +120,12 @@ void DeformableConvGradInferMeta(const MetaTensor& x,
                                  MetaTensor* offset_grad,
                                  MetaTensor* filter_grad,
                                  MetaTensor* mask_grad);
+
+void EigGradInferMeta(const MetaTensor& out_w,
+                      const MetaTensor& out_v,
+                      const MetaTensor& dout_w,
+                      const MetaTensor& dout_v,
+                      MetaTensor* dx);
 
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
@@ -173,7 +194,18 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
                                      MetaTensor* dscale,
                                      MetaTensor* ddy);
 
+void InverseGradInferMeta(const MetaTensor& out,
+                          const MetaTensor& dout,
+                          MetaTensor* dx);
+
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx);
+
+void LUGradInferMeta(const MetaTensor& x,
+                     const MetaTensor& out,
+                     const MetaTensor& pivots,
+                     const MetaTensor& out_grad,
+                     bool pivot,
+                     MetaTensor* x_grad);
 
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
@@ -262,6 +294,15 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
                                const MetaTensor& out_grad,
                                MetaTensor* x_grad,
                                MetaTensor* updates_grad);
+
+void SpectralNormGradInferMeta(const MetaTensor& weight,
+                               const MetaTensor& u,
+                               const MetaTensor& v,
+                               const MetaTensor& out_grad,
+                               int dim,
+                               int power_iters,
+                               float eps,
+                               MetaTensor* weight_grad);
 
 void StackGradInferMeta(const MetaTensor& out_grad,
                         int axis,

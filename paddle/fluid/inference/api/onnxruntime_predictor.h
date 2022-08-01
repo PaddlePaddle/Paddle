@@ -92,13 +92,35 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   /// \param[in] AnalysisConfig config
   ///
   explicit ONNXRuntimePredictor(const AnalysisConfig &config)
-      : env_(ORT_LOGGING_LEVEL_WARNING, "onnx"), config_(config) {
+      : env_(std::make_shared<Ort::Env>(ORT_LOGGING_LEVEL_WARNING,
+                                        "paddle-ort")),
+        session_(nullptr),
+        binding_(nullptr),
+        config_(config) {
+    predictor_id_ = inference::GetUniqueId();
+  }
+  ///
+  /// \brief Clone a ONNXRuntime Predictor object
+  ///
+  /// \param[in] AnalysisConfig config
+  ///
+  explicit ONNXRuntimePredictor(const AnalysisConfig &config,
+                                std::shared_ptr<Ort::Env> env,
+                                std::shared_ptr<Ort::Session> session)
+      : env_(env), session_(session), binding_(nullptr), config_(config) {
     predictor_id_ = inference::GetUniqueId();
   }
   ///
   /// \brief Destroy the ONNXRuntime Predictor object
   ///
   ~ONNXRuntimePredictor();
+
+  ///
+  /// \brief Initialize ORT Binding
+  ///
+  /// \return Whether the init function executed successfully
+  ///
+  bool InitBinding();
 
   ///
   /// \brief Initialize predictor
@@ -203,8 +225,8 @@ class ONNXRuntimePredictor : public PaddlePredictor {
 
  private:
   // ONNXRuntime
-  Ort::Env env_;
-  Ort::Session session_{nullptr};
+  std::shared_ptr<Ort::Env> env_;
+  std::shared_ptr<Ort::Session> session_{nullptr};
   std::shared_ptr<Ort::IoBinding> binding_;
 
   AnalysisConfig config_;
@@ -212,7 +234,6 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   platform::Place place_;
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;
-  std::map<std::string, std::shared_ptr<std::vector<int8_t>>> input_buffers_;
   int predictor_id_;
 
 // Some more detailed tests, they are made the friends of the predictor, so that

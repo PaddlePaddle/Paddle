@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/lstsq_op.h"
-
-#include <string>
-#include <vector>
-
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -25,79 +23,6 @@ namespace operators {
 class LstsqOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LstsqOp");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "LstsqOp");
-
-    OP_INOUT_CHECK(ctx->HasOutput("Solution"), "Output", "Solution", "LstsqOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Rank"), "Output", "Rank", "LstsqOp");
-    OP_INOUT_CHECK(ctx->HasOutput("SingularValues"),
-                   "Output",
-                   "SingularValues",
-                   "LstsqOp");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
-    int x_rank = x_dims.size();
-    int y_rank = y_dims.size();
-
-    PADDLE_ENFORCE_GE(x_rank,
-                      2,
-                      platform::errors::InvalidArgument(
-                          "Expects input tensor x to be not less than "
-                          "2 dimentions, but got dimention %d",
-                          x_rank));
-    PADDLE_ENFORCE_GE(y_rank,
-                      2,
-                      platform::errors::InvalidArgument(
-                          "Expects input tensor y to be not less than "
-                          "2 dimentions, but got dimention %d",
-                          y_rank));
-
-    PADDLE_ENFORCE_EQ(
-        x_rank,
-        y_rank,
-        platform::errors::InvalidArgument(
-            "Expects input tensor x and y to have the same dimension "
-            "but got x's dimention [%d] and y's dimention [%d]",
-            x_rank,
-            y_rank));
-
-    std::vector<int> batch_dims_vec{};
-    for (int i = 0; i < x_rank - 2; ++i) {
-      PADDLE_ENFORCE_EQ(
-          x_dims[i],
-          y_dims[i],
-          platform::errors::InvalidArgument(
-              "Expects input tensor x and y to have the same batch "
-              "dimension, but got x's batch dimention [%d] and "
-              "y's batch dimention [%d] in %d-th dim",
-              x_dims[i],
-              y_dims[i],
-              i));
-      batch_dims_vec.emplace_back(x_dims[i]);
-    }
-
-    PADDLE_ENFORCE_EQ(
-        x_dims[x_rank - 2],
-        y_dims[y_rank - 2],
-        platform::errors::InvalidArgument(
-            "Expects input tensor x and y to have the same row dimension "
-            "of the inner-most 2-dims matrix, "
-            "but got x's row dimention [%d] and y's row dimention [%d]",
-            x_dims[x_rank - 2],
-            y_dims[y_rank - 2]));
-
-    ctx->SetOutputDim("Rank", phi::make_ddim(batch_dims_vec));
-
-    batch_dims_vec.emplace_back(
-        std::min(x_dims[x_rank - 2], x_dims[x_rank - 1]));
-    ctx->SetOutputDim("SingularValues", phi::make_ddim(batch_dims_vec));
-
-    batch_dims_vec[x_rank - 2] = x_dims[x_rank - 1];
-    batch_dims_vec.emplace_back(y_dims[x_rank - 1]);
-    ctx->SetOutputDim("Solution", phi::make_ddim(batch_dims_vec));
-  }
 
  protected:
   // The output of lstsq is always complex-valued even for real-valued inputs
@@ -133,6 +58,9 @@ class LstsqOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("gels");
     AddOutput("Solution",
               "(Tensor), The output Solution tensor with shape (*, n, k).");
+    AddOutput("Residuals",
+              "(Tensor), The output Residuals tensor with shape (*, k).")
+        .AsDispensable();
     AddOutput("Rank", "(Tensor), The output Rank tensor with shape (*).");
     AddOutput(
         "SingularValues",
@@ -148,8 +76,21 @@ This API processes Lstsq functor for general matrices.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lstsq, ops::LstsqOp, ops::LstsqOpMaker)
 
-REGISTER_OP_CPU_KERNEL(lstsq,
-                       ops::LstsqCPUKernel<phi::CPUContext, float>,
-                       ops::LstsqCPUKernel<phi::CPUContext, double>);
+DECLARE_INFER_SHAPE_FUNCTOR(lstsq,
+                            LstsqInferShapeFunctor,
+                            PD_INFER_META(phi::LstsqInferMeta));
+
+REGISTER_OPERATOR(lstsq,
+                  ops::LstsqOp,
+                  ops::LstsqOpMaker,
+                  LstsqInferShapeFunctor);
+
+REGISTER_OP_VERSION(lstsq).AddCheckpoint(
+    R"ROC(
+        Upgrade lstsq, add 1 outputs [Residuals].
+      )ROC",
+    paddle::framework::compatible::OpVersionDesc().NewOutput(
+        "Residuals",
+        "Output tensor of lstsq operator, "
+        "meaning the squared residuals of the calculated solutions."));
