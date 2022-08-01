@@ -27,10 +27,10 @@ void TrilTriuKernel(const Context& ctx,
                     DenseTensor* out);
 
 template <typename T, typename Context>
-static DenseTensor TrilTriu(const Context& ctx,
-                            const DenseTensor& x,
-                            int diagonal,
-                            bool lower) {
+DenseTensor TrilTriu(const Context& ctx,
+                     const DenseTensor& x,
+                     int diagonal,
+                     bool lower) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   TrilTriuInferMeta(x, diagonal, lower, &meta_out);

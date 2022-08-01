@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_WITH_HIP
-// HIP not support cusolver
+#ifndef PADDLE_WITH_HIP  // HIP not support cusolver
 
 #include <thrust/device_vector.h>
 #include <algorithm>
@@ -402,6 +401,11 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(qr, GPU, ALL_LAYOUT, phi::QrKernel, float, double) {}
+PD_REGISTER_KERNEL(qr,  // cuda_only
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::QrKernel,
+                   float,
+                   double) {}
 
 #endif  // not PADDLE_WITH_HIP

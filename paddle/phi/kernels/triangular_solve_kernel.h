@@ -29,12 +29,12 @@ void TriangularSolveKernel(const Context& dev_ctx,
                            DenseTensor* out);
 
 template <typename T, typename Context>
-static DenseTensor TriangularSolve(const Context& ctx,
-                                   const DenseTensor& x,
-                                   const DenseTensor& y,
-                                   bool upper,
-                                   bool transpose,
-                                   bool unitriangular) {
+DenseTensor TriangularSolve(const Context& ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            bool upper,
+                            bool transpose,
+                            bool unitriangular) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   TriangularSolveInferMeta(x, y, upper, transpose, unitriangular, &meta_out);
