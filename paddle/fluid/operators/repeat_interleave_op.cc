@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/repeat_interleave_op.h"
-
+//#include "paddle/fluid/operators/repeat_interleave_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/index_select_op.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

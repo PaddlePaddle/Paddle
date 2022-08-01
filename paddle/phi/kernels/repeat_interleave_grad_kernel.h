@@ -20,6 +20,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void RepeatInterleaveGradKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
                                 const DenseTensor& out_grad,
                                 int repeats,
                                 int dim,

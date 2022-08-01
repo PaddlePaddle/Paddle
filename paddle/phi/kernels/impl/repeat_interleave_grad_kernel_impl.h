@@ -65,6 +65,7 @@ __global__ void index_select_grad_init(T* input_grad, int64_t N) {
 #endif
 template <typename T, typename Context>
 void RepeatInterleaveGradKernel(const Context& ctx,
+                                const DenseTensor& x,
                                 const DenseTensor& out_grad,
                                 int repeats,
                                 int dim,

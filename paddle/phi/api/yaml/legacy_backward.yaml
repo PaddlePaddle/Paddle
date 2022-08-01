@@ -1724,7 +1724,7 @@
 
 - backward_api : repeat_interleave_grad
   forward : repeat_interleave(Tensor x, int repeats, int dim) -> Tensor(out)
-  args : (Tensor out_grad, int repeats, int dim)
+  args : (Tensor x, Tensor out_grad, int repeats, int dim)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1734,7 +1734,7 @@
 
 - backward_api : repeat_interleave_with_tensor_index_grad
   forward : repeat_interleave_with_tensor_index(Tensor x, Tensor repeats, int dim) -> Tensor(out)
-  args : (Tensor repeats, Tensor out_grad, int dim)
+  args : (Tensor x, Tensor repeats, Tensor out_grad, int dim)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

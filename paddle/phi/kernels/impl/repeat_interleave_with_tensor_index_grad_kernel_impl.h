@@ -99,6 +99,7 @@ __global__ void index_select_grad_init(T* input_grad, int64_t N) {
 template <typename T, typename Context>
 void RepeatInterleaveWithTensorIndexGradKernel(
     const Context& ctx,
+    const DenseTensor& x,
     const DenseTensor& repeats_tensor,
     const DenseTensor& out_grad,
     int dim,

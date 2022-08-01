@@ -33,12 +33,14 @@ KernelSignature RepeatInterleaveGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("RepeatsTensor")) {
     return KernelSignature("repeat_interleave_with_tensor_index_grad",
-                           {"Out@GRAD", "RepeatsTensor"},
+                           {"X", "Out@GRAD", "RepeatsTensor"},
                            {"dim"},
                            {"X@GRAD"});
   } else {
-    return KernelSignature(
-        "repeat_interleave_grad", {"Out@GRAD"}, {"repeats", "dim"}, {"X@GRAD"});
+    return KernelSignature("repeat_interleave_grad",
+                           {"X", "Out@GRAD"},
+                           {"repeats", "dim"},
+                           {"X@GRAD"});
   }
 }
 
