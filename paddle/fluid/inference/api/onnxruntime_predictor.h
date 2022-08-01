@@ -194,7 +194,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   /// \return get a new predictor
   ///
-  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
+  std::unique_ptr<PaddlePredictor> Clone() override;
 
   std::shared_ptr<framework::Scope> scope_;
 

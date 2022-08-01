@@ -188,7 +188,7 @@ bool ONNXRuntimePredictor::Init() {
       *env_, onnx_proto, static_cast<size_t>(out_size), session_options);
   InitBinding();
 
-  delete onnx_proto;
+  delete[] onnx_proto;
   onnx_proto = nullptr;
   return true;
 }
@@ -358,7 +358,7 @@ bool ONNXRuntimePredictor::ZeroCopyRun() {
   return true;
 }
 
-std::unique_ptr<PaddlePredictor> ONNXRuntimePredictor::Clone(void *stream) {
+std::unique_ptr<PaddlePredictor> ONNXRuntimePredictor::Clone() {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new ONNXRuntimePredictor(config_, env_, session_);
   x->InitBinding();
