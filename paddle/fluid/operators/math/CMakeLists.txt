@@ -1,7 +1,3 @@
-if(WITH_XPU)
-  cc_library(beam_search_xpu SRCS beam_search_xpu.cc)
-endif()
-
 if(WITH_ASCEND_CL)
   cc_library(
     beam_search_npu
@@ -60,6 +56,10 @@ math_library(vol2col)
 math_library(prelu)
 math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
+
+if(WITH_XPU)
+  cc_library(beam_search_xpu SRCS beam_search_xpu.cc)
+endif()
 
 cc_test(
   selected_rows_functor_test
