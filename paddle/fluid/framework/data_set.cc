@@ -102,7 +102,7 @@ void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
   cmd += " -Ddfs.client.block.write.retries=15 -Ddfs.rpc.timeout=500000";
-  paddle::framework::hdfs_set_command(cmd);
+  paddle::framework::dataset_hdfs_set_command(cmd);
 }
 
 template <typename T>

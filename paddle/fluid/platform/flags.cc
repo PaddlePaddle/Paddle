@@ -184,6 +184,19 @@ PADDLE_DEFINE_EXPORTED_string(
     "please refer to the documents");
 #endif
 
+/*
+ * Kernel related FLAG
+ * Name: FLAGS_enable_api_kernel_fallback
+ * Since Version: 2.4
+ * Value Range: bool, default=true
+ * Example: FLAGS_enable_api_kernel_fallback=true would allow kernel of current
+ * backend fallback to CPU one when not found
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_api_kernel_fallback,
+    true,
+    "Whether enable api kernel fallback to CPU one when not found");
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * CUDNN related FLAG
@@ -916,3 +929,18 @@ PADDLE_DEFINE_EXPORTED_bool(
     einsum_opt,
     false,
     "EinsumOp backward will be speedup at the expense of more gpu memory.");
+
+/**
+ * JitLayer related FLAG
+ * Name: FLAGS_jit_engine_type
+ * Since Version: 2.3.0
+ * Value Range: string, {Executor, PE},
+ * default=PE
+ * Example:
+ * Note:
+ * FLAGS_jit_engine_type == Executor, using ExecutorFunction by default
+ * FLAGS_jit_engine_type == PE, using PEFunction by default
+ */
+PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
+                              "PE",
+                              "Choose default funciton type in JitLayer.");

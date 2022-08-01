@@ -23,6 +23,13 @@ template <typename T, typename Context>
 void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const std::vector<int>& axes,
-                   DenseTensor* out,
-                   DenseTensor* xshape);
+                   DenseTensor* out);
+
+template <typename T, typename Context>
+void SqueezeWithXShapeKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const std::vector<int>& axes,
+                             DenseTensor* out,
+                             DenseTensor* xshape);
+
 }  // namespace phi

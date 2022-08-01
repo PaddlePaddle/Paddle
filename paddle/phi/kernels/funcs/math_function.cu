@@ -31,22 +31,6 @@ namespace funcs {
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 
-template struct SetConstant<paddle::platform::CUDADeviceContext,
-                            phi::dtype::float16>;
-template struct SetConstant<paddle::platform::CUDADeviceContext,
-                            phi::dtype::bfloat16>;
-template struct SetConstant<paddle::platform::CUDADeviceContext, float>;
-template struct SetConstant<paddle::platform::CUDADeviceContext, double>;
-template struct SetConstant<paddle::platform::CUDADeviceContext, uint8_t>;
-template struct SetConstant<paddle::platform::CUDADeviceContext, int>;
-template struct SetConstant<paddle::platform::CUDADeviceContext, int16_t>;
-template struct SetConstant<paddle::platform::CUDADeviceContext, int64_t>;
-template struct SetConstant<paddle::platform::CUDADeviceContext, bool>;
-template struct SetConstant<paddle::platform::CUDADeviceContext,
-                            phi::dtype::complex<float>>;
-template struct SetConstant<paddle::platform::CUDADeviceContext,
-                            phi::dtype::complex<double>>;
-
 template struct SetConstant<phi::GPUContext, phi::dtype::float16>;
 template struct SetConstant<phi::GPUContext, phi::dtype::bfloat16>;
 template struct SetConstant<phi::GPUContext, float>;
@@ -75,44 +59,18 @@ template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
                             phi::dtype::complex<double>>;
 
-#define DEFINE_GPU_TRANS(RANK)                                                 \
-  template struct Transpose<paddle::platform::CUDADeviceContext, bool, RANK>;  \
-  template struct Transpose<paddle::platform::CUDADeviceContext, float, RANK>; \
-  template struct Transpose<paddle::platform::CUDADeviceContext,               \
-                            double,                                            \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CUDADeviceContext,               \
-                            float16,                                           \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CUDADeviceContext,               \
-                            bfloat16,                                          \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CUDADeviceContext,               \
-                            int8_t,                                            \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CUDADeviceContext,               \
-                            int32_t,                                           \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CUDADeviceContext,               \
-                            int64_t,                                           \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CUDADeviceContext,               \
-                            phi::dtype::complex<float>,                        \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CUDADeviceContext,               \
-                            phi::dtype::complex<double>,                       \
-                            RANK>;                                             \
-  template struct Transpose<phi::GPUContext, bool, RANK>;                      \
-  template struct Transpose<phi::GPUContext, float, RANK>;                     \
-  template struct Transpose<phi::GPUContext, double, RANK>;                    \
-  template struct Transpose<phi::GPUContext, float16, RANK>;                   \
-  template struct Transpose<phi::GPUContext, bfloat16, RANK>;                  \
-  template struct Transpose<phi::GPUContext, int8_t, RANK>;                    \
-  template struct Transpose<phi::GPUContext, int32_t, RANK>;                   \
-  template struct Transpose<phi::GPUContext, int64_t, RANK>;                   \
-  template struct Transpose<phi::GPUContext,                                   \
-                            phi::dtype::complex<float>,                        \
-                            RANK>;                                             \
+#define DEFINE_GPU_TRANS(RANK)                                \
+  template struct Transpose<phi::GPUContext, bool, RANK>;     \
+  template struct Transpose<phi::GPUContext, float, RANK>;    \
+  template struct Transpose<phi::GPUContext, double, RANK>;   \
+  template struct Transpose<phi::GPUContext, float16, RANK>;  \
+  template struct Transpose<phi::GPUContext, bfloat16, RANK>; \
+  template struct Transpose<phi::GPUContext, int8_t, RANK>;   \
+  template struct Transpose<phi::GPUContext, int32_t, RANK>;  \
+  template struct Transpose<phi::GPUContext, int64_t, RANK>;  \
+  template struct Transpose<phi::GPUContext,                  \
+                            phi::dtype::complex<float>,       \
+                            RANK>;                            \
   template struct Transpose<phi::GPUContext, phi::dtype::complex<double>, RANK>;
 
 DEFINE_GPU_TRANS(1);
@@ -240,8 +198,7 @@ struct TransposeNormal<phi::GPUContext, T> {
 };
 
 // define transpose normal
-#define DEFINE_GPU_TRANS_NORMAL(TYPE)                                         \
-  template struct TransposeNormal<paddle::platform::CUDADeviceContext, TYPE>; \
+#define DEFINE_GPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<phi::GPUContext, TYPE>
 
 DEFINE_GPU_TRANS_NORMAL(float16);

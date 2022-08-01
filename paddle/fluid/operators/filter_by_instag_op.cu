@@ -14,6 +14,8 @@
 
 // #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
 
+#include "paddle/fluid/operators/filter_by_instag_op.h"
+
 #if defined(PADDLE_WITH_CUDA)
 #include <cooperative_groups.h>
 #endif
@@ -31,7 +33,6 @@
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/filter_by_instag_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
