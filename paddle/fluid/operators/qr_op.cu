@@ -36,8 +36,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     bool compute_q;
     bool reduced_mode;
-    auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::GPUContext>();
     const Tensor& x = *context.Input<Tensor>("X");
     Tensor& q = *context.Output<Tensor>("Q");
     Tensor& r = *context.Output<Tensor>("R");
@@ -69,8 +68,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
         size_t(batch_size * k * n * sizeof(phi::dtype::Real<T>)));
 
     auto dito =
-        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
-                                                 T>(context);
+        math::DeviceIndependenceTensorOperations<phi::GPUContext, T>(context);
 
     // Note: allocate temporary tensors because of lacking in-place operatios.
     // Prepare qr
@@ -94,7 +92,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
     auto qr_data = qr.mutable_data<T>(context.GetPlace());
     auto tau_data = tau.mutable_data<T>(context.GetPlace());
 
-    BatchedGeqrf<platform::CUDADeviceContext, T>(
+    BatchedGeqrf<phi::GPUContext, T>(
         dev_ctx, batch_size, m, n, qr_data, m, tau_data, qr_stride, tau_stride);
 
     if (reduced_mode) {
@@ -114,16 +112,16 @@ class QrGPUKernel : public framework::OpKernel<T> {
       // Perform QRGQR for Q using the result from GEQRF
       // Transpose 'q' to retore the original row-major order
       if (reduced_mode) {
-        BatchedOrgqr<platform::CUDADeviceContext, T>(dev_ctx,
-                                                     batch_size,
-                                                     m,
-                                                     min_mn,
-                                                     min_mn,
-                                                     qr_data,
-                                                     m,
-                                                     tau_data,
-                                                     qr_stride,
-                                                     tau_stride);
+        BatchedOrgqr<phi::GPUContext, T>(dev_ctx,
+                                         batch_size,
+                                         m,
+                                         min_mn,
+                                         min_mn,
+                                         qr_data,
+                                         m,
+                                         tau_data,
+                                         qr_stride,
+                                         tau_stride);
         auto trans_q = dito.Transpose(qr);
         auto sliced_q = dito.Slice(trans_q, {-1}, {0}, {min_mn});
         framework::TensorCopy(sliced_q, q.place(), &q);
@@ -142,29 +140,29 @@ class QrGPUKernel : public framework::OpKernel<T> {
                          qr_stride * sizeof(phi::dtype::Real<T>),
                          dev_ctx.stream());
           }
-          BatchedOrgqr<platform::CUDADeviceContext, T>(dev_ctx,
-                                                       batch_size,
-                                                       m,
-                                                       m,
-                                                       min_mn,
-                                                       new_qr_data,
-                                                       m,
-                                                       tau_data,
-                                                       new_qr_stride,
-                                                       tau_stride);
+          BatchedOrgqr<phi::GPUContext, T>(dev_ctx,
+                                           batch_size,
+                                           m,
+                                           m,
+                                           min_mn,
+                                           new_qr_data,
+                                           m,
+                                           tau_data,
+                                           new_qr_stride,
+                                           tau_stride);
           auto trans_q = dito.Transpose(new_qr);
           framework::TensorCopy(trans_q, q.place(), &q);
         } else {
-          BatchedOrgqr<platform::CUDADeviceContext, T>(dev_ctx,
-                                                       batch_size,
-                                                       m,
-                                                       m,
-                                                       min_mn,
-                                                       qr_data,
-                                                       m,
-                                                       tau_data,
-                                                       qr_stride,
-                                                       tau_stride);
+          BatchedOrgqr<phi::GPUContext, T>(dev_ctx,
+                                           batch_size,
+                                           m,
+                                           m,
+                                           min_mn,
+                                           qr_data,
+                                           m,
+                                           tau_data,
+                                           qr_stride,
+                                           tau_stride);
           auto trans_q = dito.Transpose(qr);
           auto sliced_q = dito.Slice(trans_q, {-1}, {0}, {m});
           framework::TensorCopy(sliced_q, q.place(), &q);
@@ -175,16 +173,15 @@ class QrGPUKernel : public framework::OpKernel<T> {
 };
 
 template <>
-void BatchedGeqrf<platform::CUDADeviceContext, float>(
-    const platform::CUDADeviceContext& dev_ctx,
-    int batch_size,
-    int m,
-    int n,
-    float* a,
-    int lda,
-    float* tau,
-    int a_stride,
-    int tau_stride) {
+void BatchedGeqrf<phi::GPUContext, float>(const phi::GPUContext& dev_ctx,
+                                          int batch_size,
+                                          int m,
+                                          int n,
+                                          float* a,
+                                          int lda,
+                                          float* tau,
+                                          int a_stride,
+                                          int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
@@ -227,16 +224,15 @@ void BatchedGeqrf<platform::CUDADeviceContext, float>(
 }
 
 template <>
-void BatchedGeqrf<platform::CUDADeviceContext, double>(
-    const platform::CUDADeviceContext& dev_ctx,
-    int batch_size,
-    int m,
-    int n,
-    double* a,
-    int lda,
-    double* tau,
-    int a_stride,
-    int tau_stride) {
+void BatchedGeqrf<phi::GPUContext, double>(const phi::GPUContext& dev_ctx,
+                                           int batch_size,
+                                           int m,
+                                           int n,
+                                           double* a,
+                                           int lda,
+                                           double* tau,
+                                           int a_stride,
+                                           int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
@@ -279,17 +275,16 @@ void BatchedGeqrf<platform::CUDADeviceContext, double>(
 }
 
 template <>
-void BatchedOrgqr<platform::CUDADeviceContext, float>(
-    const platform::CUDADeviceContext& dev_ctx,
-    int batch_size,
-    int m,
-    int n,
-    int k,
-    float* a,
-    int lda,
-    float* tau,
-    int a_stride,
-    int tau_stride) {
+void BatchedOrgqr<phi::GPUContext, float>(const phi::GPUContext& dev_ctx,
+                                          int batch_size,
+                                          int m,
+                                          int n,
+                                          int k,
+                                          float* a,
+                                          int lda,
+                                          float* tau,
+                                          int a_stride,
+                                          int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
@@ -333,17 +328,16 @@ void BatchedOrgqr<platform::CUDADeviceContext, float>(
 }
 
 template <>
-void BatchedOrgqr<platform::CUDADeviceContext, double>(
-    const platform::CUDADeviceContext& dev_ctx,
-    int batch_size,
-    int m,
-    int n,
-    int k,
-    double* a,
-    int lda,
-    double* tau,
-    int a_stride,
-    int tau_stride) {
+void BatchedOrgqr<phi::GPUContext, double>(const phi::GPUContext& dev_ctx,
+                                           int batch_size,
+                                           int m,
+                                           int n,
+                                           int k,
+                                           double* a,
+                                           int lda,
+                                           double* tau,
+                                           int a_stride,
+                                           int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
@@ -391,9 +385,8 @@ void BatchedOrgqr<platform::CUDADeviceContext, double>(
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(qr, ops::QrGPUKernel<float>, ops::QrGPUKernel<double>);
-REGISTER_OP_CUDA_KERNEL(
-    qr_grad,
-    ops::QrGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::QrGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(qr_grad,
+                        ops::QrGradKernel<phi::GPUContext, float>,
+                        ops::QrGradKernel<phi::GPUContext, double>);
 
 #endif  // not PADDLE_WITH_HIP

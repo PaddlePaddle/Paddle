@@ -471,8 +471,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     int runtime_batch = -1;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext &>(dev_ctx).stream();
 
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");

@@ -8,6 +8,12 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1
 set(dist_ENVS http_proxy="" https_proxy="")
 
 file(
+  GLOB MULTINODE_DIST_TEST_OPS
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_multinode_*.py")
+string(REPLACE ".py" "" MULTINODE_DIST_TEST_OPS "${MULTINODE_DIST_TEST_OPS}")
+
+file(
   GLOB DIST_TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_dist_*.py")
@@ -78,6 +84,11 @@ list(APPEND DIST_TEST_OPS test_collective_batch_isend_irecv)
 list(APPEND DIST_TEST_OPS test_collective_reduce_scatter)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
+
+foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
+  list(APPEND MIXED_DIST_TEST_OPS ${TEST_OP})
+endforeach()
+
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_momentum_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_optimizer)
@@ -135,6 +146,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
 list(APPEND MIXED_DIST_TEST_OPS test_tcp_store)
+list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -183,6 +195,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_new_group_api)
   list(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
   list(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
+  list(REMOVE_ITEM TEST_OPS test_collective_allgather_object_api)
   list(REMOVE_ITEM TEST_OPS test_collective_alltoall_api)
   list(REMOVE_ITEM TEST_OPS test_collective_global_gather)
   list(REMOVE_ITEM TEST_OPS test_collective_global_scatter)
@@ -957,6 +970,21 @@ if(WITH_DISTRIBUTE)
                         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
 
+    # add new dist test
+    if(WITH_DISTRIBUTE AND WITH_MULTINODE_TESTING)
+      foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
+        bash_test_modules(
+          ${TEST_OP}
+          START_BASH
+          multinode_dist_test.sh
+          LABELS
+          "RUN_TYPE=EXCLUSIVE"
+          ENVS
+          "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+      endforeach()
+
+    endif()
+
     # port range (20000, 23000) is reserved for dist-ops
     foreach(TEST_OP ${DIST_TEST_OPS})
       bash_test_modules(
@@ -1598,7 +1626,9 @@ if(APPLE)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
-  set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_collective_allgather_object_api PROPERTIES TIMEOUT
+                                                                       120)
   set_tests_properties(test_collective_alltoall_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_global_gather PROPERTIES TIMEOUT 200)
   set_tests_properties(test_collective_global_scatter PROPERTIES TIMEOUT 200)
@@ -1629,6 +1659,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
       test_new_group_api
       test_collective_broadcast_api
       test_collective_allgather_api
+      test_collective_allgather_object_api
       test_collective_alltoall_api
       test_collective_global_gather
       test_collective_global_scatter

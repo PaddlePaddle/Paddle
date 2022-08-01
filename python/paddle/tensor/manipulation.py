@@ -454,6 +454,13 @@ def unstack(x, axis=0, num=None):
             y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
+    if in_dygraph_mode():
+        if num == None:
+            num = x.shape[axis]
+        if num == 0:
+            return []
+        return _C_ops.final_state_unstack(x, axis, num)
+
     if _non_static_mode():
         if num == None:
             num = x.shape[axis]
@@ -640,6 +647,7 @@ def crop(x, shape=None, offsets=None, name=None):
             # if offsets = [1, 1], out = [[5,6], [8,9]]
 
     """
+
     helper = LayerHelper('crop_tensor', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'crop_tensor')
@@ -649,6 +657,9 @@ def crop(x, shape=None, offsets=None, name=None):
 
     if offsets is None:
         offsets = [0] * len(x.shape)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_crop_tensor(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
@@ -1128,7 +1139,9 @@ def broadcast_tensors(input, name=None):
     """
 
     num_inputs = len(input)
-    if paddle.in_dynamic_mode():
+    if paddle.framework.in_dygraph_mode():
+        return _C_ops.final_state_broadcast_tensors(input)
+    if paddle.framework._non_static_mode():
         return _C_ops.broadcast_tensors(input, num_inputs)
 
     check_type(input, 'input', (list, tuple), 'broadcast_tensors')
@@ -1731,7 +1744,7 @@ def split(x, num_or_sections, axis=0, name=None):
     Split the input tensor into multiple sub-Tensors.
     
     Args:
-        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, uint8, int8, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections`` 
             indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
@@ -1808,9 +1821,10 @@ def split(x, num_or_sections, axis=0, name=None):
         _C_ops.split(input, out, *attrs)
         return out
 
-    check_variable_and_dtype(
-        input, 'input',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'split')
+    check_variable_and_dtype(input, 'input', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8',
+        'int8'
+    ], 'split')
     check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
     check_type(dim, 'dim', (int, Variable), 'split')
     if isinstance(dim, Variable):
@@ -3000,8 +3014,10 @@ def broadcast_to(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_expand(x, shape)
+    if _in_legacy_dygraph():
+        return _C_ops.expand_v2(x, 'shape', shape)
 
     if isinstance(shape, Variable):
         assert len(shape.shape) == 1, ('shape must be an 1-D Tensor.')
@@ -3066,7 +3082,7 @@ def expand(x, shape, name=None):
 
     Expand the input tensor to a given shape.
 
-    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. The dimension to expand must have a value 1.
+    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 1.
 
 
     Args:
@@ -4037,7 +4053,7 @@ def moveaxis(x, source, destination, name=None):
             # [4, 3, 2]
 
             x = paddle.ones([2, 3])
-            paddle.moveaxis(x, 0, 1) # equivalent to paddle.t(x)
+            paddle.moveaxis(x, 0, 1).shape # equivalent to paddle.t(x)
             # [3, 2]  
     """
     src = [source] if isinstance(source, int) else source

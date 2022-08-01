@@ -907,8 +907,8 @@ static bool use_optimized_fft_path(const std::vector<int64_t>& axes) {
 }
 
 template <typename Ti, typename To>
-struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
-  void operator()(const platform::CUDADeviceContext& ctx,
+struct FFTC2CFunctor<phi::GPUContext, Ti, To> {
+  void operator()(const phi::GPUContext& ctx,
                   const Tensor* X,
                   Tensor* out,
                   const std::vector<int64_t>& axes,
@@ -934,7 +934,7 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
           std::min(static_cast<size_t>(kMaxFFTNdim), working_axes.size());
       first_dims.assign(working_axes.end() - max_dims, working_axes.end());
 
-      exec_fft<platform::CUDADeviceContext, Ti, To>(
+      exec_fft<phi::GPUContext, Ti, To>(
           ctx, p_working_tensor, p_out, first_dims, forward);
       working_axes.resize(working_axes.size() - max_dims);
       first_dims.clear();
@@ -945,14 +945,14 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
 
       std::swap(p_out, p_working_tensor);
     }
-    exec_normalization<platform::CUDADeviceContext, To>(
+    exec_normalization<phi::GPUContext, To>(
         ctx, p_out, out, normalization, out_dims, axes);
   }
 };
 
 template <typename Ti, typename To>
-struct FFTC2RFunctor<platform::CUDADeviceContext, Ti, To> {
-  void operator()(const platform::CUDADeviceContext& ctx,
+struct FFTC2RFunctor<phi::GPUContext, Ti, To> {
+  void operator()(const phi::GPUContext& ctx,
                   const Tensor* X,
                   Tensor* out,
                   const std::vector<int64_t>& axes,
@@ -965,28 +965,27 @@ struct FFTC2RFunctor<platform::CUDADeviceContext, Ti, To> {
       framework::Tensor x_copy(X->type());
       x_copy.mutable_data<Ti>(X->dims(), ctx.GetPlace());
       framework::TensorCopy(*X, ctx.GetPlace(), &x_copy);
-      exec_fft<platform::CUDADeviceContext, Ti, To>(
-          ctx, &x_copy, out, axes, forward);
+      exec_fft<phi::GPUContext, Ti, To>(ctx, &x_copy, out, axes, forward);
     } else {
       framework::Tensor temp_tensor;
       temp_tensor.mutable_data<Ti>(X->dims(), ctx.GetPlace());
       const std::vector<int64_t> dims(axes.begin(), axes.end() - 1);
 
-      FFTC2CFunctor<platform::CUDADeviceContext, Ti, Ti> c2c_functor;
+      FFTC2CFunctor<phi::GPUContext, Ti, Ti> c2c_functor;
       c2c_functor(ctx, X, &temp_tensor, dims, FFTNormMode::none, forward);
 
-      exec_fft<platform::CUDADeviceContext, Ti, To>(
+      exec_fft<phi::GPUContext, Ti, To>(
           ctx, &temp_tensor, out, {axes.back()}, forward);
     }
-    exec_normalization<platform::CUDADeviceContext, To>(
+    exec_normalization<phi::GPUContext, To>(
         ctx, out, out, normalization, out_dims, axes);
   }
 };
 
 // n dimension real to complex FFT use cufft lib
 template <typename Ti, typename To>
-struct FFTR2CFunctor<platform::CUDADeviceContext, Ti, To> {
-  void operator()(const platform::CUDADeviceContext& ctx,
+struct FFTR2CFunctor<phi::GPUContext, Ti, To> {
+  void operator()(const phi::GPUContext& ctx,
                   const Tensor* X,
                   Tensor* out,
                   const std::vector<int64_t>& axes,
@@ -996,22 +995,21 @@ struct FFTR2CFunctor<platform::CUDADeviceContext, Ti, To> {
     framework::Tensor* r2c_out = out;
     const std::vector<int64_t> last_dim{axes.back()};
     std::vector<int64_t> out_dims = phi::vectorize(out->dims());
-    exec_fft<platform::CUDADeviceContext, Ti, To>(
-        ctx, X, r2c_out, last_dim, forward);
+    exec_fft<phi::GPUContext, Ti, To>(ctx, X, r2c_out, last_dim, forward);
 
     // Step2: C2C transform on the remaining dimension
     framework::Tensor c2c_out;
     if (axes.size() > 1) {
       c2c_out.mutable_data<To>(out->dims(), ctx.GetPlace());
       std::vector<int64_t> remain_dim(axes.begin(), axes.end() - 1);
-      FFTC2CFunctor<platform::CUDADeviceContext, To, To> fft_c2c_func;
+      FFTC2CFunctor<phi::GPUContext, To, To> fft_c2c_func;
       fft_c2c_func(
           ctx, r2c_out, &c2c_out, remain_dim, FFTNormMode::none, forward);
     }
 
     const auto in_sizes = phi::vectorize(X->dims());
     framework::Tensor* norm_tensor = axes.size() > 1 ? &c2c_out : r2c_out;
-    exec_normalization<platform::CUDADeviceContext, To>(
+    exec_normalization<phi::GPUContext, To>(
         ctx, norm_tensor, out, normalization, in_sizes, axes);
   }
 };

@@ -115,7 +115,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/device_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -1257,7 +1257,7 @@ All parameter, weight, gradient are variables in Paddle.
                  "Cannot use CUDAPlace in CPU only version, "
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
-      auto* context = new paddle::platform::CUDADeviceContext(place);
+      auto* context = new phi::GPUContext(place);
       context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(place, context->stream())
