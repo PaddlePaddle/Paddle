@@ -5,6 +5,13 @@ if(WITH_ASCEND_CL)
     DEPS npu_op_runner)
 endif()
 
+if(WITH_XPU)
+  cc_library(
+    beam_search_xpu
+    SRCS beam_search_xpu.cc
+    DEPS lod_tensor)
+endif()
+
 # please add new math_library in alphabetical order
 if(WITH_ASCEND_CL)
   math_library(concat_and_split DEPS concat_and_split_functor npu_op_runner)
@@ -36,10 +43,6 @@ if(WITH_MKLDNN)
 else()
   math_library(selected_rows_functor DEPS selected_rows_utils math_function
                blas mixed_vector)
-endif()
-
-if(WITH_XPU)
-  cc_library(beam_search_xpu SRCS beam_search_xpu.cc)
 endif()
 
 math_library(sequence_padding)
