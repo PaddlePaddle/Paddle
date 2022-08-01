@@ -182,6 +182,7 @@ message CommonAccessorParameter {
   optional bool sync = 9;
   optional uint32 table_num = 10;
   optional uint32 table_dim = 11;
+  optional string attr = 12;
 }
 
 message TableAccessorSaveParameter {

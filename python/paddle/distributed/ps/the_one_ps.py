@@ -127,7 +127,8 @@ class Accessor:
         self.embedding_dim = 0
 
     # TableAccessorParameter accessor
-    def _set(self, accessor_proto, varname, program_id, context):
+    def _set(self, accessor_proto, varname, program_id, context,
+             common_accessor):
         main_program, startup_program, idx = get_program_by_id(
             context, program_id)
         embedding_dim = 0
@@ -179,7 +180,11 @@ class Accessor:
                 accessor_proto.embed_sgd_param, accessor_proto.embedx_sgd_param
         ]:
             if not sgd_param.HasField("name"):
-                sgd_param.name = "SparseAdaGradSGDRule"
+                if common_accessor.accessor_class == "sgd":
+                    sgd_param.name = "SparseNaiveSGDRule"
+                if common_accessor.accessor_class == "adam":
+                    sgd_param.name = "SparseAdamSGDRule"
+
             if sgd_param.name == "SparseAdaGradSGDRule" or sgd_param.name == "StdAdaGradSGDRule":
                 if not sgd_param.adagrad.HasField("learning_rate"):
                     sgd_param.adagrad.learning_rate = 0.05
@@ -189,24 +194,36 @@ class Accessor:
                     sgd_param.adagrad.initial_range = 0.0001
                 if len(sgd_param.adagrad.weight_bounds) == 0:
                     sgd_param.adagrad.weight_bounds.extend([-10.0, 10.0])
+
             if sgd_param.name == "SparseNaiveSGDRule":
                 if not sgd_param.naive.HasField("learning_rate"):
-                    sgd_param.naive.learning_rate = 0.05
+                    learning_rate = common_accessor.initializers[-1].split(
+                        "&")[1]
+                    sgd_param.naive.learning_rate = float(learning_rate)
                 if not sgd_param.naive.HasField("initial_range"):
-                    sgd_param.naive.initial_range = 0.0001
+                    initial_range = common_accessor.initializers[0].split(
+                        "&")[-1]
+                    sgd_param.naive.initial_range = float(initial_range)
                 if len(sgd_param.naive.weight_bounds) == 0:
                     sgd_param.naive.weight_bounds.extend([-10.0, 10.0])
+
             if sgd_param.name == "SparseAdamSGDRule" or sgd_param.name == "SparseSharedAdamSGDRule":
                 if not sgd_param.adam.HasField("learning_rate"):
-                    sgd_param.adam.learning_rate = 0.001
+                    learning_rate = common_accessor.initializers[-1].split(
+                        "&")[1]
+                    sgd_param.adam.learning_rate = float(learning_rate)
                 if not sgd_param.adam.HasField("initial_range"):
-                    sgd_param.adam.initial_range = 0.0001
+                    initial_range = common_accessor.initializers[0].split(
+                        "&")[-1]
+                    sgd_param.adam.initial_range = float(initial_range)
+
+                attr_list = [x.split("&") for x in common_accessor.attrs]
                 if not sgd_param.adam.HasField("beta1_decay_rate"):
-                    sgd_param.adam.beta1_decay_rate = 0.9
+                    sgd_param.adam.beta1_decay_rate = float(attr_list[0][1])
                 if not sgd_param.adam.HasField("beta2_decay_rate"):
-                    sgd_param.adam.beta2_decay_rate = 0.999
+                    sgd_param.adam.beta2_decay_rate = float(attr_list[1][1])
                 if not sgd_param.adam.HasField("ada_epsilon"):
-                    sgd_param.adam.ada_epsilon = 1e-08
+                    sgd_param.adam.ada_epsilon = float(attr_list[2][1])
                 if len(sgd_param.adam.weight_bounds) == 0:
                     sgd_param.adam.weight_bounds.extend([-10.0, 10.0])
 
@@ -252,7 +269,7 @@ class CommonAccessor(Accessor):
                                 ("epsilon", "f")]
         opt_attr_map["adam_d2sum"] = [("beta1", "f"), ("beta2", "f"),
                                       ("epsilon", "f")]
-        opt_attr_map["summary"] = []
+        opt_attr_map["summary"] = [("summary_decay_rate", "f")]
 
         opt_init_map = {}
         opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
@@ -369,6 +386,9 @@ class CommonAccessor(Accessor):
             attr_varnames = self.opt_attr_map["adam_d2sum"]
             self.accessor_class = "adam_d2sum"
         else:
+            if oop.type != 'sgd' and oop.type != 'adam':
+                raise ValueError(
+                    "The dense optimizer in PS is only supported SGD or Adam!")
             param_varnames = self.opt_input_map[oop.type]
             attr_varnames = self.opt_attr_map[oop.type]
             self.accessor_class = oop.type
@@ -453,9 +473,18 @@ class CommonAccessor(Accessor):
                         param.name, startup_program)
                     initializers.append(initializer)
 
+        if self.accessor_class == 'summary':
+            datanorm_ops = get_datanorm_ops(main_program)
+            for op in datanorm_ops:
+                if ("BatchSize" in op.input_names) and (
+                        op.input("BatchSize")[0]
+                        == context['grad_name_to_param_name'][grad_name]):
+                    oop = op
+                    break
+
         for (attr_varname, type_) in attr_varnames:
             value = oop.attr(attr_varname)
-            attrs.append("&".join([attr_varname, type_, str(value)]))
+            attrs.append("&".join([attr_varname, str(value)]))
 
         self.params = params
         self.dims = dims
@@ -474,6 +503,7 @@ class CommonAccessor(Accessor):
         proto.sync = self.sync
         proto.table_num = self.table_num
         proto.table_dim = self.table_dim
+        proto.attr = "#".join(self.attrs)
 
 
 class Tensor:
@@ -589,6 +619,13 @@ class SparseTable(Table):
         self.common.table_name = self.context['grad_name_to_param_name'][
             ctx.origin_varnames()[0]]
 
+        self.common.parse_by_optimizer(ctx, self.context)
+        self.common.parse_entry(self.common.table_name, ctx.program_id(),
+                                self.context)
+        self.common.sync = True if self.context['is_sync'] else False
+
+        self.common._set(table_proto.common)
+
         print('new table_name: {}'.format(self.common.table_name))
         all_table_proto = self.context[
             "user_defined_strategy"].sparse_table_configs
@@ -623,17 +660,10 @@ class SparseTable(Table):
         table_proto.accessor.ParseFromString(
             usr_table_proto.accessor.SerializeToString())
         self.accessor._set(table_proto.accessor, self.common.table_name,
-                           ctx.program_id(), self.context)
+                           ctx.program_id(), self.context, self.common)
 
         check_embedding_dim(table_proto.accessor, self.common.table_name,
                             ctx.program_id(), self.context)
-
-        self.common.parse_by_optimizer(ctx, self.context)
-        self.common.parse_entry(self.common.table_name, ctx.program_id(),
-                                self.context)
-        self.common.sync = True if self.context['is_sync'] else False
-
-        self.common._set(table_proto.common)
 
 
 class GeoSparseTable(SparseTable):
