@@ -2499,6 +2499,16 @@
   inplace : (out_grad -> x_grad)
   backward : unsqueeze_double_grad
 
+- backward_api : unstack_grad
+  forward : unstack (Tensor x, int axis, int num) -> Tensor[](out)
+  args : (Tensor[] out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnStackGradInferMeta
+    param : [out_grad, axis]
+  kernel :
+    func : unstack_grad
+
 - backward_api : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times) -> Tensor(loss), Tensor(warpctcgrad)
   args : (Tensor logits, Tensor logits_length, Tensor warpctcgrad, Tensor loss_grad, int blank, bool norm_by_times)
