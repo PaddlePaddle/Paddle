@@ -23,6 +23,7 @@ from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
 paddle.enable_static()
 
+np.random.seed(2022)
 
 @place(DEVICES)
 @parameterize_cls((TEST_CASE_NAME, 'concentration'),

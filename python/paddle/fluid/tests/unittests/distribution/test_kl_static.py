@@ -25,8 +25,9 @@ import config
 import parameterize as param
 import mock_data as mock
 
+np.random.seed(2022)
+paddle.seed(2022)
 paddle.enable_static()
-
 
 @param.place(config.DEVICES)
 @param.param_cls((param.TEST_CASE_NAME, 'a1', 'b1', 'a2', 'b2'), [

@@ -23,6 +23,7 @@ from paddle.fluid import layers
 
 from test_distribution import DistributionNumpy
 
+np.random.seed(2022)
 
 class UniformNumpy(DistributionNumpy):
 

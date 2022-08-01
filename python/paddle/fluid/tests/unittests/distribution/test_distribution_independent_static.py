@@ -23,6 +23,7 @@ import parameterize as param
 
 paddle.enable_static()
 
+np.random.seed(2022)
 
 @param.place(config.DEVICES)
 @param.param_cls(
