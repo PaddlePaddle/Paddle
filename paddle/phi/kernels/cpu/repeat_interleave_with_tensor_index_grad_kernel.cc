@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/repeat_interleave_with_tensor_index_grad_kernel.h"
+//#include
+//"paddle/phi/kernels/repeat_interleave_with_tensor_index_grad_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
+//#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 //#include
 //"paddle/phi/kernels/impl/repeat_interleave_with_tensor_index_grad_kernel_impl.h"
-#include "paddle/phi/kernels/cpu/index_select_impl.h"
+//#include "paddle/phi/kernels/cpu/index_select_impl.h"
 
+/*
 namespace phi {
 
 template <typename T, typename Context>
@@ -68,8 +70,9 @@ void RepeatInterleaveWithTensorIndexGradKernel(
   if (place == cpu_place) {
     auto index_copy = index;
     // auto ctx_tmp=
-    // paddle::platform::DeviceContextPool::Instance().Get(repeats_tensor.place());
-    if (index_type == paddle::framework::proto::VarType::INT32) {
+    //
+paddle::platform::DeviceContextPool::Instance().Get(repeats_tensor.place()); if
+(index_type == paddle::framework::proto::VarType::INT32) {
       phi::funcs::RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
       IndexSelectGradInner<Context, T, int>(
           ctx, out_grad, index_copy, x_grad, dim);
@@ -89,3 +92,5 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
                    double,
                    int,
                    int64_t) {}
+
+*/

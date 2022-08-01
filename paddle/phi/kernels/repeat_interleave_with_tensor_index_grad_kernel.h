@@ -34,4 +34,4 @@ void RepeatInterleaveWithTensorIndexGradKernel(
 //     const DenseTensor& out_grad,
 //     int dim,
 //     DenseTensor* x_grad);
-// }
+}  // namespace phi
