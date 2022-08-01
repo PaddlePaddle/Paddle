@@ -584,7 +584,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (has_attrs == false) return false;
       auto registry = GetPluginRegistry();
       if (registry == nullptr) return false;
-      std::string layout_str=BOOST_GET_CONST(std::string,desc.GetAttr("data_layout"));
+      std::string layout_str=PADDLE_GET_CONST(std::string,desc.GetAttr("data_layout"));
       if (layout_str!="NCHW") return false;
       VLOG(3)<<"@@ group norm tell not false";
     }

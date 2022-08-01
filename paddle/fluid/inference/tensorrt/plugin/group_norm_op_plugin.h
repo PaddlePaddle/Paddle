@@ -137,40 +137,13 @@ namespace plugin {
         }
         const char* getPluginVersion() const TRT_NOEXCEPT override{
             return "1";
-        }
-        /*
-        const nvinfer1::PluginFieldCollection * getFieldNames() TRT_NOEXCEPT override {
-            return &field_collection_;
-        }
-        */
-/*
-        nvinfer1::IPluginV2* createPlugin(const char* name,
-                                          const nvinfer1::PluginFieldCollection* fc)
-            TRT_NOEXCEPT override {
-                return nullptr;
-            }
-*/ 
+        } 
         nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                                const void* serial_data,
                                                size_t serial_length) TRT_NOEXCEPT override 
         {
             return new GroupNormPluginDynamic(serial_data,serial_length);
         }
-        /*
-        void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override {
-            plugin_namespace_=lib_namespace;
-        }
-        const char* getPluginNamespace() const TRT_NOEXCEPT override {
-            return plugin_namespace_.c_str();
-        }
-        */
-        /*
-        private:
-            std::string plugin_namespace_;
-            std::string plugin_name_;
-            nvinfer1::PluginFieldCollection field_collection_;
-            std::vector<nvinfer1::PluginField> plugin_attributes_;
-            */
 
     };
     REGISTER_TRT_PLUGIN_V2(GroupNormPluginDynamicCreator);

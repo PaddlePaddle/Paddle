@@ -22,6 +22,25 @@
 
 namespace phi {
 
+// template <typename T>
+// void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t steam,
+//                                                const T *input,
+//                                                std::vector<int> input_shape,
+//                                                const T *scale,
+//                                                const T *bias,
+//                                                T *mean,
+//                                                T *variance,
+//                                                T *temp_variance,
+//                                                int N,
+//                                                int C,
+//                                                int W,
+//                                                int group,
+//                                                int group_size,
+//                                                float eps,T *output){
+  
+// }
+
+
 template <typename T>
 __global__ void GroupNormForwardGetMeanAndVar(const T* x,
                                               int N,
@@ -69,7 +88,7 @@ __global__ void GroupNormForward(const T* x,
                                  int group_size,
                                  T epsilon,
                                  T* y,
-                                 T* real_var, //TODO what is real_var
+                                 T* real_var, 
                                  const DataLayout data_layout) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
@@ -194,7 +213,6 @@ void GroupNormKernel(const Context& dev_ctx,
               x_data, mean_data, temp_var_data, size);
     }
   } else {
-    //TODO what？ set zero for mean and var
     set_zero(dev_ctx, mean, static_cast<T>(0));
     set_zero(dev_ctx, &temp_var, static_cast<T>(0));
     GroupNormForwardGetMeanAndVar<T>
