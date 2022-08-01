@@ -258,8 +258,9 @@ class StaticFunction(object):
             self._class_instance = getattr(function, '__self__')
 
             if not hasattr(self._class_instance, '_original_funcs'):
-                setattr(self._class_instance, '_original_funcs',
-                        collections.OrderedDict())
+                raise TypeError(
+                    "When using 'to_static' to convert method of a class, "
+                    "please ensure the class inherits from nn.Layer")
             self._class_instance._original_funcs[
                 function.__name__] = self._dygraph_function
         else:
