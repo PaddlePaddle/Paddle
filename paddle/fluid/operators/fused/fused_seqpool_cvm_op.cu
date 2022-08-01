@@ -114,9 +114,8 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
                      const float padding_value,
                      const bool use_cvm,
                      const int cvm_offset) {
-  auto stream =
-      ctx.template device_context<platform::CUDADeviceContext>().stream();
-  auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+  auto stream = ctx.template device_context<phi::GPUContext>().stream();
+  auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
   size_t total_ptr_len = input_data.size() + output_data.size() +
                          seqpool_output_data.size() + lods.size();
   auto temp_ptr =
@@ -320,9 +319,8 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
                          const int embedding_size,
                          const bool use_cvm,
                          const int cvm_offset) {
-  auto stream =
-      ctx.template device_context<platform::CUDADeviceContext>().stream();
-  auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+  auto stream = ctx.template device_context<phi::GPUContext>().stream();
+  auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
   size_t total_ptr_len = out_grads_data.size() + in_grads_data.size() +
                          cvm_data.size() + lods.size();
   auto temp_ptr =

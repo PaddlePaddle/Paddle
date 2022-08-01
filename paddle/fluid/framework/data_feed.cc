@@ -2809,7 +2809,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
 MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
                                    const std::vector<UsedSlotInfo>& infos) {
   place_ = place;
-  stream_ = dynamic_cast<platform::CUDADeviceContext*>(
+  stream_ = dynamic_cast<phi::GPUContext*>(
                 platform::DeviceContextPool::Instance().Get(place))
                 ->stream();
 
@@ -2843,7 +2843,7 @@ MiniBatchGpuPack::~MiniBatchGpuPack() {}
 
 void MiniBatchGpuPack::reset(const paddle::platform::Place& place) {
   place_ = place;
-  stream_ = dynamic_cast<platform::CUDADeviceContext*>(
+  stream_ = dynamic_cast<phi::GPUContext*>(
                 platform::DeviceContextPool::Instance().Get(place))
                 ->stream();
   ins_num_ = 0;

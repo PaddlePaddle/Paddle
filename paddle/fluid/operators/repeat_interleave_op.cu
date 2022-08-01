@@ -88,8 +88,7 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];
 
-    auto stream =
-        context.template device_context<platform::CUDADeviceContext>().stream();
+    auto stream = context.template device_context<phi::GPUContext>().stream();
 
     int repeats = context.Attr<int>("Repeats");
     framework::LoDTensor index;
@@ -218,8 +217,7 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
     int64_t numel = in_grad->numel();
     int64_t out_nums = output_grad->numel();
 
-    auto stream =
-        context.template device_context<platform::CUDADeviceContext>().stream();
+    auto stream = context.template device_context<phi::GPUContext>().stream();
 
     index_select_grad_init<T>
         <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
@@ -328,23 +326,16 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     repeat_interleave,
-    ops::RepeatInterleaveCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::RepeatInterleaveCUDAKernel<paddle::platform::CUDADeviceContext,
-                                    double>,
-    ops::RepeatInterleaveCUDAKernel<paddle::platform::CUDADeviceContext,
-                                    paddle::platform::float16>,
-    ops::RepeatInterleaveCUDAKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::RepeatInterleaveCUDAKernel<paddle::platform::CUDADeviceContext,
-                                    int64_t>);
+    ops::RepeatInterleaveCUDAKernel<phi::GPUContext, float>,
+    ops::RepeatInterleaveCUDAKernel<phi::GPUContext, double>,
+    ops::RepeatInterleaveCUDAKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::RepeatInterleaveCUDAKernel<phi::GPUContext, int>,
+    ops::RepeatInterleaveCUDAKernel<phi::GPUContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     repeat_interleave_grad,
-    ops::RepeatInterleaveGradCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        float>,
-    ops::RepeatInterleaveGradCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        double>,
-    ops::RepeatInterleaveGradCUDAKernel<paddle::platform::CUDADeviceContext,
+    ops::RepeatInterleaveGradCUDAKernel<phi::GPUContext, float>,
+    ops::RepeatInterleaveGradCUDAKernel<phi::GPUContext, double>,
+    ops::RepeatInterleaveGradCUDAKernel<phi::GPUContext,
                                         paddle::platform::float16>,
-    ops::RepeatInterleaveGradCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        int>,
-    ops::RepeatInterleaveGradCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        int64_t>);
+    ops::RepeatInterleaveGradCUDAKernel<phi::GPUContext, int>,
+    ops::RepeatInterleaveGradCUDAKernel<phi::GPUContext, int64_t>);

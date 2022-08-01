@@ -300,7 +300,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPullImpl(
     const int64_t total_length,
     int* gpu_dim,
     int feature_value_size) {
-  auto stream = dynamic_cast<paddle::platform::CUDADeviceContext*>(
+  auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto buf_value = memory::Alloc(place, values.size() * sizeof(float*));
@@ -333,7 +333,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
     size_t grad_value_size,
     std::vector<int>& slot_vector,
     std::vector<int>& slot_mf_dim_vector) {
-  auto stream = dynamic_cast<paddle::platform::CUDADeviceContext*>(
+  auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto slot_lengths_lod = slot_lengths;
