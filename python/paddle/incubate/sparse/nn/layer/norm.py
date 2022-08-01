@@ -229,6 +229,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
     Shapes:
         input: Tensor that the dimension from 2 to 5.
+
         output: Tensor with the same shape as input.
 
     Examples:
@@ -278,7 +279,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
     @classmethod
     def convert_sync_batchnorm(cls, layer):
-        """
+        r"""
         Helper function to convert :class: `paddle.incubate.sparse.nn.BatchNorm` layers in the model to :class: `paddle.incubate.sparse.nn.SyncBatchNorm` layers.
 
         Parameters:
@@ -290,13 +291,14 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         Examples:
 
             .. code-block:: python
+
                 import paddle
                 import paddle.incubate.sparse.nn as nn
 
                 model = paddle.nn.Sequential(nn.Conv3D(3, 5, 3), nn.BatchNorm(5))
                 sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-
         """
+
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
             if layer._weight_attr != None and not isinstance(

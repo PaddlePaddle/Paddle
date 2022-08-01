@@ -25,8 +25,8 @@ namespace paddle {
 namespace operators {
 namespace math {
 template <typename T>
-struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& context,
+struct SelectedRowsAdd<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& context,
                   const phi::SelectedRows& input1,
                   const phi::SelectedRows& input2,
                   phi::SelectedRows* output) {
@@ -109,8 +109,8 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct SelectedRowsAdd<platform::CUDADeviceContext, float>;
-template struct SelectedRowsAdd<platform::CUDADeviceContext, double>;
+template struct SelectedRowsAdd<phi::GPUContext, float>;
+template struct SelectedRowsAdd<phi::GPUContext, double>;
 
 namespace {
 template <typename T, int block_size>
@@ -210,8 +210,8 @@ template struct SelectedRowsAdd<phi::GPUContext, platform::float16>;
 template struct SelectedRowsAddTensor<phi::GPUContext, platform::float16>;
 
 template <typename T>
-struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& context,
+struct SelectedRowsAddTo<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& context,
                   const phi::SelectedRows& input1,
                   const int64_t input2_offset,
                   phi::SelectedRows* input2) {
@@ -259,12 +259,11 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct SelectedRowsAddTo<platform::CUDADeviceContext, float>;
-template struct SelectedRowsAddTo<platform::CUDADeviceContext, double>;
-template struct SelectedRowsAddTo<platform::CUDADeviceContext, int>;
-template struct SelectedRowsAddTo<platform::CUDADeviceContext, int64_t>;
-template struct SelectedRowsAddTo<platform::CUDADeviceContext,
-                                  platform::float16>;
+template struct SelectedRowsAddTo<phi::GPUContext, float>;
+template struct SelectedRowsAddTo<phi::GPUContext, double>;
+template struct SelectedRowsAddTo<phi::GPUContext, int>;
+template struct SelectedRowsAddTo<phi::GPUContext, int64_t>;
+template struct SelectedRowsAddTo<phi::GPUContext, platform::float16>;
 
 namespace {
 template <typename T, int block_size>
@@ -588,14 +587,14 @@ __global__ void UpdateToTensorKernel(const T* selected_rows,
 }
 
 template <typename T>
-struct UpdateToTensor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& context,
+struct UpdateToTensor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& context,
                   const ScatterOps& op,
                   const phi::SelectedRows& input1,
                   framework::Tensor* input2) {
     // NOTE: Use SelectedRowsAddToTensor for better performance
     //       no additional MergeAdd called.
-    MergeAdd<platform::CUDADeviceContext, T> merge_func;
+    MergeAdd<phi::GPUContext, T> merge_func;
     auto merged_in1 = merge_func(context, input1);
 
     auto in1_height = merged_in1.height();
