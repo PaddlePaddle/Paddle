@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace phi {
-namespace funcs {
+#pragma once
 #include <vector>
 #include "paddle/phi/core/dense_tensor.h"
+namespace phi {
+namespace funcs {
 template <typename RepeatsT = int>
 void RepeatsTensor2IndexTensor(const DenseTensor& repeats, DenseTensor* index) {
   DenseTensor repeats_cpu_copy;
