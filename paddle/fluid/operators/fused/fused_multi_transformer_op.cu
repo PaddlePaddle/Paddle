@@ -1497,33 +1497,19 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         auto *ln_scale_data = ln_scales[i]->data<U>();
         auto *ln_bias_data = ln_biases[i]->data<U>();
         auto *out_linear_bias_data = out_linear_biases[i]->data<T>();
-        if (i == 0) {
-          fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-              dev_ctx,
-              buf0->data<T>(),
-              x_data,
-              out_linear_bias_data,
-              ln_scale_data,
-              ln_bias_data,
-              buf0->data<T>(),
-              dropout_mask_out_data,
-              buf1->data<T>(),
-              ln_mean_data,
-              ln_var_data);
-        } else {
-          fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-              dev_ctx,
-              buf0->data<T>(),
-              buf1->data<T>(),
-              out_linear_bias_data,
-              ln_scale_data,
-              ln_bias_data,
-              buf0->data<T>(),
-              dropout_mask_out_data,
-              buf1->data<T>(),
-              ln_mean_data,
-              ln_var_data);
-        }
+        auto *residual_data = i == 0 ? x_data : buf1->data<T>();
+        fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
+            dev_ctx,
+            buf0->data<T>(),
+            residual_data,
+            out_linear_bias_data,
+            ln_scale_data,
+            ln_bias_data,
+            buf0->data<T>(),
+            dropout_mask_out_data,
+            buf1->data<T>(),
+            ln_mean_data,
+            ln_var_data);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step5";
