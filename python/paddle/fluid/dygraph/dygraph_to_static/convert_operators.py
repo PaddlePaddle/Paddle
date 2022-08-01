@@ -453,7 +453,7 @@ class VariableTuple:
         if isinstance(self.len, Variable):
             self.rag = paddle_range(start, start + self.len, 1, paddle.int64)
         else:
-            self.rag = range(0, self.len)
+            self.rag = range(start, start + self.len)
 
     def __getitem__(self, idx):
         return self.rag[idx], self.var[idx]
