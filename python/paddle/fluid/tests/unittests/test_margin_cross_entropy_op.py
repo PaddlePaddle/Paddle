@@ -76,8 +76,7 @@ def python_api(logits,
                margin2=0.5,
                margin3=0.0,
                scale=64.0):
-    # here only can test paddle.nn.functional.softmax_with_cross_entropy,
-    # the paddle.nn.functional.cross_entropy contains other math ops
+    # here only can test paddle.nn.functional.margin_cross_entropy,
     return paddle.nn.functional.margin_cross_entropy(logits,
                                                      label,
                                                      return_softmax=False,
