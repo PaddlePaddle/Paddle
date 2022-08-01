@@ -454,6 +454,13 @@ def unstack(x, axis=0, num=None):
             y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
+    if in_dygraph_mode():
+        if num == None:
+            num = x.shape[axis]
+        if num == 0:
+            return []
+        return _C_ops.final_state_unstack(x, axis, num)
+
     if _non_static_mode():
         if num == None:
             num = x.shape[axis]

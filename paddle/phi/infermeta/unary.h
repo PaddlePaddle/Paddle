@@ -228,6 +228,8 @@ void NanmedianInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* median_index);
 
+void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out);
+
 void NormInferMeta(const MetaTensor& x,
                    int axis,
                    float epsilon,
