@@ -70,7 +70,7 @@ class ProcessGroupMPI : public ProcessGroup {
         : ProcessGroup::Task(-1, inputTensors, CommType::UNKNOWN),
           outputs_(std::move(outputTensors)) {}
 
-    void synchronize() {}
+    void Synchronize() {}
 
     bool Wait(std::chrono::milliseconds timeout = kWaitTimeout) {
       std::unique_lock<std::mutex> lock(mutex_);
@@ -95,13 +95,13 @@ class ProcessGroupMPI : public ProcessGroup {
 
    private:
     // about mpi
-    void finish(std::exception_ptr exception = nullptr) {
+    void Finish(std::exception_ptr exception = nullptr) {
       is_completed_ = true;
       exception_ = exception;
       cv_.notify_all();
     }
-    void finishMPITask();
-    void finishMPITaskError(std::exception_ptr eptr);
+    void FinishMPITask();
+    void FinishMPITaskError(std::exception_ptr eptr);
 
     std::vector<phi::DenseTensor> outputs_;
     std::condition_variable cv_;
@@ -125,7 +125,7 @@ class ProcessGroupMPI : public ProcessGroup {
     virtual ~MPIAsyncTask();
 
    protected:
-    void appearException();
+    void AppearException();
 
    private:
     std::shared_ptr<std::vector<phi::DenseTensor>> outputs_;
@@ -179,14 +179,14 @@ class ProcessGroupMPI : public ProcessGroup {
       std::vector<phi::DenseTensor>& out_tensors,
       const ScatterOptions&) override;
 
-  static std::shared_ptr<ProcessGroupMPI> createProcessGroupMPI(
+  static std::shared_ptr<ProcessGroupMPI> CreateProcessGroupMPI(
       std::vector<int> ranks, int gid);
 
  protected:
   // Worker thread loop
   void workLoop();
 
-  std::shared_ptr<ProcessGroup::Task> enqueue(
+  std::shared_ptr<ProcessGroup::Task> Enqueue(
       std::unique_ptr<TaskEntry> entry,
       const std::vector<phi::DenseTensor>& inputs);
 
@@ -203,8 +203,8 @@ class ProcessGroupMPI : public ProcessGroup {
   std::condition_variable queue_consume;
 
   // Global states
-  static void initOneTimeMPI();
-  static void exitMPI();
+  static void InitOneTimeMPI();
+  static void ExitMPI();
   static std::once_flag onceFlag;
 
   static std::mutex pg_global_mutex;

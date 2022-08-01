@@ -30,10 +30,5 @@ class TestProcessGroup(TestMultipleGpus):
         self.run_mnist_2gpu('init_process_group.py')
 
 
-class TestProcessGroupWithMPI(TestMultipleWithMPI):
-    def test_process_group_mpi(self):
-        self.run_mnist_2cpu("process_group_mpi.py")
-
-
 if __name__ == "__main__":
     unittest.main()

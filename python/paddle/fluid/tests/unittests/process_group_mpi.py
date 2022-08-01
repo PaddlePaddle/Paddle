@@ -26,6 +26,8 @@ from datetime import timedelta
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.collective import _group_map_by_name
+from paddle.distributed.collective import _default_group_name
 import paddle.distributed as dist
 
 
@@ -34,7 +36,7 @@ def init_process_group(strategy=None):
     return pg_group.process_group
 
 
-class TestProcessGroupFp32(unittest.TestCase):
+class TestProcessGroup(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         random.seed(2022)
@@ -430,18 +432,6 @@ class TestProcessGroupFp32(unittest.TestCase):
                 assert np.array_equal(tensor_y, tensor_x)
 
             print("test send api ok")
-
-
-class TestProcessGroupFp16(TestProcessGroupFp32):
-    def setUp(self):
-        paddle.seed(2022)
-        random.seed(2022)
-        np.random.seed(2022)
-        self.config()
-
-    def config(self):
-        self.dtype = "float16"
-        self.shape = (4, 20, 20)
 
 
 if __name__ == "__main__":
