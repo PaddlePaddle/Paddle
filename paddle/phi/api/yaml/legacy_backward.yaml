@@ -645,7 +645,7 @@
 
 - backward_api : dropout_grad
   forward : dropout (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(mask)
-  args : (Tensor mask, Tensor out_grad, float p, bool is_test, str mode)
+  args : (Tensor mask, Tensor out_grad, Scalar p, bool is_test, str mode)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

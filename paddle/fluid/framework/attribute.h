@@ -454,6 +454,17 @@ class TypedAttrChecker {
     return *this;
   }
 
+  void operator()(AttributeMap* attr_map, const AttributeMap* attrs_var) {
+    // If attribute is VarDesc(s), we should verify it's dtype and shape.
+    if (attrs_var->find(attr_name_) != attrs_var->end()) {
+      VLOG(1) << "Found Attribute " << attr_name_
+              << " with Variable, skip attr_checker.";
+      // ValueDataTypeCheck::check(it->second);
+      return;
+    }
+    this->operator()(attr_map, false, false);
+  }
+
   void operator()(AttributeMap* attr_map,
                   bool get_default_value_only = false,
                   bool only_check_exist_value = false) const {
@@ -463,15 +474,7 @@ class TypedAttrChecker {
       }
       return;
     }
-
     auto it = attr_map->find(attr_name_);
-    // If attribute is VarDesc(s), we should verify it's dtype and shape.
-    if (it != attr_map->end() && HasAttrVar(it->second)) {
-      VLOG(1) << "Found Attribute " << attr_name_
-              << " with Variable, skip attr_checker.";
-      // ValueDataTypeCheck::check(it->second);
-      return;
-    }
     if (only_check_exist_value) {
       if (it != attr_map->end()) {
         ExtractAttribute<T> extract_attr(attr_name_);
