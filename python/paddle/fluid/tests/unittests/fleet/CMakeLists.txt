@@ -3,6 +3,7 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_*.py")
 string(REPLACE ".py" "" TEST_CASES "${TEST_CASES}")
+set(dist_ut_port 20001)
 
 function(set_py_test_module TARGET_NAME)
   set(options "")
@@ -37,7 +38,8 @@ set(PY_TEST_CASES
     test_fleet_rolemaker_new
     test_fleet_unitaccessor)
 foreach(CASE ${PY_TEST_CASES})
-  set_py_test_module(${CASE} TEST_CASES ${TEST_CASES} ENVS ${dist_ENVS})
+  set_py_test_module(${CASE} TEST_CASES ${TEST_CASES} ENVS
+                     "PADDLE_DIST_UT_PORT=${dist_ut_port};TEST_TIMEOUT=350")
 endforeach()
 
 set(SINGLE_GPU_TESTS test_fleet_meta_optimizer_base test_fleet_amp_init
@@ -51,7 +53,6 @@ endforeach()
 list(REMOVE_ITEM TEST_CASES test_dist_mnist_train)
 
 if(WITH_GPU)
-  set(dist_ut_port 20001)
   foreach(TEST_CASE ${TEST_CASES})
     message("fleet test: " ${TEST_CASE})
     bash_test_modules(
