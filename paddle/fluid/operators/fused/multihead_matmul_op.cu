@@ -15,10 +15,12 @@
 #include <paddle/fluid/platform/device_context.h>
 
 #include <algorithm>
+#include <type_traits>
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
@@ -65,13 +67,32 @@ __device__ float4 add_func<float4>(float4 a, float4 b) {
   return c;
 }
 
+template <>
+__device__ half2 add_func<half2>(half2 a, half2 b) {
+#if __CUDA_ARCH__ >= 530
+  return __hadd2(a, b);
+#else
+  return half2(__float2half(__half2float(a.x) + __half2float(b.x)),
+               __float2half(__half2float(b.x) + __half2float(b.y)));
+#endif
+}
+
+template <>
+__device__ half add_func<half>(half a, half b) {
+#if __CUDA_ARCH__ >= 530
+  return __hadd(a, b);
+#else
+  return __float2half(__half2float(a) + __half2float(b));
+#endif
+}
+
 template <typename T>
 __global__ void TransposeQkvKernel(const int H,
                                    const T *input,
                                    const T *bias,
                                    T *output) {
   // Input: BxSx3xNxH
-  // Bias: 3xSxB
+  // Bias: 3xNxH
   // Output: 3xBxNxSxH
   int n = threadIdx.y;
   int s = blockIdx.x;
@@ -93,6 +114,17 @@ __global__ void TransposeQkvKernel(const int H,
       add_func(input[in_offset + i], bias[bias_offset + i]);
 }
 
+template <typename T>
+void TransQKVWithBias(const int batch,
+                      const int seq_len,
+                      const int head_size,
+                      const int head_num,
+                      const T *input,
+                      const T *bias,
+                      T *output,
+                      gpuStream_t stream);
+
+template <>
 void TransQKVWithBias(const int batch,
                       const int seq_len,
                       const int head_size,
@@ -150,6 +182,53 @@ void TransQKVWithBias(const int batch,
                           1024));
     TransposeQkvKernel<float>
         <<<grid, block, 0, stream>>>(head_size, input, bias, output);
+  }
+}
+
+template <>
+void TransQKVWithBias(const int batch,
+                      const int seq_len,
+                      const int head_size,
+                      const int head_num,
+                      const platform::float16 *input,
+                      const platform::float16 *bias,
+                      platform::float16 *output,
+                      gpuStream_t stream) {
+  // BxSx3xNxH + 3xNxH -> 3xBxNxSxH
+  int scratch_size = batch * head_num * seq_len * seq_len;
+  const dim3 grid(seq_len, batch, 3);
+  if (head_size % 2 == 0 && scratch_size % 2 == 0) {
+    const int h = head_size / 2;
+    const half2 *input2 = reinterpret_cast<const half2 *>(input);
+    const half2 *bias2 = reinterpret_cast<const half2 *>(bias);
+    half2 *output2 = reinterpret_cast<half2 *>(output);
+    const dim3 block(h, head_num, 1);
+    // limit h * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(h * head_num,
+                      1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num,
+                          head_size,
+                          1024 * 2));
+    TransposeQkvKernel<half2>
+        <<<grid, block, 0, stream>>>(h, input2, bias2, output2);
+  } else {
+    const dim3 block(head_size, head_num, 1);
+    const half *input_half = reinterpret_cast<const half *>(input);
+    const half *bias_half = reinterpret_cast<const half *>(bias);
+    half *output_half = reinterpret_cast<half *>(output);
+
+    // limit head_size * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(head_size * head_num,
+                      1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num,
+                          head_size,
+                          1024));
+    TransposeQkvKernel<half><<<grid, block, 0, stream>>>(
+        head_size, input_half, bias_half, output_half);
   }
 }
 
@@ -261,18 +340,31 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
                      bias_d,
                      tptr,
                      stream);
-
-    math::MultiHeadGPUComputeFunctor<T> multihead_compute_func;
-    multihead_compute_func(device_ctx,
-                           batch,
-                           seq_len,
-                           head_number,
-                           head_size,
-                           qkptr,
-                           bias_qk_d,
-                           tptr,
-                           scale,
-                           T(0.0));
+    if (std::is_same<T, platform::float16>::value) {
+      math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
+      multihead_compute_func(device_ctx,
+                             batch,
+                             seq_len,
+                             head_number,
+                             head_size,
+                             reinterpret_cast<half *>(qkptr),
+                             reinterpret_cast<const half *>(bias_qk_d),
+                             reinterpret_cast<half *>(tptr),
+                             __float2half(static_cast<float>(scale)),
+                             __float2half(0.0));
+    } else {
+      math::MultiHeadGPUComputeFunctor<T> multihead_compute_func;
+      multihead_compute_func(device_ctx,
+                             batch,
+                             seq_len,
+                             head_number,
+                             head_size,
+                             qkptr,
+                             bias_qk_d,
+                             tptr,
+                             scale,
+                             T(0.0));
+    }
 
     int grid = batch * head_number * seq_len;
     int block = head_size;
@@ -287,4 +379,8 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     multihead_matmul,
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+    ops::MultiHeadMatMulV2Kernel<paddle::platform::CUDADeviceContext,
+                                 paddle::platform::float16>,
+#endif
     ops::MultiHeadMatMulV2Kernel<paddle::platform::CUDADeviceContext, float>);
