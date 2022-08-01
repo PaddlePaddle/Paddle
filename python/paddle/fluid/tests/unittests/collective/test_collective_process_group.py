@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from test_parallel_dygraph_dataparallel import TestMultipleGpus, TestMultipleWithMPI
+from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestProcessGroup(TestMultipleGpus):
