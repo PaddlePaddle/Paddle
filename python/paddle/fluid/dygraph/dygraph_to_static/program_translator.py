@@ -410,6 +410,10 @@ class StaticFunction(object):
 
     def _is_train_mode(self):
         if self._class_instance is not None:
+            if not hasattr(self._class_instance, 'training'):
+                raise TypeError(
+                    "When using 'to_static' to convert method of a class, "
+                    "please ensure the class inherits from nn.Layer")
             return self._class_instance.training
         else:
             return self._training
