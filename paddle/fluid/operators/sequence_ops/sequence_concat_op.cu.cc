@@ -16,12 +16,6 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
 REGISTER_OP_CUDA_KERNEL(
     sequence_concat,
     paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,

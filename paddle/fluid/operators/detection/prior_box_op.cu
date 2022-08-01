@@ -194,8 +194,3 @@ class PriorBoxOpCUDAKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(prior_box,
-                        ops::PriorBoxOpCUDAKernel<float>,
-                        ops::PriorBoxOpCUDAKernel<double>);

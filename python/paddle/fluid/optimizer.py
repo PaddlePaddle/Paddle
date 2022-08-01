@@ -2279,11 +2279,18 @@ class AdagradOptimizer(Optimizer):
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            _C_ops.final_state_adagrad_(param_and_grad[0], param_and_grad[1],
+                                        moment_acc,
+                                        self._create_param_lr(param_and_grad),
+                                        self._epsilon)
+            return None
+        elif _in_legacy_dygraph():
             _C_ops.adagrad(param_and_grad[0], param_and_grad[1], moment_acc,
                            self._create_param_lr(param_and_grad),
                            param_and_grad[0], moment_acc, "epsilon",
                            self._epsilon)
+            return None
         else:
             # Create the adagrad optimizer op
             adagrad_op = block.append_op(
@@ -3374,7 +3381,14 @@ class RMSPropOptimizer(Optimizer):
                                                 param_and_grad[0])
         mean_grad_acc = self._get_accumulator(self._mean_grad_acc_str,
                                               param_and_grad[0])
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            _C_ops.final_state_rmsprop_(param_and_grad[0], mean_square_acc,
+                                        param_and_grad[1], momentum_acc,
+                                        self._create_param_lr(param_and_grad),
+                                        mean_grad_acc, self._epsilon, self._rho,
+                                        self._momentum, self._centered)
+            return None
+        elif _in_legacy_dygraph():
             _C_ops.rmsprop(param_and_grad[0], mean_square_acc,
                            self._create_param_lr(param_and_grad),
                            param_and_grad[1], momentum_acc, param_and_grad[0],
@@ -3382,6 +3396,7 @@ class RMSPropOptimizer(Optimizer):
                            "epsilon", self._epsilon, "decay", self._rho,
                            "momentum", self._momentum, "centered",
                            self._centered)
+            return None
         else:
             rmsprop_op = block.append_op(
                 type=self.type,

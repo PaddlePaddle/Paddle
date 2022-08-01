@@ -40,6 +40,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
             self._test_custom_device_mnist()
             self._test_eager_backward_api()
             self._test_eager_copy_to()
+            self._test_fallback_kernel()
         self._test_custom_device_dataloader()
         self._test_custom_device_mnist()
 
@@ -159,6 +160,15 @@ class TestCustomCPUPlugin(unittest.TestCase):
             paddle.CustomPlace('custom_cpu', 0), True)
         self.assertTrue(np.array_equal(another_custom_cpu_tensor, x))
         self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
+
+    def _test_fallback_kernel(self):
+        # using (custom_cpu, add, int16) which is not registered
+        import paddle
+        r = np.array([6, 6, 6], 'int16')
+        x = paddle.to_tensor([5, 4, 3], 'int16')
+        y = paddle.to_tensor([1, 2, 3], 'int16')
+        z = paddle.add(x, y)
+        self.assertTrue(np.array_equal(z, r))
 
     def tearDown(self):
         del os.environ['CUSTOM_DEVICE_ROOT']

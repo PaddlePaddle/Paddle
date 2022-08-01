@@ -300,6 +300,47 @@ void CumInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void CropTensorInferMeta(const MetaTensor& x,
+                         const IntArray& shape,
+                         const IntArray& offsets,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  PADDLE_ENFORCE_NE(
+      out,
+      nullptr,
+      errors::InvalidArgument("CropTensor should have output tensor out."));
+
+  auto x_dim = x.dims();
+  auto shape_dims = shape.GetData();
+  auto offsets_vec = offsets.GetData();
+
+  PADDLE_ENFORCE_EQ(shape_dims.size(),
+                    x_dim.size(),
+                    errors::InvalidArgument(
+                        "The number of elements (%d) of attribute 'shape' for "
+                        "CropTensor must be equal to the number of "
+                        "dimensions (%d) of the input.",
+                        shape_dims.size(),
+                        x_dim.size()));
+
+  if (config.is_runtime) {
+    out->share_lod(x);
+  }
+
+  auto out_dims = std::vector<int64_t>(shape.size(), -1);
+  for (size_t i = 0; i < shape_dims.size(); ++i) {
+    if (shape_dims[i] > 0) {
+      out_dims[i] = static_cast<int64_t>(shape_dims[i]);
+    } else {
+      if (shape_dims[i] == -1 && offsets_vec[i] != -1 && x_dim[i] != -1) {
+        out_dims[i] = x_dim[i] - static_cast<int64_t>(offsets_vec[i]);
+      }
+    }
+  }
+  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dtype(x.dtype());
+}
+
 void DiagEmbedInferMeta(
     const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out) {
   auto x_dims = x.dims();
@@ -475,6 +516,19 @@ void DiagonalInferMeta(const MetaTensor& input,
     }
   }
   out->set_dims(phi::make_ddim(out_dims));
+}
+
+void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
+  const auto alpha_dim = alpha.dims();
+  PADDLE_ENFORCE_GE(alpha_dim.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "ShapeError: The number of dimensions of 'Alpha' "
+                        "must be greater than or euqal to 1. "
+                        "But received Alpha's dimensions = %d,",
+                        alpha_dim.size()));
+  out->set_dims(alpha_dim);
+  out->set_dtype(alpha.dtype());
 }
 
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
@@ -832,6 +886,90 @@ void FlipInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(output_dims));
   out->set_dtype(x.dtype());
   out->share_lod(x);
+}
+
+void FrameInferMeta(const MetaTensor& x,
+                    int frame_length,
+                    int hop_length,
+                    int axis,
+                    MetaTensor* out,
+                    MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(out,
+                          phi::errors::InvalidArgument(
+                              "Output(Out) of FrameOp should not be null."));
+  const auto x_dims = x.dims();
+  const int x_rank = x_dims.size();
+
+  PADDLE_ENFORCE_GE(x_rank,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Input(X) of FrameOp should be a tensor which contains "
+                        "at least 1 dimension, but got rank %s.",
+                        x_rank));
+  PADDLE_ENFORCE_GT(hop_length,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Attribute(hop_length) of FrameOp should be greater "
+                        "than 0, but got %s.",
+                        hop_length));
+  PADDLE_ENFORCE_EQ(
+      (axis == 0 || axis == -1),
+      true,
+      phi::errors::InvalidArgument(
+          "Attribute(axis) of FrameOp should 0 or -1, but got %s.", axis));
+
+  std::vector<int64_t> output_shape;
+  int seq_length;
+  int n_frames;
+
+  int start_axis;
+  int end_axis;
+
+  if (axis == 0) {
+    seq_length = x_dims[0];
+    start_axis = 1;
+    end_axis = x_rank - 1;
+  } else {
+    seq_length = x_dims[x_rank - 1];
+    start_axis = 0;
+    end_axis = x_rank - 2;
+  }
+
+  bool contain_unknown_dim = phi::contain_unknown_dim(x_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+  if (check) {
+    PADDLE_ENFORCE_LE(frame_length,
+                      seq_length,
+                      phi::errors::InvalidArgument(
+                          "Attribute(frame_length) of FrameOp should be less "
+                          "equal than sequence length, but got (%s) > (%s).",
+                          frame_length,
+                          seq_length));
+  }
+
+  // It won't go into for loop when x_rank == 1U.
+  for (int i = start_axis; i <= end_axis; i++) {
+    output_shape.push_back(x_dims[i]);
+  }
+
+  if (seq_length == -1) {
+    n_frames = -1;
+  } else {
+    n_frames = 1 + (seq_length - frame_length) / hop_length;
+  }
+
+  if (axis == 0) {
+    // (n_frames, frame_length, ...)
+    output_shape.insert(output_shape.begin(), frame_length);
+    output_shape.insert(output_shape.begin(), n_frames);
+  } else {
+    // (..., frame_length, n_frames)
+    output_shape.push_back(frame_length);
+    output_shape.push_back(n_frames);
+  }
+
+  out->set_dims(phi::make_ddim(output_shape));
+  out->set_dtype(x.dtype());
 }
 
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
@@ -1241,15 +1379,59 @@ void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void LUInferMeta(const MetaTensor& x,
+                 bool pivot,
+                 MetaTensor* out,
+                 MetaTensor* pivots,
+                 MetaTensor* infos) {
+  auto x_dims = x.dims();
+  int x_rank = x_dims.size();
+
+  PADDLE_ENFORCE_NOT_NULL(
+      out, phi::errors::InvalidArgument("Output(Out) should not be nullptr."));
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument("The rank of input must greater than 2."));
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+  int m = x_dims[x_rank - 1];
+  int n = x_dims[x_rank - 2];
+  int min_mn = std::min(m, n);
+  auto dims_vec = phi::vectorize(x_dims);
+  PADDLE_ENFORCE_NOT_NULL(
+      infos,
+      phi::errors::InvalidArgument("Output(Infos) should not be nullptr."));
+  if (x_rank == 2) {
+    auto Infos_dim = std::vector<int>(1);
+    infos->set_dims(phi::make_ddim(Infos_dim));
+  } else {
+    auto Infos_dim =
+        std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 2);
+    infos->set_dims(phi::make_ddim(Infos_dim));
+  }
+  infos->set_dtype(DataType::INT32);
+  if (pivot) {
+    PADDLE_ENFORCE_NOT_NULL(
+        pivots,
+        phi::errors::InvalidArgument("Output(Pivots) should not be nullptr."));
+    auto Pivots_dim =
+        std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 1);
+    Pivots_dim[x_rank - 2] = min_mn;
+    pivots->set_dims(phi::make_ddim(Pivots_dim));
+    pivots->set_dtype(DataType::INT32);
+  }
+}
+
 void MatrixRankInferMeta(const MetaTensor& x,
                          bool use_default_tol,
                          bool hermitian,
                          MetaTensor* out) {
   auto dim_x = x.dims();
-  PADDLE_ENFORCE_GE(
-      dim_x.size(),
-      2,
-      phi::errors::InvalidArgument("The dims of input must be greater than 2"));
+  PADDLE_ENFORCE_GE(dim_x.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dims of input must be greater than 2."));
 
   if (hermitian) {
     int rows = dim_x[dim_x.size() - 2];
@@ -1280,11 +1462,11 @@ void MaxOutInferMeta(const MetaTensor& x,
       axis == 1 || axis == -1 || axis == 3,
       true,
       phi::errors::InvalidArgument(
-          "axis only supported 1, -1 or 3, but recevied axis is: %d", axis));
+          "axis only supported 1, -1 or 3, but recevied axis is: %d.", axis));
   PADDLE_ENFORCE_EQ(in_x_dims.size(),
                     4,
                     phi::errors::InvalidArgument(
-                        "x's dims should be 4, but received x's dims is: %d",
+                        "x's dims should be 4, but received x's dims is: %d.",
                         in_x_dims.size()));
 
   if (axis < 0) {
