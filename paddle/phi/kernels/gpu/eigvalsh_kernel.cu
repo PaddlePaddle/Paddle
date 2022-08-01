@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/eigvalsh_kernel_impl.h"
 
-PD_REGISTER_KERNEL(eigvalsh,
+PD_REGISTER_KERNEL(eigvalsh,  // cuda_only
                    GPU,
                    ALL_LAYOUT,
                    phi::EigvalshKernel,
