@@ -9,7 +9,7 @@ if(WITH_XPU)
   cc_library(
     beam_search_xpu
     SRCS beam_search_xpu.cc
-    DEPS lod_tensor)
+    DEPS xpu_op_list)
 endif()
 
 # please add new math_library in alphabetical order
