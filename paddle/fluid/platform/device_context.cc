@@ -533,11 +533,6 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
   allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
 }
 
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
-    : phi::GPUContext(place) {}
-
-CUDADeviceContext::~CUDADeviceContext() = default;
-
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }

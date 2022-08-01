@@ -271,15 +271,7 @@ struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
 class CudnnWorkspaceHandle;
 class EigenCudaStreamDevice;
 
-class CUDADeviceContext : public phi::GPUContext {
- public:
-  explicit CUDADeviceContext(CUDAPlace place);
-  virtual ~CUDADeviceContext();
-
- private:
-  int place_holder_;  // TO BE REMOVED
-  DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
-};
+using CUDADeviceContext = phi::GPUContext;
 
 class CudnnWorkspaceHandle {
  public:
