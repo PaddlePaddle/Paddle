@@ -17,8 +17,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 namespace phi {
 namespace funcs {
-template <typename RepeatsT = int>
-void RepeatsTensor2IndexTensor(const DenseTensor& repeats, DenseTensor* index) {
+template <typename Context, typename RepeatsT = int>
+void RepeatsTensor2IndexTensor(const Context& ctx,
+                               const DenseTensor& repeats,
+                               DenseTensor* index) {
   DenseTensor repeats_cpu_copy;
   if (!paddle::platform::is_cpu_place(repeats.place())) {
     paddle::framework::TensorCopySync(
@@ -42,7 +44,7 @@ void RepeatsTensor2IndexTensor(const DenseTensor& repeats, DenseTensor* index) {
 
   // auto ctx =
   //     paddle::platform::DeviceContextPool::Instance().Get(repeats.place());
-  paddle::framework::TensorFromVector<RepeatsT>(index_vec, index);
+  paddle::framework::TensorFromVector<RepeatsT>(index_vec, ctx, index);
 }
 }  // namespace funcs
 }  // namespace phi

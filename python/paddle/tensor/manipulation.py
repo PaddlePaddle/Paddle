@@ -3994,8 +3994,11 @@ def repeat_interleave(x, repeats, axis=None, name=None):
 
     if in_dygraph_mode():
         if isinstance(repeats, Variable):
-            return _C_ops.final_state_repeat_interleave(x, repeats, 0, axis)
-        return _C_ops.final_state_repeat_interleave(x, None, repeats, axis)
+            print("xxxxx")
+            return _C_ops.final_state_repeat_interleave_with_tensor_index(
+                x, repeats, axis)
+        print("yyy")
+        return _C_ops.final_state_repeat_interleave(x, repeats, axis)
     elif _in_legacy_dygraph():
         if isinstance(repeats, Variable):
             return _C_ops.repeat_interleave(x, repeats, 'dim', axis)

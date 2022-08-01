@@ -91,7 +91,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
   if (dim < 0) {
     dim += input_dim.size();
   }
-
+  std::cerr << "in RepeatInterleaveWithTensorIndexKernel" << std::endl;
   DenseTensor index;
   PADDLE_ENFORCE_EQ(repeats_tensor.dims()[0] == x.dims()[dim],
                     true,
@@ -120,13 +120,15 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
   auto x_copy = x;
   if (place == cpu_place) {
     if (index_type == paddle::framework::proto::VarType::INT32) {
-      phi::funcs::RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
+      phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
+          ctx, repeats_tensor, &index);
       auto output_dim = phi::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
       out->Resize(phi::make_ddim(output_dim));
       IndexSelectInner<Context, T, int>(ctx, &x_copy, index, out, dim);
     } else if (index_type == paddle::framework::proto::VarType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensor<int64_t>(repeats_tensor, &index);
+      phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
+          ctx, repeats_tensor, &index);
       auto output_dim = phi::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
       out->Resize(phi::make_ddim(output_dim));
@@ -135,14 +137,18 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
   }
 #if defined(__NVCC__) || defined(__HIPCC__)
   else {
+    std::cerr << "start to calucate tensor index in cuda" << std::endl;
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];
     auto stream = ctx.stream();
     // auto ctx =
     //     paddle::platform::DeviceContextPool::Instance().Get(context.GetPlace());
+    std::cerr << "fetch data from x" << std::endl;
     auto* in_data = x.data<T>();
+    std::cerr << "fetch data from x done" << std::endl;
     if (index_type == paddle::framework::proto::VarType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensor<int64_t>(repeats_tensor, &index);
+      phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
+          ctx, repeats_tensor, &index);
 
       const int64_t* index_data = index.data<int64_t>();
       auto output_dim = phi::vectorize(x.dims());
@@ -160,7 +166,9 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
              stream>>>(
               in_data, out_data, index_data, numel, stride, size, delta);
     } else {
-      phi::funcs::RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
+      std::cerr << "tensor index branch 2" << std::endl;
+      phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
+          ctx, repeats_tensor, &index);
 
       const int* index_data = index.data<int>();
       auto output_dim = phi::vectorize(x.dims());
@@ -170,14 +178,16 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
       int64_t numel = out->numel();
       int64_t size = output_dim[dim];
       int64_t delta = input_dim[dim] - size;
-
+      std::cerr << "tensor index calling kernel" << std::endl;
       index_select_cuda_kernel<T, int>
           <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
              PADDLE_CUDA_NUM_THREADS,
              0,
              stream>>>(
               in_data, out_data, index_data, numel, stride, size, delta);
+      std::cerr << "tensor index calling kernel over" << std::endl;
     }
+    std::cerr << "tensor index in cuda over" << std::endl;
   }
 #endif
 }

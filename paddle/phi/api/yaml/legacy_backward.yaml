@@ -1741,6 +1741,7 @@
     param : [x]
   kernel :
     func : repeat_interleave_with_tensor_index_grad
+    dtype : x
 
 - backward_api : reshape_double_grad
   forward : reshape_grad (Tensor xshape, Tensor grad_out) -> Tensor(grad_x)

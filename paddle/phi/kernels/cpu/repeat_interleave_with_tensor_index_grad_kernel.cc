@@ -14,6 +14,10 @@
 
 //#include
 //"paddle/phi/kernels/repeat_interleave_with_tensor_index_grad_kernel.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/index_select_op.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -72,11 +76,13 @@ void RepeatInterleaveWithTensorIndexGradKernel(
     //
     paddle::platform::DeviceContextPool::Instance().Get(repeats_tensor.place());
     if (index_type == paddle::framework::proto::VarType::INT32) {
-      phi::funcs::RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
+      phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
+          ctx, repeats_tensor, &index);
       IndexSelectGradInner<Context, T, int>(
           ctx, out_grad, index_copy, x_grad, dim);
     } else if (index_type == paddle::framework::proto::VarType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensor<int64_t>(repeats_tensor, &index);
+      phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
+          ctx, repeats_tensor, &index);
       IndexSelectGradInner<Context, T, int64_t>(
           ctx, out_grad, index_copy, x_grad, dim);
     }

@@ -172,7 +172,8 @@ void RepeatInterleaveWithTensorIndexGradKernel(
          stream>>>(in_grad_data, numel);
 
   if (index_type == paddle::framework::proto::VarType::INT64) {
-    phi::funcs::RepeatsTensor2IndexTensor<int64_t>(repeats_tensor, &index);
+    phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
+        ctx, repeats_tensor, &index);
     int64_t index_nums = index.numel();
 
     const int64_t* index_data = index.data<int64_t>();
@@ -189,7 +190,8 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                      size,
                      delta);
   } else {
-    phi::funcs::RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
+    phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
+        ctx, repeats_tensor, &index);
     int64_t index_nums = index.numel();
 
     const int* index_data = index.data<int>();
