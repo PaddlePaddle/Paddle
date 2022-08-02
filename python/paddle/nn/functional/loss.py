@@ -1704,12 +1704,12 @@ def ctc_loss(log_probs,
 
 def margin_cross_entropy(logits,
                          label,
-                         return_softmax=False,
                          margin1=1.0,
                          margin2=0.5,
                          margin3=0.0,
                          scale=64.0,
                          group=None,
+                         return_softmax=False,
                          reduction='mean'):
     r"""
     .. math::
