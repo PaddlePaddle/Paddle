@@ -448,7 +448,7 @@ class MatMulMKLDNNHandler
     }
 
     auto sum_scale = 1.0f;
-    if (ctx.HasOutput("Bias")) {
+    if (ctx.HasOutput("ResidualData")) {
       post_operations.append_sum(sum_scale);
     }
 
@@ -694,9 +694,9 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
 
   const auto src_memory_p = handler.AcquireSrcMemory(x);
   const auto weights_memory_p = handler.AcquireWeightsMemory(y);
-  if (ctx.HasOutput("Bias")) {
-    auto *bias = ctx.Output<Tensor>("Bias");
-    out->ShareDataWith(*bias);
+  if (ctx.HasOutput("ResidualData")) {
+    auto *residual_data = ctx.Output<Tensor>("ResidualData");
+    out->ShareDataWith(*residual_data);
   }
   const auto dst_memory_p = handler.AcquireDstMemory(out);
 

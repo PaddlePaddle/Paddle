@@ -1046,8 +1046,6 @@ struct MatmulElementwiseAdd : public PatternBase {
       : PatternBase(pattern, name_scope, "matmul_elementwise_add") {}
 
   PDNode* operator()(const std::string& matmul_type, bool as_x);
-  PATTERN_DECL_NODE(matmul_x);
-  PATTERN_DECL_NODE(matmul_y);
   PATTERN_DECL_NODE(matmul_op);
   PATTERN_DECL_NODE(matmul_out);
   PATTERN_DECL_NODE(elementwise_addend);

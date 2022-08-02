@@ -49,8 +49,6 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_x, matmul_x, matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_y, matmul_y, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul, matmul_op, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
@@ -66,7 +64,7 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
           << "op compat for matmul_elementwise_add_mkldnn_fuse_pass failed.";
       return;
     }
-    if (matmul->Op()->HasAttr("Bias")) {
+    if (matmul->Op()->HasAttr("ResidualData")) {
       LOG(WARNING) << "matmul_elementwise_add can be fused once";
       return;
     }
@@ -76,7 +74,7 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
       return;
     }
 
-    matmul->Op()->SetOutput("Bias", {elementwise_addend->Name()});
+    matmul->Op()->SetOutput("ResidualData", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
 
     GraphSafeRemoveNodes(g, {matmul_out, elementwise_add});
@@ -109,7 +107,7 @@ MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
       .IsTensor()
       .End()
       .AddAttr("alpha")
-      .IsNumEQ(1.0f)
+      .IsType<float>()
       .End()
       .AddAttr("transpose_X")
       .IsType<bool>()
@@ -124,10 +122,6 @@ MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
       .End()
       .AddInput("Y")
       .IsTensor()
-      .End()
-      .AddInput("Bias")
-      .IsTensor()
-      .IsOptional()
       .End()
       .AddOutput("Out")
       .IsTensor()
