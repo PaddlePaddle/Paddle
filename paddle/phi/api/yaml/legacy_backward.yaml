@@ -92,6 +92,26 @@
   kernel :
     func : addmm_grad
 
+- backward_api : amax_grad
+  forward: amax (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : amax_grad
+
+- backward_api : amin_grad
+  forward: amin (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : amin_grad
+
 - backward_api : angle_grad
   forward : angle (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -1532,6 +1552,16 @@
   kernel :
     func : norm_grad
 
+- backward_api : overlap_add_grad
+  forward : overlap_add(Tensor x, int hop_length, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int hop_length, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : OverlapAddGradInferMeta
+  kernel :
+    func : overlap_add_grad
+    data_type : x
+
 - backward_api : p_norm_grad
   forward : p_norm(Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
@@ -2468,6 +2498,16 @@
     param: [xshape, out_grad]
   inplace : (out_grad -> x_grad)
   backward : unsqueeze_double_grad
+
+- backward_api : unstack_grad
+  forward : unstack (Tensor x, int axis, int num) -> Tensor[](out)
+  args : (Tensor[] out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnStackGradInferMeta
+    param : [out_grad, axis]
+  kernel :
+    func : unstack_grad
 
 - backward_api : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times) -> Tensor(loss), Tensor(warpctcgrad)

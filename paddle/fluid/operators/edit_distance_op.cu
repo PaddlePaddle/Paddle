@@ -85,9 +85,8 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
     auto batch_size = x1_t->dims()[0];
 
     auto normalized = ctx.Attr<bool>("normalized");
-    auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
-                      ctx.device_context())
-                      .stream();
+    auto stream =
+        reinterpret_cast<const phi::GPUContext&>(ctx.device_context()).stream();
 
     framework::Vector<size_t> hyp_lod(batch_size + 1);
     framework::Vector<size_t> ref_lod(batch_size + 1);
@@ -124,8 +123,8 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
     }
 
     const size_t num_strs = hyp_lod.size() - 1;
-    phi::funcs::SetConstant<platform::CUDADeviceContext, int64_t> set_constant;
-    set_constant(ctx.template device_context<platform::CUDADeviceContext>(),
+    phi::funcs::SetConstant<phi::GPUContext, int64_t> set_constant;
+    set_constant(ctx.template device_context<phi::GPUContext>(),
                  sequence_num,
                  static_cast<int64_t>(num_strs));
 

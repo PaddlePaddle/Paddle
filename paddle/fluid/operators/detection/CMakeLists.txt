@@ -81,7 +81,7 @@ detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc
                   sigmoid_focal_loss_op.cu)
 detection_library(retinanet_detection_output_op SRCS
                   retinanet_detection_output_op.cc)
-detection_library(nms_op SRCS nms_op.cc nms_op.cu)
+detection_library(nms_op SRCS nms_op.cc)
 
 if(WITH_GPU OR WITH_ROCM)
   set(TMPDEPS memory)

@@ -240,8 +240,6 @@ struct GPUContext::Impl {
     InitDnnWorkspace();
   }
 
-  Impl() : place_(GPUPlace()) {}
-
   explicit Impl(const GPUPlace& place) : place_(place) {}
 
   ~Impl() {
@@ -783,8 +781,6 @@ struct GPUContext::Impl {
   // A internal resouce to initinalize eigen_device.
   std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
 };
-
-GPUContext::GPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {}
 
 GPUContext::GPUContext(GPUContext&&) = default;
 

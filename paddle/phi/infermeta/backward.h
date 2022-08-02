@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <tuple>
-
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
@@ -262,6 +261,12 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
                                  const std::string& data_format,
                                  MetaTensor* x_grad);
 
+void OverlapAddGradInferMeta(const MetaTensor& x,
+                             const MetaTensor& out_grad,
+                             int hop_length,
+                             int axis,
+                             MetaTensor* x_grad);
+
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,
                             const MetaTensor& rois_num,
@@ -327,5 +332,9 @@ void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
                                        int diag_step,
                                        float diag_val,
                                        MetaTensor* x_grad);
+
+void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
+                          int axis,
+                          MetaTensor* x_grad);
 
 }  // namespace phi

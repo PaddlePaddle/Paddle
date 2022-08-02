@@ -118,8 +118,7 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
   TensorCopyAsync(&lod_tensor_n, lite_api_tensor, ctx);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
-    platform::GpuStreamSync(
-        static_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    platform::GpuStreamSync(static_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
   std::vector<float> result;
