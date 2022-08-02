@@ -3082,7 +3082,7 @@ def expand(x, shape, name=None):
 
     Expand the input tensor to a given shape.
 
-    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. The dimension to expand must have a value 1.
+    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 1.
 
 
     Args:
@@ -4053,7 +4053,7 @@ def moveaxis(x, source, destination, name=None):
             # [4, 3, 2]
 
             x = paddle.ones([2, 3])
-            paddle.moveaxis(x, 0, 1) # equivalent to paddle.t(x)
+            paddle.moveaxis(x, 0, 1).shape # equivalent to paddle.t(x)
             # [3, 2]  
     """
     src = [source] if isinstance(source, int) else source

@@ -31,10 +31,10 @@ namespace distributed {
 
 void SyncDefaultStream(
     const std::vector<Place>& places,
-    std::vector<EventManager>& ncclEvents,                       // NOLINT
-    std::vector<std::unique_ptr<CUDADeviceContext>>& dev_ctx) {  // NOLINT
+    std::vector<EventManager>& ncclEvents,                     // NOLINT
+    std::vector<std::unique_ptr<phi::GPUContext>>& dev_ctx) {  // NOLINT
   for (size_t i = 0; i < places.size(); ++i) {
-    auto* default_ctx = static_cast<platform::CUDADeviceContext*>(
+    auto* default_ctx = static_cast<phi::GPUContext*>(
         platform::DeviceContextPool::Instance().Get(places[i]));
     ncclEvents[i].Record(*default_ctx);
     ncclEvents[i].Block(*dev_ctx[i]);
@@ -69,7 +69,7 @@ void ProcessGroupNCCL::NCCLTask::SetOutputs(
 
 void ProcessGroupNCCL::NCCLTask::SynchronizeStreams() {
   for (size_t i = 0; i < places_.size(); ++i) {
-    auto* default_ctx = static_cast<platform::CUDADeviceContext*>(
+    auto* default_ctx = static_cast<phi::GPUContext*>(
         platform::DeviceContextPool::Instance().Get(places_[i]));
     default_ctx->WaitEvent(control_events_[i].GetRawCudaEvent());
   }
@@ -201,7 +201,7 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
           << ", place: " << places_key
           << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
 
-  std::vector<std::unique_ptr<CUDADeviceContext>> dev_ctx;
+  std::vector<std::unique_ptr<phi::GPUContext>> dev_ctx;
   dev_ctx.resize(places.size());
 
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
@@ -209,7 +209,7 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
   for (size_t i = 0; i < places.size(); ++i) {
     platform::CUDADeviceGuard guard(places[i]);
     nccl_comms[i] = NCCLCommManager::Create(GetSize(), GetRank(), nccl_id);
-    dev_ctx[i].reset(new CUDADeviceContext(places[i]));
+    dev_ctx[i].reset(new phi::GPUContext(places[i]));
   }
 
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());

@@ -416,13 +416,12 @@ class ExecutionContext {
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  const inline platform::CUDADeviceContext& cuda_device_context() const {
+  const inline phi::GPUContext& cuda_device_context() const {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()),
                       true,
                       platform::errors::PreconditionNotMet(
                           "Current device context place is not GPUPlace."));
-    return *reinterpret_cast<const platform::CUDADeviceContext*>(
-        &device_context_);
+    return *reinterpret_cast<const phi::GPUContext*>(&device_context_);
   }
 #endif
 
