@@ -1629,7 +1629,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
 
     // Step 6: allreduce + global norm gradient clip
     int64_t global_rank = 0, local_rank = 0;
-    ncclComm_t global_comm = nullptr, local_comm = nullptr;
+    ncclComm_t global_comm = nullptr, local_comm = nullptr,
+               external_comm = nullptr;
     if (nranks > 1) {
       auto *nccl_comm_handle =
           platform::NCCLCommContext::Instance().Get(ring_ids[0], place);
@@ -1641,6 +1642,11 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
             platform::NCCLCommContext::Instance().Get(ring_ids[1], place);
         local_comm = local_nccl_comm_handle->comm();
         local_rank = local_nccl_comm_handle->rank();
+        if (use_hierarchical_allreduce) {
+          external_comm = platform::NCCLCommContext::Instance()
+                              .Get(ring_ids[2], place)
+                              ->comm();
+        }
       } else {
         local_comm = global_comm;
         local_rank = global_rank;
@@ -1693,20 +1699,54 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
       if (clip_after_allreduce) {
         // (1) ReduceScater first
         if (local_shard) {
-          NCCLAllReduceWithScale(fp32_grad,
-                                 fp32_sum_grad,
-                                 fp32_numel,
-                                 nranks,
-                                 global_comm,
-                                 stream,
-                                 dev_ctx);
-          NCCLAllReduceWithScale(fp16_grad,
-                                 fp16_sum_grad,
-                                 fp16_numel,
-                                 nranks,
-                                 global_comm,
-                                 stream,
-                                 dev_ctx);
+          if (use_hierarchical_allreduce) {
+            NCCLAllReduceWithScale(fp32_grad,
+                                   fp32_sum_grad,
+                                   fp32_numel,
+                                   nranks / num_devices,
+                                   external_comm,
+                                   stream,
+                                   dev_ctx);
+            NCCLReduceScatterWithScale(
+                fp32_sum_grad,
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_numel_each_device,
+                num_devices,
+                local_comm,
+                stream,
+                dev_ctx);
+
+            NCCLAllReduceWithScale(fp16_grad,
+                                   fp16_sum_grad,
+                                   fp16_numel,
+                                   nranks / num_devices,
+                                   external_comm,
+                                   stream,
+                                   dev_ctx);
+            NCCLReduceScatterWithScale(
+                fp16_sum_grad,
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_numel_each_device,
+                num_devices,
+                local_comm,
+                stream,
+                dev_ctx);
+          } else {
+            NCCLAllReduceWithScale(fp32_grad,
+                                   fp32_sum_grad,
+                                   fp32_numel,
+                                   nranks,
+                                   global_comm,
+                                   stream,
+                                   dev_ctx);
+            NCCLAllReduceWithScale(fp16_grad,
+                                   fp16_sum_grad,
+                                   fp16_numel,
+                                   nranks,
+                                   global_comm,
+                                   stream,
+                                   dev_ctx);
+          }
           fp32_sum_grad += (local_rank * fp32_numel_each_device);
           fp16_sum_grad += (local_rank * fp16_numel_each_device);
         } else {
@@ -1802,9 +1842,6 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         // (3) Do ReduceScatter with scale
         if (local_shard) {
           if (use_hierarchical_allreduce) {
-            auto external_comm = platform::NCCLCommContext::Instance()
-                                     .Get(ring_ids[2], place)
-                                     ->comm();
             NCCLAllReduceWithScale(fp32_grad,
                                    fp32_sum_grad,
                                    fp32_numel,
@@ -1882,20 +1919,54 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
       }
     } else {
       if (local_shard) {
-        NCCLAllReduceWithScale(fp32_grad,
-                               fp32_sum_grad,
-                               fp32_numel,
-                               nranks,
-                               global_comm,
-                               stream,
-                               dev_ctx);
-        NCCLAllReduceWithScale(fp16_grad,
-                               fp16_sum_grad,
-                               fp16_numel,
-                               nranks,
-                               global_comm,
-                               stream,
-                               dev_ctx);
+        if (use_hierarchical_allreduce) {
+          NCCLAllReduceWithScale(fp32_grad,
+                                 fp32_sum_grad,
+                                 fp32_numel,
+                                 nranks / num_devices,
+                                 external_comm,
+                                 stream,
+                                 dev_ctx);
+          NCCLReduceScatterWithScale(
+              fp32_sum_grad,
+              fp32_sum_grad + local_rank * fp32_numel_each_device,
+              fp32_numel_each_device,
+              num_devices,
+              local_comm,
+              stream,
+              dev_ctx);
+
+          NCCLAllReduceWithScale(fp16_grad,
+                                 fp16_sum_grad,
+                                 fp16_numel,
+                                 nranks / num_devices,
+                                 external_comm,
+                                 stream,
+                                 dev_ctx);
+          NCCLReduceScatterWithScale(
+              fp16_sum_grad,
+              fp16_sum_grad + local_rank * fp16_numel_each_device,
+              fp16_numel_each_device,
+              num_devices,
+              local_comm,
+              stream,
+              dev_ctx);
+        } else {
+          NCCLAllReduceWithScale(fp32_grad,
+                                 fp32_sum_grad,
+                                 fp32_numel,
+                                 nranks,
+                                 global_comm,
+                                 stream,
+                                 dev_ctx);
+          NCCLAllReduceWithScale(fp16_grad,
+                                 fp16_sum_grad,
+                                 fp16_numel,
+                                 nranks,
+                                 global_comm,
+                                 stream,
+                                 dev_ctx);
+        }
         fp32_sum_grad += (local_rank * fp32_numel_each_device);
         fp16_sum_grad += (local_rank * fp16_numel_each_device);
       } else {
