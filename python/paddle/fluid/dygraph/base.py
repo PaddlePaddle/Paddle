@@ -487,6 +487,7 @@ def grad(outputs,
 
     Examples 1:
         .. code-block:: python
+            :name: code-example-1
 
             import paddle
 
@@ -521,6 +522,7 @@ def grad(outputs,
 
     Examples 2:
         .. code-block:: python
+            :name: code-example-2
 
             import paddle
 
