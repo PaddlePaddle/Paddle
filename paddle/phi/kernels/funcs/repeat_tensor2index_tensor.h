@@ -23,9 +23,8 @@ void RepeatsTensor2IndexTensor(const Context& ctx,
                                DenseTensor* index) {
   DenseTensor repeats_cpu_copy;
   if (!paddle::platform::is_cpu_place(repeats.place())) {
-    phi::Copy(ctx, repeats, repeats.place(), true, &repeats_cpu_copy);
-    // paddle::framework::TensorCopySync(
-    //     repeats, paddle::platform::CPUPlace(), &repeats_cpu_copy);
+    phi::Copy(
+        ctx, repeats, paddle::platform::CPUPlace(), true, &repeats_cpu_copy);
   }
   const RepeatsT* repeats_data = paddle::platform::is_cpu_place(repeats.place())
                                      ? repeats.data<RepeatsT>()
