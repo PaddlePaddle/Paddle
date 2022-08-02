@@ -1081,8 +1081,7 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
-          
+
             import paddle
             x = paddle.uniform([2, 490, 28, 28], dtype='float32')
             boxes = paddle.to_tensor([[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32')
@@ -1150,7 +1149,7 @@ class PSRoIPool(Layer):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
             
             psroi_module = paddle.vision.ops.PSRoIPool(7, 1.0)
@@ -1356,7 +1355,7 @@ def roi_align(x,
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
             from paddle.vision.ops import roi_align
 
@@ -1432,7 +1431,7 @@ class RoIAlign(Layer):
 
     Examples:
         ..  code-block:: python
-          :name: code-example1
+
             import paddle
             from paddle.vision.ops import RoIAlign
 

@@ -270,7 +270,6 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
 
     Examples:
         .. code-block:: python
-            :name: nanmedian-example
 
             import paddle
             x = paddle.to_tensor([[float('nan'), 2. , 3. ], [0. , 1. , 2. ]])

@@ -3296,8 +3296,7 @@ def corrcoef(x, rowvar=True, name=None):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
-        
+
             import paddle
 
             xt = paddle.rand((3,4))

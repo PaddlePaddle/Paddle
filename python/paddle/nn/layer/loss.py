@@ -1435,7 +1435,6 @@ class CosineEmbeddingLoss(Layer):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
 
             import paddle
 

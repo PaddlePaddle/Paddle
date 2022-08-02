@@ -2896,7 +2896,6 @@ def cosine_embedding_loss(input1,
 
     Examples:
         .. code-block:: python
-          :name: code-example1
 
             import paddle
 

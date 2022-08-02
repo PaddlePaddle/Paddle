@@ -178,7 +178,6 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
 
     Examples:
         .. code-block:: python
-            :name: logspace-example
 
             import paddle
             data = paddle.logspace(0, 10, 5, 2, 'float32')
@@ -492,25 +491,24 @@ def ones(shape, dtype=None, name=None):
 
     Examples:
         .. code-block:: python
-          :name: ones-example
 
-          import paddle 
-          
-          # default dtype for ones OP
-          data1 = paddle.ones(shape=[3, 2]) 
-          # [[1. 1.]
-          #  [1. 1.]
-          #  [1. 1.]]
-          
-          data2 = paddle.ones(shape=[2, 2], dtype='int32') 
-          # [[1 1]
-          #  [1 1]]
-          
-          # shape is a Tensor
-          shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
-          data3 = paddle.ones(shape=shape, dtype='int32') 
-          # [[1 1]
-          #  [1 1]]
+            import paddle 
+
+            # default dtype for ones OP
+            data1 = paddle.ones(shape=[3, 2]) 
+            # [[1. 1.]
+            #  [1. 1.]
+            #  [1. 1.]]
+
+            data2 = paddle.ones(shape=[2, 2], dtype='int32') 
+            # [[1 1]
+            #  [1 1]]
+
+            # shape is a Tensor
+            shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
+            data3 = paddle.ones(shape=shape, dtype='int32') 
+            # [[1 1]
+            #  [1 1]]
     """
     if dtype is None:
         dtype = 'float32'
@@ -713,30 +711,29 @@ def full(shape, fill_value, dtype=None, name=None):
 
     Examples:
         .. code-block:: python
-           :name: code-example1
 
-          import paddle
+            import paddle
 
-          data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') 
-          #[[0]
-          # [0]]
+            data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') 
+            #[[0]
+            # [0]]
 
-          # attr shape is a list which contains Tensor.
-          positive_2 = paddle.full([1], 2, "int32")
-          data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5)
-          # [[1.5 1.5]]
+            # attr shape is a list which contains Tensor.
+            positive_2 = paddle.full([1], 2, "int32")
+            data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5)
+            # [[1.5 1.5]]
 
-          # attr shape is a Tensor.
-          shape = paddle.full([2], 2, "int32")
-          data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) 
-          # [[True True] 
-          #  [True True]]
-          
-          # attr fill_value is a Tensor.
-          val = paddle.full([1], 2.0, "float32")
-          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
-          # [[2.0] 
-          #  [2.0]]
+            # attr shape is a Tensor.
+            shape = paddle.full([2], 2, "int32")
+            data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) 
+            # [[True True] 
+            #  [True True]]
+            
+            # attr fill_value is a Tensor.
+            val = paddle.full([1], 2.0, "float32")
+            data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
+            # [[2.0] 
+            #  [2.0]]
     """
 
     if dtype is None:
@@ -1485,18 +1482,17 @@ def assign(x, output=None):
  
     Examples:
         .. code-block:: python
-          :name: assign-example
 
-          import paddle
-          import numpy as np
-          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          array = np.array([[1, 1],
-                            [3, 4],
-                            [1, 3]]).astype(np.int64)
-          result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-          paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
-          result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+            import paddle
+            import numpy as np
+            data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+            array = np.array([[1, 1],
+                                [3, 4],
+                                [1, 3]]).astype(np.int64)
+            result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+            paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+            result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+            result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     input = x
     helper = LayerHelper('assign', **locals())
@@ -1749,7 +1745,6 @@ def tril_indices(row, col, offset=0, dtype='int64'):
 
     Examples:
         .. code-block:: python
-            :name: tril_indices-example
 
             import paddle
             
