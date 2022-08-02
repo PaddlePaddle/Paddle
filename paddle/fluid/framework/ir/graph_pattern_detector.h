@@ -1740,6 +1740,33 @@ struct MatmulTransposeReshapePattern : public PatternBase {
   PATTERN_DECL_NODE(reshape_out_xshape);
 };
 
+// elementwise_add + flatten +transpose + layer_norm
+struct AddBiasLayernormPattern : public PatternBase {
+  AddBiasLayernormPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "add_bias_layernorm") {}
+
+  PDNode* operator()(PDNode* in);
+
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_in_y);
+  PATTERN_DECL_NODE(elementwise_add_out);
+
+  PATTERN_DECL_NODE(flatten_op);
+  PATTERN_DECL_NODE(flatten_out);
+  PATTERN_DECL_NODE(flatten_out_xshape);
+
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(transpose_out_xshape);
+
+  PATTERN_DECL_NODE(layer_norm_op);
+  PATTERN_DECL_NODE(layer_norm_in_bais);
+  PATTERN_DECL_NODE(layer_norm_in_scale);
+  PATTERN_DECL_NODE(layer_norm_out_y);
+  PATTERN_DECL_NODE(layer_norm_out_mean);
+  PATTERN_DECL_NODE(layer_norm_out_variance);
+};
+
 // fusion_gru op
 // Forward pass for fusion_gru.
 // fusion_gru out is a result of the operator.

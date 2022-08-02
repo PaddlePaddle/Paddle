@@ -3068,6 +3068,73 @@ PDNode *patterns::MatmulTransposeReshapePattern::operator()(
   return reshape_out;
 }
 
+PDNode *patterns::AddBiasLayernormPattern::operator()(PDNode *in) {
+  in->AsInput();
+
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
+  auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
+                                  ->AsInput()
+                                  ->assert_is_op_input("elementwise_add", "Y");
+  auto elementwise_add_out =
+      pattern->NewNode(elementwise_add_out_repr())
+          ->AsOutput()
+          ->assert_is_only_output_of_op("elementwise_add");
+
+  auto flatten_op =
+      pattern->NewNode(flatten_op_repr())->assert_is_op("flatten2");
+  auto flatten_out = pattern->NewNode(flatten_out_repr())
+                         ->AsIntermediate()
+                         ->assert_is_op_output("flatten2", "Out")
+                         ->assert_is_op_input("conv2d", "X");
+  auto flatten_out_xshape = pattern->NewNode(flatten_out_xshape_repr())
+                                ->AsIntermediate()
+                                ->assert_is_op_output("flatten2", "XShape");
+
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_op_output("transpose2", "Out")
+                           ->assert_is_op_input("reshape2", "X");
+  auto transpose_out_xshape = pattern->NewNode(transpose_out_xshape_repr())
+                                  ->AsIntermediate()
+                                  ->assert_is_op_output("transpose2", "XShape");
+
+  auto layer_norm_op =
+      pattern->NewNode(layer_norm_op_repr())->assert_is_op("layer_norm");
+  auto layer_norm_in_bais = pattern->NewNode(layer_norm_in_bais_repr())
+                                ->AsInput()
+                                ->assert_is_persistable_var()
+                                ->assert_is_op_input("layer_norm", "Bais");
+  auto layer_norm_in_scale = pattern->NewNode(layer_norm_in_scale_repr())
+                                 ->AsInput()
+                                 ->assert_is_persistable_var()
+                                 ->assert_is_op_input("layer_norm", "Scale");
+  auto layer_norm_out_y = pattern->NewNode(layer_norm_out_y_repr())
+                              ->AsOutput()
+                              ->assert_is_op_output("layer_norm", "Y");
+  auto layer_norm_out_mean = pattern->NewNode(layer_norm_out_mean_repr())
+                                 ->AsOutput()
+                                 ->assert_is_op_output("layer_norm", "Mean");
+  auto layer_norm_out_variance =
+      pattern->NewNode(layer_norm_out_variance_repr())
+          ->AsOutput()
+          ->assert_is_op_output("layer_norm", "Variance");
+
+  transpose_out_xshape->LinksFrom({transpose_op});
+  flatten_out_xshape->LinksFrom({flatten_op});
+  elementwise_add_op->LinksFrom({in, elementwise_add_in_y})
+      .LinksTo({elementwise_add_out});
+  flatten_op->LinksFrom({elementwise_add_out}).LinksTo({flatten_out});
+  transpose_op->LinksFrom({flatten_out}).LinksTo({transpose_out});
+  layer_norm_op
+      ->LinksFrom({transpose_out, layer_norm_in_bais, layer_norm_in_scale})
+      .LinksTo(
+          {layer_norm_out_y, layer_norm_out_mean, layer_norm_out_variance});
+  return layer_norm_out_y;
+}
+
 PDNode *patterns::FusionGru::operator()() {
   auto op = pattern->NewNode(op_repr())->assert_is_op("fusion_gru");
   auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
