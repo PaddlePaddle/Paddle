@@ -31,7 +31,7 @@ void RepeatInterleaveGradKernel(const Context& ctx,
                                 DenseTensor* x_grad) {
   //   auto place = ctx.GetPlace();
   //   auto cpu_place = phi::CPUPlace();
-
+  std::cerr << "in cpu repeat grad kernel";
   auto input_dim = x_grad->dims();
   if (dim < 0) {
     dim += input_dim.size();

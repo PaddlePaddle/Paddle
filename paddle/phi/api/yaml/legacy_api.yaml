@@ -1872,7 +1872,7 @@
     param : [x,repeats, dim]
   kernel :
     func : repeat_interleave_with_tensor_index
-    dtype : x
+    data_type : x
   backward: repeat_interleave_with_tensor_index_grad
 
 - api : reshape

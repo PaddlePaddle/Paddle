@@ -19,6 +19,9 @@
 #include "paddle/phi/kernels/repeat_interleave_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_decls.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_resources.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
 namespace phi {
@@ -52,6 +55,7 @@ void RepeatInterleaveKernel(const Context& ctx,
                             int repeats,
                             int dim,
                             DenseTensor* out) {
+  std::cerr << "in repeat-interleave kernel\n";
   auto place = ctx.GetPlace();
   auto cpu_place = phi::CPUPlace();
 
@@ -69,6 +73,7 @@ void RepeatInterleaveKernel(const Context& ctx,
   }
   index.Resize(phi::make_ddim({index_size}));
   if (place == cpu_place) {
+    std::cerr << "in repeat-interleave kernel cpu place\n";
     paddle::framework::TensorFromVector<int>(index_vec, &index);
 
     auto output_dim = phi::vectorize(x.dims());
@@ -78,6 +83,7 @@ void RepeatInterleaveKernel(const Context& ctx,
   }
 #if defined(__NVCC__) || defined(__HIPCC__)
   else {
+    std::cerr << "in repeat-interleave kernel gpu place\n";
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];
     // auto ctx =
@@ -91,17 +97,21 @@ void RepeatInterleaveKernel(const Context& ctx,
     // auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* out_data = out->data<T>();
     int64_t numel = out->numel();
+    std::cerr << "output numel = " << numel << std::endl;
     int64_t size = output_dim[dim];
     int64_t delta = input_dim[dim] - size;
 
     const int* index_data = index.data<int>();
+    std::cerr << "in repeat-interleave kernel-begin-to0call-kernel\n";
     index_select_cuda_kernel<T, int>
         <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
            PADDLE_CUDA_NUM_THREADS,
            0,
            stream>>>(
             x.data<T>(), out_data, index_data, numel, stride, size, delta);
-    // platform::GpuStreamSync(stream);
+    phi::backends::gpu::GpuStreamSync(stream);
+    // phi::GpuStreamSync(stream);
+    std::cerr << "in repeat-interleave----------------gpu place done\n";
   }
 #endif
 }
