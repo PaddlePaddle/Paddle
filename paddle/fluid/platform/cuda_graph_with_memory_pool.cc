@@ -27,8 +27,7 @@ void BeginCUDAGraphCapture(platform::CUDAPlace place,
                            cudaStreamCaptureMode mode,
                            int64_t pool_id) {
   auto* mutable_dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-  auto* dev_ctx =
-      reinterpret_cast<platform::CUDADeviceContext*>(mutable_dev_ctx);
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
 
   // After PR(#43206), cudnn related initializations will change to lazy mode.
@@ -66,8 +65,7 @@ void BeginCUDAGraphCapture(platform::CUDAPlace place,
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
   auto place = CUDAGraph::CapturingPlace();
   auto* mutable_dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-  auto* dev_ctx =
-      reinterpret_cast<platform::CUDADeviceContext*>(mutable_dev_ctx);
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
   dev_ctx->SetCUDAGraphAllocator(nullptr);
   return CUDAGraph::EndCapture();

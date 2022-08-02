@@ -49,7 +49,7 @@ using Tensor = framework::Tensor;
 template <typename T>
 static void AllReduce(framework::Tensor &tensor,  // NOLINT
                       const int ring_id,
-                      const platform::CUDADeviceContext &ctx) {
+                      const phi::GPUContext &ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
@@ -996,7 +996,7 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
 }
 
 template <typename T>
-void fmha(const platform::CUDADeviceContext &dev_ctx,
+void fmha(const phi::GPUContext &dev_ctx,
           const Tensor &qkv_tensor,
           const Tensor &qkv_bias_tensor,
           const Tensor &src_mask_tensor,
@@ -1118,7 +1118,7 @@ __global__ void write_cache_v_kernel(T *cache_v,
 }
 
 template <typename T>
-void write_cache_kv(const platform::CUDADeviceContext &dev_ctx,
+void write_cache_kv(const phi::GPUContext &dev_ctx,
                     T *cache_k,
                     T *cache_v,
                     const T *k,

@@ -242,8 +242,7 @@ static void LogParamAndTrustRatioDivSquareNorm(
   }
 }
 
-static bool IsFinite(const platform::CUDADeviceContext &dev_ctx,
-                     const float *ptr) {
+static bool IsFinite(const phi::GPUContext &dev_ctx, const float *ptr) {
   auto stream = dev_ctx.stream();
   float cpu_value;
 #ifdef PADDLE_WITH_HIP
@@ -509,7 +508,7 @@ static __global__ void UpdateLambMomentAndTrustRatioDivCUDAKernel(
 
 template <typename T, typename GradT>
 static void MultiTensorUpdateLambMomentAndTrustRatioDiv(
-    const platform::CUDADeviceContext &dev_ctx,
+    const phi::GPUContext &dev_ctx,
     const int *offsets,
     int n,
     const T *param_p,
@@ -779,7 +778,7 @@ template <typename ParamT,
           int MaxTensorNumPerLaunch = 160,
           int MaxChunkNumPerLaunch = 780>
 static void MultiTensorUpdateLambParamAndBetaPows(
-    const platform::CUDADeviceContext &dev_ctx,
+    const phi::GPUContext &dev_ctx,
     const int *offsets,
     int n,
     const MasterT<ParamT> *trust_ratio_div,
@@ -898,7 +897,7 @@ static bool CreatePreMulScaleOpIfSupported(ncclDataType_t dtype,
 }
 
 template <typename T1, typename T2>
-static void LaunchScaleKernel(const platform::CUDADeviceContext &dev_ctx,
+static void LaunchScaleKernel(const phi::GPUContext &dev_ctx,
                               const T1 *x,
                               const T2 *scale,
                               T1 *y,
@@ -925,7 +924,7 @@ static void NCCLSumWithScaleBase(const T *sendbuff,
                                  size_t nranks,
                                  ncclComm_t comm,
                                  gpuStream_t stream,
-                                 const platform::CUDADeviceContext &dev_ctx,
+                                 const phi::GPUContext &dev_ctx,
                                  const T *scale = nullptr) {
   static_assert(std::is_same<T, float>::value ||
                     std::is_same<T, platform::float16>::value,
@@ -974,15 +973,14 @@ static void NCCLSumWithScaleBase(const T *sendbuff,
 }
 
 template <typename T>
-static void NCCLReduceScatterWithScale(
-    const T *sendbuff,
-    T *recvbuff,
-    size_t recvcount,
-    size_t nranks,
-    ncclComm_t comm,
-    gpuStream_t stream,
-    const platform::CUDADeviceContext &dev_ctx,
-    const T *scale = nullptr) {
+static void NCCLReduceScatterWithScale(const T *sendbuff,
+                                       T *recvbuff,
+                                       size_t recvcount,
+                                       size_t nranks,
+                                       ncclComm_t comm,
+                                       gpuStream_t stream,
+                                       const phi::GPUContext &dev_ctx,
+                                       const T *scale = nullptr) {
   NCCLSumWithScaleBase<T, true>(
       sendbuff, recvbuff, recvcount, nranks, comm, stream, dev_ctx, scale);
 }
@@ -994,7 +992,7 @@ static void NCCLAllReduceWithScale(const T *sendbuff,
                                    size_t nranks,
                                    ncclComm_t comm,
                                    gpuStream_t stream,
-                                   const platform::CUDADeviceContext &dev_ctx,
+                                   const phi::GPUContext &dev_ctx,
                                    const T *scale = nullptr) {
   NCCLSumWithScaleBase<T, false>(
       sendbuff, recvbuff, recvcount, nranks, comm, stream, dev_ctx, scale);
@@ -1104,7 +1102,7 @@ static std::string GetMinMaxStr(const T *x,
       true,
       platform::errors::InvalidArgument("Only support CUDAPlace currently."));
 
-  auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+  auto *dev_ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(place));
   auto stream = dev_ctx->stream();
 
@@ -1276,13 +1274,12 @@ static __global__ void ElementwiseAddWithCastCUDAKernel(const T1 *x,
 }
 
 template <typename T1, typename T2, typename T3>
-static void LaunchElementwiseAddWithCastKernel(
-    const platform::CUDADeviceContext &dev_ctx,
-    const T1 *x,
-    const T2 *y,
-    T3 *z,
-    int n,
-    gpuStream_t stream) {
+static void LaunchElementwiseAddWithCastKernel(const phi::GPUContext &dev_ctx,
+                                               const T1 *x,
+                                               const T2 *y,
+                                               T3 *z,
+                                               int n,
+                                               gpuStream_t stream) {
   int vec_size =
       std::min(std::min(GetChunkedVecSize(x, 0), GetChunkedVecSize(y, 0)),
                GetChunkedVecSize(z, 0));
@@ -1300,12 +1297,12 @@ static void LaunchElementwiseAddWithCastKernel(
 }
 
 template <typename T>
-class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
+class DistributedFusedLambOpKernel<phi::GPUContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto stream = dev_ctx.stream();
     auto place = dev_ctx.GetPlace();
 
@@ -2135,4 +2132,4 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
     distributed_fused_lamb,
-    ops::DistributedFusedLambOpKernel<plat::CUDADeviceContext, float>);
+    ops::DistributedFusedLambOpKernel<phi::GPUContext, float>);
