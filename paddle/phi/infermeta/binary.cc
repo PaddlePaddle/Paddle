@@ -2450,6 +2450,89 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void UnpoolInferMeta(const MetaTensor& x,
+                     const MetaTensor& indices,
+                     const std::vector<int>& ksize,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     const std::vector<int>& output_size,
+                     const std::string& data_format,
+                     MetaTensor* out,
+                     MetaConfig config) {
+  auto in_x_dims = x.dims();
+  auto in_y_dims = indices.dims();
+
+  PADDLE_ENFORCE_EQ(in_x_dims.size() == 4,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Unpool Intput(X) must be of 4-dimensional, but "
+                        "received Input(X)'s dimensions is %d.",
+                        in_x_dims.size()));
+  PADDLE_ENFORCE_EQ(in_x_dims,
+                    in_y_dims,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(X) must equal to be"
+                        "the dimensions of Input(Indices), but received"
+                        "dimensions of Input(X) is [%d], received dimensions"
+                        "of Input(Indices) is [%d]",
+                        in_x_dims,
+                        in_y_dims));
+
+  std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
+  for (size_t i = 0; i < ksize.size(); ++i) {
+    if (!config.is_runtime && in_x_dims[i + 2] <= 0) {
+      output_shape.push_back(-1);
+    } else {
+      output_shape.push_back(output_size[i]);
+    }
+  }
+  if (out != nullptr) {
+    out->set_dims(phi::make_ddim(output_shape));
+    out->set_dtype(x.dtype());
+  }
+}
+void Unpool3dInferMeta(const MetaTensor& x,
+                       const MetaTensor& indices,
+                       const std::vector<int>& ksize,
+                       const std::vector<int>& strides,
+                       const std::vector<int>& paddings,
+                       const std::vector<int>& output_size,
+                       const std::string& data_format,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  auto in_x_dims = x.dims();
+  auto in_y_dims = indices.dims();
+
+  PADDLE_ENFORCE_EQ(in_x_dims.size() == 5,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Unpool Intput(X) must be of 5-dimensional, but "
+                        "received Input(X)'s dimensions is %d.",
+                        in_x_dims.size()));
+  PADDLE_ENFORCE_EQ(in_x_dims,
+                    in_y_dims,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(X) must equal to be"
+                        "the dimensions of Input(Indices), but received"
+                        "dimensions of Input(X) is [%d], received dimensions"
+                        "of Input(Indices) is [%d]",
+                        in_x_dims,
+                        in_y_dims));
+
+  std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
+  for (size_t i = 0; i < ksize.size(); ++i) {
+    if (!config.is_runtime && in_x_dims[i + 2] <= 0) {
+      output_shape.push_back(-1);
+    } else {
+      output_shape.push_back(output_size[i]);
+    }
+  }
+  if (out != nullptr) {
+    out->set_dims(phi::make_ddim(output_shape));
+    out->set_dtype(x.dtype());
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
