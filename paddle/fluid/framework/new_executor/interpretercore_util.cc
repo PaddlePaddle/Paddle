@@ -28,6 +28,8 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+// yoki: only for test
+
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
     false,
