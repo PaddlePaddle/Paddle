@@ -199,13 +199,13 @@ void BindHeterClient(py::module* m) {
 void BindGraphNode(py::module* m) {
   py::class_<GraphNode>(*m, "GraphNode")
       .def(py::init<>())
-      .def("get_id", &GraphNode::get_id)
+      .def("get_id", &GraphNode::get_py_id)
       .def("get_feature", &GraphNode::get_feature);
 }
 void BindGraphPyFeatureNode(py::module* m) {
   py::class_<FeatureNode>(*m, "FeatureNode")
       .def(py::init<>())
-      .def("get_id", &GraphNode::get_id)
+      .def("get_id", &GraphNode::get_py_id)
       .def("get_feature", &GraphNode::get_feature);
 }
 
@@ -359,17 +359,32 @@ void BindGraphGpuWrapper(py::module* m) {
       *m, "GraphGpuWrapper")
       .def(py::init([]() { return GraphGpuWrapper::GetInstance(); }))
       .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
-      .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
+      .def("graph_neighbor_sample",
+           py::overload_cast<int, uint64_t*, int, int>(
+               &GraphGpuWrapper::graph_neighbor_sample))
+      .def("graph_neighbor_sample",
+           py::overload_cast<int, int, std::vector<uint64_t>&, int>(
+               &GraphGpuWrapper::graph_neighbor_sample))
       .def("set_device", &GraphGpuWrapper::set_device)
+      .def("set_feature_separator", &GraphGpuWrapper::set_feature_separator)
       .def("init_service", &GraphGpuWrapper::init_service)
       .def("set_up_types", &GraphGpuWrapper::set_up_types)
       .def("query_node_list", &GraphGpuWrapper::query_node_list)
       .def("add_table_feat_conf", &GraphGpuWrapper::add_table_feat_conf)
       .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
-      .def("upload_batch", &GraphGpuWrapper::upload_batch)
-      .def("get_all_id", &GraphGpuWrapper::get_all_id)
-      .def("init_sample_status", &GraphGpuWrapper::init_sample_status)
-      .def("free_sample_status", &GraphGpuWrapper::free_sample_status)
+      .def("load_node_and_edge", &GraphGpuWrapper::load_node_and_edge)
+      .def("upload_batch",
+           py::overload_cast<int, int, int, const std::string&>(
+               &GraphGpuWrapper::upload_batch))
+      .def("upload_batch",
+           py::overload_cast<int, int, int>(&GraphGpuWrapper::upload_batch))
+      .def(
+          "get_all_id",
+          py::overload_cast<int, int, int, std::vector<std::vector<uint64_t>>*>(
+              &GraphGpuWrapper::get_all_id))
+      .def("get_all_id",
+           py::overload_cast<int, int, std::vector<std::vector<uint64_t>>*>(
+               &GraphGpuWrapper::get_all_id))
       .def("load_next_partition", &GraphGpuWrapper::load_next_partition)
       .def("make_partitions", &GraphGpuWrapper::make_partitions)
       .def("make_complementary_graph",
@@ -380,7 +395,8 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("get_partition", &GraphGpuWrapper::get_partition)
       .def("load_node_weight", &GraphGpuWrapper::load_node_weight)
       .def("export_partition_files", &GraphGpuWrapper::export_partition_files)
-      .def("load_node_file", &GraphGpuWrapper::load_node_file);
+      .def("load_node_file", &GraphGpuWrapper::load_node_file)
+      .def("finalize", &GraphGpuWrapper::finalize);
 }
 #endif
 

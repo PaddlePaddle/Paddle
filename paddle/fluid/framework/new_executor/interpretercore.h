@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/event_manager.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
@@ -106,6 +107,8 @@ class InterpreterCore {
   const BlockDesc& block_;  // not owned
   const std::set<std::string> skip_gc_vars_;
 
+  interpreter::DependencyBuilder dependency_builder_;
+
   // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
   // copy a new program and block, the copy_program_ here is used to
   // hold the program, otherwise block_ maybe not valid after the
@@ -119,8 +122,6 @@ class InterpreterCore {
 
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
-  // op_happens_before_[i][j] == true means op[i] happens before op[j]
-  std::vector<std::vector<bool>> op_happens_before_;
   // last_live_ops_[i] contains the id of operatos that last access var[i]
   std::map<size_t, std::set<size_t>> last_live_ops_;
 

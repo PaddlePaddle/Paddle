@@ -67,9 +67,6 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/stream/cuda_stream.h"
-#endif
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
@@ -274,27 +271,9 @@ struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
 class CudnnWorkspaceHandle;
 class EigenCudaStreamDevice;
 
-class CUDADeviceContext : public phi::GPUContext {
- public:
-  explicit CUDADeviceContext(CUDAPlace place);
-  virtual ~CUDADeviceContext();
-
-  // NOTE: Just for compatibility with the past, please delete if there is an
-  // elegant way.
-  stream::CUDAStream* GetCudaStream() const;
-  stream::CUDAStream* SetCudaStream(stream::CUDAStream*);
-
- private:
-  // NOTE: Just for compatibility with the past, please delete if there is an
-  // elegant way.
-  std::unique_ptr<stream::CUDAStream> cuda_stream_;
-
-  DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
-};
-
 class CudnnWorkspaceHandle {
  public:
-  inline CudnnWorkspaceHandle(const CUDADeviceContext& dev_ctx, std::mutex* mtx)
+  inline CudnnWorkspaceHandle(const phi::GPUContext& dev_ctx, std::mutex* mtx)
       : device_context_(dev_ctx), mtx_(mtx) {}
 
   template <typename Callback>
@@ -337,13 +316,13 @@ class CudnnWorkspaceHandle {
 
  private:
   memory::allocation::AllocationPtr allocation_;
-  const CUDADeviceContext& device_context_;
+  const phi::GPUContext& device_context_;
   std::mutex* mtx_;
 };
 
 template <>
 struct DefaultDeviceContextType<platform::CUDAPlace> {
-  using TYPE = CUDADeviceContext;
+  using TYPE = phi::GPUContext;
 };
 
 // Currently, CUDAPinnedDeviceContext is only used to data copying.
