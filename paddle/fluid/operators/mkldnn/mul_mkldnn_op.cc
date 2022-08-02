@@ -416,7 +416,8 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
                      bool trans_y,
                      Tensor *out) const {
     static const std::vector<int64_t> vec_placeholder;
-    MatMulV2MKLDNNHandler<XT> handler(onednn_engine,
+    MatMulV2MKLDNNHandler<XT> handler(ctx,
+                                      onednn_engine,
                                       ctx.GetPlace(),
                                       x_dims,
                                       trans_x,

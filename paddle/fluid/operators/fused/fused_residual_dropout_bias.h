@@ -178,7 +178,7 @@ void LaunchResidualDropoutBias(const uint32_t rows,
                                const T *bias,
                                MaskType *mask_data,
                                T *dst,
-                               const platform::CUDADeviceContext &ctx) {
+                               const phi::GPUContext &ctx) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     if (residual == dst) return;
@@ -323,7 +323,7 @@ void LaunchResidualDropoutBiasGrad(const T *dout,
                                    const uint32_t cols,
                                    T *dx,
                                    T *dbias,
-                                   const platform::CUDADeviceContext &ctx) {
+                                   const phi::GPUContext &ctx) {
   const T zero = static_cast<T>(0.0f);
   auto factor = dropout_prob == static_cast<float>(1.0f)
                     ? zero

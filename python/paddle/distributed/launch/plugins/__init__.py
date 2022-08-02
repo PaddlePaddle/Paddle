@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import six
+import os
 
 __all__ = []
 
@@ -60,4 +61,15 @@ def rewrite_host_ip(ctx):
         ctx.node.ip = ctx.args.host
 
 
-enabled_plugins = [collective_compatible, rewrite_host_ip, process_args]
+def test_mode(ctx):
+    if ctx.args.training_script == 'run_check':
+        ctx.logger.info('Paddle Distributed Test begin...')
+        if int(ctx.args.nnodes) < 2:
+            ctx.args.nnodes = 2
+        ctx.args.training_script = '{}/test.py'.format(
+            os.path.dirname(__file__))
+
+
+enabled_plugins = [
+    test_mode, collective_compatible, rewrite_host_ip, process_args
+]

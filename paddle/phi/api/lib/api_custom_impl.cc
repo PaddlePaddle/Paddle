@@ -73,8 +73,9 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
     }
   }
   std::string kernel_name = "adamw";
-  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << kernel_name << " API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << kernel_name << " API kernel: " << kernel;
@@ -232,8 +233,9 @@ Tensor conv2d_impl(const Tensor& input,
 
   VLOG(6) << "conv2d API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
-  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "conv2d", {kernel_backend, kernel_layout, kernel_data_type}, true);
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << "conv2d API kernel: " << kernel;
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
@@ -334,8 +336,9 @@ Tensor conv3d_impl(const Tensor& input,
 
   VLOG(6) << "conv3d API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
-  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "conv3d", {kernel_backend, kernel_layout, kernel_data_type}, true);
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << "conv3d API kernel: " << kernel;
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
@@ -437,8 +440,9 @@ void conv2d_grad_impl(const Tensor& input,
 
   VLOG(6) << "conv2d_grad API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
-  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "conv2d_grad", {kernel_backend, kernel_layout, kernel_data_type}, true);
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << "conv2d_grad API kernel: " << kernel;
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
@@ -538,8 +542,9 @@ void conv3d_grad_impl(const Tensor& input,
 
   VLOG(6) << "conv3d_grad API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
-  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "conv3d_grad", {kernel_backend, kernel_layout, kernel_data_type}, true);
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << "conv3d_grad API kernel: " << kernel;
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
@@ -624,10 +629,11 @@ Tensor embedding_impl(const Tensor& x,
   Tensor api_output;
 
   if (phi::DenseTensor::classof(weight.impl().get())) {
-    const auto& kernel =
+    auto kernel_result =
         phi::KernelFactory::Instance().SelectKernelOrThrowError(
             "embedding",
             {kernel_key.backend(), kernel_key.layout(), kernel_data_type});
+    const auto& kernel = kernel_result.kernel;
     VLOG(6) << "embedding API kernel: " << kernel;
 
     auto input_x = PrepareData(x, kernel.InputAt(0), {});
@@ -652,10 +658,11 @@ Tensor embedding_impl(const Tensor& x,
       (*kernel_fn)(*dev_ctx, *input_x, *input_weight, padding_idx, kernel_out);
     }
   } else {
-    const auto& kernel =
+    auto kernel_result =
         phi::KernelFactory::Instance().SelectKernelOrThrowError(
             "sparse_weight_embedding",
             {kernel_key.backend(), kernel_key.layout(), kernel_data_type});
+    const auto& kernel = kernel_result.kernel;
     VLOG(6) << "sparse_weight_embedding API kernel: " << kernel;
 
     auto input_x = PrepareData(x, kernel.InputAt(0), {});
@@ -693,8 +700,9 @@ std::vector<Tensor> split_impl(const Tensor& x,
   DataLayout kernel_layout = kernel_key.layout();
   DataType kernel_data_type = kernel_key.dtype();
 
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "split", {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << "split API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "split API kernel: " << kernel;
@@ -774,8 +782,9 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
   if (grad.is_selected_rows()) {
     kernel_name = "momentum_dense_param_sparse_grad";
   }
-  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << kernel_name << " API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << kernel_name << " API kernel: " << kernel;
@@ -906,8 +915,9 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
     }
   }
 
-  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "batch_norm", {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << "batch_norm API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "batch_norm API kernel: " << kernel;
@@ -1004,8 +1014,9 @@ void imag_grad_impl(const Tensor& out_grad, Tensor* x_grad) {
   phi::KernelKey kernel_key{ParseBackend(out_grad),
                             out_grad.layout(),
                             phi::dtype::ToComplex(out_grad.dtype())};
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "imag_grad", kernel_key);
+  const auto& kernel = kernel_result.kernel;
 
   VLOG(6) << "imag_grad API kernel key: " << kernel_key;
   VLOG(6) << "imag_grad API kernel: " << kernel;
@@ -1042,10 +1053,11 @@ void embedding_grad_impl(const Tensor& x,
   if (phi::DenseTensor::classof(weight.impl().get())) {
     std::string kernel_name =
         sparse ? "embedding_sparse_grad" : "embedding_grad";
-    const auto& kernel =
+    auto kernel_result =
         phi::KernelFactory::Instance().SelectKernelOrThrowError(
             kernel_name,
             {kernel_key.backend(), kernel_key.layout(), kernel_data_type});
+    const auto& kernel = kernel_result.kernel;
     VLOG(6) << kernel_name << " API kernel: " << kernel;
 
     auto input_x = PrepareData(x, kernel.InputAt(0), {});
@@ -1094,10 +1106,11 @@ void embedding_grad_impl(const Tensor& x,
   } else {
     std::string kernel_name = sparse ? "sparse_weight_embedding_sparse_grad"
                                      : "sparse_weight_embedding_grad";
-    const auto& kernel =
+    auto kernel_result =
         phi::KernelFactory::Instance().SelectKernelOrThrowError(
             kernel_name,
             {kernel_key.backend(), kernel_key.layout(), kernel_data_type});
+    const auto& kernel = kernel_result.kernel;
     VLOG(6) << kernel_name << " API kernel: " << kernel;
 
     auto input_x = PrepareData(x, kernel.InputAt(0), {});
@@ -1148,8 +1161,9 @@ void real_grad_impl(const Tensor& out_grad, Tensor* x_grad) {
   phi::KernelKey kernel_key{ParseBackend(out_grad),
                             out_grad.layout(),
                             phi::dtype::ToComplex(out_grad.dtype())};
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "real_grad", kernel_key);
+  const auto& kernel = kernel_result.kernel;
 
   VLOG(6) << "real_grad API kernel key: " << kernel_key;
   VLOG(6) << "real_grad API kernel: " << kernel;

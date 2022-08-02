@@ -34,7 +34,7 @@ using LoDTensor = framework::LoDTensor;
 namespace {
 template <typename T>
 static std::pair<Tensor, Tensor> ProposalForOneImage(
-    const platform::CUDADeviceContext &ctx,
+    const phi::GPUContext &ctx,
     const Tensor &im_info,
     const Tensor &anchors,
     const Tensor &variances,
@@ -59,7 +59,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   proposals.mutable_data<T>({pre_nms_num, 4}, ctx.GetPlace());
 
   {
-    platform::ForRange<platform::CUDADeviceContext> for_range(ctx, pre_nms_num);
+    platform::ForRange<phi::GPUContext> for_range(ctx, pre_nms_num);
     for_range(BoxDecodeAndClipFunctor<T>{anchors.data<T>(),
                                          bbox_deltas.data<T>(),
                                          variances.data<T>(),
@@ -94,7 +94,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   Tensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     proposals_filter.mutable_data<T>({1, 4}, ctx.GetPlace());
     scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
     set_zero(ctx, &proposals_filter, static_cast<T>(0));
@@ -266,5 +266,4 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     generate_proposals,
-    ops::CUDAGenerateProposalsKernel<paddle::platform::CUDADeviceContext,
-                                     float>);
+    ops::CUDAGenerateProposalsKernel<phi::GPUContext, float>);
