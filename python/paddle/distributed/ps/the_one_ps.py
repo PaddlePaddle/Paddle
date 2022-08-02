@@ -218,12 +218,24 @@ class Accessor:
                     sgd_param.adam.initial_range = float(initial_range)
 
                 attr_list = [x.split("&") for x in common_accessor.attrs]
-                if not sgd_param.adam.HasField("beta1_decay_rate"):
+                if not sgd_param.adam.HasField(
+                        "beta1_decay_rate"
+                ) and common_accessor.accessor_class == "adam":
                     sgd_param.adam.beta1_decay_rate = float(attr_list[0][1])
-                if not sgd_param.adam.HasField("beta2_decay_rate"):
+                else:
+                    sgd_param.adam.beta1_decay_rate = 0.9
+                if not sgd_param.adam.HasField(
+                        "beta2_decay_rate"
+                ) and common_accessor.accessor_class == "adam":
                     sgd_param.adam.beta2_decay_rate = float(attr_list[1][1])
-                if not sgd_param.adam.HasField("ada_epsilon"):
+                else:
+                    sgd_param.adam.beta2_decay_rate = 0.999
+                if not sgd_param.adam.HasField(
+                        "ada_epsilon"
+                ) and common_accessor.accessor_class == "adam":
                     sgd_param.adam.ada_epsilon = float(attr_list[2][1])
+                else:
+                    sgd_param.adam.ada_epsilon = 1e-08
                 if len(sgd_param.adam.weight_bounds) == 0:
                     sgd_param.adam.weight_bounds.extend([-10.0, 10.0])
 
