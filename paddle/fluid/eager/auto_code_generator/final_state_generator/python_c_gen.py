@@ -91,7 +91,6 @@ no_amp_list = [
     'assign_value_',
     'sparse_momentum_',
     'sparse_momentum',
-    'fill_constant_',
 ]
 
 
