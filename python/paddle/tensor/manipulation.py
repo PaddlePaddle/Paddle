@@ -1266,7 +1266,7 @@ def flip(x, axis, name=None):
 
 def rot90(x, k=1, axes=[0, 1], name=None):
     """
-    Rotate a n-D tensor by 90 degrees. The rotation direction and times are specified by axes. Rotation direction is from axes[0] towards axes[1] if k > 0, and from axes[1] towards axes[0] for k < 0.
+    Rotate a n-D tensor by 90 degrees. The rotation direction and times are specified by axes and the absolute value of k. Rotation direction is from axes[0] towards axes[1] if k > 0, and from axes[1] towards axes[0] for k < 0.
 
     Args:
         x (Tensor): The input Tensor(or LoDTensor). The data type of the input Tensor x
