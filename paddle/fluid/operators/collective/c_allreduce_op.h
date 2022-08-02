@@ -409,8 +409,9 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
               "Invalid reduce type: %d", red_type));
       }
 
-      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
-      task->Wait();
+      // auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+      // task->Wait();
+      pg->AllReduce(in_tensor, out_tensor, opts);
       return;
     }
 

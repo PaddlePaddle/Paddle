@@ -109,16 +109,19 @@ def _broadcast_data_help(data, shape, dtype, hcg):
 
 
 def broadcast_input_data(hcg, *inputs, **kwargs):
+    dev_id = int(paddle.get_device().split(":")[1])
     for v in inputs:
-        if isinstance(v, core.VarBase):
+        if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
+                v = v.cuda(dev_id)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
         else:
             logger.error("it doesn't support data type {}".format(type(v)))
 
     for k, v in kwargs.items():
-        if isinstance(v, core.VarBase):
+        if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
+                v = v.cuda(dev_id)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
             kwargs[k] = v
         else:

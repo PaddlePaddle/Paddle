@@ -75,8 +75,9 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
       std::vector<phi::DenseTensor> out_tensor;
       in_tensor.push_back(*x);
       out_tensor.push_back(temp_out);
-      auto task = pg->AllGather(in_tensor, out_tensor);
-      task->Wait();
+      // auto task = pg->AllGather(in_tensor, out_tensor);
+      // task->Wait();
+      pg->AllGather(in_tensor, out_tensor);
     } else {
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       PADDLE_ENFORCE_EQ(

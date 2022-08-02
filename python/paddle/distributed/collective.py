@@ -334,7 +334,7 @@ def barrier(group=None):
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         task = group.process_group.barrier()
-        task.wait()
+        # task.wait()
         return
 
     ring_id = 0 if group is None else group.id
@@ -680,7 +680,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
         assert gsrc >= 0, ("src rank out of group, need global rank")
         task = group.process_group.broadcast(tensor, gsrc)
         if use_calc_stream:
-            task.wait()
+            # task.wait()
             return None
         else:
             return task
@@ -762,7 +762,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         group = _get_default_group() if group is None else group
         task = group.process_group.allreduce(tensor, op_type)
         if use_calc_stream:
-            task.wait()
+            # task.wait()
             return None
         else:
             return task

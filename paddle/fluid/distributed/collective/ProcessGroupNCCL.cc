@@ -241,7 +241,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
 
   auto& nccl_comms = places_to_ncclcomm_[key];
 
-  SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
+  // SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
 
   auto task = CreateTask(places, rank_, op_type, inputs);
   task->SetOutputs(outputs);
@@ -261,15 +261,23 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     platform::NCCLGroupGuard nccl_guard;
     for (size_t i = 0; i < inputs.size(); ++i) {
       cuda_guard.SetDevice(places[i]);
-      const auto& nccl_stream = places_to_ctx_[key][i]->stream();
-      fn(inputs[i], outputs[i], nccl_comms[i]->GetNcclComm(), nccl_stream);
+      // const auto& nccl_stream = places_to_ctx_[key][i]->stream();
+
+      auto default_ctx_stream =
+          static_cast<platform::CUDADeviceContext*>(
+              platform::DeviceContextPool::Instance().Get(places[0]))
+              ->stream();
+      fn(inputs[i],
+         outputs[i],
+         nccl_comms[i]->GetNcclComm(),
+         default_ctx_stream);
     }
   }
 
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    cuda_guard.SetDevice(places[i]);
-    task->control_events_[i].Record(*places_to_ctx_[key][i]);
-  }
+  // for (size_t i = 0; i < inputs.size(); ++i) {
+  //   cuda_guard.SetDevice(places[i]);
+  //   task->control_events_[i].Record(*places_to_ctx_[key][i]);
+  // }
   return task;
 }
 
