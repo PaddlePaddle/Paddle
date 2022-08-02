@@ -20,59 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// calculate the offset\new_dims\(strides of dim1/dim2)\matoffset
-void CalMatDims(framework::DDim out_dims,
-                int dim1,
-                int dim2,
-                int64_t *offset,
-                int64_t *new_dims,
-                int64_t *strides,
-                int64_t *matoffset) {
-  int64_t dimprod = 1, batchdim = 1;
-  int rank = out_dims.size();
-  int matoffidx = 0;
-  for (int i = rank - 1; i >= 0; i--) {
-    if (i == dim2) {
-      strides[0] = dimprod;
-    } else if (i == dim1) {
-      strides[1] = dimprod;
-    } else {
-      batchdim *= out_dims[i];
-      // matoffset calculate the offset position of the diagonal defined by dim1
-      // and dim2
-      // the first circle calculate the final free dimension
-      // and then calculate the front free dim one by one
-      if (matoffidx == 0) {
-        for (int64_t j = 0; j < out_dims[i]; j++) {
-          matoffset[matoffidx] = dimprod * j;
-          matoffidx++;
-        }
-      } else {
-        auto size = matoffidx;
-        for (int64_t j = 1; j < out_dims[i]; j++) {
-          for (int64_t k = 0; k < size; k++) {
-            matoffset[matoffidx] = matoffset[k] + dimprod * j;
-            matoffidx++;
-          }
-        }
-      }
-    }
-    dimprod *= out_dims[i];
-  }
-
-  auto diagdim = dim1;
-  if (*offset >= 0) {
-    diagdim = std::min(out_dims[dim1], out_dims[dim2] - *offset);
-    *offset *= strides[0];
-  } else {
-    diagdim = std::min(out_dims[dim1] + *offset, out_dims[dim2]);
-    *offset *= -strides[1];
-  }
-  new_dims[0] = batchdim;
-  new_dims[1] = diagdim;
-  return;
-}
-
 class FillDiagonalTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -84,15 +31,15 @@ class FillDiagonalTensorOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "Tensor, the output tensor, with the same shape and data type "
               "as input(x)");
+    AddAttr<int>("dim1", "the first dim to figure out the diagonal")
+        .SetDefault(0);
+    AddAttr<int>("dim2", "the second dim to figure out the diagonal")
+        .SetDefault(1);
     AddAttr<int64_t>("offset",
                      "offset of diagonal, zero means no offset, positive means "
                      "offset to up-right corner; negtive means offset to "
                      "bottom-left corner")
         .SetDefault(0);
-    AddAttr<int>("dim1", "the first dim to figure out the diagonal")
-        .SetDefault(0);
-    AddAttr<int>("dim2", "the second dim to figure out the diagonal")
-        .SetDefault(1);
   }
 };
 

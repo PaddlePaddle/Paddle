@@ -1180,6 +1180,9 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
                                  int dim1,
                                  int dim2,
                                  MetaTensor* out) {
+  PADDLE_ENFORCE_NOT_NULL(out,
+                          phi::errors::InvalidArgument(
+                              "Output Tensor (out) should not be nullptr."));
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
 }

@@ -16,8 +16,6 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-#include "paddle/phi/kernels/impl/fill_diagonal_tensor_kernel_impl.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -28,5 +26,13 @@ void FillDiagonalTensorKernel(const Context& ctx,
                               int dim1,
                               int dim2,
                               DenseTensor* out);
+
+void CalMatDims(phi::DDim out_dims,
+                int dim1,
+                int dim2,
+                int64_t* offset,
+                int64_t* new_dims,
+                int64_t* strides,
+                int64_t* matoffset);
 
 }  // namespace phi

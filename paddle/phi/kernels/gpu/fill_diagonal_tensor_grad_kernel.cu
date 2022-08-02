@@ -77,8 +77,8 @@ void FillDiagonalTensorGradKernel(const Context &ctx,
 
     auto stream = ctx.stream();
     DenseTensor tensor_tmp;
-    int64_t *memory_block_cu =
-        tensor_tmp.mutable_data<int64_t>({2 + matrows}, ctx.GetPlace());
+    tensor_tmp.Resize(phi::make_ddim({2 + matrows}));
+    int64_t *memory_block_cu = ctx.template Alloc<int64_t>(&tensor_tmp);
     const auto gpu_place = ctx.GetPlace();
     paddle::memory::Copy(gpu_place,
                          memory_block_cu,
