@@ -142,7 +142,8 @@ class PostTrainingQuantization(object):
                  same_scale_tensor_list=None,
                  scale_trainable=False,
                  cache_dir=None,
-                 scale_dict=None):
+                 scale_dict=None,
+                 return_graph=False):
         '''
         Constructor.
 
@@ -365,6 +366,7 @@ class PostTrainingQuantization(object):
         self._freeze_model = freeze_model
         self._scale_trainable = scale_trainable
         self._scale_dict = scale_dict
+        self._return_graph = return_graph
 
     def quantize(self):
         '''
@@ -460,7 +462,11 @@ class PostTrainingQuantization(object):
                 persistables.extend(_op.input('X'))
                 _op.desc.set_input("X", persistables)
 
-        return self._program
+        if not self._return_graph:
+            return self._program
+        else:
+            main_graph = IrGraph(core.Graph(self._program.desc), for_test=True)
+            return main_graph
 
     def _adaround_apply(self):
         assert self._algo != "min_max", "The algo should not be min_max."
@@ -1034,7 +1040,10 @@ class PostTrainingQuantization(object):
                     activation_bits=self._activation_bits,
                     weight_quantize_type=self._weight_quantize_type,
                     quantizable_op_type=major_quantizable_op_types)
-                freeze_pass.apply(graph)
+
+                for sub_graph in graph.all_sub_graphs():
+                    sub_graph._for_test = True
+                    freeze_pass.apply(sub_graph)
         else:
             quant_weight_pass = QuantWeightPass(self._scope, self._place)
             for sub_graph in graph.all_sub_graphs():
@@ -1178,7 +1187,8 @@ class PostTrainingQuantizationProgram(PostTrainingQuantization):
                  same_scale_tensor_list=None,
                  scale_trainable=False,
                  cache_dir=None,
-                 scale_dict=None):
+                 scale_dict=None,
+                 return_graph=True):
         super().__init__(executor, scope, None, None, None, batch_generator,
                          sample_generator, data_loader, batch_size, batch_nums,
                          algo, hist_percent, quantizable_op_type, round_type,
@@ -1187,7 +1197,7 @@ class PostTrainingQuantizationProgram(PostTrainingQuantization):
                          weight_quantize_type, onnx_format, freeze_model,
                          optimize_model, is_use_cache_file, skip_tensor_list,
                          same_scale_tensor_list, scale_trainable, cache_dir,
-                         scale_dict)
+                         scale_dict, return_graph)
         self._program = program
         if feed_list is None:
             self._feed_list = self._get_feed_list(program)
@@ -1218,100 +1228,6 @@ class PostTrainingQuantizationProgram(PostTrainingQuantization):
                     fetch_list.extend(op.output_arg_names)
 
         return fetch_list
-
-    def quantize(self):
-        '''
-        Load the FP32 model, and use the calibrate data to calculate the forward-stage.
-        Based on the sample data, we can get the quantization information, and obtain
-        the final quantized model.
-
-        Args:
-            None
-        Returns:
-            the program of quantized model.
-        '''
-        self._load_model_data()
-        self._collect_target_varnames()
-        self._set_activation_persistable()
-
-        if self._algo in ["KL", "hist"]:
-            _logger.info("Preparation stage ...")
-            batch_id = 0
-            for data in self._data_loader():
-                self._executor.run(program=self._program,
-                                   feed=data,
-                                   fetch_list=self._fetch_list,
-                                   return_numpy=False,
-                                   scope=self._scope)
-                self._collect_activation_abs_min_max()
-                if batch_id % 5 == 0:
-                    _logger.info("Run batch: " + str(batch_id))
-                batch_id += 1
-                if self._batch_nums and batch_id >= self._batch_nums:
-                    break
-            _logger.info("Finish preparation stage, all batch:" + str(batch_id))
-            self._init_sampling_act_histogram()
-
-        _logger.info("Sampling stage ...")
-        batch_id = 0
-        for data in self._data_loader():
-            self._executor.run(program=self._program,
-                               feed=data,
-                               fetch_list=self._fetch_list,
-                               return_numpy=False,
-                               scope=self._scope)
-            self._sampling()
-            if batch_id % 5 == 0:
-                _logger.info("Run batch: " + str(batch_id))
-            batch_id += 1
-            if self._batch_nums and batch_id >= self._batch_nums:
-                break
-        _logger.info("Finish sampling stage, all batch: " + str(batch_id))
-
-        if self._algo == 'avg':
-            for var_name in self._quantized_act_var_name:
-                self._quantized_threshold[var_name] = \
-                np.array(self._quantized_var_avg[var_name]).mean()
-        if self._algo in ["KL", "hist"]:
-            self._calculate_kl_hist_threshold()
-
-        if self._round_type == 'adaround':
-            self._adaround_apply()
-
-        self._reset_activation_persistable()
-
-        if self._algo is 'min_max':
-            self._save_input_threhold()
-        else:
-            self._update_program()
-
-        # save out_threshold for quantized ops.
-        if not self._onnx_format:
-            self._save_output_threshold()
-
-        if any(op_type in self._quantizable_op_type
-               for op_type in self._dynamic_quantize_op_type):
-            self._collect_dynamic_quantize_op_threshold(
-                self._dynamic_quantize_op_type)
-
-        # Move sub blocks persistable var to global block
-        global_block = self._program.global_block()
-        for _op in global_block.ops:
-            if _op.type == "while":
-                _block_id = _op.attr("sub_block").id
-                _block = self._program.block(_block_id)
-                persistables = []
-                for _name, _var in _block.vars.items():
-                    if _var.persistable:
-                        global_block._clone_variable(_var)
-                        persistables.append(_name)
-                for _name in persistables:
-                    _block._remove_var(_name)
-                persistables.extend(_op.input('X'))
-                _op.desc.set_input("X", persistables)
-
-        main_graph = IrGraph(core.Graph(self._program.desc), for_test=True)
-        return main_graph
 
 
 class WeightQuantization(object):
