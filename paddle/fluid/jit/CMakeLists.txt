@@ -57,6 +57,6 @@ if(WITH_TESTING AND NOT WIN32)
   cc_test(
     layer_test
     SRCS layer_test.cc
-    DEPS ${JIT_DEPS} gmock)
+    DEPS ${JIT_DEPS})
   add_dependencies(layer_test jit_download_program)
 endif()
