@@ -25,9 +25,8 @@ def parse_line(line, tests):
             o = o.upper()
             for a in arch.split(";"):
                 a = a.upper()
-                if (launcher[-3:] == ".sh"):
-                    cmd = f'''
-if(WITH_{a} AND {o})
+                if launcher[-3:] == ".sh":
+                    cmd += f'''if(WITH_{a} AND {o})
     bash_test_modules(
     {name}
     START_BASH
@@ -35,25 +34,32 @@ if(WITH_{a} AND {o})
     LABELS
     "RUN_TYPE={run_type}"
     ENVS
-    "PADDLE_DIST_UT_PORT={dist_ut_port};{envs};TIMEOUT={timeout}")
+    "PADDLE_DIST_UT_PORT={dist_ut_port};{envs}")
+    set_tests_properties({name} PROPERTIES  TIMEOUT "{timeout}")
 endif()
         '''
                 else:
-                    cmd = f'''
-if(WITH_{a} AND {o})
+                    cmd += f'''if(WITH_{a} AND {o})
     py_test_modules(
     {name}
     MODULES
     {name}
     ENVS
-    "PADDLE_DIST_UT_PORT={dist_ut_port};{envs};TIMEOUT={timeout}")
+    "PADDLE_DIST_UT_PORT={dist_ut_port};{envs}")
+    set_tests_properties({name} PROPERTIES  TIMEOUT "{timeout}")
 endif()
-    '''
+'''
     return cmd
 
 
-tests = []
-cmds = ""
-for line in open("testslist.csv"):
-    cmds += parse_line(line, tests)
-print(cmds)
+import os
+if __name__ == "__main__":
+    current_work_dir = os.path.dirname(__file__)
+    if current_work_dir == "":
+        current_work_dir = "."
+    tests = []
+    cmds = "set(LINUX ON)\n"
+    for line in open(f"{current_work_dir}/testslist.csv"):
+        cmds += parse_line(line, tests)
+    print(cmds)
+    print(cmds, file=open(f"{current_work_dir}/CMakeLists.txt", "w"))
