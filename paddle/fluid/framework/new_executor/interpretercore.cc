@@ -284,6 +284,28 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
 }
 
 void InterpreterCore::BuildInplace() {
+  // NOTE(Ruibiao): coalesce_tensor_op outputs a FusedOutput Tensor and a list
+  // of Output Tensors which are sliced from the FusedOutput. These outputs
+  // sholud not be the outvar of the in-place var-pair since memory reuse
+  // between FusedOutput and Output Tensors is assumed. For the following
+  // example:
+  // fused_var, var1, var2, var3 = coalesce_tensor(var1, var2, var3)
+  // var1 = sum(var4, var5)
+  // ...
+  //
+  // After running coalesce_tensor_op, var1 is assumed to share the buffer
+  // slices from fused_var. However, if sum_op is in-place, then var1 would
+  // re-share the buffer with var4 instead of fused_var.
+  std::set<std::string> skip_inplace_outvars;
+  for (Instruction& instr : vec_instruction_) {
+    OperatorBase* op = instr.OpBase();
+    if (op->Type() == "coalesce_tensor") {
+      const std::vector<std::string>& outputs =
+          op->OutputVars(/*has_intermediate=*/false);
+      skip_inplace_outvars.insert(outputs.begin(), outputs.end());
+    }
+  }
+
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     auto& instr = vec_instruction_[i];
     auto* op_base = instr.OpBase();
@@ -309,17 +331,20 @@ void InterpreterCore::BuildInplace() {
         if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
           auto iterout = outputs.find(pair.second);
           if (iterout != outputs.end() && !iterout->second.empty()) {
-            auto invar =
-                local_scope_->FindVar(var_scope_.GetNameById(iter->second[0]));
-            auto outvar = local_scope_->FindVar(
-                var_scope_.GetNameById(iterout->second[0]));
+            const std::string& invar_name =
+                var_scope_.GetNameById(iter->second[0]);
+            const std::string& outvar_name =
+                var_scope_.GetNameById(iterout->second[0]);
+            auto invar = local_scope_->FindVar(invar_name);
+            auto outvar = local_scope_->FindVar(outvar_name);
+
             if (invar && outvar && invar->IsType<LoDTensor>() &&
-                outvar->IsType<LoDTensor>()) {
+                outvar->IsType<LoDTensor>() &&
+                skip_inplace_outvars.find(outvar_name) ==
+                    skip_inplace_outvars.end()) {
               instr.AddInplace(invar, outvar);
-              VLOG(3) << "inplace " << vec_instruction_[i].OpBase()->Type()
-                      << " " << var_scope_.GetNameById(iter->second[0])
-                      << " -> " << var_scope_.GetNameById(iterout->second[0])
-                      << std::endl;
+              VLOG(3) << "inplace " << op_base->Type() << " " << invar_name
+                      << " -> " << outvar_name;
             }
           }
         }
@@ -333,8 +358,7 @@ void InterpreterCore::BuildOperatorDependences() {
   // Schedule
   auto op_nums = vec_instruction_.size();
   dependecy_count_.resize(op_nums);
-  auto op2downstream = interpreter::build_op_downstream_map(
-      vec_instruction_, &op_happens_before_);
+  auto op2downstream = dependency_builder_.Build(vec_instruction_);
   for (size_t op = 0; op < vec_instruction_.size(); ++op) {
     auto op_list = op2downstream[op];
     std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
@@ -450,7 +474,7 @@ void InterpreterCore::Convert(
       bool not_before_any = true;
       // find the op that is not executed before any
       for (size_t other_item : last_live_ops_[i]) {
-        if (op_happens_before_[item][other_item]) {
+        if (dependency_builder_.OpHappensBefore(item, other_item)) {
           VLOG(8) << "happens_before: " << item << "->" << other_item
                   << ", so skip " << item;
           not_before_any = false;

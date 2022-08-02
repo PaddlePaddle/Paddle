@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/memory/buffer.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -28,10 +27,6 @@
 namespace cub = hipcub;
 #endif
 #endif
-
-// #if defined(__NVCC__) || defined(__HIPCC__)
-// #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-// #endif
 
 namespace phi {
 namespace funcs {
@@ -50,17 +45,11 @@ void RenormFunc(const phi::CPUContext& ctx,
   int64_t dim_divisor = 1;
   for (int i = dim + 1; i < dim_size; i++) dim_divisor *= input_dims[i];
 
-  // auto& dev_ctx = ctx.template device_context<DeviceContext>();
-  // std::vector<int64_t> dim_index(dim_size, 0);
   std::vector<T> dim_value(dimension_each,
                            0);  // dim_value = (x1^p + x2^p + x3^p....)^(1/p)
 
-  // auto* out_data =
-  //     out->mutable_data<T>(context.GetPlace(), size_t(numel * sizeof(T)));
-
   int64_t index = 0, dim_index = 0;
   for (int64_t i = 0; i < numel; i++) {
-    // auto dim_index = i / dim_divsor % dimension_each;
     dim_value[dim_index] += std::pow(std::abs(x_data[i]), p);
     index++;
     if (index == dim_divisor) {
@@ -77,11 +66,9 @@ void RenormFunc(const phi::CPUContext& ctx,
       dim_value[i] = max_norm / dim_value[i];
     else
       dim_value[i] = 1.0;
-    // dim_index[i] = 0;
   }
   index = dim_index = 0;
   for (int64_t i = 0; i < numel; i++) {
-    // auto dim_index = i / dim_divsor % dimension_each;
     out_data[i] = dim_value[dim_index] < 1.0 ? dim_value[dim_index] * x_data[i]
                                              : x_data[i];
     index++;
@@ -113,7 +100,6 @@ void RenormGradFunc(const phi::CPUContext& ctx,
       weight_derivative(dimension_each, 0.0);
   int64_t index = 0, dim_index = 0;
   for (int64_t i = 0; i < numel; i++) {
-    // auto dim_index = i / dim_divsor % dimension_each;
     dim_value[dim_index] += std::pow(std::abs(x_data[i]), p);
     index++;
     if (index == dim_divisor) {
@@ -135,7 +121,6 @@ void RenormGradFunc(const phi::CPUContext& ctx,
   }
   index = dim_index = 0;
   for (int64_t i = 0; i < numel; i++) {
-    // auto dim_index = i / dim_divsor % dimension_each;
     dx_data[i] = dim_value[dim_index] * dout_data[i];
     weight_derivative[dim_index] += x_data[i] * dout_data[i];
     index++;
@@ -149,7 +134,6 @@ void RenormGradFunc(const phi::CPUContext& ctx,
   }
   index = dim_index = 0;
   for (int64_t i = 0; i < numel; i++) {
-    // auto dim_index = i / dim_divsor % dimension_each;
     dx_data[i] += weight_derivative[dim_index] * dim_power_sum[dim_index] *
                   std::pow(std::abs(x_data[i]), p - 1.0) *
                   (x_data[i] >= 0 ? 1 : -1);
@@ -296,27 +280,15 @@ void RenormFunc(const phi::GPUContext& ctx,
   for (int i = 0; i < dim; i++) pre_mul *= input_dims[i];
   pow_value.Resize(phi::make_ddim({pre_mul, dimension_each, dim_divisor}));
   dim_value.Resize(phi::make_ddim({dimension_each}));
-  // pow_value.mutable_data<T>(context.GetPlace());
   T* pow_value_data = ctx.template Alloc<T>(&pow_value);
   T* dim_value_data = ctx.template Alloc<T>(&dim_value);
-  // out->Resize(phi::make_ddim(phi::vectorize(input_dims)));
-  // T* out_data = out->mutable_data<T>(context.GetPlace());
   auto stream = ctx.stream();
   int block = std::min(numel, static_cast<int64_t>(256));
-  // using MT = typename details::MPTypeTrait<T>::Type;
   int grid = (numel + block - 1) / block;
   RenormElementwisePow<T>
       <<<grid, block, 0, stream>>>(x_data, pow_value_data, numel, p);
   int block2 = std::min(dimension_each, static_cast<int64_t>(256));
   int grid2 = (dimension_each + block2 - 1) / block2;
-  // std::vector<const framework::Tensor*> ins = {x};
-  // std::vector<framework::Tensor*> outs = {&pow_value};
-  // auto func = UnsignedPowFunctor<MT, T>(p);
-  // const auto& cuda_ctx =
-  //     context.template device_context<platform::CUDADeviceContext>();
-
-  // paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-  //     cuda_ctx, ins, &outs, func);
   std::vector<int> reduce_axis = {0, 2};
   phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
       ctx, pow_value, &dim_value, kps::IdentityFunctor<T>(), reduce_axis);

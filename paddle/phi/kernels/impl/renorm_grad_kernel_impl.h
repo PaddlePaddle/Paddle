@@ -16,10 +16,11 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/renorm.h"
+#include "paddle/phi/kernels/impl/renorm_impl.h"
 #include "paddle/phi/kernels/renorm_grad_kernel.h"
 
 namespace phi {
+
 template <typename T, typename Context>
 void RenormGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,

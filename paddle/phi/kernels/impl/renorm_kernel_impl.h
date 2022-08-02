@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/renorm.h"
+#include "paddle/phi/kernels/impl/renorm_impl.h"
 #include "paddle/phi/kernels/renorm_kernel.h"
 
 namespace phi {
