@@ -47,7 +47,7 @@ void InterpreterCoreEventGarbageCollector::Add(
   if (max_memory_size_ <= 1) {
     Free(garbage, event, ctx);
   } else {
-    std::unique_ptr<GarbageQueue> pending_delete_garbages;
+    std::unique_ptr<GarbageQueue> pending_delete_garbages = nullptr;
     {  // lock guard
       std::lock_guard<memory::SpinLock> guard(spinlock_);
       cur_memory_size_ += garbage->size();
@@ -58,6 +58,10 @@ void InterpreterCoreEventGarbageCollector::Add(
         pending_delete_garbages = std::move(garbages_);
         garbages_ = std::make_unique<GarbageQueue>();
       }
+    }
+
+    if (pending_delete_garbages) {
+      Free(pending_delete_garbages.release(), event, ctx);
     }
   }
 }
