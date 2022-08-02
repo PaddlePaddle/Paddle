@@ -2945,7 +2945,7 @@ class Operator(object):
             if skip_op_callstack and name == "op_callstack":
                 continue
 
-            attr_type = self.desc.attr_type(name)
+            attr_type = self.desc.attr_type(name, True)
             if attr_type == core.AttrType.VAR:
                 attr_var_name = self.desc.attr(name, True).name()
                 a = "{name} = Var['{value}']".format(name=name,
@@ -3176,7 +3176,7 @@ class Operator(object):
 
     @property
     def attr_names(self):
-        return self.desc.attr_names()
+        return self.desc.attr_names(True)
 
     def attr(self, name):
         """

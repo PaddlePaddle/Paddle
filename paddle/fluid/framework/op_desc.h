@@ -83,7 +83,7 @@ class OpDesc {
   proto::AttrType GetAttrType(const std::string &name,
                               bool with_attr_var = false) const;
 
-  std::vector<std::string> AttrNames() const;
+  std::vector<std::string> AttrNames(bool with_attr_var = false) const;
 
   void SetAttr(const std::string &name, const Attribute &v);
   void RemoveAttr(const std::string &name);
@@ -177,8 +177,6 @@ class OpDesc {
   // Find VarDesc from OpDesc located Block into global Block
   VarDesc *FindVarRecursive(const std::string &name);
 
-  void InitAttrs(const AttributeMap &attrs);
-
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
     std::vector<typename MapType::key_type> ret_val;
@@ -207,8 +205,6 @@ class OpDesc {
   VariableNameMap outputs_;
   // attribute name => all original attrs
   AttributeMap attrs_;
-  // attribute name => only var(s) attrs, default empty
-  AttributeMap attrs_var_;
 
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.

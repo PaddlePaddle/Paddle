@@ -416,10 +416,9 @@ OpDesc::OpDesc(const std::string &type,
   desc_.set_type(type);
   inputs_ = inputs;
   outputs_ = outputs;
+  attrs_ = attrs;
   need_update_ = true;
   block_ = nullptr;
-
-  InitAttrs(attrs);
 }
 
 OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
@@ -433,7 +432,6 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   inputs_ = op_desc.inputs_;
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
-  attrs_var_ = op_desc.attrs_var_;
   // The record of original_id_ is only for auto parallel.
   original_id_ = op_desc.original_id_;
   need_update_ = true;
@@ -499,18 +497,19 @@ std::vector<std::string> OpDesc::Input(const std::string &name,
                                        bool with_attr_var) const {
   // Attribute with VarDesc type will consider as Input
   if (with_attr_var) {
-    auto it = attrs_var_.find(name);
-    if (it != attrs_var_.end()) return AttrVarNames(it->second);
+    auto it = attrs_.find(name);
+    if (it != attrs_.end() && HasAttrVar(it->second))
+      return AttrVarNames(it->second);
   }
   return this->Input(name);
 }
 
 VariableNameMap OpDesc::Inputs(bool with_attr_var) const {
-  if (!with_attr_var || attrs_var_.empty()) {
+  if (!with_attr_var) {
     return inputs_;
   }
   VariableNameMap res = inputs_;
-  for (auto &attr : attrs_var_) {
+  for (auto &attr : FilterAttrVar(attrs_)) {
     res[attr.first] = AttrVarNames(attr.second);
   }
   return res;
@@ -591,21 +590,23 @@ proto::AttrType OpDesc::GetAttrType(const std::string &name,
   return static_cast<proto::AttrType>(attr.index() - 1);
 }
 
-std::vector<std::string> OpDesc::AttrNames() const {
+std::vector<std::string> OpDesc::AttrNames(bool with_attr_var) const {
   std::vector<std::string> retv;
   retv.reserve(attrs_.size());
   for (auto &attr : attrs_) {
+    if (!with_attr_var && HasAttrVar(attr.second)) continue;
     retv.push_back(attr.first);
   }
   return retv;
 }
 
 bool OpDesc::HasAttr(const std::string &name, bool with_attr_var) const {
-  bool is_found = attrs_.find(name) != attrs_.end();
-  if (!with_attr_var) {
+  auto iter = attrs_.find(name);
+  bool is_found = iter != attrs_.end();
+  if (with_attr_var) {
     return is_found;
   }
-  return is_found || attrs_var_.find(name) == attrs_var_.find(name);
+  return is_found && !HasAttrVar(iter->second);
 }
 
 void OpDesc::RemoveAttr(const std::string &name) {
@@ -680,12 +681,12 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
 }
 
 void OpDesc::SetVarAttr(const std::string &name, VarDesc *var) {
-  this->attrs_var_[name] = var;
+  this->attrs_[name] = var;
   need_update_ = true;
 }
 
 void OpDesc::SetVarsAttr(const std::string &name, std::vector<VarDesc *> vars) {
-  this->attrs_var_[name] = vars;
+  this->attrs_[name] = vars;
   need_update_ = true;
 }
 
@@ -702,20 +703,22 @@ void OpDesc::SetBlocksAttr(const std::string &name,
 
 void OpDesc::SetAttrMap(
     const std::unordered_map<std::string, Attribute> &attr_map) {
-  InitAttrs(attr_map);
+  attrs_ = attr_map;
   need_update_ = true;
 }
 
 Attribute OpDesc::GetAttr(const std::string &name, bool with_attr_var) const {
-  if (with_attr_var) {
-    auto it = attrs_var_.find(name);
-    if (it != attrs_var_.end()) return it->second;
-  }
   auto it = attrs_.find(name);
   PADDLE_ENFORCE_NE(
       it,
       attrs_.end(),
       platform::errors::NotFound("Attribute %s is not found.", name));
+  if (!with_attr_var) {
+    PADDLE_ENFORCE_EQ(
+        HasAttrVar(it->second),
+        false,
+        platform::errors::NotFound("Attribute %s is not found.", name));
+  }
   return it->second;
 }
 
@@ -918,7 +921,7 @@ void OpDesc::CheckAttrs() {
     return;
   }
   VLOG(10) << "begin to check attribute of " << Type();
-  checker->Check(&attrs_, &attrs_var_);
+  checker->Check(&attrs_);
 }
 
 void OpDesc::InferShape(const BlockDesc &block) {
@@ -983,18 +986,6 @@ VarDesc *OpDesc::FindVarRecursive(const std::string &name) {
       "Not found Var(%s) from Block(%d) back into global Block.",
       name,
       cur_block->ID()));
-}
-
-void OpDesc::InitAttrs(const AttributeMap &attrs) {
-  attrs_.clear();
-  attrs_var_.clear();
-  for (auto &attr : attrs) {
-    if (HasAttrVar(attr.second)) {
-      attrs_var_.emplace(attr);
-    } else {
-      attrs_.emplace(attr);
-    }
-  }
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(

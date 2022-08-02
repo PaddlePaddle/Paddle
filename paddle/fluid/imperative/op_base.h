@@ -86,7 +86,7 @@ class OpBase {
   void CheckAttrs() {
     auto& info = Info();
     if (info.Checker() != nullptr) {
-      info.Checker()->Check(&attrs_, nullptr, true);
+      info.Checker()->Check(&attrs_, true);
     }
   }
 

@@ -428,24 +428,23 @@ class TypedAttrChecker {
   }
 
   void operator()(AttributeMap* attr_map,
-                  AttributeMap* attrs_var = nullptr,
+                  // AttributeMap* attrs_var = nullptr,
                   bool get_default_value_only = false,
                   bool only_check_exist_value = false) const {
-    // If attribute is VarDesc(s), we should verify it's dtype and shape.
-    if (nullptr != attrs_var &&
-        attrs_var->find(attr_name_) != attrs_var->end()) {
-      VLOG(1) << "Found Attribute " << attr_name_
-              << " with Variable, skip attr_checker.";
-      return;
-    }
-
     if (get_default_value_only) {
       if (!default_value_setter_.empty()) {
         attr_map->emplace(attr_name_, default_value_setter_[0]());
       }
       return;
     }
+    // If attribute is VarDesc(s), we should verify it's dtype and shape.
     auto it = attr_map->find(attr_name_);
+    if (it != attr_map->end() && HasAttrVar(it->second)) {
+      VLOG(1) << "Found Attribute " << attr_name_
+              << " with Variable, skip attr_checker.";
+      return;
+    }
+
     if (only_check_exist_value) {
       if (it != attr_map->end()) {
         ExtractAttribute<T> extract_attr(attr_name_);
@@ -483,8 +482,7 @@ class TypedAttrChecker {
 
 // check whether op's all attributes fit their own limits
 class OpAttrChecker {
-  typedef std::function<void(AttributeMap*, AttributeMap*, bool, bool)>
-      AttrChecker;
+  typedef std::function<void(AttributeMap*, bool, bool)> AttrChecker;
 
  public:
   template <typename T>
@@ -496,20 +494,19 @@ class OpAttrChecker {
   }
 
   void Check(AttributeMap* attr_map,
-             AttributeMap* attrs_var = nullptr,
              bool explicit_only = false,
              bool only_check_exist_value = false) const {
     auto checker_num = attr_checkers_.size();
     if (explicit_only) checker_num = explicit_checker_num_;
     for (size_t i = 0; i < checker_num; ++i) {
-      attr_checkers_[i](attr_map, attrs_var, false, only_check_exist_value);
+      attr_checkers_[i](attr_map, false, only_check_exist_value);
     }
   }
 
   AttributeMap GetDefaultAttrsMap() const {
     AttributeMap default_values_map;
     for (const auto& checker : attr_checkers_) {
-      checker(&default_values_map, nullptr, true, false);
+      checker(&default_values_map, true, false);
     }
     return default_values_map;
   }
@@ -520,7 +517,7 @@ class OpAttrChecker {
 
   void InitDefaultAttributeMap() {
     for (const auto& checker : attr_checkers_) {
-      checker(&default_attrs_, nullptr, true, false);
+      checker(&default_attrs_, true, false);
     }
   }
 

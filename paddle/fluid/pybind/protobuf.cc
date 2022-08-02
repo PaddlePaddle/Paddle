@@ -351,7 +351,12 @@ void BindOpDesc(pybind11::module *m) {
           },
           py::arg("name"),
           py::arg("with_attr_var") = false)
-      .def("attr_names", &pd::OpDesc::AttrNames)
+      .def(
+          "attr_names",
+          [](pd::OpDesc &self, bool with_attr_var) {
+            return self.AttrNames(with_attr_var);
+          },
+          py::arg("with_attr_var") = false)
       .def("_set_attr", &pd::OpDesc::SetAttr)
       .def("remove_attr", &pd::OpDesc::RemoveAttr)
       .def(

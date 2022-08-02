@@ -450,6 +450,7 @@ OperatorBase::OperatorBase(const std::string& type,
   // In OperatorBase level, all attribute with VarDesc type will be considered
   // as Input.
   for (auto& attr : FilterAttrVar(attrs)) {
+    VLOG(3) << "found Attribute with Variable type: " << attr.first;
     inputs_[attr.first] = std::move(AttrVarNames(attr.second));
     attrs_.erase(attr.first);
   }

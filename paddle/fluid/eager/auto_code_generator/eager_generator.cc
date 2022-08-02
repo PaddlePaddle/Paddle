@@ -877,7 +877,7 @@ static bool CollectGradInformationFromOpInfo(
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
     VLOG(6) << "Checking AttributeMap Settings";
-    attr_checker->Check(&attrs, nullptr, true, /*only_check_exist_value=*/true);
+    attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
     default_attrs = attr_checker->GetDefaultAttrMap();
   } else {
     VLOG(6) << "Detected Null Attribute Checker, use empty default_attrs";
