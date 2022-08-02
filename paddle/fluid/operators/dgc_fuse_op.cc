@@ -1,18 +1,15 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/dgc_op.h"
+#include "paddle/fluid/operators/dgc_fuse_op.h"
 
 #include <string>
 #include <vector>
@@ -22,26 +19,26 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class DGCOp : public framework::OperatorWithKernel {
+class DGCFuseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "DGCFuseOp");
     OP_INOUT_CHECK(ctx->HasInput("current_step"), "Input", "current_step",
-                   "DGCOp");
-    OP_INOUT_CHECK(ctx->HasInput("nranks"), "Input", "nranks", "DGCOp");
+                   "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasInput("nranks"), "Input", "nranks", "DGCFuseOp");
 
-    OP_INOUT_CHECK(ctx->HasOutput("U_out"), "Output", "U_out", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasOutput("V_out"), "Output", "V_out", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasOutput("k"), "Output", "k", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasOutput("U_out"), "Output", "U_out", "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasOutput("V_out"), "Output", "V_out", "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasOutput("k"), "Output", "k", "DGCFuseOp");
     OP_INOUT_CHECK(ctx->HasOutput("EncodeGrad"), "Output", "EncodeGrad",
-                   "DGCOp");
+                   "DGCFuseOp");
     OP_INOUT_CHECK(ctx->HasOutput("GatherBuff"), "Output", "GatherBuff",
-                   "DGCOp");
+                   "DGCFuseOp");
   }
 
  protected:
@@ -58,18 +55,18 @@ class DGCOp : public framework::OperatorWithKernel {
   }
 };
 
-class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
+class DGCFuseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("U", "(Tensor) U velocity tensor of DGC");
-    AddInput("V", "(Tensor) V velocity tensor of DGC");
+    AddInput("U", "(Tensor) U velocity tensor of DGCFuse");
+    AddInput("V", "(Tensor) V velocity tensor of DGCFuse");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("current_step", "(Tensor) Current step.");
     AddInput("nranks", "(Tensor) nranks.");
 
-    AddOutput("U_out", "(Tensor) Output U velocity of DGC");
-    AddOutput("V_out", "(Tensor) Output V velocity of DGC");
+    AddOutput("U_out", "(Tensor) Output U velocity of DGCFuse");
+    AddOutput("V_out", "(Tensor) Output V velocity of DGCFuse");
     AddOutput("EncodeGrad", "(Tensor) Output encoded gradient");
     AddOutput("Grad_out", "(Tensor) Output grad gradient");
     AddOutput("k", "(Tensor) Output top-k value");
@@ -108,35 +105,37 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The type of regularization, {0:None, 1:L1Decay, 2:L2Decay")
         .SetDefault(0);
 
+    AddAttr<int>("ring_id",
+                 "(int, 0)"
+                 "The group id")
+        .SetDefault(0);
+
+    AddAttr<bool>("is_use_dgc",
+                  "(bool, false)"
+                  "whether use dgc.")
+        .SetDefault(false);
+
     AddAttr<bool>("do_allreduce",
                   "(bool, false)"
                   "add this flag to reuse the dgc op in dygraph. when current "
                   "step < rampup_begin_step, do do_allreduce in dygraph.")
-        .SetDefault(false);
+        .SetDefault(true);
 
     AddComment(R"DOC(
     Original paper is https://arxiv.org/abs/1712.01887
-
     DGC reduce the communication bandwidth by sending only the important gradients (sparse update):\
         only gradients larger than a threshold are transmitted.
-
     To avoid losing information, DGC accumulate the rest of the gradients locally.
-
     Eventually, these gradients become large enough to be transmitted.
-
     Thus, DGC send the large gradients immediately but eventually send all of the gradients over time.
-
     To ensure no loss of accuracy, DGC employs momentum correc-tionandlocal gradient clipping on top of the gradient sparsification to maintain model performance.
-
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
-
     This optimizer will do two things:
         
         1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
     
         2. Call momentum to optimize on the cost.
-
 )DOC");
   }
 };
@@ -145,4 +144,4 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(dgc, ops::DGCOp, ops::DGCOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(dgc_fuse, ops::DGCFuseOp, ops::DGCFuseOpMaker);
