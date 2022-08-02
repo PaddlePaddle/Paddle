@@ -2384,6 +2384,7 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
                                MetaTensor* out) {
   const auto& input_dim = x.dims();
   auto output_dim = phi::vectorize(input_dim);
+
   PADDLE_ENFORCE_EQ(
       dim < input_dim.size() && dim >= (0 - input_dim.size()),
       true,
@@ -2397,9 +2398,16 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
       repeats > 0,
       true,
       phi::errors::InvalidArgument("repeats should be larger than zero"));
+
+  PADDLE_ENFORCE_NE(out,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "repeat_interleave's output tensor can't be nullptr"));
+
   output_dim[dim] = input_dim[dim] * repeats;
   out->set_dims(phi::make_ddim(output_dim));
   out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 void ReshapeInferMeta(const MetaTensor& x,
                       const IntArray& shape,

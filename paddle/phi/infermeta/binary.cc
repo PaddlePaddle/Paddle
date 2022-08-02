@@ -1992,6 +1992,10 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                     true,
                     phi::errors::InvalidArgument(
                         "The length of Input(RepeatsTensor) can't be 0."));
+  PADDLE_ENFORCE_NE(out,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "repeat_interleave's output tensor can't be nullptr"));
   if (dim < 0) {
     dim += input_dim.size();
   }
@@ -1999,6 +2003,7 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
 
   out->set_dims(phi::make_ddim(output_dim));
   out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,

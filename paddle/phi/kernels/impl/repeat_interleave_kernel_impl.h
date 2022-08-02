@@ -81,7 +81,6 @@ void RepeatInterleaveKernel(const Context& ctx,
   }
 #if defined(__NVCC__) || defined(__HIPCC__)
   else {
-    const T* dd = x.data<T>();
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];
     paddle::framework::TensorFromVector<int>(index_vec, ctx, &index);

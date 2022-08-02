@@ -18,6 +18,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/repeat_interleave_grad_kernel_impl.h"
 
+PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RepeatInterleaveWithTensorIndexGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    GPU,
                    ALL_LAYOUT,
