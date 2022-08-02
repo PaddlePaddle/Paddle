@@ -82,10 +82,6 @@ void build_op_func_list(const platform::Place& place,
                         VariableScope* scope,
                         bool use_local_scope = true);
 
-std::map<int, std::list<int>> build_op_downstream_map(
-    const std::vector<Instruction>& vec_instruction,
-    std::vector<std::vector<bool>>* op_happens_before);
-
 void add_fetch(const std::vector<std::string>& fetch_names,
                framework::BlockDesc* block);
 

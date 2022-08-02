@@ -12,7 +12,7 @@ set(STANDALONE_EXECUTOR_SRCS
     standalone_executor.cc)
 
 set(STANDALONE_EXECUTOR_DEPS
-    dependency_utils
+    dependency_builder
     device_context
     op_registry
     scope
