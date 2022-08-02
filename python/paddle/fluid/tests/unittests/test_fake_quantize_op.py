@@ -550,18 +550,39 @@ class TestquantizeOpTrain(TestquantizeOp):
     def setUp(self):
         self.set_args()
         self.op_type = "quantize_linear"
+        self.attrs = {
+            'bit_length': self.bit_length,
+            'quant_axis': self.quant_axis,
+            'moving_rate': 0.9,
+            'is_test': self.is_test
+        }
+
         x = np.random.randn(31, 65).astype(self.data_type)
         yq, scale = quantize_max_abs(x, self.max_range)
         scale = np.array(scale).astype(self.data_type)
         zero_point = np.zeros(scale.shape, dtype="int32")
+        in_accum = np.ones(1).astype(self.data_type)
+        in_state = np.ones(1).astype(self.data_type)
+        out_accum = np.zeros(1).astype(self.data_type)
+        out_state = np.zeros(1).astype(self.data_type)
+        out_accum[0] = self.attrs['moving_rate'] * in_accum[0] + np.max(
+            np.abs(x))
+        out_state[0] = self.attrs['moving_rate'] * in_state[0] + 1.0
+        out_scale = out_accum / out_state
 
-        self.inputs = {'X': x, 'Scale': scale, 'ZeroPoint': zero_point}
-        self.attrs = {
-            'bit_length': self.bit_length,
-            'quant_axis': self.quant_axis,
-            'is_test': self.is_test
+        self.inputs = {
+            'X': x,
+            'Scale': scale,
+            'ZeroPoint': zero_point,
+            'InAccum': in_accum,
+            'InState': in_state,
         }
-        self.outputs = {'Y': yq, 'OutScale': scale}
+        self.outputs = {
+            'Y': yq,
+            'OutScale': out_scale,
+            'OutAccum': out_accum,
+            'OutState': out_state,
+        }
 
     def test_check_output(self):
         self.check_output()

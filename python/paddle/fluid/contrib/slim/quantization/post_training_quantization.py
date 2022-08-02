@@ -466,7 +466,8 @@ class PostTrainingQuantization(object):
     def save_quantized_model(self,
                              save_model_path,
                              model_filename=None,
-                             params_filename=None):
+                             params_filename=None,
+                             save_scale=False):
         '''
         Save the quantized model to the disk.
 
@@ -491,7 +492,7 @@ class PostTrainingQuantization(object):
                                 main_program=self._program,
                                 clip_extra=clip_extra)
         _logger.info("The quantized model is saved in " + save_model_path)
-        if self._onnx_format:
+        if self._onnx_format and save_scale:
             save_json_path = os.path.join(save_model_path, 'out_scale.json')
             with open(save_json_path, 'w', newline='\n') as json_file:
                 json_file.write(self._json_scale)
