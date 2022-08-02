@@ -1132,8 +1132,11 @@ def dropout(x,
             x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
             dropped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
+    if not isinstance(dropout_prob, (float, int, Variable)):
+        raise TypeError(
+            "dropout_prob argument should be a number(int|float) or Variable")
     # fast return for p == 0
-    if dropout_prob == 0:
+    if isinstance(dropout_prob, (int, float)) and dropout_prob == 0:
         return x
 
     if _non_static_mode():
@@ -1152,6 +1155,10 @@ def dropout(x,
     def get_attrs(prog, dropout_prob, is_test, seed):
         if (seed is None or seed == 0) and prog.random_seed != 0:
             seed = prog.random_seed
+        if isinstance(dropout_prob, Variable) and not dropout_prob.shape != [1]:
+            raise TypeError(
+                "Required dropout_prob.shape == [1] if type(dropout_prob) is Variable, but received dropout_prob.shape = {}"
+                .format(dropout_prob.shape))
         attrs = {
             'dropout_prob': dropout_prob,
             'is_test': is_test,
