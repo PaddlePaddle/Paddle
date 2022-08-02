@@ -1049,7 +1049,7 @@ void GraphDataGenerator::AllocResource(const paddle::platform::Place &place,
   place_ = place;
   gpuid_ = place_.GetDeviceId();
   VLOG(3) << "gpuid " << gpuid_;
-  stream_ = dynamic_cast<platform::CUDADeviceContext *>(
+  stream_ = dynamic_cast<phi::GPUContext *>(
                 platform::DeviceContextPool::Instance().Get(place))
                 ->stream();
   feed_vec_ = feed_vec;
