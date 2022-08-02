@@ -38,7 +38,7 @@ static std::vector<T> ToVector(const T *x,
     using CopyT = typename std::
         conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
     std::vector<CopyT> cpu_x(n);
-    auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+    auto *dev_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     memory::Copy(platform::CPUPlace(),
                  cpu_x.data(),

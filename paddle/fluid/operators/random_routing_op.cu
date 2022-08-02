@@ -60,8 +60,7 @@ class RandomRoutingOpCUDAKernel : public framework::OpKernel<T> {
     auto out = context.Output<LoDTensor>("Out");
 
     auto place = context.GetPlace();
-    const auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    const auto& dev_ctx = context.template device_context<phi::GPUContext>();
     framework::TensorCopy(*topk_idx, place, out);
 
     size_t N = topk_idx->dims()[0];

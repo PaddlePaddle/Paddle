@@ -56,6 +56,7 @@ CUSPARSE_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 
 #if CUDA_VERSION >= 11030
 #define CUSPARSE_ROUTINE_EACH_R2(__macro) \
+  __macro(cusparseSpMM_preprocess);       \
   __macro(cusparseSDDMM_bufferSize);      \
   __macro(cusparseSDDMM_preprocess);      \
   __macro(cusparseSDDMM);
