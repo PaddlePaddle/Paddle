@@ -137,8 +137,11 @@ void DecodeJpegKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    decode_jpeg, GPU, ALL_LAYOUT, phi::DecodeJpegKernel, uint8_t) {
+PD_REGISTER_KERNEL(decode_jpeg,  // cuda_only
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DecodeJpegKernel,
+                   uint8_t) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
