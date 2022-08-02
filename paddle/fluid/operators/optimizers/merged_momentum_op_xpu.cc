@@ -97,10 +97,17 @@ class MergedMomentumOpXPUKernel : public framework::OpKernel<T> {
             "The size of Input(Grad) must be equal to Input(Param), but got "
             "the size of Input(Grad) is %d, the size of Input(Param) is %d.",
             grad.size(), op_num));
-    int r = xpu::merged_momentum(dev_ctx.x_context(),param_list,
-                          velocity_list,grad_list,
-                          param_out_list,velocity_out_list,
-                          l2_weight_decay,sizes, lr->data<float>(),mu,use_nesterov);
+    int r = xpu::merged_momentum(dev_ctx.x_context(),
+                                 param_list,
+                                 velocity_list,
+                                 grad_list,
+                                 param_out_list,
+                                 velocity_out_list,
+                                 l2_weight_decay,
+                                 sizes,
+                                 lr->data<float>(),
+                                 mu,
+                                 use_nesterov);
     PADDLE_ENFORCE_XDNN_SUCCESS(r,"merged_momentum");
   }
 };
