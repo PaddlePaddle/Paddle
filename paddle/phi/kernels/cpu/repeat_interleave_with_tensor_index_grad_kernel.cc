@@ -71,20 +71,16 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                         paddle::framework::DataTypeToString(
                             paddle::framework::proto::VarType::INT64)));
   if (place == cpu_place) {
-    auto index_copy = index;
-    // auto ctx_tmp=
-    //
     paddle::platform::DeviceContextPool::Instance().Get(repeats_tensor.place());
     if (index_type == paddle::framework::proto::VarType::INT32) {
       phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
           ctx, repeats_tensor, &index);
-      IndexSelectGradInner<Context, T, int>(
-          ctx, out_grad, index_copy, x_grad, dim);
+      IndexSelectGradInner<Context, T, int>(ctx, out_grad, index, x_grad, dim);
     } else if (index_type == paddle::framework::proto::VarType::INT64) {
       phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
           ctx, repeats_tensor, &index);
       IndexSelectGradInner<Context, T, int64_t>(
-          ctx, out_grad, index_copy, x_grad, dim);
+          ctx, out_grad, index, x_grad, dim);
     }
   }
 }

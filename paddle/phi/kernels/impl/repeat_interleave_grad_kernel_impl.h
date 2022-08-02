@@ -80,7 +80,6 @@ void RepeatInterleaveGradKernel(const Context& ctx,
 
   DenseTensor index;
 #if defined(__NVCC__) || defined(__HIPCC__)
-  std::cerr << "enter grad kernel of gpu\n";
   auto output_dim = out_grad.dims();
   auto stride_dim = phi::stride(input_dim);
   int64_t stride = stride_dim[dim];
@@ -103,8 +102,6 @@ void RepeatInterleaveGradKernel(const Context& ctx,
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(phi::make_ddim({index_size}));
-  // auto ctx =
-  //     paddle::platform::DeviceContextPool::Instance().Get(context.GetPlace());
   paddle::framework::TensorFromVector<int>(index_vec, ctx, &index);
 
   const int* index_data = index.data<int>();

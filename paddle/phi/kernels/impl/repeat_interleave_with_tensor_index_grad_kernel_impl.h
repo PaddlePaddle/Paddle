@@ -34,35 +34,7 @@ namespace cub = hipcub;
 #endif
 
 namespace phi {
-// template <typename RepeatsT = int>
-//  void RepeatsTensor2IndexTensor(const DenseTensor& repeats, DenseTensor*
-//  index) {
-//    DenseTensor repeats_cpu_copy;
-//    if (!paddle::platform::is_cpu_place(repeats.place())) {
-//      paddle::framework::TensorCopySync(
-//          repeats, paddle::platform::CPUPlace(), &repeats_cpu_copy);
-//    }
-//    const RepeatsT* repeats_data =
-//    paddle::platform::is_cpu_place(repeats.place())
-//                                       ? repeats.data<RepeatsT>()
-//                                       : repeats_cpu_copy.data<RepeatsT>();
 
-//   int64_t index_size = 0;
-//   for (int i = 0; i < repeats.dims()[0]; i++) {
-//     index_size += repeats_data[i];
-//   }
-//   std::vector<RepeatsT> index_vec(index_size);
-//   int offset = 0;
-//   for (int i = 0; i < repeats.dims()[0]; i++) {
-//     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
-//     offset += repeats_data[i];
-//   }
-//   index->Resize(phi::make_ddim({index_size}));
-
-//   // auto ctx =
-//   // paddle::platform::DeviceContextPool::Instance().Get(repeats.place());
-//   paddle::framework::TensorFromVector<RepeatsT>(index_vec, index);
-// }
 #if defined(__NVCC__) || defined(__HIPCC__)
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
@@ -138,20 +110,6 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                             paddle::framework::proto::VarType::INT32),
                         paddle::framework::DataTypeToString(
                             paddle::framework::proto::VarType::INT64)));
-  // if (place == cpu_place) {
-  //   auto index_copy = index;
-  //       auto ctx_tmp=
-  //       paddle::platform::DeviceContextPool::Instance().Get(repeats_tensor.place());
-  //   if (index_type == paddle::framework::proto::VarType::INT32) {
-  //     RepeatsTensor2IndexTensor<int>(repeats_tensor, &index);
-  //     IndexSelectGradInner<CPUContext, T, int>(*ctx_tmp, out_grad,
-  //     index_copy, x_grad, dim);
-  //   } else if (index_type == paddle::framework::proto::VarType::INT64) {
-  //     RepeatsTensor2IndexTensor<int64_t>(repeats_tensor, &index);
-  //     IndexSelectGradInner<CPUContext, T, int64_t>(
-  //         *ctx_tmp, out_grad, index_copy, x_grad, dim);
-  //   }
-  // }
 #if defined(__NVCC__) || defined(__HIPCC__)
   // else {
   auto output_dim = out_grad.dims();

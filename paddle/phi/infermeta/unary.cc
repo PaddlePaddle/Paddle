@@ -2144,7 +2144,6 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,
                                int dim,
                                MetaTensor* out) {
-  std::cerr << " in RepeatInterleaveInferMeta\n";
   const auto& input_dim = x.dims();
   auto output_dim = phi::vectorize(input_dim);
   PADDLE_ENFORCE_EQ(

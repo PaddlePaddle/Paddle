@@ -29,9 +29,6 @@ void RepeatInterleaveGradKernel(const Context& ctx,
                                 int repeats,
                                 int dim,
                                 DenseTensor* x_grad) {
-  //   auto place = ctx.GetPlace();
-  //   auto cpu_place = phi::CPUPlace();
-  std::cerr << "in cpu repeat grad kernel";
   auto input_dim = x_grad->dims();
   if (dim < 0) {
     dim += input_dim.size();
@@ -44,8 +41,6 @@ void RepeatInterleaveGradKernel(const Context& ctx,
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(phi::make_ddim({index_size}));
-  // auto ctx_tmp=
-  // paddle::experimental::DeviceContextPool::Instance().Get(place);
   paddle::framework::TensorFromVector<int>(index_vec, &index);
   const DenseTensor index_copy = index;
   IndexSelectGradInner<Context, T, int>(ctx, out_grad, index_copy, x_grad, dim);
