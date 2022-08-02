@@ -1413,7 +1413,11 @@ class Executor(object):
                 if program._is_inference:
                     return False
 
-                # Unsupported case 5 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM
+                # Unsupported case 5: CUDA Graph
+                if program._build_strategy is not None and program._build_strategy.allow_cuda_graph_capture:
+                    return False
+
+                # Unsupported case 6 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM
                 if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
                                   None) not in [1, '1', True, 'True', 'true']:
                     return False
@@ -1685,8 +1689,8 @@ class Executor(object):
         return res
 
     def _dump_debug_info(self, program=None, trainer=None):
-        print("program_id: {}, trainer_desc:\n {}".format(
-            id(program), str(trainer)))
+        with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
+            fout.write(str(trainer))
         if program._fleet_opt and "fleet_desc" in program._fleet_opt:
             with open("fleet_desc.prototxt", "w") as fout:
                 fout.write(str(program._fleet_opt["fleet_desc"]))

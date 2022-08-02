@@ -66,7 +66,7 @@ struct LoDTensorToArrayFunctor
       Apply(static_cast<phi::CPUContext *>(dev_ctx));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      Apply(static_cast<platform::CUDADeviceContext *>(dev_ctx));
+      Apply(static_cast<phi::GPUContext *>(dev_ctx));
 #else
       PADDLE_THROW(
           platform::errors::Unavailable("Paddle is not compiled with CUDA."));

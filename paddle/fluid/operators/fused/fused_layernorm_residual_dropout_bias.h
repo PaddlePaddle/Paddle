@@ -688,7 +688,7 @@ void LaunchLayernormResidualDropoutBias(
     T *layernorm_dst,
     LayerNormParamType<T> *mean,
     LayerNormParamType<T> *var,
-    const platform::CUDADeviceContext &ctx) {
+    const phi::GPUContext &ctx) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     auto cuda_place = ctx.GetPlace();
@@ -846,7 +846,7 @@ template <typename T,
           typename MaskType,
           bool ScaleBiasWithSameTypeX = false>
 void LaunchLayernormResidualDropoutGrad(
-    const platform::CUDADeviceContext &dev_ctx,
+    const phi::GPUContext &dev_ctx,
     const uint32_t rows,
     const uint32_t cols,
     const float epsilon,

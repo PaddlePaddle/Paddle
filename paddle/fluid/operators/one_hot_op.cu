@@ -99,7 +99,6 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    one_hot,
-    ops::OneHotCUDAKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::OneHotCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(one_hot,
+                        ops::OneHotCUDAKernel<phi::GPUContext, int>,
+                        ops::OneHotCUDAKernel<phi::GPUContext, int64_t>);

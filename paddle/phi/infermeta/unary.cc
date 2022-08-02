@@ -1379,15 +1379,59 @@ void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void LUInferMeta(const MetaTensor& x,
+                 bool pivot,
+                 MetaTensor* out,
+                 MetaTensor* pivots,
+                 MetaTensor* infos) {
+  auto x_dims = x.dims();
+  int x_rank = x_dims.size();
+
+  PADDLE_ENFORCE_NOT_NULL(
+      out, phi::errors::InvalidArgument("Output(Out) should not be nullptr."));
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument("The rank of input must greater than 2."));
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+  int m = x_dims[x_rank - 1];
+  int n = x_dims[x_rank - 2];
+  int min_mn = std::min(m, n);
+  auto dims_vec = phi::vectorize(x_dims);
+  PADDLE_ENFORCE_NOT_NULL(
+      infos,
+      phi::errors::InvalidArgument("Output(Infos) should not be nullptr."));
+  if (x_rank == 2) {
+    auto Infos_dim = std::vector<int>(1);
+    infos->set_dims(phi::make_ddim(Infos_dim));
+  } else {
+    auto Infos_dim =
+        std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 2);
+    infos->set_dims(phi::make_ddim(Infos_dim));
+  }
+  infos->set_dtype(DataType::INT32);
+  if (pivot) {
+    PADDLE_ENFORCE_NOT_NULL(
+        pivots,
+        phi::errors::InvalidArgument("Output(Pivots) should not be nullptr."));
+    auto Pivots_dim =
+        std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 1);
+    Pivots_dim[x_rank - 2] = min_mn;
+    pivots->set_dims(phi::make_ddim(Pivots_dim));
+    pivots->set_dtype(DataType::INT32);
+  }
+}
+
 void MatrixRankInferMeta(const MetaTensor& x,
                          bool use_default_tol,
                          bool hermitian,
                          MetaTensor* out) {
   auto dim_x = x.dims();
-  PADDLE_ENFORCE_GE(
-      dim_x.size(),
-      2,
-      phi::errors::InvalidArgument("The dims of input must be greater than 2"));
+  PADDLE_ENFORCE_GE(dim_x.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dims of input must be greater than 2."));
 
   if (hermitian) {
     int rows = dim_x[dim_x.size() - 2];
@@ -1418,11 +1462,11 @@ void MaxOutInferMeta(const MetaTensor& x,
       axis == 1 || axis == -1 || axis == 3,
       true,
       phi::errors::InvalidArgument(
-          "axis only supported 1, -1 or 3, but recevied axis is: %d", axis));
+          "axis only supported 1, -1 or 3, but recevied axis is: %d.", axis));
   PADDLE_ENFORCE_EQ(in_x_dims.size(),
                     4,
                     phi::errors::InvalidArgument(
-                        "x's dims should be 4, but received x's dims is: %d",
+                        "x's dims should be 4, but received x's dims is: %d.",
                         in_x_dims.size()));
 
   if (axis < 0) {
@@ -1663,6 +1707,19 @@ void NanmedianInferMeta(const MetaTensor& x,
   out->set_dims(make_ddim(out_dim));
 }
 
+void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {
+  auto boxes_dim = x.dims();
+  PADDLE_ENFORCE_EQ(boxes_dim.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Input Boxes must be 2-dimention "
+                        "whose shape must be [N, 4] "
+                        "N is the number of boxes "
+                        "in last dimension in format [x1, x2, y1, y2]. "));
+  auto num_boxes = boxes_dim[0];
+  out->set_dims(phi::make_ddim({num_boxes}));
+}
+
 void NormInferMeta(const MetaTensor& x,
                    int axis,
                    float epsilon,
@@ -1679,6 +1736,90 @@ void NormInferMeta(const MetaTensor& x,
     norm->set_dims(xdim);
     norm->set_dtype(x.dtype());
   }
+}
+
+void OverlapAddInferMeta(const MetaTensor& x,
+                         int hop_length,
+                         int axis,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  const auto x_dims = x.dims();
+  const int x_rank = x_dims.size();
+
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      errors::InvalidArgument(
+          "Input(X) of OverlapAddOp should be a tensor which contains "
+          "at least 2 dimensions, but got rank %s.",
+          x_rank));
+
+  PADDLE_ENFORCE_GT(
+      hop_length,
+      0,
+      errors::InvalidArgument(
+          "Attribute(hop_length) of OverlapAddOp should be greater "
+          "than 0, but got %s.",
+          hop_length));
+
+  PADDLE_ENFORCE_EQ(
+      (axis == 0 || axis == -1),
+      true,
+      errors::InvalidArgument(
+          "Attribute(axis) of OverlapAddOp should 0 or -1, but got %s.", axis));
+
+  std::vector<int64_t> output_shape;
+  int n_frames;
+  int frame_length;
+  int seq_length;
+
+  int start_axis;
+  int end_axis;
+  if (axis == 0) {
+    n_frames = x_dims[0];
+    frame_length = x_dims[1];
+    start_axis = 2;
+    end_axis = x_rank - 1;
+  } else {
+    n_frames = x_dims[x_rank - 1];
+    frame_length = x_dims[x_rank - 2];
+    start_axis = 0;
+    end_axis = x_rank - 3;
+  }
+
+  bool contain_unknown_dim = phi::contain_unknown_dim(x_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+  if (check) {
+    PADDLE_ENFORCE_LE(
+        hop_length,
+        frame_length,
+        errors::InvalidArgument(
+            "Attribute(hop_length) of OverlapAddOp should be less or equal "
+            "than frame_length, but got hop_length(%s) > frame_length(%s).",
+            hop_length,
+            frame_length));
+  }
+
+  if (n_frames == -1) {
+    seq_length = -1;
+  } else {
+    seq_length = (n_frames - 1) * hop_length + frame_length;
+  }
+
+  // It won't go into for loop when x_rank == 2U.
+  for (int i = start_axis; i <= end_axis; i++) {
+    output_shape.push_back(x_dims[i]);
+  }
+
+  if (axis == 0) {
+    // (seq_length, ...)
+    output_shape.insert(output_shape.begin(), seq_length);
+  } else {
+    // (..., seq_length)
+    output_shape.push_back(seq_length);
+  }
+
+  out->set_dims(phi::make_ddim(output_shape));
 }
 
 void PadInferMeta(const MetaTensor& input,

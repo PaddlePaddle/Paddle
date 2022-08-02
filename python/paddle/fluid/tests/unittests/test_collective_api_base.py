@@ -63,6 +63,8 @@ def create_complex_test_data(shape=None, dtype=None, seed=None):
 def create_pylist_test_data(shape=None, seed=None):
     if seed:
         np.random.seed(seed)
+    # Generate random shape test case for xxx_object api
+    shape = np.random.randint(0, high=100, size=(2)).tolist()
     data = np.random.random(shape).tolist()
     return data
 

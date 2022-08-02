@@ -194,8 +194,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
                           "Only one choice can be made between CPU and XPU."));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto *dev_ctx =
-        static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
+    auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place));
     auto dst_gpu_place = place;
     memory::Copy(dst_gpu_place,
                  static_cast<void *>(input_ptr),
@@ -283,7 +282,7 @@ bool AnalysisPredictor::Init(
     // NOTE: If the external_stream equals to global_device_contexts's stream,
     // then fallback.
     auto global_stream =
-        static_cast<platform::CUDADeviceContext *>(
+        static_cast<phi::GPUContext *>(
             platform::DeviceContextPool::Instance().Get(place_))
             ->stream();
     if (predictor_stream_ != global_stream) {
@@ -393,7 +392,7 @@ void AnalysisPredictor::InitDeviceContexts() {
         place_, std::async(std::launch::deferred, [=] {
           auto *gpu_resource =
               ResourceManager::Instance().GetGPUResource(predictor_stream_);
-          auto *gpu_context = new InferGPUContext();
+          auto *gpu_context = new InferGPUContext(place_);
           gpu_context->SetAllocator(
               memory::allocation::AllocatorFacade::Instance()
                   .GetAllocator(place_, gpu_resource->GetStream())
@@ -1660,8 +1659,7 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     auto gpu_place = place_;
-    auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
-        pool.Get(gpu_place));
+    auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(gpu_place));
 #ifdef PADDLE_WITH_HIP
     hipStreamSynchronize(dev_ctx->stream());
 #else
@@ -2333,8 +2331,7 @@ void InternalUtils::SyncStream(paddle_infer::Predictor *p) {
   auto *pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
   paddle::platform::DeviceContextPool &pool =
       paddle::platform::DeviceContextPool::Instance();
-  auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
-      pool.Get(pred->place_));
+  auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(pred->place_));
   cudaStreamSynchronize(dev_ctx->stream());
 #endif
 }
