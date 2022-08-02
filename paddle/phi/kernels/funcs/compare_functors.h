@@ -40,7 +40,7 @@ struct EqualFunctor {
           std::isinf(static_cast<double>(b)))
         return a == b;
       if (std::isnan(static_cast<double>(a)) ||
-          std::isnan(static_cast<double>(a)))
+          std::isnan(static_cast<double>(b)))
         return false;
       return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-8);
     } else {
