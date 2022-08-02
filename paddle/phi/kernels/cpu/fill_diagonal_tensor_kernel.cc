@@ -79,18 +79,9 @@ void FillDiagonalTensorKernel(const Context &ctx,
                               int dim1,
                               int dim2,
                               DenseTensor *out) {
-  // auto *out = ctx.Output<framework::DenseTensor>("Out");
-  // auto *srctensor = ctx.Input<framework::DenseTensor>("Y");
-  // auto dim1 = ctx.Attr<int>("dim1");
-  // auto dim2 = ctx.Attr<int>("dim2");
-  // auto offset = ctx.Attr<int64_t>("offset");
-  // auto *xin = ctx.Input<framework::DenseTensor>("X");
-
-  // T *out_data = out->mutable_data<T>(ctx.GetPlace());
   T *out_data = ctx.template Alloc<T>(out);
   const T *fill_data = y.data<T>();
 
-  // framework::TensorCopy(x, ctx.GetPlace(), out);
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
   auto out_dims = out->dims();
   auto matdims = y.dims();

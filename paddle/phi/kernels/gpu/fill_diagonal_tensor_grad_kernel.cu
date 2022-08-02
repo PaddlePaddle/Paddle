@@ -53,21 +53,11 @@ void FillDiagonalTensorGradKernel(const Context &ctx,
 #else
   const int64_t kMaxBlockDim = 512;
 #endif
-  //    auto *x_grad =
-  //    ctx.Output<framework::DenseTensor>(framework::GradVarName("X")); auto
-  //    *out_grad =
-  //    ctx.Input<framework::DenseTensor>(framework::GradVarName("Out"));
-
-  //    auto dim1 = ctx.Attr<int>("dim1");
-  //    auto dim2 = ctx.Attr<int>("dim2");
-  //    auto offset = ctx.Attr<int64_t>("offset");
   auto matrows = 1;
 
   if (x_grad) {
-    //      auto *data = x_grad->mutable_data<T>(ctx.GetPlace());
     auto *data = ctx.template Alloc<T>(x_grad);
     auto dx_dims = x_grad->dims();
-    //      framework::TensorCopy(*out_grad, ctx.GetPlace(), x_grad);
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
 
     for (int i = 0; i < dx_dims.size(); i++) {
@@ -85,8 +75,6 @@ void FillDiagonalTensorGradKernel(const Context &ctx,
 
     auto size = x_grad->numel();
 
-    //      auto &dev_ctx =
-    //          ctx.template device_context<platform::CUDADeviceContext>();
     auto stream = ctx.stream();
     DenseTensor tensor_tmp;
     int64_t *memory_block_cu =

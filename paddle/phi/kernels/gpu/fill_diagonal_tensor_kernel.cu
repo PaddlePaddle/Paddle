@@ -55,17 +55,8 @@ void FillDiagonalTensorKernel(const Context &ctx,
 #else
   const int64_t kMaxBlockDim = 512;
 #endif
-  //    auto *out = ctx.Output<framework::DenseTensor>("Out");
-  //    auto *srctensor = ctx.Input<framework::DenseTensor>("Y");
-  //    auto dim1 = ctx.Attr<int>("dim1");
-  //    auto dim2 = ctx.Attr<int>("dim2");
-  //    auto offset = ctx.Attr<int64_t>("offset");
-
-  //    auto *xin = ctx.Input<framework::DenseTensor>("X");
-  //    framework::TensorCopy(x, ctx.GetPlace(), out);
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
 
-  //    T *out_data = out->mutable_data<T>(ctx.GetPlace());
   T *out_data = ctx.template Alloc<T>(out);
   const T *fill_data = y.data<T>();
 
@@ -100,8 +91,6 @@ void FillDiagonalTensorKernel(const Context &ctx,
 
   auto size = out->numel();
 
-  //    auto &dev_ctx = ctx.template
-  //    device_context<platform::CUDADeviceContext>();
   auto stream = ctx.stream();
   DenseTensor tensor_tmp;
   int64_t *memory_block_cu =
