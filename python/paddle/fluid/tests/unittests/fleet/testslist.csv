@@ -2,7 +2,7 @@ name,os,arch,timeout,run_type,launcher,dist_ut_port,ENVS
 test_fleet,linux;win32,rocm;gpu,300,DIST,test_runner.py,20057,http_proxy=;https_proxy=
 test_fleet_ascend_utils,linux;win32,rocm;gpu,120,DIST,test_runner.py,20059,http_proxy=;https_proxy=
 test_fleet_base_4,linux;win32,rocm;gpu,120,DIST,test_runner.py,20061,http_proxy=;https_proxy=
-test_fleet_base_single,linux;win32,rocm;gpu,120,DIST,test_runner.py,20063,http_proxy=;https_proxy=
+test_fleet_base_single,linux;win32,rocm;gpu,120,DIST,test_runner.py,20063,http_proxy=;https_proxy=;CUDA_VISIBLE_DEVICES=0
 test_fleet_elastic_collective,linux;win32,gpu,350,DIST,test_runner.py,20065,http_proxy=;https_proxy=
 test_fleet_elastic_init,linux;win32,rocm;gpu,300,DIST,test_runner.py,20067,http_proxy=;https_proxy=
 test_fleet_elastic_manager,linux;win32,gpu,350,DIST,test_runner.py,20069,http_proxy=;https_proxy=
@@ -30,10 +30,10 @@ test_fleet_utils,linux;win32,rocm;gpu,120,DIST,test_runner.py,20111,http_proxy=;
 test_fleet_base,linux;win32,rocm;gpu,300,DIST,test_runner.py,20113,http_proxy=;https_proxy=
 test_fleet_base_2,linux;win32,rocm;gpu,300,DIST,test_runner.py,20115,http_proxy=;https_proxy=
 test_fleet_base_3,linux;win32,rocm;gpu,300,DIST,test_runner.py,20117,http_proxy=;https_proxy=
-test_fleet_amp_init,linux;win32,rocm;gpu,300,DIST,test_runner.py,20119,http_proxy=;https_proxy=
+test_fleet_amp_init,linux;win32,rocm;gpu,300,DIST,test_runner.py,20119,http_proxy=;https_proxy=;CUDA_VISIBLE_DEVICES=0
 test_fleet_fp16_allreduce_meta_optimizer,linux;win32,rocm;gpu,300,DIST,test_runner.py,20121,http_proxy=;https_proxy=
 test_fleet_private_function,linux;win32,rocm;gpu,300,DIST,test_runner.py,20123,http_proxy=;https_proxy=
-test_fleet_meta_optimizer_base,linux;win32,rocm;gpu,300,DIST,test_runner.py,20125,http_proxy=;https_proxy=
+test_fleet_meta_optimizer_base,linux;win32,rocm;gpu,300,DIST,test_runner.py,20125,http_proxy=;https_proxy=;CUDA_VISIBLE_DEVICES=0
 test_fleet_distributed_strategy,linux;win32,rocm;gpu,300,DIST,test_runner.py,20127,http_proxy=;https_proxy=
 test_fleet_static_mp_layers,linux;win32,rocm;gpu,300,DIST,test_runner.py,20129,http_proxy=;https_proxy=
 test_fleet_amp_meta_optimizer,linux;win32,rocm;gpu,300,DIST,test_runner.py,20131,http_proxy=;https_proxy=
@@ -46,7 +46,7 @@ test_fleet_lamb_meta_optimizer,linux;win32,rocm;gpu,300,DIST,test_runner.py,2014
 test_fleet_lars_meta_optimizer,linux;win32,rocm;gpu,300,DIST,test_runner.py,20145,http_proxy=;https_proxy=
 test_fleet_localsgd_meta_optimizer,linux;win32,rocm;gpu,300,DIST,test_runner.py,20147,http_proxy=;https_proxy=
 test_fleet_dgc_meta_optimizer,linux;win32,rocm;gpu,300,DIST,test_runner.py,20149,http_proxy=;https_proxy=
-test_fleet_checkpoint,linux;win32,rocm;gpu,400,EXCLUSIVE:NIGHTLY,test_runner.py,20151,http_proxy=;https_proxy=
+test_fleet_checkpoint,linux;win32,rocm;gpu,500,EXCLUSIVE:NIGHTLY,test_runner.py,20151,http_proxy=;https_proxy=
 test_fleet_graph_execution_meta_optimizer,linux;win32,rocm;gpu,350,EXCLUSIVE,dist_test.sh,20153,http_proxy=;https_proxy=
 test_fleet_pipeline_meta_optimizer,linux;win32,rocm;gpu,350,EXCLUSIVE,dist_test.sh,20155,http_proxy=;https_proxy=
 test_fleet_pipeline_meta_optimizer_with_recompute,linux;win32,rocm;gpu,350,EXCLUSIVE,dist_test.sh,20157,http_proxy=;https_proxy=

@@ -14,8 +14,9 @@ if((WITH_ROCM OR WITH_GPU) AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   set_tests_properties(test_fleet_base_4 PROPERTIES TIMEOUT "120")
 endif()
 if((WITH_ROCM OR WITH_GPU) AND ((NOT APPLE AND NOT WIN32) OR WIN32))
-  py_test_modules(test_fleet_base_single MODULES test_fleet_base_single ENVS
-                  "PADDLE_DIST_UT_PORT=20063;http_proxy=;https_proxy=")
+  py_test_modules(
+    test_fleet_base_single MODULES test_fleet_base_single ENVS
+    "PADDLE_DIST_UT_PORT=20063;http_proxy=;https_proxy=;CUDA_VISIBLE_DEVICES=0")
   set_tests_properties(test_fleet_base_single PROPERTIES TIMEOUT "120")
 endif()
 if((WITH_GPU) AND ((NOT APPLE AND NOT WIN32) OR WIN32))
@@ -167,8 +168,9 @@ if((WITH_ROCM OR WITH_GPU) AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   set_tests_properties(test_fleet_base_3 PROPERTIES TIMEOUT "300")
 endif()
 if((WITH_ROCM OR WITH_GPU) AND ((NOT APPLE AND NOT WIN32) OR WIN32))
-  py_test_modules(test_fleet_amp_init MODULES test_fleet_amp_init ENVS
-                  "PADDLE_DIST_UT_PORT=20119;http_proxy=;https_proxy=")
+  py_test_modules(
+    test_fleet_amp_init MODULES test_fleet_amp_init ENVS
+    "PADDLE_DIST_UT_PORT=20119;http_proxy=;https_proxy=;CUDA_VISIBLE_DEVICES=0")
   set_tests_properties(test_fleet_amp_init PROPERTIES TIMEOUT "300")
 endif()
 if((WITH_ROCM OR WITH_GPU) AND ((NOT APPLE AND NOT WIN32) OR WIN32))
@@ -188,7 +190,7 @@ endif()
 if((WITH_ROCM OR WITH_GPU) AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   py_test_modules(
     test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS
-    "PADDLE_DIST_UT_PORT=20125;http_proxy=;https_proxy=")
+    "PADDLE_DIST_UT_PORT=20125;http_proxy=;https_proxy=;CUDA_VISIBLE_DEVICES=0")
   set_tests_properties(test_fleet_meta_optimizer_base PROPERTIES TIMEOUT "300")
 endif()
 if((WITH_ROCM OR WITH_GPU) AND ((NOT APPLE AND NOT WIN32) OR WIN32))
@@ -274,7 +276,7 @@ endif()
 if((WITH_ROCM OR WITH_GPU) AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint ENVS
                   "PADDLE_DIST_UT_PORT=20151;http_proxy=;https_proxy=")
-  set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT "400")
+  set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT "500")
 endif()
 if((WITH_ROCM OR WITH_GPU) AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   bash_test_modules(
