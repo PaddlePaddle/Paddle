@@ -16,6 +16,7 @@ import os
 import re
 import logging
 import numpy as np
+import json
 import shutil
 try:
     from tqdm import tqdm
@@ -418,8 +419,7 @@ class PostTrainingQuantization(object):
             self._update_program()
 
         # save out_threshold for quantized ops.
-        if not self._onnx_format:
-            self._save_output_threshold()
+        self._save_output_threshold()
 
         if any(op_type in self._quantizable_op_type
                for op_type in self._dynamic_quantize_op_type):
@@ -491,6 +491,12 @@ class PostTrainingQuantization(object):
                                 main_program=self._program,
                                 clip_extra=clip_extra)
         _logger.info("The quantized model is saved in " + save_model_path)
+        if self._onnx_format:
+            save_json_path = os.path.join(save_model_path, 'out_scale.json')
+            with open(save_json_path, 'w', newline='\n') as json_file:
+                json_file.write(self._json_scale)
+            _logger.info(
+                "Out scale of per-layer is save in: {}".format(save_json_path))
 
     def _load_model_data(self):
         '''
@@ -996,16 +1002,21 @@ class PostTrainingQuantization(object):
         '''
         Save output threshold to the quantized op.
         '''
+        self._json_scale = {}
 
         def save_info(op_node, out_var_name, threshold_map, out_info_name,
                       quantized_type):
             assert out_var_name in threshold_map, \
                 "The output ({}) of {} node does not have threshold.".format(
                 out_var_name, op_node.type)
-            op_node._set_attr(out_info_name, threshold_map[var_name])
-            op_node._set_attr("with_quant_attr", True)
-            if op_node.type in self._quantizable_op_type:
-                op._set_attr("quantization_type", quantized_type)
+            if self._onnx_format:
+                self._json_scale[var_name] = {}
+                self._json_scale[var_name]['scale'] = threshold_map[var_name]
+            else:
+                op_node._set_attr(out_info_name, threshold_map[var_name])
+                op_node._set_attr("with_quant_attr", True)
+                if op_node.type in self._quantizable_op_type:
+                    op._set_attr("quantization_type", quantized_type)
 
         def analysis_and_save_info(op_node, out_var_name):
             argname_index = utils._get_output_name_index(op_node, out_var_name)
@@ -1048,6 +1059,8 @@ class PostTrainingQuantization(object):
                     out_var_names = utils._get_op_output_var_names(op)
                     for var_name in out_var_names:
                         analysis_and_save_info(op, var_name)
+        if self._onnx_format:
+            self._json_scale = json.dumps(self._json_scale, indent=1)
 
     def _collect_dynamic_quantize_op_threshold(self, target_ops_type):
         """

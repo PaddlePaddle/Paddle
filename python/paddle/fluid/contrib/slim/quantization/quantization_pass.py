@@ -14,6 +14,7 @@
 
 import collections
 import numpy as np
+import json
 try:
     from tqdm import tqdm
 except:
@@ -39,6 +40,7 @@ __all__ = [
     'TransformForMobilePass',
     'OutScaleForTrainingPass',
     'OutScaleForInferencePass',
+    'OutScaleForInferencePassV2',
     'AddQuantDequantPass',
     'QuantizationTransformPassV2',
     'AddQuantDequantPassV2',
@@ -1565,6 +1567,58 @@ class OutScaleForInferencePass(object):
                     op_node.op()._set_attr("with_quant_attr", True)
         graph.resolve_hazard()
         return graph
+
+    def _scale_name(self, var_name):
+        """
+        Return the scale name for the var named `var_name`.
+        """
+        return "%s@scale" % (var_name)
+
+
+class OutScaleForInferencePassV2(object):
+
+    def __init__(self, scope=None):
+        """
+        This pass is used for setting output scales of some operators.
+        These output scales may be used by tensorRT or some other inference engines.
+
+        Args:
+            scope(fluid.Scope): The scope is used to initialize these new parameters.
+        """
+        self._scope = scope
+        self._teller_set = utils._out_scale_op_list
+
+    def apply(self, graph):
+        """
+        Get output scales from the scope and set these scales in op_descs
+        of operators in the teller_set.
+
+        Args:
+            graph(IrGraph): the target graph.
+        """
+        assert isinstance(graph,
+                          IrGraph), 'graph must be the instance of IrGraph.'
+        collect_dict = collections.OrderedDict()
+        op_nodes = graph.all_op_nodes()
+        for op_node in op_nodes:
+            if op_node.name() in self._teller_set:
+                var_names = utils._get_op_output_var_names(op_node)
+                for var_name in var_names:
+                    in_node = graph._find_node_by_name(op_node.outputs,
+                                                       var_name)
+                    if in_node.dtype() not in \
+                        [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]:
+                        continue
+
+                    collect_dict[var_name] = {}
+                    scale_name = self._scale_name(var_name)
+                    scale_var = self._scope.find_var(scale_name)
+                    assert scale_var is not None, \
+                        "Can not find {} variable in the scope".format(scale_name)
+                    scale_value = np.array(scale_var.get_tensor())[0]
+                    collect_dict[var_name]['scale'] = float(scale_value)
+        json_scale = json.dumps(collect_dict, indent=1)
+        return graph, json_scale
 
     def _scale_name(self, var_name):
         """
