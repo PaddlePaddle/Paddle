@@ -558,8 +558,7 @@ class TestquantizeOpTrain(TestquantizeOp):
         }
 
         x = np.random.randn(31, 65).astype(self.data_type)
-        yq, scale = quantize_max_abs(x, self.max_range)
-        scale = np.array(scale).astype(self.data_type)
+        scale = np.array([0.001]).astype(self.data_type)
         zero_point = np.zeros(scale.shape, dtype="int32")
         in_accum = np.ones(1).astype(self.data_type)
         in_state = np.ones(1).astype(self.data_type)
@@ -570,6 +569,9 @@ class TestquantizeOpTrain(TestquantizeOp):
         out_state[0] = self.attrs['moving_rate'] * in_state[0] + 1.0
         out_scale = out_accum / out_state
 
+        round_out = np.round(x / out_scale * self.max_range)
+        quant_data = np.clip(round_out, -self.max_range - 1, self.max_range)
+
         self.inputs = {
             'X': x,
             'Scale': scale,
@@ -578,7 +580,7 @@ class TestquantizeOpTrain(TestquantizeOp):
             'InState': in_state,
         }
         self.outputs = {
-            'Y': yq,
+            'Y': quant_data,
             'OutScale': out_scale,
             'OutAccum': out_accum,
             'OutState': out_state,
