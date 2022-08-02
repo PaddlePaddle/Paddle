@@ -196,6 +196,6 @@ def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
                     '(When type of out_size in' + op_type + ' is Variable.)')
         if (convert_dtype(out_size.dtype) == 'int64'):
             out_size = cast(out_size, 'int32')
-        inputs["OutSizeTensor"] = out_size
+        inputs["Out_size"] = out_size
     else:
         raise TypeError("Out_size only supports Variable or int.")

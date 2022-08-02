@@ -91,11 +91,12 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
   if (out_size <= 0) {
+    out->Resize(src_dims);
     for (int i = 0; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
     }
   } else {
-    // set out dim following out_size.
+    // Set out dim following out_size.
     std::vector<int64_t> dims_ = phi::vectorize(src_dims);
     if (dims_.size() > 0) {
       dims_[0] = out_size;

@@ -345,11 +345,13 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
                         "Src_index and Dst_index should have the same shape."));
 
   auto dims = x.dims();
-  out->set_dims(dims);
+  std::vector<int64_t> dims_ = phi::vectorize(dims);
+  dims_[0] = -1;
+  out->set_dims(phi::make_ddim(dims_));
   out->set_dtype(x.dtype());
 
   if (pool_type == "MEAN") {
-    dst_count->set_dims({dims[0]});
+    dst_count->set_dims({-1});
     dst_count->set_dtype(DataType::INT32);
   }
 }

@@ -58,7 +58,7 @@ class GraphSendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor with data type float32, float64, int32, int64.");
     AddInput("Src_index", "The source index tensor.");
     AddInput("Dst_index", "The destination index tensor.");
-    AddInput("OutSizeTensor",
+    AddInput("Out_size",
              "(Tensor<int>, optional). The 0th dimension of the output."
              "It has a higher priority than Attr(out_size).")
         .AsDispensable();
