@@ -461,5 +461,24 @@ class TestAssignOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+class TestWhereOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'select'
+        Cond = paddle.static.data(name='Condition', shape=[5, 6], dtype='bool')
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='float32')
+        Y = paddle.static.data(name='Y', shape=[5, 6], dtype='float32')
+
+        self.input = {'Cond': Cond, 'X': X, 'Y': Y}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+
+        self.orig2prim_args = (Cond, X, Y)
+        self.all_ops = ['where', 'select_p']
+        self.out_map = {0: self.output['Out']}
+
+
 if __name__ == '__main__':
     unittest.main()

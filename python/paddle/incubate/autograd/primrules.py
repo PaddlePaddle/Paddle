@@ -18,7 +18,7 @@ import paddle
 from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
                       matmul, mul, neg, reduce, reshape, scatter_add, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose)
+                      transpose, select)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -285,6 +285,11 @@ def p_norm_orig2prim(op, x):
         raise RuntimeError('Only support lower l2/l1 norm currently')
 
 
+@REGISTER_ORIG2PRIM('select')
+def select_orig2prim(op, condition, x, y):
+    return select(condition, x, y)
+
+
 ## Register prim2orig lower rules
 
 
@@ -412,6 +417,11 @@ def fill_constant_prim2orig(op):
     return paddle.full(shape=op.attr('shape'),
                        fill_value=op.attr('value'),
                        dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
+
+
+@REGISTER_PRIM2ORIG('select_p')
+def matmul_prim2orig(op, condition, x, y):
+    return paddle.where(condition, x, y)
 
 
 ## Register linearize rules
@@ -628,6 +638,15 @@ def scatter_add_jvp(op, x_dot, y_dot):
     return linear_jvp(op, x_dot, y_dot, indextensor, axis=axis)
 
 
+@REGISTER_JVP('select_p')
+def select_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+
+    cond, _, _ = op_position_inputs(op)
+    return select(cond, x_dot, y_dot)
+
+
 ## Register transpose rules
 
 
@@ -813,3 +832,19 @@ def scatter_add_transpose(op, check_dot, z_bar):
     y_bar = gather(z_bar, indextensor, axis=axis)
     indextensor_bar = None
     return x_bar, y_bar, indextensor_bar
+
+
+@REGISTER_TRANSPOSE('select_p')
+def select_transpose(op, check_dot, z_bar):
+    cond, x, y = op_position_inputs(op)
+    assert check_dot(x) and check_dot(y), (
+        f'(check_dot(x) and check_dot(y)) must be True, '
+        f'but check_dot(x)={check_dot(x)} and check_dot(y)={check_dot(y)}.')
+
+    zeros_x = fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
+    zeros_y = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+    cond_bar = None
+    x_bar = select(cond, z_bar, zeros_x)
+    y_bar = select(cond, zeros_y, z_bar)
+
+    return cond_bar, x_bar, y_bar

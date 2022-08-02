@@ -23,7 +23,8 @@ set(PRIM_OP_SRCS
     sqrt_p_op.cc
     tanh_p_op.cc
     matmul_p_op.cc
-    fill_constant_p_op.cc)
+    fill_constant_p_op.cc
+    select_p_op.cc)
 
 cc_test(
   prim_op_test
