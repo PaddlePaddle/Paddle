@@ -288,7 +288,8 @@ void InterpreterCore::BuildInplace() {
   // of Output Tensors which are sliced from the FusedOutput. These outputs
   // sholud not be the outvar of the in-place var-pair since memory reuse
   // between FusedOutput and Output Tensors is assumed. For the following
-  // example: fused_var, var1, var2, var3 = coalesce_tensor(var1, var2, var3)
+  // example:
+  // fused_var, var1, var2, var3 = coalesce_tensor(var1, var2, var3)
   // var1 = sum(var4, var5)
   // ...
   //
