@@ -1780,6 +1780,16 @@
   backward: relu_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : renorm_grad
+  forward : renorm (Tensor x, float p, int axis, float max_norm) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float p, int axis, float max_norm)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : renorm_grad
+
 - backward_api : reshape_double_grad
   forward : reshape_grad (Tensor xshape, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor grad_out, Tensor grad_x_grad)
