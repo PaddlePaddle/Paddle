@@ -42,8 +42,6 @@ void RepeatsTensor2IndexTensor(const Context& ctx,
   }
   index->Resize(phi::make_ddim({index_size}));
 
-  // auto ctx =
-  //     paddle::platform::DeviceContextPool::Instance().Get(repeats.place());
   paddle::framework::TensorFromVector<RepeatsT>(index_vec, ctx, index);
 }
 }  // namespace funcs

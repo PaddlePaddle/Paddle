@@ -111,7 +111,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                         paddle::framework::DataTypeToString(
                             paddle::framework::proto::VarType::INT64)));
 #if defined(__NVCC__) || defined(__HIPCC__)
-  // else {
+
   auto output_dim = out_grad.dims();
   auto stride_dim = phi::stride(input_dim);
   int64_t stride = stride_dim[dim];
@@ -166,7 +166,6 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                      size,
                      delta);
   }
-  //  }
 
 #endif
 }

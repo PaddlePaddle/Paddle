@@ -118,7 +118,6 @@ void RepeatInterleaveGradKernel(const Context& ctx,
                    stride,
                    size,
                    delta);
-  // platform::GpuStreamSync(stream);
 #endif
 }
 }  // namespace phi

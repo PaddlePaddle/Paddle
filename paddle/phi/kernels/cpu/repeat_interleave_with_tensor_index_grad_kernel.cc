@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//#include
-//"paddle/phi/kernels/repeat_interleave_with_tensor_index_grad_kernel.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/index_select_op.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -21,10 +19,8 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
-//#include
-//"paddle/phi/kernels/impl/repeat_interleave_with_tensor_index_grad_kernel_impl.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
+#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 
 namespace phi {
 

@@ -18,7 +18,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
 #include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
-//#include "paddle/phi/kernels/impl/repeat_interleave_grad_kernel_impl.h"
 
 namespace phi {
 
