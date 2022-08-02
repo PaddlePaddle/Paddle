@@ -186,6 +186,7 @@ void TransQKVWithBias(const int batch,
   }
 }
 
+#if defined(PADDLE_WITH_CUDA)
 template <>
 void TransQKVWithBias(const int batch,
                       const int seq_len,
@@ -232,6 +233,7 @@ void TransQKVWithBias(const int batch,
         head_size, input_half, bias_half, output_half);
   }
 }
+#endif
 
 inline int round_up(int seq_len, int multiple = 32) {
   PADDLE_ENFORCE_GT(
