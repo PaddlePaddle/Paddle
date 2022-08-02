@@ -53,7 +53,7 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     if (!ctx->IsRuntime()) {
       // set lod level for compile-time
       framework::VarDesc* out_desc =
-          BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
+          PADDLE_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
       out_desc->SetLoDLevel(1);
     }
 
@@ -200,9 +200,7 @@ REGISTER_OP_CPU_KERNEL(im2sequence,
 REGISTER_OP_CPU_KERNEL(im2sequence_grad,
                        ops::Im2SequenceGradKernel<phi::CPUContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(
-    im2sequence,
-    ops::Im2SequenceKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    im2sequence_grad,
-    ops::Im2SequenceGradKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(im2sequence,
+                        ops::Im2SequenceKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(im2sequence_grad,
+                        ops::Im2SequenceGradKernel<phi::GPUContext, float>);

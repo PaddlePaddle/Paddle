@@ -18,7 +18,7 @@ cc_library(
 cc_library(
   kernel_context
   SRCS kernel_context.cc
-  DEPS phi_enforce phi_context)
+  DEPS phi_enforce phi_backends)
 
 cc_library(
   ddim
@@ -89,23 +89,20 @@ if(WITH_GPU)
   nv_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS cpu_context gpu_context dense_tensor selected_rows memor
-         device_context)
+    DEPS phi_backends dense_tensor selected_rows memory device_context)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS cpu_context gpu_context dense_tensor selected_rows memory
-         device_context)
+    DEPS phi_backends dense_tensor selected_rows memory device_context)
 elseif(WITH_XPU_KP)
   xpu_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS cpu_context xpu_context dense_tensor selected_rows memory
-         device_context)
+    DEPS phi_backends dense_tensor selected_rows memory device_context)
 else()
   cc_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS cpu_context dense_tensor selected_rows memory device_context)
+    DEPS dense_tensor selected_rows memory device_context phi_backends)
 endif()

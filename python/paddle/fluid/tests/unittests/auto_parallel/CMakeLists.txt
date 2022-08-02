@@ -25,6 +25,11 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_engine_api_dp
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
 
+  py_test_modules(test_optimization_tuner_api MODULES
+                  test_optimization_tuner_api ENVS ${dist_ENVS})
+  set_tests_properties(test_optimization_tuner_api
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
+
   py_test_modules(test_converter MODULES test_converter ENVS ${dist_ENVS})
   set_tests_properties(test_converter PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                  TIMEOUT 50)
@@ -55,4 +60,5 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_context MODULES test_dist_context ENVS ${dist_ENVS})
   py_test_modules(test_prim_dist_op MODULES test_prim_dist_op ENVS ${dist_ENVS})
   py_test_modules(test_to_static MODULES test_to_static ENVS ${dist_ENVS})
+  py_test_modules(test_dist_op_cost MODULES test_dist_op_cost ENVS ${dist_ENVS})
 endif()

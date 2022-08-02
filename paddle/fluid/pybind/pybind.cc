@@ -115,7 +115,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/device_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -1257,7 +1257,7 @@ All parameter, weight, gradient are variables in Paddle.
                  "Cannot use CUDAPlace in CPU only version, "
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
-      auto* context = new paddle::platform::CUDADeviceContext(place);
+      auto* context = new phi::GPUContext(place);
       context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(place, context->stream())
@@ -1684,9 +1684,9 @@ All parameter, weight, gradient are variables in Paddle.
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
           if (data_is_lod_tensor(var)) {
-            return py::cast(BOOST_GET(LoDTensor, var));
+            return py::cast(PADDLE_GET(LoDTensor, var));
           } else {
-            return py::cast(BOOST_GET(LoDTensorArray, var));
+            return py::cast(PADDLE_GET(LoDTensorArray, var));
           }
         });
   m.def("get_variable_tensor", framework::GetVariableTensor);
@@ -1703,6 +1703,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindProcessMeshDesc(&m);
   BindFleetExecutor(&m);
   BindTCPStore(&m);
+  BindJitProperty(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
@@ -1792,10 +1793,10 @@ All parameter, weight, gradient are variables in Paddle.
             py::list res(self.size());
             for (size_t i = 0; i < self.size(); ++i) {
               if (data_is_lod_tensor(self[i])) {
-                auto &data = BOOST_GET(LoDTensor, self[i]);
+                auto &data = PADDLE_GET(LoDTensor, self[i]);
                 res[i] = py::cast(std::move(data));
               } else {
-                auto &data = BOOST_GET(LoDTensorArray, self[i]);
+                auto &data = PADDLE_GET(LoDTensorArray, self[i]);
                 py::list tmp(data.size());
                 for (size_t j = 0; j < data.size(); ++j) {
                   tmp[j] = py::cast(std::move(data[j]));
@@ -1812,7 +1813,7 @@ All parameter, weight, gradient are variables in Paddle.
           "append",
           [](FetchList &self, const LoDTensor &t) {
             self.emplace_back();
-            auto &lod_tensor = BOOST_GET(LoDTensor, self.back());
+            auto &lod_tensor = PADDLE_GET(LoDTensor, self.back());
             lod_tensor.ShareDataWith(t);
             lod_tensor.set_lod(t.lod());
           },
@@ -1822,7 +1823,7 @@ All parameter, weight, gradient are variables in Paddle.
           "append",
           [](FetchList &self, const LoDTensorArray &t) {
             self.emplace_back();
-            auto &lod_tensor_array = BOOST_GET(LoDTensorArray, self.back());
+            auto &lod_tensor_array = PADDLE_GET(LoDTensorArray, self.back());
             for (size_t i = 0; i < t.size(); ++i) {
               lod_tensor_array[i].ShareDataWith(t[i]);
               lod_tensor_array[i].set_lod(t[i].lod());
@@ -1841,10 +1842,10 @@ All parameter, weight, gradient are variables in Paddle.
               py::list tmp(self[i].size());
               for (size_t j = 0; j < self[i].size(); ++j) {
                 if (data_is_lod_tensor(self[i][j])) {
-                  auto &var = BOOST_GET(LoDTensor, self[i][j]);
+                  auto &var = PADDLE_GET(LoDTensor, self[i][j]);
                   tmp[j] = py::cast(std::move(var));
                 } else {
-                  auto &var = BOOST_GET(LoDTensorArray, self[i][j]);
+                  auto &var = PADDLE_GET(LoDTensorArray, self[i][j]);
                   py::list tmp_array(var.size());
                   for (size_t k = 0; k < var.size(); ++k) {
                     tmp_array[k] = std::move(var[k]);

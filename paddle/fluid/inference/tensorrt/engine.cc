@@ -410,6 +410,19 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
                         name));
   network()->markOutput(*output);
 }
+void TensorRTEngine::DeleteITensor(const std::string &name,
+                                   nvinfer1::ITensor *tensor) {
+  PADDLE_ENFORCE_NOT_NULL(
+      tensor,
+      platform::errors::InvalidArgument(
+          "Tensor named %s of TRT engine should not be null.", name));
+  PADDLE_ENFORCE_EQ(
+      true,
+      itensor_map_.count(name),
+      platform::errors::InvalidArgument(
+          "Tensor named %s of TRT engine should not be null", name));
+  itensor_map_.erase(name);
+}
 
 void TensorRTEngine::SetITensor(const std::string &name,
                                 nvinfer1::ITensor *tensor) {

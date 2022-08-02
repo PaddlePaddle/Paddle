@@ -10685,6 +10685,7 @@ def unstack(x, axis=0, num=None):
             y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
+
     if _non_static_mode():
         if num == None:
             num = x.shape[axis]
@@ -13043,6 +13044,8 @@ def clip_by_norm(x, max_norm, name=None):
             # [[0.5, 0.5], [0.5, 0.5]]
     """
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_clip_by_norm(x, max_norm)
     if _non_static_mode():
         return _C_ops.clip_by_norm(x, 'max_norm', max_norm)
 

@@ -237,7 +237,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     auto *temp_out_data = temp_out_tensor.mutable_data<T>(context.GetPlace());
 
     // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(device_ctx);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(device_ctx);
     blas.MatMul(input_matrix, w_matrix, &temp_out_tensor);
 
     // temp_out_tensor.Resize(temp_out_dims);
@@ -285,6 +285,5 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    multihead_matmul,
-    ops::MultiHeadMatMulV2Kernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(multihead_matmul,
+                        ops::MultiHeadMatMulV2Kernel<phi::GPUContext, float>);

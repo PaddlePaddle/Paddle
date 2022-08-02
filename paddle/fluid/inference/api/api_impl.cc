@@ -43,14 +43,14 @@ std::string num2str(T a) {
 void NativePaddlePredictor::PrepareFeedFetch() {
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
       feeds_[idx] = op;
       feed_names_[op->Output("Out")[0]] = idx;
     } else if (op->Type() == "fetch") {
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (fetchs_.size() <= static_cast<size_t>(idx)) {
         fetchs_.resize(idx + 1);
       }
@@ -248,8 +248,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
-      auto *dev_ctx =
-          static_cast<const platform::CUDADeviceContext *>(pool.Get(place_));
+      auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place_));
       auto dst_gpu_place = place_;
       memory::Copy(dst_gpu_place,
                    static_cast<void *>(input_ptr),
@@ -302,7 +301,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     if (config_.specify_input_name) {
       idx = feed_names_[inputs[i].name];
     } else {
-      idx = BOOST_GET_CONST(int, feeds_[i]->GetAttr("col"));
+      idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
     framework::SetFeedVariable(scope, input, "feed", idx);
   }
@@ -333,7 +332,7 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetchs_.size());
   for (size_t i = 0; i < fetchs_.size(); ++i) {
-    int idx = BOOST_GET_CONST(int, fetchs_[i]->GetAttr("col"));
+    int idx = PADDLE_GET_CONST(int, fetchs_[i]->GetAttr("col"));
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(idx),
         i,
@@ -343,7 +342,7 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto fetch = BOOST_GET_CONST(framework::LoDTensor, fetch_var);
+    auto fetch = PADDLE_GET_CONST(framework::LoDTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];

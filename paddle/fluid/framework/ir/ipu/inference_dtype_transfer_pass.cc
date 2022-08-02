@@ -74,7 +74,8 @@ void InferenceDtypeTransferPass::ApplyImpl(ir::Graph* graph) const {
         auto* op_desc = node->Op();
         if (op_desc->Type() == "popart_cast") {
           // Transfer the target dtype of cast Op
-          if (BOOST_GET_CONST(std::string, op_desc->GetAttr("to")) == "FLOAT") {
+          if (PADDLE_GET_CONST(std::string, op_desc->GetAttr("to")) ==
+              "FLOAT") {
             op_desc->SetAttr("to", std::string("FLOAT16"));
             op_desc->Flush();
           }

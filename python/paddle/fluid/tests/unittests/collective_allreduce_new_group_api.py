@@ -51,7 +51,7 @@ class TestCollectiveAllreduceNewGroupAPI(TestCollectiveAPIRunnerBase):
             gp = paddle.distributed.new_group([0, 1])
             paddle.distributed.all_reduce(tindata,
                                           group=gp,
-                                          use_calc_stream=False)
+                                          use_calc_stream=True)
             return [tindata]
 
 

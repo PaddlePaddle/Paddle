@@ -60,6 +60,50 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           std::vector<std::string>{word_id_name, pos_id_name, sent_id_name};
       emb_names =
           std::vector<std::string>{word_emb_name, pos_emb_name, sent_emb_name};
+
+      auto mask_id_tensor = engine_->GetITensor("mask_id");
+      auto mask_dims = mask_id_tensor->getDimensions();
+      auto slice_start_dims = mask_dims;
+      auto slice_stride_dims = mask_dims;
+
+      for (int i = 0; i < mask_dims.nbDims; i++) {
+        slice_start_dims.d[i] = 0;
+        slice_stride_dims.d[i] = 1;
+      }
+
+      auto* shape_tensor = Shape(mask_id_tensor);
+      std::vector<nvinfer1::ITensor*> size_vec_tensor;
+      for (int i = 0; i < mask_dims.nbDims; i++) {
+        size_vec_tensor.push_back(Add1DConstantLayer(1));
+      }
+      size_vec_tensor[1] = GetEleTensorOfShape(shape_tensor, 1);
+      auto size_tensor = Concat(size_vec_tensor);
+
+      auto slice_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               Slice,
+                               *mask_id_tensor,
+                               slice_start_dims,
+                               slice_start_dims,
+                               slice_stride_dims);  // unuseful slice_start_dims
+      slice_layer->setInput(2, *size_tensor);
+      slice_layer->setName(
+          ("Embeltwise_slice_layer (Output: slice_max_seqlen " +
+           op_desc.Output("Out")[0] + ")")
+              .c_str());
+      engine_->SetTensorDynamicRange(slice_layer->getOutput(0), 1.0f);
+
+      auto* reshape_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *slice_layer->getOutput(0));
+      nvinfer1::Dims shape_dim;
+      shape_dim.nbDims = 1;
+      shape_dim.d[0] = -1;
+      reshape_layer->setReshapeDimensions(shape_dim);
+      reshape_layer->setName(("Embeltwise_reshape_layer (Output: max_seqlen " +
+                              op_desc.Output("Out")[0] + ")")
+                                 .c_str());
+      engine_->SetTensorDynamicRange(reshape_layer->getOutput(0), 1.0f);
+      engine_->SetITensor("max_seqlen_tensor", reshape_layer->getOutput(0));
     } else {
       id_names = op_desc.Input("Ids");
       emb_names = op_desc.Input("Embs");
@@ -192,20 +236,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       plugin_inputs.emplace_back(
           engine_->GetITensor(pos_id_name));  // cu_seqlens,
                                               // eval_placeholder_2
-      auto max_seqlen_tensor = engine_->GetITensor(mask_id_name);
-      auto* shuffle_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *max_seqlen_tensor);
-      nvinfer1::Dims shape_dim;
-      shape_dim.nbDims = 1;
-      shape_dim.d[0] = -1;
-      shuffle_layer->setReshapeDimensions(shape_dim);
-      shuffle_layer->setName(
-          ("Embeltwise_Shuffle_reshape (Output: max_seqlen " +
-           op_desc.Output("Out")[0] + ")")
-              .c_str());
-      engine_->SetTensorDynamicRange(shuffle_layer->getOutput(0), 1.0f);
-      plugin_inputs.emplace_back(
-          shuffle_layer->getOutput(0));  // max_seqlen, eval_placeholder_3
+      plugin_inputs.emplace_back(engine_->GetITensor(
+          "max_seqlen_tensor"));  // max_seqlen, eval_placeholder_3
 
       auto creator = GetPluginRegistry()->getPluginCreator(
           "CustomEmbLayerNormPluginDynamic", "2");
@@ -220,7 +252,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       free(plugin_ptr);
       if (enable_int8) {
         float out_scale =
-            BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+            PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
         engine_->SetTensorDynamicRange(plugin_layer->getOutput(0), out_scale);
         engine_->SetTensorDynamicRange(plugin_layer->getOutput(1), out_scale);
       }
@@ -252,7 +284,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+      float eps = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
       plugin::DynamicPluginTensorRT* plugin = nullptr;
       std::vector<float*> input_embs_data;
       for (size_t i = 0; i < input_embs.size(); ++i) {

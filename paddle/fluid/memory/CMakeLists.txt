@@ -54,9 +54,7 @@ if(WITH_TESTING AND TEST cuda_managed_memory_test)
       TIMEOUT 50)
 endif()
 
-if(WITH_GPU
-   AND WITH_TESTING
-   AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+if(WITH_GPU AND WITH_TESTING)
   nv_test(
     get_base_ptr_test
     SRCS get_base_ptr_test.cu

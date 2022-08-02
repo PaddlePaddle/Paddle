@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#include <sstream>
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 namespace paddle {
@@ -25,12 +27,46 @@ void GraphGpuWrapper::set_device(std::vector<int> ids) {
     device_id_mapping.push_back(device_id);
   }
 }
-std::vector<std::vector<int64_t>> GraphGpuWrapper::get_all_id(int type,
-                                                              int idx,
-                                                              int slice_num) {
+
+int GraphGpuWrapper::get_all_id(int type,
+                                int slice_num,
+                                std::vector<std::vector<uint64_t>> *output) {
   return ((GpuPsGraphTable *)graph_table)
-      ->cpu_graph_table->get_all_id(type, idx, slice_num);
+      ->cpu_graph_table_->get_all_id(type, slice_num, output);
 }
+
+int GraphGpuWrapper::get_all_neighbor_id(
+    int type, int slice_num, std::vector<std::vector<uint64_t>> *output) {
+  return ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table_->get_all_neighbor_id(type, slice_num, output);
+}
+
+int GraphGpuWrapper::get_all_id(int type,
+                                int idx,
+                                int slice_num,
+                                std::vector<std::vector<uint64_t>> *output) {
+  return ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table_->get_all_id(type, idx, slice_num, output);
+}
+
+int GraphGpuWrapper::get_all_neighbor_id(
+    int type,
+    int idx,
+    int slice_num,
+    std::vector<std::vector<uint64_t>> *output) {
+  return ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table_->get_all_neighbor_id(type, idx, slice_num, output);
+}
+
+int GraphGpuWrapper::get_all_feature_ids(
+    int type,
+    int idx,
+    int slice_num,
+    std::vector<std::vector<uint64_t>> *output) {
+  return ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table_->get_all_feature_ids(type, idx, slice_num, output);
+}
+
 void GraphGpuWrapper::set_up_types(std::vector<std::string> &edge_types,
                                    std::vector<std::string> &node_types) {
   id_to_edge = edge_types;
@@ -49,32 +85,40 @@ void GraphGpuWrapper::set_up_types(std::vector<std::string> &edge_types,
   this->table_feat_conf_feat_shape.resize(node_types.size());
 }
 
+void GraphGpuWrapper::set_feature_separator(std::string ch) {
+  feature_separator_ = ch;
+  if (graph_table != nullptr) {
+    ((GpuPsGraphTable *)graph_table)
+        ->cpu_graph_table_->set_feature_separator(feature_separator_);
+  }
+}
+
 void GraphGpuWrapper::make_partitions(int idx,
                                       int64_t byte_size,
                                       int device_len) {
   ((GpuPsGraphTable *)graph_table)
-      ->cpu_graph_table->make_partitions(idx, byte_size, device_len);
+      ->cpu_graph_table_->make_partitions(idx, byte_size, device_len);
 }
 int32_t GraphGpuWrapper::load_next_partition(int idx) {
   return ((GpuPsGraphTable *)graph_table)
-      ->cpu_graph_table->load_next_partition(idx);
+      ->cpu_graph_table_->load_next_partition(idx);
 }
 
 void GraphGpuWrapper::set_search_level(int level) {
-  ((GpuPsGraphTable *)graph_table)->cpu_graph_table->set_search_level(level);
+  ((GpuPsGraphTable *)graph_table)->cpu_graph_table_->set_search_level(level);
 }
 
-std::vector<int64_t> GraphGpuWrapper::get_partition(int idx, int num) {
+std::vector<uint64_t> GraphGpuWrapper::get_partition(int idx, int num) {
   return ((GpuPsGraphTable *)graph_table)
-      ->cpu_graph_table->get_partition(idx, num);
+      ->cpu_graph_table_->get_partition(idx, num);
 }
 int32_t GraphGpuWrapper::get_partition_num(int idx) {
   return ((GpuPsGraphTable *)graph_table)
-      ->cpu_graph_table->get_partition_num(idx);
+      ->cpu_graph_table_->get_partition_num(idx);
 }
 void GraphGpuWrapper::make_complementary_graph(int idx, int64_t byte_size) {
   ((GpuPsGraphTable *)graph_table)
-      ->cpu_graph_table->make_complementary_graph(idx, byte_size);
+      ->cpu_graph_table_->make_complementary_graph(idx, byte_size);
 }
 void GraphGpuWrapper::load_edge_file(std::string name,
                                      std::string filepath,
@@ -90,7 +134,7 @@ void GraphGpuWrapper::load_edge_file(std::string name,
   }
   if (edge_to_id.find(name) != edge_to_id.end()) {
     ((GpuPsGraphTable *)graph_table)
-        ->cpu_graph_table->Load(std::string(filepath), params);
+        ->cpu_graph_table_->Load(std::string(filepath), params);
   }
 }
 
@@ -101,8 +145,19 @@ void GraphGpuWrapper::load_node_file(std::string name, std::string filepath) {
 
   if (feature_to_id.find(name) != feature_to_id.end()) {
     ((GpuPsGraphTable *)graph_table)
-        ->cpu_graph_table->Load(std::string(filepath), params);
+        ->cpu_graph_table_->Load(std::string(filepath), params);
   }
+}
+
+void GraphGpuWrapper::load_node_and_edge(std::string etype,
+                                         std::string ntype,
+                                         std::string epath,
+                                         std::string npath,
+                                         int part_num,
+                                         bool reverse) {
+  ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table_->load_node_and_edge_file(
+          etype, ntype, epath, npath, part_num, reverse);
 }
 
 void GraphGpuWrapper::add_table_feat_conf(std::string table_name,
@@ -137,8 +192,10 @@ void GraphGpuWrapper::init_search_level(int level) { search_level = level; }
 
 void GraphGpuWrapper::init_service() {
   table_proto.set_task_pool_size(24);
+  table_proto.set_shard_num(1000);
+  table_proto.set_build_sampler_on_cpu(false);
   table_proto.set_search_level(search_level);
-  table_proto.set_table_name("cpu_graph_table");
+  table_proto.set_table_name("cpu_graph_table_");
   table_proto.set_use_cache(false);
   for (int i = 0; i < id_to_edge.size(); i++)
     table_proto.add_edge_types(id_to_edge[i]);
@@ -155,76 +212,122 @@ void GraphGpuWrapper::init_service() {
   std::shared_ptr<HeterPsResource> resource =
       std::make_shared<HeterPsResource>(device_id_mapping);
   resource->enable_p2p();
-  GpuPsGraphTable *g = new GpuPsGraphTable(resource, 1);
+  GpuPsGraphTable *g = new GpuPsGraphTable(resource, 1, id_to_edge.size());
   g->init_cpu_table(table_proto);
+  g->cpu_graph_table_->set_feature_separator(feature_separator_);
   graph_table = (char *)g;
+  upload_task_pool.reset(new ::ThreadPool(upload_num));
 }
 
-void GraphGpuWrapper::upload_batch(int idx,
-                                   std::vector<std::vector<int64_t>> &ids) {
+void GraphGpuWrapper::finalize() {
+  ((GpuPsGraphTable *)graph_table)->show_table_collisions();
+}
+
+void GraphGpuWrapper::upload_batch(int type,
+                                   int idx,
+                                   int slice_num,
+                                   const std::string &edge_type) {
+  VLOG(0) << "begin upload edge, type[" << edge_type << "]";
+  std::vector<std::vector<uint64_t>> ids;
+  ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table_->get_all_id(type, idx, slice_num, &ids);
+  debug_gpu_memory_info("upload_batch node start");
   GpuPsGraphTable *g = (GpuPsGraphTable *)graph_table;
-  // std::vector<paddle::framework::GpuPsCommGraph> vec;
+  std::vector<std::future<int>> tasks;
+
   for (int i = 0; i < ids.size(); i++) {
-    // vec.push_back(g->cpu_graph_table->make_gpu_ps_graph(idx, ids[i]));
-    GpuPsCommGraph sub_graph =
-        g->cpu_graph_table->make_gpu_ps_graph(idx, ids[i]);
-    g->build_graph_on_single_gpu(sub_graph, i);
-    sub_graph.release_on_cpu();
-    VLOG(0) << "sub graph on gpu " << i << " is built";
+    tasks.push_back(upload_task_pool->enqueue([&, i, idx, this]() -> int {
+      VLOG(0) << "begin make_gpu_ps_graph, node_id[" << i << "]_size["
+              << ids[i].size() << "]";
+      GpuPsCommGraph sub_graph =
+          g->cpu_graph_table_->make_gpu_ps_graph(idx, ids[i]);
+      g->build_graph_on_single_gpu(sub_graph, i, idx);
+      sub_graph.release_on_cpu();
+      VLOG(0) << "sub graph on gpu " << i << " is built";
+      return 0;
+    }));
   }
-  // g->build_graph_from_cpu(vec);
+  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+  debug_gpu_memory_info("upload_batch node end");
 }
 
-// void GraphGpuWrapper::test() {
-//   int64_t cpu_key[3] = {0, 1, 2};
-//   void *key;
-//   platform::CUDADeviceGuard guard(0);
-//   cudaMalloc((void **)&key, 3 * sizeof(int64_t));
-//   cudaMemcpy(key, cpu_key, 3 * sizeof(int64_t), cudaMemcpyHostToDevice);
-//   auto neighbor_sample_res =
-//       ((GpuPsGraphTable *)graph_table)
-//           ->graph_neighbor_sample(0, (int64_t *)key, 2, 3);
-//   int64_t *res = new int64_t[7];
-//   cudaMemcpy(res, neighbor_sample_res.val, 3 * 2 * sizeof(int64_t),
-//              cudaMemcpyDeviceToHost);
-//   int *actual_sample_size = new int[3];
-//   cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
-//              3 * sizeof(int),
-//              cudaMemcpyDeviceToHost);  // 3, 1, 3
+// feature table
+void GraphGpuWrapper::upload_batch(int type, int slice_num, int slot_num) {
+  std::vector<std::vector<uint64_t>> node_ids;
+  ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table_->get_all_id(type, slice_num, &node_ids);
+  debug_gpu_memory_info("upload_batch feature start");
+  GpuPsGraphTable *g = (GpuPsGraphTable *)graph_table;
+  std::vector<std::future<int>> tasks;
+  for (int i = 0; i < node_ids.size(); i++) {
+    tasks.push_back(upload_task_pool->enqueue([&, i, this]() -> int {
+      VLOG(0) << "begin make_gpu_ps_graph_fea, node_ids[" << i << "]_size["
+              << node_ids[i].size() << "]";
+      GpuPsCommGraphFea sub_graph =
+          g->cpu_graph_table_->make_gpu_ps_graph_fea(node_ids[i], slot_num);
+      // sub_graph.display_on_cpu();
+      VLOG(0) << "begin build_graph_fea_on_single_gpu, node_ids[" << i
+              << "]_size[" << node_ids[i].size() << "]";
+      g->build_graph_fea_on_single_gpu(sub_graph, i);
+      sub_graph.release_on_cpu();
+      VLOG(0) << "sub graph fea on gpu " << i << " is built";
+      return 0;
+    }));
+  }
+  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+  // g->build_graph_from_cpu(vec);
+  debug_gpu_memory_info("upload_batch feature end");
+}
 
-//   //{0,9} or {9,0} is expected for key 0
-//   //{0,2} or {2,0} is expected for key 1
-//   //{1,3} or {3,1} is expected for key 2
-//   for (int i = 0; i < 3; i++) {
-//     VLOG(0) << "actual sample size for " << i << " is "
-//             << actual_sample_size[i];
-//     for (int j = 0; j < actual_sample_size[i]; j++) {
-//       VLOG(0) << "sampled an neighbor for node" << i << " : " << res[i * 2 +
-//       j];
-//     }
-//   }
-// }
 NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
     NeighborSampleQuery q, bool cpu_switch) {
   return ((GpuPsGraphTable *)graph_table)
       ->graph_neighbor_sample_v3(q, cpu_switch);
 }
 
-// this function is contributed by Liwb5
-std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
-    int gpu_id, std::vector<int64_t> &key, int sample_size) {
-  int64_t *cuda_key;
+int GraphGpuWrapper::get_feature_of_nodes(int gpu_id,
+                                          uint64_t *d_walk,
+                                          uint64_t *d_offset,
+                                          uint32_t size,
+                                          int slot_num) {
   platform::CUDADeviceGuard guard(gpu_id);
+  PADDLE_ENFORCE_NOT_NULL(graph_table,
+                          paddle::platform::errors::InvalidArgument(
+                              "graph_table should not be null"));
+  return ((GpuPsGraphTable *)graph_table)
+      ->get_feature_of_nodes(gpu_id, d_walk, d_offset, size, slot_num);
+}
 
-  cudaMalloc(&cuda_key, key.size() * sizeof(int64_t));
-  cudaMemcpy(cuda_key,
-             key.data(),
-             key.size() * sizeof(int64_t),
-             cudaMemcpyHostToDevice);
-
+NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample(
+    int gpu_id, uint64_t *device_keys, int walk_degree, int len) {
+  platform::CUDADeviceGuard guard(gpu_id);
   auto neighbor_sample_res =
       ((GpuPsGraphTable *)graph_table)
-          ->graph_neighbor_sample(gpu_id, cuda_key, sample_size, key.size());
+          ->graph_neighbor_sample(gpu_id, device_keys, walk_degree, len);
+
+  return neighbor_sample_res;
+}
+
+// this function is contributed by Liwb5
+std::vector<uint64_t> GraphGpuWrapper::graph_neighbor_sample(
+    int gpu_id, int idx, std::vector<uint64_t> &key, int sample_size) {
+  std::vector<uint64_t> res;
+  if (key.size() == 0) {
+    return res;
+  }
+  uint64_t *cuda_key;
+  platform::CUDADeviceGuard guard(gpu_id);
+
+  cudaMalloc(&cuda_key, key.size() * sizeof(uint64_t));
+  cudaMemcpy(cuda_key,
+             key.data(),
+             key.size() * sizeof(uint64_t),
+             cudaMemcpyHostToDevice);
+  VLOG(0) << "key_size: " << key.size();
+  auto neighbor_sample_res =
+      ((GpuPsGraphTable *)graph_table)
+          ->graph_neighbor_sample_v2(
+              gpu_id, idx, cuda_key, sample_size, key.size(), false);
   int *actual_sample_size = new int[key.size()];
   cudaMemcpy(actual_sample_size,
              neighbor_sample_res.actual_sample_size,
@@ -235,12 +338,12 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
     cumsum += actual_sample_size[i];
   }
 
-  std::vector<int64_t> cpu_key, res;
+  std::vector<uint64_t> cpu_key;
   cpu_key.resize(key.size() * sample_size);
 
   cudaMemcpy(cpu_key.data(),
              neighbor_sample_res.val,
-             key.size() * sample_size * sizeof(int64_t),
+             key.size() * sample_size * sizeof(uint64_t),
              cudaMemcpyDeviceToHost);
   for (int i = 0; i < key.size(); i++) {
     for (int j = 0; j < actual_sample_size[i]; j++) {
@@ -256,27 +359,26 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   return res;
 }
 
-void GraphGpuWrapper::init_sample_status() {
-  ((GpuPsGraphTable *)graph_table)->init_sample_status();
-}
-
-void GraphGpuWrapper::free_sample_status() {
-  ((GpuPsGraphTable *)graph_table)->free_sample_status();
-}
 NodeQueryResult GraphGpuWrapper::query_node_list(int gpu_id,
+                                                 int idx,
                                                  int start,
                                                  int query_size) {
+  PADDLE_ENFORCE_EQ(FLAGS_gpugraph_load_node_list_into_hbm,
+                    true,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "when use query_node_list should set "
+                        "gpugraph_load_node_list_into_hbm true"));
   return ((GpuPsGraphTable *)graph_table)
-      ->query_node_list(gpu_id, start, query_size);
+      ->query_node_list(gpu_id, idx, start, query_size);
 }
 void GraphGpuWrapper::load_node_weight(int type_id, int idx, std::string path) {
   return ((GpuPsGraphTable *)graph_table)
-      ->cpu_graph_table->load_node_weight(type_id, idx, path);
+      ->cpu_graph_table_->load_node_weight(type_id, idx, path);
 }
 
 void GraphGpuWrapper::export_partition_files(int idx, std::string file_path) {
   return ((GpuPsGraphTable *)graph_table)
-      ->cpu_graph_table->export_partition_files(idx, file_path);
+      ->cpu_graph_table_->export_partition_files(idx, file_path);
 }
 #endif
 }  // namespace framework

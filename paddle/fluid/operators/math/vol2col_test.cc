@@ -132,15 +132,14 @@ void testVol2col() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-void testVol2col<paddle::platform::CUDADeviceContext,
-                 paddle::platform::CUDAPlace>() {
+void testVol2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
   paddle::framework::Tensor input;
   paddle::framework::Tensor input_tmp;
   paddle::framework::Tensor output;
   paddle::framework::Tensor output_tmp;
 
   auto* place = new paddle::platform::CUDAPlace();
-  auto* context = new paddle::platform::CUDADeviceContext(*place);
+  auto* context = new phi::GPUContext(*place);
   context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(*place, context->stream())
                             .get());
@@ -202,9 +201,7 @@ void testVol2col<paddle::platform::CUDADeviceContext,
                               output_width},
                              *place);
 
-  paddle::operators::math::Vol2ColFunctor<paddle::platform::CUDADeviceContext,
-                                          float>
-      vol2col;
+  paddle::operators::math::Vol2ColFunctor<phi::GPUContext, float> vol2col;
   vol2col(*context, input, dilations, strides, paddings, &output);
 
   float vol_2_col[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11};
@@ -230,9 +227,7 @@ void testVol2col<paddle::platform::CUDADeviceContext,
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
   }
 
-  paddle::operators::math::Col2VolFunctor<paddle::platform::CUDADeviceContext,
-                                          float>
-      col2vol;
+  paddle::operators::math::Col2VolFunctor<phi::GPUContext, float> col2vol;
   col2vol(*context, output, dilations, strides, paddings, &input);
 
   float* in_ptr;
@@ -256,7 +251,6 @@ void testVol2col<paddle::platform::CUDADeviceContext,
 TEST(math, vol2col) {
   testVol2col<phi::CPUContext, paddle::platform::CPUPlace>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  testVol2col<paddle::platform::CUDADeviceContext,
-              paddle::platform::CUDAPlace>();
+  testVol2col<phi::GPUContext, paddle::platform::CUDAPlace>();
 #endif  // PADDLE_WITH_CUDA
 }

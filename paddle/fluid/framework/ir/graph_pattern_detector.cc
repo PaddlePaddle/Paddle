@@ -771,10 +771,18 @@ bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
   return var->Name() == op->Op()->Output(argument)[nth];
 }
 
-void GraphSafeRemoveNodes(Graph *graph,
-                          const std::unordered_set<const Node *> &nodes) {
+void GraphSafeRemoveNodes(
+    Graph *graph,
+    const std::unordered_set<const Node *> &nodes,
+    std::unordered_set<std::shared_ptr<Node>> *saved_nodes) {
   for (auto *node : nodes) {
-    graph->RemoveNode(const_cast<Node *>(node));
+    if (saved_nodes != nullptr) {
+      // prevent unique_ptr node from being released
+      saved_nodes->insert(
+          std::move(graph->RemoveNode(const_cast<Node *>(node))));
+    } else {
+      graph->RemoveNode(const_cast<Node *>(node));
+    }
   }
 
   for (auto *node : graph->Nodes()) {
@@ -2799,7 +2807,7 @@ void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
   auto reshape1_op =
       pattern->NewNode(reshape1_op_repr())->assert_is_op("reshape2");
   reshape1_op->assert_more([&](Node *x) {
-    return BOOST_GET_CONST(std::vector<int>, x->Op()->GetAttr("shape"))
+    return PADDLE_GET_CONST(std::vector<int>, x->Op()->GetAttr("shape"))
                .size() == 5;
   });
 
