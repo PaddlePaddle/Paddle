@@ -2645,16 +2645,22 @@ void SliceRawInferMeta(const MetaTensor& input,
     // To be compatible with other op tests in which infer_flags is not set.
     infer_flags = std::vector<int64_t>(axes.size(), 1);
   }
+  auto new_axes = axes;
+  for (auto& axis : new_axes) {
+    if (axis < 0) {
+      axis = std::max(int64_t(0), axis + int64_t(in_dims.size()));
+    }
+  }
 
   // 2.1 Check attrs.
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
 
   phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
-      in_dims, axes, &starts, &ends, nullptr, &infer_flags);
+      in_dims, new_axes, &starts, &ends, nullptr, &infer_flags);
 
   auto slice_dims = phi::funcs::GetSliceDims<int64_t>(
-      in_dims, axes, starts, ends, nullptr, &infer_flags);
+      in_dims, new_axes, starts, ends, nullptr, &infer_flags);
   if (config.is_runtime) {
     out_dims = phi::funcs::GetDecreasedDims<int64_t>(
         slice_dims, decrease_axis, &infer_flags);
@@ -2664,7 +2670,7 @@ void SliceRawInferMeta(const MetaTensor& input,
   }
 
   out->set_dims(out_dims);
-  if (axes.size() > 0 && axes[0] != 0) {
+  if (new_axes.size() > 0 && new_axes[0] != 0) {
     out->share_lod(input);
   }
 }
@@ -2693,6 +2699,13 @@ void SplitInferMeta(const MetaTensor& x,
                     const Scalar& axis,
                     std::vector<MetaTensor*> out,
                     MetaConfig config) {
+  if (axis.dtype() == DataType::FLOAT32 || axis.dtype() == DataType::FLOAT64) {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("%s(): argument (position 3) must be "
+                                     "int, but got %s",
+                                     "split",
+                                     "float"));  // NOLINT
+  }
   int axis_value = axis.to<int>();
   int rank = x.dims().size();
   PADDLE_ENFORCE_EQ(

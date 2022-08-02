@@ -266,7 +266,6 @@ XPUOpMap& get_kl2_ops() {
       {"layer_norm_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
-      {"layer_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"layer_norm",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},

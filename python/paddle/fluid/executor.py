@@ -1431,7 +1431,7 @@ class Executor(object):
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
-        if self._enable_interpreter_core and _can_use_interpreter_core(
+        if return_merged and self._enable_interpreter_core and _can_use_interpreter_core(
                 program, self.place):
             inner_program = program._program if isinstance(
                 program, compiler.CompiledProgram) else program
@@ -1689,8 +1689,8 @@ class Executor(object):
         return res
 
     def _dump_debug_info(self, program=None, trainer=None):
-        print("program_id: {}, trainer_desc:\n {}".format(
-            id(program), str(trainer)))
+        with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
+            fout.write(str(trainer))
         if program._fleet_opt and "fleet_desc" in program._fleet_opt:
             with open("fleet_desc.prototxt", "w") as fout:
                 fout.write(str(program._fleet_opt["fleet_desc"]))

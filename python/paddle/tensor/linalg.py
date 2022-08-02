@@ -1998,7 +1998,13 @@ def qr(x, mode="reduced", name=None):
             
             # one can verify : X = Q * R ;     
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        q, r = _C_ops.final_state_qr(x, mode)
+        if mode == "r":
+            return r
+        else:
+            return q, r
+    if _in_legacy_dygraph():
         q, r = _C_ops.qr(x, 'mode', mode)
         if mode == "r":
             return r

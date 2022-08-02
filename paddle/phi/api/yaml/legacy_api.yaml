@@ -276,7 +276,7 @@
     func : assign_value
     param : [shape, dtype, values]
     data_type : dtype
-    backend : place > output 
+    backend : place > output
 
 # atan
 - api : atan
@@ -1857,7 +1857,7 @@
     func : QrInferMeta
   kernel :
     func : qr
-  # backward : qr_grad
+  backward : qr_grad
 
 - api : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
@@ -1930,6 +1930,16 @@
   kernel :
     func : relu6
   backward : relu6_grad
+
+- api : renorm
+  args : (Tensor x, float p, int axis, float max_norm)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : renorm
+  backward : renorm_grad
 
 - api : repeat_interleave
   args : (Tensor x, int repeats, int dim)
