@@ -120,6 +120,8 @@ class TestLU_UnpackOp(OpTest):
 
     def setUp(self):
         self.op_type = "lu_unpack"
+        self.python_api = paddle.tensor.linalg.lu_unpack
+        self.python_out_sig = ["Pmat", "L", "U"]
         self.config()
         x = np.random.random(self.x_shape).astype(self.dtype)
         if paddle.in_dynamic_mode():
@@ -156,10 +158,10 @@ class TestLU_UnpackOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['L', 'U'])
+        self.check_grad(['X'], ['L', 'U'], check_eager=True)
 
 
 # m = n

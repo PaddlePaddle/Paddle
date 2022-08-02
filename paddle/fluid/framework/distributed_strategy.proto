@@ -27,6 +27,7 @@ message RecomputeConfig {
   repeated string checkpoints = 1;
   optional bool enable_offload = 2 [ default = false ];
   repeated int32 checkpoint_shape = 3;
+  optional bool enable_tuning = 4 [ default = false ]; // incubate for auto parallel
 }
 
 message ShardingConfig {
@@ -46,6 +47,7 @@ message ShardingConfig {
   // Optimizer sharding. Temporary plans and may be deprecated
   optional bool _dp_as_optimizer_sharding = 13 [ default = false ];
   optional int32 stage = 14 [ default = 1 ];
+  optional bool enable_tuning = 15 [ default = false ]; // incubate for auto parallel
 }
 
 message HybridConfig {
@@ -205,6 +207,12 @@ message TableAccessorParameter {
   repeated TableAccessorSaveParameter table_accessor_save_param = 8;
   optional SGDParameter embed_sgd_param = 10;
   optional SGDParameter embedx_sgd_param = 11;
+  optional GraphSGDParameter graph_sgd_param = 12;
+}
+
+message GraphSGDParameter {
+  optional uint32 nodeid_slot = 1 [ default = 9008 ];
+  optional float feature_learning_rate = 2 [ default = 0.05 ];
 }
 
 message SGDParameter {
@@ -316,6 +324,7 @@ message DistributedStrategy {
   optional bool auto_search = 37 [ default = false ];
   optional bool heter_ccl_mode = 38 [ default = false ];
   optional bool is_fl_ps_mode = 39 [ default = false ];
+  optional bool with_coordinator = 40 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;

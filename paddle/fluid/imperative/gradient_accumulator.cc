@@ -39,6 +39,9 @@
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace paddle {
 namespace imperative {
@@ -119,10 +122,9 @@ class TensorAddFunctor
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void operator()(const platform::CUDAPlace& place) const {
-    platform::CUDADeviceContext* ctx =
-        dynamic_cast<platform::CUDADeviceContext*>(
-            platform::DeviceContextPool::Instance().Get(place));
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(*ctx);
+    phi::GPUContext* ctx = dynamic_cast<phi::GPUContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(*ctx);
     blas.AXPY(numel_, 1., x_, y_);
   }
 #else
@@ -189,10 +191,19 @@ class TensorAddFunctor
         place));
   }
   void operator()(const platform::CustomPlace& place) const {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    platform::CustomDeviceContext* ctx =
+        dynamic_cast<platform::CustomDeviceContext*>(
+            platform::DeviceContextPool::Instance().Get(place));
+    phi::stream::Stream stream(place, ctx->stream());
+    auto device = phi::DeviceManager::GetDeviceWithPlace(place);
+    device->BlasAXPBY<T>(stream, static_cast<size_t>(numel_), 1., x_, 1., y_);
+#else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Gradient accumulation on place (%s) "
         "is not supported in imperative mode",
         place));
+#endif
   }
 
  private:
@@ -351,15 +362,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
     return;
   }
 #endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (platform::is_custom_place(place)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Gradient accumulation of data type (%s) on place (%s) is not "
-        "supported in imperative mode",
-        framework::DataTypeToString(data_type),
-        place));
-  }
-#endif
+
 #ifdef PADDLE_WITH_XPU
   if (platform::is_xpu_place(place)) {
     if (data_type == framework::DataTypeTrait<float>::DataType()) {
@@ -429,7 +432,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   if (data_type == framework::proto::VarType::FP16) {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      return TensorAddImpl<platform::CUDADeviceContext, platform::float16>(
+      return TensorAddImpl<phi::GPUContext, platform::float16>(
           src_tensor, dst_tensor, place);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -446,7 +449,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   if (data_type == framework::proto::VarType::BF16) {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      return TensorAddImpl<platform::CUDADeviceContext, platform::bfloat16>(
+      return TensorAddImpl<phi::GPUContext, platform::bfloat16>(
           src_tensor, dst_tensor, place);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -495,8 +498,8 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (paddle::platform::is_gpu_place(place)) {
-    PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CUDADeviceContext, float);
-    PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CUDADeviceContext, double);
+    PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(phi::GPUContext, float);
+    PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(phi::GPUContext, double);
   } else {
 #endif
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(phi::CPUContext, float);
@@ -547,8 +550,8 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
-    PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CUDADeviceContext, float);
-    PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CUDADeviceContext, double);
+    PADDLE_SELECTED_ROWS_ADD_TENSOR(phi::GPUContext, float);
+    PADDLE_SELECTED_ROWS_ADD_TENSOR(phi::GPUContext, double);
   } else {
 #endif
     PADDLE_SELECTED_ROWS_ADD_TENSOR(phi::CPUContext, float);
@@ -610,8 +613,8 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (paddle::platform::is_gpu_place(place)) {
-    PADDLE_SELECTED_ROWS_ADD(platform::CUDADeviceContext, float);
-    PADDLE_SELECTED_ROWS_ADD(platform::CUDADeviceContext, double);
+    PADDLE_SELECTED_ROWS_ADD(phi::GPUContext, float);
+    PADDLE_SELECTED_ROWS_ADD(phi::GPUContext, double);
   } else {
 #endif
     PADDLE_SELECTED_ROWS_ADD(phi::CPUContext, float);

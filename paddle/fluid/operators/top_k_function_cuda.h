@@ -902,7 +902,7 @@ __global__ void AssignGradWithAxis(const T* grad_out,
 }
 // use the radix sort for the topk
 template <typename T>
-bool SortTopk(const platform::CUDADeviceContext& ctx,
+bool SortTopk(const phi::GPUContext& ctx,
               const framework::Tensor* input_tensor,
               const int64_t num_cols,
               const int64_t num_rows,
