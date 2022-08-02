@@ -26,7 +26,6 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.initializer import Constant
 from paddle import _C_ops
-from paddle.fluid.framework import ParamBase, _in_legacy_dygraph, in_dygraph_mode, Variable, device_guard
 from paddle.distributed.collective import _get_default_group
 from paddle.optimizer.lr import LRScheduler
 from .optimizer import Optimizer
