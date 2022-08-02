@@ -104,17 +104,21 @@ class TestWholeProgram(unittest.TestCase):
         paddle.enable_static()
         # step 1: build program
         program_helper.build_program(mode='train')
+        program_helper.build_program(mode='eval')
+        # support easily to switch mode
+        program_helper.to('train')
+
         forward_ops = program_helper.main_program.block(0).ops
         self.assertEqual(len(forward_ops), 21)
 
         # step 2: apply optimzer to generate whole program
         optimize_ops, _ = program_helper.apply_optimizer(optimizer)
         all_ops = program_helper.main_program.block(0).ops
-        self.assertEqual(len(all_ops), 41)
         sgd_ops = [
             op for op in program_helper.main_program.block(0).ops
             if op.type == 'sgd'
         ]
+        self.assertEqual(len(all_ops), 41)
         self.assertEqual(len(optimize_ops), len(sgd_ops))
 
         program_helper.reset()

@@ -20,6 +20,7 @@ from paddle.jit import to_static, not_to_static
 from paddle.distributed.utils import get_logger
 from paddle.fluid.framework import Operator, Parameter, _non_static_mode
 from paddle.fluid.framework import program_guard
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 
 from .utils import to_list
 
@@ -41,29 +42,30 @@ class ProxyLayer(Layer):
         self.mode = None
 
         # generated program vars
-        self.input_vars = []
-        self.label_vars = []
-        self.output_vars = []
-        self.loss_vars = []
-        self.metric_vars = []
+        self._input_vars = defaultdict(list)
+        self._label_vars = defaultdict(list)
+        self._output_vars = defaultdict(list)
+        self._loss_vars = defaultdict(list)
+        self._metric_vars = defaultdict(list)
 
     def _train(self, inputs, labels):
         """
         Train process of inner_layer with forward/loss/metric logic.
         """
         # step 1. save feed variables of Program
-        self.input_vars = inputs
-        self.label_vars = labels
+        mode = 'train'
+        self._input_vars[mode] = inputs
+        self._label_vars[mode] = labels
 
         # step 2. call inner_layer.forward
-        self.output_vars = self.inner_layer(*inputs)
+        self._output_vars[mode] = self.inner_layer(*inputs)
 
         # step 3. calculate loss if needed
         new_inputs = self._prepare(self.output_vars, labels)
-        self.loss_vars = self.call_loss(new_inputs)
+        self._loss_vars[mode] = self.call_loss(new_inputs)
 
         # step 4. calculate metrics if needed
-        self.metric_vars = self.call_metrics(new_inputs)
+        self._metric_vars[mode] = self.call_metrics(new_inputs)
 
     def _eval(self, inputs, labels):
         """
@@ -73,28 +75,30 @@ class ProxyLayer(Layer):
         # sure if they can.
 
         # step 1. save feed variables of Program
-        self.input_vars = inputs
-        self.label_vars = labels
+        mode = 'eval'
+        self._input_vars[mode] = inputs
+        self._label_vars[mode] = labels
 
         # step 2. call inner_layer.forward
-        self.output_vars = self.inner_layer(*inputs)
+        self._output_vars[mode] = self.inner_layer(*inputs)
 
         # step 3. calculate loss if needed
         new_inputs = self._prepare(self.output_vars, labels)
-        self.loss_vars = self.call_loss(new_inputs)
+        self._loss_vars[mode] = self.call_loss(new_inputs)
 
         # step 4. calculate metrics if needed
-        self.metric_vars = self.call_metrics(new_inputs)
+        self._metric_vars[mode] = self.call_metrics(new_inputs)
 
     def _predict(self, inputs):
         """
         Predict process of inner_layer with forward logic.
         """
         # step 1. save feed variables of Program
-        self.input_vars = inputs
+        mode = 'predict'
+        self._input_vars[mode] = inputs
 
         # step 2. call inner_layer.forward
-        self.output_vars = self.inner_layer(*inputs)
+        self._output_vars[mode] = self.inner_layer(*inputs)
 
     @not_to_static
     def _prepare(self, outputs, labels):
@@ -140,6 +144,26 @@ class ProxyLayer(Layer):
 
     def clone(self):
         return ProxyLayer(self.inner_layer, self.loss_func, self.metrics)
+
+    @property
+    def input_vars(self):
+        return self._input_vars[self.mode]
+
+    @property
+    def label_vars(self):
+        return self._label_vars[self.mode]
+
+    @property
+    def output_vars(self):
+        return self._output_vars[self.mode]
+
+    @property
+    def loss_vars(self):
+        return self._loss_vars[self.mode]
+
+    @property
+    def metric_vars(self):
+        return self._metric_vars[self.mode]
 
 
 class BuildInfo:
@@ -188,6 +212,7 @@ class ProgramHelper(object):
         Convert dygraph model into static Program IR.
         """
         assert mode in ['train', 'eval', 'predict']
+        self.proxy_layer.set_mode(mode)
         # skip if we has already built program.
         if self.build_info.has_cache(mode, True):
             self._logger.info(
@@ -196,7 +221,6 @@ class ProgramHelper(object):
             return
 
         self._logger.info("start to build program for mode = %s." % mode)
-        self.proxy_layer.mode = mode
         input_spec = [self.inputs_spec, self.labels_spec
                       ] if mode != 'predict' else [self.inputs_spec]
         static_func = to_static(self.static_func(), input_spec=input_spec)
@@ -207,6 +231,8 @@ class ProgramHelper(object):
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
         getattr(self.proxy_layer, func_name).concrete_program
+
+        self._build_startup_program()
 
     def _build_startup_program(self):
         """
@@ -225,6 +251,7 @@ class ProgramHelper(object):
         """
         Append backward and generate optimizer operations.
         """
+        import paddle
         self._verify_optimizer(optimizer)
         self._logger.info("start to apply optimizer: %s ",
                           type(optimizer).__name__)
@@ -247,6 +274,16 @@ class ProgramHelper(object):
             self.loss_vars
         ) == 1, "Required len(loss_vars) == 1, but received len(loss_vars) = %s" % len(
             self.loss_vars)
+
+    def to(self, mode):
+        """
+        Swith underly proxy layer mode into target mode.
+        """
+        assert mode in ['train', 'eval', 'predict']
+        func = getattr(self.proxy_layer, '_' + mode)
+        assert isinstance(
+            func, StaticFunction), "Please call build_program(mode) firstly."
+        self.proxy_layer.set_mode(mode)
 
     def static_func(self):
         """
