@@ -121,7 +121,6 @@ class XPUTestOneHotOP(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('one_hot')
-print("support_types: %s" % str(support_types))
 for stype in support_types:
     create_test_class(globals(), XPUTestOneHotOP, stype)
 
