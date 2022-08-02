@@ -377,9 +377,12 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
 REGISTER_OP_CUDA_KERNEL(
     multihead_matmul,
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
     ops::MultiHeadMatMulV2Kernel<phi::GPUContext, paddle::platform::float16>,
-#endif
     ops::MultiHeadMatMulV2Kernel<phi::GPUContext, float>);
+#else
+REGISTER_OP_CUDA_KERNEL(multihead_matmul,
+                        ops::MultiHeadMatMulV2Kernel<phi::GPUContext, float>);
+#endif
