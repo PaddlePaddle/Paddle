@@ -333,8 +333,7 @@ void InterpreterCore::BuildOperatorDependences() {
   // Schedule
   auto op_nums = vec_instruction_.size();
   dependecy_count_.resize(op_nums);
-  auto op2downstream = interpreter::build_op_downstream_map(
-      vec_instruction_, &op_happens_before_);
+  auto op2downstream = dependency_builder_.Build(vec_instruction_);
   for (size_t op = 0; op < vec_instruction_.size(); ++op) {
     auto op_list = op2downstream[op];
     std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
@@ -450,7 +449,7 @@ void InterpreterCore::Convert(
       bool not_before_any = true;
       // find the op that is not executed before any
       for (size_t other_item : last_live_ops_[i]) {
-        if (op_happens_before_[item][other_item]) {
+        if (dependency_builder_.OpHappensBefore(item, other_item)) {
           VLOG(8) << "happens_before: " << item << "->" << other_item
                   << ", so skip " << item;
           not_before_any = false;
@@ -854,9 +853,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
   platform::RecordEvent record(
       "RecordStreamForGC", platform::TracerEventType::UserDefined, 10);
 
-  gpuStream_t stream = reinterpret_cast<const platform::CUDADeviceContext&>(
-                           instr.DeviceContext())
-                           .stream();
+  gpuStream_t stream =
+      reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext()).stream();
   auto TensorRecordStream = [&stream](Tensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {

@@ -259,17 +259,14 @@ REGISTER_OP_CPU_KERNEL(
     ops::PadConstantLikeGradKernel<phi::CPUContext, int>,
     ops::PadConstantLikeGradKernel<phi::CPUContext, int64_t>);
 
-REGISTER_OP_CUDA_KERNEL(
-    pad_constant_like,
-    ops::PadConstantLikeKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::PadConstantLikeKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::PadConstantLikeKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::PadConstantLikeKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(pad_constant_like,
+                        ops::PadConstantLikeKernel<phi::GPUContext, float>,
+                        ops::PadConstantLikeKernel<phi::GPUContext, double>,
+                        ops::PadConstantLikeKernel<phi::GPUContext, int>,
+                        ops::PadConstantLikeKernel<phi::GPUContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     pad_constant_like_grad,
-    ops::PadConstantLikeGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::PadConstantLikeGradKernel<paddle::platform::CUDADeviceContext,
-                                   int64_t>,
-    ops::PadConstantLikeGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::PadConstantLikeGradKernel<paddle::platform::CUDADeviceContext,
-                                   double>);
+    ops::PadConstantLikeGradKernel<phi::GPUContext, int>,
+    ops::PadConstantLikeGradKernel<phi::GPUContext, int64_t>,
+    ops::PadConstantLikeGradKernel<phi::GPUContext, float>,
+    ops::PadConstantLikeGradKernel<phi::GPUContext, double>);

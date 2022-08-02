@@ -103,8 +103,8 @@ struct CastDataType {
             CastDataTypeFunctor<InType, OutType>());
 #if defined(__NVCC__) || defined(__HIPCC__)
     } else if (platform::is_gpu_place(in_.place())) {
-      platform::Transform<platform::CUDADeviceContext> trans;
-      auto* context = static_cast<const platform::CUDADeviceContext*>(ctx_);
+      platform::Transform<phi::GPUContext> trans;
+      auto* context = static_cast<const phi::GPUContext*>(ctx_);
       trans(*context,
             in_begin,
             in_end,

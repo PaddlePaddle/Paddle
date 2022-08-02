@@ -245,8 +245,7 @@ void SampleNeighbors(const framework::ExecutionContext& ctx,
       <<<grid,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(0,
                           k,
                           bs,
@@ -305,8 +304,7 @@ void FillHashTable(const framework::ExecutionContext& ctx,
       <<<grid,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(input,
                           num_input,
                           len_hashtable,
@@ -319,8 +317,7 @@ void FillHashTable(const framework::ExecutionContext& ctx,
       <<<grid,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(input,
                           thrust::raw_pointer_cast(item_count.data()),
                           num_input,
@@ -338,8 +335,7 @@ void FillHashTable(const framework::ExecutionContext& ctx,
       <<<grid,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(input,
                           num_input,
                           len_hashtable,
@@ -398,8 +394,7 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
       <<<grid,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(thrust::raw_pointer_cast(outputs->data()),
                           outputs->size(),
                           size,
@@ -411,8 +406,7 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
       <<<grid_,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(thrust::raw_pointer_cast(orig_nodes->data()),
                           bs,
                           thrust::raw_pointer_cast(reindex_nodes->data()),
@@ -625,8 +619,7 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
         <<<grid,
            block,
            0,
-           reinterpret_cast<const platform::CUDADeviceContext&>(
-               ctx.device_context())
+           reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
                .stream()>>>(
             unique_dst_size,
             thrust::raw_pointer_cast(unique_dst_merge_reindex.data()),
@@ -650,7 +643,7 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(graph_khop_sampler,

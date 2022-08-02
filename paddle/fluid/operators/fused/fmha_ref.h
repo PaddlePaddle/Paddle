@@ -67,7 +67,7 @@ class AttnDropoutParam {
 template <typename T>
 class FMHARef {
  public:
-  FMHARef(const platform::CUDADeviceContext& dev_ctx,
+  FMHARef(const phi::GPUContext& dev_ctx,
           int64_t batch_size,
           int64_t seq_len,
           int64_t num_head,
@@ -146,7 +146,7 @@ class FMHARef {
     // q*k^t, batched_gemm
     CBLAS_TRANSPOSE transA = CblasNoTrans;
     CBLAS_TRANSPOSE transB = CblasTrans;
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     int gemm_batch_size = batch_size_ * num_head_;
     int gemm_m = seq_len_;
     int gemm_n = out_seq_len;
@@ -274,7 +274,7 @@ class FMHARef {
                        Tensor* transpose_2_out_grad_tensor,
                        Tensor* src_mask_grad_tensor,
                        Tensor* qkv_input_grad_tensor) {
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     int q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
     int k_size = q_size;
     int softmax_axis = -1;
@@ -479,7 +479,7 @@ class FMHARef {
   }
 
  private:
-  const platform::CUDADeviceContext& dev_ctx_;
+  const phi::GPUContext& dev_ctx_;
 
   int64_t batch_size_;
   int64_t seq_len_;
