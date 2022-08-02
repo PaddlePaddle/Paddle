@@ -388,7 +388,7 @@ class TestLogPJVPAndTranspose(TestAddPJVPAndTranspose):
             # prim op:
             'log_p',
             # jvp op:
-            'dev_p',
+            'div_p',
             # transpose op:
         ]
 
