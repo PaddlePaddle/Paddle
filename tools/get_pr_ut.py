@@ -62,8 +62,9 @@ class PRChecker(object):
         while True:
             try:
                 commits = self.pr.get_commits().get_page(ix)
-                for c in commits:
-                    last_commit = c.commit
+                if len(commits) == 0:
+                    raise ValueError("no commit found in {} page".format(ix))
+                last_commit = commits[-1].commit
             except Exception as e:
                 break
             else:
