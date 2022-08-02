@@ -1857,7 +1857,7 @@
     func : QrInferMeta
   kernel :
     func : qr
-  # backward : qr_grad
+  backward : qr_grad
 
 - api : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
