@@ -66,7 +66,7 @@ __device__ float4 add_func<float4>(float4 a, float4 b) {
   c.w = a.w + b.w;
   return c;
 }
-
+#if defined(PADDLE_WITH_CUDA)
 template <>
 __device__ half2 add_func<half2>(half2 a, half2 b) {
 #if __CUDA_ARCH__ >= 530
@@ -85,6 +85,7 @@ __device__ half add_func<half>(half a, half b) {
   return __float2half(__half2float(a) + __half2float(b));
 #endif
 }
+#endif
 
 template <typename T>
 __global__ void TransposeQkvKernel(const int H,
