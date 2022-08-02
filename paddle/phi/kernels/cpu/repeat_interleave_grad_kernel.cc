@@ -30,9 +30,6 @@ void RepeatInterleaveWithTensorIndexGradKernel(
     const DenseTensor& out_grad,
     int dim,
     DenseTensor* x_grad) {
-  auto place = ctx.GetPlace();
-  auto cpu_place = phi::CPUPlace();
-
   auto input_dim = x_grad->dims();
   if (dim < 0) {
     dim += input_dim.size();

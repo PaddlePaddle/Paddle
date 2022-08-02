@@ -26,3 +26,12 @@ PD_REGISTER_KERNEL(repeat_interleave,
                    double,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::RepeatInterleaveWithTensorIndexKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

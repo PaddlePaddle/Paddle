@@ -166,38 +166,6 @@ void RepeatInterleaveWithTensorIndexGradKernel(
 #endif
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
-template <typename T, typename IndexT>
-__global__ void index_select_grad_cuda_kernel(const T* output_grad,
-                                              T* input_grad,
-                                              const IndexT* index,
-                                              int64_t nums,
-                                              int64_t N,
-                                              int64_t stride,
-                                              int64_t size,
-                                              int64_t delta) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
-    return;
-  }
-
-  int64_t pre_idx = idx / (stride * size);
-  int64_t dim_idx = idx % (stride * size) / stride;
-  IndexT src_dim_idx = index[dim_idx];
-  int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-  paddle::platform::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
-}
-
-template <typename T>
-__global__ void index_select_grad_init(T* input_grad, int64_t N) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
-    return;
-  }
-  input_grad[idx] = 0.0;
-}
-#endif
 template <typename T, typename Context>
 void RepeatInterleaveGradKernel(const Context& ctx,
                                 const DenseTensor& x,
