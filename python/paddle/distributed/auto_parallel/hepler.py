@@ -251,7 +251,6 @@ class ProgramHelper(object):
         """
         Append backward and generate optimizer operations.
         """
-        import paddle
         self._verify_optimizer(optimizer)
         self._logger.info("start to apply optimizer: %s ",
                           type(optimizer).__name__)
@@ -277,7 +276,7 @@ class ProgramHelper(object):
 
     def to(self, mode):
         """
-        Swith underly proxy layer mode into target mode.
+        Switch underly proxy layer mode into target mode.
         """
         assert mode in ['train', 'eval', 'predict']
         func = getattr(self.proxy_layer, '_' + mode)
@@ -287,7 +286,7 @@ class ProgramHelper(object):
 
     def static_func(self):
         """
-        Return Staticfunction with underly target mode .
+        Return StaticFunction instance with underly target mode.
         """
         assert self.proxy_layer.mode in [
             'train', 'eval', 'predict'
