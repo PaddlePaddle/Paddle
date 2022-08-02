@@ -505,6 +505,9 @@ class TestNearestInterpOpFloat16(OpTest):
     def test_check_output(self):
         self.check_output_with_place(place=core.CPUPlace(), atol=1)
 
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', in_place=True)
+
     def init_test_case(self):
         self.interp_method = 'nearest'
         self.input_shape = [1, 3, 9, 6]
