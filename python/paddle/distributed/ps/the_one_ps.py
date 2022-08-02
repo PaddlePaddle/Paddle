@@ -157,6 +157,8 @@ class Accessor:
             accessor_proto.embedx_threshold = 0
 
         ctr_accessor_param = accessor_proto.ctr_accessor_param
+        if accessor_proto.embedx_dim == 0:
+            ctr_accessor_param.zero_init = False
         if not ctr_accessor_param.HasField("nonclk_coeff"):
             ctr_accessor_param.nonclk_coeff = 0.1
         if not ctr_accessor_param.HasField("click_coeff"):
@@ -664,6 +666,17 @@ class SparseTable(Table):
                 warnings.warn(
                     "The shard_num of sparse table is not set, use default value 1000 in cpups."
                 )
+
+        if usr_table_proto.HasField("enable_sparse_table_cache"):
+            table_proto.enable_sparse_table_cache = usr_table_proto.enable_sparse_table_cache
+        if usr_table_proto.HasField("sparse_table_cache_rate"):
+            table_proto.sparse_table_cache_rate = usr_table_proto.sparse_table_cache_rate
+        if usr_table_proto.HasField("sparse_table_cache_file_num"):
+            table_proto.sparse_table_cache_file_num = usr_table_proto.sparse_table_cache_file_num
+        if usr_table_proto.HasField("enable_revert"):
+            table_proto.enable_revert = usr_table_proto.enable_revert
+        if usr_table_proto.HasField("shard_merge_rate"):
+            table_proto.shard_merge_rate = usr_table_proto.shard_merge_rate
 
         if usr_table_proto.accessor.ByteSize() == 0:
             warnings.warn(
