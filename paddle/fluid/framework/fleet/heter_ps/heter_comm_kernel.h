@@ -113,22 +113,25 @@ class HeterCommKernel {
                      StreamType stream = NULL, bool debug_synchronous = false);
 #endif
 
-  template <typename KeyT, typename ValueT>
-  void merge_grad(KeyT* d_keys, ValueT* d_vals_in, int len, ValueT* d_vals_out);
+  template <typename KeyT, typename ValueT, typename StreamType>
+  void merge_grad(KeyT* d_keys, ValueT* d_vals_in, int len, ValueT* d_vals_out,
+      const StreamType& stream);
 
 #if defined(PADDLE_WITH_XPU_KP)
 
-template <typename ValueT>
+template <typename ValueT, typename StreamType>
 void convert_feature_value_as_float(
     ValueT* d_vals_in,
     int len,
-    bool to_float);
+    bool to_float,
+    const StreamType& stream);
 
-template <typename ValueT>
+template <typename ValueT, typename StreamType>
 void convert_feature_push_value_as_float(
     ValueT* d_vals_in,
     int len,
-    bool to_float);
+    bool to_float,
+    const StreamType& stream);
 
 #endif
 
