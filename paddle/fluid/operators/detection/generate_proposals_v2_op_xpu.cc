@@ -219,20 +219,14 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
 
   // 4. nms
   int nms_keep_num = 0;
-  r = xpu::nms<T>(dev_ctx.x_context(),
-                  proposals_filter.data<T>(),
-                  nullptr,
-                  keep_index.data<int>(),
-                  1,
-                  1,
-                  keep_num,
-                  -1,
-                  nms_thresh,
-                  -1,
-                  0,
-                  &nms_keep_num,
-                  pixel_offset);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "nms");
+  r = xpu::sorted_nms<T>(dev_ctx.x_context(),
+                         proposals_filter.data<T>(),
+                         keep_index.data<int>(),
+                         nms_keep_num,
+                         keep_num,
+                         nms_thresh,
+                         pixel_offset);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_nms");
   if (post_nms_top_n > 0 && post_nms_top_n < nms_keep_num) {
     keep_index.Resize({post_nms_top_n});
   } else {

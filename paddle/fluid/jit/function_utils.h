@@ -18,18 +18,23 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/fluid/jit/function_schema.h"
 
 namespace paddle {
+
+namespace framework {
+class Variable;
+class ProgramDesc;
+class Scope;
+}  // namespace framework
+
 namespace jit {
 using Variable = paddle::framework::Variable;
-using Name2VariableMap = std::unordered_map<std::string, Variable>;
+using Name2VariableMap =
+    std::unordered_map<std::string, std::shared_ptr<Variable>>;
 using DenseTensor = phi::DenseTensor;
 using Tensor = paddle::experimental::Tensor;
 
