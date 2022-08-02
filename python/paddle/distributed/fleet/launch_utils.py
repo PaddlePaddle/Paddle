@@ -658,7 +658,7 @@ def watch_local_trainers(procs, nranks):
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
             .format(nranks, error_rank))
         terminate_local_procs(procs)
-        return
+        raise
     except:
         logger.error(
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
