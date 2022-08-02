@@ -276,7 +276,7 @@
     func : assign_value
     param : [shape, dtype, values]
     data_type : dtype
-    backend : place > output 
+    backend : place > output
 
 # atan
 - api : atan
