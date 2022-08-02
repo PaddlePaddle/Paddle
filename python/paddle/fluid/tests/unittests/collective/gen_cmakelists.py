@@ -14,19 +14,25 @@
 
 
 def parse_line(line, tests):
-    name, os, arch, timeout, run_type, launcher, dist_ut_port, envs = line.strip(
+    name, os_, arch, timeout, run_type, launcher, dist_ut_port, envs = line.strip(
     ).split(",")
+    archs = ""
+    for a in arch.split(";"):
+        archs += "WITH_" + a.upper() + " OR "
+    arch = "(" + archs[:-4] + ")"
+
     cmd = ""
     if name == "name":
         return cmd
     if (name not in tests):
         tests.append(name)
-        for o in os.split(";"):
-            o = o.upper()
-            for a in arch.split(";"):
-                a = a.upper()
-                if launcher[-3:] == ".sh":
-                    cmd += f'''if(WITH_{a} AND {o})
+        os_ = os_.replace(";", " or ")
+        os_ = os_.upper()
+        os_ = os_.replace("LINUX", "(NOT APPLE AND NOT WIN32)")
+        os_ = "(" + os_ + ")"
+        a = arch
+        if launcher[-3:] == ".sh":
+            cmd += f'''if({a} AND {os_})
     bash_test_modules(
     {name}
     START_BASH
@@ -37,9 +43,9 @@ def parse_line(line, tests):
     "PADDLE_DIST_UT_PORT={dist_ut_port};{envs}")
     set_tests_properties({name} PROPERTIES  TIMEOUT "{timeout}")
 endif()
-        '''
-                else:
-                    cmd += f'''if(WITH_{a} AND {o})
+'''
+        else:
+            cmd += f'''if({a} AND {os_})
     py_test_modules(
     {name}
     MODULES
@@ -58,8 +64,8 @@ if __name__ == "__main__":
     if current_work_dir == "":
         current_work_dir = "."
     tests = []
-    cmds = "set(LINUX ON)\n"
+    cmds = ""
     for line in open(f"{current_work_dir}/testslist.csv"):
         cmds += parse_line(line, tests)
-    print(cmds)
-    print(cmds, file=open(f"{current_work_dir}/CMakeLists.txt", "w"))
+    print(cmds, end="")
+    print(cmds, end="", file=open(f"{current_work_dir}/CMakeLists.txt", "w"))
