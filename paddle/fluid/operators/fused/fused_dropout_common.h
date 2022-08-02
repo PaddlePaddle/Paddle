@@ -40,7 +40,7 @@ namespace operators {
  * 2D grids: gridDim.y = rows
  */
 inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
-    const platform::CUDADeviceContext &ctx,
+    const phi::GPUContext &ctx,
     const uint32_t rows,
     const uint32_t cols,
     const int vec_size) {
@@ -101,9 +101,7 @@ __forceinline__ __device__ void RandVec<8>(curandStatePhilox4_32_10_t *state,
 }
 
 template <typename T>
-inline void SetZero(const platform::CUDADeviceContext &ctx,
-                    T *ptr,
-                    const size_t size) {
+inline void SetZero(const phi::GPUContext &ctx, T *ptr, const size_t size) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(ptr, 0, size * sizeof(T), ctx.stream()));
 }

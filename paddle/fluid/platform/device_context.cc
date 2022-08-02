@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/allocator.h"
 
@@ -51,17 +50,16 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
 
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto* default_dev_ctx = static_cast<platform::CUDADeviceContext*>(
+    auto* default_dev_ctx = static_cast<phi::GPUContext*>(
         platform::DeviceContextPool::Instance().Get(place));
-    auto& desired_dev_ctx =
-        static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+    auto& desired_dev_ctx = static_cast<const phi::GPUContext&>(dev_ctx);
     if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
       return paddle::memory::Alloc(desired_dev_ctx.GetPlace(),
                                    size,
                                    phi::Stream(reinterpret_cast<phi::StreamId>(
                                        desired_dev_ctx.stream())));
     } else {
-      return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
+      return allocation::GPUContextAllocatorPool::Instance().Alloc(
           desired_dev_ctx, size);
     }
 #else
@@ -192,11 +190,11 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
   auto* dev_ctx = new DevCtx(p);
   if (is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto* cuda_ctx = dynamic_cast<CUDADeviceContext*>(dev_ctx);
+    auto* cuda_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
     PADDLE_ENFORCE_NOT_NULL(
         cuda_ctx,
         platform::errors::InvalidArgument(
-            "Failed to dynamic_cast dev_ctx into CUDADeviceContext."));
+            "Failed to dynamic_cast dev_ctx into phi::GPUContext."));
 
     auto& instance = memory::allocation::AllocatorFacade::Instance();
     if (!disable_setting_default_stream_for_allocator) {
@@ -272,7 +270,7 @@ void EmplaceDeviceContexts(
 #endif
     } else if (platform::is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      EmplaceDeviceContext<CUDADeviceContext>(
+      EmplaceDeviceContext<phi::GPUContext>(
           place_to_device_context,
           p,
           disable_setting_default_stream_for_allocator);
@@ -532,24 +530,6 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
   // reset allocation first before re-allocate to save memory
   allocation_.reset();
   allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
-}
-
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : phi::GPUContext(place) {
-  phi::GPUContext::PartialInitWithoutAllocator();
-  cuda_stream_.reset(new stream::CUDAStream(phi::GPUContext::stream(), place));
-}
-
-CUDADeviceContext::~CUDADeviceContext() = default;
-
-stream::CUDAStream* CUDADeviceContext::GetCudaStream() const {
-  return cuda_stream_.get();
-}
-
-stream::CUDAStream* CUDADeviceContext::SetCudaStream(
-    stream::CUDAStream* new_stream_ptr) {
-  auto* old_stream_ptr = cuda_stream_.release();
-  cuda_stream_.reset(new_stream_ptr);
-  return old_stream_ptr;
 }
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {

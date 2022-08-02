@@ -141,55 +141,20 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
 #endif
 }
 
-template class SoftmaxCUDNNFunctor<float, platform::CUDADeviceContext>;
-template class SoftmaxCUDNNFunctor<platform::float16,
-                                   platform::CUDADeviceContext>;
-template class SoftmaxGradCUDNNFunctor<float, platform::CUDADeviceContext>;
-template class SoftmaxGradCUDNNFunctor<platform::float16,
-                                       platform::CUDADeviceContext>;
 template class SoftmaxCUDNNFunctor<float, phi::GPUContext>;
 template class SoftmaxCUDNNFunctor<platform::float16, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<float, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<platform::float16, phi::GPUContext>;
 #if CUDNN_VERSION_MIN(8, 1, 0)
-template class SoftmaxCUDNNFunctor<platform::bfloat16,
-                                   platform::CUDADeviceContext>;
-template class SoftmaxGradCUDNNFunctor<platform::bfloat16,
-                                       platform::CUDADeviceContext>;
 template class SoftmaxCUDNNFunctor<platform::bfloat16, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<platform::bfloat16, phi::GPUContext>;
 #endif
 
 // MIOPEN do not support double
 #ifndef PADDLE_WITH_HIP
-template class SoftmaxCUDNNFunctor<double, platform::CUDADeviceContext>;
-template class SoftmaxGradCUDNNFunctor<double, platform::CUDADeviceContext>;
 template class SoftmaxCUDNNFunctor<double, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<double, phi::GPUContext>;
 #endif
-
-template class SoftmaxFunctor<platform::CUDADeviceContext,
-                              platform::float16,
-                              false>;
-template class SoftmaxFunctor<platform::CUDADeviceContext,
-                              platform::float16,
-                              true>;
-template class SoftmaxFunctor<platform::CUDADeviceContext,
-                              platform::bfloat16,
-                              false>;
-template class SoftmaxFunctor<platform::CUDADeviceContext,
-                              platform::bfloat16,
-                              true>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, float, false>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, double, false>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, float, true>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, double, true>;
-template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;
-template class SoftmaxGradFunctor<platform::CUDADeviceContext, double>;
-template class SoftmaxGradFunctor<platform::CUDADeviceContext,
-                                  platform::float16>;
-template class SoftmaxGradFunctor<platform::CUDADeviceContext,
-                                  platform::bfloat16>;
 
 template class SoftmaxFunctor<phi::GPUContext, platform::float16, false>;
 template class SoftmaxFunctor<phi::GPUContext, platform::float16, true>;

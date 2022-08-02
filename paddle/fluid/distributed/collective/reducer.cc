@@ -241,7 +241,7 @@ static void SplitTensorsWithType(const DeviceContext &context,
 void EagerGroup::ConcatTensors(const platform::Place &place) {
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto *default_ctx = static_cast<platform::CUDADeviceContext *>(
+    auto *default_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     ConcatTensorsWithType(
         *default_ctx, dense_tensors_, &dense_contents_, dtype_);
@@ -264,7 +264,7 @@ void EagerGroup::ConcatTensors(const platform::Place &place) {
 void EagerGroup::SplitTensors(const platform::Place &place) {
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto *default_ctx = static_cast<platform::CUDADeviceContext *>(
+    auto *default_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     SplitTensorsWithType(
         *default_ctx, &dense_contents_, &dense_tensors_, dtype_);
@@ -321,7 +321,7 @@ EagerReducer::EagerReducer(
     const auto &accumulation_grad_node =
         std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
     accumulation_grad_node->RegisterReduceHook(
-        std::make_shared<egr::CppTensorVoidHook>(reduce_hook));
+        std::make_shared<egr::CppVoidHook>(reduce_hook));
 
     gradnode_index_map_[grad_node.get()] = global_var_index;
   }
@@ -883,7 +883,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
   auto *dev_ctx = platform::DeviceContextPool::Instance().Get(inner_place_);
   if (platform::is_gpu_place(inner_place_)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    dev_ctx = static_cast<platform::CUDADeviceContext *>(
+    dev_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(inner_place_));
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(

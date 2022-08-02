@@ -13,32 +13,26 @@
 #include "paddle/fluid/operators/spectral_op.cu.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    fft_c2c,
-    ops::FFTC2CKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FFTC2CKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(fft_c2c,
+                        ops::FFTC2CKernel<phi::GPUContext, float>,
+                        ops::FFTC2CKernel<phi::GPUContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(
-    fft_c2c_grad,
-    ops::FFTC2CGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FFTC2CGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(fft_c2c_grad,
+                        ops::FFTC2CGradKernel<phi::GPUContext, float>,
+                        ops::FFTC2CGradKernel<phi::GPUContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(
-    fft_c2r,
-    ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(fft_c2r,
+                        ops::FFTC2RKernel<phi::GPUContext, float>,
+                        ops::FFTC2RKernel<phi::GPUContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(
-    fft_c2r_grad,
-    ops::FFTC2RGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FFTC2RGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(fft_c2r_grad,
+                        ops::FFTC2RGradKernel<phi::GPUContext, float>,
+                        ops::FFTC2RGradKernel<phi::GPUContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(
-    fft_r2c,
-    ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(fft_r2c,
+                        ops::FFTR2CKernel<phi::GPUContext, float>,
+                        ops::FFTR2CKernel<phi::GPUContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(
-    fft_r2c_grad,
-    ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(fft_r2c_grad,
+                        ops::FFTR2CGradKernel<phi::GPUContext, float>,
+                        ops::FFTR2CGradKernel<phi::GPUContext, double>);

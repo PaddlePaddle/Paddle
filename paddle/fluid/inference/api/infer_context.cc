@@ -13,5 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/infer_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
-namespace paddle {}  // namespace paddle
+namespace paddle {
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+InferGPUContext::InferGPUContext(const phi::Place& place)
+    : phi::GPUContext(place, false) {}
+#endif
+
+}  // namespace paddle

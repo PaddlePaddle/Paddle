@@ -78,14 +78,12 @@ DefaultStreamGarbageCollector::DefaultStreamGarbageCollector(
     : GarbageCollector(place, max_memory_size) {}
 
 void DefaultStreamGarbageCollector::Wait() const {
-  static_cast<platform::CUDADeviceContext *>(this->dev_ctx_)
-      ->WaitStreamCallback();
+  static_cast<phi::GPUContext *>(this->dev_ctx_)->WaitStreamCallback();
 }
 
 void DefaultStreamGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
-  static_cast<platform::CUDADeviceContext *>(this->dev_ctx_)
-      ->AddStreamCallback(callback);
+  static_cast<phi::GPUContext *>(this->dev_ctx_)->AddStreamCallback(callback);
 }
 
 StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,

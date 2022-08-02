@@ -419,25 +419,24 @@ __global__ void MomentumLarsKernel(const T* param,
 }
 
 template <typename T, typename MT>
-inline void SeparatedLarsMomentumOpCUDAKernel(
-    const platform::CUDADeviceContext& cuda_ctx,
-    const T* param_data,
-    T* param_out_data,
-    const MT* velocity_data,
-    MT* velocity_out_data,
-    const T* grad_data,
-    const MT* lr,
-    MT* p_buffer,
-    MT* g_buffer,
-    const MT mu,
-    const MT lars_coeff,
-    const MT weight_decay,
-    const MT epsilon,
-    const MT rescale_grad,
-    const int64_t numel,
-    const MT* master_param_data,
-    MT* master_out_data,
-    const bool is_amp) {
+inline void SeparatedLarsMomentumOpCUDAKernel(const phi::GPUContext& cuda_ctx,
+                                              const T* param_data,
+                                              T* param_out_data,
+                                              const MT* velocity_data,
+                                              MT* velocity_out_data,
+                                              const T* grad_data,
+                                              const MT* lr,
+                                              MT* p_buffer,
+                                              MT* g_buffer,
+                                              const MT mu,
+                                              const MT lars_coeff,
+                                              const MT weight_decay,
+                                              const MT epsilon,
+                                              const MT rescale_grad,
+                                              const int64_t numel,
+                                              const MT* master_param_data,
+                                              MT* master_out_data,
+                                              const bool is_amp) {
   LarsThreadConfig<T> lars_thread_config(numel);
   L2NormKernel<T, MT><<<lars_thread_config.grid_for_norm,
                         LARS_BLOCK_SIZE,
@@ -483,11 +482,10 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     int num_blocks_per_sm = 0;
     bool multi_precision = ctx.Attr<bool>("multi_precision");
-    auto& cuda_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& cuda_ctx = ctx.template device_context<phi::GPUContext>();
     int sm_num = cuda_ctx.GetSMCount();
-    framework::Tensor tmp_buffer_t =
-        ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>(
-            {LARS_BLOCK_SIZE << 1}, cuda_ctx);
+    framework::Tensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
+        {LARS_BLOCK_SIZE << 1}, cuda_ctx);
     auto* p_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
     auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;
 
@@ -684,7 +682,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     lars_momentum,
-    ops::LarsMomentumOpCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LarsMomentumOpCUDAKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::LarsMomentumOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                  paddle::platform::float16>);
+    ops::LarsMomentumOpCUDAKernel<phi::GPUContext, float>,
+    ops::LarsMomentumOpCUDAKernel<phi::GPUContext, double>,
+    ops::LarsMomentumOpCUDAKernel<phi::GPUContext, paddle::platform::float16>);
