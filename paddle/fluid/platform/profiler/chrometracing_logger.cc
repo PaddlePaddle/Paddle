@@ -588,7 +588,7 @@ void ChromeTracingLogger::StartLog() {
         std::string(
             R"JSON(
     {
-       "id": %d, "name": "%s", "totalGlobalMem": %u,
+       "id": %d, "name": "%s", "totalGlobalMem": %llu,
       "computeMajor": %d, "computeMinor": %d,
       "maxThreadsPerBlock": %d, "maxThreadsPerMultiprocessor": %d,
       "regsPerBlock": %d, "regsPerMultiprocessor": %d, "warpSize": %d,
@@ -618,7 +618,7 @@ void ChromeTracingLogger::StartLog() {
         std::string(
             R"JSON(
     {
-       "id": %d, "name": "%s", "totalGlobalMem": %u,
+       "id": %d, "name": "%s", "totalGlobalMem": %llu,
       "computeMajor": %d, "computeMinor": %d,
       "maxThreadsPerBlock": %d, "maxThreadsPerMultiprocessor": %d,
       "regsPerBlock": %d, "regsPerMultiprocessor": %d, "warpSize": %d,

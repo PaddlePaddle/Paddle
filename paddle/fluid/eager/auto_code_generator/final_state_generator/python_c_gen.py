@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -71,7 +71,7 @@ PARSE_PYTHON_C_ARGS_TEMPLATE = \
 
 
 RECORD_EVENT_TEMPLATE = \
-"    paddle::platform::RecordEvent {}(\"{} {}\", paddle::platform::TracerEventType::Operator, 1);"
+"paddle::platform::RecordEvent {}(\"{} {}\", paddle::platform::TracerEventType::UserDefined, 1);"
 
 
 RETURN_INPLACE_PYOBJECT_TEMPLATE = \
@@ -253,6 +253,7 @@ NAMESPACE_WRAPPER_TEMPLATE = \
 ## Generator Classes ##
 #######################
 class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
+
     def __init__(self, forward_api_contents, namespace):
         # Members from Parent:
         #self.namespace
@@ -265,7 +266,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         #self.forward_outputs_position_map
         #self.optional_inputs
         #self.no_need_buffers
-        #self.intermediate_outputs   
+        #self.intermediate_outputs
         #self.inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
@@ -327,8 +328,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         set_device_str = FUNCTION_SET_DEVICE_TEMPLATE.format(expected_place_str)
 
         # Generate Dygraph Function Call Logic
-        num_args = len(forward_inputs_position_map.keys()) + len(
-            orig_forward_attrs_list)
+        num_args = len(
+            forward_inputs_position_map.keys()) + len(orig_forward_attrs_list)
         dygraph_function_call_list = ["" for i in range(num_args)]
         for name, (_, pos) in forward_inputs_position_map.items():
             dygraph_function_call_list[pos] = f"{name}"
@@ -336,7 +337,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             dygraph_function_call_list[pos] = f"{name}"
         dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
-        # Generate Python-C Function Definitions 
+        # Generate Python-C Function Definitions
         if is_forward_only:
             fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
                 "paddle::experimental::", namespace, forward_api_name)
@@ -441,8 +442,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
 
 class PythonCYamlGenerator(YamlGeneratorBase):
+
     def __init__(self, path):
-        # Parent members: 
+        # Parent members:
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list
@@ -457,8 +459,8 @@ class PythonCYamlGenerator(YamlGeneratorBase):
         forward_api_list = self.forward_api_list
 
         for forward_api_content in forward_api_list:
-            f_generator = PythonCSingleFunctionGenerator(forward_api_content,
-                                                         namespace)
+            f_generator = PythonCSingleFunctionGenerator(
+                forward_api_content, namespace)
             status = f_generator.run()
 
             if status == True:

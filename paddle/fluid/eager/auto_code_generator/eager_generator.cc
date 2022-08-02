@@ -476,7 +476,8 @@ static void SlotNameMatching(
               PADDLE_THROW(platform::errors::Fatal(
                   "Detected mismatched slot names."
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
-                  grad_slot_name, grad_fwd_slotname_map[grad_slot_name],
+                  grad_slot_name,
+                  grad_fwd_slotname_map[grad_slot_name],
                   fwd_slot_name));
             }
             grad_fwd_slotname_map[grad_slot_name] = fwd_slot_name;
@@ -489,7 +490,8 @@ static void SlotNameMatching(
               PADDLE_THROW(platform::errors::Fatal(
                   "Detected mismatched slot names."
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
-                  grad_slot_name, grad_grad_slotname_map[grad_slot_name],
+                  grad_slot_name,
+                  grad_grad_slotname_map[grad_slot_name],
                   fwd_slot_name));
             }
             grad_grad_slotname_map[grad_slot_name] = fwd_slot_name;
@@ -509,7 +511,8 @@ static void SlotNameMatching(
               PADDLE_THROW(platform::errors::Fatal(
                   "Detected mismatched slot names"
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
-                  grad_slot_name, grad_fwd_slotname_map[grad_slot_name],
+                  grad_slot_name,
+                  grad_fwd_slotname_map[grad_slot_name],
                   fwd_slot_name));
             }
             grad_fwd_slotname_map[grad_slot_name] = fwd_slot_name;
@@ -522,7 +525,8 @@ static void SlotNameMatching(
               PADDLE_THROW(platform::errors::Fatal(
                   "Detected mismatched slot names."
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
-                  grad_slot_name, grad_grad_slotname_map[grad_slot_name],
+                  grad_slot_name,
+                  grad_grad_slotname_map[grad_slot_name],
                   fwd_slot_name));
             }
             grad_grad_slotname_map[grad_slot_name] = fwd_slot_name;
@@ -900,8 +904,8 @@ static bool CollectGradInformationFromOpInfo(
   }
 
   std::shared_ptr<paddle::imperative::GradOpNode> grad_node =
-      op_info.dygraph_grad_op_maker_(op_type, ins, outs, attrs, default_attrs,
-                                     {});
+      op_info.dygraph_grad_op_maker_(
+          op_type, ins, outs, attrs, default_attrs, {});
 
   if (!grad_node) {
     VLOG(6) << "Got nullptr GradOpNode for " << op_type
@@ -977,12 +981,16 @@ static bool CollectGradInformationFromOpInfo(
   /* ------ Slot Name Matching ---- */
   for (auto& iter : *op_base_infos) {
     // grad_ins -> fwd_ins, fwd_outs
-    SlotNameMatching(iter.GetGradIns(), fwd_ins, fwd_outs,
+    SlotNameMatching(iter.GetGradIns(),
+                     fwd_ins,
+                     fwd_outs,
                      iter.GetMutableGradInsFwdSlotnameMap(),
                      iter.GetMutableGradInsGradSlotnameMap());
 
     // grad_outs -> fwd_ins, fwd_outs
-    SlotNameMatching(iter.GetGradOuts(), fwd_ins, fwd_outs,
+    SlotNameMatching(iter.GetGradOuts(),
+                     fwd_ins,
+                     fwd_outs,
                      iter.GetMutableGradOutsSlotnameMap(),
                      iter.GetMutableGradOutsSlotnameMap());
   }
@@ -1042,16 +1050,18 @@ static std::string GenerateGradNodeCreationContent(
             "p_autograd_" + inplace_input_name;
         const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE =
             "    %s = egr::EagerUtils::autograd_meta(&%s);\n";
-        get_output_autograd_meta_str += paddle::string::Sprintf(
-            GET_SINGLE_AUTOGRAD_META_TEMPLATE, inplace_input_autograd_name,
-            inplace_input_name);
+        get_output_autograd_meta_str +=
+            paddle::string::Sprintf(GET_SINGLE_AUTOGRAD_META_TEMPLATE,
+                                    inplace_input_autograd_name,
+                                    inplace_input_name);
       } else {
         const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE =
             "    egr::AutogradMeta* %s = "
             "egr::EagerUtils::autograd_meta(&%s);\n";
         get_output_autograd_meta_str +=
             paddle::string::Sprintf(GET_SINGLE_AUTOGRAD_META_TEMPLATE,
-                                    output_autograd_name, output_name);
+                                    output_autograd_name,
+                                    output_name);
       }
     }
   }
@@ -1097,8 +1107,8 @@ static std::string GenerateGradNodeCreationContent(
         "require_any_grad);\n";
     for (auto& inplace_pair : inplace_map) {
       std::string inplace_name = inplace_pair.second;
-      check_inplace_str += paddle::string::Sprintf(CHECKING_INPLACE_TEMPLATE,
-                                                   inplace_name, inplace_name);
+      check_inplace_str += paddle::string::Sprintf(
+          CHECKING_INPLACE_TEMPLATE, inplace_name, inplace_name);
     }
     VLOG(6) << "Check Inplace Input";
   }
@@ -1124,9 +1134,11 @@ static std::string GenerateGradNodeCreationContent(
       "      auto grad_node = std::shared_ptr<GradNode%s>(new GradNode%s(%d, "
       "%d));\n";
   grad_node_creation_str += "    // Create GradOpNode\n";
-  grad_node_creation_str +=
-      paddle::string::Sprintf(GRAD_OP_NODE_TEMPLATE, op_type, op_type,
-                              bwd_in_slot_num, bwd_out_slot_num);
+  grad_node_creation_str += paddle::string::Sprintf(GRAD_OP_NODE_TEMPLATE,
+                                                    op_type,
+                                                    op_type,
+                                                    bwd_in_slot_num,
+                                                    bwd_out_slot_num);
   grad_node_creation_str += "\n";
 
   VLOG(6) << "Generated GradOpNode construction";
@@ -1158,13 +1170,17 @@ static std::string GenerateGradNodeCreationContent(
       // Replace output directly with input in inplace op.
       if (!inplace_map.empty() && inplace_map.count(tensor_wrapper_name)) {
         auto inplace_input_name = inplace_map[tensor_wrapper_name];
-        grad_node_creation_str += paddle::string::Sprintf(
-            SET_TENSOR_WRAPPER_TEMPLATE, tensor_wrapper_name,
-            inplace_input_name, full_reserved);
+        grad_node_creation_str +=
+            paddle::string::Sprintf(SET_TENSOR_WRAPPER_TEMPLATE,
+                                    tensor_wrapper_name,
+                                    inplace_input_name,
+                                    full_reserved);
       } else {
-        grad_node_creation_str += paddle::string::Sprintf(
-            SET_TENSOR_WRAPPER_TEMPLATE, tensor_wrapper_name,
-            tensor_wrapper_name, full_reserved);
+        grad_node_creation_str +=
+            paddle::string::Sprintf(SET_TENSOR_WRAPPER_TEMPLATE,
+                                    tensor_wrapper_name,
+                                    tensor_wrapper_name,
+                                    full_reserved);
       }
     }
   }
@@ -1189,9 +1205,10 @@ static std::string GenerateGradNodeCreationContent(
 
       const char* ADD_EDGES_TEMPLATE =
           "      if(%s) grad_node->AddEdges(%s, %d);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(ADD_EDGES_TEMPLATE, input_autograd_name,
-                                  input_autograd_name, input_position);
+      grad_node_creation_str += paddle::string::Sprintf(ADD_EDGES_TEMPLATE,
+                                                        input_autograd_name,
+                                                        input_autograd_name,
+                                                        input_position);
     } else {
       compute_require_grad_args += ", &" + input_autograd_name;
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
@@ -1319,7 +1336,7 @@ static std::string GenerateGradNodeCreationContent(
       "%s"
       "  {\n"
       "    paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
-      "paddle::platform::TracerEventType::Operator, 1);\n"
+      "paddle::platform::TracerEventType::OperatorInner, 1);\n"
       "%s"
       "    if(require_any_grad) {\n"
       "      VLOG(6) << \" Construct Grad for %s \"; \n"
@@ -1327,11 +1344,17 @@ static std::string GenerateGradNodeCreationContent(
       "  %s\n"
       "    }\n"
       "  }";
-  std::string grad_node_creation_body_str = paddle::string::Sprintf(
-      GRAD_NODE_CREATION_TEMPLATE, prepare_autograd_meta_str,
-      compute_require_grad_args, check_inplace_str, trace_op_body_str,
-      event_name, get_output_autograd_meta_str, op_type,
-      pass_stop_gradient_args, grad_node_creation_str);
+  std::string grad_node_creation_body_str =
+      paddle::string::Sprintf(GRAD_NODE_CREATION_TEMPLATE,
+                              prepare_autograd_meta_str,
+                              compute_require_grad_args,
+                              check_inplace_str,
+                              trace_op_body_str,
+                              event_name,
+                              get_output_autograd_meta_str,
+                              op_type,
+                              pass_stop_gradient_args,
+                              grad_node_creation_str);
 
   return grad_node_creation_body_str;
 }
@@ -1454,8 +1477,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
     const char* FWD_INS_CONTENT_TEMPLATE =
         "{ \"%s\", egr::EagerUtils::TrySyncToVars(%s) },";
-    ins_contents_str += paddle::string::Sprintf(FWD_INS_CONTENT_TEMPLATE,
-                                                input_name, input_name);
+    ins_contents_str += paddle::string::Sprintf(
+        FWD_INS_CONTENT_TEMPLATE, input_name, input_name);
     if (input.duplicable()) {
       const char* AMP_TENSORS_VECTOR_TEMPLATE = "%s,";
       amp_tensors_vector_str +=
@@ -1518,9 +1541,14 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         const char* DISPENSABLE_AMP_AUTO_CAST_TEMPLATE =
             "    auto NEW_%s = ((%s.size() > 0) ? egr::AmpAutoCasts(\"%s\", "
             "%s, amp_dst_dtype, \"%s\") : %s);\n";
-        dispensable_amp_auto_cast_str += paddle::string::Sprintf(
-            DISPENSABLE_AMP_AUTO_CAST_TEMPLATE, input_name, input_name,
-            input_name, input_name, op_type, input_name);
+        dispensable_amp_auto_cast_str +=
+            paddle::string::Sprintf(DISPENSABLE_AMP_AUTO_CAST_TEMPLATE,
+                                    input_name,
+                                    input_name,
+                                    input_name,
+                                    input_name,
+                                    op_type,
+                                    input_name);
       } else {
         const char* FWD_INS_CONTENT_TEMPLATE =
             "  if(%s.initialized()) "
@@ -1535,9 +1563,14 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         const char* DISPENSABLE_AMP_AUTO_CAST_TEMPLATE =
             "    auto NEW_%s = ((%s.initialized()) ? egr::AmpAutoCast(\"%s\", "
             "%s, amp_dst_dtype, \"%s\") : %s);\n";
-        dispensable_amp_auto_cast_str += paddle::string::Sprintf(
-            DISPENSABLE_AMP_AUTO_CAST_TEMPLATE, input_name, input_name,
-            input_name, input_name, op_type, input_name);
+        dispensable_amp_auto_cast_str +=
+            paddle::string::Sprintf(DISPENSABLE_AMP_AUTO_CAST_TEMPLATE,
+                                    input_name,
+                                    input_name,
+                                    input_name,
+                                    input_name,
+                                    op_type,
+                                    input_name);
       }
     }
   }
@@ -1594,9 +1627,11 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     } else if (!inplace_map.empty() && inplace_map.count(output_name)) {
       // In inplace op, replace the output with the input directly.
       PADDLE_ENFORCE_NE(
-          inplace_map[output_name], "",
+          inplace_map[output_name],
+          "",
           paddle::platform::errors::InvalidArgument(
-              "Inplace op %s has no input corresponding to output %s.", op_type,
+              "Inplace op %s has no input corresponding to output %s.",
+              op_type,
               output_name));
       const char* FWD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", ins[\"%s\"] },";
       auto inplace_input_name = inplace_map[output_name];
@@ -1618,8 +1653,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         amp_function_call_args_str += (", " + outnum);
         const char* FWD_OUTS_CONTENT_TEMPLATE =
             "{ \"%s\", egr::EagerUtils::CreateVars(%s) },";
-        outs_contents_str += paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE,
-                                                     output_name, outnum);
+        outs_contents_str += paddle::string::Sprintf(
+            FWD_OUTS_CONTENT_TEMPLATE, output_name, outnum);
         core_ops_args_info[op_type].push_back(outnum);
         core_ops_args_type_info[op_type].push_back("int");
       } else {
@@ -1738,9 +1773,12 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     std::string view_strategy_str = "";
     std::string viwe_input_name = view_op_map[op_type].first;
     std::string viwe_output_name = view_op_map[op_type].second;
-    view_strategy_str += paddle::string::Sprintf(
-        HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
-        viwe_input_name, viwe_output_name);
+    view_strategy_str +=
+        paddle::string::Sprintf(HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT,
+                                viwe_input_name,
+                                viwe_output_name,
+                                viwe_input_name,
+                                viwe_output_name);
 
     generated_function_body += view_strategy_str;
     generated_function_body += "\n";
@@ -1794,26 +1832,33 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
               "  if (outs.count(\"%s\"))  "
               "egr::EagerUtils::GetOutputs(outs[\"%s\"], %s);\n"
               "  egr::EagerUtils::Output2Result(%s, &%s);\n";
-          out_tensor_str = paddle::string::Sprintf(
-              FWD_OUT_TENSORS_TEMPLATE, output_varname, output_name,
-              output_name, output_var_args_name, output_var_args_name,
-              output_varname);
+          out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE,
+                                                   output_varname,
+                                                   output_name,
+                                                   output_name,
+                                                   output_var_args_name,
+                                                   output_var_args_name,
+                                                   output_varname);
         } else {
           const char* FWD_OUT_TENSORS_TEMPLATE =
               "  std::vector<paddle::experimental::Tensor> %s;\n"
               "  egr::EagerUtils::GetOutputs(outs[\"%s\"], %s);\n"
               "  egr::EagerUtils::Output2Result(%s, &%s);\n";
-          out_tensor_str = paddle::string::Sprintf(
-              FWD_OUT_TENSORS_TEMPLATE, output_varname, output_name,
-              output_var_args_name, output_var_args_name, output_varname);
+          out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE,
+                                                   output_varname,
+                                                   output_name,
+                                                   output_var_args_name,
+                                                   output_var_args_name,
+                                                   output_varname);
         }
       } else {
         const char* FWD_OUT_TENSORS_TEMPLATE =
             "  std::vector<paddle::experimental::Tensor> %s;\n"
             "  egr::EagerUtils::GetOutputs(outs[\"%s\"], &%s);\n";
-        out_tensor_str =
-            paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE, output_varname,
-                                    output_name, output_varname);
+        out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE,
+                                                 output_varname,
+                                                 output_name,
+                                                 output_varname);
       }
       return_types[return_position] =
           "std::vector<paddle::experimental::Tensor>";
@@ -1824,16 +1869,21 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
               "  if (outs.count(\"%s\"))  "
               "egr::EagerUtils::GetOutput(outs[\"%s\"][0], %s);\n"
               "  paddle::experimental::Tensor& %s = *%s;\n";
-          out_tensor_str = paddle::string::Sprintf(
-              FWD_OUT_TENSOR_TEMPLATE, output_name, output_name,
-              output_var_args_name, output_varname, output_var_args_name);
+          out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
+                                                   output_name,
+                                                   output_name,
+                                                   output_var_args_name,
+                                                   output_varname,
+                                                   output_var_args_name);
         } else {
           const char* FWD_OUT_TENSOR_TEMPLATE =
               "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], %s);\n"
               "  paddle::experimental::Tensor& %s = *%s;\n";
-          out_tensor_str = paddle::string::Sprintf(
-              FWD_OUT_TENSOR_TEMPLATE, output_name, output_var_args_name,
-              output_varname, output_var_args_name);
+          out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
+                                                   output_name,
+                                                   output_var_args_name,
+                                                   output_varname,
+                                                   output_var_args_name);
         }
       } else {
         if (!inplace_map.empty() && inplace_map.count(output_name)) {
@@ -1845,16 +1895,19 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
               "  %s.bump_inplace_version();\n"
               "  VLOG(3) << \"Tensor(\" << %s.name() << \") uses Inplace "
               "Strategy.\";\n";
-          out_tensor_str = paddle::string::Sprintf(
-              FWD_OUT_TENSOR_TEMPLATE, output_name, inplace_input_name,
-              inplace_input_name, inplace_input_name);
+          out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
+                                                   output_name,
+                                                   inplace_input_name,
+                                                   inplace_input_name,
+                                                   inplace_input_name);
         } else {
           const char* FWD_OUT_TENSOR_TEMPLATE =
               "  paddle::experimental::Tensor %s;\n"
               "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], &%s);\n";
-          out_tensor_str =
-              paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE, output_varname,
-                                      output_name, output_varname);
+          out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE,
+                                                   output_varname,
+                                                   output_name,
+                                                   output_varname);
         }
       }
       return_types[return_position] = "paddle::experimental::Tensor";
@@ -1964,21 +2017,28 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       "%s\n"
       "%s\n"
       "}\n\n";
-  std::string fwd_function_str = paddle::string::Sprintf(
-      FWD_FUNCTION_TEMPLATE, function_proto_return_type_str, function_name,
-      dygraph_function_args_str, fwd_record_event_str, generated_function_body);
+  std::string fwd_function_str =
+      paddle::string::Sprintf(FWD_FUNCTION_TEMPLATE,
+                              function_proto_return_type_str,
+                              function_name,
+                              dygraph_function_args_str,
+                              fwd_record_event_str,
+                              generated_function_body);
 
   // [Generation] Generate forward functions header
   const char* FWD_HEADER_TEMPLATE = "%s %s(%s);\n";
-  std::string dygraph_function_declaration_str = paddle::string::Sprintf(
-      FWD_HEADER_TEMPLATE, function_proto_return_type_str, function_name,
-      dygraph_function_args_str);
+  std::string dygraph_function_declaration_str =
+      paddle::string::Sprintf(FWD_HEADER_TEMPLATE,
+                              function_proto_return_type_str,
+                              function_name,
+                              dygraph_function_args_str);
 
   return {fwd_function_str, dygraph_function_declaration_str};
 }
 
 static std::string GenerateSingleOpBase(
-    const std::string& fwd_op_type, const std::string& op_base_type,
+    const std::string& fwd_op_type,
+    const std::string& op_base_type,
     const std::unordered_map<std::string, size_t>& fwd_inputs_name_pos_map,
     const std::unordered_map<std::string, size_t>& fwd_outputs_name_pos_map,
     const std::vector<proto::OpProto::Var>& in_vars,
@@ -1994,7 +2054,8 @@ static std::string GenerateSingleOpBase(
         std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>&
         grad_outs,
     const paddle::framework::AttributeMap& grad_attrs,
-    bool is_op_base_per_duplicable_input, size_t* outs_size) {
+    bool is_op_base_per_duplicable_input,
+    size_t* outs_size) {
   std::string generated_grad_function_body = "";
 
   const std::string& ins_name = "ins" + std::to_string(*outs_size);
@@ -2029,9 +2090,9 @@ static std::string GenerateSingleOpBase(
           "RecoverTensorWrapper("
           "&"
           "this->%s)) },";
-      ins_contents_str +=
-          paddle::string::Sprintf(GRAD_INS_FWD_CONTENT_TEMPLATE,
-                                  grad_input_name, struct_fwd_input_name);
+      ins_contents_str += paddle::string::Sprintf(GRAD_INS_FWD_CONTENT_TEMPLATE,
+                                                  grad_input_name,
+                                                  struct_fwd_input_name);
 
     } else if (grad_ins_grad_slotname_map.count(grad_input_name)) {
       // Fwd Tensor's Grad
@@ -2075,18 +2136,25 @@ static std::string GenerateSingleOpBase(
               "  if(this->%s.size() > 0) %s[\"%s\"] = "
               "egr::EagerUtils::TrySyncToVars(egr::EagerUtils::"
               "RecoverTensorWrapper(&this->%s));\n";
-          generated_grad_function_body += paddle::string::Sprintf(
-              DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE, struct_fwd_input_name,
-              ins_name, grad_input_name, struct_fwd_input_name);
+          generated_grad_function_body +=
+              paddle::string::Sprintf(DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE,
+                                      struct_fwd_input_name,
+                                      ins_name,
+                                      grad_input_name,
+                                      struct_fwd_input_name);
         } else {
           const char* DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE =
               "  auto %s = egr::EagerUtils::RecoverTensorWrapper(&this->%s);\n"
               "  if(%s.defined()) %s[\"%s\"] = "
               "     egr::EagerUtils::TrySyncToVars(%s);\n";
-          generated_grad_function_body += paddle::string::Sprintf(
-              DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE, grad_input_name,
-              struct_fwd_input_name, grad_input_name, ins_name, grad_input_name,
-              grad_input_name);
+          generated_grad_function_body +=
+              paddle::string::Sprintf(DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE,
+                                      grad_input_name,
+                                      struct_fwd_input_name,
+                                      grad_input_name,
+                                      ins_name,
+                                      grad_input_name,
+                                      grad_input_name);
         }
       }
     }
@@ -2203,15 +2271,20 @@ static std::string GenerateSingleOpBase(
                 "  if(%s.size() > 0) %s[\"%s\"] = egr::EagerUtils::CreateVars( "
                 "this->OutputMeta()[%d].size() );\n";
             generated_grad_function_body += paddle::string::Sprintf(
-                DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE, fwd_name, outs_name,
-                grad_output_name, fwd_input_position);
+                DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE,
+                fwd_name,
+                outs_name,
+                grad_output_name,
+                fwd_input_position);
           } else {
             const char* DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE =
                 "  if(%s.defined()) %s[\"%s\"] = "
                 "{std::make_shared<egr::EagerVariable>(egr::Controller::"
                 "Instance().GenerateUniqueName())};\n";
             generated_grad_function_body += paddle::string::Sprintf(
-                DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE, fwd_name, outs_name,
+                DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE,
+                fwd_name,
+                outs_name,
                 grad_output_name);
           }
         }
@@ -2236,8 +2309,8 @@ static std::string GenerateSingleOpBase(
         "  auto temp_type = %s[\"in_dtype\"];\n"
         "  %s[\"in_dtype\"] = %s[\"out_dtype\"];\n"
         "  %s[\"out_dtype\"] = temp_type;\n";
-    grad_attrs_str += paddle::string::Sprintf(CAST_GRAD, attrs_name, attrs_name,
-                                              attrs_name, attrs_name);
+    grad_attrs_str += paddle::string::Sprintf(
+        CAST_GRAD, attrs_name, attrs_name, attrs_name, attrs_name);
   }
 
   // Handle dynamic grad attributes
@@ -2278,8 +2351,8 @@ static std::string GenerateSingleOpBase(
             "  "
             "outputs[0].emplace_back(egr::EagerUtils::GetOutputs(%s[\"%s\"])[0]"
             ");\n";
-        outputs_str += paddle::string::Sprintf(BWD_OUTPUT_TEMPLATE, outs_name,
-                                               grad_out_name);
+        outputs_str += paddle::string::Sprintf(
+            BWD_OUTPUT_TEMPLATE, outs_name, grad_out_name);
       }
       num_appended_outputs++;
     } else {
@@ -2411,11 +2484,20 @@ static std::string GenerateGradNodeCCContents(
     const auto& grad_attrs = op_base_info.GetGradAttrs();
 
     const std::string& op_base_type = op_base_info.GetOpBaseType();
-    generated_grad_function_body += GenerateSingleOpBase(
-        fwd_op_type, op_base_type, fwd_inputs_name_pos_map,
-        fwd_outputs_name_pos_map, in_vars, grad_ins_fwd_slotname_map,
-        grad_ins_grad_slotname_map, grad_outs_slotname_map, grad_ins, grad_outs,
-        grad_attrs, is_op_base_per_duplicable_input, &outs_size);
+    generated_grad_function_body +=
+        GenerateSingleOpBase(fwd_op_type,
+                             op_base_type,
+                             fwd_inputs_name_pos_map,
+                             fwd_outputs_name_pos_map,
+                             in_vars,
+                             grad_ins_fwd_slotname_map,
+                             grad_ins_grad_slotname_map,
+                             grad_outs_slotname_map,
+                             grad_ins,
+                             grad_outs,
+                             grad_attrs,
+                             is_op_base_per_duplicable_input,
+                             &outs_size);
   }
 
   if (is_op_base_per_duplicable_input) {
@@ -2436,7 +2518,9 @@ static std::string GenerateGradNodeCCContents(
       "HandleComplexGradToRealGrad(&outputs);\n"
       "  return outputs;\n";
   generated_grad_function_body =
-      paddle::string::Sprintf(BWD_RETURN_TEMPLATE, fwd_op_type, in_vars.size(),
+      paddle::string::Sprintf(BWD_RETURN_TEMPLATE,
+                              fwd_op_type,
+                              in_vars.size(),
                               generated_grad_function_body);
 
   // [Generation] Get Full Grad Function
@@ -2455,8 +2539,10 @@ static std::string GenerateGradNodeCCContents(
         "this->InputMeta());\n";
   }
   std::string grad_function_str =
-      paddle::string::Sprintf(GRAD_FUNCTION_TEMPLATE, fwd_op_type,
-                              fill_zero_str, generated_grad_function_body);
+      paddle::string::Sprintf(GRAD_FUNCTION_TEMPLATE,
+                              fwd_op_type,
+                              fill_zero_str,
+                              generated_grad_function_body);
 
   VLOG(6) << "Generated returns";
 
@@ -2579,9 +2665,12 @@ static std::string GenerateGradNodeHeaderContents(
             "          %s.emplace_back( egr::TensorWrapper(eager_tensor, %s "
             "/*full_reserved*/, %s) );\n"
             "      }\n";
-        tensor_wrapper_body_str = paddle::string::Sprintf(
-            SET_TENSOR_WRAPPER_BODY_TEMPLATE, tensor_wrapper_name,
-            struct_tensor_wrapper_name, full_reserved_str, no_need_buffer_str);
+        tensor_wrapper_body_str =
+            paddle::string::Sprintf(SET_TENSOR_WRAPPER_BODY_TEMPLATE,
+                                    tensor_wrapper_name,
+                                    struct_tensor_wrapper_name,
+                                    full_reserved_str,
+                                    no_need_buffer_str);
 
         const char* CLEAR_TENSOR_WRAPPER_TEMPLATE =
             "for (auto tw: %s)   {\n"
@@ -2603,9 +2692,12 @@ static std::string GenerateGradNodeHeaderContents(
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
             "%s = egr::TensorWrapper(%s, %s /*full_reserved*/, %s);\n";
-        tensor_wrapper_body_str = paddle::string::Sprintf(
-            SET_TENSOR_WRAPPER_BODY_TEMPLATE, struct_tensor_wrapper_name,
-            tensor_wrapper_name, full_reserved_str, no_need_buffer_str);
+        tensor_wrapper_body_str =
+            paddle::string::Sprintf(SET_TENSOR_WRAPPER_BODY_TEMPLATE,
+                                    struct_tensor_wrapper_name,
+                                    tensor_wrapper_name,
+                                    full_reserved_str,
+                                    no_need_buffer_str);
 
         const char* CLEAR_TENSOR_WRAPPER_TEMPLATE = "   %s.clear();\n";
         clear_tensor_wrappers_str += paddle::string::Sprintf(
@@ -2614,19 +2706,33 @@ static std::string GenerateGradNodeHeaderContents(
       std::string full_reserved_signature_str = "bool full_reserved";
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
           "   void SetTensorWrapper%s(%s, %s) {\n     %s\n   }\n";
-      set_tensor_wrappers_str += paddle::string::Sprintf(
-          SET_TENSOR_WRAPPER_TEMPLATE, tensor_wrapper_name,
-          tensor_wrapper_arg_str, full_reserved_signature_str,
-          tensor_wrapper_body_str);
+      set_tensor_wrappers_str +=
+          paddle::string::Sprintf(SET_TENSOR_WRAPPER_TEMPLATE,
+                                  tensor_wrapper_name,
+                                  tensor_wrapper_arg_str,
+                                  full_reserved_signature_str,
+                                  tensor_wrapper_body_str);
     }
   }
   VLOG(6) << "Generated TensorWrapper";
 
-  std::string grad_node_str = paddle::string::Sprintf(
-      GRAD_NODE_TEMPLATE, op_type, op_type, op_type, op_type, op_type, op_type,
-      op_type, clear_tensor_wrappers_str, op_type, op_type, op_type,
-      set_tensor_wrappers_str, set_attr_map_str, tensor_wrapper_members_str,
-      attr_members_str);
+  std::string grad_node_str =
+      paddle::string::Sprintf(GRAD_NODE_TEMPLATE,
+                              op_type,
+                              op_type,
+                              op_type,
+                              op_type,
+                              op_type,
+                              op_type,
+                              op_type,
+                              clear_tensor_wrappers_str,
+                              op_type,
+                              op_type,
+                              op_type,
+                              set_tensor_wrappers_str,
+                              set_attr_map_str,
+                              tensor_wrapper_members_str,
+                              attr_members_str);
 
   return grad_node_str;
 }
@@ -2760,9 +2866,11 @@ static std::string GenerateCoreOpsReturnsInfo() {
   std::string core_ops_returns_info_init_str =
       ConvertCoreOpsInfosToString(core_ops_returns_info);
 
-  std::string core_ops_info_str = paddle::string::Sprintf(
-      Core_Ops_Returns_MAP_TEMPLATE, core_ops_args_info_init_str,
-      core_ops_args_type_info_init_str, core_ops_returns_info_init_str);
+  std::string core_ops_info_str =
+      paddle::string::Sprintf(Core_Ops_Returns_MAP_TEMPLATE,
+                              core_ops_args_info_init_str,
+                              core_ops_args_type_info_init_str,
+                              core_ops_returns_info_init_str);
 
   return core_ops_info_str;
 }
