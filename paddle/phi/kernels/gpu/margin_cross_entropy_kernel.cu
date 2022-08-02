@@ -90,7 +90,7 @@ void GetClassInterval(const gpuStream_t& stream,
         paddle::platform::NCCLCommContext::Instance().Get(rid, place);
     // use global calculate stream
     const auto calcu_stream =
-        static_cast<paddle::platform::CUDADeviceContext*>(
+        static_cast<GPUContext*>(
             paddle::platform::DeviceContextPool::Instance().Get(place))
             ->stream();
 
@@ -250,7 +250,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
 
       // use global calculate stream
-      stream = static_cast<paddle::platform::CUDADeviceContext*>(
+      stream = static_cast<GPUContext*>(
                    paddle::platform::DeviceContextPool::Instance().Get(place))
                    ->stream();
     }
