@@ -161,6 +161,10 @@ def init_parallel_env():
             "Currently not a parallel execution environment, `paddle.distributed.init_parallel_env` will not do anything."
         )
         return
+    #if not compiled with distributed, abort the following operation.
+    assert core.is_compiled_with_dist(
+    ), "PaddlePaddle is not compiled with WITH_DISTRIBUTE ON, so all distribute functions can not work! "
+
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to
     #                 enable cpu only gloo prarllel training)
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
