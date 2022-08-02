@@ -90,7 +90,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
       T* recv_buff = temp_out.data<T>();
       gpuStream_t stream = nullptr;
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::ncclAllGather(send_buff,
@@ -113,9 +113,9 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
       offset += rows_per_tensor;
     }
 
-    math::ConcatFunctor<platform::CUDADeviceContext, T> functor;
+    math::ConcatFunctor<phi::GPUContext, T> functor;
     out->mutable_data<T>(out_dims, place);
-    auto& dev_ctx2 = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx2 = ctx.template device_context<phi::GPUContext>();
     functor(dev_ctx2, inputs, axis, out);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

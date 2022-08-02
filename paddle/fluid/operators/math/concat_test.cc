@@ -469,24 +469,18 @@ void TestConcatMain() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-void TestConcatMain<paddle::platform::CUDADeviceContext,
-                    paddle::platform::CUDAPlace>() {
-  auto* context =
-      new paddle::platform::CUDADeviceContext(paddle::platform::CUDAPlace());
+void TestConcatMain<phi::GPUContext, paddle::platform::CUDAPlace>() {
+  auto* context = new phi::GPUContext(paddle::platform::CUDAPlace());
   context->SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CUDAPlace(), context->stream())
           .get());
   context->PartialInitWithAllocator();
 
-  ConcatCase1<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
-      context);
-  ConcatCase2<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
-      context);
-  ConcatCase3<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
-      context);
-  ConcatCase4<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
-      context);
+  ConcatCase1<phi::GPUContext, paddle::platform::CUDAPlace>(context);
+  ConcatCase2<phi::GPUContext, paddle::platform::CUDAPlace>(context);
+  ConcatCase3<phi::GPUContext, paddle::platform::CUDAPlace>(context);
+  ConcatCase4<phi::GPUContext, paddle::platform::CUDAPlace>(context);
 
   delete context;
 }
@@ -495,7 +489,6 @@ void TestConcatMain<paddle::platform::CUDADeviceContext,
 TEST(math, concat) {
   TestConcatMain<phi::CPUContext, paddle::platform::CPUPlace>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  TestConcatMain<paddle::platform::CUDADeviceContext,
-                 paddle::platform::CUDAPlace>();
+  TestConcatMain<phi::GPUContext, paddle::platform::CUDAPlace>();
 #endif
 }
