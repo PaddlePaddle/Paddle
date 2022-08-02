@@ -491,11 +491,7 @@ def _getitem_impl_(var, item):
     out = var
     if len(axes) > 0:
         op_type = "strided_slice" if use_strided_slice else "slice"
-        if paddle.fluid.framework.in_dygraph_mode():
-            if op_type == "strided_slice":
-                out = paddle._C_ops.final_state_strided_slice(
-                    var, axes, attrs['starts'], attrs['ends'], attrs['strides'])
-
+        if paddle.fluid.framework.in_dygraph_mode() and op_type == "slice":
             if op_type == "slice":
                 if "StartsTensorList" in inputs.keys():
                     st = inputs['StartsTensorList']
