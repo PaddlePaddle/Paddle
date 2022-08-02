@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import logging
+from collections import defaultdict
 
 from paddle.nn import Layer
 from paddle.jit import to_static, not_to_static
 from paddle.distributed.utils import get_logger
 from paddle.fluid.framework import Operator, Parameter, _non_static_mode
+from paddle.fluid.framework import program_guard
 
 from .utils import to_list
 
@@ -136,15 +138,26 @@ class ProxyLayer(Layer):
         self.mode = mode
         self.training = mode == 'train'
 
+    def clone(self):
+        return ProxyLayer(self.inner_layer, self.loss_func, self.metrics)
+
 
 class BuildInfo:
 
-    def __init__(self, mode=None, state=False):
-        self.mode = mode
-        self.state = state
+    def __init__(self):
+        self.clear()
 
-    def has_cache(self, mode):
-        return self.mode == mode and self.state is True
+    def has_cache(self, mode, update=False):
+        is_cache = self.states[mode]
+        if update:
+            self.cache(mode)
+        return is_cache
+
+    def cache(self, mode):
+        self.states[mode] = True
+
+    def clear(self):
+        self.states = defaultdict(bool)
 
 
 class ProgramHelper(object):
@@ -163,13 +176,20 @@ class ProgramHelper(object):
         self.build_info = BuildInfo()
         self._logger = get_logger(logging.INFO)
 
+    def reset(self):
+        """
+        Reset all state of current Object.
+        """
+        self.build_info.clear()
+        self.proxy_layer = self.proxy_layer.clone()
+
     def build_program(self, mode):
         """
         Convert dygraph model into static Program IR.
         """
         assert mode in ['train', 'eval', 'predict']
         # skip if we has already built program.
-        if self.build_info.has_cache(mode):
+        if self.build_info.has_cache(mode, True):
             self._logger.info(
                 "Already build program with mode = %s, use cached program." %
                 mode)
@@ -201,9 +221,36 @@ class ProgramHelper(object):
                       stop_gradient=param.stop_gradient,
                       block=self.startup_program.global_block())
 
+    def apply_optimizer(self, optimizer):
+        """
+        Append backward and generate optimizer operations.
+        """
+        self._verify_optimizer(optimizer)
+        self._logger.info("start to apply optimizer: %s ",
+                          type(optimizer).__name__)
+        # clear optimizer parameters
+        original_params = optimizer._parameter_list
+        optimizer._parameter_list = None
+        with program_guard(self.main_program, self.startup_program):
+            res = optimizer.minimize(self.loss_vars[0])
+
+        # restore optimizer parameters
+        optimizer._parameter_list = original_params
+        return res
+
+    def _verify_optimizer(self, optimizer):
+        assert optimizer is not None
+        assert hasattr(optimizer,
+                       "minimize"), "Optimizer must have minimize() method."
+        assert self.proxy_layer.mode == 'train', "Required mode == 'train', but received '%s'" % self.proxy_layer.mode
+        assert len(
+            self.loss_vars
+        ) == 1, "Required len(loss_vars) == 1, but received len(loss_vars) = %s" % len(
+            self.loss_vars)
+
     def static_func(self):
         """
-        Return target mode function.
+        Return Staticfunction with underly target mode .
         """
         assert self.proxy_layer.mode in [
             'train', 'eval', 'predict'
