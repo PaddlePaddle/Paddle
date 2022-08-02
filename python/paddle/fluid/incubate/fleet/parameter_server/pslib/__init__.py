@@ -328,6 +328,22 @@ class PSLib(Fleet):
             self._fleet_ptr.print_table_stat(table_id)
         self._role_maker._barrier_worker()
 
+    def get_saved_feasign_size(self, table_id):
+        """
+        get saved feasign size of table after save_model,
+        Args:
+            table_id(int): the id of table
+        Example:
+            .. code-block:: python
+              feasign_size = fleet.get_saved_feasign_size(0)
+        """
+        self._role_maker._barrier_worker()
+        feasign_size = 0
+        if self._role_maker.is_first_worker():
+            feasign_size = self._fleet_ptr.get_saved_feasign_size(table_id)
+        self._role_maker._barrier_worker()
+        return feasign_size
+
     def set_file_num_one_shard(self, table_id, file_num):
         """
         set file_num in one shard

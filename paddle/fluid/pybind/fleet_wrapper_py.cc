@@ -76,6 +76,8 @@ void BindFleetWrapper(py::module* m) {
       .def("shrink_sparse_table", &framework::FleetWrapper::ShrinkSparseTable)
       .def("shrink_dense_table", &framework::FleetWrapper::ShrinkDenseTable)
       .def("print_table_stat", &framework::FleetWrapper::PrintTableStat)
+      .def("get_saved_feasign_size",
+           &framework::FleetWrapper::GetSavedFeasignSize)
       .def("set_file_num_one_shard",
            &framework::FleetWrapper::SetFileNumOneShard)
       .def("client_flush", &framework::FleetWrapper::ClientFlush)
