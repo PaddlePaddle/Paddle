@@ -1,31 +1,178 @@
-file(
-  GLOB TEST_CASES
-  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "test_*.py")
-string(REPLACE ".py" "" TEST_CASES "${TEST_CASES}")
-list(REMOVE_ITEM TEST_CASES test_collective_optimizer)
-list(APPEND TEST_CASES test_eager_dist_api)
+set(LINUX ON)
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_allgather_api MODULES test_collective_allgather_api ENVS
+    "PADDLE_DIST_UT_PORT=20001;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
 
-set(PY_TEST_CASES test_collective_optimizer test_new_group_api
-                  test_eager_dist_api)
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_allgather_object_api MODULES
+    test_collective_allgather_object_api ENVS
+    "PADDLE_DIST_UT_PORT=20003;http_proxy=;https_proxy=;TIMEOUT=120")
+endif()
 
-foreach(TEST ${PY_TEST_CASES})
-  list(REMOVE_ITEM TEST_CASES ${TEST})
-  py_test_modules(${TEST} MODULES ${TEST} ENVS ${dist_ENVS})
-endforeach()
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_allreduce_api MODULES test_collective_allreduce_api ENVS
+    "PADDLE_DIST_UT_PORT=20005;http_proxy=;https_proxy=;TIMEOUT=120")
+endif()
 
-if(WITH_GPU)
-  foreach(TEST_CASE ${TEST_CASES})
-    bash_test_modules(
-      ${TEST_CASE}
-      START_BASH
-      dist_test.sh
-      LABELS
-      "RUN_TYPE=EXCLUSIVE"
-      ENVS
-      "PADDLE_DIST_UT_PORT=${dist_ut_port}")
-    # set_tests_properties(test_collective_alltoall_api
-    #                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  endforeach()
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_alltoall_api MODULES test_collective_alltoall_api ENVS
+    "PADDLE_DIST_UT_PORT=20011;http_proxy=;https_proxy=;TIMEOUT=120")
+endif()
 
+if(WITH_GPU AND LINUX)
+  bash_test_modules(
+    test_collective_alltoall_single
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20013;http_proxy=;https_proxy=;TIMEOUT=350")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_barrier_api MODULES test_collective_barrier_api ENVS
+    "PADDLE_DIST_UT_PORT=20015;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  bash_test_modules(
+    test_collective_batch_isend_irecv
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20017;http_proxy=;https_proxy=;TIMEOUT=350")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_broadcast_api MODULES test_collective_broadcast_api ENVS
+    "PADDLE_DIST_UT_PORT=20019;http_proxy=;https_proxy=;TIMEOUT=120")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_cpu_barrier_with_gloo MODULES
+    test_collective_cpu_barrier_with_gloo ENVS
+    "PADDLE_DIST_UT_PORT=20021;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_global_gather MODULES test_collective_global_gather ENVS
+    "PADDLE_DIST_UT_PORT=20023;http_proxy=;https_proxy=;TIMEOUT=200")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_global_scatter MODULES test_collective_global_scatter ENVS
+    "PADDLE_DIST_UT_PORT=20025;http_proxy=;https_proxy=;TIMEOUT=200")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_optimizer MODULES test_collective_optimizer ENVS
+    "PADDLE_DIST_UT_PORT=20027;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  bash_test_modules(
+    test_collective_process_group
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20029;http_proxy=;https_proxy=;TIMEOUT=350")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_reduce_api MODULES test_collective_reduce_api ENVS
+    "PADDLE_DIST_UT_PORT=20031;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_reduce MODULES test_collective_reduce ENVS
+    "PADDLE_DIST_UT_PORT=20033;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  bash_test_modules(
+    test_collective_reduce_scatter
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20035;http_proxy=;https_proxy=;TIMEOUT=350")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_scatter_api MODULES test_collective_scatter_api ENVS
+    "PADDLE_DIST_UT_PORT=20037;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_scatter MODULES test_collective_scatter ENVS
+    "PADDLE_DIST_UT_PORT=20039;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_sendrecv_api MODULES test_collective_sendrecv_api ENVS
+    "PADDLE_DIST_UT_PORT=20041;http_proxy=;https_proxy=;TIMEOUT=120")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_sendrecv MODULES test_collective_sendrecv ENVS
+    "PADDLE_DIST_UT_PORT=20043;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_split_col_linear MODULES test_collective_split_col_linear
+    ENVS "PADDLE_DIST_UT_PORT=20045;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_split_embedding_none_divisible MODULES
+    test_collective_split_embedding_none_divisible ENVS
+    "PADDLE_DIST_UT_PORT=20047;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  bash_test_modules(
+    test_collective_split_embedding
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20049;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_split_row_linear MODULES test_collective_split_row_linear
+    ENVS "PADDLE_DIST_UT_PORT=20051;http_proxy=;https_proxy=;TIMEOUT=300")
+endif()
+
+if(WITH_GPU AND LINUX)
+  py_test_modules(
+    test_collective_wait MODULES test_collective_wait ENVS
+    "PADDLE_DIST_UT_PORT=20053;http_proxy=;https_proxy=;TIMEOUT=300")
 endif()
