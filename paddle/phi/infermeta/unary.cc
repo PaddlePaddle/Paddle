@@ -2571,6 +2571,13 @@ void SplitInferMeta(const MetaTensor& x,
                     const Scalar& axis,
                     std::vector<MetaTensor*> out,
                     MetaConfig config) {
+  if (axis.dtype() == DataType::FLOAT32 || axis.dtype() == DataType::FLOAT64) {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("%s(): argument (position 3) must be "
+                                     "int, but got %s",
+                                     "split",
+                                     "float"));  // NOLINT
+  }
   int axis_value = axis.to<int>();
   int rank = x.dims().size();
   PADDLE_ENFORCE_EQ(
