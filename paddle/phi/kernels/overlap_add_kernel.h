@@ -17,21 +17,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-
 template <typename T, typename Context>
-void MultiClassNMSKernel(const Context& ctx,
-                         const DenseTensor& bboxes,
-                         const DenseTensor& scores,
-                         const paddle::optional<DenseTensor>& rois_num,
-                         float score_threshold,
-                         int nms_top_k,
-                         int keep_top_k,
-                         float nms_threshold,
-                         bool normalized,
-                         float nms_eta,
-                         int background_label,
-                         DenseTensor* out,
-                         DenseTensor* index,
-                         DenseTensor* nms_rois_num);
-
+void OverlapAddKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      int hop_length,
+                      int axis,
+                      DenseTensor* out);
 }  // namespace phi

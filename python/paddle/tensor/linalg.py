@@ -420,7 +420,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                  keepdim=False,
                  asvector=False,
                  name=None):
-        helper = LayerHelper('frobenius_norm', **locals())
+        helper = LayerHelper('inf_norm', **locals())
         out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
         helper.append_op(type='abs', inputs={'X': input}, outputs={'Out': out})
@@ -473,7 +473,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                             'keep_dim': keepdim,
                             'reduce_all': True if axis is None else False
                         })
-        porder
         block.append_op(type='pow',
                         inputs={'X': sum_out},
                         outputs={'Out': out},

@@ -87,7 +87,7 @@ void GetClassInterval(const gpuStream_t& stream,
     const auto& comm = platform::NCCLCommContext::Instance().Get(rid, place);
     // use global calculate stream
     const auto calcu_stream =
-        static_cast<platform::CUDADeviceContext*>(
+        static_cast<phi::GPUContext*>(
             platform::DeviceContextPool::Instance().Get(place))
             ->stream();
 
@@ -275,7 +275,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     const float scale = ctx.Attr<float>("scale");
 
     const auto& place = ctx.GetPlace();
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     platform::NCCLComm* comm;
@@ -290,7 +290,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
         comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
         // use global calculate stream
-        stream = static_cast<platform::CUDADeviceContext*>(
+        stream = static_cast<phi::GPUContext*>(
                      platform::DeviceContextPool::Instance().Get(place))
                      ->stream();
       }
@@ -377,8 +377,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 
     // step 2, obtain logit_max
     Tensor logits_max;
-    logits_max =
-        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
+    logits_max = ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     T* logits_max_buff = logits_max.mutable_data<T>(place);
     TensorReduceImpl<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
         dev_ctx,
@@ -420,8 +419,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 
     // step 4, sum(exp(logit - logit_max))
     Tensor sum_exp_logits;
-    sum_exp_logits =
-        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
+    sum_exp_logits = ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     T* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
     TensorReduceImpl<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
         dev_ctx,
@@ -465,7 +463,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     // step 6, prob = exp((logit - logit_max) - log(sum(exp(logit -
     // logit_max))))
     // loss = -((logit_i - logit_max) - log(sum(exp(logit - logit_max))))
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T>()(
+    phi::funcs::SetConstant<phi::GPUContext, T>()(
         dev_ctx, loss, static_cast<T>(0.0));
     if (label_type == framework::proto::VarType::INT32) {
       typedef int32_t LabelT;
@@ -543,8 +541,7 @@ class MarginCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     const float margin3 = context.Attr<float>("margin3");
     const float scale = context.Attr<float>("scale");
 
-    auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::GPUContext>();
 
     const auto sofrmax_dims = softmax->dims();
     const int axis = sofrmax_dims.size() - 1;

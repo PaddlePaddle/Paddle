@@ -129,6 +129,24 @@
   kernel :
     func : allclose
 
+- api : amax
+  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : amax
+  backward : amax_grad
+
+- api : amin
+  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : amin
+  backward : amin_grad
+
 - api : angle
   args : (Tensor x)
   output : Tensor
@@ -258,7 +276,7 @@
     func : assign_value
     param : [shape, dtype, values]
     data_type : dtype
-    backend : place > output 
+    backend : place > output
 
 # atan
 - api : atan
@@ -566,6 +584,15 @@
   kernel :
     func : cumsum
   backward : cumsum_grad
+
+# decode_jpeg
+- api : decode_jpeg
+  args : (Tensor x, str mode)
+  output : Tensor(out)
+  infer_meta :
+    func : DecodeJpegInferMeta
+  kernel :
+    func : decode_jpeg
 
 - api : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
@@ -1634,15 +1661,6 @@
     func : multi_dot
   backward : multi_dot_grad
 
-- api : multiclass_nms3
-  args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
-  output : Tensor(out), Tensor(index), Tensor(nms_rois_num)
-  infer_meta :
-    func : MultiClassNMSInferMeta
-  kernel :
-    func : multiclass_nms3
-  optional : rois_num
-
 # multinomial
 - api : multinomial
   args : (Tensor x, int num_samples, bool replacement)
@@ -1681,6 +1699,15 @@
     data_type : input
   optional : weight
   backward : nll_loss_grad
+
+- api : nms
+  args : (Tensor x, float threshold)
+  output : Tensor(out)
+  infer_meta :
+    func : NMSInferMeta
+  kernel :
+    func : nms
+    data_type : x
 
 - api : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
@@ -2548,6 +2575,16 @@
   intermediate : xshape
   backward : unsqueeze_grad
 
+# unstack
+- api : unstack
+  args : (Tensor x, int axis, int num)
+  output : Tensor[]{num}
+  infer_meta :
+    func : UnStackInferMeta
+  kernel :
+    func : unstack
+  backward : unstack_grad
+
 # viterbi_decode
 - api : viterbi_decode
   args : (Tensor input, Tensor transition, Tensor length, bool include_bos_eos_tag)
@@ -2598,6 +2635,18 @@
     func : yolo_box
     data_type : x
 
+# yolov3_loss
+- api : yolov3_loss
+  args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0)
+  output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
+  infer_meta :
+    func : Yolov3LossInferMeta
+  kernel :
+    func : yolov3_loss
+    data_type : x
+  optional : gt_score
+  backward : yolov3_loss_grad
+
 - api : zeros_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor
@@ -2611,15 +2660,6 @@
   kernel:
     func: broadcast_tensors
   backward: broadcast_tensors_grad
-
-# decode_jpeg
-- api: decode_jpeg
-  args: (Tensor x, str mode)
-  output: Tensor(out)
-  infer_meta:
-    func: DecodeJpegInferMeta
-  kernel:
-    func: decode_jpeg
 
 # dirichlet
 - api: dirichlet
@@ -2639,3 +2679,13 @@
   kernel:
     func: eig
   backward: eig_grad
+
+# overlap_add
+- api: overlap_add
+  args: (Tensor x, int hop_length, int axis)
+  output: Tensor
+  infer_meta:
+    func: OverlapAddInferMeta
+  kernel:
+    func: overlap_add
+  backward: overlap_add_grad

@@ -217,6 +217,8 @@ def numel(x, name=None):
 
     Args:
         x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The number of elements for the input Tensor.
@@ -440,8 +442,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     Compute the quantile of the input along the specified axis.
 
     Args:
-    Args:
-        x (Tensor): The input Tensor, it's data type can be float32, float64.
+        x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
         q (int|float|list): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
             each q will be calculated and the first dimension of output is same to the number of ``q`` .
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
@@ -525,7 +526,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))
         else:
-            # TODO(Asthestarsfalll): Use paddle.index_fill instead of where
+            # TODO: Use paddle.index_fill instead of where
             index = q_num * (valid_counts - 1)
             last_index = x.shape[axis] - 1
             nums = paddle.full_like(index, fill_value=last_index)
@@ -569,7 +570,7 @@ def quantile(x, q, axis=None, keepdim=False):
     If any values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
 
     Args:
-        x (Tensor): The input Tensor, it's data type can be float32, float64.
+        x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
         q (int|float|list): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
             each q will be calculated and the first dimension of output is same to the number of ``q`` .
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
@@ -629,7 +630,7 @@ def nanquantile(x, q, axis=None, keepdim=False):
     If all values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
 
     Args:
-        x (Tensor): The input Tensor, it's data type can be float32, float64.
+        x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
         q (int|float|list): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
             each q will be calculated and the first dimension of output is same to the number of ``q`` .
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.

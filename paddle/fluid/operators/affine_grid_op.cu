@@ -29,7 +29,7 @@ __global__ void LinspaceKernel(T start, T step, int64_t size, T* out) {
 }
 
 template <typename T>
-struct Linspace<paddle::platform::CUDADeviceContext, T> {
+struct Linspace<phi::GPUContext, T> {
   void operator()(T start,
                   T end,
                   int count,
@@ -191,7 +191,7 @@ class AffineGridGradOpCUDAKernel : public framework::OpKernel<T> {
       w = size_attr[3];
     }
     T* theta_grad_data = theta_grad->mutable_data<T>({n, 2, 3}, ctx.GetPlace());
-    phi::funcs::SetConstant<paddle::platform::CUDADeviceContext, T>()(
+    phi::funcs::SetConstant<phi::GPUContext, T>()(
         ctx.cuda_device_context(), theta_grad, static_cast<T>(0));
 
     T h_step;

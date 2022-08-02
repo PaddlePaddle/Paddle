@@ -209,7 +209,7 @@ input: sparse C in CSR format (num_rows,num_rows)
 output: sparse C after softmax operation
 */
 template <typename DeviceContext, typename T>
-void SparseSoftmaxForward(const platform::CUDADeviceContext& ctx,
+void SparseSoftmaxForward(const phi::GPUContext& ctx,
                           const Tensor* offset,
                           const Tensor* columns,
                           Tensor* input,
@@ -322,7 +322,7 @@ void SparseSoftmaxForward(const platform::CUDADeviceContext& ctx,
 }
 
 template <typename DeviceContext, typename T>
-void SparseSoftmaxBackward(const platform::CUDADeviceContext& ctx,
+void SparseSoftmaxBackward(const phi::GPUContext& ctx,
                            const Tensor* offset,
                            const Tensor* columns,
                            Tensor* dx,
@@ -453,7 +453,7 @@ input: dense A (num_rows,num_cols), dense B (num_rows,num_cols)
 output: sparse C in CSR format (num_rows,num_rows)
 */
 template <typename DeviceContext, typename T>
-void DotSdd(const platform::CUDADeviceContext& ctx,
+void DotSdd(const phi::GPUContext& ctx,
             const Tensor* a,
             const Tensor* b,
             const Tensor* c_offset,
@@ -546,7 +546,7 @@ input: sparse A in CSR format (num_rows,num_rows), dense B (num_rows,num_cols)
 output: dense C (num_rows,num_cols)
 */
 template <typename DeviceContext, typename T>
-void DotDsd(const platform::CUDADeviceContext& ctx,
+void DotDsd(const phi::GPUContext& ctx,
             const Tensor* a_offset,
             const Tensor* a_columns,
             const Tensor* a_value,
@@ -881,10 +881,10 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 REGISTER_OP_CUDA_KERNEL(
     sparse_attention,
-    ops::SparseAttentionCUDAKernel<plf::CUDADeviceContext, float>,
-    ops::SparseAttentionCUDAKernel<plf::CUDADeviceContext, double>);
+    ops::SparseAttentionCUDAKernel<plf::phi::GPUContext, float>,
+    ops::SparseAttentionCUDAKernel<plf::phi::GPUContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
     sparse_attention_grad,
-    ops::SparseAttentionGradCUDAKernel<plf::CUDADeviceContext, float>,
-    ops::SparseAttentionGradCUDAKernel<plf::CUDADeviceContext, double>);
+    ops::SparseAttentionGradCUDAKernel<plf::phi::GPUContext, float>,
+    ops::SparseAttentionGradCUDAKernel<plf::phi::GPUContext, double>);

@@ -94,7 +94,7 @@ void CheckOutput(const framework::Tensor &cpu_res,
 }
 
 // Use Paddle conv2d op results as baseline
-void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
+void ComputeConv2DForward(const phi::GPUContext &ctx,
                           const Tensor &cpu_input,
                           const Tensor &cpu_filter,
                           Tensor *cpu_output,
@@ -130,7 +130,7 @@ void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
 }
 
 // Use Paddle conv2d_grad op results as baseline
-void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
+void ComputeConv2DBackward(const phi::GPUContext &ctx,
                            const Tensor &cpu_input,
                            const Tensor &cpu_filter,
                            const Tensor &cpu_output_grad,
@@ -242,10 +242,8 @@ class CudnnNormConvolutionTester {
   ~CudnnNormConvolutionTester() {}
 
   void CheckForward(float diff, bool is_relative_atol = false) {
-    platform::CUDADeviceContext *ctx =
-        static_cast<platform::CUDADeviceContext *>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(0)));
+    phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
+        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
     framework::Tensor cpu_output_base;
     framework::Tensor cpu_sum_base;
@@ -266,10 +264,8 @@ class CudnnNormConvolutionTester {
   }
 
   void CheckBackward(float diff, bool is_relative_atol = false) {
-    platform::CUDADeviceContext *ctx =
-        static_cast<platform::CUDADeviceContext *>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(0)));
+    phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
+        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
     framework::Tensor cpu_input_grad_base;
     framework::Tensor cpu_filter_nchw_grad_base;
@@ -304,7 +300,7 @@ class CudnnNormConvolutionTester {
         &cpu_output_grad_);
   }
 
-  void BaselineForward(const platform::CUDADeviceContext &ctx,
+  void BaselineForward(const phi::GPUContext &ctx,
                        framework::Tensor *cpu_output_base,
                        framework::Tensor *cpu_sum_base,
                        framework::Tensor *cpu_sum_of_square_base) {
@@ -314,7 +310,7 @@ class CudnnNormConvolutionTester {
         *cpu_output_base, cpu_sum_base, cpu_sum_of_square_base);
   }
 
-  void BaselineBackward(const platform::CUDADeviceContext &ctx,
+  void BaselineBackward(const phi::GPUContext &ctx,
                         framework::Tensor *cpu_input_grad_base,
                         framework::Tensor *cpu_filter_grad_base) {
     ComputeConv2DBackward(ctx,
@@ -329,7 +325,7 @@ class CudnnNormConvolutionTester {
   }
 
   // get forward results of cudnn_norm_conv
-  void FusedForward(const platform::CUDADeviceContext &ctx,
+  void FusedForward(const phi::GPUContext &ctx,
                     framework::Tensor *cpu_output,
                     framework::Tensor *cpu_sum,
                     framework::Tensor *cpu_sum_of_square) {
@@ -367,7 +363,7 @@ class CudnnNormConvolutionTester {
         sum_of_square, platform::CPUPlace(), cpu_sum_of_square);
   }
 
-  void FusedBackward(const platform::CUDADeviceContext &ctx,
+  void FusedBackward(const phi::GPUContext &ctx,
                      framework::Tensor *cpu_input_grad,
                      framework::Tensor *cpu_filter_grad) {
     framework::Tensor input;
@@ -443,7 +439,7 @@ TEST(CudnnNormConvFp16, K1S1) {
                                                              output_channels,
                                                              kernel_size,
                                                              stride);
-  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+  phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
   if (ctx->GetComputeCapability() < 70) {
@@ -473,7 +469,7 @@ TEST(CudnnNormConvFp16, K3S1) {
                                                              output_channels,
                                                              kernel_size,
                                                              stride);
-  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+  phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
   if (ctx->GetComputeCapability() < 70) {
@@ -503,7 +499,7 @@ TEST(CudnnNormConvFp16, K1S1O4) {
                                                              output_channels,
                                                              kernel_size,
                                                              stride);
-  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+  phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
   if (ctx->GetComputeCapability() < 70) {
@@ -533,7 +529,7 @@ TEST(CudnnNormConvFp16, K1S2O4) {
                                                              output_channels,
                                                              kernel_size,
                                                              stride);
-  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+  phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
   if (ctx->GetComputeCapability() <= 70) {

@@ -92,6 +92,26 @@
   kernel :
     func : addmm_grad
 
+- backward_api : amax_grad
+  forward: amax (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : amax_grad
+
+- backward_api : amin_grad
+  forward: amin (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : amin_grad
+
 - backward_api : angle_grad
   forward : angle (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -894,10 +914,10 @@
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
   args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
   output : Tensor(x_grad), Tensor(grid_grad)
-  infer_meta : 
+  infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, grid]
-  kernel : 
+  kernel :
     func : grid_sample_grad
     data_type : x
 
@@ -1531,6 +1551,16 @@
     param : [x]
   kernel :
     func : norm_grad
+
+- backward_api : overlap_add_grad
+  forward : overlap_add(Tensor x, int hop_length, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int hop_length, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : OverlapAddGradInferMeta
+  kernel :
+    func : overlap_add_grad
+    data_type : x
 
 - backward_api : p_norm_grad
   forward : p_norm(Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false) -> Tensor(out)
@@ -2469,6 +2499,16 @@
   inplace : (out_grad -> x_grad)
   backward : unsqueeze_double_grad
 
+- backward_api : unstack_grad
+  forward : unstack (Tensor x, int axis, int num) -> Tensor[](out)
+  args : (Tensor[] out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnStackGradInferMeta
+    param : [out_grad, axis]
+  kernel :
+    func : unstack_grad
+
 - backward_api : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times) -> Tensor(loss), Tensor(warpctcgrad)
   args : (Tensor logits, Tensor logits_length, Tensor warpctcgrad, Tensor loss_grad, int blank, bool norm_by_times)
@@ -2491,3 +2531,13 @@
   kernel :
     func : where_grad
   no_need_buffer : x, y
+
+- backward_api : yolov3_loss_grad
+  forward : yolov3_loss(Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0) -> Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
+  args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, Tensor objectness_mask, Tensor gt_match_mask, Tensor loss_grad, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0)
+  output : Tensor(x_grad), Tensor(gt_box_grad), Tensor(gt_label_grad), Tensor(gt_score_grad)
+  infer_meta :
+    func : Yolov3LossGradInferMeta
+  kernel :
+    func : yolov3_loss_grad
+  optional : gt_score

@@ -72,7 +72,7 @@ struct ConvertToPhiContext<phi::CPUContext> {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-struct ConvertToPhiContext<platform::CUDADeviceContext> {
+struct ConvertToPhiContext<phi::GPUContext> {
   using TYPE = phi::GPUContext;
 };
 #endif

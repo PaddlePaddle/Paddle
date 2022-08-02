@@ -21,10 +21,8 @@ namespace paddle::operators::details {
 
 #ifdef PADDLE_WITH_CUDA
 template <>
-void* GetStream<platform::CUDADeviceContext>(
-    const framework::ExecutionContext& ctx) {
-  const auto& dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
+void* GetStream<phi::GPUContext>(const framework::ExecutionContext& ctx) {
+  const auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
   return dev_ctx.stream();
 }
 #endif
