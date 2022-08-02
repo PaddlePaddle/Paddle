@@ -100,7 +100,8 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   auto *persis_x_node = gpd.mutable_pattern()
                 ->NewNode("persis_x_node")
                 ->AsInput()
-                ->assert_is_persistable_var();
+                ->assert_is_persistable_var()
+                ->assert_has_n_outputs(1);
 
   patterns::ConstantFolding fused_pattern(gpd.mutable_pattern(), "constant_folding");
   fused_pattern(persis_x_node);
@@ -132,8 +133,8 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     std::vector<std::unique_ptr<OperatorBase>> ops;
     std::unordered_set<const paddle::framework::ir::Node*> remove_nodes{subgraph.at(persis_x_node)};
 
-// for Op Nodes, it return the op's ith output, and make sure all others outputs muse be no outputs
-// for Var Nodes, it return 0th output if outputs.size() == 1 and then return nullptr
+// for Op Node, it return the op's ith output, and make sure all others outputs muse be useless
+// for Var Node, it return 0th output if outputs.size() == 1 and then return nullptr
 auto PickOneOut = [&](Node* node) -> Node* {
   if(node->outputs.size() == 1) {
     return node->outputs[0];
