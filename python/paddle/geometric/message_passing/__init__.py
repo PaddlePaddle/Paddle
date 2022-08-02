@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .send_u_recv import send_u_recv  # noqa: F401
+from .send_recv import send_u_recv  # noqa: F401
