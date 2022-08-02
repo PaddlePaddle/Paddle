@@ -51,7 +51,6 @@ def get_output(X, Y, bias, act):
 @skip_check_inplace_ci(reason="no inplace op")
 class TestFuseGemmBase(OpTest):
     pass
-'''
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -483,7 +482,7 @@ class TestFuseGemmEpilogueOpNoneMMFP64(TestFuseGemmEpilogueOpNoneMMFP16):
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
-'''
+
 
 def matmul(x, y, bias, trans_x, trans_y):
     x = np.array(x)
