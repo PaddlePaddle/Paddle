@@ -163,6 +163,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                      size,
                      delta);
   }
+#endif
 }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
