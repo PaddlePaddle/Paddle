@@ -68,7 +68,7 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(affine_grid,
+PD_REGISTER_KERNEL(affine_grid,  // cuda_only
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::AffineGridCudnnKernel,
