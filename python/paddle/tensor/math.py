@@ -1375,7 +1375,6 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
     Examples:
 
         .. code-block:: python
-            :name: count_nonzero-example
 
             import paddle
             # x is a 2-D Tensor:
