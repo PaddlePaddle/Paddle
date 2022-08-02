@@ -1541,7 +1541,7 @@ def assign(x, output=None):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
                 [x.shape == (1, ) for x in input if isinstance(x, Variable)]):
-                raise RuntimeError(
+                raise TypeError(
                     "Don't support paddle.assign([Variable, Variable...]) with non-scalar variable."
                 )
 
@@ -1558,7 +1558,7 @@ def assign(x, output=None):
         if input.dtype == 'object':
             """ may be this form [[Var], [Var], [3], [4]], we reject them.
             """
-            raise RuntimeError(
+            raise TypeError(
                 "The type of received input == `object`, it is not supported to convert to tensor"
             )
 
