@@ -17,7 +17,6 @@ from .base.role_maker import Role  # noqa: F401
 from .base.role_maker import UserDefinedRoleMaker  # noqa: F401
 from .base.role_maker import PaddleCloudRoleMaker  # noqa: F401
 from .base.distributed_strategy import DistributedStrategy  # noqa: F401
-from .base.fleet_base import Fleet  # noqa: F401
 from .base.util_factory import UtilBase  # noqa: F401
 from .dataset import DatasetBase  # noqa: F401
 from .dataset import InMemoryDataset  # noqa: F401
@@ -29,6 +28,10 @@ from .data_generator.data_generator import MultiSlotStringDataGenerator  # noqa:
 from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
+from .Fleet import Fleet
+from .model import Model
+from .optimizer import Optimizer
+from .scaler import Scaler
 
 __all__ = [  #noqa
     "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
@@ -72,13 +75,11 @@ init_worker = fleet.init_worker
 init_server = fleet.init_server
 run_server = fleet.run_server
 stop_worker = fleet.stop_worker
-distributed_optimizer = fleet.distributed_optimizer
 save_inference_model = fleet.save_inference_model
 save_persistables = fleet.save_persistables
 save_cache_model = fleet.save_cache_model
 load_model = fleet.load_model
 minimize = fleet.minimize
-distributed_model = fleet.distributed_model
 step = fleet.step
 clear_grad = fleet.clear_grad
 set_lr = fleet.set_lr
@@ -87,4 +88,9 @@ state_dict = fleet.state_dict
 set_state_dict = fleet.set_state_dict
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
-distributed_scaler = fleet.distributed_scaler
+distributed_model = Model(fleet).distributed_model
+distributed_scaler = Scaler().distributed_scaler
+if paddle.fluid.framework._non_static_mode():
+    distributed_optimizer = Optimizer(fleet).distributed_optimizer
+else:
+    distributed_optimizer = fleet.distributed_optimizer
