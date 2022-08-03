@@ -1417,6 +1417,10 @@ class Executor(object):
                 if program._build_strategy is not None and program._build_strategy.allow_cuda_graph_capture:
                     return False
 
+                # Unsupported case 6: async mode
+                if program._build_strategy is not None and program._build_strategy.async_mode:
+                    return False
+
                 # Unsupported case 6 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM
                 if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
                                   None) not in [1, '1', True, 'True', 'true']:
