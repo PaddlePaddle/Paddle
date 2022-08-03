@@ -176,6 +176,8 @@ class VariableScope {
 
   Scope* GetMutableLocalScope() const;
 
+  void SetScope(Scope* scope);
+
   void SetLocalScope(Scope* local_scope);
 
   ~VariableScope();
@@ -211,6 +213,8 @@ class VariableScope {
   const std::vector<VariableMetaInfo>& VecMetaInfo() const {
     return vec_meta_info_;
   }
+
+  std::vector<Variable*>& MutableVarList() { return var_list_; }
 
   void SetVarSikpInplace(const std::string& name, bool skip);
 
@@ -339,6 +343,8 @@ class Instruction {
   const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const;
 
   void AddInplace(Variable* in, Variable* out);
+
+  void ClearInplace();
 
   const std::vector<EventInter>& InputEvents() const;
 

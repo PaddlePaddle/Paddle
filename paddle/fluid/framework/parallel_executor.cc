@@ -104,6 +104,8 @@ class ParallelExecutorPrivate {
         }
       }
     }
+    VLOG(2) << "delete done " << static_cast<int>(places_[0].GetType())
+            << " place ptr is: " << &(places_[0]);
   }
 
   bool IsUseCUDA(DeviceType use_device);

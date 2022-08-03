@@ -582,6 +582,11 @@ Scope* VariableScope::GetMutableScope() const { return scope_; }
 
 Scope* VariableScope::GetMutableLocalScope() const { return local_scope_; }
 
+void VariableScope::SetScope(Scope* scope) {
+  VLOG(4) << "Set scope: " << scope;
+  scope_ = scope;
+}
+
 void VariableScope::SetLocalScope(Scope* local_scope) {
   VLOG(4) << "Set local scope: " << local_scope;
   local_scope_ = local_scope;
@@ -755,6 +760,7 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   // NOTE: Because execution_ctx_ is constructed by `scope&`, so we fake an
   // empty here to avoid illegal local reference.
   static framework::Scope scope_;
+  VLOG(2) << "Reset Context create a temp scope, ptr is: " << &scope_;
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
 }
@@ -794,6 +800,8 @@ const std::vector<std::pair<Variable*, Variable*>>& Instruction::InplaceInfo()
 void Instruction::AddInplace(Variable* in, Variable* out) {
   vec_inplace_in_to_out_.emplace_back(in, out);
 }
+
+void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 const std::vector<EventInter>& Instruction::InputEvents() const {
   return intput_events_;

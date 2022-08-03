@@ -67,7 +67,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       skip_gc_vars_(skip_gc_vars),
       var_scope_(scope),
       stream_analyzer_(place) {
-  VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
+  VLOG(2) << "InterpreterCore(): " << this << " on " << place_
+          << " place ptr is: " << &place_;
 
   is_build_ = false;
 
@@ -113,10 +114,14 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 }
 
 InterpreterCore::~InterpreterCore() {
+  VLOG(2) << "Delete interpretercore" << this;
   // cancle gc's thread
   gc_.reset(nullptr);
-
+  VLOG(2) << "gc_.reset";
   async_work_queue_.reset();
+  VLOG(2) << "delete done";
+  VLOG(2) << "delete done " << static_cast<int>(place_.GetType())
+          << " place ptr is: " << &place_;
   VLOG(4) << "~InterpreterCore(): " << this << " on " << place_;
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -191,6 +196,10 @@ paddle::framework::FetchList InterpreterCore::Run(
     paddle::framework::interpreter::build_variable_scope(
         block_, &var_scope_, create_local_scope_);
 
+    VLOG(2) << "============place type is:"
+            << static_cast<int>(place_.GetType())
+            << " place ptr is: " << &place_;
+
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(place_,
                                                        block_,
@@ -198,36 +207,66 @@ paddle::framework::FetchList InterpreterCore::Run(
                                                        &op_func_nodes,
                                                        &var_scope_,
                                                        create_local_scope_);
+    VLOG(2) << "============place type is:"
+            << static_cast<int>(place_.GetType())
+            << " place ptr is: " << &place_;
     is_build_ = true;
     VLOG(2) << "Done build_op_func_list ----------";
     SetFeedVarsInplaceSkip(feed_names);
+    VLOG(2) << "============place type is:"
+            << static_cast<int>(place_.GetType())
+            << " place ptr is: " << &place_;
     // convert vec func_list to graph
     Convert(&op_func_nodes);
+    VLOG(2) << "============place type is:"
+            << static_cast<int>(place_.GetType())
+            << " place ptr is: " << &place_;
 
   } else {
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
+    VLOG(2) << "============place type is:"
+            << static_cast<int>(place_.GetType())
+            << " place ptr is: " << &place_;
 
     ExecuteInstructionList(vec_instruction_);
+    VLOG(2) << "============place type is:"
+            << static_cast<int>(place_.GetType())
+            << " place ptr is: " << &place_;
 #ifdef PADDLE_WITH_ASCEND_CL
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
 #endif
+    VLOG(2) << "============place type is:"
+            << static_cast<int>(place_.GetType())
+            << " place ptr is: " << &place_;
   }
 
   if (create_local_scope_) {
+    VLOG(2) << "============place type is:"
+            << static_cast<int>(place_.GetType())
+            << " place ptr is: " << &place_;
     ClearLoDTensorArrayInLocalScope();
+    VLOG(2) << "============place type is:"
+            << static_cast<int>(place_.GetType())
+            << " place ptr is: " << &place_;
   }
   // return Fetch Tensors
   Scope* inner_scope =
       create_local_scope_ ? local_scope_ : var_scope_.GetMutableScope();
+  VLOG(2) << "============place type is:" << static_cast<int>(place_.GetType())
+          << " place ptr is: " << &place_;
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+  VLOG(2) << "============place type is:" << static_cast<int>(place_.GetType())
+          << " place ptr is: " << &place_;
   if (fetch_var) {
     return std::move(*fetch_var->GetMutable<framework::FetchList>());
   } else {
     return {};
   }
+  VLOG(2) << "============place type is:" << static_cast<int>(place_.GetType())
+          << " place ptr is: " << &place_;
 }
 
 void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
@@ -242,6 +281,38 @@ void InterpreterCore::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
           "Skip_gc_vars_ can only be initialized once, now skip_gc_vars_ is "
           "not empty, do not call SetSkipGcVars method repeatedly."));
   skip_gc_vars_ = skip_gc_vars;
+}
+
+const VariableScope* InterpreterCore::GetVariableScope() const {
+  return &var_scope_;
+}
+
+void InterpreterCore::reset_scope(Scope* new_scope) {
+  // 1、替换Variable中的scope
+  var_scope_.SetScope(new_scope);
+  auto& var_list = var_scope_.MutableVarList();
+  for (size_t i = 0; i < var_list.size(); i++) {
+    var_list[i] = new_scope->FindVar(var_scope_.GetNameById(i));
+  }
+  // 2、通过BuildAndCacheInstructionCtx使用替换后的scope来RestContext；
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    BuildAndCacheInstructionCtx(&vec_instruction_[i]);
+  }
+  // 3、更新vec_inplace_in_to_out;
+  bool inplaced = false;
+  for (auto inst : vec_instruction_) {
+    if (inst.OpBase()->Type() == "share_buffer" ||
+        inst.OpBase()->Type() == "share_data") {
+      VLOG(4) << "Already inplaced, skip inplace now.";
+      inplaced = true;
+    }
+  }
+  if (FLAGS_new_executor_use_inplace && !inplaced) {
+    for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+      vec_instruction_[i].ClearInplace();
+    }
+    BuildInplace();
+  }
 }
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
@@ -597,6 +668,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
+    VLOG(1) << "start compute kernel: infershape1";
     // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr) {
       platform::RecordEvent infershape_event(
@@ -606,19 +678,24 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
           platform::EventRole::kInnerOp);
 
       // see OperatorWithKernel::RunImpl in operator.cc for why
+      VLOG(1) << "start compute kernel: infershape2";
       if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
             op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        VLOG(1) << "start compute kernel: infershape3";
         op_with_kernel->Info().infer_shape_(
             instr_node.InnerInferShapeContext().get());
+        VLOG(1) << "start compute kernel: infershape4";
       }
+      VLOG(1) << "start compute kernel: infershape5";
       infershape_event.End();
       platform::RecordOpInfoSupplement(op->Type(),
                                        op->Attrs(),
                                        *(instr_node.InnerInferShapeContext()),
                                        *(instr_node.InnerRuntimeContext()));
+      VLOG(6) << "start compute kernel: infershape5";
     }
   }
-
+  VLOG(1) << "start compute kernel: inplace";
   if (op_with_kernel != nullptr && FLAGS_new_executor_use_inplace) {
     // TODO(xiongkun03) Does operator base support inplace ?
     for (auto& pair : instr_node.InplaceInfo()) {
@@ -632,6 +709,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
 
   {
+    VLOG(1) << "start compute kernel: compute";
     platform::RecordEvent compute_event(
         "compute",
         platform::TracerEventType::OperatorInner,
@@ -640,6 +718,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     if (op_with_kernel == nullptr) {
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
+      VLOG(1) << "start compute kernel: phi kernel run";
       // fit for phi
       if (instr_node.PhiKernel() && instr_node.PhiKernel()->IsValid()) {
         VLOG(4) << "Run phi kernel: " << op->Type();

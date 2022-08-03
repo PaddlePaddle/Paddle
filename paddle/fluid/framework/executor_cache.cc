@@ -341,5 +341,39 @@ GettedCacheInfo GetInterpreterCoreInfoFromCache(const ProgramDesc &program_desc,
   }
 }
 
+std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
+    const ProgramDesc &program_desc,
+    const platform::Place &place,
+    bool is_grad,
+    int64_t program_id,
+    framework::Scope *scope) {
+  VLOG(1) << "No interpretercore from cache by: <program_id: " << program_id
+          << ", is_grad: " << is_grad << ">.";
+
+  auto &interpretercore_info_cache =
+      framework::InterpreterCoreInfoCache::Instance();
+
+  if (interpretercore_info_cache.Size() > 4u /* max_cached_size*/) {
+    VLOG(2) << "The cached_info size has exceeded max_cached_size: 4, so "
+               "clear all cache!";
+    interpretercore_info_cache.Finalize();
+  }
+  // 2. Create a new exe.
+  VLOG(1) << "Create a new interpretercore for: <program_id: " << program_id
+          << ", is_grad: " << is_grad << ">.";
+  VLOG(2) << "scope ptr is: " << scope;
+  auto core = std::make_shared<InterpreterCore>(
+      place,
+      program_desc.Block(0),
+      /*skip_gc_vars=*/std::set<std::string>(),
+      scope);
+
+  // 3. Insert exe into cached map.
+  auto &cached_value =
+      interpretercore_info_cache.GetMutable(program_id, is_grad);
+  cached_value.core_ = core;
+  return core;
+}
+
 }  // namespace framework
 }  // namespace paddle

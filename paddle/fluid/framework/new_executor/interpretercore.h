@@ -60,6 +60,10 @@ class InterpreterCore {
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
 
+  const VariableScope* GetVariableScope() const;
+
+  void reset_scope(Scope* new_scope);
+
  private:
   bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
 

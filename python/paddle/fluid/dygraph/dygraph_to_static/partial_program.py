@@ -634,9 +634,9 @@ class PartialProgramLayer:
 
         print("_is_enable_standalone_executor",
               _is_enable_standalone_executor())
-        print(self.forward_program)
+        # print(self.forward_program)
         use_interpretorcore = _is_enable_standalone_executor()
-        attrs.extend(('use_interpretorcore', False))
+        attrs.extend(('use_interpretorcore', True))
         if use_interpretorcore:
             attrs.extend(
                 ('forward_global_block', self.forward_program.desc.block(0),
@@ -649,6 +649,7 @@ class PartialProgramLayer:
                            self._valid_vars(out_vars), self._create_scope_vec(),
                            self._double_grads, self._cuda_graph_vec, *attrs)
         restored_nest_out = self._restore_out(out_vars)
+        print("==============> end run program")
         return self._remove_no_value(restored_nest_out)
 
     def _cast_fp16_if_pure_fp16(self, in_vars):

@@ -349,6 +349,7 @@ const std::vector<std::string>& OperatorBase::Outputs(
 
 std::string OperatorBase::DebugStringEx(const ScopeBase* scope) const {
   std::stringstream ss;
+  VLOG(1) << "DebugStringEx use scope: " << scope;
   ss << "Op(" << type_ << "), inputs:{";
 
   const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;

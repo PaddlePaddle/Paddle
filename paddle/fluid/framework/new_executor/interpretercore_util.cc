@@ -507,6 +507,15 @@ void build_op_func_list(const platform::Place& place,
     }
 #endif
 
+    for (auto iter = ins_map.begin(); iter != ins_map.end(); iter++) {
+      VLOG(1) << "input name is: " << iter->first;
+      for (size_t i = 0; i < iter->second.size(); i++) {
+        auto* tensor =
+            GetMutableLoDTensorOrSelectedRowsValueFromVar(iter->second[i]);
+        VLOG(1) << "tensor is initialized? :" << tensor->initialized();
+      }
+    }
+
     if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
       deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
@@ -690,27 +699,20 @@ void build_op_func_list(const platform::Place& place,
     for (auto& var_name : delete_vars) {
       auto* var = local_scope->FindVar(var_name);
       if (var == nullptr || skip_gc_vars.find(var_name) != skip_gc_vars.end()) {
+        VLOG(6) << "skip gc var is: " << var_name;
+        if (var->IsType<LoDTensor>()) {
+          VLOG(6) << "skip gc tensor ptr is: "
+                  << var->GetMutable<LoDTensor>()->Holder();
+        }
         continue;
       }
 
       VLOG(6) << "Erase variable " << var_name;
       if (var->IsType<LoDTensor>()) {
+        VLOG(6) << "Erase variable tensor ptr is: "
+                << var->GetMutable<LoDTensor>()->Holder();
         garbages->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-      } else if (var->IsType<phi::SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
-                                   ->mutable_value()
-                                   ->MoveMemoryHolder());
-      } else if (var->IsType<LoDTensorArray>()) {
-        auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
-        for (auto& t : *lod_tensor_arr) {
-          garbages->emplace_back(t.MoveMemoryHolder());
-        }
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Type %s of variable %s is not supported eager deletion.",
-            framework::ToTypeName(var->Type()),
-            var_name));
       }
     }
     delete garbages;  // free mem

@@ -225,5 +225,12 @@ GettedCacheInfo GetInterpreterCoreInfoFromCache(const ProgramDesc& program_desc,
                                                 int64_t program_id,
                                                 framework::Scope* scope);
 
+std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
+    const ProgramDesc& program_desc,
+    const platform::Place& place,
+    bool is_grad,
+    int64_t program_id,
+    framework::Scope* scope);
+
 }  // namespace framework
 }  // namespace paddle

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
+// #include "paddle/fluid/framework/variable_helper.h"
 
 DECLARE_bool(benchmark);
 
@@ -44,7 +45,10 @@ PADDLE_DEFINE_EXPORTED_bool(
 namespace paddle {
 namespace framework {
 
-Scope::~Scope() { DropKids(); }
+Scope::~Scope() {
+  VLOG(2) << "delete Scope ptr is: " << this;
+  DropKids();
+}
 
 Scope& Scope::NewScope() const {
   Scope* child = new Scope(this);
@@ -54,6 +58,49 @@ Scope& Scope::NewScope() const {
   }
   return *child;
 }
+
+Scope& Scope::AddSubScope(Scope* child) {
+  {
+    SCOPE_KIDS_WRITER_LOCK
+    kids_.push_back(child);
+  }
+  return *child;
+}
+
+void Scope::PopFront() {
+  SCOPE_KIDS_WRITER_LOCK
+  VLOG(2) << "PopFront before scope size is : " << kids_.size();
+  if (kids_.front() != nullptr) {
+    VLOG(2) << "pop scope ptr: " << kids_.front();
+    delete kids_.front();
+    kids_.pop_front();
+  }
+  VLOG(2) << "PopFront after scope size is : " << kids_.size();
+}
+
+Scope& Scope::PushFront(Scope* child) {
+  {
+    VLOG(2) << "PushFront before scope size is : " << kids_.size();
+    SCOPE_KIDS_WRITER_LOCK
+    VLOG(2) << "push scope ptr: " << child;
+    kids_.push_front(child);
+    VLOG(2) << "PushFront after scope size is : " << kids_.size();
+  }
+  return *child;
+}
+
+// void Scope::Update(Scope* other_scope) {
+//   // (2) 更新scope
+//   auto other_vars = other_scope->LocalVars();
+//   auto other_var_names = other_scope->LocalVarNames();
+//   for (size_t i = 0; i < other_var_names.size(); i++) {
+//     // 向新的scope中创建与老scope相同名字的var，并初始化
+//     auto var_name = other_var_names[i];
+//     auto* ptr = this->Var(var_name);
+//     InitializeVariable(ptr,
+//     static_cast<proto::VarType::Type>(other_vars[i]->Type()));
+//   }
+// }
 
 std::unique_ptr<Scope> Scope::NewTmpScope() const {
   return std::unique_ptr<Scope>(new Scope(this));
@@ -118,7 +165,13 @@ const Scope* Scope::FindScope(const std::string& name) const {
 void Scope::DropKids() {
   {
     SCOPE_KIDS_WRITER_LOCK
-    for (Scope* s : kids_) delete s;
+    VLOG(2) << "scope size is : " << kids_.size();
+    for (Scope* s : kids_) {
+      VLOG(2) << "delete scope of : " << s;
+      delete s;
+      s = nullptr;
+      VLOG(2) << "s set to nullptr : " << s;
+    }
     kids_.clear();
   }
 }

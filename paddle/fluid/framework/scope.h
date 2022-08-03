@@ -69,6 +69,15 @@ class Scope : public ScopeBase {
   /// Mark it to const because that new kid scope cannot change parent scope.
   Scope& NewScope() const;
 
+  Scope& AddSubScope(Scope* child);
+
+  // 替换位置为index的
+  void PopFront();
+
+  Scope& PushFront(Scope* child);
+
+  // void Update(Scope* other_scope);
+
   /// Create a sub-scope for current scope but do not record it in the kids to
   /// avoid performance problems.
   std::unique_ptr<Scope> NewTmpScope() const;
