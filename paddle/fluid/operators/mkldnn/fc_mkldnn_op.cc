@@ -342,7 +342,6 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 
     const float scale_in = ctx.Attr<float>("Scale_in");
     const auto& scale_weights = ctx.Attr<std::vector<float>>("Scale_weights");
-    const float scale_out = ctx.Attr<float>("Scale_out");
 
     RecomputeOutputDims(ctx, x, weights, out);
 
