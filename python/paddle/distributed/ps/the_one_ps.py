@@ -15,7 +15,6 @@
 import warnings
 
 import os
-import paddle
 import paddle.fluid as fluid
 from paddle.distributed import fleet
 from paddle.fluid import core
