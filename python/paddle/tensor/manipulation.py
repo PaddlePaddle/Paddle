@@ -835,6 +835,7 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
             x.fill_diagonal_(1.0)
             print(x.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
     """
+
     helper = LayerHelper("fill_diagonal_", **locals())
     check_type(x, 'X', (Variable), 'fill_diagonal_')
     dtype = helper.input_dtype('x')
@@ -851,6 +852,11 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
         assert len(inshapeset) == 1, (
             'Tensor dims should be equal while input dims > 2 in fill_diagonal_ API'
         )
+    if in_dygraph_mode():
+        if len(inshape) == 2:
+            return _C_ops.final_state_fill_diagonal_(x, value, offset, wrap)
+        return _C_ops.final_state_fill_diagonal_(x, value, offset, True)
+
     if len(inshape) == 2:
         return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset,
                                      'wrap', wrap)
