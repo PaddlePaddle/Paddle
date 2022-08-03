@@ -167,7 +167,7 @@ def exp_orig2prim(op, x):
 
 
 @REGISTER_ORIG2PRIM('log')
-def exp_orig2prim(op, x):
+def log_orig2prim(op, x):
     return log(x)
 
 
@@ -339,7 +339,7 @@ def exp_prim2orig(op, x):
 
 
 @REGISTER_PRIM2ORIG('log_p')
-def exp_prim2orig(op, x):
+def log_prim2orig(op, x):
     return paddle.log(x)
 
 
@@ -520,10 +520,10 @@ def exp_jvp(op, x_dot):
 
 
 @REGISTER_JVP('log_p')
-def exp_jvp(op, x_dot):
+def log_jvp(op, x_dot):
     if x_dot is None:
         return None
-    x = op_position_inputs(op)
+    x, = op_position_inputs(op)
     return div(x_dot, x)
 
 
