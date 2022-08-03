@@ -653,7 +653,6 @@ def sequence_slice(input, offset, length, name=None):
 
 def sequence_expand(x, y, ref_level=-1, name=None):
     r"""
-	:api_attr: Static Graph
 
         Sequence Expand Layer. This layer will expand the input variable ``x`` \
         according to specified level ``ref_level`` lod of ``y``. Please note that \
@@ -662,11 +661,13 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         of ``y``. If the lod level of ``x`` is 0, then the first dim of ``x`` should \
         be equal to the size of ``ref_level`` of ``y``. The rank of **x** is at least 2. \
         When rank of ``x`` is greater than 2, then it would be viewed as a 2-D tensor.
+    
+    .. note::
 
-    Please note that the input ``x`` should be LodTensor or Tensor, \
-        and input ``y`` must be LodTensor.
+        Please note that the input ``x`` should be LodTensor or Tensor, \
+            and input ``y`` must be LodTensor.
 
-    Following examples will explain how sequence_expand works:
+    **Following examples will explain how sequence_expand works:**
 
     .. code-block:: text
 
@@ -790,7 +791,6 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
 def sequence_expand_as(x, y, name=None):
     r"""
-	:api_attr: Static Graph
 
         Sequence Expand As Layer. This OP will expand the input variable ``x`` \
         according to the zeroth level lod of ``y``. Current implementation requires \
@@ -799,8 +799,10 @@ def sequence_expand_as(x, y, name=None):
         the expanded LodTensor has the same lod info as ``y``. The expanded result \
         has nothing to do with ``x``'s lod, so the lod of Input(X) is not considered.
 
-    Please note that the input ``x`` should be LodTensor or Tensor, \
-        and input ``y`` must be LodTensor.
+    .. note::
+
+        Please note that the input ``x`` should be LodTensor or Tensor, \
+            and input ``y`` must be LodTensor.
 
     Following examples will explain how sequence_expand_as works:
 
@@ -911,7 +913,6 @@ def sequence_expand_as(x, y, name=None):
 
 def sequence_pad(x, pad_value, maxlen=None, name=None):
     r"""
-	:api_attr: Static Graph
 
         This layer padding the sequences in a same batch to a common length (according 
         to ``maxlen``). The padding value is defined by ``pad_value``, and will be 
@@ -919,6 +920,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
         the LodTensor ``Out`` is the padded sequences, and LodTensor ``Length`` is 
         the length information of input sequences. For removing padding data (unpadding operation), See :ref:`api_fluid_layers_sequence_unpad`.
 
+    .. note::
         Please note that the input ``x`` should be LodTensor.
 
     .. code-block:: text
