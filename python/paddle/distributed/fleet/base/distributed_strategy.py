@@ -673,7 +673,7 @@ class DistributedStrategy(object):
 
             save_data0 = table_data.accessor.table_accessor_save_param.add()
             save_data0.param = 0
-            save_data0.converter = ""
+            save_data0.converter = "python unit2ctr_accessor_for_save.py"
             save_data0.deconverter = "python ctr2unit_accessor.py"
 
             save_data1 = table_data.accessor.table_accessor_save_param.add()
