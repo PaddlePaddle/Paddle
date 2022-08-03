@@ -74,7 +74,7 @@ void MainTest(const ProgramDesc &prog, const std::string &op_name) {
   int original_nodes_num = graph->Nodes().size();
 
   auto pass =
-      PassRegistry::Instance().Get(op_name + "_transpose_reshape_fuse_pass");
+      PassRegistry::Instance().Get("matmul_transpose_reshape_mkldnn_fuse_pass");
   graph.reset(pass->Apply(graph.release()));
 
   int current_nodes_num = graph->Nodes().size();

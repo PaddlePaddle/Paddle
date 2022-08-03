@@ -495,9 +495,9 @@ if(WITH_MKLDNN)
     SRCS mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass_tester.cc
     DEPS reshape_transpose_matmul_mkldnn_fuse_pass)
   cc_test(
-    test_matmul_transpose_reshape_fuse_pass
-    SRCS mkldnn/matmul_transpose_reshape_fuse_pass_tester.cc
-    DEPS matmul_transpose_reshape_fuse_pass)
+    test_matmul_transpose_reshape_mkldnn_fuse_pass
+    SRCS mkldnn/matmul_transpose_reshape_mkldnn_fuse_pass_tester.cc
+    DEPS matmul_transpose_reshape_mkldnn_fuse_pass)
   cc_test(
     test_shuffle_channel_mkldnn_detect_pass
     SRCS mkldnn/shuffle_channel_mkldnn_detect_pass_tester.cc
