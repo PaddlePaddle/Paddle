@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-from op_test import OpTest
 import unittest
 import numpy as np
 import six

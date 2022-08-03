@@ -55,7 +55,7 @@ void FillDiagonalKernel(const Context& ctx,
 #else
   const int64_t kMaxBlockDim = 512;
 #endif
-  paddle::framework::TensorCopy(x, ctx.GetPlace(), out);
+  phi::Copy(ctx, x, ctx.GetPlace(), false, out);
 
   T* out_data = ctx.template Alloc<T>(out);
   auto fill_val = static_cast<T>(value);

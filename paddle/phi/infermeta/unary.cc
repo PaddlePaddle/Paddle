@@ -791,6 +791,10 @@ void ExpandInferMeta(const MetaTensor& x,
 
 void FillDiagonalInferMeta(
     const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out) {
+  PADDLE_ENFORCE_NE(
+      out,
+      nullptr,
+      phi::errors::InvalidArgument("Tensor out should not be null if "));
   auto x_dims = x.dims();
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
