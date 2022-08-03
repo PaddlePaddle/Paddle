@@ -29,6 +29,7 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.initializer import Constant
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.io import load_inference_model, save_inference_model
+from paddle.distributed import fleet
 from ..quantization_pass import ReplaceFakeQuantDequantPass, QuantWeightPass
 from paddle.fluid.log_helper import get_logger
 from .. import quantization_pass
@@ -48,7 +49,7 @@ class ImperativeQuantAware(object):
     """
 
     def __init__(self,
-                 quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
+                 quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose', 'ColumnParallelLinear', 'RowParallelLinear'],
                  weight_quantize_type='abs_max',
                  activation_quantize_type='moving_average_abs_max',
                  weight_bits=8,
@@ -430,13 +431,20 @@ class ImperativeQuantizeOutputs(object):
 
             parent_layer, sub_name = \
                 utils.find_parent_layer_and_sub_name(model, cur_name)
+            
+            reduce_type = None
+            if paddle.distributed.get_world_size()>1:
+                if isinstance(cur_layer, fleet.meta_parallel.RowParallelLinear):
+                    reduce_type = 'sum'
+                elif isinstance(cur_layer, fleet.meta_parallel.ColumnParallelLinear):
+                    reduce_type = 'max'
 
             if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
                 cur_quant_layer = quant_layers.FakeQuantMAOutputScaleLayer(
-                    cur_layer, self._moving_rate)
+                    cur_layer, self._moving_rate, reduce_type)
             else:
                 cur_quant_layer = quant_layers.MAOutputScaleLayer(
-                    cur_layer, self._moving_rate)
+                    cur_layer, self._moving_rate, reduce_type)
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 
@@ -651,3 +659,4 @@ class ImperativeQuantizeOutputs(object):
             for arg_name in in_op.input_arg_names]
         return any(op is not None and op.type not in \
             utils.fake_quantize_dequantize_op_types for op in previous_ops)
+
