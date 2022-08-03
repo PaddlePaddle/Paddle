@@ -2961,7 +2961,7 @@ class Operator(object):
                     "'%s'" % var.name() for var in self.desc.attr(name, True)
                 ]
                 a = "{name} = Vars[{value}]".format(
-                    name=name, type=attr_type, value=','.join(attr_var_name))
+                    name=name, type=attr_type, value=','.join(attr_var_names))
                 attrs_str += a
                 if i != len(attr_names) - 1:
                     attrs_str += ", "
