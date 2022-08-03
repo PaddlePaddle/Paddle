@@ -503,7 +503,7 @@ function(bash_test_modules TARGET_NAME)
   cmake_parse_arguments(bash_test_modules "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
 
-  set(timeout 350)
+  set(timeout 500)
   if(${bash_test_modules_TIMEOUT})
     set(timeout ${bash_test_modules_TIMEOUT})
   endif()

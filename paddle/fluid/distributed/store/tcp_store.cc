@@ -194,8 +194,8 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
                        << " from addr info:" << GetSockName(fds[i].fd);
       }
     } catch (const std::exception& ex) {
-      fds.erase(fds.begin() + i);
       tcputils::close_socket(fds[i].fd);
+      fds.erase(fds.begin() + i);
 #ifdef _WIN32
       _sockets.erase(_sockets.begin() + i - 1);
 #else
