@@ -1687,6 +1687,64 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void MatrixNMSInferMeta(const MetaTensor& bboxes,
+                        const MetaTensor& scores,
+                        float score_threshold,
+                        int nms_top_k,
+                        int keep_top_k,
+                        float post_threshold,
+                        bool use_gaussian,
+                        float gaussian_sigma,
+                        int background_label,
+                        bool normalized,
+                        MetaTensor* out,
+                        MetaTensor* index,
+                        MetaTensor* roisnum,
+                        MetaConfig config) {
+  auto box_dims = bboxes.dims();
+  auto score_dims = scores.dims();
+  auto score_size = score_dims.size();
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        score_size == 3,
+        true,
+        errors::InvalidArgument("The rank of Input(Scores) must be 3. "
+                                "But received rank = %d.",
+                                score_size));
+    PADDLE_ENFORCE_EQ(
+        box_dims.size(),
+        3,
+        errors::InvalidArgument("The rank of Input(BBoxes) must be 3."
+                                "But received rank = %d.",
+                                box_dims.size()));
+    PADDLE_ENFORCE_EQ(box_dims[2] == 4,
+                      true,
+                      errors::InvalidArgument(
+                          "The last dimension of Input (BBoxes) must be 4, "
+                          "represents the layout of coordinate "
+                          "[xmin, ymin, xmax, ymax]."));
+    PADDLE_ENFORCE_EQ(
+        box_dims[1],
+        score_dims[2],
+        errors::InvalidArgument(
+            "The 2nd dimension of Input(BBoxes) must be equal to "
+            "last dimension of Input(Scores), which represents the "
+            "predicted bboxes."
+            "But received box_dims[1](%s) != socre_dims[2](%s)",
+            box_dims[1],
+            score_dims[2]));
+  }
+  out->set_dims({box_dims[1], box_dims[2] + 2});
+  out->set_dtype(bboxes.dtype());
+  index->set_dims({box_dims[1], 1});
+  index->set_dtype(phi::DataType::INT32);
+  if (roisnum != nullptr) {
+    roisnum->set_dims({-1});
+    roisnum->set_dtype(phi::DataType::INT32);
+  }
+}
+
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,
                             bool use_default_tol,
