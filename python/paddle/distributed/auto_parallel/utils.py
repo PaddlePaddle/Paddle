@@ -23,6 +23,7 @@ from functools import reduce
 
 import paddle.fluid.core as core
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.auto_parallel.process_group import get_all_process_groups
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
@@ -1123,6 +1124,13 @@ def is_loss_op(op):
         int(op.all_attrs()[OP_ROLE_KEY]) == (int(OpRole.Forward) | int(OpRole.Loss))
 
 
+def is_loss_grad_op(op):
+    if OP_ROLE_KEY not in op.attr_names:
+        return False
+    op_role = int(op.all_attrs()[OP_ROLE_KEY])
+    return op_role & int(OpRole.Backward) and op_role & int(OpRole.Loss)
+
+
 def is_prim_op(op):
     return op.type.endswith("_p")
 
@@ -1481,3 +1489,10 @@ def debug_program(program, path, name):
         path, name + '_program' + ".%d" % (paddle.distributed.get_rank()))
     with open(filename, 'w') as f:
         f.write(str(program))
+
+
+def ring_id_to_process_group(ring_id):
+    for g in get_all_process_groups():
+        if g.id == ring_id:
+            return g
+    return None

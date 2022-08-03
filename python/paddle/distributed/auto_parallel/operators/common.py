@@ -435,3 +435,13 @@ def gradient_synchronization(dist_ctx, op, act_grad_names, out_grad_names,
         return
 
     sync_and_scale_gradients(dist_ctx, op, dp_group, out_grad_names)
+
+
+def is_data_parallel_scale_op(op):
+    return op.type == "scale" and op.desc.has_attr("op_namescope") \
+            and ParallelMode.DataParallel in op.desc.attr("op_namescope")
+
+
+def is_data_parallel_reduce_op(op):
+    return op.type in ["c_reduce_sum", "c_allreduce_sum"] and op.desc.has_attr("op_namescope") \
+            and ParallelMode.DataParallel in op.desc.attr("op_namescope")

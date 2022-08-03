@@ -160,20 +160,23 @@ class ProcessGroup:
     def is_member(self):
         return True
 
-    # def __eq__(self, other):
-    #     if not isinstance(other, ProcessGroup):
-    #         return False
-    #     if self.id != other.id:
-    #         return False
-    #     return True
+    def __eq__(self, other):
+        if not isinstance(other, ProcessGroup):
+            return False
+        if self.id != other.id:
+            return False
+        return True
 
-    # def __ne__(self, other):
-    #     return not self.__eq__(other)
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __str__(self):
         string = "id: {}, nranks: {}, ranks: {}.".format(
             self.id, self.nranks, ", ".join(map(str, self.ranks)))
         return string
+
+    def __hash__(self):
+        return hash(self.__str__())
 
 
 # Note that Process group 0 is reserved for representing all ranks.
