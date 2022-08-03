@@ -146,6 +146,48 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
   }
 };
 
+void FusionSeqPoolCVMConcatGradOp::InferShape(
+    framework::InferShapeContext* ctx) const {
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("CVM"), true,
+      platform::errors::InvalidArgument(
+          "Input(CVM) of FusionSeqPoolCVMConcatGradOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInputs(framework::GradVarName("Out")), true,
+      platform::errors::InvalidArgument("Input(Out@GRAD) should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasOutputs(framework::GradVarName("X")), true,
+      platform::errors::InvalidArgument("Output(X@GRAD) should not be null."));
+
+  ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
+  ctx->ShareAllLoD("X", /*->*/ framework::GradVarName("X"));
+}
+
+framework::OpKernelType FusionSeqPoolCVMConcatGradOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, framework::GradVarName("Out")), ctx.GetPlace());
+}
+
+template <typename T>
+class FusionSeqPoolCVMConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    std::cout<<"[hsq] hi from FusionSeqPoolCVMConcatGradOpMaker::Apply"<<std::endl;
+    op->SetType("fusion_seqpool_cvm_concat_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("CVM", this->Input("CVM"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
+    op->SetAttrMap(this->Attrs());
+  }
+
+};
+
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -153,9 +195,17 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     fusion_seqpool_cvm_concat, ops::FusionSeqPoolCVMConcatOp,
     ops::FusionSeqPoolCVMConcatOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    ops::FusionSeqPoolCVMConcatGradOpMaker<paddle::framework::OpDesc>,
+    ops::FusionSeqPoolCVMConcatGradOpMaker<paddle::imperative::OpBase>)
+
+REGISTER_OPERATOR(fusion_seqpool_cvm_concat_grad,
+                  ops::FusionSeqPoolCVMConcatGradOp)
 
 REGISTER_OP_CPU_KERNEL(fusion_seqpool_cvm_concat,
                        ops::FusionSeqPoolCVMConcatKernel<float>,
                        ops::FusionSeqPoolCVMConcatKernel<double>);
+
+REGISTER_OP_CPU_KERNEL(
+    fusion_seqpool_cvm_concat_grad,
+    ops::FusionSeqPoolCVMConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::FusionSeqPoolCVMConcatGradKernel<paddle::platform::CPUDeviceContext, double>);
