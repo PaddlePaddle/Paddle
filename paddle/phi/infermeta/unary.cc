@@ -341,6 +341,27 @@ void CropTensorInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void DecodeJpegInferMeta(const MetaTensor& x,
+                         const std::string& mode,
+                         MetaTensor* out) {
+  std::vector<int> out_dims;
+
+  if (mode == "unchanged") {
+    out_dims = {-1, -1, -1};
+  } else if (mode == "gray") {
+    out_dims = {1, -1, -1};
+  } else if (mode == "rgb") {
+    out_dims = {3, -1, -1};
+  } else {
+    errors::Fatal("The provided mode is not supported for JPEG files on GPU: ",
+                  mode);
+  }
+  if (out != nullptr) {
+    out->set_dims(phi::make_ddim(out_dims));
+    out->set_dtype(x.dtype());
+  }
+}
+
 void DiagEmbedInferMeta(
     const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out) {
   auto x_dims = x.dims();
@@ -1546,11 +1567,10 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
 
   auto x_dims = x.dims();
 
-  PADDLE_ENFORCE(
-      x_dims.size() == 4 || x_dims.size() == 5,
-      errors::InvalidArgument(
-          "Pooling intput should be 4-D or 5-D tensor but received %dD-Tensor",
-          x_dims.size()));
+  PADDLE_ENFORCE(x_dims.size() == 4 || x_dims.size() == 5,
+                 errors::InvalidArgument("Pooling intput should be 4-D or "
+                                         "5-D tensor but received %dD-Tensor",
+                                         x_dims.size()));
 
   if (global_pooling) {
     kernel_size_.resize(static_cast<size_t>(x_dims.size()) - 2);
@@ -3032,7 +3052,8 @@ void StridedSliceInferMeta(const MetaTensor& x,
 }
 
 /*  Why not use SumRawInferMeta directly?
-    Because we need make InferMetaFunction's args follow the design of api.yaml
+    Because we need make InferMetaFunction's args follow the design of
+   api.yaml
 */
 void SumInferMeta(const MetaTensor& x,
                   const std::vector<int64_t>& axis,

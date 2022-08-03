@@ -1030,7 +1030,6 @@ def decode_jpeg(x, mode='unchanged', name=None):
 
             print(img.shape)
     """
-
     if _non_static_mode():
         return _C_ops.decode_jpeg(x, "mode", mode)
 
