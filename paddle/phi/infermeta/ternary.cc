@@ -743,6 +743,99 @@ void LinspaceInferMeta(const MetaTensor& start,
   LinspaceRawInferMeta(start, stop, number, out);
 }
 
+void MultiClassNMSInferMeta(const MetaTensor& bboxes,
+                            const MetaTensor& scores,
+                            const MetaTensor& rois_num,
+                            float score_threshold,
+                            int nms_top_k,
+                            int keep_top_k,
+                            float nms_threshold,
+                            bool normalized,
+                            float nms_eta,
+                            int background_label,
+                            MetaTensor* out,
+                            MetaTensor* index,
+                            MetaTensor* nms_rois_num,
+                            MetaConfig config) {
+  auto box_dims = bboxes.dims();
+  auto score_dims = scores.dims();
+  auto score_size = score_dims.size();
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        score_size == 2 || score_size == 3,
+        true,
+        errors::InvalidArgument("The rank of Input(Scores) must be 2 or 3"
+                                ". But received rank = %d",
+                                score_size));
+    PADDLE_ENFORCE_EQ(
+        box_dims.size(),
+        3,
+        errors::InvalidArgument("The rank of Input(BBoxes) must be 3"
+                                ". But received rank = %d",
+                                box_dims.size()));
+    if (score_size == 3) {
+      PADDLE_ENFORCE_EQ(box_dims[2] == 4 || box_dims[2] == 8 ||
+                            box_dims[2] == 16 || box_dims[2] == 24 ||
+                            box_dims[2] == 32,
+                        true,
+                        errors::InvalidArgument(
+                            "The last dimension of Input"
+                            "(BBoxes) must be 4 or 8, "
+                            "represents the layout of coordinate "
+                            "[xmin, ymin, xmax, ymax] or "
+                            "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
+                            "8 points: [xi, yi] i= 1,2,...,8 or "
+                            "12 points: [xi, yi] i= 1,2,...,12 or "
+                            "16 points: [xi, yi] i= 1,2,...,16"));
+      PADDLE_ENFORCE_EQ(
+          box_dims[1],
+          score_dims[2],
+          errors::InvalidArgument(
+              "The 2nd dimension of Input(BBoxes) must be equal to "
+              "last dimension of Input(Scores), which represents the "
+              "predicted bboxes."
+              "But received box_dims[1](%s) != socre_dims[2](%s)",
+              box_dims[1],
+              score_dims[2]));
+    } else {
+      PADDLE_ENFORCE_EQ(box_dims[2],
+                        4,
+                        errors::InvalidArgument(
+                            "The last dimension of Input"
+                            "(BBoxes) must be 4. But received dimension = %d",
+                            box_dims[2]));
+      PADDLE_ENFORCE_EQ(
+          box_dims[1],
+          score_dims[1],
+          errors::InvalidArgument(
+              "The 2nd dimension of Input"
+              "(BBoxes) must be equal to the 2nd dimension of Input(Scores). "
+              "But received box dimension = %d, score dimension = %d",
+              box_dims[1],
+              score_dims[1]));
+    }
+  }
+  PADDLE_ENFORCE_NE(out,
+                    nullptr,
+                    errors::InvalidArgument(
+                        "The out in MultiClassNMSInferMeta can't be nullptr."));
+  PADDLE_ENFORCE_NE(
+      index,
+      nullptr,
+      errors::InvalidArgument(
+          "The index in MultiClassNMSInferMeta can't be nullptr."));
+  // Here the box_dims[0] is not the real dimension of output.
+  // It will be rewritten in the computing kernel.
+
+  out->set_dims(phi::make_ddim({-1, box_dims[2] + 2}));
+  out->set_dtype(bboxes.dtype());
+  index->set_dims(phi::make_ddim({-1, box_dims[2] + 2}));
+  index->set_dtype(DataType::INT32);
+  nms_rois_num->set_dims(phi::make_ddim({-1}));
+  nms_rois_num->set_dtype(DataType::INT32);
+}
+
 void NllLossRawInferMeta(const MetaTensor& input,
                          const MetaTensor& label,
                          const MetaTensor& weight,
