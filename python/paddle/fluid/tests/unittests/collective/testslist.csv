@@ -5,7 +5,6 @@ test_broadcast,linux,gpu;rocm,120,DIST,test_runner.py,20073,http_proxy=;https_pr
 test_c_concat,linux,gpu;rocm,120,DIST,test_runner.py,20075,http_proxy=;https_proxy=,
 test_c_identity,linux,gpu;rocm,120,DIST,test_runner.py,20077,http_proxy=;https_proxy=,
 test_c_split,linux,gpu;rocm,120,DIST,test_runner.py,20079,http_proxy=;https_proxy=,
-test_collective_api_base,linux,gpu;rocm,120,DIST,test_runner.py,20079,http_proxy=;https_proxy=,
 test_collective_allgather_api,linux,gpu;rocm,300,DIST,test_runner.py,20081,http_proxy=;https_proxy=,
 test_collective_allgather_object_api,linux,gpu;rocm,120,DIST,test_runner.py,20083,http_proxy=;https_proxy=,
 test_collective_allreduce_api,linux,gpu;rocm,120,DIST,test_runner.py,20085,http_proxy=;https_proxy=,

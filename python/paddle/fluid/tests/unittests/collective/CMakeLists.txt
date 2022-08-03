@@ -31,11 +31,6 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_c_split PROPERTIES TIMEOUT "120")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
-  py_test_modules(test_collective_api_base MODULES test_collective_api_base
-                  ENVS "PADDLE_DIST_UT_PORT=20079;http_proxy=;https_proxy=")
-  set_tests_properties(test_collective_api_base PROPERTIES TIMEOUT "120")
-endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_allgather_api MODULES test_collective_allgather_api ENVS
     "PADDLE_DIST_UT_PORT=20081;http_proxy=;https_proxy=")
