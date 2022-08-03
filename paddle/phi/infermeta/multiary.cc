@@ -1019,6 +1019,75 @@ void DeformableConvInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void EditDistanceInferMeta(const MetaTensor& hyps,
+                           const MetaTensor& refs,
+                           const MetaTensor& hypslength,
+                           const MetaTensor& refslength,
+                           bool normalized,
+                           MetaTensor* sequencenum,
+                           MetaTensor* out) {
+  auto hyp_dims = hyps.dims();
+  auto ref_dims = refs.dims();
+
+  if (hypslength && refslength) {
+    auto hyp_length_dims = hypslength.dims();
+    auto ref_length_dims = refslength.dims();
+
+    PADDLE_ENFORCE_EQ(
+        hyp_dims.size() == 2 && ref_dims.size() == 2 &&
+            hyp_dims[0] == ref_dims[0],
+        true,
+        errors::InvalidArgument(
+            "Input(hyps) and Input(refs) must be 2-D Tensors with "
+            "identical first dimension. But received Input(Hyps): "
+            "input rank %u, input shape [%s]; received Input(Refs): "
+            "input rank %u, input shape [%s]",
+            hyp_dims.size(),
+            hyp_dims,
+            ref_dims.size(),
+            ref_dims));
+    PADDLE_ENFORCE_EQ(
+        hyp_length_dims[0] == ref_length_dims[0] &&
+            hyp_length_dims[0] == hyp_dims[0],
+        true,
+        errors::InvalidArgument(
+            "Input(hypslength), Input(refslength) and Input(hyps) "
+            "should have identical first dimension. But received "
+            "Input(hypslength): input rank %u, input shape [%s]; "
+            "received Input(refslength): input rank %u, input shape "
+            "[%s]; received Input(hyps): input rank %u, input shape "
+            "[%s].",
+            hyp_length_dims.size(),
+            hyp_length_dims,
+            ref_length_dims.size(),
+            ref_length_dims,
+            hyp_dims.size(),
+            hyp_dims));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        hyp_dims.size() == 2 && hyp_dims[1] == 1,
+        true,
+        errors::InvalidArgument(
+            "Input(Hyps) must be a 2-D LoDTensor with the 2nd dimension "
+            "equal to 1. But received: input rank %u, input shape [%s].",
+            hyp_dims.size(),
+            hyp_dims));
+    PADDLE_ENFORCE_EQ(
+        ref_dims.size() == 2 && ref_dims[1] == 1,
+        true,
+        errors::InvalidArgument(
+            "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
+            "equal to 1. But received: input rank %u, input shape [%s].",
+            ref_dims.size(),
+            ref_dims));
+  }
+
+  out->set_dims(refs.dims());
+  out->set_dtype(DataType::FLOAT32);
+  sequencenum->set_dims(phi::make_ddim({1}));
+  sequencenum->set_dtype(DataType::FLOAT32);
+}
+
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,
