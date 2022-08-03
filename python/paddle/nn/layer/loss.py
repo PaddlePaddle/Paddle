@@ -1178,11 +1178,13 @@ class SmoothL1Loss(Layer):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Call Parameters:
-        input (Tensor): Input tensor, the data type is float32 or float64. Shape is
-            (N, C), where C is number of classes, and if shape is more than 2D, this
-            is (N, C, D1, D2,..., Dk), k >= 1.
-        label (Tensor): Label tensor, the data type is float32 or float64. The shape of label
-            is the same as the shape of input.
+
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), 
+        where C is number of classes, and if shape is more than 2D, 
+        this is (N, C, D1, D2,..., Dk), k >= 1.
+
+        label (Tensor): Label tensor, the data type is float32 or float64. 
+        The shape of label is the same as the shape of input.
 
     Returns:
         Tensor, The tensor storing the smooth_l1_loss of input and label.

@@ -1529,7 +1529,7 @@ def kl_div(input, label, reduction='mean', name=None):
 
 def mse_loss(input, label, reduction='mean', name=None):
     r"""
-    This op accepts input predications and label and returns the mean square error.
+    Accept input predications and label and returns the mean square error.
 
     If :attr:`reduction` is set to ``'none'``, loss is calculated as:
 
