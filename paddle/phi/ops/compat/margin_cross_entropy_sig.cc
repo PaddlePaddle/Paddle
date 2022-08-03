@@ -34,7 +34,7 @@ KernelSignature MarginCrossEntropyOpArgumentMapping(
 KernelSignature MarginCrossEntropyGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("margin_cross_entropy_grad",
-                         {"Softmax", "Logits", "Label", "Loss@GRAD"},
+                         {"Logits", "Label", "Softmax", "Loss@GRAD"},
                          {"return_softmax",
                           "ring_id",
                           "rank",
