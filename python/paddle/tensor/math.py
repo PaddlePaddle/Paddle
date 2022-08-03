@@ -4052,7 +4052,6 @@ def deg2rad(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             
             x1 = paddle.to_tensor([180.0, -180.0, 360.0, -360.0, 90.0, -90.0])
             result1 = paddle.deg2rad(x1)
