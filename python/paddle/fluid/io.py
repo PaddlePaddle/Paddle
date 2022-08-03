@@ -1248,14 +1248,13 @@ def save_inference_model(dirname,
                          clip_extra=False):
     """
     :api_attr: Static Graph
-
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` .
     If you just want to save parameters of your trained model, please use the
     :ref:`api_fluid_io_save_params` . You can refer to :ref:`api_guide_model_save_reader_en`
     for more details.
 
-    Note:
+    .. note::
         The :code:`dirname` is used to specify the folder where inference model
         structure and parameters are going to be saved. If you would like to save params of
         Program in separate files, set `params_filename` None; if you would like to save all
@@ -1279,7 +1278,7 @@ def save_inference_model(dirname,
         params_filename(str, optional): The name of file to save all related parameters.
                                         If it is set None, parameters will be saved
                                         in separate files .
-        export_for_deployment(bool): If True, programs are modified to only support
+        export_for_deployment(bool, optional): If True, programs are modified to only support
                                      direct inference deployment. Otherwise,
                                      more information will be stored for flexible
                                      optimization and re-training. Currently, only
