@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/matmul_transpose_reshape_fuse_pass.h"
-
+#include "paddle/fluid/framework/ir/mkldnn/matmul_transpose_reshape_mkldnn_fuse_pass.h"
 #include <paddle/fluid/string/pretty_log.h>
-
-#include <vector>
-
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -25,76 +21,28 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-MatmulTransposeReshapeMKLDNNPass::MatmulTransposeReshapeMKLDNNPass() {
-  op_name_ = "matmul";
+using string::PrettyLogDetail;
 
-  AddOpCompat(OpCompat(op_name_))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("alpha")  // unconstrained. can be any float value.
-      .IsType<float>()
-      .End()
-      .AddAttr("transpose_X")  // unconstrained. can be any bool value.
-      .IsType<bool>()
-      .End()
-      .AddAttr("transpose_Y")  // unconstrained. can be any bool value.
-      .IsType<bool>()
-      .End();
+void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(Graph *graph) const {
+  auto matmul_types = {"matmul", "matmul_v2"};
 
-  AddOpCompat(OpCompat("transpose2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddOutput("XShape")
-      .IsTensor()
-      .End()
-      .AddAttr("axis")  // ints
-      .IsType<std::vector<int>>()
-      .End();
-
-  AddOpCompat(OpCompat("reshape2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Shape")
-      .IsTensor()
-      .IsOptional()
-      .End()
-      .AddInput("ShapeTensor")
-      .IsTensor()
-      .IsOptional()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddOutput("XShape")
-      .IsTensor()
-      .End()
-      .AddAttr("shape")  // ints
-      .IsType<std::vector<int>>()
-      .End();
+  for (const auto &matmul_type : matmul_types) {
+    FuseMatmulTransposeReshape(graph, matmul_type);
+  }
 }
-void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
+
+void MatmulTransposeReshapeMKLDNNPass::FuseMatmulTransposeReshape(
+    Graph *graph, const std::string &matmul_type) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
-  FusePassBase::Init(name_scope_, graph);
-
+  FusePassBase::Init(matmul_type + "_transpose_reshape_mkldnn_fuse_pass",
+                     graph);
   GraphPatternDetector gpd;
-  patterns::MatmulTransposeReshapePattern mtrp(gpd.mutable_pattern(),
-                                               name_scope_);
-
-  mtrp(op_name_);
+  patterns::MatmulTransposeReshapePattern mtrp(
+      gpd.mutable_pattern(),
+      matmul_type + "_transpose_reshape_mkldnn_fuse_pass");
+  mtrp(matmul_type);
 
   int found_matmul_transpose_reshape_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -103,7 +51,7 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
       LOG(WARNING) << "Pass in op compat failed.";
       return;
     }
-    VLOG(4) << "handle " + op_name_ + "_transpose_reshape fuse";
+
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, mtrp);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, mtrp);
     GET_IR_NODE_FROM_SUBGRAPH(transpose_op, transpose_op, mtrp);
@@ -112,6 +60,7 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(reshape_op, reshape_op, mtrp);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_out, reshape_out, mtrp);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_out_xshape, reshape_out_xshape, mtrp);
+
     auto reshape_shape =
         PADDLE_GET_CONST(std::vector<int>, reshape_op->Op()->GetAttr("shape"));
     auto transpose_axis =
@@ -123,17 +72,17 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
     const bool supported_transpose_axis = std::equal(
         transpose_axis.begin(), transpose_axis.end(), supported_axis.begin());
     if (transpose_out_size != 4) {
-      VLOG(3) << "do not perform " + op_name_ + "_transpose_reshape fuse: "
+      VLOG(3) << "do not perform " + matmul_type + "_transpose_reshape fuse: "
               << "supported rank is 4, received " << transpose_out_size;
       return;
     }
     if (!supported_transpose_axis) {
-      VLOG(3) << "do not perform " + op_name_ + "_transpose_reshape fuse: "
+      VLOG(3) << "do not perform " + matmul_type + "_transpose_reshape fuse: "
               << "supported transpose axis for the fuse are {0, 2, 1, 3}";
       return;
     }
     if (reshape_out_size != 3) {
-      VLOG(3) << "do not perform " + op_name_ + "_transpose_reshape fuse: "
+      VLOG(3) << "do not perform " + matmul_type + "_transpose_reshape fuse: "
               << "reshape_out supported rank is 3, received "
               << reshape_out_size;
       return;
@@ -159,22 +108,98 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
   gpd(graph, handler);
   AddStatis(found_matmul_transpose_reshape_count);
   if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
-    std::stringstream msg_ss;
-    msg_ss << "---    Fused " << found_matmul_transpose_reshape_count
-           << " MatmulTransposeReshape patterns for " + op_name_ + " Op";
-    paddle::string::PrettyLogDetail(msg_ss.str().c_str());
+    PrettyLogDetail("---    fused %d %s + transpose + reshape patterns",
+                    found_matmul_transpose_reshape_count,
+                    matmul_type);
   }
 }
+
+MatmulTransposeReshapeMKLDNNPass::MatmulTransposeReshapeMKLDNNPass() {
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsType<float>()
+      .End()
+      .AddAttr("transpose_X")
+      .IsType<bool>()
+      .End()
+      .AddAttr("transpose_Y")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("transpose2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsType<std::vector<int>>()
+      .End();
+
+  AddOpCompat(OpCompat("reshape2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Shape")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ShapeTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("shape")
+      .IsType<std::vector<int>>()
+      .End();
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(matmul_transpose_reshape_fuse_pass,
+REGISTER_PASS(matmul_transpose_reshape_mkldnn_fuse_pass,
               paddle::framework::ir::MatmulTransposeReshapeMKLDNNPass);
 
-REGISTER_PASS_CAPABILITY(matmul_transpose_reshape_fuse_pass)
+REGISTER_PASS_CAPABILITY(matmul_transpose_reshape_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("matmul", 1)
-            .EQ("transpose", 0)
-            .EQ("reshape", 0));
+            .EQ("matmul_v2", 0)
+            .EQ("transpose2", 0)
+            .EQ("reshape2", 0));

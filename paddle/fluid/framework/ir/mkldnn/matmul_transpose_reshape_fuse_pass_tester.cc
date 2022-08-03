@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/ir/mkldnn/matmul_v2_transpose_reshape_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/matmul_transpose_reshape_mkldnn_fuse_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -106,5 +106,4 @@ TEST(MatmulTransposeReshapeFusePass, matmul_v2_fuse_pass) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(matmul_transpose_reshape_fuse_pass);
-USE_PASS(matmul_v2_transpose_reshape_fuse_pass);
+USE_PASS(matmul_transpose_reshape_mkldnn_fuse_pass);
