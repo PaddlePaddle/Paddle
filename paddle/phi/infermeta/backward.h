@@ -126,6 +126,12 @@ void EigGradInferMeta(const MetaTensor& out_w,
                       const MetaTensor& dout_v,
                       MetaTensor* dx);
 
+void EigvalshGradInferMeta(const MetaTensor& out_v,
+                           const MetaTensor& out_w_grad,
+                           const std::string& uplo,
+                           bool is_test,
+                           MetaTensor* x_grad);
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,
