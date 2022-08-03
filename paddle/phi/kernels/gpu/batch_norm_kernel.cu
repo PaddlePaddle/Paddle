@@ -908,7 +908,8 @@ void BatchNormKernel(const Context &ctx,
 //         static_cast<void *>(saved_variance->template mutable_data<
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
 #else
-      const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
+      // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
+      const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
       const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
       const bool use_native_kernel =
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||

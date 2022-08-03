@@ -17,7 +17,6 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(
-    merge_selected_rows,
-    ops::MergeSelectedRowsKernel<plat::CUDADeviceContext, float>,
-    ops::MergeSelectedRowsKernel<plat::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(merge_selected_rows,
+                        ops::MergeSelectedRowsKernel<phi::GPUContext, float>,
+                        ops::MergeSelectedRowsKernel<phi::GPUContext, double>);

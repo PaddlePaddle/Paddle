@@ -57,15 +57,6 @@ class StaticCode():
         y = n
 
 
-class TestSplitAssignTransformer(unittest.TestCase):
-
-    def test_code(self):
-        answer = get_source_code(StaticCode.dyfunc_assign)
-        program_translator = ProgramTranslator()
-        code = program_translator.get_code(dyfunc_assign)
-        self.assertEqual(answer, code)
-
-
 class TestIsPaddle(unittest.TestCase):
 
     def fake_module(self):

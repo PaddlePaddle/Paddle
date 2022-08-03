@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,172 +13,116 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
 import numpy as np
-import paddle
-import paddle.fluid.core as core
 import sys
 
 sys.path.append("..")
+import paddle
+import paddle.fluid.core as core
+from op_test import OpTest
 from op_test_xpu import XPUOpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-import time
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
-"""
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 'core is not compiled with XPU')
-class TestOneHotOp(XPUOpTest):
-    def setUp(self):
-        self.use_xpu = True
-        self.op_type = 'one_hot'
-        depth = 10
-        depth_np = np.array(10).astype('int32')
-        x_lod = [[4, 1, 3, 3]]
-        x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
-        x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
-
-        out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
-
-        for i in range(np.product(x.shape)):
-            out[i, x[i]] = 1.0
-
-        self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
-        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
-        self.outputs = {'Out': (out, x_lod)}
-
-    def test_check_output(self):
-        place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 'core is not compiled with XPU')
-class TestOneHotOp_attr(XPUOpTest):
-    def setUp(self):
-        self.op_type = 'one_hot'
-        depth = 10
-        x_lod = [[4, 1, 3, 3]]
-        x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
-        x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
+class XPUTestOneHotOP(XPUOpTestWrapper):
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+    def __init__(self):
+        self.op_name = 'one_hot'
+        self.use_dynamic_create_class = False
 
-        for i in range(np.product(x.shape)):
-            out[i, x[i]] = 1.0
+    class TestXPUOneHotOP(XPUOpTest):
 
-        self.inputs = {'X': (x, x_lod)}
-        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32), 'depth': depth}
-        self.outputs = {'Out': (out, x_lod)}
+        def setUp(self):
+            self.place = paddle.XPUPlace(0)
+            self.init_dtype()
+            self.op_type = 'one_hot'
 
-    def test_check_output(self):
-        place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, check_dygraph=False)
+            self.set_data()
+            self.set_input()
 
+        def set_data(self):
+            self.depth = 10
+            self.depth_np = np.array(10).astype('int32')
+            self.x_lod = [[4, 1, 3, 3]]
+            self.x = [
+                np.random.randint(0, self.depth - 1)
+                for i in range(sum(self.x_lod[0]))
+            ]
+            self.x = np.array(self.x).astype(self.dtype).reshape(
+                [sum(self.x_lod[0]), 1])
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 'core is not compiled with XPU')
-class TestOneHotOp_default_dtype(XPUOpTest):
-    def setUp(self):
-        self.op_type = 'one_hot'
-        depth = 10
-        depth_np = np.array(10).astype('int32')
-        x_lod = [[4, 1, 3, 3]]
-        x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
-        x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
+            self.out = np.zeros(shape=(np.product(self.x.shape[:-1]),
+                                       self.depth)).astype('float32')
+            for i in range(np.product(self.x.shape)):
+                self.out[i, self.x[i]] = 1.0
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+            self.outputs = {'Out': (self.out, self.x_lod)}
 
-        for i in range(np.product(x.shape)):
-            out[i, x[i]] = 1.0
+        def set_input(self):
+            self.inputs = {
+                'X': (self.x, self.x_lod),
+                'depth_tensor': self.depth_np
+            }
+            self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
-        self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
-        self.attrs = {}
-        self.outputs = {'Out': (out, x_lod)}
+        def test_check_output(self):
+            self.check_output(check_dygraph=False)
 
-    def test_check_output(self):
-        place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, check_dygraph=False)
+        def init_dtype(self):
+            self.dtype = self.in_type
 
+    class TestXPUOneHotOP_attr(TestXPUOneHotOP):
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 'core is not compiled with XPU')
-class TestOneHotOp_default_dtype_attr(XPUOpTest):
-    def setUp(self):
-        self.op_type = 'one_hot'
-        depth = 10
-        x_lod = [[4, 1, 3, 3]]
-        x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
-        x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
+        def set_input(self):
+            self.inputs = {'X': (self.x, self.x_lod)}
+            self.attrs = {
+                'dtype': int(core.VarDesc.VarType.FP32),
+                'depth': self.depth
+            }
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+    class TestXPUOneHotOP_default_dtype(TestXPUOneHotOP):
 
-        for i in range(np.product(x.shape)):
-            out[i, x[i]] = 1.0
+        def set_input(self):
+            self.inputs = {
+                'X': (self.x, self.x_lod),
+                'depth_tensor': self.depth_np
+            }
+            self.attrs = {}
 
-        self.inputs = {'X': (x, x_lod)}
-        self.attrs = {'depth': depth}
-        self.outputs = {'Out': (out, x_lod)}
+    class TestXPUOneHotOP_default_dtype_attr(TestXPUOneHotOP):
 
-    def test_check_output(self):
-        place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, check_dygraph=False)
+        def set_input(self):
+            self.inputs = {'X': (self.x, self.x_lod)}
+            self.attrs = {'depth': self.depth}
 
+    class TestXPUOneHotOP_out_of_range(TestXPUOneHotOP):
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 'core is not compiled with XPU')
-class TestOneHotOp_out_of_range(XPUOpTest):
-    def setUp(self):
-        self.op_type = 'one_hot'
-        depth = 10
-        x_lod = [[4, 1, 3, 3]]
-        x = [np.random.choice([-1, depth]) for i in range(sum(x_lod[0]))]
-        x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
+        def set_data(self):
+            self.depth = 10
+            self.x_lod = [[4, 1, 3, 3]]
+            self.x = [
+                np.random.choice([-1, self.depth])
+                for i in range(sum(self.x_lod[0]))
+            ]
+            self.x = np.array(self.x).astype(self.dtype).reshape(
+                [sum(self.x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+            self.out = np.zeros(shape=(np.product(self.x.shape[:-1]),
+                                       self.depth)).astype('float32')
 
-        self.inputs = {'X': (x, x_lod)}
-        self.attrs = {'depth': depth, 'allow_out_of_range': True}
-        self.outputs = {'Out': (out, x_lod)}
+            self.outputs = {'Out': (self.out, self.x_lod)}
 
-    def test_check_output(self):
-        place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, check_dygraph=False)
+        def set_input(self):
+            self.inputs = {'X': (self.x, self.x_lod)}
+            self.attrs = {'depth': self.depth, 'allow_out_of_range': True}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 'core is not compiled with XPU')
-class TestOneHotOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # the input must be Variable
-            in_w = np.random.random((4, 1)).astype('int32')
-            self.assertRaises(TypeError, fluid.layers.one_hot, in_w)
-            # the input must be int32 or int 64
-            in_w2 = fluid.layers.data(
-                name='in_w2',
-                shape=[4, 1],
-                append_batch_size=False,
-                dtype='float32')
-            self.assertRaises(TypeError, fluid.layers.one_hot, in_w2)
-            # the depth must be int, long or Variable
-            in_r = fluid.layers.data(
-                name='in_r',
-                shape=[4, 1],
-                append_batch_size=False,
-                dtype='int32')
-            depth_w = np.array([4])
-            self.assertRaises(TypeError, fluid.layers.one_hot, in_r, 4.1)
-            self.assertRaises(TypeError, fluid.layers.one_hot, in_r, depth_w)
-"""
+support_types = get_xpu_op_support_types('one_hot')
+for stype in support_types:
+    create_test_class(globals(), XPUTestOneHotOP, stype)
 
-if __name__ == '__main__':
-    paddle.enable_static()
+if __name__ == "__main__":
     unittest.main()

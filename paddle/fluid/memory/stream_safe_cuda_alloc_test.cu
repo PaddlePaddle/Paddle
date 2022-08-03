@@ -65,7 +65,7 @@ TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
   allocation_implicit_stream.reset();
 
   gpuStream_t default_stream =
-      dynamic_cast<platform::CUDADeviceContext *>(
+      dynamic_cast<phi::GPUContext *>(
           paddle::platform::DeviceContextPool::Instance().Get(place))
           ->stream();
   allocation::AllocationPtr allocation_unique =
@@ -143,7 +143,7 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
   size_t alloc_size = 256;
 
   gpuStream_t default_stream =
-      dynamic_cast<platform::CUDADeviceContext *>(
+      dynamic_cast<phi::GPUContext *>(
           paddle::platform::DeviceContextPool::Instance().Get(place))
           ->stream();
   std::shared_ptr<Allocation> allocation_implicit_stream =
