@@ -273,6 +273,30 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   return task;
 }
 
+std::vector<std::unique_ptr<phi::GPUContext>> ProcessGroupNCCL::GetDeviceContext(std::vector<phi::DenseTensor>& inputs){
+  const auto places = GetPlaceList(inputs);
+  const auto key = GetKeyFromPlaces(places);
+
+  if(places_to_ctx_.find(key) != places_to_ctx_.end()){
+    return std::move(places_to_ctx_[key]);
+  }
+
+  std::vector<std::unique_ptr<phi::GPUContext>> dev_ctx;
+  dev_ctx.resize(places.size());
+
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+
+  for (size_t i = 0; i < places.size(); ++i) {
+    platform::CUDADeviceGuard guard(places[i]);
+    dev_ctx[i].reset(new phi::GPUContext(places[i]));
+  }
+
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+
+  places_to_ctx_.emplace(key, std::move(dev_ctx));
+  return std::move(places_to_ctx_[key]);
+}
+
 template <typename Fn>
 void ProcessGroupNCCL::Collective(const phi::DenseTensor* in,
                                   phi::DenseTensor* out,
