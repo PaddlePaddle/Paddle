@@ -16,13 +16,13 @@
 
 namespace phi {
 
-KernelSignature FillDiagonalOpArgumentMapping(
+KernelSignature FillDiagonalTensorOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "fill_diagonal_tensor", {"X", "Y"}, {"offset", "dim1", "dim2"}, {"Out"});
 }
 
-KernelSignature FillDiagonalGradOpArgumentMapping(
+KernelSignature FillDiagonalTensorGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("fill_diagonal_tensor_grad",
                          {"Out@GRAD"},
@@ -33,6 +33,6 @@ KernelSignature FillDiagonalGradOpArgumentMapping(
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(fill_diagonal_tensor,
-                           phi::FillDiagonalOpArgumentMapping);
+                           phi::FillDiagonalTensorOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(fill_diagonal_tensor_grad,
-                           phi::FillDiagonalGradOpArgumentMapping);
+                           phi::FillDiagonalTensorGradOpArgumentMapping);
