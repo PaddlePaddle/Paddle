@@ -77,7 +77,7 @@ void ConvertConv2d(TensorRTEngine* engine,
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
   std::vector<int> paddings =
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
-  // for conv_transpose 
+  // for conv2d_transpose 
   std::vector<int> output_padding;
   if (op_desc.HasAttr("output_padding")) {
     output_padding = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
@@ -95,10 +95,8 @@ void ConvertConv2d(TensorRTEngine* engine,
   nvinfer1::DimsHW nv_ksize(filter_h, filter_w);
   nvinfer1::DimsHW nv_dilations(dilations[0], dilations[1]);
   nvinfer1::DimsHW nv_strides(strides[0], strides[1]);
-  nvinfer1::Dims nv_pre_paddings;
-  nvinfer1::Dims nv_post_paddings;
-  nv_pre_paddings.nbDims = 2;
-  nv_post_paddings.nbDims = 2;
+  nvinfer1::DimsHW nv_pre_paddings;
+  nvinfer1::DimsHW nv_post_paddings;
   if (paddings.size() == 2) {
     nv_pre_paddings.d[0] = paddings[0];
     nv_pre_paddings.d[1] = paddings[1];
