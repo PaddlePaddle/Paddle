@@ -9359,14 +9359,14 @@ def crop(x, shape=None, offsets=None, name=None):
 
     Parameters:
         x (Variable): Tensor, data type can be float32 or float64.
-        shape (Variable|list/tuple of integers): The output shape is specified
+        shape (Variable|list/tuple of integers, optional): The output shape is specified
             by `shape`, which can be a Tensor or a list/tuple of integers.
             If it is a Tensor, it's rank must be the same as `x` , only
             it's shape will be used, and the value of it will be ignored. This way
             is suitable for the case that the output shape may be changed each
             iteration. If it is a list/tuple of integers, it's length must be the same
             as the rank of `x`
-        offsets (Variable|list/tuple of integers|None): Specifies the cropping
+        offsets (Variable|list/tuple of integers|None, optional): Specifies the cropping
             offsets at each dimension. It can be a Tensor or a list/tuple
             of integers. If it is a Tensor, it's rank must be the same as `x`.
             This way is suitable for the case that the offsets may be changed
@@ -9378,9 +9378,6 @@ def crop(x, shape=None, offsets=None, name=None):
 
     Returns:
         Tensor, The cropped Tensor, which has the same rank and data type with `x`.
-
-    Raises:
-        ValueError: If shape is not a list, tuple or Variable.
 
     Examples:
 
