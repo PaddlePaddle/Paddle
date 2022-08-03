@@ -299,7 +299,7 @@ class DSummary : public DenseOptimizer {
   }
 
   float* summary_decay_rate;
-  double summary_decay_rate_d = 0.9999999;
+  double summary_decay_rate_d = 0.999999;
   float* param;
 };
 
