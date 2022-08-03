@@ -319,7 +319,7 @@
     func : AucInferMeta
   kernel :
     func : auc
-  optional : ins_tag_weight 
+  optional : ins_tag_weight
 
 #average_accumulates
 - api : average_accumulates_
@@ -1785,6 +1785,11 @@
   kernel :
     func : one_hot
 
+- api : ones
+  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  output : Tensor
+  invoke : full(shape, 1, dtype, place)
+
 - api : ones_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place={})
   output : Tensor
@@ -2727,6 +2732,11 @@
     data_type : x
   optional : gt_score
   backward : yolov3_loss_grad
+
+- api : zeros
+  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  output : Tensor
+  invoke : full(shape, 0, dtype, place)
 
 - api : zeros_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
