@@ -420,4 +420,11 @@ void Yolov3LossInferMeta(const MetaTensor& x,
                          MetaTensor* objectness_mask,
                          MetaTensor* gt_match_mask);
 
+void GraphSendUVInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& src_index,
+                          const MetaTensor& dst_index,
+                          const std::string& compute_type,
+                          MetaTensor* out);
+
 }  // namespace phi
