@@ -811,6 +811,15 @@
   infer_meta :
     func : UnchangedInferMeta
   invoke : zeros_like(out_grad, DataType::UNDEFINED, {})
+  
+- backward_api : fill_diagonal_grad
+  forward : fill_diagonal (Tensor x, float value, int offset, bool wrap) -> Tensor(out)
+  args : (Tensor out_grad, float value, int offset, bool wrap)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : FillDiagonalGradInferMeta
+  kernel :
+    func : fill_diagonal_grad
   inplace : (out_grad -> x_grad)
 
 - backward_api : flatten_grad
