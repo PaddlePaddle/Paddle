@@ -280,7 +280,7 @@ if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
                   "PADDLE_DIST_UT_PORT=20151;http_proxy=;https_proxy=")
   set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT "500")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU OR WITH_XPU) AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   bash_test_modules(
     test_fleet_graph_execution_meta_optimizer
     START_BASH
@@ -292,7 +292,12 @@ if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   set_tests_properties(test_fleet_graph_execution_meta_optimizer
                        PROPERTIES TIMEOUT "350")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   bash_test_modules(
     test_fleet_pipeline_meta_optimizer
     START_BASH
@@ -304,7 +309,12 @@ if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   set_tests_properties(test_fleet_pipeline_meta_optimizer PROPERTIES TIMEOUT
                                                                      "350")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   bash_test_modules(
     test_fleet_pipeline_meta_optimizer_with_recompute
     START_BASH
@@ -316,7 +326,12 @@ if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   set_tests_properties(test_fleet_pipeline_meta_optimizer_with_recompute
                        PROPERTIES TIMEOUT "350")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   bash_test_modules(
     test_fleet_raw_program_meta_optimizer
     START_BASH
@@ -339,7 +354,12 @@ if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
     "PADDLE_DIST_UT_PORT=20161;http_proxy=;https_proxy=;TEST_TIMEOUT=350")
   set_tests_properties(test_fleetrun PROPERTIES TIMEOUT "300")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND_CL
+    OR WITH_ASCEND
+   )
+   AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   bash_test_modules(
     test_fleet_launch_nproc
     START_BASH
@@ -350,7 +370,12 @@ if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
     "PADDLE_DIST_UT_PORT=20163;http_proxy=;https_proxy=;TEST_TIMEOUT=350")
   set_tests_properties(test_fleet_launch_nproc PROPERTIES TIMEOUT "300")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   bash_test_modules(
     test_fleet_run_random_port
     START_BASH
@@ -361,7 +386,12 @@ if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
     "PADDLE_DIST_UT_PORT=20165;http_proxy=;https_proxy=;TEST_TIMEOUT=350")
   set_tests_properties(test_fleet_run_random_port PROPERTIES TIMEOUT "300")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   bash_test_modules(
     test_fleet_launch_async
     START_BASH
@@ -372,7 +402,12 @@ if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
     "PADDLE_DIST_UT_PORT=20167;http_proxy=;https_proxy=;TEST_TIMEOUT=350")
   set_tests_properties(test_fleet_launch_async PROPERTIES TIMEOUT "300")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   bash_test_modules(
     test_fleet_launch_cloud
     START_BASH
@@ -399,7 +434,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
                   "PADDLE_DIST_UT_PORT=20173;http_proxy=;https_proxy=")
   set_tests_properties(test_ema_fleet PROPERTIES TIMEOUT "300")
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_gen_nccl_id_op
     START_BASH

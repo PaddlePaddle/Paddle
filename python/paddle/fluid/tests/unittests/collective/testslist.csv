@@ -24,7 +24,6 @@ test_collective_split_embedding_none_divisible,linux;win32,,300,DIST,test_runner
 test_collective_split_embedding,linux;win32,,300,DIST,dist_test.sh,20049,http_proxy=;https_proxy=
 test_collective_split_row_linear,linux;win32,,300,DIST,test_runner.py,20051,http_proxy=;https_proxy=
 test_collective_wait,linux;win32,,300,DIST,test_runner.py,20053,http_proxy=;https_proxy=
-test_collective_split_embedding,linux;win32,,300,DIST,test_runner.py,20055,http_proxy=;https_proxy=
 test_allgather,linux;win32,,120,DIST,test_runner.py,20057,ttp_proxy=;https_proxy=
 test_allreduce,linux;win32,,120,DIST,test_runner.py,20059,ttp_proxy=;https_proxy=
 test_broadcast,linux;win32,,120,DIST,test_runner.py,20061,ttp_proxy=;https_proxy=
