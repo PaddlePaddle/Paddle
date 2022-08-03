@@ -1802,6 +1802,27 @@
   kernel :
     func : renorm_grad
 
+- backward_api : repeat_interleave_grad
+  forward : repeat_interleave(Tensor x, int repeats, int dim) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int repeats, int dim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : repeat_interleave_grad
+
+- backward_api : repeat_interleave_with_tensor_index_grad
+  forward : repeat_interleave_with_tensor_index(Tensor x, Tensor repeats, int dim) -> Tensor(out)
+  args : (Tensor x, Tensor repeats, Tensor out_grad, int dim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : repeat_interleave_with_tensor_index_grad
+    data_type : x
+
 - backward_api : reshape_double_grad
   forward : reshape_grad (Tensor xshape, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor grad_out, Tensor grad_x_grad)
