@@ -1266,6 +1266,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
             PADDLE_GET_CONST(float, desc.GetAttr("dropout_prob"));
         if (dropout_prob > 1e-5) return false;
       }
+
+      // not support following four inputs for rnn in paddle-trt
+      auto rnn_inputs = desc.Inputs();
+      if (rnn_inputs.find("SequenceLength") != rnn_inputs.end()) {
+        if (desc.Input("SequenceLength").size()) {
+          return false;
+        }
+      }
     }
 
     if (op_type == "fill_constant_batch_size_like") {
