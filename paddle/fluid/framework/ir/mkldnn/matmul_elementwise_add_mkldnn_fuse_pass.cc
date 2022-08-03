@@ -68,13 +68,8 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
       LOG(WARNING) << "matmul_elementwise_add can be fused once";
       return;
     }
-    if (elementwise_addend->Var()->GetShape() !=
-        matmul_out->Var()->GetShape()) {
-      LOG(WARNING) << "Fuses with elementwise_add require same addends shape";
-      return;
-    }
 
-    matmul->Op()->SetOutput("ResidualData", {elementwise_addend->Name()});
+    matmul->Op()->SetInput("ResidualData", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
 
     GraphSafeRemoveNodes(g, {matmul_out, elementwise_add});
