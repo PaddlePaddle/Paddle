@@ -24,6 +24,10 @@ from typing import Optional, List, Callable, Dict, Any, Set
 class TrtConvertCastTest(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
+            return False
+
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
