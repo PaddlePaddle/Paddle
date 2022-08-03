@@ -1043,7 +1043,7 @@ class Fleet(object):
         recompute_enable = False
         strategy = self._user_defined_strategy
         if strategy.dgc:
-            return
+            return model
 
         if strategy.amp == True:
             amp_enable = True

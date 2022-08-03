@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "dgc/dgc.h"
-#include "paddle/fluid/operators/dgc_wait_comm_op.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/fluid/operators/dgc_wait_comm_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -34,7 +34,7 @@ class DGCWaitCommOpCUDAKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = ctx.Attr<int>("ring_id");
     auto compute_stream =
-        static_cast<platform::CUDADeviceContext*>(
+        static_cast<phi::GPUContext*>(
             platform::DeviceContextPool::Instance().Get(place))
             ->stream();
     auto comm_stream =
@@ -65,4 +65,4 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     dgc_wait_comm,
-    ops::DGCWaitCommOpCUDAKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::DGCWaitCommOpCUDAKernel<phi::GPUContext, float>);

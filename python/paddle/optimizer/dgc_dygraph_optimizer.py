@@ -40,10 +40,6 @@ def sync_params_buffers(params, group=None, src_rank=0):
         return
 
     for param in params:
-        if not isinstance(param, core.VarBase):
-            raise TypeError("The data type of '%s' must be VarBase" %
-                            param.name)
-    for param in params:
         paddle.distributed.broadcast(param,
                                      src=src_rank,
                                      group=group,
@@ -118,7 +114,7 @@ class DGCMomentumOptimizer(Optimizer):
         self.regular_type, self.regular_coeff = self._get_regularization_param(
             weight_decay)
 
-        self.new_group = paddle.distributed.new_group(ranks)
+        self.new_group = _get_default_group()
 
         # dgc config
         self._rampup_begin_step = self._add_cpu_var("rampup_begin_step",

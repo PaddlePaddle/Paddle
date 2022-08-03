@@ -9,6 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/dgc_wait_comm_op.h"
 
 namespace paddle {
@@ -59,4 +60,4 @@ REGISTER_OP_WITHOUT_GRADIENT(dgc_wait_comm, ops::DGCWaitCommOp,
 
 REGISTER_OP_CPU_KERNEL(
     dgc_wait_comm,
-    ops::DGCWaitCommOpCPUKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::DGCWaitCommOpCPUKernel<phi::CPUContext, float>);

@@ -17,4 +17,4 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    dgc_fuse, ops::DGCFuseOpKernel<paddle::platform::CUDADeviceContext, float>);
+    dgc_fuse, ops::DGCFuseOpKernel<phi::GPUContext, float>);

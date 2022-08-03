@@ -37,7 +37,7 @@ class DGCCommOpCUDAKernel : public framework::OpKernel<T> {
 
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
     auto& dev_ctx =
-        ctx.template device_context<paddle::platform::CUDADeviceContext>();
+        ctx.template device_context<phi::GPUContext>();
     gpuStream_t stream = comm->stream();
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
@@ -65,4 +65,4 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     dgc_comm,
-    ops::DGCCommOpCUDAKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::DGCCommOpCUDAKernel<phi::GPUContext, float>);

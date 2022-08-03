@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/dgc_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/fluid/platform/device_context.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/platform/collective_helper.h"
@@ -47,6 +48,7 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
     gpuStream_t stream = comm->stream();
     gpuStream_t compute_stream = dev_ctx.stream();
+
     ncclDataType_t dtype = platform::ToNCCLDataType(
         framework::TransToProtoVarType(grad_out->dtype()));
 

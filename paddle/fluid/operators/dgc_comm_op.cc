@@ -75,4 +75,4 @@ REGISTER_OPERATOR(dgc_comm, ops::DGCCommOp, ops::DGCCommOpMaker)
 
 REGISTER_OP_CPU_KERNEL(
     dgc_comm,
-    ops::DGCCommOpCPUKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::DGCCommOpCPUKernel<phi::CPUContext, float>);
