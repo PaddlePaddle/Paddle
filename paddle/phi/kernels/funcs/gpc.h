@@ -29,15 +29,16 @@
  * @date 2018/6/12
  **/
 
-#ifndef PADDLE_FLUID_OPERATORS_DETECTION_GPC_H_  // GPC_H_
-#define PADDLE_FLUID_OPERATORS_DETECTION_GPC_H_  // GPC_H_
+#ifndef PADDLE_PHI_KERNELS_FUNCS_GPC_H_  // GPC_H_
+#define PADDLE_PHI_KERNELS_FUNCS_GPC_H_  // GPC_H_
 
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-namespace gpc {
+namespace phi {
+namespace funcs {
 
 typedef enum {  // Set operation type
   GPC_DIFF,     // Difference
@@ -190,7 +191,7 @@ inline void gpc_n_edge(edge_node *d, edge_node *e, int p) {
 template <typename T>
 void gpc_malloc(T *&p, int b, char *s) {
   if (b > 0) {
-    p = (T *)malloc(b);
+    p = reinterpret_cast<T *>(malloc(b));
 
     if (!p) {
       fprintf(stderr, "gpc malloc failure: %s\n", s);
@@ -243,7 +244,8 @@ void gpc_free_polygon(gpc_polygon *polygon);
 
 void gpc_free_tristrip(gpc_tristrip *tristrip);
 
-}  // namespace gpc
+}  // namespace funcs
+}  // namespace phi
 
-#endif  // PADDLE_FLUID_OPERATORS_DETECTION_GPC_H_
+#endif  // PADDLE_PHI_KERNELS_FUNCS_GPC_H_
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
