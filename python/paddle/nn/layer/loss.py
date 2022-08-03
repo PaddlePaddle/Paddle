@@ -295,7 +295,7 @@ class CrossEntropyLoss(Layer):
         - **input** (Tensor)
 
             Input tensor, the data type is float32, float64. Shape is
-	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
+        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
 
             Note: 
 
@@ -303,7 +303,7 @@ class CrossEntropyLoss(Layer):
                 output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
- 
+
 
         - **label** (Tensor)
 
@@ -313,7 +313,7 @@ class CrossEntropyLoss(Layer):
 
             2. If soft_label=True, the shape and data type should be same with ``input`` , 
             and the sum of the labels for each sample should be 1.
- 
+
         - **output** (Tensor)
 
             Return the softmax cross_entropy loss of ``input`` and ``label``.
@@ -328,10 +328,11 @@ class CrossEntropyLoss(Layer):
 
             2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
-     Example1(hard labels):
+    Examples:
 
         .. code-block:: python
             
+            # hard labels
             import paddle
             paddle.seed(99999)
             N=100
@@ -348,11 +349,9 @@ class CrossEntropyLoss(Layer):
                                        label)
             print(dy_ret.numpy()) #[5.41993642]
 
-
-    Example2(soft labels):
-
         .. code-block:: python
-            
+
+            # soft labels
             import paddle
             paddle.seed(99999)
             axis = -1
