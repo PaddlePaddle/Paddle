@@ -667,6 +667,18 @@
   data_transform:
     skip_transform : out_w, out_w_grad
 
+- backward_api : eigvalsh_grad
+  forward : eigvalsh (Tensor x, str uplo, bool is_test) -> Tensor(eigenvalues), Tensor(eigenvectors)
+  args : (Tensor eigenvectors, Tensor eigenvalues_grad, str uplo, bool is_test)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : EigvalshGradInferMeta
+  kernel :
+    func : eigvalsh_grad
+    data_type : eigenvectors
+  data_transform :
+    skip_transform : eigenvalues_grad
+
 - backward_api : einsum_grad
   forward : einsum (Tensor[] x, str equation) -> Tensor(out), Tensor[](inner_cache), Tensor[](x_shape)
   args : (Tensor[] x_shape, Tensor[] inner_cache, Tensor out_grad, str equation)

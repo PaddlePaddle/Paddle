@@ -682,6 +682,15 @@
   kernel :
     func : eigvals
 
+- api : eigvalsh
+  args : (Tensor x, str uplo, bool is_test)
+  output : Tensor(eigenvalues), Tensor(eigenvectors)
+  infer_meta :
+    func : EigvalshInferMeta
+  kernel :
+    func : eigvalsh
+  backward : eigvalsh_grad
+
 - api : einsum
   args : (Tensor[] x, str equation)
   output : Tensor, Tensor[]{x.size()}, Tensor[]{x.size()}
