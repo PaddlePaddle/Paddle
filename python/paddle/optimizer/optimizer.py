@@ -388,7 +388,9 @@ class Optimizer(object):
         # lr var can't be float16, for pure fp16 training, should extra handle the dtype for lr
         _lr_dtype = paddle.get_default_dtype(
         ) if self._dtype is None else self._dtype
-        _lr_dtype = paddle.float32 if _lr_dtype == paddle.float16 else _lr_dtype
+        _lr_dtype = paddle.float32 if (
+            paddle.get_default_dtype() != paddle.float16
+            and _lr_dtype == paddle.float16) else _lr_dtype
         if isinstance(self._learning_rate, LRScheduler):
             lr_var = self._global_learning_rate()
             # only create global lr_var once
