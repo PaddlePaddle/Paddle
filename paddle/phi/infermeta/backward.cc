@@ -798,6 +798,24 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
+                                       float min,
+                                       float max,
+                                       int seed,
+                                       int diag_num,
+                                       int diag_step,
+                                       float diag_val,
+                                       MetaTensor* x_grad) {
+  PADDLE_ENFORCE_NE(
+      x_grad,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The X@GRAD in UniformRandomInplaceGradInferMeta can't be nullptr."));
+  auto dims = out_grad.dims();
+  x_grad->set_dims(dims);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,
                           MetaTensor* x_grad) {

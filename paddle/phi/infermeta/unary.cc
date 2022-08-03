@@ -3623,6 +3623,43 @@ void UnfoldInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
+void UniformRandomInplaceInferMeta(const MetaTensor& x,
+                                   float min,
+                                   float max,
+                                   int seed,
+                                   int diag_num,
+                                   int diag_step,
+                                   float diag_val,
+                                   MetaTensor* out) {
+  PADDLE_ENFORCE_LT(
+      min,
+      max,
+      errors::InvalidArgument(
+          "The uniform_random's min must less then max. But received min = "
+          "%f great than or equal max = %f.",
+          min,
+          max));
+  PADDLE_ENFORCE_GE(diag_num,
+                    0,
+                    errors::InvalidArgument(
+                        "The uniform_random's diag_num must greater than or "
+                        "equal 0. But recevied diag_num (%d) < 0.",
+                        diag_num));
+  PADDLE_ENFORCE_GE(diag_step,
+                    0,
+                    errors::InvalidArgument(
+                        "The uniform_random's diag_step must greater than or "
+                        "equal 0. But recevied diag_step (%d) < 0.",
+                        diag_step));
+  PADDLE_ENFORCE_NE(out,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "uniform_random should have output tensor out."));
+  auto xdim = x.dims();
+  out->set_dims(xdim);
+  out->set_dtype(x.dtype());
+}
+
 void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,
                                 bool return_counts,
