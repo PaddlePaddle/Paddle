@@ -1069,7 +1069,7 @@ def margin_ranking_loss(input,
                         name=None):
     r"""
 
-    This op the calcluate the margin rank loss between the input, other and label, use the math function as follows.
+    Calcluate the margin rank loss between the input, other and label, use the math function as follows.
 
     .. math::
         margin\_rank\_loss = max(0, -label * (input - other) + margin)
