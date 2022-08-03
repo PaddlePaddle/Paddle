@@ -43,6 +43,7 @@
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -56,6 +57,7 @@
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -192,8 +194,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
                           "Only one choice can be made between CPU and XPU."));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto *dev_ctx =
-        static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
+    auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place));
     auto dst_gpu_place = place;
     memory::Copy(dst_gpu_place,
                  static_cast<void *>(input_ptr),
@@ -281,7 +282,7 @@ bool AnalysisPredictor::Init(
     // NOTE: If the external_stream equals to global_device_contexts's stream,
     // then fallback.
     auto global_stream =
-        static_cast<platform::CUDADeviceContext *>(
+        static_cast<phi::GPUContext *>(
             platform::DeviceContextPool::Instance().Get(place_))
             ->stream();
     if (predictor_stream_ != global_stream) {
@@ -391,7 +392,7 @@ void AnalysisPredictor::InitDeviceContexts() {
         place_, std::async(std::launch::deferred, [=] {
           auto *gpu_resource =
               ResourceManager::Instance().GetGPUResource(predictor_stream_);
-          auto *gpu_context = new InferGPUContext();
+          auto *gpu_context = new InferGPUContext(place_);
           gpu_context->SetAllocator(
               memory::allocation::AllocatorFacade::Instance()
                   .GetAllocator(place_, gpu_resource->GetStream())
@@ -413,14 +414,16 @@ void AnalysisPredictor::InitDeviceContexts() {
           gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
 
           gpu_context->SetStream(gpu_resource->GetStream());
-          gpu_context->SetBlasHandle(gpu_resource->GetBlasHandle());
+          gpu_context->SetBlasHandle(gpu_resource->GetBlasHandleCreator());
           gpu_context->SetBlasTensorCoreHandle(
-              gpu_resource->GetBlasTensorCoreHandle());
-          gpu_context->SetBlasTF32Handle(gpu_resource->GetBlasTF32Handle());
-          gpu_context->SetDnnHandle(gpu_resource->GetDnnHandle());
-          gpu_context->SetSolverHandle(gpu_resource->GetSolverDnHandle());
-          gpu_context->SetSparseHandle(gpu_resource->GetSparseHandle());
-          gpu_context->SetEigenDevice(gpu_resource->GetGpuEigenDevice());
+              gpu_resource->GetBlasTensorCoreHandleCreator());
+          gpu_context->SetBlasTF32Handle(
+              gpu_resource->GetBlasTF32TensorCoreHandleCreator());
+          gpu_context->SetDnnHandle(gpu_resource->GetDnnHandleCreator());
+          gpu_context->SetSolverHandle(
+              gpu_resource->GetSolverDnHandleCreator());
+          gpu_context->SetSparseHandle(gpu_resource->GetSparseHandleCreator());
+          gpu_context->SetEigenDevice(gpu_resource->GetGpuEigenDeviceCreator());
           gpu_context->SetComputeCapability(
               gpu_resource->GetGpuComputeCapability());
           gpu_context->SetMaxThreadsPerBlock(
@@ -1618,8 +1621,31 @@ bool AnalysisPredictor::ZeroCopyRun() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
-  LOG_FIRST_N(WARNING, 1) << "We will remove this interface in the future. "
-                             "Please use config.SetExecStream instead.";
+  if (!private_context_) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Please use config.SetExecStream to init gpu resources, and then we "
+        "will bind gpu resources to execution stream."));
+  }
+
+  if (stream != predictor_stream_) {
+#ifdef PADDLE_WITH_HIP
+    hipStreamSynchronize(static_cast<gpuStream_t>(predictor_stream_));
+#else
+    cudaStreamSynchronize(static_cast<gpuStream_t>(predictor_stream_));
+#endif
+    ResourceManager::Instance().GpuResourceReBindStream(predictor_stream_,
+                                                        stream);
+    predictor_stream_ = stream;
+
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place,
+        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        this->GetDeviceContexts());
+    auto *dev_ctx =
+        static_cast<InferGPUContext *>(dev_ctxs->at(place_).get().get());
+    dev_ctx->SetStream(stream);
+  }
+
   return ZeroCopyRun();
 }
 #endif
@@ -1631,8 +1657,7 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     auto gpu_place = place_;
-    auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
-        pool.Get(gpu_place));
+    auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(gpu_place));
 #ifdef PADDLE_WITH_HIP
     hipStreamSynchronize(dev_ctx->stream());
 #else
@@ -2304,8 +2329,7 @@ void InternalUtils::SyncStream(paddle_infer::Predictor *p) {
   auto *pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
   paddle::platform::DeviceContextPool &pool =
       paddle::platform::DeviceContextPool::Instance();
-  auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
-      pool.Get(pred->place_));
+  auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(pred->place_));
   cudaStreamSynchronize(dev_ctx->stream());
 #endif
 }

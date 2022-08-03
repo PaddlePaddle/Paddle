@@ -164,6 +164,66 @@ class TestTanhPPrim2Orig(TestAddPPrim2Orig):
         self.out_map = {self.output['Y']: 0}
 
 
+class TestSinPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'sin_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, )
+        self.all_ops = ['sin_p', 'sin']
+        self.out_map = {self.output['Y']: 0}
+
+
+class TestCosPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'cos_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, )
+        self.all_ops = ['cos_p', 'cos']
+        self.out_map = {self.output['Y']: 0}
+
+
+class TestExpPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'exp_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, )
+        self.all_ops = ['exp_p', 'exp']
+        self.out_map = {self.output['Y']: 0}
+
+
 class TestReshapePPrim2Orig(TestAddPPrim2Orig):
 
     def init_data(self):

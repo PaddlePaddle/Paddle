@@ -22,7 +22,7 @@ namespace operators {
 template <typename T>
 class AttnLayerNorm {
  public:
-  AttnLayerNorm(const platform::CUDADeviceContext& dev_ctx,
+  AttnLayerNorm(const phi::GPUContext& dev_ctx,
                 float epsilon,
                 int64_t batch_size,
                 int64_t feature_size)
@@ -82,7 +82,7 @@ class AttnLayerNorm {
   }
 
  private:
-  const platform::CUDADeviceContext& dev_ctx_;
+  const phi::GPUContext& dev_ctx_;
 
   int64_t batch_size_;
   int64_t feature_size_;

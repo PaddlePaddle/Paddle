@@ -48,6 +48,15 @@ inline cusparseOperation_t GetTransposeOperation(const bool trans) {
   }
 }
 
+inline cusparseSpMMAlg_t GetSpMMAlgorithm(const SparseCsrTensor& x) {
+  // TODO(zhouwei): will change to 'CUSPARSE_SPMM_CSR_ALG2' when support batch
+  return CUSPARSE_SPMM_CSR_ALG2;
+}
+
+inline cusparseSpMMAlg_t GetSpMMAlgorithm(const SparseCooTensor& x) {
+  return CUSPARSE_SPMM_ALG_DEFAULT;
+}
+
 /************* SPARSE MATRIX DESCRIPTOR (COO/CSR) ************/
 
 template <typename T, typename IntT>
@@ -324,7 +333,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                           &beta,
                                           out_descriptor.descriptor(),
                                           gpu_type,
-                                          CUSPARSE_SPMM_ALG_DEFAULT,
+                                          GetSpMMAlgorithm(mat_a),
                                           &buffer_size);
   });
 
@@ -341,7 +350,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                &beta,
                                out_descriptor.descriptor(),
                                gpu_type,
-                               CUSPARSE_SPMM_ALG_DEFAULT,
+                               GetSpMMAlgorithm(mat_a),
                                tmp_buffer_ptr);
   });
 }

@@ -19,7 +19,6 @@
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     sparse_momentum,
-    ops::SparseMomentumOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SparseMomentumOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SparseMomentumOpKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::float16>);
+    ops::SparseMomentumOpKernel<phi::GPUContext, float>,
+    ops::SparseMomentumOpKernel<phi::GPUContext, double>,
+    ops::SparseMomentumOpKernel<phi::GPUContext, paddle::platform::float16>);

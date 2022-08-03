@@ -18,13 +18,13 @@
 #include <popart/adaptive.hpp>
 #include <popart/optimizer.hpp>
 #include <popart/sgd.hpp>
-
-#include "paddle/utils/blank.h"
+#include <popart/voiddata.hpp>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
 #include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+#include "paddle/utils/blank.h"
 
 namespace paddle {
 namespace platform {
@@ -300,7 +300,7 @@ void Compiler::RegisterOpFunc() {
 #define INT32 std::int32_t
 #define BOOL bool
 #define STRING std::string
-#define STRING_VEC std::vector<std::string*>
+#define STRING_VEC std::vector<std::string>
 #define NONE
 
 #define ARG(Type, Name) , GetAttrAllowNull<Type>(#Name, op_desc)
