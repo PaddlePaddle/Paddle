@@ -49,7 +49,7 @@ if(${EXP_CUDA_MODULE_LOADING_LAZY})
     COMMAND "chmod" "755" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy.sh"
     COMMAND
       "bash" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy.sh"
-      "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy" "${CUDA_TOOLKIT_ROOT_DIR}/bin/nvcc")
+      "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy" "${CUDA_TOOLKIT_ROOT_DIR}")
   execute_process(COMMAND "chmod" "755" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy")
   set(CUDA_NVCC_EXECUTABLE
       "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy"

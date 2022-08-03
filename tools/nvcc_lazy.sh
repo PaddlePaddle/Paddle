@@ -35,6 +35,9 @@ echo -e >> $1
 echo -e >> $1
 echo "## CUDA_MODULE_LOADING=EAGER,DEFAULT,LAZY" >> $1
 echo -e >> $1
+echo "# set cicc PATH for Centos" >> $1
+echo "export PATH=\$PATH:$2/nvvm/bin" >> $1
+echo -e >> $1
 echo "# check nvcc version, if nvcc >= 11.7, just run nvcc itself" >> $1
 echo "CUDA_VERSION=\$(nvcc --version | grep -oP '(?<=V)\d*\.\d*')" >> $1
 echo "CUDA_VERSION_MAJOR=\${CUDA_VERSION%.*}" >> $1
@@ -47,7 +50,7 @@ echo -e >> $1
 echo "BUILDDIR=\$(mktemp -d  /tmp/nvcc-lazy-build.XXXXXXXX)" >> $1
 echo "echo \"\$@\" > \${BUILDDIR}/args" >> $1
 echo "BUILDSH=\${BUILDDIR}/build.sh" >> $1
-echo "$2 --dryrun --keep --keep-dir=\${BUILDDIR} \"\$@\" 2>&1 | sed -e 's/#\\$ //;/^rm/d' > \$BUILDSH" >> $1
+echo "$2/bin/nvcc --dryrun --keep --keep-dir=\${BUILDDIR} \"\$@\" 2>&1 | sed -e 's/#\\$ //;/^rm/d' > \$BUILDSH" >> $1
 echo "sed -i -e '/^\s*--/d' \$BUILDSH" >> $1
 echo "sed -ne '1,/^cicc.*cudafe1.stub.c/p' \${BUILDSH} > \${BUILDSH}.pre" >> $1
 echo "sed -e '1,/^cicc.*cudafe1.stub.c/d' \${BUILDSH} > \${BUILDSH}.post" >> $1
