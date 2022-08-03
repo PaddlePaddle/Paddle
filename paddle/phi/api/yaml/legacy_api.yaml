@@ -319,7 +319,7 @@
     func : AucInferMeta
   kernel :
     func : auc
-  optional : ins_tag_weight 
+  optional : ins_tag_weight
 
 #average_accumulates
 - api : average_accumulates_
@@ -2781,6 +2781,17 @@
     func: overlap_add
   backward: overlap_add_grad
 
+- api: uniform_random_inplace
+  args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
+  output: Tensor(out)
+  infer_meta:
+    func: UniformRandomInplaceInferMeta
+  kernel:
+    func: uniform_random_inplace
+    data_type: x
+  inplace: (x -> out)
+  backward: uniform_random_inplace_grad
+
 # unpool
 - api: unpool
   args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
@@ -2802,15 +2813,3 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
-
-- api: uniform_random_inplace
-  args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
-  output: Tensor(out)
-  infer_meta:
-    func: UniformRandomInplaceInferMeta
-  kernel:
-    func: uniform_random_inplace
-    data_type: x
-  inplace: (x -> out)
-  backward: uniform_random_inplace_grad
-
