@@ -450,8 +450,11 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
         executor(Executor): The executor that saves the inference model. You can refer
                             to :ref:`api_guide_executor_en` for more details.
         kwargs: Supported keys including 'program' and "clip_extra". Attention please, kwargs is used for backward compatibility mainly.
-          - program(Program): specify a program if you don't want to use default main program.
-          - clip_extra(bool): set to True if you want to clip extra information for every operator.
+
+            - program(Program): specify a program if you don't want to use default main program.
+
+            - clip_extra(bool): set to True if you want to clip extra information for every operator.
+
     Returns:
         None
 
