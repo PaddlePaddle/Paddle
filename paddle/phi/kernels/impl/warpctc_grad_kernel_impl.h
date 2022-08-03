@@ -29,33 +29,33 @@ namespace phi {
 
 template <typename T, typename Context>
 void WarpctcGradKernel(const Context& dev_ctx,
-                       const DenseTensor& warpctc_grad,
                        const DenseTensor& logits,
-                       const DenseTensor& loss_grad,
                        const paddle::optional<DenseTensor>& logits_length,
+                       const DenseTensor& warpctcgrad,
+                       const DenseTensor& loss_grad,
                        int blank,
                        bool norm_by_times,
                        DenseTensor* logits_grad) {
   dev_ctx.template Alloc<T>(logits_grad);
 
   if (logits_length.is_initialized()) {
-    int max_seq_length = warpctc_grad.dims()[0];  // Tmax
-    int num_sequences = warpctc_grad.dims()[1];   // B
-    int seq_width = warpctc_grad.dims()[2];       // D
+    int max_seq_length = warpctcgrad.dims()[0];  // Tmax
+    int num_sequences = warpctcgrad.dims()[1];   // B
+    int seq_width = warpctcgrad.dims()[2];       // D
 
     // B
     auto logits_len_e = EigenTensor<int64_t, 1>::From(*logits_length);
     // (B, 1)
     auto loss_grad_e = EigenTensor<T, 2>::From(loss_grad);
     // (T, B, D)
-    auto warpctc_grad_e = EigenTensor<T, 3>::From(warpctc_grad);
+    auto warpctcgrad_e = EigenTensor<T, 3>::From(warpctcgrad);
 
     auto logits_grad_e = EigenTensor<T, 3>::From(*logits_grad);
 
     Eigen::DSizes<int, 3> grad_shape(1, num_sequences, 1);
     Eigen::DSizes<int, 3> bcast(max_seq_length, 1, seq_width);
-    auto logits_g = warpctc_grad_e *
-                    loss_grad_e.reshape(grad_shape).broadcast(bcast).eval();
+    auto logits_g =
+        warpctcgrad_e * loss_grad_e.reshape(grad_shape).broadcast(bcast).eval();
 
     auto* place = dev_ctx.eigen_device();
     if (norm_by_times) {
@@ -71,7 +71,7 @@ void WarpctcGradKernel(const Context& dev_ctx,
   } else {
     paddle::operators::math::UnpaddingLoDTensorFunctor<Context, T>()(
         dev_ctx,
-        warpctc_grad,
+        warpctcgrad,
         logits_grad,
         -1,
         0,

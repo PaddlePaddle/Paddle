@@ -358,6 +358,7 @@ void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
                   const MetaTensor& stat_neg,
+                  const MetaTensor& ins_tag_weight,
                   const std::string& curve,
                   int num_thresholds,
                   int slide_steps,
@@ -390,6 +391,7 @@ void AucInferMeta(const MetaTensor& input,
           "The Input(Label) has not been initialized properly. The "
           "shape of Input(Label) = [%s], the shape can not involes 0.",
           label_dims));
+
   if (config.is_runtime) {
     PADDLE_ENFORCE_LE(
         predict_width,
@@ -432,6 +434,68 @@ void AucInferMeta(const MetaTensor& input,
     stat_neg_out->set_dims({1, num_pred_buckets});
     stat_neg_out->set_dtype(DataType::INT64);
   }
+}
+
+void AverageAccumulatesInferMeta(const MetaTensor& param,
+                                 const MetaTensor& in_sum_1,
+                                 const MetaTensor& in_sum_2,
+                                 const MetaTensor& in_sum_3,
+                                 const MetaTensor& in_num_accumulates,
+                                 const MetaTensor& in_old_num_accumulates,
+                                 const MetaTensor& in_num_updates,
+                                 float average_window,
+                                 int64_t max_average_window,
+                                 int64_t min_average_window,
+                                 MetaTensor* out_sum_1,
+                                 MetaTensor* out_sum_2,
+                                 MetaTensor* out_sum_3,
+                                 MetaTensor* out_num_accumulates,
+                                 MetaTensor* out_old_num_accumulates,
+                                 MetaTensor* out_num_updates) {
+  // auto in_dim = param.dims;
+  PADDLE_ENFORCE_NE(
+      out_sum_1,
+      nullptr,
+      errors::NotFound(
+          "Output(out_sum_1) of AverageAccumulates should not be null."));
+  PADDLE_ENFORCE_NE(
+      out_sum_2,
+      nullptr,
+      errors::NotFound(
+          "Output(out_sum_2) of AverageAccumulates should not be null."));
+  PADDLE_ENFORCE_NE(
+      out_sum_3,
+      nullptr,
+      errors::NotFound(
+          "Output(out_sum_3) of AverageAccumulates should not be null."));
+  PADDLE_ENFORCE_NE(out_num_accumulates,
+                    nullptr,
+                    errors::NotFound("Output(out_num_accumulates) of "
+                                     "AverageAccumulates should not be null."));
+
+  PADDLE_ENFORCE_NE(out_old_num_accumulates,
+                    nullptr,
+                    errors::NotFound("Output(out_old_num_accumulates) of "
+                                     "AverageAccumulates should not be null."));
+
+  PADDLE_ENFORCE_NE(
+      out_num_updates,
+      nullptr,
+      errors::NotFound(
+          "Output(out_num_updates) of AverageAccumulates should not be null."));
+
+  out_sum_1->set_dims(in_sum_1.dims());
+  out_sum_1->set_dtype(in_sum_1.dtype());
+  out_sum_2->set_dims(in_sum_2.dims());
+  out_sum_2->set_dtype(in_sum_2.dtype());
+  out_sum_3->set_dims(in_sum_3.dims());
+  out_sum_3->set_dtype(in_sum_3.dtype());
+  out_num_accumulates->set_dims({1});
+  out_num_accumulates->set_dtype(in_num_accumulates.dtype());
+  out_old_num_accumulates->set_dims({1});
+  out_old_num_accumulates->set_dtype(in_old_num_accumulates.dtype());
+  out_num_updates->set_dims({1});
+  out_num_updates->set_dtype(in_num_updates.dtype());
 }
 
 void BatchNormInferMeta(const MetaTensor& x,
@@ -955,6 +1019,75 @@ void DeformableConvInferMeta(const MetaTensor& x,
 
   out->set_dims(phi::make_ddim(output_shape));
   out->set_dtype(x.dtype());
+}
+
+void EditDistanceInferMeta(const MetaTensor& hyps,
+                           const MetaTensor& refs,
+                           const MetaTensor& hypslength,
+                           const MetaTensor& refslength,
+                           bool normalized,
+                           MetaTensor* sequencenum,
+                           MetaTensor* out) {
+  auto hyp_dims = hyps.dims();
+  auto ref_dims = refs.dims();
+
+  if (hypslength && refslength) {
+    auto hyp_length_dims = hypslength.dims();
+    auto ref_length_dims = refslength.dims();
+
+    PADDLE_ENFORCE_EQ(
+        hyp_dims.size() == 2 && ref_dims.size() == 2 &&
+            hyp_dims[0] == ref_dims[0],
+        true,
+        errors::InvalidArgument(
+            "Input(hyps) and Input(refs) must be 2-D Tensors with "
+            "identical first dimension. But received Input(Hyps): "
+            "input rank %u, input shape [%s]; received Input(Refs): "
+            "input rank %u, input shape [%s]",
+            hyp_dims.size(),
+            hyp_dims,
+            ref_dims.size(),
+            ref_dims));
+    PADDLE_ENFORCE_EQ(
+        hyp_length_dims[0] == ref_length_dims[0] &&
+            hyp_length_dims[0] == hyp_dims[0],
+        true,
+        errors::InvalidArgument(
+            "Input(hypslength), Input(refslength) and Input(hyps) "
+            "should have identical first dimension. But received "
+            "Input(hypslength): input rank %u, input shape [%s]; "
+            "received Input(refslength): input rank %u, input shape "
+            "[%s]; received Input(hyps): input rank %u, input shape "
+            "[%s].",
+            hyp_length_dims.size(),
+            hyp_length_dims,
+            ref_length_dims.size(),
+            ref_length_dims,
+            hyp_dims.size(),
+            hyp_dims));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        hyp_dims.size() == 2 && hyp_dims[1] == 1,
+        true,
+        errors::InvalidArgument(
+            "Input(Hyps) must be a 2-D LoDTensor with the 2nd dimension "
+            "equal to 1. But received: input rank %u, input shape [%s].",
+            hyp_dims.size(),
+            hyp_dims));
+    PADDLE_ENFORCE_EQ(
+        ref_dims.size() == 2 && ref_dims[1] == 1,
+        true,
+        errors::InvalidArgument(
+            "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
+            "equal to 1. But received: input rank %u, input shape [%s].",
+            ref_dims.size(),
+            ref_dims));
+  }
+
+  out->set_dims(refs.dims());
+  out->set_dtype(DataType::FLOAT32);
+  sequencenum->set_dims(phi::make_ddim({1}));
+  sequencenum->set_dtype(DataType::FLOAT32);
 }
 
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
@@ -2049,7 +2182,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
-                      MetaTensor* warpctc_grad,
+                      MetaTensor* warpctcgrad,
                       MetaTensor* loss) {
   auto logits_dims = logits.dims();
   int sequence_width = 0;

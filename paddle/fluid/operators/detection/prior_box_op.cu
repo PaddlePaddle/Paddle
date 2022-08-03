@@ -149,8 +149,7 @@ class PriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     int block = 512;
     int grid = (box_num + block - 1) / block;
 
-    auto stream =
-        ctx.template device_context<platform::CUDADeviceContext>().stream();
+    auto stream = ctx.template device_context<phi::GPUContext>().stream();
 
     boxes->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
@@ -194,8 +193,3 @@ class PriorBoxOpCUDAKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(prior_box,
-                        ops::PriorBoxOpCUDAKernel<float>,
-                        ops::PriorBoxOpCUDAKernel<double>);

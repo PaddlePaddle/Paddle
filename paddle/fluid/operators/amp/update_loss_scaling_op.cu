@@ -87,11 +87,9 @@ __global__ void FusedFillIf(T** outs,
 }
 
 template <typename T, bool IsFoundInfOnCPU>
-class UpdateLossScalingFunctor<platform::CUDADeviceContext,
-                               T,
-                               IsFoundInfOnCPU> {
+class UpdateLossScalingFunctor<phi::GPUContext, T, IsFoundInfOnCPU> {
  public:
-  void operator()(const platform::CUDADeviceContext& dev_ctx,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const bool* found_inf_data,
                   const T* pre_loss_scaling_data,
                   const int* good_in_data,
@@ -134,9 +132,9 @@ class UpdateLossScalingFunctor<platform::CUDADeviceContext,
 };
 
 template <typename T>
-class LazyZeros<platform::CUDADeviceContext, T> {
+class LazyZeros<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& dev_ctx,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const bool* found_inf_data,
                   const std::vector<const framework::Tensor*>& xs,
                   const std::vector<framework::Tensor*>& outs) const {
@@ -204,7 +202,7 @@ class LazyZeros<platform::CUDADeviceContext, T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-using GPU = paddle::platform::CUDADeviceContext;
+using GPU = phi::GPUContext;
 
 REGISTER_OP_CUDA_KERNEL(update_loss_scaling,
                         ops::UpdateLossScalingKernel<GPU, float>,

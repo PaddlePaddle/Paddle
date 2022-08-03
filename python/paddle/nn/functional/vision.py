@@ -21,6 +21,7 @@ import numpy as np
 from paddle import _C_ops
 from ...device import is_compiled_with_rocm
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.framework import _non_static_mode
 
 __all__ = []
@@ -88,11 +89,12 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     if is_compiled_with_rocm():
         use_cudnn = False  # ROCM platform do not have MIOPEN kernel for affine_grid
 
-    if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
-            isinstance(out_shape, Variable)):
-        raise ValueError("The out_shape should be a list, tuple or Tensor.")
-
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        _out_shape = out_shape.numpy().tolist() if isinstance(
+            out_shape, Variable) else out_shape
+        return _C_ops.final_state_affine_grid(theta, _out_shape, use_cudnn,
+                                              align_corners)
+    elif in_dynamic_mode():
         _out_shape = out_shape.numpy().tolist() if isinstance(
             out_shape, Variable) else out_shape
         return _C_ops.affine_grid(theta, "output_shape", _out_shape,
@@ -272,7 +274,10 @@ def grid_sample(x,
         x.stop_gradient = False
         grid.stop_gradient = False
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_grid_sample(x, grid, mode, padding_mode,
+                                              align_corners)
+    elif in_dynamic_mode():
         attrs = ('mode', mode, 'padding_mode', padding_mode, 'align_corners',
                  align_corners, 'use_cudnn', use_cudnn)
         out = getattr(_C_ops, 'grid_sampler')(x, grid, *attrs)

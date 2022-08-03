@@ -134,6 +134,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         "in the order of input variables for mapping")
         .SetDefault({});
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<int>("slot", "slot of id").SetDefault(0).AsExtra();
     AddAttr<bool>("grad_inplace",
                   "(boolean, default false) "
                   "If the grad op reuse the input's variable.")
