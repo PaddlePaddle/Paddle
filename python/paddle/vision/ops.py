@@ -1891,6 +1891,16 @@ def matrix_nms(bboxes,
     check_type(background_label, 'background_label', int, 'matrix_nms')
 
     if in_dygraph_mode():
+        out, index, rois_num = _C_ops.final_state_matrix_nms(
+            bboxes, scores, score_threshold, nms_top_k, keep_top_k,
+            post_threshold, use_gaussian, gaussian_sigma, background_label,
+            normalized)
+        if not return_index:
+            index = None
+        if not return_rois_num:
+            rois_num = None
+        return out, rois_num, index
+    elif _in_legacy_dygraph():
         attrs = ('background_label', background_label, 'score_threshold',
                  score_threshold, 'post_threshold', post_threshold, 'nms_top_k',
                  nms_top_k, 'gaussian_sigma', gaussian_sigma, 'use_gaussian',
