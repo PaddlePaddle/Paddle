@@ -34,6 +34,11 @@ class MetaConfig;
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AffineGridInferMeta(const MetaTensor& input,
+                         const IntArray& outputShape,
+                         bool align_corners,
+                         MetaTensor* output);
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         int64_t axis,
                         bool keepdims,
