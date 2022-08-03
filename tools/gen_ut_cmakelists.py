@@ -113,7 +113,7 @@ if __name__ == "__main__":
             os.path.dirname(file) for file in args.files
         ]
     if len(args.dirpaths) >= 1:
-        current_work_dir = current_work_dir + [d for d in args.dirpaths]
+        current_work_dirs = current_work_dirs + [d for d in args.dirpaths]
 
     for c in current_work_dirs:
         gen_cmakelists(c)
