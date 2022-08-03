@@ -434,7 +434,12 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
                   "PADDLE_DIST_UT_PORT=20173;http_proxy=;https_proxy=")
   set_tests_properties(test_ema_fleet PROPERTIES TIMEOUT "300")
 endif()
-if((WITH_GPU) AND LOCAL_ALL_PLAT)
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND_CL
+    OR WITH_ASCEND
+   )
+   AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_gen_nccl_id_op
     START_BASH
