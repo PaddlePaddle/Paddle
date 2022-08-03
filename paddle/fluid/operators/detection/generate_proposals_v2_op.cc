@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
-#include "paddle/fluid/operators/detection/nms_util.h"
 #include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/kernels/funcs/detection/nms_util.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
