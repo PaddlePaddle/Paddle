@@ -233,6 +233,7 @@ class Optimizer(object):
             else:
                 self._dtype = self._parameter_list[0].dtype
 
+        # learning rate can't be float16, for pure fp16 training, should extra handle the dtype for lr
         self._lr_dtype = paddle.get_default_dtype(
         ) if self._dtype is None else self._dtype
         self._lr_dtype = paddle.float32 if self._lr_dtype == paddle.float16 else self._lr_dtype
