@@ -4003,12 +4003,11 @@ def repeat_interleave(x, repeats, axis=None, name=None):
         x = paddle.flatten(x)
         axis = 0
 
-    if paddle.in_dynamic_mode():
-        if isinstance(repeats, int):
-            return _C_ops.repeat_interleave(x, None, 'Repeats', repeats, 'dim',
-                                            axis)
-        elif isinstance(repeats, Variable):
-            return _C_ops.repeat_interleave(x, repeats, 'dim', axis)
+    if in_dygraph_mode():
+        if isinstance(repeats, Variable):
+            return _C_ops.final_state_repeat_interleave_with_tensor_index(
+                x, repeats, axis)
+        return _C_ops.final_state_repeat_interleave(x, repeats, axis)
 
     helper = LayerHelper("repeat_interleave", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],

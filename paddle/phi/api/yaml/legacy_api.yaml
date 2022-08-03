@@ -112,6 +112,19 @@
     func : addmm
   backward : addmm_grad
 
+- api : affine_grid
+  args : (Tensor input, IntArray outputShape, bool use_cudnn=true, bool align_corners=true)
+  output : Tensor
+  infer_meta :
+    func : AffineGridInferMeta
+    param : [input, outputShape, align_corners]
+  kernel :
+    func : affine_grid
+    param : [input, outputShape, align_corners]
+    data_type : input
+    use_gpudnn: use_cudnn
+  backward : affine_grid_grad
+
 - api : all
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -300,12 +313,13 @@
 
 # auc
 - api : auc
-  args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, str curve, int num_thresholds, int slide_steps)
+  args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight, str curve, int num_thresholds, int slide_steps)
   output : Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)
   infer_meta :
     func : AucInferMeta
   kernel :
     func : auc
+  optional : ins_tag_weight 
 
 #average_accumulates
 - api : average_accumulates_
@@ -585,6 +599,15 @@
     func : cumsum
   backward : cumsum_grad
 
+# decode_jpeg
+- api : decode_jpeg
+  args : (Tensor x, str mode)
+  output : Tensor(out)
+  infer_meta :
+    func : DecodeJpegInferMeta
+  kernel :
+    func : decode_jpeg
+
 - api : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
   output : Tensor(out)
@@ -681,6 +704,15 @@
     func : EigvalsInferMeta
   kernel :
     func : eigvals
+
+- api : eigvalsh
+  args : (Tensor x, str uplo, bool is_test)
+  output : Tensor(eigenvalues), Tensor(eigenvectors)
+  infer_meta :
+    func : EigvalshInferMeta
+  kernel :
+    func : eigvalsh
+  backward : eigvalsh_grad
 
 - api : einsum
   args : (Tensor[] x, str equation)
@@ -1968,6 +2000,27 @@
     func : renorm
   backward : renorm_grad
 
+- api : repeat_interleave
+  args : (Tensor x, int repeats, int dim)
+  output : Tensor(out)
+  infer_meta :
+    func : RepeatInterleaveInferMeta
+    param : [x,repeats, dim]
+  kernel :
+    func : repeat_interleave
+  backward: repeat_interleave_grad
+
+- api : repeat_interleave_with_tensor_index
+  args : (Tensor x, Tensor repeats, int dim)
+  output : Tensor(out)
+  infer_meta :
+    func : RepeatInterleaveWithTensorIndexInferMeta
+    param : [x,repeats, dim]
+  kernel :
+    func : repeat_interleave_with_tensor_index
+    data_type : x
+  backward: repeat_interleave_with_tensor_index_grad
+
 - api : reshape
   args : (Tensor x, IntArray shape)
   output : Tensor(out), Tensor(xshape)
@@ -2749,3 +2802,15 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
+
+- api: uniform_random_inplace
+  args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
+  output: Tensor(out)
+  infer_meta:
+    func: UniformRandomInplaceInferMeta
+  kernel:
+    func: uniform_random_inplace
+    data_type: x
+  inplace: (x -> out)
+  backward: uniform_random_inplace_grad
+

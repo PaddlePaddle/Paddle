@@ -27,6 +27,11 @@ namespace phi {
 //
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AffineGridGradInferMeta(const MetaTensor& output_grad,
+                             const IntArray& outputShape,
+                             bool align_corners,
+                             MetaTensor* input_grad);
+
 void AngleGradInferMeta(const MetaTensor& x,
                         const MetaTensor& out_grad,
                         MetaTensor* x_grad);
@@ -125,6 +130,12 @@ void EigGradInferMeta(const MetaTensor& out_w,
                       const MetaTensor& dout_w,
                       const MetaTensor& dout_v,
                       MetaTensor* dx);
+
+void EigvalshGradInferMeta(const MetaTensor& out_v,
+                           const MetaTensor& out_w_grad,
+                           const std::string& uplo,
+                           bool is_test,
+                           MetaTensor* x_grad);
 
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
@@ -323,6 +334,15 @@ void SpectralNormGradInferMeta(const MetaTensor& weight,
 void StackGradInferMeta(const MetaTensor& out_grad,
                         int axis,
                         std::vector<MetaTensor*> x_grad);
+
+void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
+                                       float min,
+                                       float max,
+                                       int seed,
+                                       int diag_num,
+                                       int diag_step,
+                                       float diag_val,
+                                       MetaTensor* x_grad);
 
 void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,

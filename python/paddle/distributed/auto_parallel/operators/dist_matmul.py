@@ -19,6 +19,7 @@ from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
+from .common import gradient_synchronization
 from .common import set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
@@ -422,55 +423,15 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         matmul_op_desc = copy_op_with_new_input_output(ctx, main_block,
                                                        backward_op, **kwargs)
 
-    # check if need gradient allreduce
-    need_gradient_allreduce = False
+    # data parallel gradient synchronization
+    act_grad_names = [X_var.name]
 
-    process_mesh = dist_attr.process_mesh
-    var_dim_mapping = dist_attr.get_input_dims_mapping(X_var.name)
-    mesh_shape = process_mesh.topology
-    batch_size_axis = var_dim_mapping[0]
-    if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
-        need_gradient_allreduce = True
-        group_ranks = _get_comm_group(process_mesh.processes,
-                                      process_mesh.topology, batch_size_axis,
-                                      rank_id)
-        dp_degree = len(group_ranks)
-        dp_group = new_process_group(group_ranks)
+    out_grad_names = []
+    if is_parameter_related(Y_var.name, main_block):
+        out_grad_names = [kwargs['Y@GRAD'][0]]
 
-    if need_gradient_allreduce and is_parameter_related(Y_var.name, main_block):
-        added_ops = []
-        Y_Grad_var = main_block.var(kwargs['Y@GRAD'][0])
-        allreduce_op = main_block.append_op(type='c_allreduce_sum',
-                                            inputs={'X': [Y_Grad_var]},
-                                            outputs={'Out': [Y_Grad_var]},
-                                            attrs={
-                                                'ring_id': dp_group.id,
-                                                'use_calc_stream': True,
-                                                OP_ROLE_KEY: OpRole.Backward
-                                            })
-        added_ops.append(allreduce_op)
-
-        if ctx.gradient_scale:
-            scale_op = main_block.append_op(type='scale',
-                                            inputs={'X': Y_Grad_var},
-                                            outputs={'Out': Y_Grad_var},
-                                            attrs={
-                                                'scale': 1.0 / dp_degree,
-                                                OP_ROLE_KEY: OpRole.Backward
-                                            })
-            added_ops.append(scale_op)
-
-        main_block._sync_with_cpp()
-
-        dims_mapping = ctx.get_tensor_dist_attr_for_program(
-            Y_Grad_var).dims_mapping
-        process_mesh = dist_attr.process_mesh
-        for op in added_ops:
-            op_attr = OperatorDistributedAttribute()
-            op_attr.process_mesh = process_mesh
-            op_attr.set_output_dims_mapping(Y_Grad_var.name, dims_mapping)
-            op_attr.set_input_dims_mapping(Y_Grad_var.name, dims_mapping)
-            ctx.set_op_dist_attr_for_program(op, op_attr)
+    gradient_synchronization(ctx, backward_op, act_grad_names, out_grad_names,
+                             rank_id)
 
 
 def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
