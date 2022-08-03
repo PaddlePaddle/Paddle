@@ -1546,7 +1546,7 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         padding(int | Tensor | List[int] | Tuple[int]): The padding size with data type int.
             The input dimension should be 4 and pad has the form (pad_left, pad_right,
             pad_top, pad_bottom).
-        data_format(str): An string from: "NHWC", "NCHW". Specify the data format of
+        data_format(str, optional): An string from: "NHWC", "NCHW". Specify the data format of
             the input data. Default: "NCHW".
         name(str, optional): The default value is None. Normally there is no need for user
             to set this property.
