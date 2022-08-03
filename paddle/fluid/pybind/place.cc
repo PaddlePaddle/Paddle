@@ -220,12 +220,18 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     CustomPlace is a descriptor of a device.
     It represents a custom device on which a tensor will be allocated and a model will run.
 
+    Parameters:
+        dev_id(int): custom device id
+
     Examples:
         .. code-block:: python
 
-          import paddle
-          fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
-                                             )DOC");
+            # required: custom device
+            
+            import paddle
+            place = paddle.device.CustomPlace("CustomCPU", 0)
+
+        )DOC");
   g_customplace_pytype = reinterpret_cast<PyTypeObject *>(customplace.ptr());
   customplace
       .def("__init__",
@@ -386,11 +392,20 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<platform::XPUPlace> xpuplace(m, "XPUPlace", R"DOC(
-    **Note**:
+    XPUPlace is a descriptor of a device.
+    It represents a XPU device on which a tensor will be allocated and a model will run.
+
+    Parameters:
+        dev_id(int): XPU device id
+
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
-          xpu_place = fluid.XPUPlace(0)
+
+            # required: xpu
+            
+            import paddle
+            place = paddle.device.XPUPlace(0)
+
         )DOC");
   g_xpuplace_pytype = reinterpret_cast<PyTypeObject *>(xpuplace.ptr());
   xpuplace
@@ -552,10 +567,16 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     NPUPlace is a descriptor of a device.
     It represents a NPU device on which a tensor will be allocated and a model will run.
 
+    Parameters:
+        dev_id(int): NPU device id
+
     Examples:
         .. code-block:: python
-          import paddle
-          npu_place = paddle.NPUPlace(0)
+
+            # required: npu
+            
+            import paddle
+            place = paddle.device.NPUPlace(0)
 
         )DOC");
   g_npuplace_pytype = reinterpret_cast<PyTypeObject *>(npuplace.ptr());
@@ -618,11 +639,11 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
     Examples:
         .. code-block:: python
-          import paddle
 
-          # required: ipu
-
-          ipu_place = paddle.IPUPlace()
+            # required: ipu
+            
+            import paddle
+            place = paddle.device.IPUPlace()
 
         )DOC");
   g_ipuplace_pytype = reinterpret_cast<PyTypeObject *>(ipuplace.ptr());
@@ -670,11 +691,16 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     MLUPlace is a descriptor of a device.
     It represents a MLU device on which a tensor will be allocated and a model will run.
 
+    Parameters:
+        dev_id(int): MLU device id
+
     Examples:
         .. code-block:: python
-          import paddle
-          # required: mlu
-          mlu_place = paddle.MLUPlace(0)
+
+            # required: mlu
+            
+            import paddle
+            place = paddle.device.MLUPlace(0)
 
         )DOC");
   g_mluplace_pytype = reinterpret_cast<PyTypeObject *>(mluplace.ptr());

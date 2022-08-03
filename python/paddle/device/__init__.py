@@ -21,6 +21,11 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
+from paddle.fluid.framework import XPUPlace
+from paddle.fluid.framework import NPUPlace
+from paddle.fluid.framework import IPUPlace
+from paddle.fluid.framework import MLUPlace
+from paddle.fluid.framework import CustomPlace
 from . import cuda
 
 __all__ = [  # noqa
@@ -28,8 +33,10 @@ __all__ = [  # noqa
     'set_device',
     'get_device',
     'XPUPlace',
+    'NPUPlace',
     'IPUPlace',
     'MLUPlace',
+    'CustomPlace',
     'is_compiled_with_xpu',
     'is_compiled_with_ipu',
     'is_compiled_with_cinn',
@@ -78,21 +85,6 @@ def is_compiled_with_ipu():
     return core.is_compiled_with_ipu()
 
 
-def IPUPlace():
-    """
-    Return a Graphcore IPU Place
-
-    Examples:
-        .. code-block:: python
-
-            # required: ipu
-
-            import paddle
-            place = paddle.device.IPUPlace()
-    """
-    return core.IPUPlace()
-
-
 def is_compiled_with_xpu():
     """
     Whether paddle was built with WITH_XPU=ON to support Baidu Kunlun
@@ -106,24 +98,6 @@ def is_compiled_with_xpu():
             support_xpu = paddle.device.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
-
-
-def XPUPlace(dev_id):
-    """
-    Return a Baidu Kunlun Place
-
-    Parameters:
-        dev_id(int): Baidu Kunlun device id
-
-    Examples:
-        .. code-block:: python
-
-            # required: xpu
-            
-            import paddle
-            place = paddle.device.XPUPlace(0)
-    """
-    return core.XPUPlace(dev_id)
 
 
 def is_compiled_with_mlu():
@@ -141,24 +115,6 @@ def is_compiled_with_mlu():
             support_mlu = paddle.device.is_compiled_with_mlu()
     """
     return core.is_compiled_with_mlu()
-
-
-def MLUPlace(dev_id):
-    """
-    Return a Cambricon MLU Place
-
-    Parameters:
-        dev_id(int): MLU device id
-
-    Examples:
-        .. code-block:: python
-
-            # required: mlu
-
-            import paddle
-            place = paddle.device.MLUPlace(0)
-    """
-    return core.MLUPlace(dev_id)
 
 
 def get_cudnn_version():
