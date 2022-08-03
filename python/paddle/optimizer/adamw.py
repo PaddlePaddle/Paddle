@@ -430,6 +430,8 @@ class AdamW(Optimizer):
         master_weight = (self._master_weights[param_and_grad[0].name]
                          if find_master else None)
         lr = self._create_param_lr(param_and_grad)
+        lr = lr if lr.dtype == paddle.float32 else paddle.cast(lr,
+                                                               dtype="float32")
 
         # create the adamw optimize op
         if framework._non_static_mode():
