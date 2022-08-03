@@ -14,8 +14,12 @@
 
 
 def parse_line(line, tests):
-    name, os_, arch, timeout, run_type, launcher, dist_ut_port, envs = line.strip(
+    name, os_, arch, timeout, run_type, launcher, dist_ut_port, envs, conditions = line.strip(
     ).split(",")
+    if len(conditions.strip()) == 0:
+        conditions = ""
+    else:
+        conditions = f" AND ({conditions})"
     archs = ""
     if len(arch.strip()) > 0:
         for a in arch.split(";"):
@@ -38,7 +42,7 @@ def parse_line(line, tests):
             os_ = "LOCAL_ALL_PLAT"
         a = arch
         if launcher[-3:] == ".sh":
-            cmd += f'''if({a} AND {os_})
+            cmd += f'''if({a} AND {os_} {conditions})
     bash_test_modules(
     {name}
     START_BASH
@@ -51,7 +55,7 @@ def parse_line(line, tests):
 endif()
 '''
         else:
-            cmd += f'''if({a} AND {os_})
+            cmd += f'''if({a} AND {os_} {conditions})
     py_test_modules(
     {name}
     MODULES
