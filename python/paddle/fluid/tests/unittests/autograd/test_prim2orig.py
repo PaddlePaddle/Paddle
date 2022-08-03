@@ -485,12 +485,12 @@ class TestSelectPPrim2Orig(TestAddPPrim2Orig):
         X = paddle.static.data(name='X', shape=[5, 6], dtype='float32')
         Y = paddle.static.data(name='Y', shape=[5, 6], dtype='float32')
 
-        self.input = {'Cond': Cond, 'X': X, 'Y': Y}
+        self.input = {'Condition': Cond, 'X': X, 'Y': Y}
         self.output = {
             'Z':
             self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
         }
-
+        self.attrs = {}
         self.prim2orig_args = (Cond, X, Y)
         self.all_ops = ['select_p', 'where']
         self.out_map = {self.output['Z']: 0}

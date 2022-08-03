@@ -94,8 +94,8 @@ paddle.enable_static()
             'dtype': paddle.float32
         }, (3, 2), 'float32'),
         ('neg', primops.neg, randn(2, 3), {}, (2, 3), 'float64'),
-        ('select', primops.select, randn(2, 3) > 0, randn(2, 3), randn(
-            2, 3), {}, (2, 3), 'float64'),
+        ('select', primops.select,
+         (randn(2, 3) > 0, randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
     ))
 class TestPrimops(unittest.TestCase):
 

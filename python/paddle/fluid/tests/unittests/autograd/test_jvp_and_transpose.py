@@ -871,8 +871,10 @@ class TestSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
             # jvp op:
             'select_p',
             # transpose op:
+            'fill_constant_p',
+            'fill_constant_p',
             'select_p',
-            'fill_constant_p'
+            'select_p',
         ]
 
 

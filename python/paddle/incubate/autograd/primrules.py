@@ -285,7 +285,7 @@ def p_norm_orig2prim(op, x):
         raise RuntimeError('Only support lower l2/l1 norm currently')
 
 
-@REGISTER_ORIG2PRIM('select')
+@REGISTER_ORIG2PRIM('where')
 def select_orig2prim(op, condition, x, y):
     return select(condition, x, y)
 
@@ -420,7 +420,7 @@ def fill_constant_prim2orig(op):
 
 
 @REGISTER_PRIM2ORIG('select_p')
-def matmul_prim2orig(op, condition, x, y):
+def select_prim2orig(op, condition, x, y):
     return paddle.where(condition, x, y)
 
 
@@ -847,4 +847,4 @@ def select_transpose(op, check_dot, z_bar):
     x_bar = select(cond, z_bar, zeros_x)
     y_bar = select(cond, zeros_y, z_bar)
 
-    return cond_bar, x_bar, y_bar
+    return x_bar, y_bar, cond_bar
