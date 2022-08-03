@@ -89,6 +89,7 @@ class MLPLayer(nn.Layer):
 class TestWholeProgram(unittest.TestCase):
 
     def test_apply_optimzier(self):
+        paddle.disable_static()
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,
                        dropout_ratio=0.1,
