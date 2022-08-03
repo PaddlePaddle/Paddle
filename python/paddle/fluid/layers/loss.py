@@ -325,7 +325,7 @@ def square_error_cost(input, label):
         label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        Tensor,The tensor storing the element-wise squared 
+        Tensor, The tensor storing the element-wise squared 
         error difference between input and label.
 
     Examples:
