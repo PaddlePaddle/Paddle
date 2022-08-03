@@ -1585,8 +1585,8 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
     Parameters:
         x1 (Tensor): First input. float32/double.
         x2 (Tensor): Second input. float32/double.
-        axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
-        eps(float): Small value to avoid division by zero. Default is 1e-8.
+        axis (int, optional): Dimension of vectors to compute cosine similarity. Default is 1.
+        eps(float, optional): Small value to avoid division by zero. Default is 1e-8.
                     
     Returns: 
         Tensor, a Tensor representing cosine similarity between x1 and x2 along axis.
@@ -1612,16 +1612,14 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            np.random.seed(0)
-            x1 = np.random.rand(2,3)
-            x2 = np.random.rand(2,3)
-            x1 = paddle.to_tensor(x1)
-            x2 = paddle.to_tensor(x2)
+            paddle.seed(1)
+            x1 = paddle.randn(shape=[2, 3])
+            x2 = paddle.randn(shape=[2, 3])
+
             result = paddle.nn.functional.cosine_similarity(x1, x2, axis=0)
             print(result)
-            # [0.99806249 0.9817672  0.94987036]
+            # [0.97689527,  0.99996042, -0.55138415]
             
     """
     w12 = sum(paddle.multiply(x1, x2), axis=axis)
