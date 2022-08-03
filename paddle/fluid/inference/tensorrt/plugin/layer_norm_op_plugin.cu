@@ -48,8 +48,6 @@ int LayerNormPlugin::enqueue(int batch_size,
 #endif
                              cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = this->getInputDims(0);
-  const float *input = reinterpret_cast<const float *>(inputs[0]);
-  float *output = reinterpret_cast<float *const *>(outputs)[0];
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
 
@@ -82,33 +80,74 @@ int LayerNormPlugin::enqueue(int batch_size,
   variance_t.Resize(phi::make_ddim(variance_shape_));
   int device_id;
   cudaGetDevice(&device_id);
-  float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  float *variance_d =
-      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  cudaMemcpyAsync(scale_d,
-                  scale_.data(),
-                  sizeof(float) * feature_size,
-                  cudaMemcpyHostToDevice,
-                  stream);
-  cudaMemcpyAsync(bias_d,
-                  bias_.data(),
-                  sizeof(float) * feature_size,
-                  cudaMemcpyHostToDevice,
-                  stream);
+  auto input_type = getDataType();
+  if (input_type == nvinfer1::DataType::kFLOAT) {
+    const float *input = reinterpret_cast<const float *>(inputs[0]);
+    float *output = static_cast<float *>(outputs[0]);
 
-  phi::LayerNormDirectCUDAFunctor<float> layer_norm;
-  layer_norm(stream,
-             input,
-             input_shape,
-             bias_d,
-             scale_d,
-             output,
-             mean_d,
-             variance_d,
-             begin_norm_axis,
-             eps);
+    float *scale_d =
+        scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *variance_d =
+        variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    cudaMemcpyAsync(scale_d,
+                    scale_.data(),
+                    sizeof(float) * feature_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_d,
+                    bias_.data(),
+                    sizeof(float) * feature_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+
+    phi::LayerNormDirectCUDAFunctor<float> layer_norm;
+    layer_norm(stream,
+               input,
+               input_shape,
+               bias_d,
+               scale_d,
+               output,
+               mean_d,
+               variance_d,
+               begin_norm_axis,
+               eps);
+  } else if (input_type == nvinfer1::DataType::kHALF) {
+    const half *input = reinterpret_cast<const half *>(inputs[0]);
+    half *output = static_cast<half *>(outputs[0]);
+
+    half *scale_d = scale_t.mutable_data<half>(platform::CUDAPlace(device_id));
+    half *bias_d = bias_t.mutable_data<half>(platform::CUDAPlace(device_id));
+    half *mean_d = mean_t.mutable_data<half>(platform::CUDAPlace(device_id));
+    half *variance_d =
+        variance_t.mutable_data<half>(platform::CUDAPlace(device_id));
+    cudaMemcpyAsync(scale_d,
+                    scale_.data(),
+                    sizeof(half) * feature_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_d,
+                    bias_.data(),
+                    sizeof(half) * feature_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+
+    phi::LayerNormDirectCUDAFunctor<half> layer_norm;
+    layer_norm(stream,
+               input,
+               input_shape,
+               bias_d,
+               scale_d,
+               output,
+               mean_d,
+               variance_d,
+               begin_norm_axis,
+               eps);
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The LayerNorm TRT Plugin's input type should be float or half."));
+  }
   return cudaGetLastError() != cudaSuccess;
 }
 
@@ -138,9 +177,17 @@ bool LayerNormPluginDynamic::supportsFormatCombination(
                                         nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
+    if (with_fp16_) {
+      return ((in.type == nvinfer1::DataType::kFLOAT ||
+               in.type == nvinfer1::DataType::kHALF) &&
+              (in.format == nvinfer1::PluginFormat::kLINEAR));
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    }
     // TODO(Shangzhizhou) FP16 support
-    return (in.type == nvinfer1::DataType::kFLOAT) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
+    // return (in.type == nvinfer1::DataType::kFLOAT) &&
+    //        (in.format == nvinfer1::TensorFormat::kLINEAR);
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
   // output
@@ -192,6 +239,11 @@ int LayerNormPluginDynamic::enqueue(
                         "but got feature_size:%d, bias's size:%d.",
                         feature_size,
                         bias_.size()));
+
+  scale_t.Resize(phi::make_ddim({feature_size}));
+  bias_t.Resize(phi::make_ddim({feature_size}));
+  mean_t.Resize(phi::make_ddim(mean_shape_));
+  variance_t.Resize(phi::make_ddim(variance_shape_));
   int device_id;
   cudaGetDevice(&device_id);
   auto input_type = input_desc[0].type;
@@ -199,10 +251,6 @@ int LayerNormPluginDynamic::enqueue(
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";
     const float *input = reinterpret_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
-    scale_t.Resize(phi::make_ddim({feature_size}));
-    bias_t.Resize(phi::make_ddim({feature_size}));
-    mean_t.Resize(phi::make_ddim(mean_shape_));
-    variance_t.Resize(phi::make_ddim(variance_shape_));
 
     float *scale_d =
         scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
@@ -233,9 +281,42 @@ int LayerNormPluginDynamic::enqueue(
                variance_d,
                begin_norm_axis,
                eps);
+  } else if (input_type == nvinfer1::DataType::kHALF) {
+    VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp16";
+    const half *input = reinterpret_cast<const half *>(inputs[0]);
+    half *output = static_cast<half *>(outputs[0]);
+
+    half *scale_d = scale_t.mutable_data<half>(platform::CUDAPlace(device_id));
+    half *bias_d = bias_t.mutable_data<half>(platform::CUDAPlace(device_id));
+    half *mean_d = mean_t.mutable_data<half>(platform::CUDAPlace(device_id));
+    half *variance_d =
+        variance_t.mutable_data<half>(platform::CUDAPlace(device_id));
+
+    cudaMemcpyAsync(scale_d,
+                    scale_.data(),
+                    sizeof(half) * feature_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_d,
+                    bias_.data(),
+                    sizeof(half) * feature_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+
+    phi::LayerNormDirectCUDAFunctor<half> layer_norm;
+    layer_norm(stream,
+               input,
+               input_shape,
+               bias_d,
+               scale_d,
+               output,
+               mean_d,
+               variance_d,
+               begin_norm_axis,
+               eps);
   } else {
     PADDLE_THROW(platform::errors::Fatal(
-        "The LayerNorm TRT Plugin's input type should be float."));
+        "The LayerNorm TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
 }

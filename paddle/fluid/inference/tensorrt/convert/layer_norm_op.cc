@@ -60,6 +60,8 @@ class LayerNormOpConverter : public OpConverter {
       for (int i = begin_norm_axis; i < X->getDimensions().nbDims; i++) {
         input_num *= X->getDimensions().d[i];
       }
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       std::vector<int64_t> mean_shape{input_num};
       std::vector<int64_t> variance_shape{input_num};
       plugin::LayerNormPluginDynamic* plugin =
@@ -71,13 +73,16 @@ class LayerNormOpConverter : public OpConverter {
               begin_norm_axis,
               eps,
               mean_shape,
-              variance_shape);
+              variance_shape,
+              with_fp16);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
       int input_num = 1;
       for (int i = begin_norm_axis - 1; i < X->getDimensions().nbDims; i++) {
         input_num *= X->getDimensions().d[i];
       }
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       std::vector<int64_t> mean_shape{input_num};
       std::vector<int64_t> variance_shape{input_num};
       plugin::LayerNormPlugin* plugin = new plugin::LayerNormPlugin(
@@ -88,7 +93,8 @@ class LayerNormOpConverter : public OpConverter {
           begin_norm_axis,
           eps,
           mean_shape,
-          variance_shape);
+          variance_shape,
+          with_fp16);
       layernorm_layer = engine_->AddPlugin(
           &X, 1, reinterpret_cast<plugin::PluginTensorRT*>(plugin));
     }
