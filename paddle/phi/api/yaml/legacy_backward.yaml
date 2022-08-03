@@ -92,6 +92,18 @@
   kernel :
     func : addmm_grad
 
+- backward_api : affine_grid_grad
+  forward : affine_grid (Tensor input, IntArray outputShape, bool use_cudnn=true, bool align_corners=true) -> Tensor(output)
+  args : (Tensor output_grad, IntArray outputShape, bool use_cudnn=true, bool align_corners=true)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : AffineGridGradInferMeta
+    param : [output_grad, outputShape, align_corners]
+  kernel :
+    func : affine_grid_grad
+    param : [output_grad, outputShape, align_corners]
+    use_gpudnn: use_cudnn
+
 - backward_api : amax_grad
   forward: amax (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
@@ -666,6 +678,18 @@
     data_type : out_v
   data_transform:
     skip_transform : out_w, out_w_grad
+
+- backward_api : eigvalsh_grad
+  forward : eigvalsh (Tensor x, str uplo, bool is_test) -> Tensor(eigenvalues), Tensor(eigenvectors)
+  args : (Tensor eigenvectors, Tensor eigenvalues_grad, str uplo, bool is_test)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : EigvalshGradInferMeta
+  kernel :
+    func : eigvalsh_grad
+    data_type : eigenvectors
+  data_transform :
+    skip_transform : eigenvalues_grad
 
 - backward_api : einsum_grad
   forward : einsum (Tensor[] x, str equation) -> Tensor(out), Tensor[](inner_cache), Tensor[](x_shape)
@@ -1709,6 +1733,16 @@
   kernel :
     func : put_along_axis_grad
 
+- backward_api : qr_grad
+  forward : qr (Tensor x, str mode) -> Tensor(q), Tensor(r)
+  args : (Tensor x, Tensor q, Tensor r, Tensor q_grad, Tensor r_grad, str mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : qr_grad
+
 - backward_api : real_grad
   forward : real (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -1769,6 +1803,37 @@
     func : relu_grad
   backward: relu_double_grad
   inplace : (out_grad -> x_grad)
+
+- backward_api : renorm_grad
+  forward : renorm (Tensor x, float p, int axis, float max_norm) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float p, int axis, float max_norm)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : renorm_grad
+
+- backward_api : repeat_interleave_grad
+  forward : repeat_interleave(Tensor x, int repeats, int dim) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int repeats, int dim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : repeat_interleave_grad
+
+- backward_api : repeat_interleave_with_tensor_index_grad
+  forward : repeat_interleave_with_tensor_index(Tensor x, Tensor repeats, int dim) -> Tensor(out)
+  args : (Tensor x, Tensor repeats, Tensor out_grad, int dim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : repeat_interleave_with_tensor_index_grad
+    data_type : x
 
 - backward_api : reshape_double_grad
   forward : reshape_grad (Tensor xshape, Tensor grad_out) -> Tensor(grad_x)
@@ -2479,6 +2544,16 @@
   kernel :
     func : unfold_grad
   no_need_buffer : x
+
+- backward_api : uniform_random_inplace_grad
+  forward : uniform_random_inplace(Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val) -> Tensor(out)
+  args : (Tensor out_grad, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UniformRandomInplaceGradInferMeta
+  kernel :
+    func : uniform_random_inplace_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : unsqueeze_double_grad
   forward : unsqueeze_grad(Tensor xshape, Tensor grad_out, IntArray axes) -> Tensor(grad_x)

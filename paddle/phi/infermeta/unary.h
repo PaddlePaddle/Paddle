@@ -34,6 +34,11 @@ class MetaConfig;
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AffineGridInferMeta(const MetaTensor& input,
+                         const IntArray& outputShape,
+                         bool align_corners,
+                         MetaTensor* output);
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         int64_t axis,
                         bool keepdims,
@@ -79,6 +84,10 @@ void CumInferMeta(const MetaTensor& x,
                   bool reverse,
                   MetaTensor* out);
 
+void DecodeJpegInferMeta(const MetaTensor& x,
+                         const std::string& mode,
+                         MetaTensor* out);
+
 void DiagEmbedInferMeta(
     const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out);
 
@@ -102,6 +111,12 @@ void EighInferMeta(const MetaTensor& x,
 void EigvalsInferMeta(const MetaTensor& x,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
+
+void EigvalshInferMeta(const MetaTensor& x,
+                       const std::string& uplo,
+                       bool is_test,
+                       MetaTensor* out_w,
+                       MetaTensor* out_v);
 
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
@@ -312,6 +327,11 @@ void ReduceInferMetaBase(const MetaTensor& x,
                          bool reduce_all,
                          MetaTensor* out);
 
+void RepeatInterleaveInferMeta(const MetaTensor& x,
+                               int repeats,
+                               int dim,
+                               MetaTensor* out);
+
 void ReshapeInferMeta(const MetaTensor& x,
                       const IntArray& shape,
                       MetaTensor* out,
@@ -485,6 +505,15 @@ void UnfoldInferMeta(const MetaTensor& x,
                      const std::vector<int>& dilations,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void UniformRandomInplaceInferMeta(const MetaTensor& x,
+                                   float min,
+                                   float max,
+                                   int seed,
+                                   int diag_num,
+                                   int diag_step,
+                                   float diag_val,
+                                   MetaTensor* out);
 
 void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,

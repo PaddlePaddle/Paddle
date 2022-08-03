@@ -223,8 +223,8 @@ class Engine:
         assert "dataset" in self._user_tuning_config, "Optimization Tuning should provide with dataset."
         batch_size = self._user_tuning_config["batch_size"]
         dataset = self._user_tuning_config["dataset"]
-        dataset.dp_world_size = self._dp_world_size
-        dataset.dp_rank = self._dp_rank
+        dataset.dp_world_size = self._input_split_size
+        dataset.dp_rank = self._input_split_rank
 
         from .tuner.optimization_tuner import OptimizationTuner
         self._optimization_tuner = OptimizationTuner(self._user_tuning_config,
@@ -262,7 +262,7 @@ class Engine:
             if var.name in block.vars:
                 feed_list.append(block.vars[var.name])
 
-        self._dp_world_size, self._dp_rank = self._get_data_parallel_info(
+        self._input_split_size, self._input_split_rank = self._get_input_split_info(
             feed_list[0], self._dist_contexts[mode])
 
     def _parallel(self, mode, all_ranks):
@@ -554,8 +554,8 @@ class Engine:
                 batch_size,
                 epochs,
                 steps_per_epoch,
-                data_parallel_world_size=self._dp_world_size,
-                data_parallel_rank=self._dp_rank)
+                data_parallel_world_size=self._input_split_size,
+                data_parallel_rank=self._input_split_rank)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
@@ -615,8 +615,8 @@ class Engine:
         fetches = dict(inner_fetch, **usr_fetch)
         return list(fetches.keys()), fetches
 
-    def _get_data_parallel_info(self, var, dist_context):
-        # get data parallel world size and current data parallel rank
+    def _get_input_split_info(self, var, dist_context):
+        # deduce how the input data is split among the cluster
         from .utils import _get_comm_group, _get_corresponding_rank
 
         tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)

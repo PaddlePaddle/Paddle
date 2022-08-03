@@ -112,6 +112,19 @@
     func : addmm
   backward : addmm_grad
 
+- api : affine_grid
+  args : (Tensor input, IntArray outputShape, bool use_cudnn=true, bool align_corners=true)
+  output : Tensor
+  infer_meta :
+    func : AffineGridInferMeta
+    param : [input, outputShape, align_corners]
+  kernel :
+    func : affine_grid
+    param : [input, outputShape, align_corners]
+    data_type : input
+    use_gpudnn: use_cudnn
+  backward : affine_grid_grad
+
 - api : all
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -276,7 +289,7 @@
     func : assign_value
     param : [shape, dtype, values]
     data_type : dtype
-    backend : place > output 
+    backend : place > output
 
 # atan
 - api : atan
@@ -300,12 +313,13 @@
 
 # auc
 - api : auc
-  args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, str curve, int num_thresholds, int slide_steps)
+  args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight, str curve, int num_thresholds, int slide_steps)
   output : Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)
   infer_meta :
     func : AucInferMeta
   kernel :
     func : auc
+  optional : ins_tag_weight 
 
 #average_accumulates
 - api : average_accumulates_
@@ -585,6 +599,15 @@
     func : cumsum
   backward : cumsum_grad
 
+# decode_jpeg
+- api : decode_jpeg
+  args : (Tensor x, str mode)
+  output : Tensor(out)
+  infer_meta :
+    func : DecodeJpegInferMeta
+  kernel :
+    func : decode_jpeg
+
 - api : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
   output : Tensor(out)
@@ -654,6 +677,16 @@
   optional : seed_tensor
   backward : dropout_grad
 
+- api : edit_distance
+  args : (Tensor hyps, Tensor refs, Tensor hypslength, Tensor refslength, bool normalized = false)
+  output : Tensor(sequencenum), Tensor(out)
+  infer_meta :
+    func : EditDistanceInferMeta
+  kernel :
+    func : edit_distance
+    data_type: DataType::FLOAT32
+  optional : hypslength, refslength
+
 # eigh
 - api : eigh
   args : (Tensor x, str uplo)
@@ -671,6 +704,15 @@
     func : EigvalsInferMeta
   kernel :
     func : eigvals
+
+- api : eigvalsh
+  args : (Tensor x, str uplo, bool is_test)
+  output : Tensor(eigenvalues), Tensor(eigenvectors)
+  infer_meta :
+    func : EigvalshInferMeta
+  kernel :
+    func : eigvalsh
+  backward : eigvalsh_grad
 
 - api : einsum
   args : (Tensor[] x, str equation)
@@ -1491,6 +1533,14 @@
     func : matmul
   backward : matmul_grad
 
+- api : matrix_nms
+  args : (Tensor bboxes, Tensor scores, float score_threshold, int nms_top_k, int keep_top_k, float post_threshold=0., bool use_gaussian = false, float gaussian_sigma = 2.0, int background_label = 0, bool normalized = true)
+  output : Tensor(out), Tensor(index), Tensor(roisnum)
+  infer_meta :
+    func : MatrixNMSInferMeta
+  kernel :
+    func : matrix_nms
+
 # matrix_power
 - api : matrix_power
   args : (Tensor x, int n)
@@ -1651,6 +1701,15 @@
   kernel :
     func : multi_dot
   backward : multi_dot_grad
+
+- api : multiclass_nms3
+  args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
+  output : Tensor(out), Tensor(index), Tensor(nms_rois_num)
+  infer_meta :
+    func : MultiClassNMSInferMeta
+  kernel :
+    func : multiclass_nms3
+  optional : rois_num
 
 # multinomial
 - api : multinomial
@@ -1857,7 +1916,7 @@
     func : QrInferMeta
   kernel :
     func : qr
-  # backward : qr_grad
+  backward : qr_grad
 
 - api : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
@@ -1930,6 +1989,37 @@
   kernel :
     func : relu6
   backward : relu6_grad
+
+- api : renorm
+  args : (Tensor x, float p, int axis, float max_norm)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : renorm
+  backward : renorm_grad
+
+- api : repeat_interleave
+  args : (Tensor x, int repeats, int dim)
+  output : Tensor(out)
+  infer_meta :
+    func : RepeatInterleaveInferMeta
+    param : [x,repeats, dim]
+  kernel :
+    func : repeat_interleave
+  backward: repeat_interleave_grad
+
+- api : repeat_interleave_with_tensor_index
+  args : (Tensor x, Tensor repeats, int dim)
+  output : Tensor(out)
+  infer_meta :
+    func : RepeatInterleaveWithTensorIndexInferMeta
+    param : [x,repeats, dim]
+  kernel :
+    func : repeat_interleave_with_tensor_index
+    data_type : x
+  backward: repeat_interleave_with_tensor_index_grad
 
 - api : reshape
   args : (Tensor x, IntArray shape)
@@ -2680,3 +2770,14 @@
   kernel:
     func: overlap_add
   backward: overlap_add_grad
+
+- api: uniform_random_inplace
+  args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
+  output: Tensor(out)
+  infer_meta:
+    func: UniformRandomInplaceInferMeta
+  kernel:
+    func: uniform_random_inplace
+    data_type: x
+  inplace: (x -> out)
+  backward: uniform_random_inplace_grad

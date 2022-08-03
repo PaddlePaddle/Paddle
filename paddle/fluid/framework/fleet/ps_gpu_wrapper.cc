@@ -1130,7 +1130,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
       VLOG(3) << "[" << device_id << "]Begin copy keys, key_num["
               << total_length << "] dedup mode";
 
-      auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+      auto stream = dynamic_cast<phi::GPUContext*>(
                         platform::DeviceContextPool::Instance().Get(place))
                         ->stream();
 
@@ -1399,7 +1399,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
       VLOG(3) << "Begin push sparse, key_num[" << total_length
               << "] dedup mode, device:" << device_id << ", index"
               << devid_2_index;
-      auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+      auto stream = dynamic_cast<phi::GPUContext*>(
                         platform::DeviceContextPool::Instance().Get(place))
                         ->stream();
       uint64_t* total_keys = dev.keys_tensor.data<uint64_t>();
