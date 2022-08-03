@@ -1764,6 +1764,10 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 #endif
 
     if (op_type == "cast") {
+// trt 6015 result in Windows ppyolo_mbv3 TRT fp32 diff
+#if !IS_TRT_VERSION_GE(7000)
+      return false;
+#endif
       int in_dtype = BOOST_GET_CONST(int, desc.GetAttr("in_dtype"));
       int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
       if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {
