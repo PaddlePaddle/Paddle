@@ -25,3 +25,11 @@ test_collective_split_embedding,linux;win32,,300,DIST,dist_test.sh,20049,http_pr
 test_collective_split_row_linear,linux;win32,,300,DIST,test_runner.py,20051,http_proxy=;https_proxy=
 test_collective_wait,linux;win32,,300,DIST,test_runner.py,20053,http_proxy=;https_proxy=
 test_collective_split_embedding,linux;win32,,300,DIST,test_runner.py,20055,http_proxy=;https_proxy=
+test_allgather,linux;win32,,120,DIST,test_runner.py,20057,ttp_proxy=;https_proxy=
+test_allreduce,linux;win32,,120,DIST,test_runner.py,20059,ttp_proxy=;https_proxy=
+test_broadcast,linux;win32,,120,DIST,test_runner.py,20061,ttp_proxy=;https_proxy=
+test_c_concat,linux;win32,,120,DIST,test_runner.py,20063,ttp_proxy=;https_proxy=
+test_c_identity,linux;win32,,120,DIST,test_runner.py,20065,ttp_proxy=;https_proxy=
+test_c_split,linux;win32,,120,DIST,test_runner.py,20067,ttp_proxy=;https_proxy=
+test_reducescatter,linux;win32,,120,DIST,test_runner.py,20069,ttp_proxy=;https_proxy=
+test_reducescatter_api,linux;win32,,120,DIST,test_runner.py,20071,ttp_proxy=;https_proxy=

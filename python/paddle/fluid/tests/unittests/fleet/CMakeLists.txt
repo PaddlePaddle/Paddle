@@ -399,3 +399,14 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
                   "PADDLE_DIST_UT_PORT=20173;http_proxy=;https_proxy=")
   set_tests_properties(test_ema_fleet PROPERTIES TIMEOUT "300")
 endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_gen_nccl_id_op
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=EXCLUSIVE"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20177;http_proxy=;https_proxy=")
+  set_tests_properties(test_gen_nccl_id_op PROPERTIES TIMEOUT "120")
+endif()

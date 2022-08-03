@@ -59,3 +59,4 @@ test_fleet_launch_cloud,linux;win32,,300,DIST,test_fleet_launch_cloud.sh,20169,h
 test_fleet_launch_ps,linux;win32,,300,EXCLUSIVE,test_fleet_launch_ps.sh,20171,http_proxy=;https_proxy=;TEST_TIMEOUT=350
 test_ema_fleet,,,300,DIST,test_runner.py,20173,http_proxy=;https_proxy=
 test_fleet,,,120,DIST,test_runner.py,20175,http_proxy=;https_proxy=
+test_gen_nccl_id_op,,,120,EXCLUSIVE,dist_test.sh,20177,http_proxy=;https_proxy=
