@@ -31,7 +31,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
         for hidden_size in [30]:
             for input_size in [30]:
-                for batch in [3]:
+                for batch in [2]:
                     for seq_len in [5]:
                         for num_layers in [1, 2]:
                             for is_bidirec in [True, False]:
@@ -208,10 +208,10 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
 
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [batch - 2, seq_len, input_size],
+                "input_data": [batch - 1, seq_len, input_size],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [batch + 2, seq_len, input_size],
+                "input_data": [batch + 1, seq_len, input_size],
             }
             self.dynamic_shape.opt_input_shape = {
                 "input_data": [batch, seq_len, input_size],
