@@ -792,13 +792,49 @@ class ConvMKLDNNHandlerT
     std::shared_ptr<dnnl::memory> dst_memory_p;
     if (residual_param->format() !=
         platform::GetMKLDNNFormat(this->fwd_pd_->dst_desc())) {
-      auto residual_memory_p = this->AcquireResidualMemory(residual_param);
-      dst_memory_p = this->template AcquireDstMemory<T_out>(output);
-      this->AcquireReorder(residual_memory_p, dst_memory_p);
+      VLOG(0) << "reorder to output";
+      dnnl::memory::desc out_mem_desc(
+          phi::vectorize(residual_param->dims()),
+          framework::ToMKLDNNDataType(
+              framework::TransToProtoVarType(output->type())),
+          platform::GetMKLDNNFormat(this->fwd_pd_->dst_desc()));
+      output->set_mem_desc(out_mem_desc);
+      output->Resize(residual_param->dims());
+
+      VLOG(0) << "output dims: " << output->dims();
+      VLOG(0) << "residual_param dims:" << residual_param->dims();
+      dnnl::memory::data_type in_type = framework::ToMKLDNNDataType(
+          framework::TransToProtoVarType(residual_param->dtype()));
+      void* in_data =
+          paddle::framework::GetDataFromTensor(*residual_param, in_type);
+      auto in_tz = phi::vectorize<int64_t>(residual_param->dims());
+      platform::ReorderMKLDNNHandler reorder_handler(
+          in_tz,
+          framework::TransToProtoVarType(residual_param->dtype()),
+          in_type,
+          this->engine_);
+
+      auto reorder_src_memory_p =
+          reorder_handler.AcquireSrcMemory(residual_param->mem_desc(), in_data);
+
+      dst_memory_p = reorder_handler.AcquireDstMemory(
+          output, output->mem_desc(), this->place_);
+      auto reorder_p =
+          reorder_handler.AcquireReorder(dst_memory_p, reorder_src_memory_p);
+
+      auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+      platform::RecordEvent record_reorder(
+          "ext_reorder",
+          platform::TracerEventType::UserDefined,
+          2,
+          platform::EventRole::kUniqueOp);
+      reorder_p->execute(astream, *reorder_src_memory_p, *dst_memory_p);
+      astream.wait();
     } else {
       // Changing ShareDataWith to TensorCopy results in performance drop
       // on ResNet architectures
       // (https://github.com/PaddlePaddle/Paddle/issues/22964)
+      VLOG(0) << "share data with residual_param";
       output->ShareDataWith(*residual_param);
       dst_memory_p = this->template AcquireDstMemory<T_out>(output);
     }
