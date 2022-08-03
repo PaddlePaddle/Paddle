@@ -70,7 +70,8 @@ class FcOpConverter : public OpConverter {
           reshape_before_fc_shape_tensor[x_num_col_dims] =
               Prod(GetEleTensorOfShape(input_shape_tensor, i),
                    reshape_before_fc_shape_tensor[x_num_col_dims]);
-          reshape_before_fc_shape_tensor[x_num_col_dims]->setType(nvinfer1::DataType::kINT32);
+          reshape_before_fc_shape_tensor[x_num_col_dims]->setType(
+              nvinfer1::DataType::kINT32);
         }
       }
       filal_reshape_before_fc_shape_tensor =
