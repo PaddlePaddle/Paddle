@@ -663,8 +663,12 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         num_columns = num_rows
 
     if _non_static_mode():
-        out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
-                         num_columns)
+        if in_dygraph_mode():
+            out = _C_ops.final_state_eye(num_rows, num_columns, dtype,
+                                         _current_expected_place())
+        elif _in_legacy_dygraph():
+            out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows,
+                             'num_columns', num_columns)
 
     else:
         helper = LayerHelper("eye", **locals())
@@ -1531,11 +1535,32 @@ def assign(x, output=None):
                              inputs={'X': [input]},
                              outputs={'Out': [output]})
     elif isinstance(input, np.ndarray):
-        # Not support [var, var, ...] currently.
+        # We now support the form of [var, VAR...] if the Var.shape=[1,]
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
+            # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
+            if not all(
+                [x.shape == (1, ) for x in input if isinstance(x, Variable)]):
+                raise TypeError(
+                    "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."
+                )
+
+            def convert_scalar(x):
+                if not isinstance(x, Variable):
+                    return assign(x)
+                return x
+
+            to_stack_list = list(map(convert_scalar, input))
+            ret = paddle.stack(to_stack_list)
+            ret = paddle.squeeze(ret, -1)
+            return ret
+
+        if input.dtype == 'object':
+            """ may be this form [[Var], [Var], [3], [4]], we reject them.
+            """
             raise TypeError(
-                "Required type(input) numpy.ndarray, but found `list(Variable)` in input."
+                "The type of received input == `object`, it is not supported to convert to tensor, such as [[Var], [Var], [3], [4]]"
             )
+
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == core.VarDesc.VarType.FP64:
             # Setting FP64 numpy data is not supported in Paddle, so we
@@ -1565,13 +1590,20 @@ def assign(x, output=None):
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
-        if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
-        if _non_static_mode():
+        if in_dygraph_mode():
+            if output is None:
+                output = zeros(list(input.shape), dtype)
+            _C_ops.final_state_assign_value_(output, list(input.shape), dtype,
+                                             values, _current_expected_place())
+        elif _in_legacy_dygraph():
+            if output is None:
+                output = core.VarBase()
             _C_ops.assign_value(output, 'shape', list(input.shape), 'dtype',
                                 dtype, value_name, values)
         else:
+            if output is None:
+                output = helper.create_variable_for_type_inference(
+                    dtype=input.dtype)
             helper.append_op(type='assign_value',
                              outputs={'Out': [output]},
                              attrs={
@@ -1701,6 +1733,9 @@ def complex(real, imag, name=None):
             # [[0.+0.j 0.+1.j 0.+2.j]
             #  [1.+0.j 1.+1.j 1.+2.j]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_complex(real, imag)
+
     if paddle.in_dynamic_mode():
         return paddle._C_ops.complex(real, imag)
 

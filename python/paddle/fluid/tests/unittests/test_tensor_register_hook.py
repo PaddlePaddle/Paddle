@@ -639,5 +639,35 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
         self.func_register_backward_hook_for_var_without_gradient()
 
 
+class TestRegsiterBackwardFinalHook(unittest.TestCase):
+
+    def setUp(self):
+        self.devices = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            self.devices.append("gpu")
+
+    def test_register_backward_hook(self):
+        global HOOK_INIT_VALUE
+        global HOOK_IS_CALLED
+        for device in self.devices:
+            np_x = np.random.rand(4, 16).astype("float32")
+            np_y = np.random.rand(16, 20).astype("float32")
+            x = paddle.to_tensor(np_x, stop_gradient=False)
+            y = paddle.to_tensor(np_y, stop_gradient=False)
+
+            core.eager._add_backward_final_hook(global_void_hook)
+
+            out = paddle.matmul(x, y)
+            out = paddle.sum(out)
+            out.backward()
+
+            self.assertEqual(HOOK_INIT_VALUE, 20)
+            self.assertTrue(HOOK_IS_CALLED)
+
+            # reset initial value
+            HOOK_INIT_VALUE = 10
+            HOOK_IS_CALLED = False
+
+
 if __name__ == '__main__':
     unittest.main()

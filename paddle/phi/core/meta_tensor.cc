@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/core/meta_tensor.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"

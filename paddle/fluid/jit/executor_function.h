@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/core/enforce.h"
 
 #include "paddle/fluid/jit/base_function.h"
 #include "paddle/fluid/jit/function_schema.h"
@@ -36,25 +37,37 @@ class ExecutorFunction : public BaseFunction {
                    const Name2VariableMap &params_dict,
                    const phi::Place &place)
       : info_(info), place_(place), inner_exe_(place_) {
+    info_->RemoveDescFeedFetch();
+    PADDLE_ENFORCE_GT(
+        static_cast<int64_t>(info_->ProgramDesc().Block(0).OpSize()),
+        0,
+        platform::errors::PreconditionNotMet(
+            "There is no operator in ProgramDesc."));
     utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, &scope_);
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
   }
 
   ~ExecutorFunction() noexcept {}
 
-  std::vector<Variable> operator()(const std::vector<Variable> &inputs) {
-    utils::ShareInputsIntoScope(info_->InputArgNames(), inputs, &scope_);
+  std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) {
+    auto dense_tensors = utils::ToDenseTensors(inputs);
+    return utils::ToTensors(this->operator()(dense_tensors));
+  }
+
+  std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs) {
+    utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
     inner_exe_.Run(info_->ProgramDesc(),
                    &scope_,
                    /*blockID=*/0,
                    false,
                    true,
                    info_->OutputArgNames());
-    VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
-    std::vector<Variable> res;
-    utils::FetchVarsByNames(info_->OutputArgNames(), scope_, &res);
-    return res;
+    std::vector<DenseTensor> outputs;
+    utils::FetchOuts(info_->OutputArgNames(), scope_, &outputs);
+    return outputs;
   }
+
+  const std::shared_ptr<FunctionInfo> &Info() const { return info_; }
 
  private:
   std::shared_ptr<FunctionInfo> info_;

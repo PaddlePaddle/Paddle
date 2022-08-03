@@ -99,26 +99,49 @@ class TestCPUBroadcastTensorsOp(OpTest):
         ]
         self.set_place()
         self.set_dtypes()
+        self.python_api = paddle.broadcast_tensors
 
-    def run_test(self, test_func, args):
+    def run_dual_test(self, test_func, args):
         for dtype in self.dtypes:
             for gen_func in self.test_gen_func_list:
                 self.inputs, self.outputs = gen_func(dtype)
-                test_func(**args)
+                if len(self.outputs["Out"]) < 3:
+                    self.python_out_sig = [
+                        f"out{i}" for i in range(len(self.outputs["Out"]))
+                    ]
+                    test_func(**args)
+
+    def run_triple_in_test(self, test_func, args):
+        for dtype in self.dtypes:
+            self.inputs, self.outputs = self.test_gen_func_list[2](dtype)
+            self.python_out_sig = [
+                f"out{i}" for i in range(len(self.outputs["Out"]))
+            ]
+            test_func(**args)
 
     def test_check_output(self):
-        self.run_test(self.check_output_with_place, {
+        self.run_dual_test(self.check_output_with_place, {
             "place": self.place,
-            "atol": 1e-1
+            "atol": 1e-1,
+            "check_eager": True
         })
 
     def test_check_grad_normal(self):
-        self.run_test(
+        self.run_dual_test(
             self.check_grad_with_place, {
                 "place": self.place,
                 "inputs_to_check": ['x0', 'x1'],
                 "output_names": ['out0', 'out1'],
                 "max_relative_error": 0.05,
+                "check_eager": True
+            })
+        self.run_triple_in_test(
+            self.check_grad_with_place, {
+                "place": self.place,
+                "inputs_to_check": ['x0', 'x1', 'x2'],
+                "output_names": ['out0', 'out1', "out2"],
+                "max_relative_error": 0.05,
+                "check_eager": True
             })
 
 

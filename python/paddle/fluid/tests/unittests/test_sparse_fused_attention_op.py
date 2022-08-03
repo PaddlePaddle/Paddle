@@ -37,7 +37,7 @@ def get_cuda_version():
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 11070,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.7"
 )
 class TestSparseAttentionAPI1(unittest.TestCase):
 
@@ -47,6 +47,7 @@ class TestSparseAttentionAPI1(unittest.TestCase):
         self.seq_len = 128
         self.head_dim = 16
         self.dtype = 'float64'
+        self.use_mask = True
 
     def test_dygraph(self):
         with _test_eager_guard():
@@ -69,37 +70,49 @@ class TestSparseAttentionAPI1(unittest.TestCase):
             sp_mask = mask.reshape([-1, self.seq_len,
                                     self.seq_len]).to_sparse_csr()
 
-            kp_mask = paddle.randint(
-                0, 2, [self.batch_size, self.seq_len]).astype(self.dtype)
-            attn_mask = paddle.randint(
-                0, 2, [self.seq_len, self.seq_len]).astype(self.dtype)
+            query_sp = copy.deepcopy(query)
+            key_sp = copy.deepcopy(key)
+            value_sp = copy.deepcopy(value)
 
-            sdd = paddle.matmul(query, key, False, True) / math.sqrt(
-                float(self.head_dim))
-            sdd = sdd + (
-                (mask * kp_mask.unsqueeze([1, 2]) * attn_mask) - 1.0) * 1e9
-            softmax = paddle.nn.functional.softmax(sdd)
-            output = paddle.matmul(softmax, value)
-            output.backward()
+            query_sp.stop_gradient = False
+            key_sp.stop_gradient = False
+            value_sp.stop_gradient = False
 
-            query_cp = copy.deepcopy(query)
-            key_cp = copy.deepcopy(key)
-            value_cp = copy.deepcopy(value)
+            if self.use_mask:
+                kp_mask = paddle.randint(
+                    0, 2, [self.batch_size, self.seq_len]).astype(self.dtype)
+                attn_mask = paddle.randint(
+                    0, 2, [self.seq_len, self.seq_len]).astype(self.dtype)
 
-            query_cp.stop_gradient = False
-            key_cp.stop_gradient = False
-            value_cp.stop_gradient = False
+                sdd = paddle.matmul(query, key, False, True) / math.sqrt(
+                    float(self.head_dim))
+                sdd = sdd + (
+                    (mask * kp_mask.unsqueeze([1, 2]) * attn_mask) - 1.0) * 1e9
+                softmax = paddle.nn.functional.softmax(sdd)
+                output = paddle.matmul(softmax, value)
+                output.backward()
 
-            output_cp = paddle.incubate.sparse.nn.functional.attention(
-                query_cp, key_cp, value_cp, sp_mask, kp_mask, attn_mask)
-            output_cp.backward()
+                output_sp = paddle.incubate.sparse.nn.functional.attention(
+                    query_sp, key_sp, value_sp, sp_mask, kp_mask, attn_mask)
+                output_sp.backward()
+            else:
+                sdd = paddle.matmul(query, key, False, True) / math.sqrt(
+                    float(self.head_dim))
+                sdd = sdd + (mask - 1.0) * 1e9
+                softmax = paddle.nn.functional.softmax(sdd)
+                output = paddle.matmul(softmax, value)
+                output.backward()
 
-            self.assertTrue(np.allclose(output_cp.numpy(), output.numpy()))
+                output_sp = paddle.incubate.sparse.nn.functional.attention(
+                    query_sp, key_sp, value_sp, sp_mask)
+                output_sp.backward()
+
+            self.assertTrue(np.allclose(output_sp.numpy(), output.numpy()))
             self.assertTrue(
-                np.allclose(query_cp.grad.numpy(), query.grad.numpy()))
-            self.assertTrue(np.allclose(key_cp.grad.numpy(), key.grad.numpy()))
+                np.allclose(query_sp.grad.numpy(), query.grad.numpy()))
+            self.assertTrue(np.allclose(key_sp.grad.numpy(), key.grad.numpy()))
             self.assertTrue(
-                np.allclose(value_cp.grad.numpy(), value.grad.numpy()))
+                np.allclose(value_sp.grad.numpy(), value.grad.numpy()))
 
 
 class TestSparseAttentionAPI2(TestSparseAttentionAPI1):
@@ -110,6 +123,7 @@ class TestSparseAttentionAPI2(TestSparseAttentionAPI1):
         self.seq_len = 128
         self.head_dim = 32
         self.dtype = 'float64'
+        self.use_mask = False
 
 
 class TestSparseAttentionAPI3(TestSparseAttentionAPI1):
@@ -120,6 +134,7 @@ class TestSparseAttentionAPI3(TestSparseAttentionAPI1):
         self.seq_len = 512
         self.head_dim = 16
         self.dtype = 'float64'
+        self.use_mask = True
 
 
 class TestSparseAttentionAPI4(TestSparseAttentionAPI1):
@@ -130,6 +145,7 @@ class TestSparseAttentionAPI4(TestSparseAttentionAPI1):
         self.seq_len = 512
         self.head_dim = 32
         self.dtype = 'float64'
+        self.use_mask = False
 
 
 class TestSparseAttentionAPI5(TestSparseAttentionAPI1):
@@ -140,6 +156,7 @@ class TestSparseAttentionAPI5(TestSparseAttentionAPI1):
         self.seq_len = 512
         self.head_dim = 64
         self.dtype = 'float64'
+        self.use_mask = True
 
 
 if __name__ == '__main__':

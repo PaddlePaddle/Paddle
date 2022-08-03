@@ -23,9 +23,7 @@ from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.common import Linear, Dropout
 import unittest
 from op_test import OpTest
-from paddle.fluid.framework import default_main_program, _enable_legacy_dygraph
-
-_enable_legacy_dygraph()
+from paddle.fluid.framework import default_main_program
 
 
 class TestFusedFFNOp(OpTest):

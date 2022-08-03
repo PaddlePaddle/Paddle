@@ -86,6 +86,41 @@ class TestLogSoftmaxAxis(TestLogSoftmaxOp):
         self.axis = 1
 
 
+class TestLogSoftmaxOpFp16(OpTest):
+
+    def setUp(self):
+        self.op_type = 'log_softmax'
+        self.set_mlu()
+        self.python_api = F.log_softmax
+        self.dtype = 'float16'
+        self.shape = [2, 3, 4, 5]
+        self.axis = -1
+        self.set_attrs()
+
+        x = np.random.uniform(0.1, 1., self.shape).astype(self.dtype)
+        out = np.apply_along_axis(ref_log_softmax, self.axis, x)
+        self.x_grad = ref_log_softmax_grad(x, self.axis)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'axis': self.axis}
+
+    def set_attrs(self):
+        pass
+
+    def set_mlu(self):
+        self.__class__.use_mlu = True
+        self.place = paddle.device.MLUPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, atol=1e-2)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X'], ['Out'],
+                                   user_defined_grads=[self.x_grad],
+                                   max_relative_error=0.015)
+
+
 class TestNNLogSoftmaxAPI(unittest.TestCase):
 
     def setUp(self):

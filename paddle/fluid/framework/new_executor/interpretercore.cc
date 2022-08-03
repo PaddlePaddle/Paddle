@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -90,6 +91,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     auto local_scope = &var_scope_.GetMutableScope()->NewScope();
     local_scope_ = local_scope;
   }
+  var_scope_.SetLocalScope(local_scope_);
 
   // prune
 
@@ -115,7 +117,6 @@ InterpreterCore::~InterpreterCore() {
 interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-  var_scope_.SetLocalScope(local_scope_);
   Prepare(feed_names, feed_tensors, true);
   interpreter::CostInfo cost_info;
   {
@@ -144,7 +145,6 @@ paddle::framework::FetchList InterpreterCore::Run(
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
   bool is_build = is_build_;
-  var_scope_.SetLocalScope(local_scope_);
   Prepare(feed_names, feed_tensors, is_build);
 
   if (is_build) {
@@ -153,8 +153,10 @@ paddle::framework::FetchList InterpreterCore::Run(
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
+#ifdef PADDLE_WITH_ASCEND_CL
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+#endif
   }
-
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
@@ -174,7 +176,6 @@ paddle::framework::FetchList InterpreterCore::Run(
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
   if (!is_build_) {
-    var_scope_.SetLocalScope(local_scope_);
     paddle::framework::interpreter::build_variable_scope(block_, &var_scope_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
@@ -196,12 +197,14 @@ paddle::framework::FetchList InterpreterCore::Run(
     async_work_queue_ = GetWorkQueue();
 
     ExecuteInstructionList(vec_instruction_);
+#ifdef PADDLE_WITH_ASCEND_CL
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+#endif
   }
 
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
-
   // return Fetch Tensors
   auto* fetch_var = local_scope_->FindVar(interpreter::kFetchVarName);
   if (fetch_var) {
@@ -281,6 +284,28 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
 }
 
 void InterpreterCore::BuildInplace() {
+  // NOTE(Ruibiao): coalesce_tensor_op outputs a FusedOutput Tensor and a list
+  // of Output Tensors which are sliced from the FusedOutput. These outputs
+  // sholud not be the outvar of the in-place var-pair since memory reuse
+  // between FusedOutput and Output Tensors is assumed. For the following
+  // example:
+  // fused_var, var1, var2, var3 = coalesce_tensor(var1, var2, var3)
+  // var1 = sum(var4, var5)
+  // ...
+  //
+  // After running coalesce_tensor_op, var1 is assumed to share the buffer
+  // slices from fused_var. However, if sum_op is in-place, then var1 would
+  // re-share the buffer with var4 instead of fused_var.
+  std::set<std::string> skip_inplace_outvars;
+  for (Instruction& instr : vec_instruction_) {
+    OperatorBase* op = instr.OpBase();
+    if (op->Type() == "coalesce_tensor") {
+      const std::vector<std::string>& outputs =
+          op->OutputVars(/*has_intermediate=*/false);
+      skip_inplace_outvars.insert(outputs.begin(), outputs.end());
+    }
+  }
+
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     auto& instr = vec_instruction_[i];
     auto* op_base = instr.OpBase();
@@ -306,17 +331,20 @@ void InterpreterCore::BuildInplace() {
         if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
           auto iterout = outputs.find(pair.second);
           if (iterout != outputs.end() && !iterout->second.empty()) {
-            auto invar =
-                local_scope_->FindVar(var_scope_.GetNameById(iter->second[0]));
-            auto outvar = local_scope_->FindVar(
-                var_scope_.GetNameById(iterout->second[0]));
+            const std::string& invar_name =
+                var_scope_.GetNameById(iter->second[0]);
+            const std::string& outvar_name =
+                var_scope_.GetNameById(iterout->second[0]);
+            auto invar = local_scope_->FindVar(invar_name);
+            auto outvar = local_scope_->FindVar(outvar_name);
+
             if (invar && outvar && invar->IsType<LoDTensor>() &&
-                outvar->IsType<LoDTensor>()) {
+                outvar->IsType<LoDTensor>() &&
+                skip_inplace_outvars.find(outvar_name) ==
+                    skip_inplace_outvars.end()) {
               instr.AddInplace(invar, outvar);
-              VLOG(3) << "inplace " << vec_instruction_[i].OpBase()->Type()
-                      << " " << var_scope_.GetNameById(iter->second[0])
-                      << " -> " << var_scope_.GetNameById(iterout->second[0])
-                      << std::endl;
+              VLOG(3) << "inplace " << op_base->Type() << " " << invar_name
+                      << " -> " << outvar_name;
             }
           }
         }
@@ -330,8 +358,7 @@ void InterpreterCore::BuildOperatorDependences() {
   // Schedule
   auto op_nums = vec_instruction_.size();
   dependecy_count_.resize(op_nums);
-  auto op2downstream = interpreter::build_op_downstream_map(
-      vec_instruction_, &op_happens_before_);
+  auto op2downstream = dependency_builder_.Build(vec_instruction_);
   for (size_t op = 0; op < vec_instruction_.size(); ++op) {
     auto op_list = op2downstream[op];
     std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
@@ -447,7 +474,7 @@ void InterpreterCore::Convert(
       bool not_before_any = true;
       // find the op that is not executed before any
       for (size_t other_item : last_live_ops_[i]) {
-        if (op_happens_before_[item][other_item]) {
+        if (dependency_builder_.OpHappensBefore(item, other_item)) {
           VLOG(8) << "happens_before: " << item << "->" << other_item
                   << ", so skip " << item;
           not_before_any = false;
@@ -473,8 +500,13 @@ void InterpreterCore::Convert(
   BuildSkipShareLoDInfo();
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+#ifdef PADDLE_WITH_IPU
+    gc_event_.emplace_back(phi::CPUPlace(), 0);
+#else
     gc_event_.emplace_back(vec_instruction_[i].DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
+
+#endif
   }
   bool inplaced = false;
   for (auto inst : vec_instruction_) {
@@ -528,6 +560,17 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
   Scope* local_scope = create_local_scope_ ? var_scope_.GetMutableLocalScope()
                                            : var_scope_.GetMutableScope();
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
+  // values, but only through special `float_status` to checks whether
+  // the operation is overflow. More about `float_status`, see:
+  // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
+  if (FLAGS_check_nan_inf) {
+    framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
+  }
+#endif
+
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
     // If it is OperatorBase, InferShape do nothing.
@@ -578,13 +621,13 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
         VLOG(4) << "Run phi kernel: " << op->Type();
         VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
                 << &instr_node.DeviceContext();
-        phi::KernelContext pt_kernel_context;
+        phi::KernelContext phi_kernel_context;
         op_with_kernel->BuildPhiKernelContext(
             *instr_node.InnerRuntimeContext().get(),
             const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
-            &pt_kernel_context);
+            &phi_kernel_context);
 
-        (*instr_node.PhiKernel())(&pt_kernel_context);
+        (*instr_node.PhiKernel())(&phi_kernel_context);
 
       } else {
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
@@ -835,9 +878,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
   platform::RecordEvent record(
       "RecordStreamForGC", platform::TracerEventType::UserDefined, 10);
 
-  gpuStream_t stream = reinterpret_cast<const platform::CUDADeviceContext&>(
-                           instr.DeviceContext())
-                           .stream();
+  gpuStream_t stream =
+      reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext()).stream();
   auto TensorRecordStream = [&stream](Tensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {

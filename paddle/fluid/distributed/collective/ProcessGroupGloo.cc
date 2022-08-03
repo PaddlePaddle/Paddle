@@ -79,6 +79,15 @@ namespace distributed {
     case experimental::DataType::INT64:      \
       func<int64_t>(args);                   \
       break;                                 \
+    case experimental::DataType::INT8:       \
+      func<int8_t>(args);                    \
+      break;                                 \
+    case experimental::DataType::UINT8:      \
+      func<uint8_t>(args);                   \
+      break;                                 \
+    case experimental::DataType::BOOL:       \
+      func<bool>(args);                      \
+      break;                                 \
     default:                                 \
       VLOG(0) << "Error: Unknown DataType."; \
       exit(-1);                              \

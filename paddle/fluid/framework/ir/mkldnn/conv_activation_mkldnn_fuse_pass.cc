@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -24,61 +25,26 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  std::vector<std::string> act_types = {"relu",
-                                        "mish",
-                                        "swish",
-                                        "sqrt",
-                                        "hard_swish",
-                                        "sigmoid",
-                                        "abs",
-                                        "gelu",
-                                        "relu6",
-                                        "clip",
-                                        "tanh",
-                                        "hard_sigmoid",
-                                        "leaky_relu"};
-
+  auto act_types = paddle::platform::GetSupportedActivations();
   std::vector<std::string> conv_types = {"conv2d"};
 
   for (const auto& conv_type : conv_types)
     for (auto& act_type : act_types) {
-      std::unordered_map<std::string, std::string> attrs_map;
-
-      if (act_type == "swish")
-        attrs_map.emplace("beta", "fuse_alpha");
-      else if (act_type == "relu6")
-        attrs_map.emplace("threshold", "fuse_alpha");
-      else if (act_type == "hard_sigmoid") {
-        attrs_map.emplace("slope", "fuse_alpha");
-        attrs_map.emplace("offset", "fuse_beta");
-      } else if (act_type == "clip") {
-        attrs_map.emplace("min", "fuse_alpha");
-        attrs_map.emplace("max", "fuse_beta");
-      } else {
-        attrs_map.emplace("alpha", "fuse_alpha");
-        attrs_map.emplace("beta", "fuse_beta");
-      }
-      FuseConvAct(graph, conv_type, act_type, attrs_map);
+      FuseConvAct(graph, conv_type, act_type);
     }
 }
 
-void ConvActivationMkldnnFusePass::FuseConvAct(
-    Graph* graph,
-    const std::string& conv_type,
-    std::string& act_type,
-    const std::unordered_map<std::string, std::string>& attrs_map) const {
+void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
+                                               const std::string& conv_type,
+                                               std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(conv_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
-  auto* conv_input = gpd.mutable_pattern()
-                         ->NewNode("conv_activation_mkldnn_fuse/conv_input")
-                         ->AsInput()
-                         ->assert_is_op_input(conv_type, "Input");
-  patterns::ConvActivation conv_act_pattern(gpd.mutable_pattern(),
-                                            "conv_activation_mkldnn_fuse");
-  conv_act_pattern(conv_input, conv_type, act_type);
+  patterns::OperatorActivation conv_act_pattern(gpd.mutable_pattern(),
+                                                "conv_activation_mkldnn_fuse");
+  conv_act_pattern(conv_type, act_type);
 
   int found_conv_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -90,25 +56,26 @@ void ConvActivationMkldnnFusePass::FuseConvAct(
       return;
     }
 
-    GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight, conv_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, conv_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(conv, conv, conv_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, conv_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(conv, preceding_op, conv_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(conv_out, preceding_op_out, conv_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(activation, activation, conv_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, conv_act_pattern);
 
     OpDesc* conv_op = conv->Op();
     OpDesc* act_op = activation->Op();
 
-    for (const auto& attrs : attrs_map) {
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    for (const auto& attrs : attr_map) {
       if (act_op->HasAttr(attrs.first)) {
         conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
       }
     }
 
     if (act_type == "gelu" && activation->Op()->HasAttr("approximate")) {
-      act_type = BOOST_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
-                     ? "gelu_tanh"
-                     : "gelu_erf";
+      act_type =
+          PADDLE_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
+              ? "gelu_tanh"
+              : "gelu_erf";
       conv_op->SetAttr("fuse_alpha", 0.0f);
       conv_op->SetAttr("fuse_beta", 0.0f);
     }

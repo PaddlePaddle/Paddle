@@ -76,8 +76,7 @@ class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    modified_huber_loss,
-    ops::ModifiedHuberLossKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(modified_huber_loss,
+                        ops::ModifiedHuberLossKernel<phi::GPUContext, float>);
 REGISTER_OP_CUDA_KERNEL(modified_huber_loss_grad,
                         ops::ModifiedHuberLossGradGPUKernel<float>);
