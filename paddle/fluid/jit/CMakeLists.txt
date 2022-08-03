@@ -1,7 +1,14 @@
+proto_library(paddle_jit_property_proto SRCS property.proto)
+
+cc_library(
+  jit_property
+  SRCS property.cc
+  DEPS paddle_jit_property_proto tensor)
+
 cc_library(
   jit_serializer
   SRCS serializer.cc
-  DEPS lod_tensor device_context)
+  DEPS lod_tensor device_context jit_property)
 
 cc_library(
   jit_function_utils
@@ -32,9 +39,10 @@ cc_library(
 if(WITH_TESTING AND NOT WIN32)
   add_custom_target(
     jit_download_program
-    COMMAND wget -nc -q --no-check-certificate
-            https://paddle-ci.gz.bcebos.com/dy2st/multi_program_load.tar.gz
-    COMMAND tar zxf multi_program_load.tar.gz)
+    COMMAND
+      wget -nc -q
+      https://paddle-ci.gz.bcebos.com/dy2st/multi_program_load_with_property.tar.gz
+    COMMAND tar zxf multi_program_load_with_property.tar.gz)
   set(JIT_DEPS
       phi
       phi_api
@@ -52,10 +60,3 @@ if(WITH_TESTING AND NOT WIN32)
     DEPS ${JIT_DEPS})
   add_dependencies(layer_test jit_download_program)
 endif()
-
-proto_library(paddle_jit_property_proto SRCS property.proto)
-
-cc_library(
-  jit_property
-  SRCS property.cc
-  DEPS paddle_jit_property_proto)
