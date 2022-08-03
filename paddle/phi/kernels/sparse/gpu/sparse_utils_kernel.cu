@@ -277,7 +277,7 @@ template <typename T, typename Context>
 void SparseCsrToCooKernel(const Context& dev_ctx,
                           const SparseCsrTensor& x,
                           SparseCooTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_SPARSE_VISIT_INTEGRAL_TYPES(
       x.non_zero_crows().dtype(), "SparseCsrToCooGPUKernel", ([&] {
         SparseCsrToCooGPUKernel<T, data_t>(dev_ctx, x, out);
       }));
@@ -421,7 +421,7 @@ template <typename T, typename Context>
 void SparseCooToCsrKernel(const Context& dev_ctx,
                           const SparseCooTensor& x,
                           SparseCsrTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_SPARSE_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "SparseCooToCsrGPUKernel", ([&] {
         SparseCooToCsrGPUKernel<T, data_t>(dev_ctx, x, out);
       }));
@@ -510,7 +510,7 @@ template <typename T, typename Context>
 void SparseCooToDenseKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             DenseTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_SPARSE_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "SparseCooToDenseGPUKernel", ([&] {
         SparseCooToDenseGPUKernel<T, data_t>(dev_ctx, x, out);
       }));

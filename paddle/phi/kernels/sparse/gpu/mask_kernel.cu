@@ -111,7 +111,7 @@ void SparseMaskKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const SparseCooTensor& mask,
                       SparseCooTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_SPARSE_VISIT_INTEGRAL_TYPES(
       mask.non_zero_indices().dtype(), "SparseMaskGPUKernel", ([&] {
         SparseMaskGPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
@@ -270,7 +270,7 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             const DenseTensor& mask_indices,
                             DenseTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_SPARSE_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "SparseMaskHelperGPUKernel", ([&] {
         SparseMaskHelperGPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));

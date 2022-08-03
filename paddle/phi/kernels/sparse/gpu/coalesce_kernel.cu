@@ -175,7 +175,7 @@ template <typename T, typename Context>
 void CoalesceKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
                     SparseCooTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_SPARSE_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "CoalesceGPUKernel", ([&] {
         CoalesceGPUKernel<T, data_t>(dev_ctx, x, out);
       }));
