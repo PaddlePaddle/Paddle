@@ -2561,3 +2561,41 @@
   kernel :
     func : yolov3_loss_grad
   optional : gt_score
+
+# fold
+- backward_api: fold_grad
+  forward: fold (Tensor x, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)
+  args: (Tensor x, Tensor out_grad, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: fold_grad
+  no_need_buffer : x
+
+# unpool3d
+- backward_api: unpool3d_grad
+  forward: unpool3d (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format) -> Tensor(out)
+  args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: unpool3d_grad
+    data_type: x
+  no_need_buffer : x
+
+# unpool
+- backward_api: unpool_grad
+  forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  int[] output_size, str data_format) -> Tensor(out)
+  args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: unpool_grad
+    data_type: x
+  no_need_buffer : x

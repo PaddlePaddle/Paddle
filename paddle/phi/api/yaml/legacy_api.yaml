@@ -2708,6 +2708,16 @@
     func: eig
   backward: eig_grad
 
+# fold
+- api: fold
+  args: (Tensor x, int[] output_sizes, int[] kernel_sizes,  int[] strides, int[] paddings, int[] dilations)
+  output: Tensor(out)
+  infer_meta:
+    func: FoldInferMeta
+  kernel:
+    func: fold
+  backward: fold_grad
+
 # overlap_add
 - api: overlap_add
   args: (Tensor x, int hop_length, int axis)
@@ -2717,3 +2727,25 @@
   kernel:
     func: overlap_add
   backward: overlap_add_grad
+
+# unpool
+- api: unpool
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
+  output: Tensor(out)
+  infer_meta:
+    func: UnpoolInferMeta
+  kernel:
+    func: unpool
+    data_type: x
+  backward: unpool_grad
+
+# unpool3d
+- api: unpool3d
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
+  output: Tensor(out)
+  infer_meta:
+    func: Unpool3dInferMeta
+  kernel:
+    func: unpool3d
+    data_type: x
+  backward: unpool3d_grad

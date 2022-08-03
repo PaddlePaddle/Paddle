@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fold_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/phi/kernels/impl/lu_unpack_grad_kernel_impl.h"
-#include "paddle/phi/kernels/lu_unpack_grad_kernel.h"
+#include "paddle/phi/kernels/impl/fold_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
-    lu_unpack_grad, CPU, ALL_LAYOUT, phi::LUUnpackGradKernel, float, double) {}
+    fold_grad, CPU, ALL_LAYOUT, phi::FoldGradKernel, float, double) {}
