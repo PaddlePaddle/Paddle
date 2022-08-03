@@ -16,7 +16,6 @@ import os
 import re
 import logging
 import numpy as np
-import json
 import shutil
 try:
     from tqdm import tqdm
@@ -466,8 +465,7 @@ class PostTrainingQuantization(object):
     def save_quantized_model(self,
                              save_model_path,
                              model_filename=None,
-                             params_filename=None,
-                             save_scale=False):
+                             params_filename=None):
         '''
         Save the quantized model to the disk.
 
@@ -492,12 +490,6 @@ class PostTrainingQuantization(object):
                                 main_program=self._program,
                                 clip_extra=clip_extra)
         _logger.info("The quantized model is saved in " + save_model_path)
-        if self._onnx_format and save_scale:
-            save_json_path = os.path.join(save_model_path, 'out_scale.json')
-            with open(save_json_path, 'w', newline='\n') as json_file:
-                json_file.write(self._json_scale)
-            _logger.info(
-                "Out scale of per-layer is save in: {}".format(save_json_path))
 
     def _load_model_data(self):
         '''
@@ -1003,7 +995,7 @@ class PostTrainingQuantization(object):
         '''
         Save output threshold to the quantized op.
         '''
-        self._json_scale = {}
+        self._calibration_scales = {}
 
         def save_info(op_node, out_var_name, threshold_map, out_info_name,
                       quantized_type):
@@ -1011,8 +1003,10 @@ class PostTrainingQuantization(object):
                 "The output ({}) of {} node does not have threshold.".format(
                 out_var_name, op_node.type)
             if self._onnx_format:
-                self._json_scale[var_name] = {}
-                self._json_scale[var_name]['scale'] = threshold_map[var_name]
+                # For easy extension, every var_node set a dict to save parameters of quant.
+                self._calibration_scales[var_name] = {}
+                self._calibration_scales[var_name]['scale'] = threshold_map[
+                    var_name]
             else:
                 op_node._set_attr(out_info_name, threshold_map[var_name])
                 op_node._set_attr("with_quant_attr", True)
@@ -1060,8 +1054,6 @@ class PostTrainingQuantization(object):
                     out_var_names = utils._get_op_output_var_names(op)
                     for var_name in out_var_names:
                         analysis_and_save_info(op, var_name)
-        if self._onnx_format:
-            self._json_scale = json.dumps(self._json_scale, indent=1)
 
     def _collect_dynamic_quantize_op_threshold(self, target_ops_type):
         """

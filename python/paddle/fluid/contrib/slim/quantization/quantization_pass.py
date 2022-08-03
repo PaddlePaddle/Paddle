@@ -14,7 +14,6 @@
 
 import collections
 import numpy as np
-import json
 try:
     from tqdm import tqdm
 except:
@@ -1793,6 +1792,7 @@ class InsertQuantizeLinear(object):
             equal to 0, it will quantization with per channel, else quantization with per layer.
             Default is -1.
         channel_wise(bool, optional): Whether quantization with per channel or not. Default is False.
+        moving_rate(float): the rate for 'moving average' method.
         is_test(bool, optional): Whether quantization with training or not. Default is True.
     """
 
@@ -1970,10 +1970,10 @@ class InsertQuantizeLinear(object):
         return "%s@zero_point" % (var_name)
 
 
-class QuantizationTransformPassV2(object):
+class QuantizationTransformPassV2(QuantizationTransformPass):
     """
     Quantize the ops that have weights. Add quant and dequant ops for
-    the quantized ops's inputs.
+    the quantized ops's inputs. It is used in the new format of quantization.
     """
 
     def __init__(self,
@@ -2132,182 +2132,6 @@ class QuantizationTransformPassV2(object):
             op_node.op()._set_attr("skip_quant", True)
             op_node.op()._set_attr("with_quant_attr", True)
 
-    def _create_new_node(self, graph, in_node):
-        """
-        create a node that same with in_node in graph
-        Args:
-            graph(IrGraph): create node in graph.
-            in_node(IrVarNode): create node that same with in_node.
-        Returns:
-            created new node
-        """
-        key = ''
-        for inp in in_node.inputs:
-            key = key + inp.name()
-        key = key + in_node.name()
-        for inp in in_node.outputs:
-            key = key + inp.name()
-
-        if key in self.create_var_map.keys():
-            new_node = self.create_var_map[key]
-        elif in_node.is_ctrl_var():
-            new_node = graph.create_control_dep_var()
-            self.create_var_map[key] = new_node
-        else:
-            new_node = graph.create_var_node_from_desc(in_node.node.var())
-            self.create_var_map[key] = new_node
-        return new_node
-
-    def _copy_graph(self, graph, source_graph, op_node):
-        """
-        copy op_node in source_graph to graph. And will run recursively 
-        for next ops that link to op_node's outputs.
-        Args:
-            graph(IrGraph): target graph to copy.
-            source_graph(IrGraph): source graph to copy.
-            op_node(IrOpNode): op node in source_graph.
-        Returns:
-            None
-
-        """
-        key = ''
-        for inp in op_node.inputs:
-            key = key + inp.name()
-        key = key + op_node.name()
-        for inp in op_node.outputs:
-            key = key + inp.name()
-        has_created = False
-        if key in self.create_op_map.keys():
-            new_op_node = self.create_op_map[key]
-            has_created = True
-        else:
-            new_op_node = graph.create_op_node_from_desc(op_node.node.op())
-            self.create_op_map[key] = new_op_node
-        if has_created:
-            return
-        for in_node in op_node.inputs:
-            new_node = self._create_new_node(graph, in_node)
-            graph.link_to(new_node, new_op_node)
-        for in_node in op_node.outputs:
-            new_node = self._create_new_node(graph, in_node)
-            graph.link_to(new_op_node, new_node)
-        for var_node in op_node.outputs:
-            for next_op_node in var_node.outputs:
-                self._copy_graph(graph, source_graph, next_op_node)
-        return
-
-    def _insert_func(self, graph, func, var_node, op):
-        """
-        Insert a tmp program that returned by func between var_node and op.
-
-        Args:
-            graph(IrGraph): target graph to insert tmp program.
-            func(Function): function to define a tmp program
-            var_node(IrVarNode): node in target graph.
-            op(IrOpNode): op in target graph.
-        Returns:
-            op's new input that replaces var_node
-        """
-        tmp_program = Program()
-        startup_program = Program()
-        with program_guard(tmp_program, startup_program):
-            with unique_name.guard(var_node.name() + "_"):
-                in_node = data(var_node.name() + '_tmp_input',
-                               shape=var_node.shape(),
-                               dtype='float32')
-                out_node = func(in_node)
-                graph.out_node_mapping_table[out_node.name] = var_node.name()
-                # loss shape must be 1 when minimize
-                loss = mean(out_node)
-                if not graph._for_test:
-                    assert self._optimizer, "optimizer_func must be set when graph is test graph"
-                    in_node.stop_gradient = False
-                    optimizer = self._optimizer()
-                    optimizer.minimize(loss)
-        with scope_guard(self._scope):
-            self._exe.run(startup_program)
-
-        tmp_graph = IrGraph(core.Graph(tmp_program.desc),
-                            for_test=graph._for_test)
-        in_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
-                                               in_node.name)
-        out_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
-                                                out_node.name)
-
-        in_node_params = []
-        in_op_node = []
-        # copy tmp graph to graph, after that, we can insert tmp graph's copy to graph.
-        for node in tmp_graph.all_var_nodes():
-            if node.inputs == [] and node.persistable():
-                in_node_params.append(node)
-        for node in tmp_graph.all_op_nodes():
-            if node.inputs == []:
-                in_op_node.append(node)
-        for node in in_node.outputs:
-            self._copy_graph(graph, tmp_graph, node)
-        for node in in_node_params:
-            for op_node in node.outputs:
-                self._copy_graph(graph, tmp_graph, op_node)
-        for node in in_op_node:
-            self._copy_graph(graph, tmp_graph, node)
-
-        target_in_node = graph._find_node_by_name(graph.all_var_nodes(),
-                                                  in_node.name())
-        target_out_node = graph._find_node_by_name(graph.all_var_nodes(),
-                                                   out_node.name())
-        loss_node = graph._find_node_by_name(graph.all_var_nodes(), loss.name)
-        outputs = target_in_node.outputs
-        for node in outputs:
-            graph.update_input_link(target_in_node, var_node, node)
-        graph.update_input_link(var_node, target_out_node, op)
-
-        # update grad
-        if not graph._for_test:
-            op_out = op.outputs[0]
-            op_out_grad = graph._find_node_by_name(graph.all_var_nodes(),
-                                                   op_out.name() + "@GRAD")
-            # find op's gradient op, such as conv2d_grad
-            op_grad = op_out_grad.outputs[0]
-            target_out_grad_node = graph._find_node_by_name(
-                graph.all_var_nodes(),
-                target_out_node.name() + "@GRAD")
-            in_node_grad = graph._find_node_by_name(
-                graph.all_var_nodes(),
-                target_in_node.name() + "@GRAD")
-            in_node_grad_op = in_node_grad.inputs
-            # update op_grad's input
-            graph.update_input_link(var_node, target_out_node, op_grad)
-
-            op_grad_out = None
-            # find var_node's corresponding grad node
-            for node in op_grad.outputs:
-                if var_node.name() + "@GRAD" in node.name():
-                    op_grad_out = node
-            # update op_grad's output
-            if op_grad_out is not None:
-                graph.update_output_link(op_grad_out, target_out_grad_node,
-                                         op_grad)
-            else:
-                graph.link_to(op_grad, target_out_grad_node)
-
-            for node in in_node_grad_op:
-                graph.update_input_link(target_in_node, var_node, node)
-                if op_grad_out:
-                    graph.update_output_link(in_node_grad, op_grad_out, node)
-            # remove useless nodes
-            mean_grad = target_out_grad_node.inputs[0]
-            mean_out_grad = mean_grad.inputs[0]
-            fill_constant_node = mean_out_grad.inputs[0]
-            graph.safe_remove_nodes(mean_grad)
-            graph.safe_remove_nodes(mean_out_grad)
-            graph.safe_remove_nodes(fill_constant_node)
-            graph.safe_remove_nodes(in_node_grad)
-
-        graph.safe_remove_nodes(loss_node.inputs[0])
-        graph.safe_remove_nodes(loss_node)
-        graph.safe_remove_nodes(target_in_node)
-        return target_out_node
-
     def _transform_forward(self, graph, op):
         op.op()._set_attr("quantization_type", "qat_with_weight")
         inputs = op.inputs
@@ -2398,24 +2222,6 @@ class QuantizationTransformPassV2(object):
                 has_weight = True
         return has_weight
 
-    def _is_skip_quant(self, graph, op_node):
-        """
-        Analyse whether the op node skips quantization.
-        """
-        is_skip = False
-        if op_node.op().has_attr("skip_quant") and \
-            op_node.op().attr("skip_quant"):
-            is_skip = True
-        # if the inputs of mul and matmul are not all persistable, use
-        # AddQuantDequantPassV2 to quantize them.
-        if op_node.name() in ["mul", "matmul", "matmul_v2"] and \
-            _is_input_all_not_persistable(graph, op_node):
-            is_skip = True
-        if op_node.op().has_attr("quantization_type") and \
-            op_node.op().attr("quantization_type") == "qat_without_weight":
-            is_skip = True
-        return is_skip
-
     def apply(self, graph):
         """
         Quantize the graph for training process. According to weight and
@@ -2466,7 +2272,7 @@ class QuantizationTransformPassV2(object):
 class AddQuantDequantPassV2(object):
     """
     Quantize the ops that do not have weights, and add quant_linear and dequant_linear
-    op for the quantized ops's inputs.
+    op for the quantized ops's inputs. It is used in the new format of quantization.
     """
 
     # To be compatible with PaddleSlim, not remove _activation_type for now
