@@ -18,14 +18,10 @@ import six
 import numpy as np
 import sys
 
-import sys
-
 sys.path.append("..")
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
-import paddle.tensor as tensor
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -115,32 +111,44 @@ class XPUTestSequenceUnpadOp(XPUOpTestWrapper):
 class TestSequenceUnpadOpError(unittest.TestCase):
 
     def test_error(self):
+        """
+        The type of 'x' in fluid.layers.sequence_unpad must be <class 'paddle.fluid.framework.Variable'>, but received <class 'numpy.ndarray'>.
+        """
 
         def test_x_variable():
             x = np.random.random((10, 5)).astype("float64")
             len = fluid.data(name='length2', shape=[10], dtype='int64')
-            fluid.layers.sequence_pad(x=x, length=len)
+            fluid.layers.sequence_unpad(x=x, length=len)
 
         self.assertRaises(TypeError, test_x_variable)
+        """
+        The type of 'length' in fluid.layers.sequence_unpad must be <class 'paddle.fluid.framework.Variable'>, but received <class 'numpy.ndarray'>.
+        """
 
         def test_length_variable():
             x1 = fluid.data(name='x1', shape=[10, 5], dtype='float32')
             len1 = np.random.random((10)).astype("int64")
-            fluid.layers.sequence_pad(x=x1, length=len1)
+            fluid.layers.sequence_unpad(x=x1, length=len1)
 
         self.assertRaises(TypeError, test_length_variable)
+        """
+        The data type of 'x' in fluid.layers.sequence_unpad must be ['float32', 'float64', 'int32', 'int64'], but received float16
+        """
 
         def test_x_dtype():
             x2 = fluid.data(name='x2', shape=[10, 5], dtype='float16')
             len2 = fluid.data(name='length2', shape=[10], dtype='int64')
-            fluid.layers.sequence_pad(x=x2, length=len2)
+            fluid.layers.sequence_unpad(x=x2, length=len2)
 
         self.assertRaises(TypeError, test_x_dtype)
+        """
+        The data type of 'length' in fluid.layers.sequence_unpad must be ['int64'], but received int32
+        """
 
         def test_length_dtype():
             x3 = fluid.data(name='x3', shape=[10, 5], dtype='float64')
             len3 = fluid.data(name='length3', shape=[10], dtype='int32')
-            fluid.layers.sequence_pad(x=x3, length=len3)
+            fluid.layers.sequence_unpad(x=x3, length=len3)
 
         self.assertRaises(TypeError, test_length_dtype)
 
