@@ -52,8 +52,8 @@ def write_file(name, ct):
 
 def get_files(pth, prefix):
     return [
-        f for f in listdir(pth) if isfile(join(pth, f)) and f.startswith(prefix)
-        and f != f"{prefix}.gpu.log"
+        f for f in listdir(pth)
+        if isfile(join(pth, f)) and not f.endswith('gpu.log')
     ]
 
 
@@ -111,6 +111,7 @@ class Collective_Test(unittest.TestCase):
         self.assertTrue(p2.poll() == 0)
 
         c = get_files(log_dir.name, 'test3')
+        print(c)
         self.assertTrue(len(c) == 6)
         log_dir.cleanup()
 
@@ -166,6 +167,7 @@ class PS_Test(unittest.TestCase):
         self.assertTrue(p2.poll() == 0)
 
         c = get_files(log_dir.name, 'ps3')
+        print(c)
         self.assertTrue(len(c) == 6)
         log_dir.cleanup()
 
