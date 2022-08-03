@@ -34,6 +34,11 @@ class MetaConfig;
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AffineGridInferMeta(const MetaTensor& input,
+                         const IntArray& outputShape,
+                         bool align_corners,
+                         MetaTensor* output);
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         int64_t axis,
                         bool keepdims,
@@ -126,6 +131,9 @@ void EinsumRawInferMeta(const std::vector<const MetaTensor*>& inputs,
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
+
+void FillDiagonalInferMeta(
+    const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out);
 
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
@@ -321,6 +329,11 @@ void ReduceInferMetaBase(const MetaTensor& x,
                          bool keep_dim,
                          bool reduce_all,
                          MetaTensor* out);
+
+void RepeatInterleaveInferMeta(const MetaTensor& x,
+                               int repeats,
+                               int dim,
+                               MetaTensor* out);
 
 void ReshapeInferMeta(const MetaTensor& x,
                       const IntArray& shape,

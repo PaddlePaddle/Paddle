@@ -18,6 +18,16 @@ limitations under the License. */
 
 namespace phi {
 
+void AffineGridGradInferMeta(const MetaTensor& output_grad,
+                             const IntArray& outputShape,
+                             bool align_corners,
+                             MetaTensor* input_grad) {
+  if (input_grad) {
+    auto output_dims = output_grad.dims();
+    input_grad->set_dims(phi::make_ddim({output_dims[0], 2, 3}));
+  }
+}
+
 void AngleGradInferMeta(const MetaTensor& x,
                         const MetaTensor& out_grad,
                         MetaTensor* x_grad) {
@@ -272,6 +282,18 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
   if (x_grad != nullptr) {
     x_grad->set_dims(dims);
     x_grad->set_dtype(out_v.dtype());
+  }
+}
+
+void FillDiagonalGradInferMeta(const MetaTensor& dout,
+                               float value,
+                               int offset,
+                               bool wrap,
+                               MetaTensor* dx) {
+  auto x_dims = dout.dims();
+  if (dx) {
+    dx->set_dims(x_dims);
+    dx->set_dtype(dout.dtype());
   }
 }
 

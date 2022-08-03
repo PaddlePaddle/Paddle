@@ -44,6 +44,51 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
 }
 }  // namespace detail
 
+void AffineGridInferMeta(const MetaTensor& input,
+                         const IntArray& outputShape,
+                         bool align_corners,
+                         MetaTensor* output) {
+  auto theta_dims = input.dims();
+  PADDLE_ENFORCE_EQ(
+      theta_dims.size(),
+      3,
+      phi::errors::InvalidArgument(
+          "The input Theta's dimensions size should be 3. But received "
+          "Theta's demensions size=[%d],  Theta's dimensions=[%s].",
+          theta_dims.size(),
+          theta_dims));
+
+  PADDLE_ENFORCE_EQ(
+      outputShape.GetData().size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The size of attribute 'output_shape' in AffineGridOp should be "
+          "4. But received output_shape's size=[%d].",
+          outputShape.GetData().size()));
+
+  PADDLE_ENFORCE_EQ(
+      theta_dims[1],
+      2,
+      phi::errors::InvalidArgument(
+          "The second dimesion of input 'theta' in AffineGridOp should be 2. "
+          "But received second dimesion=[%d], dimesions=[%s]",
+          theta_dims[1],
+          theta_dims));
+  PADDLE_ENFORCE_EQ(
+      theta_dims[2],
+      3,
+      phi::errors::InvalidArgument(
+          "The third dimesion of input 'theta' in AffineGridOp should be 3. "
+          "But received third dimesion=[%d], dimesions=[%s]",
+          theta_dims[2],
+          theta_dims));
+
+  // N * H * W * 2
+  output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, 2}));
+  output->set_dtype(input.dtype());
+  output->share_lod(input);
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         int64_t axis,
                         bool keepdims,
@@ -808,6 +853,17 @@ void ExpandInferMeta(const MetaTensor& x,
   if (out_shape[0] == x_dims[0]) {
     out->share_lod(x);
   }
+}
+
+void FillDiagonalInferMeta(
+    const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out) {
+  PADDLE_ENFORCE_NE(
+      out,
+      nullptr,
+      phi::errors::InvalidArgument("Tensor out should not be null if "));
+  auto x_dims = x.dims();
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
 }
 
 void FlattenInferMeta(const MetaTensor& x,
@@ -2438,6 +2494,37 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void RepeatInterleaveInferMeta(const MetaTensor& x,
+                               int repeats,
+                               int dim,
+                               MetaTensor* out) {
+  const auto& input_dim = x.dims();
+  auto output_dim = phi::vectorize(input_dim);
+
+  PADDLE_ENFORCE_EQ(
+      dim < input_dim.size() && dim >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          dim));
+  PADDLE_ENFORCE_EQ(
+      repeats > 0,
+      true,
+      phi::errors::InvalidArgument("repeats should be larger than zero"));
+
+  PADDLE_ENFORCE_NE(out,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "repeat_interleave's output tensor can't be nullptr"));
+
+  output_dim[dim] = input_dim[dim] * repeats;
+  out->set_dims(phi::make_ddim(output_dim));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
 void ReshapeInferMeta(const MetaTensor& x,
                       const IntArray& shape,
                       MetaTensor* out,

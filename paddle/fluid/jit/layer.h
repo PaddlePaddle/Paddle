@@ -21,7 +21,7 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 
-#include "function/base_function.h"
+#include "function/base_function.h" //NOLINT
 
 namespace paddle {
 
@@ -42,11 +42,14 @@ using Name2FunctionMap =
 
 class Layer {
  public:
-  Layer(const Name2VariableMap& params_dict, const phi::Place& place);
+  Layer(const Name2VariableMap& params_dict,
+        const Name2VariableMap& attrs_dict_,
+        const phi::Place& place);
 
   std::shared_ptr<BaseFunction> Function(const std::string& name) const;
 
-  Variable Attribute(const std::string& name) const;
+  template <typename T>
+  T Attribute(const std::string& name) const;
 
   std::vector<Tensor> forward(const std::vector<Tensor>& inputs);
 
