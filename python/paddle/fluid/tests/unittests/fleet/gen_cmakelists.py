@@ -17,19 +17,25 @@ def parse_line(line, tests):
     name, os_, arch, timeout, run_type, launcher, dist_ut_port, envs = line.strip(
     ).split(",")
     archs = ""
-    for a in arch.split(";"):
-        archs += "WITH_" + a.upper() + " OR "
-    arch = "(" + archs[:-4] + ")"
+    if len(arch.strip()) > 0:
+        for a in arch.split(";"):
+            archs += "WITH_" + a.upper() + " OR "
+        arch = "(" + archs[:-4] + ")"
+    else:
+        arch = "LOCAL_ALL_ARCH"
 
     cmd = ""
     if name == "name":
         return cmd
     if (name not in tests):
         tests.append(name)
-        os_ = os_.replace(";", " or ")
-        os_ = os_.upper()
-        os_ = os_.replace("LINUX", "(NOT APPLE AND NOT WIN32)")
-        os_ = "(" + os_ + ")"
+        if len(os_.strip()) > 0:
+            os_ = os_.replace(";", " or ")
+            os_ = os_.upper()
+            os_ = os_.replace("LINUX", "(NOT APPLE AND NOT WIN32)")
+            os_ = "(" + os_ + ")"
+        else:
+            os_ = "LOCAL_ALL_PLAT"
         a = arch
         if launcher[-3:] == ".sh":
             cmd += f'''if({a} AND {os_})
@@ -64,7 +70,7 @@ if __name__ == "__main__":
     if current_work_dir == "":
         current_work_dir = "."
     tests = []
-    cmds = ""
+    cmds = "set(LOCAL_ALL_ARCH ON)\nset(LOCAL_ALL_PLAT ON)\n"
     for line in open(f"{current_work_dir}/testslist.csv"):
         cmds += parse_line(line, tests)
     print(cmds, end="")
