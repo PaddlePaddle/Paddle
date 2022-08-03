@@ -971,7 +971,7 @@ def hsigmoid_loss(input,
 
 def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
     r"""
-    This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
+    Calculate smooth_l1_loss. Creates a criterion that uses a squared
     term if the absolute element-wise error falls below 1 and an L1 term otherwise.
     In some cases it can prevent exploding gradients and it is more robust and less
     sensitivity to outliers. Also known as the Huber loss:
