@@ -31,7 +31,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
         for hidden_size in [30]:
             for input_size in [30]:
-                for batch in [2]:
+                for batch in [3]:
                     for seq_len in [5]:
                         for num_layers in [1, 2]:
                             for is_bidirec in [True, False]:
