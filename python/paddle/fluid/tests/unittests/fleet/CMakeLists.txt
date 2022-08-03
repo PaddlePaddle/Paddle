@@ -6,7 +6,12 @@ if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
     "PADDLE_DIST_UT_PORT=20177;http_proxy=;https_proxy=;CUDA_VISIBLE_DEVICES=0")
   set_tests_properties(test_fleet_amp_init PROPERTIES TIMEOUT "300")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS
     "PADDLE_DIST_UT_PORT=20179;http_proxy=;https_proxy=")
@@ -33,7 +38,7 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=20191;http_proxy=;https_proxy=;CUDA_VISIBLE_DEVICES=0")
   set_tests_properties(test_fleet_base_single PROPERTIES TIMEOUT "120")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR APPLE))
+if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32)))
   py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint ENVS
                   "PADDLE_DIST_UT_PORT=20193;http_proxy=;https_proxy=")
   set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT "500")
@@ -51,6 +56,11 @@ if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
     test_fleet_distributed_strategy MODULES test_fleet_distributed_strategy
     ENVS "PADDLE_DIST_UT_PORT=20197;http_proxy=;https_proxy=")
   set_tests_properties(test_fleet_distributed_strategy PROPERTIES TIMEOUT "300")
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  py_test_modules(test_fleet_elastic_init MODULES test_fleet_elastic_init ENVS
+                  "PADDLE_DIST_UT_PORT=20201;http_proxy=;https_proxy=")
+  set_tests_properties(test_fleet_elastic_init PROPERTIES TIMEOUT "300")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND ((NOT APPLE AND NOT WIN32)))
   py_test_modules(
@@ -99,7 +109,7 @@ if((WITH_GPU OR WITH_ROCM) AND ((NOT APPLE AND NOT WIN32)))
   set_tests_properties(test_fleet_executor_with_task_nodes PROPERTIES TIMEOUT
                                                                       "300")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32)))
   py_test_modules(
     test_fleet_fp16_allreduce_meta_optimizer MODULES
     test_fleet_fp16_allreduce_meta_optimizer ENVS
@@ -107,7 +117,12 @@ if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   set_tests_properties(test_fleet_fp16_allreduce_meta_optimizer
                        PROPERTIES TIMEOUT "300")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_gradient_merge_meta_optimizer MODULES
     test_fleet_gradient_merge_meta_optimizer ENVS
@@ -125,7 +140,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+   AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_graph_execution_meta_optimizer
     START_BASH
@@ -137,25 +152,45 @@ if((WITH_GPU
   set_tests_properties(test_fleet_graph_execution_meta_optimizer
                        PROPERTIES TIMEOUT "350")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND LOCAL_ALL_PLAT)
   py_test_modules(test_fleet_graph_executor MODULES test_fleet_graph_executor
                   ENVS "PADDLE_DIST_UT_PORT=20227;http_proxy=;https_proxy=")
   set_tests_properties(test_fleet_graph_executor PROPERTIES TIMEOUT "400")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_hybrid_meta_optimizer MODULES test_fleet_hybrid_meta_optimizer
     ENVS "PADDLE_DIST_UT_PORT=20229;http_proxy=;https_proxy=")
   set_tests_properties(test_fleet_hybrid_meta_optimizer PROPERTIES TIMEOUT
                                                                    "300")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_lamb_meta_optimizer MODULES test_fleet_lamb_meta_optimizer ENVS
     "PADDLE_DIST_UT_PORT=20231;http_proxy=;https_proxy=")
   set_tests_properties(test_fleet_lamb_meta_optimizer PROPERTIES TIMEOUT "300")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_lars_meta_optimizer MODULES test_fleet_lars_meta_optimizer ENVS
     "PADDLE_DIST_UT_PORT=20233;http_proxy=;https_proxy=")
@@ -306,7 +341,12 @@ if((WITH_GPU
   set_tests_properties(test_fleet_raw_program_meta_optimizer PROPERTIES TIMEOUT
                                                                         "350")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND ((NOT APPLE AND NOT WIN32) OR WIN32))
   py_test_modules(
     test_fleet_recompute_meta_optimizer MODULES
     test_fleet_recompute_meta_optimizer ENVS
@@ -329,7 +369,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+   AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_run_random_port
     START_BASH
@@ -340,7 +380,17 @@ if((WITH_GPU
     "PADDLE_DIST_UT_PORT=20275;http_proxy=;https_proxy=;TEST_TIMEOUT=350")
   set_tests_properties(test_fleet_run_random_port PROPERTIES TIMEOUT "300")
 endif()
-if(LOCAL_ALL_ARCH AND ((NOT APPLE AND NOT WIN32) OR WIN32))
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  py_test_modules(test_fleet_runtime MODULES test_fleet_runtime ENVS
+                  "PADDLE_DIST_UT_PORT=20277;http_proxy=;https_proxy=")
+  set_tests_properties(test_fleet_runtime PROPERTIES TIMEOUT "300")
+endif()
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_sharding_meta_optimizer MODULES
     test_fleet_sharding_meta_optimizer ENVS
