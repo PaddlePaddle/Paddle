@@ -233,6 +233,10 @@ class Optimizer(object):
             else:
                 self._dtype = self._parameter_list[0].dtype
 
+        self._lr_dtype = paddle.get_default_dtype(
+        ) if self._dtype is None else self._dtype
+        self._lr_dtype = paddle.float32 if self._lr_dtype == paddle.float16 else self._lr_dtype
+
         # each program should have a independent learning rate
         # program -> tensor(learning_rate)
         self._learning_rate_map = dict()
@@ -396,8 +400,7 @@ class Optimizer(object):
                     shape=[1],
                     persistable=True,
                     stop_gradient=True,
-                    dtype=paddle.get_default_dtype()
-                    if self._dtype is None else self._dtype)
+                    dtype=self._lr_dtype)
                 main_prog = framework.default_main_program()
                 main_prog.lr_sheduler = self._learning_rate
                 main_prog.lr_var = lr_var
@@ -419,8 +422,7 @@ class Optimizer(object):
                     name=unique_name.generate("learning_rate"),
                     shape=[1],
                     value=float(self._learning_rate),
-                    dtype=paddle.get_default_dtype()
-                    if self._dtype is None else self._dtype,
+                    dtype=self._lr_dtype,
                     persistable=True)
 
     @framework.dygraph_only
