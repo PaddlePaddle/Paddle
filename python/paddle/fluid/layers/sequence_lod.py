@@ -1370,8 +1370,8 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             None by default.
 
     Returns: 
-            Tensor, The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
-            and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
+            Tensor, The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen]
+            and data type of :code:`dtype`. The data type should be bool, float32, float64, int8,
             int32 or int64.
 
     Examples:

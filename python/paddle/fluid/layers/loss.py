@@ -311,7 +311,7 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 def square_error_cost(input, label):
     r"""
 
-    This op accepts input predictions and target label and returns the
+    Accept input predictions and target label and returns the
     squared error cost.
 
     For predictions label, and target label, the equation is:
@@ -325,10 +325,8 @@ def square_error_cost(input, label):
         label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        The tensor storing the element-wise squared error \
-                  difference between input and label.
-
-    Return type: Tensor.
+        Tensor,The tensor storing the element-wise squared 
+        error difference between input and label.
 
     Examples:
 
