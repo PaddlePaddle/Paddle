@@ -34,7 +34,6 @@ def parse_line(line):
     if len(os_.strip()) > 0:
         os_ = os_.replace(";", " or ")
         os_ = os_.upper()
-        os_ = os_.replace("LINUX", "(NOT APPLE AND NOT WIN32)")
         os_ = "(" + os_ + ")"
     else:
         os_ = "LOCAL_ALL_PLAT"
