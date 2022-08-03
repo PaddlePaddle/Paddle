@@ -208,7 +208,7 @@ def slice(input, axes, starts, ends):
                 if isinstance(item, tmp_tensor_type) else item for item in ends
             ]
         elif isinstance(ends, tmp_tensor_type):
-            etensor_t = ends.numpy()
+            tensor_t = ends.numpy()
             ends = [ele for ele in tensor_t]
             infer_flags = list(-1 for i in range(len(axes)))
 
