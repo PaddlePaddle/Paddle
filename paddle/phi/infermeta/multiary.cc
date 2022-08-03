@@ -358,6 +358,7 @@ void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
                   const MetaTensor& stat_neg,
+                  const MetaTensor& ins_tag_weight,
                   const std::string& curve,
                   int num_thresholds,
                   int slide_steps,
@@ -390,6 +391,7 @@ void AucInferMeta(const MetaTensor& input,
           "The Input(Label) has not been initialized properly. The "
           "shape of Input(Label) = [%s], the shape can not involes 0.",
           label_dims));
+
   if (config.is_runtime) {
     PADDLE_ENFORCE_LE(
         predict_width,
