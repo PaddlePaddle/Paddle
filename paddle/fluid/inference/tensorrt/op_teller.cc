@@ -111,6 +111,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mish",
       "nearest_interp_v2",
       "bilinear_interp_v2",
+      "cast",
       "pool3d",
       "deformable_conv",
       "relu6",
@@ -175,6 +176,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mish",
       "bilinear_interp_v2",
       "nearest_interp_v2",
+      "cast",
       "pool3d",
       "deformable_conv",
       "relu6",
@@ -1750,6 +1752,23 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
     }
 #endif
+
+    if (op_type == "cast") {
+      int in_dtype = BOOST_GET_CONST(int, desc.GetAttr("in_dtype"));
+      int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
+      if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {
+        VLOG(3) << "unsupport data type conversion";
+        return false;
+      }
+      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2 ||
+             in_dtype == 0) &&
+            (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
+        VLOG(3)
+            << "only valid conversions are: "
+               "(kFLOAT | kHALF | kINT32 | kBOOL) -> (kFLOAT | kHALF | kINT32)";
+        return false;
+      }
+    }
 
     if (op_type == "conv3d" || op_type == "conv3d_transpose") {
       if (desc.HasAttr("padding_algorithm")) {
