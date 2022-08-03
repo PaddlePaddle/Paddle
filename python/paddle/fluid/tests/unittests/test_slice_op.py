@@ -21,7 +21,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
 
 paddle.enable_static()
 
@@ -787,7 +787,6 @@ class TestInferShape(unittest.TestCase):
         self.assertEqual(out0.shape, (3, 3, 5))
 
     def test_axis_less_than_zero(self):
-
         # Using paddle.disable_static will make other unittests fail.
         with fluid.dygraph.guard():
             x_arr = np.arange(0, 24, dtype=np.float32).reshape([2, 3, 4])
@@ -829,6 +828,7 @@ class TestInferShape(unittest.TestCase):
 class TestImperativeCUDAPinnedInput(unittest.TestCase):
 
     def test_input_cuda_pinned_var(self):
+        _enable_legacy_dygraph()
         with fluid.dygraph.guard():
             data = np.random.random((2, 80, 16128)).astype('float32')
             var = core.VarBase(value=data,

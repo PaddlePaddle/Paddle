@@ -16,6 +16,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import numpy as np
+from paddle.fluid.framework import _enable_legacy_dygraph, _disable_legacy_dygraph
 
 
 class TestUniformRandomInplaceOpDtype(unittest.TestCase):
@@ -189,6 +190,35 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
             paddle.set_device(place)
             test_grad()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+
+class TestUniformRandomInplaceGradOldDygraph(unittest.TestCase):
+
+    def setUp(self):
+        self.shape = (1000, 784)
+
+    def test_uniform_random_inplace_grad(self):
+        _enable_legacy_dygraph()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+
+        def test_grad():
+            tensor_a = paddle.ones(self.shape)
+            tensor_a.stop_gradient = False
+            tensor_b = tensor_a * 0.5
+            tensor_b.uniform_(min=-2, max=2)
+            loss = tensor_b.sum()
+            loss.backward()
+            uniform_grad = tensor_b.grad.numpy()
+            self.assertTrue((uniform_grad == 0).all())
+
+        places = ['cpu']
+        if fluid.core.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+            test_grad()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+        _disable_legacy_dygraph()
 
 
 if __name__ == '__main__':

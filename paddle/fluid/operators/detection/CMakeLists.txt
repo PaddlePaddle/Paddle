@@ -81,7 +81,7 @@ detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc
                   sigmoid_focal_loss_op.cu)
 detection_library(retinanet_detection_output_op SRCS
                   retinanet_detection_output_op.cc)
-detection_library(nms_op SRCS nms_op.cc nms_op.cu)
+detection_library(nms_op SRCS nms_op.cc)
 
 if(WITH_GPU OR WITH_ROCM)
   set(TMPDEPS memory)
@@ -123,9 +123,5 @@ cc_test(
   mask_util_test
   SRCS mask_util_test.cc
   DEPS memory mask_util)
-cc_library(
-  gpc
-  SRCS gpc.cc
-  DEPS op_registry)
 detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS
                   mask_util)
