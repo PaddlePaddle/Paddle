@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <string>
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
@@ -29,8 +27,7 @@ class MatmulTransposeReshapeMKLDNNPass : public FusePassBase {
 
  protected:
   void ApplyImpl(Graph *graph) const override;
-  void FuseMatmulTransposeReshape(Graph *graph,
-                                  const std::string &matmul_type) const;
+  void Fuse(Graph *graph, const std::string &matmul_type) const;
 };
 
 }  // namespace ir

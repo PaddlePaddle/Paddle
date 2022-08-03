@@ -27,11 +27,11 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(Graph *graph) const {
   auto matmul_types = {"matmul", "matmul_v2"};
 
   for (const auto &matmul_type : matmul_types) {
-    FuseMatmulTransposeReshape(graph, matmul_type);
+    Fuse(graph, matmul_type);
   }
 }
 
-void MatmulTransposeReshapeMKLDNNPass::FuseMatmulTransposeReshape(
+void MatmulTransposeReshapeMKLDNNPass::Fuse(
     Graph *graph, const std::string &matmul_type) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
@@ -107,7 +107,8 @@ void MatmulTransposeReshapeMKLDNNPass::FuseMatmulTransposeReshape(
 
   gpd(graph, handler);
   AddStatis(found_matmul_transpose_reshape_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      found_matmul_transpose_reshape_count > 0) {
     PrettyLogDetail("---    fused %d %s + transpose + reshape patterns",
                     found_matmul_transpose_reshape_count,
                     matmul_type);

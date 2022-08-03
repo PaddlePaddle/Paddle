@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
-
-#include <string>
-#include <unordered_set>
-#include <vector>
-
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
@@ -26,78 +21,44 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
-  op_name_ = "matmul";
+void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(Graph *graph) const {
+  auto matmul_types = {"matmul", "matmul_v2"};
 
-  AddOpCompat(OpCompat("reshape2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      // The reshape2 op for this pass should not have "Shape" and "ShapeTensor"
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddOutput("XShape")
-      .IsOptional()
-      .IsTensor()
-      .End()
-      .AddAttr("shape")
-      .IsType<std::vector<int>>()
-      .End();
-
-  AddOpCompat(OpCompat("transpose2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddOutput("XShape")
-      .IsOptional()
-      .IsTensor()
-      .End()
-      .AddAttr("axis")
-      .IsType<std::vector<int>>()
-      .End();
-
-  AddOpCompat(OpCompat(op_name_))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("alpha")
-      .IsType<float>()
-      .End()
-      .AddAttr("transpose_X")
-      .IsType<bool>()
-      .End()
-      .AddAttr("transpose_Y")
-      .IsType<bool>()
-      .End();
+  for (const auto &matmul_type : matmul_types) {
+    Fuse(graph, matmul_type, false, false);
+    Fuse(graph, matmul_type, false, true);
+    Fuse(graph, matmul_type, true, false);
+    Fuse(graph, matmul_type, true, true);
+  }
 }
 
 void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
-    Graph *graph, bool with_reshape_xshape, bool with_transpose_xshape) const {
-  GraphPatternDetector gpd;
-  patterns::ReshapeTransposeMatmulPattern rtm_pattern(gpd.mutable_pattern(),
-                                                      name_scope_);
+    Graph *graph,
+    const std::string &matmul_type,
+    bool with_reshape_xshape,
+    bool with_transpose_xshape) const {
+  PADDLE_ENFORCE_NOT_NULL(graph,
+                          platform::errors::InvalidArgument(
+                              "Pointer to graph argument should not be NULL."));
+  FusePassBase::Init("reshape_transpose_" + matmul_type + "_mkldnn_fuse_pass",
+                     graph);
 
-  rtm_pattern(op_name_, with_reshape_xshape, with_transpose_xshape);
+  GraphPatternDetector gpd;
+  patterns::ReshapeTransposeMatmulPattern rtm_pattern(
+      gpd.mutable_pattern(),
+      "reshape_transpose_" + matmul_type + "_mkldnn_fuse_pass");
+
+  rtm_pattern(matmul_type, with_reshape_xshape, with_transpose_xshape);
 
   int found_reshape_transpose_matmul_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "Op compatible check in reshape_transpose_" << op_name_
+      LOG(WARNING) << "Op compatible check in reshape_transpose_" << matmul_type
                    << "_mkldnn_fuse_pass failed.";
       return;
     }
-    VLOG(4) << "handle reshape_transpose_" << op_name_ << " fuse";
+
     GET_IR_NODE_FROM_SUBGRAPH(reshape_in, reshape_in, rtm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_op, reshape_op, rtm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_out, reshape_out, rtm_pattern);
@@ -137,7 +98,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
       UpdateMatmul("Y");
     } else {
       throw platform::errors::InvalidArgument("Unexpected input to " +
-                                              op_name_ + " encountered.");
+                                              matmul_type + " encountered.");
     }
 
     std::unordered_set<const ir::Node *> nodes_to_remove{
@@ -153,26 +114,85 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
 
   gpd(graph, handler);
   AddStatis(found_reshape_transpose_matmul_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      found_reshape_transpose_matmul_count > 0) {
     std::stringstream msg_ss;
-    msg_ss << "---    Fused " << found_reshape_transpose_matmul_count
-           << " ReshapeTransposeMatmul patterns for " << op_name_ << " Op";
+    msg_ss << "---    fused " << found_reshape_transpose_matmul_count
+           << " reshape + transpose + " << matmul_type;
     if (with_reshape_xshape) msg_ss << " with reshape's xshape";
     if (with_transpose_xshape) msg_ss << " with transpose's xshape";
     string::PrettyLogDetail(msg_ss.str().c_str());
   }
 }
 
-void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(ir::Graph *graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
-                              "Pointer to graph argument should not be NULL."));
-  FusePassBase::Init(name_scope_, graph);
+ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
+  AddOpCompat(OpCompat("reshape2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      // The reshape2 op for this pass should not have "Shape" and "ShapeTensor"
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddAttr("shape")
+      .IsType<std::vector<int>>()
+      .End();
 
-  Fuse(graph, false, false);
-  Fuse(graph, false, true);
-  Fuse(graph, true, false);
-  Fuse(graph, true, true);
+  AddOpCompat(OpCompat("transpose2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsType<std::vector<int>>()
+      .End();
+
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsType<float>()
+      .End()
+      .AddAttr("transpose_X")
+      .IsType<bool>()
+      .End()
+      .AddAttr("transpose_Y")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End();
 }
 
 }  // namespace ir
@@ -184,5 +204,8 @@ REGISTER_PASS(reshape_transpose_matmul_mkldnn_fuse_pass,
 
 REGISTER_PASS_CAPABILITY(reshape_transpose_matmul_mkldnn_fuse_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "matmul", 1));
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("reshape2", 0)
+            .EQ("transpose2", 0)
+            .EQ("matmul", 1)
+            .EQ("matmul_v2", 0));
