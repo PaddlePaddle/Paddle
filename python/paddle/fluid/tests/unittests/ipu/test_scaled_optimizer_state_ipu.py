@@ -28,6 +28,10 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_attrs()
 
+    @property
+    def fp16_enabled(self):
+        return False
+
     def set_training(self):
         self.is_training = True
         self.epoch = 100

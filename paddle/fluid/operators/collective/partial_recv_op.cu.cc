@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/partial_recv_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -65,37 +66,44 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The input numel (%d) must be divisible by num(%d)", numel, num));
 
-    gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext *>(dev_ctx)->stream();
-    } else {
-      stream = comm->stream();
-    }
-    PADDLE_ENFORCE_LT(
-        peer,
-        comm->nranks(),
-        platform::errors::InvalidArgument("The value of peer (%d) you set must "
-                                          "be less than comm->nranks (%d).",
-                                          peer,
-                                          comm->nranks()));
-
     out->mutable_data<T>(out_dims, place);
-    ncclDataType_t dtype = platform::ToNCCLDataType(type);
     int recv_numel = numel / num;
     int offset = recv_numel * id;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::ncclRecv(out->data<T>() + offset,
-                                    recv_numel,
-                                    dtype,
-                                    peer,
-                                    comm->comm(),
-                                    stream));
-    VLOG(3) << "rank " << comm->rank() << " recv " << recv_numel
-            << " from offset[" << offset << "] from " << peer;
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup *pg = map->get(rid);
+      auto task = pg->Recv_Partial(*out, peer, offset, recv_numel);
+      task->Wait();
+    } else {
+      gpuStream_t stream = nullptr;
+      auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+      if (ctx.Attr<bool>("use_calc_stream")) {
+        auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+        stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
+      } else {
+        stream = comm->stream();
+      }
+      PADDLE_ENFORCE_LT(peer,
+                        comm->nranks(),
+                        platform::errors::InvalidArgument(
+                            "The value of peer (%d) you set must "
+                            "be less than comm->nranks (%d).",
+                            peer,
+                            comm->nranks()));
+      ncclDataType_t dtype = platform::ToNCCLDataType(type);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::ncclRecv(out->data<T>() + offset,
+                                      recv_numel,
+                                      dtype,
+                                      peer,
+                                      comm->comm(),
+                                      stream));
+      VLOG(3) << "rank " << comm->rank() << " recv " << recv_numel
+              << " from offset[" << offset << "] from " << peer;
+    }
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "PaddlePaddle should be compiled with NCCL and "

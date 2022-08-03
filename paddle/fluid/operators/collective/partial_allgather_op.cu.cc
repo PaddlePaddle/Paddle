@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/partial_allgather_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -61,24 +62,38 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 
     int64_t send_numel = numel / nranks;
     int offset = send_numel * rank;
-    const T* send_buff = in->data<T>() + offset;
-    T* recv_buff = out->data<T>();
 
-    gpuStream_t stream = nullptr;
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(rid);
+      std::vector<phi::DenseTensor> in_tensors;
+      std::vector<phi::DenseTensor> out_tensors;
+      in_tensors.push_back(*in);
+      out_tensors.push_back(*out);
+      auto task =
+          pg->AllGather_Partial(in_tensors, out_tensors, offset, send_numel);
+      task->Wait();
     } else {
-      stream = comm->stream();
-    }
+      const T* send_buff = in->data<T>() + offset;
+      T* recv_buff = out->data<T>();
 
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::ncclAllGather(send_buff,
-                                         recv_buff,
-                                         send_numel,
-                                         static_cast<ncclDataType_t>(dtype),
-                                         comm->comm(),
-                                         stream));
+      gpuStream_t stream = nullptr;
+      if (ctx.Attr<bool>("use_calc_stream")) {
+        auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+        stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+      } else {
+        stream = comm->stream();
+      }
+
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::ncclAllGather(send_buff,
+                                           recv_buff,
+                                           send_numel,
+                                           static_cast<ncclDataType_t>(dtype),
+                                           comm->comm(),
+                                           stream));
+    }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));

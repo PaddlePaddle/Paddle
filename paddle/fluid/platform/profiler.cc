@@ -270,7 +270,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   auto iter = attrs.find(
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
-    callstack_ptr = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
     callstack = *callstack_ptr;
   }
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
@@ -301,7 +301,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   auto iter = attrs.find(
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
-    callstack_ptr = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
     callstack = *callstack_ptr;
   }
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(

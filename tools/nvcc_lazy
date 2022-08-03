@@ -16,8 +16,10 @@ set -e
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 ## CUDA_MODULE_LOADING=EAGER,DEFAULT,LAZY
+
+# set cicc PATH for Centos
+export PATH=$PATH:/usr/local/cuda/nvvm/bin
 
 # check nvcc version, if nvcc >= 11.7, just run nvcc itself
 CUDA_VERSION=$(nvcc --version | grep -oP '(?<=V)\d*\.\d*')

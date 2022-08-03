@@ -78,8 +78,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     VLOG(3) << "Loading data for GPU.";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto *dev_ctx =
-        dynamic_cast<const platform::CUDADeviceContext *>(pool.Get(place));
+    auto *dev_ctx = dynamic_cast<const phi::GPUContext *>(pool.Get(place));
     auto gpu_place = place;
     memory::Copy(gpu_place,
                  static_cast<void *>(input_tensor_ptr),
@@ -416,7 +415,7 @@ bool DistModel::PrepareFeedAndFetch() {
   for (auto *op : program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
       VLOG(3) << "feed op with feed var: " << op->Output("Out")[0];
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
@@ -446,7 +445,7 @@ bool DistModel::PrepareFeedAndFetch() {
       }
     } else if (op->Type() == "fetch") {
       VLOG(3) << "fetch op with fetch var: " << op->Input("X")[0];
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
       }
@@ -507,7 +506,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
   VLOG(3) << "DistModel is fetch results.";
   output_data->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
-    int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
+    int idx = PADDLE_GET_CONST(int, fetches_[i]->GetAttr("col"));
     VLOG(3) << "Fetching data for [" << idx_to_fetches_[idx] << "]";
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(idx),
@@ -518,7 +517,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
+    auto &fetch = PADDLE_GET(framework::LoDTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(output_data->at(i));
     output->name = idx_to_fetches_[idx];

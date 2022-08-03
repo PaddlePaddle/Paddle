@@ -54,7 +54,8 @@ static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
 static std::unordered_set<std::string> black_ops_list = {"run_program",
                                                          "fused_gate_attention",
                                                          "fused_feedforward",
-                                                         "fused_attention"};
+                                                         "fused_attention",
+                                                         "fused_gemm_epilogue"};
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -352,7 +353,7 @@ static typename std::enable_if<IsVector, std::string>::type GetAttrValue(
     const framework::Attribute& attr) {
   std::string val = "";
   val += "{";
-  for (auto x : BOOST_GET_CONST(std::vector<T>, attr)) {
+  for (auto x : PADDLE_GET_CONST(std::vector<T>, attr)) {
     val += std::to_string(x) + ",";
   }
   if (val.size() > 1) val.pop_back();
@@ -363,7 +364,7 @@ static typename std::enable_if<IsVector, std::string>::type GetAttrValue(
 template <typename T, bool IsVector>
 static typename std::enable_if<!IsVector, std::string>::type GetAttrValue(
     const framework::Attribute& attr) {
-  return std::to_string(BOOST_GET_CONST(T, attr));
+  return std::to_string(PADDLE_GET_CONST(T, attr));
 }
 
 static std::pair<std::string, std::string> GetAttrType(
@@ -385,7 +386,7 @@ static std::pair<std::string, std::string> GetAttrType(
     case (3): {
       ret = "std::string";
       if (is_arg) ret += "&";
-      val = "\"" + BOOST_GET_CONST(std::string, attr) + "\"";
+      val = "\"" + PADDLE_GET_CONST(std::string, attr) + "\"";
       break;
     }
     case (4): {
@@ -404,7 +405,7 @@ static std::pair<std::string, std::string> GetAttrType(
       ret = "std::vector<std::string>";
       if (is_arg) ret += "&";
       val += "{";
-      for (auto x : BOOST_GET_CONST(std::vector<std::string>, attr)) {
+      for (auto x : PADDLE_GET_CONST(std::vector<std::string>, attr)) {
         val += "\"" + x + "\"" + ",";
       }
       if (val.size() > 1) val.pop_back();
@@ -1386,7 +1387,7 @@ static std::string GenerateGradNodeCreationContent(
       "%s"
       "  {\n"
       "    paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
-      "paddle::platform::TracerEventType::Operator, 1);\n"
+      "paddle::platform::TracerEventType::OperatorInner, 1);\n"
       "%s"
       "    if(require_any_grad) {\n"
       "      VLOG(6) << \" Construct Grad for %s \"; \n"

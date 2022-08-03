@@ -43,17 +43,17 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     auto input = engine_->GetITensor(input_name);
 
     auto data_layout = framework::StringToDataLayout(
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
     bool align_corners =
-        BOOST_GET_CONST(bool, op_desc.GetAttr("align_corners"));
-    auto align_mode = BOOST_GET_CONST(int, op_desc.GetAttr("align_mode"));
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("align_corners"));
+    auto align_mode = PADDLE_GET_CONST(int, op_desc.GetAttr("align_mode"));
 
     auto resize_inputs = op_desc.Inputs();
     auto input_names = op_desc.Input("X");
-    auto out_h = BOOST_GET_CONST(int, op_desc.GetAttr("out_h"));
-    auto out_w = BOOST_GET_CONST(int, op_desc.GetAttr("out_w"));
+    auto out_h = PADDLE_GET_CONST(int, op_desc.GetAttr("out_h"));
+    auto out_w = PADDLE_GET_CONST(int, op_desc.GetAttr("out_w"));
 
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Resize, *input);
     if (align_mode == 0 && !align_corners) {
@@ -77,7 +77,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
       scale_w = scale_d[1];
     } else {
       const std::vector<float> scale_attr =
-          BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("scale"));
+          PADDLE_GET_CONST(std::vector<float>, op_desc.GetAttr("scale"));
       if (scale_attr.size() > 1) {
         scale_h = scale_attr[0];
         scale_w = scale_attr[1];

@@ -54,7 +54,7 @@ struct ArrayToLoDFunctor : public std::unary_function<platform::Place, void> {
       Apply(static_cast<phi::CPUContext *>(pool.Get(place)));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      Apply(static_cast<platform::CUDADeviceContext *>(pool.Get(place)));
+      Apply(static_cast<phi::GPUContext *>(pool.Get(place)));
 #else
       PADDLE_THROW(
           platform::errors::Unavailable("Paddle is not compiled with CUDA."));
