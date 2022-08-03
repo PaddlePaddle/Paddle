@@ -22,81 +22,6 @@ from paddle.fluid.framework import _test_eager_guard
 from op_test import OpTest
 
 
-def get_broadcast_shape(shp1, shp2):
-    pad_shp1, pad_shp2 = shp1, shp2
-    if len(shp1) > len(shp2):
-        pad_shp2 = [
-            1,
-        ] * (len(shp1) - len(shp2)) + shp2
-    elif len(shp1) < len(shp2):
-        pad_shp1 = [
-            1,
-        ] * (len(shp2) - len(shp1)) + shp1
-    for d1, d2 in zip(pad_shp1, pad_shp2):
-        if d1 != d2 and d1 != 1 and d2 != 1:
-            raise ValueError
-    rst = [max(d1, d2) for d1, d2 in zip(pad_shp1, pad_shp2)]
-    return rst
-
-
-class BroadCastInfo(object):
-
-    def __init__(self, x_shape, e_shape):
-        self.x_shape = x_shape
-        self.e_shape = e_shape
-
-        self.calculate_bcastinfo()
-
-    def use_bcast(self):
-        if len(self.x_shape) != len(self.e_shape):
-            return True
-        for i in range(1, len(self.x_shape)):
-            if self.x_shape[i] != self.e_shape[i]:
-                return True
-        return False
-
-    def calculate_bcastinfo(self):
-        lhs_len = 1
-        rhs_len = 1
-        for i in range(1, len(self.x_shape)):
-            lhs_len *= self.x_shape[i]
-        for i in range(1, len(self.e_shape)):
-            rhs_len *= self.e_shape[i]
-        use_b = self.use_bcast()
-
-        if use_b:
-            max_ndim = max(len(self.x_shape), len(self.e_shape)) - 1
-            out_len = 1
-            stride_l = stride_r = 1
-            lhs_offset = [0]
-            rhs_offset = [0]
-            for j in range(0, max_ndim):
-                dl = 1 if (len(self.x_shape) - 1 - j) < 1 \
-                       else self.x_shape[len(self.x_shape) - 1 - j]
-                dr = 1 if (len(self.e_shape) - 1 - j) < 1 \
-                       else self.e_shape[len(self.e_shape) - 1 - j]
-                for i in range(1, max(dl, dr)):
-                    for k in range(0, out_len):
-                        lhs_offset.append(lhs_offset[k] + i *
-                                          (i < dl) * stride_l)
-                        rhs_offset.append(rhs_offset[k] + i *
-                                          (i < dr) * stride_r)
-
-                out_len *= max(dl, dr)
-                stride_l *= dl
-                stride_r *= dr
-        else:
-            out_len = rhs_len
-
-        self.use_broadcast = use_b
-        self.out_len = out_len
-        self.lhs_len = lhs_len
-        self.rhs_len = rhs_len
-        if use_b:
-            self.lhs_offset = lhs_offset
-            self.rhs_offset = rhs_offset
-
-
 def compute_graph_send_uv(inputs, attributes):
     x = inputs['x']
     y = inputs['y']
@@ -132,10 +57,10 @@ class TestGraphSendUVOp(OpTest):
         self.outputs = {'out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
-    # def test_check_grad(self):
-    #     self.check_grad(['x', 'y'], 'Out', check_eager=True)
+    def test_check_grad(self):
+        self.check_grad(['x', 'y'], 'out', check_eager=False)
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")

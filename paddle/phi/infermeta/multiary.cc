@@ -2417,11 +2417,7 @@ void GraphSendUVInferMeta(const MetaTensor& x,
                           const MetaTensor& dst_index,
                           const std::string& compute_type,
                           MetaTensor* out) {
-  std::cout << "Enter GraphSendUVInferMeta" << std::endl;
-
   auto src_index_dims = src_index.dims();
-
-  std::cout << "Check whether enter here.\n";
   if (src_index_dims.size() == 2) {
     PADDLE_ENFORCE_EQ(src_index_dims[1],
                       1,
