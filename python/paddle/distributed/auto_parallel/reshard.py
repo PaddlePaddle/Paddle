@@ -462,7 +462,8 @@ class Remover:
                 block._remove_op(idx)
 
     @staticmethod
-    def remove_no_need_vars(auto_parallel_main_prog, dist_params_grads):
+    def remove_no_need_vars(auto_parallel_main_prog, dist_params_grads,
+                            feed_var_names):
         """Remove no need vars in the main program"""
         for block_idx, block in enumerate(auto_parallel_main_prog.blocks):
             remove_vars = set()
@@ -508,7 +509,7 @@ class Remover:
                     idx += 1
 
             for var in remove_vars:
-                if block.vars[var].is_data:
+                if var in feed_var_names:
                     continue
                 block._remove_var(var)
 
@@ -520,7 +521,12 @@ class Remover:
                                    rank_id)
         Resharder.change_while_op_input_and_output(auto_parallel_main_prog,
                                                    dist_context)
-        Remover.remove_no_need_vars(auto_parallel_main_prog, dist_params_grads)
+        # 'feed_var_names' cannot be removed from auto_parallel_main_prog
+        feed_var_names = []
+        for var in sum(list(dist_context.serial_feed_vars.values()), []):
+            feed_var_names.append(var.name)
+        Remover.remove_no_need_vars(auto_parallel_main_prog, dist_params_grads,
+                                    feed_var_names)
 
     @staticmethod
     def remove_no_need_in_startup(auto_parallel_main_prog,

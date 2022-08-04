@@ -64,11 +64,19 @@ class Parallelizer:
             params_grads = self._generate_backward(serial_main_program,
                                                    serial_startup_program,
                                                    serial_loss)
+            # Generate optimizer
+            time0 = time.time()
+            self._generate_optimizer(serial_main_program,
+                                     serial_startup_program, serial_optimizer,
+                                     params_grads)
+            self._logger.info(
+                "within parallel optimizer time: {}, mode {}".format(
+                    time.time() - time0, self._mode))
             # Apply pre optimization passes
             time0 = time.time()
-            self._apply_pre_optimization(serial_main_program,
-                                         serial_startup_program, serial_loss,
-                                         serial_optimizer, params_grads)
+            serial_main_program, serial_startup_program, params_grads = self._apply_pre_optimization(
+                serial_main_program, serial_startup_program, serial_loss,
+                serial_optimizer, params_grads)
             self._logger.info(
                 "within parallel apply_pre_optimization time: {}, mode {}".
                 format(time.time() - time0, self._mode))
@@ -79,13 +87,6 @@ class Parallelizer:
                 serial_main_program, serial_startup_program, params_grads)
             self._logger.info(
                 "within parallel partitioner time: {}, mode {}".format(
-                    time.time() - time0, self._mode))
-            # Generate optimizer
-            time0 = time.time()
-            self._generate_optimizer(dist_main_prog, dist_startup_prog,
-                                     serial_optimizer, dist_params_grads)
-            self._logger.info(
-                "within parallel optimizer time: {}, mode {}".format(
                     time.time() - time0, self._mode))
             # Do reshard process
             time0 = time.time()
@@ -124,6 +125,7 @@ class Parallelizer:
             self._logger.info(
                 "within parallel reshard time: {}, mode {}".format(
                     time.time() - time0, self._mode))
+
         # Clone program for test
         if self._mode != 'train':
             dist_main_prog = dist_main_prog.clone(for_test=True)
@@ -158,6 +160,24 @@ class Parallelizer:
                                 optimizer, params_grads):
         if self._strategy is None:
             return
+
+        # apply quantization pass
+        # The pass can be applied when mode must be 'train'
+        if self._mode == 'train' and self._strategy.qat:
+            config = copy.deepcopy(self._strategy.qat_configs)
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            auto_parallel_quantization_pass = new_pass(
+                "auto_parallel_quantization", config)
+            auto_parallel_quantization_pass.apply([main_program],
+                                                  [startup_program],
+                                                  self._pass_context)
+            main_program = self._pass_context.get_attr("main_program")
+            startup_program = self._pass_context.get_attr("startup_program")
+            params_grads = self._pass_context.get_attr("params_grads")
+
+        # TODO(zhaoyingli): amp and recompute have bug when main_program is complete now.
+
         # apply amp pass
         # FIXME we disenable amp for eval since it has a little bug with
         # eval program and which will be fixed in future
@@ -190,6 +210,8 @@ class Parallelizer:
             auto_parallel_recompute_pass.apply([main_program],
                                                [startup_program],
                                                self._pass_context)
+
+        return main_program, startup_program, params_grads
 
     def _apply_post_optimization(self, main_program, startup_program, rank,
                                  params_grads):

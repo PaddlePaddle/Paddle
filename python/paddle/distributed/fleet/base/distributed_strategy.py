@@ -1992,6 +1992,26 @@ class DistributedStrategy(object):
             print("WARNING: auto-search should have value of bool type")
 
     @property
+    def qat(self):
+        return self.strategy.qat
+
+    @qat.setter
+    def qat(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.qat = flag
+        else:
+            print("WARNING: qat should have value of bool type")
+
+    @property
+    def qat_configs(self):
+        return get_msg_dict(self.strategy.qat_configs)
+
+    @qat_configs.setter
+    def qat_configs(self, configs):
+        check_configs_key(self.strategy.qat_configs, configs, "qat_configs")
+        assign_configs_value(self.strategy.qat_configs, configs)
+
+    @property
     def heter_ccl_mode(self):
         """
         Indicating whether we are using heter_ccl_mode for model training.
