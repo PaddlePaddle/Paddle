@@ -1240,7 +1240,7 @@ def save_inference_model(dirname,
     :ref:`api_fluid_io_save_params` . You can refer to :ref:`api_guide_model_save_reader_en`
     for more details.
 
-    .. note::
+    Note:
         The :code:`dirname` is used to specify the folder where inference model
         structure and parameters are going to be saved. If you would like to save params of
         Program in separate files, set `params_filename` None; if you would like to save all
