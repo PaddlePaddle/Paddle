@@ -2884,6 +2884,17 @@
     func: overlap_add
   backward: overlap_add_grad
 
+- api: rnn
+  args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test)
+  output: Tensor(out), Tensor(dropout_state), Tensor[](state){pre_state.size()}, Tensor(reserve)
+  infer_meta:
+    func: RnnInferMeta
+  kernel:
+    func: rnn
+    data_type: x
+  backward: rnn_grad
+  optional : sequence_length
+
 - api: uniform_random_inplace
   args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
   output: Tensor(out)
