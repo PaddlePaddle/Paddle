@@ -293,6 +293,9 @@ void FFTC2RGradInferMeta(const MetaTensor& x,
                          int64_t last_dim_size,
                          MetaTensor* out,
                          MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(out,
+                          phi::errors::InvalidArgument(
+                              "Output of fft_c2r _grad should not be null."));
   const phi::DDim x_dim = x.dims();
 
   // only ensure that fft axes' size greater than zero at runtime

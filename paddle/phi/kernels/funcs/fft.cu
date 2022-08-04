@@ -14,16 +14,16 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/fft.h"
 #include <cmath>
-#include <string>
+
+#include "paddle/phi/kernels/funcs/fft.h"
+#include "paddle/phi/kernels/funcs/fft_cache.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/funcs/fft_cache.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"

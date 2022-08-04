@@ -14,10 +14,7 @@
 
 #include "paddle/phi/kernels/funcs/fft.h"
 
-#include <string>
-
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"

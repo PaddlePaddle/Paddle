@@ -872,6 +872,9 @@ void FFTC2CInferMeta(const MetaTensor& x,
                      bool forward,
                      MetaTensor* out,
                      MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      phi::errors::InvalidArgument("Output of fft_c2c should not be null."));
   // only ensure that fft axes' size greater than zero at runtime
   // they might be -1 to indicate unknown size ar compile time
   if (config.is_runtime) {
@@ -893,6 +896,9 @@ void FFTC2RInferMeta(const MetaTensor& x,
                      int64_t last_dim_size,
                      MetaTensor* out,
                      MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      phi::errors::InvalidArgument("Output of fft_c2r should not be null."));
   const phi::DDim x_dim = x.dims();
   const int64_t last_fft_axis = axes.back();
 
@@ -937,6 +943,9 @@ void FFTR2CInferMeta(const MetaTensor& x,
                      bool onesided,
                      MetaTensor* out,
                      MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      phi::errors::InvalidArgument("Output of fft_r2c should not be null."));
   const phi::DDim x_dim = x.dims();
 
   // only ensure that fft axes' size greater than zero at runtime

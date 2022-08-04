@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include <functional>
-#include <string>
-#include "paddle/fluid/platform/dynload/hipfft.h"
+#include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/dynload/hipfft.h"
 #include "paddle/phi/kernels/funcs/fft.h"
 #include "paddle/phi/kernels/funcs/fft_key.h"
 
