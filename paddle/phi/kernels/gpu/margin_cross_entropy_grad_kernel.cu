@@ -21,18 +21,14 @@ namespace cub = hipcub;
 #endif
 
 #include <vector>
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/impl/softmax_kernel_impl.h"
 #include "paddle/phi/kernels/margin_cross_entropy_grad_kernel.h"
 #include "paddle/phi/kernels/margin_cross_entropy_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
@@ -43,12 +39,9 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
-// trace op include
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/kernels/funcs/reduce_function.h"
 
 namespace phi {
-using Tensor = DenseTensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -66,7 +59,7 @@ void GetClassInterval(const gpuStream_t& stream,
                       const int rank,
                       const int nranks,
                       const int D,
-                      Tensor* class_interval) {
+                      DenseTensor* class_interval) {
   std::vector<int> shard_dim_vec(nranks + 1, 0);
   shard_dim_vec[rank + 1] = D;
   if (nranks <= 1) {
@@ -74,7 +67,7 @@ void GetClassInterval(const gpuStream_t& stream,
     return;
   }
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  Tensor num_classes_per_device;
+  DenseTensor num_classes_per_device;
   paddle::framework::TensorFromVector(
       shard_dim_vec, dev_ctx, &num_classes_per_device);
   int* num_classes_per_device_ptr = num_classes_per_device.data<int>();
@@ -198,7 +191,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
   const auto& label_type =
       paddle::framework::TransToProtoVarType(label.dtype());
 
-  Tensor class_interval;
+  DenseTensor class_interval;
   GetClassInterval<T, Context>(dev_ctx.stream(),
                                dev_ctx.GetPlace(),
                                dev_ctx,
