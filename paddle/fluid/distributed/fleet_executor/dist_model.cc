@@ -98,8 +98,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                  static_cast<void *>(input_tensor_ptr),
                  platform::CPUPlace(),
                  input_data.data.data(),
-                 input_data.data.length()
-                 );
+                 input_data.data.length());
 #else
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Paddle wasn't compiled with XPU, but place is XPU."));

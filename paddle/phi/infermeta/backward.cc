@@ -285,6 +285,29 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
   }
 }
 
+void FillDiagonalGradInferMeta(const MetaTensor& dout,
+                               float value,
+                               int offset,
+                               bool wrap,
+                               MetaTensor* dx) {
+  auto x_dims = dout.dims();
+  if (dx) {
+    dx->set_dims(x_dims);
+    dx->set_dtype(dout.dtype());
+  }
+}
+
+void FillDiagonalTensorGradInferMeta(const MetaTensor& out_grad,
+                                     int64_t offset,
+                                     int dim1,
+                                     int dim2,
+                                     MetaTensor* x_grad) {
+  if (x_grad != nullptr) {
+    x_grad->set_dims(out_grad.dims());
+    x_grad->set_dtype(out_grad.dtype());
+  }
+}
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,
