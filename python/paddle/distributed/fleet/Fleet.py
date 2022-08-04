@@ -20,11 +20,11 @@ from types import MethodType
 import numpy as np
 from paddle.fluid.framework import _global_flags
 from paddle.fluid import compiler
-from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
-from .strategy_compiler import StrategyCompiler
-from .distributed_strategy import DistributedStrategy
-from .meta_optimizer_factory import MetaOptimizerFactory
-from .runtime_factory import RuntimeFactory
+from .base.role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
+from .base.strategy_compiler import StrategyCompiler
+from .base.distributed_strategy import DistributedStrategy
+from .base.meta_optimizer_factory import MetaOptimizerFactory
+from .base.runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.ir import apply_build_strategy

@@ -18,7 +18,7 @@ import paddle
 import os
 import numpy as np
 from paddle.fluid.framework import dygraph_only, _global_flags
-from .distributed_strategy import DistributedStrategy
+from .base.distributed_strategy import DistributedStrategy
 from .meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle import _C_ops
 from paddle.fluid import core

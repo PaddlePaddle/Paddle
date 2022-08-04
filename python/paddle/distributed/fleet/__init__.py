@@ -28,10 +28,11 @@ from .data_generator.data_generator import MultiSlotStringDataGenerator  # noqa:
 from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
-from .Fleet import Fleet
-from .model import Model
-from .optimizer import Optimizer
-from .scaler import Scaler
+from .base.fleet_base import Fleet
+#from .Fleet import Fleet
+#from .model import Model
+#from .optimizer import Optimizer
+#from .scaler import Scaler
 
 __all__ = [  #noqa
     "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
@@ -88,9 +89,13 @@ state_dict = fleet.state_dict
 set_state_dict = fleet.set_state_dict
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
-distributed_model = Model(fleet).distributed_model
-distributed_scaler = Scaler().distributed_scaler
-if paddle.fluid.framework._non_static_mode():
-    distributed_optimizer = Optimizer(fleet).distributed_optimizer
-else:
-    distributed_optimizer = fleet.distributed_optimizer
+#distributed_model = Model(fleet).distributed_model
+#distributed_scaler = Scaler().distributed_scaler
+#if paddle.fluid.framework._non_static_mode():
+#    distributed_optimizer = Optimizer(fleet).distributed_optimizer
+#else:
+#    distributed_optimizer = fleet.distributed_optimizer
+
+distributed_model = fleet.distributed_model
+distributed_scaler = fleet.distributed_scaler
+distributed_optimizer = fleet.distributed_optimizer

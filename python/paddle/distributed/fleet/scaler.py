@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.fluid.framework import dygraph_only
 
 class Scaler(object):
     def __init__(self):

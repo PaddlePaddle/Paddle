@@ -16,13 +16,13 @@ import paddle
 import os
 import numpy as np
 from .base import topology as tp
-from .base import topology.ParallelMode as ParallelMode
+from .base.topology import ParallelMode
 from .meta_parallel import TensorParallel, model_parallel_random_seed
 from .meta_parallel import PipelineParallel, ShardingParallel
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.distributed.fleet.utils.recompute import LegacyRecomputeFunction
-from .scaler import Scale
+from .scaler import Scaler
 from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 
 _grad_scalar = None
