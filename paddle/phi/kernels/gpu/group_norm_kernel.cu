@@ -21,26 +21,6 @@
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
 
 namespace phi {
-
-// template <typename T>
-// void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t steam,
-//                                                const T *input,
-//                                                std::vector<int> input_shape,
-//                                                const T *scale,
-//                                                const T *bias,
-//                                                T *mean,
-//                                                T *variance,
-//                                                T *temp_variance,
-//                                                int N,
-//                                                int C,
-//                                                int W,
-//                                                int group,
-//                                                int group_size,
-//                                                float eps,T *output){
-  
-// }
-
-
 template <typename T>
 __global__ void GroupNormForwardGetMeanAndVar(const T* x,
                                               int N,
@@ -90,6 +70,33 @@ __global__ void GroupNormForward(const T* x,
                                  T* y,
                                  T* real_var, 
                                  const DataLayout data_layout) {
+  // if(blockIdx.y==1 && blockIdx.x == 0 && blockIdx.z==0 && threadIdx.x ==0 ){
+  //   printf("kernel input x:\r\n");
+  //   for(int i=0;i<N*C*imsize;i++){
+  //     printf("%f ",x[i]);
+  //     if(i%10==0){
+  //       printf("\r\n");
+  //     }
+  //   }
+  //   printf("\r\n");
+  //   printf("mean:\r\n");
+  //   for(int i=0;i<N*groups;i++){
+  //     printf("%f ",mean[i]);
+  //     if(i%10==0){
+  //       printf("\r\n");
+  //     }
+  //   }
+  //   printf("\r\n");
+  //   printf("variance:\r\n");
+  //   for(int i=0;i<N*groups;i++){
+  //     printf("%f ",var[i]);
+  //     if(i%10==0){
+  //       printf("\r\n");
+  //     }
+  //   }
+  //   printf("\r\n");
+  // }
+
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
@@ -104,6 +111,7 @@ __global__ void GroupNormForward(const T* x,
   if (cid == 0 && threadIdx.x == 0) {
     real_var[ng] = x_var;
   }
+
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
     T val;
     int hid, wid;
@@ -127,7 +135,13 @@ __global__ void GroupNormForward(const T* x,
     } else {
       y[(bid * H + hid) * W * C + wid * C + ccid] = val;
     }
+    // if(blockIdx.y==1 && blockIdx.x == 0 && blockIdx.z==0 && threadIdx.x ==0 ){
+    //   printf("@@@ x:%f,val:%f,xmean:%f,xvariance_inv:%f\r\n",x[index],val,x_mean,var_inv);
+    // }
   }
+    // if(blockIdx.y==0 && blockIdx.x == 0 && blockIdx.z==0 && threadIdx.x ==0 ){
+    //     printf("@@@ group norm kernel finished\r\n");
+    // }
 }
 
 template <typename T, typename Context>

@@ -56,6 +56,7 @@ class LayerNormOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layernorm_layer = nullptr;
     if (engine_->with_dynamic_shape()) {
+      // printf("@@@ layer norm batch in dynamic shape: %d \r\n",X->getDimensions().d[0]);
       int input_num = 1;
       for (int i = begin_norm_axis; i < X->getDimensions().nbDims; i++) {
         input_num *= X->getDimensions().d[i];

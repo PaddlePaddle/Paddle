@@ -27,7 +27,7 @@ class TRTGroupNormTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
-                name="data", shape=[-1, 512, 12, 12], dtype="float32")
+                name="data", shape=[1, 512, 12, 12], dtype="float32")
             relu_out = fluid.layers.relu(data)
             relu6_out = fluid.layers.relu6(relu_out)
             tanh_out = fluid.layers.tanh(relu6_out)
@@ -49,7 +49,7 @@ class TRTGroupNormTest(InferencePassTest):
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
         self.dynamic_shape_params = TRTGroupNormTest.DynamicShapeParam({
             'data': [1, 512, 12, 12]
-        }, {'data': [1, 512, 12, 12]}, {'data': [1, 512, 12, 12]}, False)
+        }, {'data': [2, 512, 12, 12]}, {'data': [1, 512, 12, 12]}, False)
         self.fetch_list = [out]
 
     def append_group_norm(self, data):
@@ -69,7 +69,7 @@ class TRTGroupNormTest(InferencePassTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu,3e-5)
+            self.check_output_with_option(use_gpu)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
