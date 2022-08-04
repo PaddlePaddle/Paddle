@@ -18,12 +18,11 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/fft.h"
 #include "paddle/phi/kernels/funcs/fft_fill_conj.h"
@@ -73,7 +72,7 @@ void FFTR2CGradKernel(const Context& ctx,
     PadKernel<T>(ctx, out_grad, pads, static_cast<float>(0.0), &full_dy);
     fft_c2c_func(ctx, full_dy, &complex_x_grad, axes, norm_type, !forward);
   }
-  CastKernel<T>(ctx, complex_x_grad, x_grad->dtype(), x_grad);
+  RealKernel<T>(ctx, complex_x_grad, x_grad);
 }
 
 template <typename T, typename Context>

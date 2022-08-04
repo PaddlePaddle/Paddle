@@ -24,7 +24,6 @@
 #include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
@@ -187,11 +186,8 @@ void exec_fft(const phi::GPUContext& ctx,
     config = config_.get();
   }
 
-  DenseTensor workspace_tensor;
-  // set a shape to avoid {0} by default, which the allocator refuses to
-  // allocate for
-  workspace_tensor.Resize(DDim({1}));
-  ctx.Alloc<To>(&workspace_tensor, config->workspace_size());
+  const int64_t workspace_size = static_cast<int64_t>(config->workspace_size());
+  DenseTensor workspace_tensor = Empty<uint8_t>(ctx, {workspace_size});
 
   // prepare cufft for execution
 #if defined(PADDLE_WITH_CUDA)
