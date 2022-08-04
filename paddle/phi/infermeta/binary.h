@@ -217,6 +217,12 @@ void IndexSelectInferMeta(const MetaTensor& x,
                           int dim,
                           MetaTensor* output);
 
+void IndexAddInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       const MetaTensor& add_value,
+                       int axis,
+                       MetaTensor* output);
+
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void LogLossInferMeta(const MetaTensor& input,

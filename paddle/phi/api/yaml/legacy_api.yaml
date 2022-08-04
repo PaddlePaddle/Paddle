@@ -1032,6 +1032,16 @@
   kernel :
     func : increment
 
+- api : index_add
+  args : (Tensor x, Tensor index,  Tensor add_value, int axis)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexAddInferMeta
+  kernel :
+    func : index_add
+    data_type : x
+  backward : index_add_grad
+
 - api : index_sample
   args : (Tensor x, Tensor index)
   output : Tensor

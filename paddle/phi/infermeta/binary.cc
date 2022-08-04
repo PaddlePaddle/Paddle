@@ -1426,6 +1426,70 @@ void IndexSelectInferMeta(const MetaTensor& x,
   output->share_lod(x);
 }
 
+void IndexAddInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       const MetaTensor& add_value,
+                       int axis,
+                       MetaTensor* output) {
+  auto input_dim = x.dims();
+  auto index_dim = index.dims();
+
+  PADDLE_ENFORCE_EQ(
+      axis < input_dim.size() && axis >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          axis));
+
+  PADDLE_ENFORCE_EQ(
+      index_dim.size() == 1 ||
+          (index_dim.size() == 2 && (index_dim[1] == 1 || index_dim[0] == 1)),
+      true,
+      phi::errors::InvalidArgument(
+          "The 'shape' of Input(Index) must be 1-D tensor. "
+          "But received: the 'shape' of Input(Index) is [%s], "
+          "the dimension of Input(Index) is [%d].",
+          index_dim,
+          index_dim.size()));
+
+  PADDLE_ENFORCE_EQ(
+      index_dim[0] != 0,
+      true,
+      phi::errors::InvalidArgument("The length of Input(Index) can't be 0."));
+
+  // limin-todo: check add_value's shape!
+
+  output->set_dims(x.dims());
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
+}
+
+/*
+// limin-todo:
+void IndexAddTensorGradInferMeta(const MetaTensor& out_grad,
+                                  const MetaTensor&index,
+                                  int axis,
+                                  MetaTensor* x_grad,
+                                  MetaTensor* add_tensor_grad) {
+  auto do_dims = out_grad.dims();
+  if (x_grad) {
+    x_grad->set_dims(do_dims);
+    x_grad->set_dtype(out_grad.dtype());
+    x_grad->set_layout(out_grad.layout());
+    x_grad->share_lod(out_grad);
+  }
+  // limin-todo:
+  if (add_tensor_grad) {
+    add_tensor_grad->set_dims(phi::make_ddim({1}));
+    add_tensor_grad->set_dtype(out_grad.dtype());
+  }
+}
+*/
+
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_y = y.dims();

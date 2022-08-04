@@ -4295,6 +4295,106 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
                                   reduce)
 
 
+def _index_add_params_check(x, index, add_value, axis):
+    if not isinstance(x, Variable):
+        raise TypeError("The input x should be a Tensor.")
+    dims = len(x.shape)
+
+    if not isinstance(axis, (int)):
+        raise TypeError("The axis should be int ")
+
+    check_axis = axis
+    if isinstance(axis, Variable):
+        if axis.dtype not in [paddle.int64, paddle.int32]:
+            raise TypeError("The axis dtype should be int32 or int64.")
+        if axis.numel() != 1:
+            raise ValueError(
+                "The numel of axis must be one when it is a tensor.")
+        check_axis = axis.numpy().item(0)
+    if check_axis >= dims or check_axis < -dims:
+        raise ValueError("Axis should be in range [-rank(x), rank(x)).")
+
+    if not isinstance(index, (Variable)):
+        raise TypeError("The index should be a Tensor.")
+
+    if not isinstance(add_value, (Variable)):
+        raise TypeError("The index should be a Tensor.")
+
+    if isinstance(index, Variable):
+        if index.dtype not in [paddle.int64, paddle.int32]:
+            raise TypeError("The index dtype should be int32 or int64.")
+        if len(index.shape) != 1:
+            raise ValueError("The index should be a 1-D Tensor.")
+    #TODO: add_value can be in any shape
+    # as long as it can be broadcast to the shape of sliced x
+
+
+def index_add(x, index, axis, add_value):
+    """
+    Adds the elements of the input tensor with add_value by selecting the indices in the order given in index.
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
+        index (Tensor): The 1-D Tensor containing the indices to index.
+            The data type of ``index`` must be int32 or int64.
+        add_value (Tensor): The tensor used to add the elements along the target axis.
+        axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    Returns :
+        Tensor: same dimention and dtype with x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input_tensor = paddle.ones((3, 3))
+            index = paddle.to_tensor([0, 2])
+            add_value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]])
+            outplace_res = paddle.index_add(input_tensor, index, add_value, axis=0)
+            print(outplace_res.numpy())
+            # [[2 2 2]
+            #  [1 1 1]
+            #  [2 2 2]]
+            inplace_res = paddle.index_add_(input_tensor, index, add_value, axis=1)
+            print(inplace_res.numpy())
+            # [[2, 1, 2]
+            #  [2, 1, 2]
+            #  [2, 1, 2]]
+    """
+    # limin-todo:
+    _index_add_params_check(x, index, add_value, axis)
+
+    # if in_dygraph_mode():
+    #     return _C_ops.final_state_index_add(x, index, add_value, axis)
+
+    # if _in_legacy_dygraph():
+    #     return _C_ops.index_select(x, index, add_value, axis)
+    return _C_ops.index_add(x, index, add_value, "axis", axis)
+
+    helper = LayerHelper("index_add", **locals())
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'paddle.tensor.manipulation.index_add')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
+                             'paddle.tensor.manipulation.index_add')
+    check_variable_and_dtype(
+        add_value, 'add_value',
+        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'paddle.tensor.manipulation.index_add')
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+
+    helper.append_op(type='index_add',
+                     inputs={
+                         'X': x,
+                         'Index': index,
+                         'AddValue': add_value,
+                     },
+                     outputs={'Out': out},
+                     attrs={'axis': axis})
+    return out
+
+
 # TODO(dev): We need avoid implementing it by this way.
 __METHODS = {
     'fill_': fill_,
