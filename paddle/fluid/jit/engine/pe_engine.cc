@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/jit/function/pe_function.h"
+#include "paddle/fluid/jit/engine/pe_engine.h"
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
+#include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/enforce.h"
 

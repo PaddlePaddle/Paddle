@@ -16,31 +16,23 @@
 
 #include <vector>
 
-#include "paddle/fluid/framework/details/execution_strategy.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/parallel_executor.h"
+#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/scope.h"
 
-#include "paddle/fluid/jit/function/base_function.h"
+#include "paddle/fluid/jit/engine/base_engine.h"
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/function_utils.h"
 
 namespace paddle {
 namespace jit {
 
-using ExecutionStrategy = framework::details::ExecutionStrategy;
-using ParallelExecutor = framework::ParallelExecutor;
-using Graph = framework::ir::Graph;
-
-class PEFunction : public BaseFunction {
+class ExecutorFunction : public BaseFunction {
  public:
-  PEFunction(const std::shared_ptr<FunctionInfo> &info,
-             const Name2VariableMap &params_dict,
-             const phi::Place &place);
+  ExecutorFunction(const std::shared_ptr<FunctionInfo> &info,
+                   const Name2VariableMap &params_dict,
+                   const phi::Place &place);
 
-  ~PEFunction() noexcept {}
-
-  void CreateGraphAndPE();
+  ~ExecutorFunction() noexcept {}
 
   std::vector<Tensor> operator()(const std::vector<Tensor> &inputs);
 
@@ -52,8 +44,7 @@ class PEFunction : public BaseFunction {
   std::shared_ptr<FunctionInfo> info_;
   framework::Scope scope_;
   phi::Place place_;
-  std::shared_ptr<ParallelExecutor> inner_pe_;
-  std::shared_ptr<Graph> graph_;
+  framework::Executor inner_exe_;
 };
 
 }  // namespace jit

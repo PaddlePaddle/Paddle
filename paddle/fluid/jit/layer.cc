@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/variable.h"
 
 #include "paddle/fluid/jit/compilation_unit.h"
-#include "paddle/fluid/jit/function/base_function.h"
+#include "paddle/fluid/jit/engine/base_engine.h"
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
