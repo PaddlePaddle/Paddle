@@ -331,13 +331,6 @@ class MatMulMKLDNNHandler
              ctx.Attr<std::vector<int>>("fused_reshape_Y").empty());
   }
 
-  bool IsOutputFused(const ExecutionContext &ctx) const {
-    auto &fused_reshape_Out = ctx.Attr<std::vector<int>>("fused_reshape_Out");
-    auto &fused_transpose_Out =
-        ctx.Attr<std::vector<int>>("fused_transpose_Out");
-    return !fused_reshape_Out.empty() && !fused_transpose_Out.empty();
-  }
-
   MatMulDims GetMatmulDims(const ExecutionContext &ctx) {
     phi::funcs::MatDescriptor mat_dim_x;
     memory::dims strides_x;
@@ -360,7 +353,7 @@ class MatMulMKLDNNHandler
     const memory::dim K = mat_dim_x.width_;
 
     batch_size_ = 1;
-    if (out_bs > 1 && (IsOutputFused(ctx) || IsInputFused(ctx))) {
+    if (out_bs > 1 && (ctx.HasAttr("is_output_fused") || IsInputFused(ctx))) {
       auto x_dims = GetDimForInput(ctx, "X");
       auto y_dims = GetDimForInput(ctx, "Y");
       batch_size_ = x_bs > y_bs ? x_dims[0] : y_dims[0];
@@ -427,7 +420,7 @@ class MatMulMKLDNNHandler
                                           const memory::dim N,
                                           memory::dim b,
                                           memory::dims *out_strides) const {
-    if (!IsInt8<OT>() && !IsBfloat16<OT>() && IsOutputFused(ctx)) {
+    if (!IsInt8<OT>() && !IsBfloat16<OT>() && ctx.HasAttr("is_output_fused")) {
       *out_strides = {N, b * N, 1};
     }
   }
@@ -527,6 +520,14 @@ static void ExecuteMatMul(const ExecutionContext &ctx) {
   const auto &dev_ctx =
       ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
   const auto &onednn_engine = dev_ctx.GetEngine();
+
+  if (ctx.HasAttr("is_output_fused")) {
+    auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
+    auto shape = ctx.Attr<std::vector<int>>("fused_reshape_Out");
+    auto out_dims = out->dims();
+    auto new_dims = out_dims.transpose(axis).reshape(shape);
+    out->Resize(new_dims);
+  }
 
   if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
     MatMulMKLDNNHandler<XT, YT, float>(onednn_engine, ctx).Execute(x, y, out);
@@ -645,12 +646,6 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext &ctx,
   return strides;
 }
 
-bool IsOutputFused(const ExecutionContext &ctx) {
-  auto &fused_reshape_Out = ctx.Attr<std::vector<int>>("fused_reshape_Out");
-  auto &fused_transpose_Out = ctx.Attr<std::vector<int>>("fused_transpose_Out");
-  return !fused_reshape_Out.empty() && !fused_transpose_Out.empty();
-}
-
 float ComputeOutputScale(const ExecutionContext &ctx) {
   float scale_x = ctx.Attr<float>("Scale_x");
   float scale_y = ctx.Attr<float>("Scale_y");
@@ -683,7 +678,7 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
                                    trans_x,
                                    y_dims,
                                    trans_y,
-                                   IsOutputFused(ctx),
+                                   ctx.HasAttr("is_output_fused"),
                                    x_strides_override,
                                    y_strides_override);
 
@@ -742,7 +737,8 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
       }
     }
 
-    if (!IsOutputFused(ctx) && x_dims.size() > 2 && y_dims.size() > 2) {
+    if (!ctx.HasAttr("is_output_fused") && x_dims.size() > 2 &&
+        y_dims.size() > 2) {
       for (size_t i = 0; i < (*x_bd_dims).size() - 2; ++i) {
         PADDLE_ENFORCE_EQ(
             (*x_bd_dims)[i] == (*y_bd_dims)[i] || (*x_bd_dims)[i] == 1 ||
@@ -783,6 +779,14 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     std::vector<int64_t> x_bd_dims(ndims, 1);
     std::vector<int64_t> y_bd_dims(ndims, 1);
+
+    if (ctx.HasAttr("is_output_fused")) {
+      auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
+      auto shape = ctx.Attr<std::vector<int>>("fused_reshape_Out");
+      auto out_dims = out->dims();
+      auto new_dims = out_dims.transpose(axis).reshape(shape);
+      out->Resize(new_dims);
+    }
 
     CalculateMatrixDims(
         ctx, x_dims, y_dims, &x_bd_dims, &y_bd_dims, &out_dims, out);

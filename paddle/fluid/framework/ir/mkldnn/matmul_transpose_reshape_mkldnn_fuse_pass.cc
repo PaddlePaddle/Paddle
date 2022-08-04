@@ -89,6 +89,7 @@ void MatmulTransposeReshapeMKLDNNPass::Fuse(
     }
     OpDesc *matmul_desc = matmul_op->Op();
     matmul_desc->SetOutput("Out", {reshape_out->Name()});
+    matmul_desc->SetAttr("is_output_fused", true);
     matmul_desc->SetAttr("fused_reshape_Out", reshape_shape);
     matmul_desc->SetAttr("fused_transpose_Out", transpose_axis);
 

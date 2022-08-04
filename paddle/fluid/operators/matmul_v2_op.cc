@@ -167,18 +167,6 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     }
 
     auto ddim_out = phi::make_ddim(new_dims);
-
-#ifdef PADDLE_WITH_MKLDNN
-    //  if mkldnn matmul_v2+transpose+reshape fuse activated
-    auto reshape_out = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto transpose_out =
-        ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
-
-    if (!reshape_out.empty() && !transpose_out.empty()) {
-      ddim_out = ddim_out.transpose(transpose_out).reshape(reshape_out);
-    }
-#endif
-
     ctx->SetOutputDim("Out", ddim_out);
     ctx->ShareLoD("X", "Out");
   }
