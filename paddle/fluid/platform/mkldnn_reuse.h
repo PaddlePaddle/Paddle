@@ -958,6 +958,16 @@ class MatMulV2MKLDNNHandler
       matmul_attrs.set_output_scales(0, {alpha});
     }
 
+    if (ctx.HasInput("ResidualData")) {
+      auto* residual_data = ctx.Input<Tensor>("ResidualData");
+      auto residual_data_tz = phi::vectorize(residual_data->dims());
+      auto residual_data_md = memory::desc(residual_data_tz,
+                                           dnnl::memory::data_type::f32,
+                                           dnnl::memory::format_tag::abcd);
+      post_operations.append_binary(dnnl::algorithm::binary_add,
+                                    residual_data_md);
+    }
+
     AppendActivation(ctx, post_operations);
 
     matmul_attrs.set_post_ops(post_operations);
