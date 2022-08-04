@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -54,9 +54,9 @@ def sequence_conv(input,
                   act=None,
                   name=None):
     r"""
-	:api_attr: Static Graph
 
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
+    Note: 
+    	Only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
     configuration parameters(num_filters, filter_size) to apply the convolution operation.
@@ -179,11 +179,9 @@ def sequence_conv(input,
 
 def sequence_softmax(input, use_cudnn=False, name=None):
     r"""
-	:api_attr: Static Graph
 
-    **Note**:
-    
-    **The input type of the OP must be LoDTensor. For Tensor, use:** :ref:`api_fluid_layers_softmax` 
+    Note:
+        The input type of the OP must be LoDTensor. For Tensor, use:** :ref:`api_fluid_layers_softmax` 
 
     A LoD-tensor can be regarded as several sequences, and this op apply softmax algo on each sequence.
     The shape of input Tensor can be :math:`[N, 1]` or :math:`[N]`, where :math:`N`
@@ -264,9 +262,9 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
 def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     r"""
-	:api_attr: Static Graph
 
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
+    Note: 
+        Only receives LoDTensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
 
     This operator only supports LoDTensor as input. It will apply specified pooling
     operation on the input LoDTensor. It pools features of all time-steps of each
@@ -381,9 +379,9 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 @templatedoc()
 def sequence_concat(input, name=None):
     """
-	:api_attr: Static Graph
 
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use concat Op.(fluid.layers.** :ref:`api_fluid_layers_concat` ).
+    Note: 
+        Only receives LoDTensor as input. If your input is Tensor, please use concat Op.(fluid.layers.** :ref:`api_fluid_layers_concat` ).
 
     This operator only supports LoDTensor as input. It concatenates the multiple LoDTensor from input by the LoD information,
     and outputs the concatenated LoDTensor.
@@ -445,9 +443,8 @@ def sequence_concat(input, name=None):
 
 def sequence_first_step(input):
     """
-	:api_attr: Static Graph
 
-    This operator only supports LoDTensor as input. Given the input LoDTensor, it will
+    Only supports LoDTensor as input. Given the input LoDTensor, it will
     select first time-step feature of each sequence as output.
 
     .. code-block:: text
@@ -503,9 +500,8 @@ def sequence_first_step(input):
 
 def sequence_last_step(input):
     """
-	:api_attr: Static Graph
 
-    This operator only supports LoDTensor as input. Given the input LoDTensor, it will
+    Only supports LoDTensor as input. Given the input LoDTensor, it will
     select last time-step feature of each sequence as output.
 
     .. code-block:: text
@@ -562,7 +558,6 @@ def sequence_last_step(input):
 
 def sequence_slice(input, offset, length, name=None):
     """
-	:api_attr: Static Graph
 
     **Sequence Slice Layer**
 
@@ -799,10 +794,9 @@ def sequence_expand_as(x, y, name=None):
         the expanded LodTensor has the same lod info as ``y``. The expanded result \
         has nothing to do with ``x``'s lod, so the lod of Input(X) is not considered.
 
-    .. note::
-
+    Note:
         Please note that the input ``x`` should be LodTensor or Tensor, \
-            and input ``y`` must be LodTensor.
+        and input ``y`` must be LodTensor.
 
     Following examples will explain how sequence_expand_as works:
 
@@ -920,7 +914,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
         the LodTensor ``Out`` is the padded sequences, and LodTensor ``Length`` is 
         the length information of input sequences. For removing padding data (unpadding operation), See :ref:`api_fluid_layers_sequence_unpad`.
 
-    .. note::
+    Note:
         Please note that the input ``x`` should be LodTensor.
 
     .. code-block:: text
@@ -1030,13 +1024,11 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
 def sequence_unpad(x, length, name=None):
     """
-	:api_attr: Static Graph
 
-    **Note**:
-    
-    **The input of the OP is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`  
+    Note:
+        The input of the OP is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`  
      
-    The OP removes the padding data from the input based on the length information and returns a LoDTensor.
+    Remove the padding data from the input based on the length information and returns a LoDTensor.
 
     .. code-block:: text
 
@@ -1108,11 +1100,11 @@ def sequence_unpad(x, length, name=None):
 
 def sequence_reshape(input, new_dim):
     """
-	:api_attr: Static Graph
 
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reshape Op.(fluid.layers.** :ref:`api_fluid_layers_reshape` ).
+    Note: 
+        Only receives LoDTensor as input. If your input is Tensor, please use reshape Op.(fluid.layers.** :ref:`api_fluid_layers_reshape` ).
 
-    This operator only supports LoDTensor as input. Given :attr:`new_dim` ,
+    Only supports LoDTensor as input. Given :attr:`new_dim` ,
     it will compute new shape according to original length of each sequence,
     original dimensions and :attr:`new_dim` . Then it will output a new LoDTensor
     containing :attr:`new_dim` . Currently it only supports 1-level LoDTensor.
@@ -1171,11 +1163,9 @@ def sequence_reshape(input, new_dim):
 
 def sequence_scatter(input, index, updates, name=None):
     """
-	:api_attr: Static Graph
 
-    **Note**:
-    
-    **The index and updates parameters of the OP must be LoDTensor.**
+    Note:
+        The index and updates parameters of the OP must be LoDTensor.
      
     Plus the updates data to the corresponding input according to the index.
  
@@ -1263,7 +1253,6 @@ def sequence_scatter(input, index, updates, name=None):
 
 def sequence_enumerate(input, win_size, pad_value=0, name=None):
     r"""
-	:api_attr: Static Graph
 
     Generate a new sequence for the input index sequence with \
         shape ``[d_1, win_size]``, which enumerates all the \
@@ -1395,9 +1384,10 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 @templatedoc()
 def sequence_reverse(x, name=None):
     """
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reverse Op.(fluid.layers.** :ref:`api_fluid_layers_reverse` ).
+    Note: 
+        Only receives LoDTensor as input. If your input is Tensor, please use reverse Op.(fluid.layers.** :ref:`api_fluid_layers_reverse` ).
 
-    This operator only supports LoDTensor as input. It will reverse each sequence for input LoDTensor.
+    Only supports LoDTensor as input. It will reverse each sequence for input LoDTensor.
     Currently it only supports 1-level LoDTensor. This operator is very useful when building a
     reverse :ref:`api_fluid_layers_DynamicRNN` network.
 
