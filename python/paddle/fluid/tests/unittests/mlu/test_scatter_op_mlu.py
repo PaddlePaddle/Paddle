@@ -25,6 +25,8 @@ from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
+paddle.enable_static()
+
 
 class TestScatterOp(OpTest):
 
@@ -243,5 +245,4 @@ class TestScatterInplaceAPI(TestScatterAPI):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

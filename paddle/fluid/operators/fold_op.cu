@@ -16,12 +16,10 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(
-    fold,
-    ops::FoldOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FoldOpKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(fold,
+                        ops::FoldOpKernel<phi::GPUContext, float>,
+                        ops::FoldOpKernel<phi::GPUContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(
-    fold_grad,
-    ops::FoldGradOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FoldGradOpKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(fold_grad,
+                        ops::FoldGradOpKernel<phi::GPUContext, float>,
+                        ops::FoldGradOpKernel<phi::GPUContext, double>);

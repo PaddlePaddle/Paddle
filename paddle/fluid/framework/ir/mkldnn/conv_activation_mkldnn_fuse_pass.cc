@@ -26,7 +26,6 @@ using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = paddle::platform::GetSupportedActivations();
-
   std::vector<std::string> conv_types = {"conv2d"};
 
   for (const auto& conv_type : conv_types)
@@ -73,9 +72,10 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
     }
 
     if (act_type == "gelu" && activation->Op()->HasAttr("approximate")) {
-      act_type = BOOST_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
-                     ? "gelu_tanh"
-                     : "gelu_erf";
+      act_type =
+          PADDLE_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
+              ? "gelu_tanh"
+              : "gelu_erf";
       conv_op->SetAttr("fuse_alpha", 0.0f);
       conv_op->SetAttr("fuse_beta", 0.0f);
     }

@@ -257,7 +257,14 @@ PyObject* MakeReturnPyObject(const std::tuple<Args...>& out) {
   return result;
 }
 
-void BindOpFunctions(pybind11::module* module);
+void BindOpFunctions1(pybind11::module* module);
+void BindOpFunctions2(pybind11::module* module);
+void BindOpFunctions3(pybind11::module* module);
+void BindOpFunctions4(pybind11::module* module);
+void BindOpFunctions5(pybind11::module* module);
+void BindOpFunctions6(pybind11::module* module);
+void BindOpFunctions7(pybind11::module* module);
+void BindOpFunctions8(pybind11::module* module);
 
 }  // namespace pybind
 }  // namespace paddle

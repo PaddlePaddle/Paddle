@@ -1058,14 +1058,16 @@ def set_grad_var_shape(program, dist_context):
                 "dropout_grad", "tanh_grad", "slice", "assign",
                 "matmul_v2_triple_grad", "elementwise_add_triple_grad",
                 "fill_constant", "sqrt_grad",
-                "fused_softmax_mask_upper_triangle_grad"
+                "fused_softmax_mask_upper_triangle_grad",
+                "flatten_contiguous_range_grad", "relu_grad"
             ]
             forward_list = [
                 "reshape2", "softmax_with_cross_entropy", "transpose2",
                 "softmax", "cross_entropy2", "dropout", "tanh",
                 ["slice_grad", "c_allgather"], "assign", "matmul_v2_grad_grad",
                 "elementwise_add_grad_grad", "shape", "sqrt",
-                "fused_softmax_mask_upper_triangle"
+                "fused_softmax_mask_upper_triangle", "flatten_contiguous_range",
+                "relu"
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1471,3 +1473,11 @@ def to_list(value):
     if isinstance(value, (list, tuple)):
         return list(value)
     return [value]
+
+
+def debug_program(program, path, name):
+
+    filename = os.path.join(
+        path, name + '_program' + ".%d" % (paddle.distributed.get_rank()))
+    with open(filename, 'w') as f:
+        f.write(str(program))

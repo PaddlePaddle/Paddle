@@ -43,6 +43,15 @@
     data_type : x
   backward : cross_grad
 
+- api : diag
+  args : (Tensor x, int offset = 0, float padding_value = 0.0)
+  output : Tensor
+  infer_meta :
+    func : DiagInferMeta
+  kernel :
+    func : diag
+  backward : diag_grad
+
 - api : diagonal
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
   output : Tensor
@@ -89,6 +98,15 @@
     func : erf
   backward : erf_grad
 
+- api : lgamma
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : lgamma
+  backward : lgamma_grad 
+
 - api : mv
   args : (Tensor x, Tensor vec)
   output : Tensor
@@ -106,6 +124,16 @@
   kernel :
     func : poisson
   backward : poisson_grad
+
+- api : solve
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : SolveInferMeta
+  kernel :
+    func : solve
+    data_type : x
+  backward : solve_grad
 
 - api : trace
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)

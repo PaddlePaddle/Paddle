@@ -106,7 +106,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(einsum,
                             EinsumInferShapeFunctor,
-                            PD_INFER_META(phi::EinsumInferMeta));
+                            PD_INFER_META(phi::EinsumRawInferMeta));
 
 REGISTER_OPERATOR(einsum,
                   ops::EinsumOp,

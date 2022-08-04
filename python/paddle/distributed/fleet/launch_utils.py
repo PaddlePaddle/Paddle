@@ -189,17 +189,19 @@ class Pod(object):
         self.trainers = []
         self.servers = []
         self.workers = []
+        self.coordinators = []
         self.heter_workers = []
         self.accelerators = []
         self.device_mode = None
 
     def __str__(self):
         return "rank:{} id:{} addr:{} port:{} visible_accelerator:{} trainers:{} servers:{} \
-            workers:{} heter_workers:{}".format(
+            workers:{} heter_workers:{} coordinators:{}".format(
             self.rank, self.id, self.addr, self.port, self.accelerators,
             [str(t) for t in self.trainers], [str(s) for s in self.servers],
             [str(w)
-             for w in self.workers], [str(h) for h in self.heter_workers])
+             for w in self.workers], [str(h) for h in self.heter_workers],
+            [str(c) for c in self.coordinators])
 
     def __eq__(self, pod):
         if self.rank != pod.rank or \
@@ -656,7 +658,7 @@ def watch_local_trainers(procs, nranks):
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
             .format(nranks, error_rank))
         terminate_local_procs(procs)
-        return
+        raise
     except:
         logger.error(
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
@@ -1172,9 +1174,11 @@ class ParameterServerLauncher(object):
     def __init__(self, args, distribute_mode):
         self.args = args
         self.distribute_mode = distribute_mode
+        self.with_coordinator = False
         self.server_num = 0
         self.worker_num = 0
         self.heter_worker_num = 0
+        self.coordinator_num = 0
 
         self.server_endpoints = ""
         self.server_endpoints_ips = []
@@ -1187,6 +1191,10 @@ class ParameterServerLauncher(object):
         self.heter_worker_endpoints = ""
         self.heter_worker_endpoints_ips = []
         self.heter_worker_endpoints_port = []
+
+        self.coordinator_endpoints = ""
+        self.coordinator_endpoints_ips = []
+        self.coordinator_endpoints_port = []
 
         self.is_local = True
         self.current_node_ip = ""
@@ -1256,6 +1264,23 @@ class ParameterServerLauncher(object):
                 self.worker_endpoints = ",".join(worker_endpoints)
             else:
                 self.worker_endpoints = args.workers
+
+        # get coordinator envs
+        if args.coordinator_num:
+            self.with_coordinator = True
+            self.coordinator_num = args.coordinator_num
+            if args.coordinators:
+                assert len(
+                    args.coordinators.split(",")
+                ) == self.coordinator_num, "The coordinator_num and coordinators doesn't match. Expect coordinators endpoints num epual to coordinator_num, but received coordinator enpoint num: {} and coordinator_num {}".format(
+                    len(args.coordinators.split(",")), self.coordinator_num)
+
+                self.coordinator_endpoints = args.coordinators
+            else:
+                ports = get_ports(self.coordinator_num, 1)
+                self.coordinator_endpoints = ",".join(
+                    ["127.0.0.1:" + str(x) for x in ports])
+                print(">>> use default coordinator addr(only one process)")
 
         # get heter worker envs
         if self.distribute_mode == DistributeMode.PS_HETER:
@@ -1398,6 +1423,17 @@ class ParameterServerLauncher(object):
         self.worker_endpoints_ips = [
             x.strip().split(":")[0] for x in self.worker_endpoints.split(",")
         ]
+
+        if self.with_coordinator == True:
+            self.coordinator_endpoints_ips = [
+                x.strip().split(":")[0]
+                for x in self.coordinator_endpoints.split(",")
+            ]
+            self.coordinator_endpoints_port = [
+                x.strip().split(":")[1]
+                for x in self.coordinator_endpoints.split(",")
+            ]
+
         self.server_endpoints_port = [
             x.strip().split(":")[1] for x in self.server_endpoints.split(",")
         ]
@@ -1451,6 +1487,7 @@ class ParameterServerLauncher(object):
         server_rank = 0
         worker_rank = 0
         heter_worker_rank = 0
+        coordinator_rank = 0
         for node_rank, ip in enumerate(self.node_ips):
             pod = Pod()
             pod.rank = node_rank
@@ -1472,6 +1509,16 @@ class ParameterServerLauncher(object):
                     worker.stage = 1
                     worker_rank += 1
                     pod.workers.append(worker)
+            for m in range(len(self.coordinator_endpoints_ips)):
+                if ip == self.coordinator_endpoints_ips[m]:
+                    coordinator = Trainer()
+                    coordinator.endpoint = "%s:%s" % (
+                        ip, self.coordinator_endpoints_port[m])
+                    coordinator.rank = coordinator_rank
+                    coordinator.stage = 1
+                    coordinator_rank += 1
+                    pod.coordinators.append(coordinator)
+
             for k in range(len(self.heter_worker_endpoints_ips)):
                 if ip == self.heter_worker_endpoints_ips[k]:
                     heter_worker = Trainer()
@@ -1488,18 +1535,36 @@ class ParameterServerLauncher(object):
         self.gloo_rendezvous_dir = tempfile.mkdtemp()
 
         # 3. subproces start
-        self.procs = {"worker": [], "server": [], "heter_worker": []}
-        self.cmds = {"worker": [], "server": [], "heter_worker": []}
-        self.log_fns = {"worker": [], "server": [], "heter_worker": []}
+        self.procs = {
+            "worker": [],
+            "coordinator": [],
+            "server": [],
+            "heter_worker": []
+        }
+        self.cmds = {
+            "worker": [],
+            "coordinator": [],
+            "server": [],
+            "heter_worker": []
+        }
+        self.log_fns = {
+            "worker": [],
+            "coordinator": [],
+            "server": [],
+            "heter_worker": []
+        }
 
         self.start_pod_server(self.args, pod)
         self.start_pod_worker(self.args, pod)
+        if self.with_coordinator:
+            self.start_pod_coordinator(self.args, pod)
         if self.distribute_mode == DistributeMode.PS_HETER:
             self.start_pod_heter_worker(self.args, pod)
 
         logger.info(
-            "Please check servers, workers and heter_worker logs in {}/workerlog.*, {}/serverlog.* and {}/heterlog.*"
-            .format(self.args.log_dir, self.args.log_dir, self.args.log_dir))
+            "Please check servers, workers, coordinator and heter_worker logs in {}/workerlog.*, {}/serverlog.* , {}/coordinatorlog.*, and {}/heterlog.*"
+            .format(self.args.log_dir, self.args.log_dir, self.args.log_dir,
+                    self.args.log_dir))
 
         # 4. wait for finish training
         if len(self.procs["worker"]) > 0:
@@ -1523,6 +1588,12 @@ class ParameterServerLauncher(object):
                     self.log_fns["server"][i].close()
                     self.procs["server"][i].proc.terminate()
                 logger.info("all parameter server are killed")
+
+            if len(self.procs["coordinator"]) > 0:
+                for i, proc in enumerate(self.procs["coordinator"]):
+                    self.log_fns["coordinator"][i].close()
+                    self.procs["coordinator"][i].proc.terminate()
+                logger.info("all coordinators are killed")
 
         else:
             # if node has not worker procs
@@ -1548,6 +1619,7 @@ class ParameterServerLauncher(object):
                 proc_env = {
                     "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                     "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
+                    "PADDLE_COORDINATOR_ENDPOINTS": self.coordinator_endpoints,
                     "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST":
                     self.heter_worker_endpoints,
                     "PADDLE_PORT": cur_server.endpoint.split(":")[1],
@@ -1563,6 +1635,7 @@ class ParameterServerLauncher(object):
                 proc_env = {
                     "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                     "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
+                    "PADDLE_COORDINATOR_ENDPOINTS": self.coordinator_endpoints,
                     "PADDLE_PORT": cur_server.endpoint.split(":")[1],
                     "TRAINING_ROLE": "PSERVER",
                     "PADDLE_TRAINERS_NUM": str(self.worker_num),
@@ -1633,6 +1706,8 @@ class ParameterServerLauncher(object):
                     self.worker_endpoints,
                     "PADDLE_TRAINERS_NUM":
                     str(self.worker_num),
+                    "PADDLE_COORDINATOR_ENDPOINTS":
+                    self.coordinator_endpoints,
                     "PADDLE_STAGE_TRAINERS_NUM":
                     str(self.stage_trainer_num),
                     "STAGE_ID":
@@ -1678,6 +1753,7 @@ class ParameterServerLauncher(object):
                     "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
                     "PADDLE_TRAINERS_NUM": str(self.worker_num),
                     "TRAINING_ROLE": "TRAINER",
+                    "PADDLE_COORDINATOR_ENDPOINTS": self.coordinator_endpoints,
                     "POD_IP": cur_worker.endpoint.split(":")[0],
                     "PADDLE_PORT": cur_worker.endpoint.split(":")[1],
                     "PADDLE_TRAINER_ID": str(cur_worker.rank),
@@ -1724,6 +1800,69 @@ class ParameterServerLauncher(object):
             tp.cmd = cmd
 
             self.procs["worker"].append(tp)
+
+    def start_pod_coordinator(self, args, pod):
+        print(">>> entering start_pod_coordinator")
+        default_env = os.environ.copy()
+        current_env = copy.copy(default_env)
+        current_env.pop("http_proxy", None)
+        current_env.pop("https_proxy", None)
+
+        for idx, cur_coordinator in enumerate(pod.coordinators):
+            device_id = "0"
+            proc_env = {
+                "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
+                "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
+                "PADDLE_TRAINERS_NUM": str(self.worker_num),
+                "PADDLE_COORDINATOR_ENDPOINTS": self.coordinator_endpoints,
+                "PADDLE_COORDINATOR_NUM": str(self.coordinator_num),
+                "TRAINING_ROLE": "COORDINATOR",
+                "POD_IP": cur_coordinator.endpoint.split(":")[0],
+                "PADDLE_PORT": cur_coordinator.endpoint.split(":")[1],
+                "PADDLE_TRAINER_ID": str(cur_coordinator.rank),
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
+                "PADDLE_GLOO_RENDEZVOUS": "3",
+                "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
+                "FLAGS_selected_gpus": "0",
+                "FLAGS_selected_xpus": "0",
+                "CUDA_VISIBLE_DEVICES": device_id,
+                "XPU_VISIBLE_DEVICES": device_id,
+                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+            }
+
+            current_env.update(proc_env)
+            cmd = [sys.executable, "-u", args.training_script
+                   ] + args.training_script_args
+            self.cmds["coordinator"].append(cmd)
+
+            if idx == 0:
+                logger.info(
+                    "Local coordinator start {} processes. First process distributed "
+                    "environment info (Only For Debug): {}".format(
+                        len(pod.coordinators),
+                        pretty_print_envs(proc_env,
+                                          ("Distributed Envs", "Value"))))
+
+            if args.log_dir is not None:
+                os.system("mkdir -p {}".format(args.log_dir))
+                fn = open("%s/coordinator.%d" % (args.log_dir, idx), "w")
+                self.log_fns["coordinator"].append(fn)
+                proc = subprocess.Popen(cmd,
+                                        env=current_env,
+                                        stdout=fn,
+                                        stderr=fn)
+            else:
+                proc = subprocess.Popen(cmd, env=current_env)
+
+            tp = TrainerProc()
+            tp.proc = proc
+            tp.rank = cur_coordinator.rank
+            tp.local_rank = idx
+            tp.log_fn = fn
+            tp.log_offset = fn.tell() if fn else None
+            tp.cmd = cmd
+
+            self.procs["coordinator"].append(tp)
 
     def start_pod_heter_worker(self, args, pod):
         default_env = os.environ.copy()
@@ -1826,11 +1965,14 @@ class ParameterServerLauncher(object):
 
 
 def check_backend(backend):
-    if backend not in ['nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter']:
-        raise ValueError("paddle.distributed initialize error, "
-                         "backend argument can only be one of "
-                         "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter' "
-                         "but got %s" % backend)
+    if backend not in [
+            'nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter', 'xccl'
+    ]:
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "backend argument can only be one of "
+            "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter', 'xccl' "
+            "but got %s" % backend)
 
     if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
         raise ValueError(

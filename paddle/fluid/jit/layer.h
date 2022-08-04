@@ -18,32 +18,42 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 
-#include "paddle/fluid/jit/base_function.h"
-#include "paddle/fluid/jit/compilation_unit.h"
-#include "paddle/fluid/jit/function_schema.h"
+#include "function/base_function.h"  //NOLINT
 
 namespace paddle {
+
+namespace framework {
+class Variable;
+}  // namespace framework
+
 namespace jit {
+class CompilationUnit;
+
+using DenseTensor = phi::DenseTensor;
+using Tensor = paddle::experimental::Tensor;
 using Variable = paddle::framework::Variable;
-using Name2VariableMap = std::unordered_map<std::string, Variable>;
+using Name2VariableMap =
+    std::unordered_map<std::string, std::shared_ptr<Variable>>;
+using Name2FunctionMap =
+    std::unordered_map<std::string, std::shared_ptr<BaseFunction>>;
 
 class Layer {
  public:
-  // TODO(dev): Make vector<string>, num_slot as in argument
-  // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
-  // {}
-  Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
-        const Name2VariableMap& params_dict,
+  Layer(const Name2VariableMap& params_dict,
+        const Name2VariableMap& attrs_dict_,
         const phi::Place& place);
 
   std::shared_ptr<BaseFunction> Function(const std::string& name) const;
 
-  Variable Attribute(const std::string& name) const;
+  template <typename T>
+  T Attribute(const std::string& name) const;
 
-  std::vector<Variable> forward(const std::vector<Variable>& inputs);
+  std::vector<Tensor> forward(const std::vector<Tensor>& inputs);
+
+  std::vector<DenseTensor> forward(const std::vector<DenseTensor>& inputs);
 
   void to(const phi::Place& place);
 
@@ -55,10 +65,9 @@ class Layer {
   const Name2FunctionMap& FunctionMap() const;
 
  private:
-  // internal::Object obj_;
   Name2VariableMap params_dict_;
   Name2VariableMap attrs_dict_;
-  CompilationUnit unit_;
+  std::shared_ptr<CompilationUnit> unit_;
 };
 
 }  // namespace jit

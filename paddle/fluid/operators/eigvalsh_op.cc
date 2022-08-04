@@ -12,7 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/eigvalsh_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,43 +26,6 @@ using framework::Tensor;
 class EigvalshOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Eigvalsh");
-    OP_INOUT_CHECK(
-        ctx->HasOutput("Eigenvalues"), "Output", "Eigenvalues", "Eigvalsh");
-
-    auto input_dim = ctx->GetInputDim("X");
-    auto rank = input_dim.size();
-
-    PADDLE_ENFORCE_GE(rank,
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The Input(X) should have at least 2 dimensions."
-                          "But received a %d dimension tensor.",
-                          rank));
-    PADDLE_ENFORCE_EQ(
-        input_dim[rank - 2],
-        input_dim[rank - 1],
-        platform::errors::InvalidArgument(
-            "Eigvalsh op is designed for square matrix, consequently"
-            "inner-most 2 dimensions of Input(X) should be symmetric."
-            "But received X's shape[-2] = %d and shape[-1] = %d.",
-            input_dim[rank - 2],
-            input_dim[rank - 1]));
-
-    std::vector<int64_t> values_dim;
-
-    for (auto i = 0; i < rank - 1; i++) {
-      values_dim.emplace_back(input_dim[i]);
-    }
-
-    ctx->SetOutputDim("Eigenvalues", phi::make_ddim(values_dim));
-
-    if (ctx->HasOutput("Eigenvectors")) {
-      ctx->SetOutputDim("Eigenvectors", input_dim);
-    }
-  }
 };
 
 class EigvalshOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -100,20 +67,6 @@ class EigvalshGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(
-        ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors", "EigvalshGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvalues")),
-                   "Input",
-                   "Eigenvalues@GRAD",
-                   "EigvalshGrad");
-    auto dims = ctx->GetInputDim("Eigenvectors");
-    auto x_grad_name = framework::GradVarName("X");
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, dims);
-    }
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -144,30 +97,19 @@ class EigvalshGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(eigvalsh,
+                            EigvalshInferShapeFunctor,
+                            PD_INFER_META(phi::EigvalshInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(eigvalsh_grad,
+                            EigvalshGradInferShapeFunctor,
+                            PD_INFER_META(phi::EigvalshGradInferMeta));
+
 REGISTER_OPERATOR(eigvalsh,
                   ops::EigvalshOp,
                   ops::EigvalshOpMaker,
                   ops::EigvalshGradOpMaker<paddle::framework::OpDesc>,
-                  ops::EigvalshGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(eigvalsh_grad, ops::EigvalshGradOp);
-
-REGISTER_OP_CPU_KERNEL(eigvalsh,
-                       ops::EigvalshKernel<phi::CPUContext, float, float>,
-                       ops::EigvalshKernel<phi::CPUContext, double, double>,
-                       ops::EigvalshKernel<phi::CPUContext,
-                                           float,
-                                           paddle::platform::complex<float>>,
-                       ops::EigvalshKernel<phi::CPUContext,
-                                           double,
-                                           paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    eigvalsh_grad,
-    ops::EigvalshGradKernel<phi::CPUContext, float, float>,
-    ops::EigvalshGradKernel<phi::CPUContext, double, double>,
-    ops::EigvalshGradKernel<phi::CPUContext,
-                            float,
-                            paddle::platform::complex<float>>,
-    ops::EigvalshGradKernel<phi::CPUContext,
-                            double,
-                            paddle::platform::complex<double>>);
+                  ops::EigvalshGradOpMaker<paddle::imperative::OpBase>,
+                  EigvalshInferShapeFunctor);
+REGISTER_OPERATOR(eigvalsh_grad,
+                  ops::EigvalshGradOp,
+                  EigvalshGradInferShapeFunctor);

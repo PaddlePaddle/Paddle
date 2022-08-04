@@ -294,19 +294,17 @@ REGISTER_OP_CPU_KERNEL(expand_grad,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     expand,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::float16>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, bool>);
+    ops::ExpandKernel<phi::GPUContext, float>,
+    ops::ExpandKernel<phi::GPUContext, double>,
+    ops::ExpandKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::ExpandKernel<phi::GPUContext, int>,
+    ops::ExpandKernel<phi::GPUContext, int64_t>,
+    ops::ExpandKernel<phi::GPUContext, bool>);
 REGISTER_OP_CUDA_KERNEL(
     expand_grad,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::float16>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::ExpandGradKernel<phi::GPUContext, float>,
+    ops::ExpandGradKernel<phi::GPUContext, double>,
+    ops::ExpandGradKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::ExpandGradKernel<phi::GPUContext, int>,
+    ops::ExpandGradKernel<phi::GPUContext, int64_t>);
 #endif

@@ -18,7 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/fluid/jit/executor_function.h"
+#include "paddle/fluid/jit/function/executor_function.h"
+#include "paddle/fluid/jit/function/pe_function.h"
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
@@ -28,39 +29,27 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
+PyTypeObject *g_executor_function_pytype = nullptr;
+PyTypeObject *g_pe_function_pytype = nullptr;
 using Variable = paddle::framework::Variable;
 
 void BindJit(pybind11::module *m) {
   py::class_<jit::Layer>(*m, "Layer", R"DOC(Layer Class.)DOC")
-      .def("function_dict", &jit::Layer::FunctionMap);
+      .def("function_dict",
+           &jit::Layer::FunctionMap,
+           py::return_value_policy::reference);
 
-  py::class_<jit::ExecutorFunction, std::shared_ptr<jit::ExecutorFunction>>(
-      *m, "ExectorFunction", R"DOC(ExectorFunction Class.)DOC")
-      .def("__call__",
-           [](jit::ExecutorFunction &self,
-              const std::vector<std::shared_ptr<imperative::VarBase>>
-                  &tensor_inputs) {
-             std::vector<Variable> var_inputs;
-             for (auto &tensor : tensor_inputs) {
-               var_inputs.emplace_back(tensor->Var());
-             }
-             auto var_outputs = self(var_inputs);
+  py::class_<jit::ExecutorFunction, std::shared_ptr<jit::ExecutorFunction>>
+      executor_function(
+          *m, "ExectorFunction", R"DOC(ExectorFunction Class.)DOC");
+  g_executor_function_pytype =
+      reinterpret_cast<PyTypeObject *>(executor_function.ptr());
+  executor_function.def("info", &jit::ExecutorFunction::Info);
 
-             std::vector<std::shared_ptr<imperative::VarBase>> tensor_outputs;
-             auto output_names = self.Info()->OutputArgNames();
-             for (size_t i = 0; i < var_outputs.size(); ++i) {
-               auto var = var_outputs[i];
-               std::string name = output_names[i];
-               imperative::VariableWrapper var_wrapper(name, var);
-               auto shared_wrapper =
-                   std::make_shared<imperative::VariableWrapper>(var_wrapper);
-               auto shared_varbase =
-                   std::make_shared<imperative::VarBase>(shared_wrapper);
-               tensor_outputs.emplace_back(shared_varbase);
-             }
-             return tensor_outputs;
-           })
-      .def("info", &jit::ExecutorFunction::Info);
+  py::class_<jit::PEFunction, std::shared_ptr<jit::PEFunction>> pe_function(
+      *m, "PEFunction", R"DOC(PEFunction Class.)DOC");
+  g_pe_function_pytype = reinterpret_cast<PyTypeObject *>(pe_function.ptr());
+  pe_function.def("info", &jit::PEFunction::Info);
 
   py::class_<jit::FunctionInfo, std::shared_ptr<jit::FunctionInfo>>(
       *m, "FunctionInfo", R"DOC(FunctionInfo Class.)DOC")

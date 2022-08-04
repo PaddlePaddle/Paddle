@@ -13,17 +13,57 @@
 # limitations under the License.
 
 import re
-
+import paddle
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Assert, Print
+from paddle.fluid.layers import range as paddle_range
 from paddle.fluid.layers import array_length, array_read, array_write, create_array
 from paddle.fluid.layers import assign, fill_constant, slice, reduce_all, reduce_any
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME
 from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, Dygraph2StaticException
+
+
+def indexable(x, code=None):
+    if isinstance(x, Variable): return x
+    if hasattr(x, '__len__') and hasattr(x, '__getitem__'): return x
+    if hasattr(x, '__iter__'):
+        return [i for i in x]
+    else:
+        raise RuntimeError("X can't be convert into indexable.")
+
+
+def unpack_by_structure(target, structure):
+    """ unified unpack interface for paddle and python.
+    """
+    if isinstance(target, Variable):
+        return _unpack_by_structure_paddle(target, structure)
+    else:
+        return _unpack_by_structure_python(target, structure)
+
+
+def _unpack_by_structure_python(target, structure):
+    """ TODO(xiongkun): analysis the differences between python and paddle unpack.
+    """
+    return _unpack_by_structure_paddle(target, structure)
+
+
+def _unpack_by_structure_paddle(target, structure):
+    if structure == 1:
+        return target
+    ret = []
+    for idx, ele in enumerate(structure):
+        if ele == 1:
+            ret.append(target[idx])
+            continue
+        if isinstance(ele, list):
+            ret.append(unpack_by_structure(target[idx], ele))
+            continue
+        assert False, "structure element must be 1 or list"
+    return ret
 
 
 def convert_while_loop(cond, body, getter, setter):
@@ -50,12 +90,26 @@ def convert_while_loop(cond, body, getter, setter):
 
 def _run_paddle_while(cond, body, getter, setter):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
+    def new_body_fn(*args):
+        """ wrap the body() and add return value for `while_loop`
+        """
+        body()
+        return getter()
 
-    # UndefinedVar will become data layer not check.
-    loop_vars = [to_static_variable(var) for var in getter()]
+    def new_cond_fn(*args):
+        """ cond is a zero-args function, which is not 
+            compatible with `while_loop`.
+        """
+        return cond()
+
+    # UndefinedVar will become data layer not check variable with value=NO_VALUE_MAGIC.
+    loop_vars = [
+        to_static_variable(var) if not isinstance(var, UndefinedVar) else var
+        for var in getter()
+    ]
     setter(loop_vars)  # change the non-local var to variable
     # variable maybe modified to inner var. change it into
-    loop_vars = control_flow.while_loop(cond, body, loop_vars)
+    loop_vars = control_flow.while_loop(new_cond_fn, new_body_fn, loop_vars)
     setter(loop_vars)  # change the non-local var to variable
     return loop_vars
 
@@ -360,6 +414,8 @@ def convert_len(var):
             # Note: Length of var may be known ahead of time in dygraph,
             # but it probably represents batch size which can be variant.
             # so we return a variable dynamically inferred from var.shape.
+            if var.shape[0] > 0 and var.type == core.VarDesc.VarType.LOD_TENSOR:
+                return var.shape[0]
             return nn.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             return control_flow.array_length(var)
@@ -368,6 +424,8 @@ def convert_len(var):
                 'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
                 % type(var))
     else:
+        if isinstance(var, VariableTuple):
+            return var.__len__()
         return len(var)
 
 
@@ -378,6 +436,47 @@ def convert_zip(*args):
                 "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
                 "but found args[{}].shape[0] == -1 in 'zip'".format(str(i)))
     return zip(*args)
+
+
+# TODO(xiongkun): delete when list<variable> is ready.
+class VariableTuple:
+    """ 
+        this class will cause enumerate can't be wrapped by other iterator change function.
+        this will be fixed when list<Variable> is producted.
+        VariableTuple can only deal with variables which is fixed.
+    """
+
+    def __init__(self, var, start=0):
+        self.var = var
+        self.len = convert_len(var)
+        if isinstance(self.len, Variable):
+            self.rag = paddle_range(start, start + self.len, 1, paddle.int64)
+        else:
+            self.rag = range(start, start + self.len)
+
+    def __getitem__(self, idx):
+        return self.rag[idx], self.var[idx]
+
+    def __len__(self):
+        return self.len
+
+
+def convert_enumerate(*args):
+    has_variable = any(map(lambda x: isinstance(x, Variable), args))
+    if has_variable:
+        return VariableTuple(*args)
+    return enumerate(*args)
+
+
+def convert_range(*args):
+    has_variable = any(map(lambda x: isinstance(x, Variable), args))
+    if has_variable:
+        if len(args) == 1: return paddle_range(0, args[0], 1, paddle.int64)
+        if len(args) == 2:
+            return paddle_range(args[0], args[1], 1, paddle.int64)
+        if len(args) == 3:
+            return paddle_range(args[0], args[1], args[2], paddle.int64)
+    return range(*args)
 
 
 def convert_shape(x):

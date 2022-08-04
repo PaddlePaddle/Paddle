@@ -118,20 +118,28 @@ class ParallelEnv(object):
     def __init__(self):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+        self._device_type = str(os.getenv("PADDLE_XCCL_BACKEND", ""))
 
         # imperative only support one gpu or xpu
-        if core.is_compiled_with_cuda():
-            selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
-            self._device_id = int(selected_gpus[0])
-        elif core.is_compiled_with_xpu():
-            selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
-            self._device_id = int(selected_xpus[0])
-        elif core.is_compiled_with_npu():
-            selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
-            self._device_id = int(selected_npus[0])
-        elif core.is_compiled_with_mlu():
-            selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
-            self._device_id = int(selected_mlus[0])
+        if self._device_type != "":
+            FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
+                self._device_type)
+            selected_custom_devices = os.getenv(FLAGS_selected_custom_devices,
+                                                "0").split(",")
+            self._device_id = int(selected_custom_devices[0])
+        else:
+            if core.is_compiled_with_cuda():
+                selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
+                self._device_id = int(selected_gpus[0])
+            elif core.is_compiled_with_xpu():
+                selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
+                self._device_id = int(selected_xpus[0])
+            elif core.is_compiled_with_npu():
+                selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
+                self._device_id = int(selected_npus[0])
+            elif core.is_compiled_with_mlu():
+                selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
+                self._device_id = int(selected_mlus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
@@ -198,6 +206,16 @@ class ParallelEnv(object):
             # The device id are 1
         """
         return self._device_id
+
+    @property
+    def device_type(self):
+        """
+        The type of custom device for parallel training.
+
+        Its value is equal to the value of the environment variable ``PADDLE_XCCL_BACKEND`` . The default value is None.
+
+        """
+        return self._device_type
 
     @property
     def current_endpoint(self):

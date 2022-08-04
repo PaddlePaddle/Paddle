@@ -32,12 +32,45 @@ Node *custom_op_handler(Graph *graph, Node *node) {
 
 Node *print_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto print_phase = BOOST_GET_CONST(std::string, op->GetAttr("print_phase"));
+  auto print_output = node->outputs.front();
+  auto print_input = node->inputs.front();
+  if (print_output->outputs.size() == 0) {
+    LOG(WARNING) << "The output of Print OP is not used on IPU graph. Setting "
+                    "the input of Print as Output.";
+    for (auto &subnode : print_input->outputs) {
+      if (subnode == node) continue;
+      ConnectNodes(print_output, subnode);
+      DisConnectNodes(print_input, subnode);
+
+      // replace node_name in op_desc
+      std::vector<std::string> new_inputs;
+      auto subnode_inmap = subnode->Op()->Inputs();
+      for (auto &in_map : subnode_inmap) {
+        if (std::find(in_map.second.begin(),
+                      in_map.second.end(),
+                      print_input->Name()) != in_map.second.end()) {
+          std::transform(in_map.second.cbegin(),
+                         in_map.second.cend(),
+                         std::back_inserter(new_inputs),
+                         [&](const std::string &node_name) {
+                           if (node_name == print_input->Name()) {
+                             return print_output->Name();
+                           } else {
+                             return node_name;
+                           }
+                         });
+          subnode->Op()->SetInput(in_map.first, new_inputs);
+          subnode->Op()->Flush();
+        }
+      }
+    }
+  }
+  auto print_phase = PADDLE_GET_CONST(std::string, op->GetAttr("print_phase"));
   int64_t print_gradient = 0;
   if (print_phase != "forward") {
     print_gradient = 1;
   }
-  auto title = BOOST_GET_CONST(std::string, op->GetAttr("message"));
+  auto title = PADDLE_GET_CONST(std::string, op->GetAttr("message"));
   if (title.empty()) {
     title = GetInputVarNode("In", node)->Var()->Name();
   }
@@ -56,10 +89,10 @@ Node *checkpointoutput_handler(Graph *graph, Node *node) {
 
 Node *custom_nll_loss_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto reduction = BOOST_GET_CONST(int, op->GetAttr("reduction"));
-  auto ignoreIndex = BOOST_GET_CONST(std::string, op->GetAttr("ignoreIndex"));
+  auto reduction = PADDLE_GET_CONST(int, op->GetAttr("reduction"));
+  auto ignoreIndex = PADDLE_GET_CONST(std::string, op->GetAttr("ignoreIndex"));
   auto inputIsLogProbability =
-      BOOST_GET_CONST(bool, op->GetAttr("inputIsLogProbability"));
+      PADDLE_GET_CONST(bool, op->GetAttr("inputIsLogProbability"));
   if (ignoreIndex == "None") {
     return CreateBaseOp(graph,
                         node,

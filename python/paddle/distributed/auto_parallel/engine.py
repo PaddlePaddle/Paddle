@@ -15,6 +15,7 @@
 import copy
 import logging
 from collections import defaultdict
+import socket
 
 import paddle
 import paddle.utils as utils
@@ -36,7 +37,9 @@ from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
-# from .cluster import Cluster, get_default_cluster
+from .hepler import ProgramHelper
+from ..collective import _get_global_env
+from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
@@ -55,16 +58,18 @@ class Engine:
                  inputs_spec=None,
                  labels_spec=None,
                  cluster=None,
-                 strategy=None):
+                 strategy=None,
+                 user_tuning_config=None):
         self.model = model
         self.inputs_spec = self._validate_spec(inputs_spec)
         self.labels_spec = self._validate_spec(labels_spec)
         self.cluster = cluster
-        # if self.cluster is None:
-        #     self.cluster = get_default_cluster()
+        if self.cluster is None:
+            self.cluster = get_default_cluster()
         self.strategy = strategy
         if self.strategy is None:
             self.strategy = fleet.DistributedStrategy()
+        self._user_tuning_config = user_tuning_config
 
         self._executor = None
         self._cur_rank = paddle.distributed.get_rank()
@@ -83,6 +88,11 @@ class Engine:
         self._feed_vars = {}
         self._fetch_vars = {}
         self._planners = {}
+        self._mode_init_states = {
+            "train": False,
+            "eval": False,
+            "predict": False
+        }
         self._dygraph_mode = False
 
     def prepare(self,
@@ -99,6 +109,7 @@ class Engine:
                         " or `paddle.fluid.optimizer.Optimizer`."
                 )
         self._optimizer = optimizer
+        self._all_ranks = all_ranks
 
         if loss and not isinstance(loss,
                                    paddle.nn.Layer) and not callable(loss):
@@ -114,105 +125,49 @@ class Engine:
                     metric.__class__.__name__)
         self._metrics = to_list(metrics)
         self._gradient_scale = gradient_scale
-
         self._planned_mode = None
-        self._modes = ['train', 'eval', 'predict']
+        self._prepare_single_mode("train")
 
-        # Build program and do auto parallel process
-        for mode in self._modes:
-            # Build forward program
-            self._build(mode)
-        for mode in self._modes:
-            # Do the planning process
-            self._plan(mode)
-        for mode in self._modes:
-            # Do the parallel process
-            self._parallel(mode, all_ranks)
-            # Init comm and startup program
-            self._initialize(mode)
+    def _prepare_single_mode(self, mode):
+
+        self._build(mode)
+        # Do the planning process
+        self._plan(mode)
+
+        # Do the Optimization tuning
+        if self._user_tuning_config and mode == "train":
+            self._optimization_tuning(mode)
+
+        # Do the parallel process
+        self._parallel(mode, self._all_ranks)
+
+        # Init comm and startup program
+        self._initialize(mode)
+        self._mode_init_states[mode] = True
 
     def _build(self, mode):
-
         if _non_static_mode() or self._dygraph_mode:
+            paddle.disable_static()
             self._dygraph_mode = True
             self._logger.info("Building model with 'to_static' method.")
 
+            program_helper = ProgramHelper(self.model, self._loss,
+                                           self._metrics, self.inputs_spec,
+                                           self.labels_spec)
             # build forward main program
-            self.static_model = to_static(self.model,
-                                          input_spec=self.inputs_spec)
-            inputs = self.static_model.forward.inputs
-            outputs = self.static_model.forward.outputs
-            forward_main_prog = self.static_model.forward.main_program
-            forward_startup_prog = self.static_model.forward.concrete_program.startup_program
-            self.concrete_program = self.static_model.forward.concrete_program
+            program_helper.build_program(mode)
 
-            # build loss main program
-            outputs_spec = []
-            outputs_name = []
-            for out in outputs:
-                outputs_spec.append(InputSpec(out.shape, out.dtype, out.name))
-                outputs_name.append(out.name)
-            if isinstance(self._loss, paddle.nn.Layer):
-                self.static_loss = to_static(self._loss.forward,
-                                             input_spec=outputs_spec +
-                                             self.labels_spec)
-                loss_main_prog = self.static_loss.main_program
-            elif callable(self._loss):
-                self.static_loss = to_static(self._loss,
-                                             input_spec=outputs_spec +
-                                             self.labels_spec)
-                loss_main_prog = self.static_loss.main_program
+            self.concrete_program = program_helper.concrete_program
+            serial_main_prog = program_helper.main_program
+            serial_startup_prog = program_helper.startup_program
 
-            # build startup program
-            for param in self.concrete_program.parameters:
-                Parameter(name=param.name,
-                          desc=param,
-                          type=param.type,
-                          shape=param.shape,
-                          dtype=param.dtype,
-                          stop_gradient=param.stop_gradient,
-                          block=forward_startup_prog.global_block())
+            inputs = program_helper.input_vars
+            outputs = program_helper.output_vars
+            labels = program_helper.label_vars
+            losses = program_helper.loss_vars
+            metrics = program_helper.metric_vars
 
             paddle.enable_static()
-
-            # NOTE: pure program will loss dist_attr
-            # feeded_var_names = [var.name for var in inputs]
-            # main_prog_0 = main_prog_0._prune_with_input(
-            #     feeded_var_names=feeded_var_names, targets=outputs)
-
-            labels = []
-            losses = []
-            metrics = []
-            # concat forward and loss prog
-            if mode != 'predict' and self._loss:
-                forward_block = forward_main_prog.global_block()
-                loss_block = loss_main_prog.global_block()
-                for idx, op in enumerate(loss_block.ops):
-                    op_desc = forward_block.desc.append_op()
-                    op_desc.copy_from(op.desc)
-                    for in_name in op.input_arg_names:
-                        if in_name in outputs_name:
-                            continue
-                        in_var = forward_block._clone_variable(
-                            loss_block.vars[in_name], force_persistable=False)
-                        if loss_block.vars[in_name].is_data:
-                            labels.append(in_var)
-                    for out_name in op.output_arg_names:
-                        out_var = forward_block._clone_variable(
-                            loss_block.vars[out_name], force_persistable=False)
-                        if idx == len(loss_block.ops) - 1:
-                            losses.append(out_var)
-                forward_block._sync_with_cpp()
-            serial_main_prog = forward_main_prog
-            serial_startup_prog = forward_startup_prog
-            # update metrics op in program
-            with static.program_guard(serial_main_prog, serial_startup_prog), \
-                utils.unique_name.guard():
-                if mode != "predict":
-                    for metric in self._metrics:
-                        metrics.extend(
-                            to_list(metric.compute(*(outputs + labels))))
-
         else:
             # build program in static mode
             serial_main_prog = self._serial_main_progs.get(mode, None)
@@ -223,6 +178,7 @@ class Engine:
             metrics = []
             serial_main_prog = self._orig_main_prog.clone()
             serial_startup_prog = self._orig_startup_prog.clone()
+            # FIXME to support grad clip
             with static.program_guard(serial_main_prog, serial_startup_prog), \
                 utils.unique_name.guard():
                 inputs_spec = self.inputs_spec
@@ -253,11 +209,40 @@ class Engine:
             "metrics": metrics
         }
 
+        self._set_recompute_ckpts()
         self._dist_contexts[mode] = DistributedContext(
             serial_main_prog, serial_startup_prog, self._optimizer, losses,
             feed_vars, fetch_vars, self.cluster, self.strategy)
         self._dist_contexts[mode].gradient_scale = self._gradient_scale
         self._dist_contexts[mode]._dygraph_mode = self._dygraph_mode
+
+    def _optimization_tuning(self, mode):
+
+        self.mode = mode
+        assert "batch_size" in self._user_tuning_config, "Optimization Tuning should provide with batch size."
+        assert "dataset" in self._user_tuning_config, "Optimization Tuning should provide with dataset."
+        batch_size = self._user_tuning_config["batch_size"]
+        dataset = self._user_tuning_config["dataset"]
+        dataset.dp_world_size = self._input_split_size
+        dataset.dp_rank = self._input_split_rank
+
+        from .tuner.optimization_tuner import OptimizationTuner
+        self._optimization_tuner = OptimizationTuner(self._user_tuning_config,
+                                                     self._dist_contexts[mode],
+                                                     dataset,
+                                                     self.inputs_spec,
+                                                     self.labels_spec,
+                                                     batch_size=batch_size,
+                                                     rank=self._cur_rank)
+
+        self._optimization_tuner.tune()
+
+        if self._user_tuning_config["run_after_tuning"]:
+            # update the strategy
+            self._dist_contexts[
+                mode]._strategy = self._optimization_tuner.get_best_config()
+        else:
+            return
 
     def _plan(self, mode):
         if self._planned_mode is None:
@@ -267,6 +252,18 @@ class Engine:
 
         self._planners[mode] = Planner(mode, self._dist_contexts[mode])
         self._planners[mode].plan()
+
+        # infer data parallel info
+        inputs_var = self._dist_contexts[mode].serial_feed_vars["inputs"]
+        labels_var = self._dist_contexts[mode].serial_feed_vars["labels"]
+        block = self._dist_contexts[mode].serial_main_program.global_block()
+        feed_list = []
+        for var in inputs_var + labels_var:
+            if var.name in block.vars:
+                feed_list.append(block.vars[var.name])
+
+        self._input_split_size, self._input_split_rank = self._get_input_split_info(
+            feed_list[0], self._dist_contexts[mode])
 
     def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
@@ -314,6 +311,8 @@ class Engine:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
+
+            # NOTE: add the comm init control in the future for auto search
             for process_group in all_process_groups:
                 if self._cur_rank not in process_group.ranks:
                     continue
@@ -364,6 +363,40 @@ class Engine:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
                 self._executor.run(prune_startup_prog)
 
+            if self.strategy.amp and self.strategy.amp_configs['use_pure_fp16']:
+                # from paddle.fluid.contrib.mixed_precision.fp16_utils import cast_parameters_to_fp16
+                def cast_parameters_to_fp16(place,
+                                            program,
+                                            scope=None,
+                                            to_fp16_var_names=None):
+                    """
+                    Traverse all parameters in the whole model and set them to the FP16 data type.
+                    Whereas, this function will keep parameters of batchnorms in FP32.
+                    Args:
+                        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the FP16 weight tensors.
+                        program (Program): The used program.
+                        scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
+                                                    Default is None.
+                        to_fp16_var_names(set|list, optional): The data types of vars in `to_fp16_var_names`
+                                                            will be set to FP16. Usually, it is the returned
+                                                            value of `cast_model_to_fp16` API.
+                    """
+                    from paddle.framework import core
+                    import numpy as np
+                    all_parameters = []
+                    for block in program.blocks:
+                        all_parameters.extend(block.all_parameters())
+
+                    var_scope = scope if scope else paddle.static.global_scope()
+                    for param in all_parameters:
+                        if param.dtype == core.VarDesc.VarType.FP16:
+                            param_t = var_scope.find_var(
+                                param.name).get_tensor()
+                            data = np.array(param_t)
+                            param_t.set(np.float16(data), place)
+
+                cast_parameters_to_fp16(self._place, prune_startup_prog)
+
     def fit(self,
             train_data,
             batch_size=1,
@@ -374,6 +407,12 @@ class Engine:
             return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
+
+        if not self._mode_init_states['train']:
+            raise Exception(
+                "train program is not initialized yet, please call engine.prepare() before calling fit() funtion."
+            )
+
         self.mode = 'train'
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
@@ -383,7 +422,6 @@ class Engine:
         usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
         fetch_list, fetch_map = self._fetch_map(fetch_loss, usr_fetch)
-
         for epoch in range(epochs):
             train_logs = {"epoch": epoch}
             for step, _ in enumerate(train_dataloader):
@@ -409,6 +447,9 @@ class Engine:
                  use_program_cache=False,
                  return_numpy=True):
         self.mode = 'eval'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine.prepare()` first."
         eval_dataloader = self._create_dataloader(eval_data, batch_size)
@@ -451,6 +492,9 @@ class Engine:
                 use_program_cache=False,
                 return_numpy=True):
         self.mode = 'predict'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine.prepare()` first."
         test_dataloader = self._create_dataloader(test_data, batch_size)
@@ -492,8 +536,6 @@ class Engine:
         for var in inputs_var + labels_var:
             if var.name in dist_main_block.vars:
                 feed_list.append(dist_main_block.vars[var.name])
-        dp_world_size, dp_rank = self._get_data_parallel_info(
-            feed_list[0], dist_context)
 
         # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
@@ -512,8 +554,8 @@ class Engine:
                 batch_size,
                 epochs,
                 steps_per_epoch,
-                data_parallel_world_size=dp_world_size,
-                data_parallel_rank=dp_rank)
+                data_parallel_world_size=self._input_split_size,
+                data_parallel_rank=self._input_split_rank)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
@@ -573,8 +615,8 @@ class Engine:
         fetches = dict(inner_fetch, **usr_fetch)
         return list(fetches.keys()), fetches
 
-    def _get_data_parallel_info(self, var, dist_context):
-        # get data parallel world size and current data parallel rank
+    def _get_input_split_info(self, var, dist_context):
+        # deduce how the input data is split among the cluster
         from .utils import _get_comm_group, _get_corresponding_rank
 
         tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
@@ -595,6 +637,32 @@ class Engine:
             return len(group_ranks), group_ranks.index(rank_id)
 
         return None, None
+
+    def _set_recompute_ckpts(self):
+        # NOTE hack to enable recompute in engine api for GPT-3
+        # TODO support more PaddleNLP/CV models here
+
+        config = self.strategy.recompute_configs
+
+        # extract ckpts by specific model
+        self.model
+        if isinstance(self.model, paddle.nn.Layer):
+            if hasattr(
+                    self.model, "model"
+            ) and self.model.model.__class__.__name__ == 'GPTForPretraining':
+                exact_ckpts = self.model.model.gpt.checkpoints
+        else:
+            exact_ckpts = config["checkpoints"]
+
+        # modify strategy
+        if self.strategy.recompute:
+            config["checkpoints"] = exact_ckpts[:]
+            self.strategy.recompute_configs = config
+            logs = {
+                'Model Class': self.model.model.__class__.__name__,
+                'Applied Recompute ckpts': exact_ckpts
+            }
+            self._logger.info(logs)
 
     def save(self, path, training=True, mode=None):
         if not mode:
