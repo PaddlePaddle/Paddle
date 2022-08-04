@@ -413,7 +413,7 @@ class Subset(Dataset):
     Returns:
         Dataset: A Dataset which is the subset of the original dataset.
     
-    Example code:
+    Examples:
 
         .. code-block:: python
 
@@ -452,10 +452,10 @@ def random_split(dataset, lengths, generator=None):
         lengths (sequence): lengths of splits to be produced
         generator (Generator, optional): Generator used for the random permutation. Default is None then the DefaultGenerator is used in manual_seed().
 
-     Returns:
+    Returns:
         Datasets: A list of subset Datasets, which are the non-overlapping subsets of the original Dataset.
 
-    Example code:
+    Examples:
 
         .. code-block:: python
 
