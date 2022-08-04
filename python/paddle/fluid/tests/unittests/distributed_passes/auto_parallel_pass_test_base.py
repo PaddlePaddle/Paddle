@@ -108,7 +108,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
             pickle.dump(all_fetch_values, f)
 
     def get_gpt_model(self, strategy, place, batch_size, sequence_len,
-                      vocab_size):
+                      vocab_size, **kwargs):
         modeling.init_global()
         if strategy == "dp":
             modeling._global_parallel_strategy = "dp"
@@ -179,11 +179,17 @@ class AutoPallelPassTestBase(DistPassTestBase):
         criterion = GPTPretrainingCriterion()
         loss = criterion(preds, labels, loss_mask)
         clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
-                                                         beta1=0.9,
-                                                         beta2=0.999,
-                                                         epsilon=1e-08,
-                                                         grad_clip=clip)
+
+        if kwargs.get('optimizer', None) == "LarsMomentum":
+            optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
+                learning_rate=0.001, momentum=0.9)
+        else:
+            optimizer = paddle.fluid.optimizer.AdamOptimizer(
+                learning_rate=0.00001,
+                beta1=0.9,
+                beta2=0.999,
+                epsilon=1e-08,
+                grad_clip=clip)
         optimizer = fleet.distributed_optimizer(optimizer)
         startup_program = paddle.static.default_startup_program()
         _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(

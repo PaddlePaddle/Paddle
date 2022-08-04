@@ -176,3 +176,32 @@ class DataParallelOptimizationPass(PassBase):
                 block._remove_op(op_idx, False)
 
         block._sync_with_cpp()
+
+    def _update_opt_rescale_grad(self):
+
+        block = default_main_program().global_block()
+        scaled_grads = set()
+
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if is_optimize_op(
+                    op) and op.type in __rescale_grad_supported_opts__:
+                assert op.has_attr(
+                    'rescale_grad'
+                ), "Unexception: op [{}] is supported to have [rescale_grad] attribute.".format(
+                    str(op))
+                assert len(
+                    op.input("Grad")
+                ) == 1, "Unexception: op [{}] is supported to have only one input grad var.".format(
+                    str(op))
+
+                grad_name = op.input("Grad")[0]
+                dp_degree = len(
+                    list(self._grad_name_to_group_map[grad_name].ranks))
+                scaled_grads.add(grad_name)
+
+                rescale_grad = float(op.attr('rescale_grad')) / dp_degree
+                op._set_attr('rescale_grad', rescale_grad)
+
+        assert scaled_grads == set(self._grad_name_to_group_map.keys(
+        )), "Unexception: gradients [{}] are unscaled.".format(
+            set(self._grad_name_to_group_map.keys()) - scaled_grads)
