@@ -49,7 +49,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
   }
 
-  bool operator()(const std::string& op_type, const framework::OpDesc& desc,
+  bool operator()(const std::string& op_type,
+                  const framework::OpDesc& desc,
                   bool use_no_calib_int8) override {
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
@@ -111,6 +112,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mish",
       "nearest_interp_v2",
       "bilinear_interp_v2",
+      "cast",
       "pool3d",
       "deformable_conv",
       "relu6",
@@ -175,6 +177,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mish",
       "bilinear_interp_v2",
       "nearest_interp_v2",
+      "cast",
       "pool3d",
       "deformable_conv",
       "relu6",
@@ -191,7 +194,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "multiclass_nms3"};
 };
 
-bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
+bool OpTeller::Tell(const framework::ir::Node* node,
+                    bool use_no_calib_int8,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
@@ -706,8 +710,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "nearest_interp") {
-      std::vector<std::string> attrs{"interp_method", "align_corners", "scale",
-                                     "out_h", "out_w"};
+      std::vector<std::string> attrs{
+          "interp_method", "align_corners", "scale", "out_h", "out_w"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
@@ -747,9 +751,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "nearest_interp_v2") {
-      std::vector<std::string> attrs{"data_layout",   "interp_method",
-                                     "align_corners", "scale",
-                                     "out_h",         "out_w"};
+      std::vector<std::string> attrs{"data_layout",
+                                     "interp_method",
+                                     "align_corners",
+                                     "scale",
+                                     "out_h",
+                                     "out_w"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
@@ -775,9 +782,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "bilinear_interp_v2") {
-      std::vector<std::string> attrs{"data_layout",   "interp_method",
-                                     "align_corners", "scale",
-                                     "out_h",         "out_w"};
+      std::vector<std::string> attrs{"data_layout",
+                                     "interp_method",
+                                     "align_corners",
+                                     "scale",
+                                     "out_h",
+                                     "out_w"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) {
           VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
@@ -882,8 +892,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "batch_norm") {
-      const std::vector<std::string> bn_inputs = {"X", "Bias", "Mean", "Scale",
-                                                  "Variance"};
+      const std::vector<std::string> bn_inputs = {
+          "X", "Bias", "Mean", "Scale", "Variance"};
       for (unsigned int i = 0; i < bn_inputs.size(); i++) {
         if (desc.Input(bn_inputs[i]).size() != 1) {
           VLOG(3) << "Invalid " << bn_inputs[i]
@@ -1458,8 +1468,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the roi_align will change the batch size.";
         return false;
       }
-      std::vector<std::string> attrs{"pooled_height", "pooled_width",
-                                     "spatial_scale", "sampling_ratio",
+      std::vector<std::string> attrs{"pooled_height",
+                                     "pooled_width",
+                                     "spatial_scale",
+                                     "sampling_ratio",
                                      "aligned"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
@@ -1641,10 +1653,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           auto x_var_name = desc.Input("X")[0];
           auto* x_var_desc = block->FindVar(x_var_name);
           const auto x_shape = x_var_desc->GetShape();
-          int input_num = std::accumulate(x_shape.begin() + 1, x_shape.end(), 1,
-                                          std::multiplies<int>());
-          int shape_num = std::accumulate(shape.begin() + 1, shape.end(), 1,
-                                          std::multiplies<int>());
+          int input_num = std::accumulate(
+              x_shape.begin() + 1, x_shape.end(), 1, std::multiplies<int>());
+          int shape_num = std::accumulate(
+              shape.begin() + 1, shape.end(), 1, std::multiplies<int>());
           if (input_num == shape_num) {
             return true;
           }
@@ -1750,6 +1762,36 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
     }
 #endif
+
+    if (op_type == "cast") {
+// trt 6015 result in Windows ppyolo_mbv3 TRT fp32 diff
+#if !IS_TRT_VERSION_GE(7000)
+      return false;
+#endif
+      if (!(desc.HasAttr("in_dtype") && desc.HasAttr("out_dtype"))) {
+        VLOG(3) << "the " << op_type
+                << " does not have attr (in_dtype or "
+                   "out_dtype)";
+        return false;
+      }
+      int in_dtype = BOOST_GET_CONST(int, desc.GetAttr("in_dtype"));
+      int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
+      if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {
+        VLOG(3) << "unsupport data type conversion";
+        return false;
+      }
+      if (in_dtype == 0) {
+        VLOG(3) << "do not support input data type as bool now";
+        return false;
+      }
+      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2) &&
+            (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
+        VLOG(3)
+            << "only valid conversions are: "
+               "(kFLOAT | kHALF | kINT32 | kBOOL) -> (kFLOAT | kHALF | kINT32)";
+        return false;
+      }
+    }
 
     if (op_type == "conv3d" || op_type == "conv3d_transpose") {
       if (desc.HasAttr("padding_algorithm")) {
