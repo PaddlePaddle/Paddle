@@ -273,11 +273,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   return task;
 }
 
-std::vector<std::unique_ptr<phi::GPUContext>> ProcessGroupNCCL::GetDeviceContext(std::vector<phi::DenseTensor>& inputs){
+std::vector<std::unique_ptr<phi::GPUContext>>
+ProcessGroupNCCL::GetDeviceContext(
+    const std::vector<phi::DenseTensor>& inputs) {
   const auto places = GetPlaceList(inputs);
   const auto key = GetKeyFromPlaces(places);
 
-  if(places_to_ctx_.find(key) != places_to_ctx_.end()){
+  if (places_to_ctx_.find(key) != places_to_ctx_.end()) {
     return std::move(places_to_ctx_[key]);
   }
 
@@ -294,6 +296,7 @@ std::vector<std::unique_ptr<phi::GPUContext>> ProcessGroupNCCL::GetDeviceContext
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
 
   places_to_ctx_.emplace(key, std::move(dev_ctx));
+
   return std::move(places_to_ctx_[key]);
 }
 

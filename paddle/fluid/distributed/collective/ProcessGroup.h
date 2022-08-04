@@ -24,7 +24,6 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/core/device_context.h"
 
 constexpr auto kWaitTimeout = std::chrono::milliseconds(0);
 
@@ -80,12 +79,15 @@ class ProcessGroup {
   int GetRank() const { return rank_; }
 
   int GetSize() const { return size_; }
-  
   virtual const std::string GetBackendName() const = 0;
 
-  virtual std::vector<std::unique_ptr<phi::GPUContext>>  GetDeviceContext(std::vector<phi::DenseTensor>& inputs){
-    PADDLE_ENFORCE_EQ(GetBackendName() == "NCCL", true,
-                    platform::errors::PreconditionNotMet("GetDeviceContext only support NCCL backend for getting stream.")); 
+  virtual std::vector<std::unique_ptr<phi::GPUContext>> GetDeviceContext(
+      const std::vector<phi::DenseTensor>& inputs) {
+    PADDLE_ENFORCE_EQ(
+        GetBackendName() == "NCCL",
+        true,
+        platform::errors::PreconditionNotMet(
+            "GetDeviceContext only support NCCL backend for getting stream."));
     return std::vector<std::unique_ptr<phi::GPUContext>>{};
   }
 

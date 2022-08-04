@@ -89,7 +89,8 @@ class ProcessGroupNCCL : public ProcessGroup {
     return std::string(NCCL_BACKEND_NAME);
   }
 
-std::vector<std::unique_ptr<phi::GPUContext>> GetDeviceContext(std::vector<phi::DenseTensor>& inputs) override;
+  std::vector<std::unique_ptr<phi::GPUContext>> GetDeviceContext(
+      const std::vector<phi::DenseTensor>& inputs) override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,
