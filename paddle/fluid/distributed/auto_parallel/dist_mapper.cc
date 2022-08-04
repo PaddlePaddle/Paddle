@@ -22,11 +22,11 @@ namespace distributed {
 namespace auto_parallel {
 
 void DistributedMapper::set_process_id_to_device_ids(
-    const std::map<int64_t, std::pair<int64_t, std::vector<int64_t>>>&
+    const std::map<int64_t, std::pair<std::string, std::vector<int64_t>>>&
         process_id_to_device_ids) {
-  std::vector<int64_t> device_mesh_ids;
+  std::vector<std::string> device_mesh_names;
   for (const auto& item : device_meshes_) {
-    device_mesh_ids.push_back(item.first);
+    device_mesh_names.push_back(item.first);
   }
   for (const auto& item : process_id_to_device_ids) {
     PADDLE_ENFORCE_GE(
@@ -35,15 +35,15 @@ void DistributedMapper::set_process_id_to_device_ids(
         platform::errors::InvalidArgument(
             "The process id %d must be greater than or equal to 0.",
             item.first));
-    int64_t device_mesh_id = item.second.first;
+    std::string device_mesh_name = item.second.first;
     const std::vector<int64_t>& device_ids = item.second.second;
     PADDLE_ENFORCE_EQ(
-        device_meshes_.count(device_mesh_id),
+        device_meshes_.count(device_mesh_name),
         1,
         platform::errors::InvalidArgument(
             "Cannot find the device mesh %d in device_mesh ids [%s].",
-            device_mesh_id,
-            str_join(device_mesh_ids)));
+            device_mesh_name,
+            str_join(device_mesh_names)));
     PADDLE_ENFORCE_EQ(
         has_duplicates(device_ids),
         false,
@@ -51,7 +51,7 @@ void DistributedMapper::set_process_id_to_device_ids(
             "The mapped device ids [%s] of process_mesh %d must be unique.",
             str_join(device_ids),
             item.first));
-    const DeviceMesh& device_mesh = *device_meshes_[device_mesh_id];
+    const DeviceMesh& device_mesh = *device_meshes_[device_mesh_name];
     const std::vector<int64_t> cur_device_ids = device_mesh.device_ids();
     for (int64_t device_id : device_ids) {
       bool found =
@@ -81,8 +81,8 @@ std::string DistributedMapper::to_string() const {
     mapper_str += "{";
     mapper_str += "process_id:" + std::to_string(item.first) + ", device_ids:[";
     for (const auto& device_id : item.second.second) {
-      mapper_str += "{" + std::to_string(item.second.first) + "," +
-                    std::to_string(device_id) + "},";
+      mapper_str +=
+          "{" + item.second.first + "," + std::to_string(device_id) + "},";
     }
     mapper_str.replace(mapper_str.size() - 1, 1, "]");
     mapper_str += "},";

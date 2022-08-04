@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -34,6 +35,9 @@ PyTypeObject *g_vartype_pytype = nullptr;
 PyTypeObject *g_blockdesc_pytype = nullptr;
 
 namespace pd = paddle::framework;
+
+using paddle::distributed::auto_parallel::OperatorDistAttr;
+using paddle::distributed::auto_parallel::TensorDistAttr;
 
 template <typename T>
 static pybind11::bytes SerializeMessage(
@@ -232,6 +236,11 @@ void BindVarDsec(pybind11::module *m) {
       .def("id", &pd::VarDesc::Id)
       .def("original_id", &pd::VarDesc::OriginalId)
       .def("set_original_id", &pd::VarDesc::SetOriginalId)
+      .def_property("dist_attr",
+                    static_cast<TensorDistAttr &(pd::VarDesc::*)()>(
+                        &pd::VarDesc::DistAttr),
+                    &pd::VarDesc::SetDistAttr,
+                    pybind11::return_value_policy::reference)
       .def("attr", &pd::VarDesc::GetAttr);
 
   pybind11::enum_<pd::proto::VarType::Type> vartype(var_desc, "VarType", "");
@@ -338,6 +347,11 @@ void BindOpDesc(pybind11::module *m) {
       .def("id", &pd::OpDesc::Id)
       .def("original_id", &pd::OpDesc::OriginalId)
       .def("set_original_id", &pd::OpDesc::SetOriginalId)
+      .def_property("dist_attr",
+                    static_cast<OperatorDistAttr &(pd::OpDesc::*)()>(
+                        &pd::OpDesc::DistAttr),
+                    &pd::OpDesc::SetDistAttr,
+                    pybind11::return_value_policy::reference)
       .def("inputs", &pd::OpDesc::Inputs)
       .def("outputs", &pd::OpDesc::Outputs);
 }

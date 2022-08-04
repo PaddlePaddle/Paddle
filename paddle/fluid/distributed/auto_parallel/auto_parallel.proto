@@ -35,7 +35,7 @@ message ProcessMeshProto {
 
 // This distributed attribute describes how to distribute the corresponding tensor,
 // and store any other information needed by auto parallel.
-message TensorDistributedAttributeProto {
+message TensorDistAttrProto {
   // The process mesh where a tensor is distributed.
   optional ProcessMeshProto process_mesh = 1;
 
@@ -56,22 +56,22 @@ message TensorDistributedAttributeProto {
 
 // This distributed attribute describes how to distribute the corresponding operator,
 // and store any other information needed by auto parallel.
-message OperatorDistributedAttributeProto {
-  message TensorDistributedAttributeMappingEntryProto {
+message OperatorDistAttrProto {
+  message TensorDistAttrMappingEntryProto {
     optional string name = 1;
-    optional string TensorDistributedAttributeProto = 2;
+    optional string TensorDistAttrProto = 2;
   } 
   // The key of this map is the input tensor name and the value is the distributed attribute
   // of the input tensor required by this corresponding operator.   
   // The distributed attribute of the actual tensor may be not the same as that within 
   // the distributed attribute of the operator.
-  repeated TensorDistributedAttributeMappingEntryProto input_dist_attrs = 1;
+  repeated TensorDistAttrMappingEntryProto input_dist_attrs = 1;
 
   // The key of this map is the output tensor name and the value is the distributed attribute
   // of the output tensor required by this corresponding operator.   
   // The distributed attribute of the actual tensor may be not the same as that within 
   // the distributed attribute of the operator.
-  repeated TensorDistributedAttributeMappingEntryProto output_dist_attrs = 2;
+  repeated TensorDistAttrMappingEntryProto output_dist_attrs = 2;
 
   // A operator ideally has a distributed operator which may have multiple distributed implementations.
   // This filed is usually same as the operator type. However, some operators such as the element-wise operators
@@ -81,6 +81,17 @@ message OperatorDistributedAttributeProto {
   // This field tells which distributed implementations of this corresponding operator 
   // will be selected for the actual computation.
   optional int64 impl_idx = 5;
+}
+
+// This proto describes the capability of one device such as the computation and memory.
+message DeviceCapabilityProto {
+  optional int64 single_precision_flops = 1;
+
+  optional int64 double_precision_flops = 2;
+
+  optional int64 memory_size_in_bytes = 3;
+
+  optional double clock_rate_in_ghz = 4;
 }
 
 // This proto represents a device.
@@ -97,19 +108,14 @@ message DeviceProto {
   // The id of the machine has this device.
   optional string type = 4;
 
-  // This proto describes the capability of one device such as the computation and memory.
-  message DeviceCapabilityProto {
-    optional int64 single_precision_flops = 1;
-
-    optional int64 double_precision_flops = 2;
-
-    optional int64 memory_size_in_bytes = 3;
-
-    optional double clock_rate_in_ghz = 4;
-  }
-
   // The capability of this device.
   optional DeviceCapabilityProto capability = 5; 
+}
+
+// This proto describes the capability of the link between two devices.        
+message LinkCapabilityProto {        
+  optional int64 bandwidth = 1; // Bytes/s       
+  optional int64 latency = 2;        
 }
 
 message LinkProto {
@@ -122,12 +128,6 @@ message LinkProto {
   // Represent the link type.
   optional string type = 1;
       
-  // This proto describes the capability of the link between two devices.        
-  message LinkCapabilityProto {        
-    optional int64 bandwidth = 1; // Bytes/s       
-    optional int64 latency = 2;        
-  }
-
   // The capability of this link.
   optional LinkCapabilityProto capability = 4; 
 }
@@ -135,7 +135,7 @@ message LinkProto {
 // DeviceMesh is used to organize devices and like n-dimension array.
 message DeviceMeshProto {
   // The global id of this mesh. 
-  optional int64 id = 1;
+  optional string name = 1;
 
   // The name of each dimension. 
   repeated string dim_names = 2;
@@ -171,7 +171,7 @@ message DistributedMapperProto {
 
   message MapperEntryProto {
     optional int64 process_id = 1;
-    optional int64 device_mesh_ids = 2;
+    optional string device_mesh_name = 2;
     repeated int64 device_ids = 3;
   }
 

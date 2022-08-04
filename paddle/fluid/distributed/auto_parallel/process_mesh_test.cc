@@ -24,14 +24,12 @@ TEST(ProcessMesh, Ctor) {
   std::vector<int64_t> shape = {2, 3};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
   std::vector<std::string> dim_names = {"x", "y"};
-  std::string device_type = "GPU";
   int64_t size = shape[0] * shape[1];
-  ProcessMesh process_mesh(shape, process_ids, dim_names, device_type);
+  ProcessMesh process_mesh(shape, process_ids, dim_names);
   EXPECT_EQ(process_mesh.shape(), shape);
   EXPECT_EQ(process_mesh.process_ids(), process_ids);
   EXPECT_EQ(process_mesh.dim_names()[0], "x");
   EXPECT_EQ(process_mesh.dim_names()[1], "y");
-  EXPECT_EQ(process_mesh.device_type(), device_type);
   EXPECT_EQ(process_mesh.size(), size);
   EXPECT_EQ(process_mesh.ndim(), static_cast<int64_t>(shape.size()));
   EXPECT_EQ(process_mesh.dim_size(0), shape[0]);

@@ -12,16 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include <iostream>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/var_desc.h"
 
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
-TEST(DistributedAttribute, ctor) {
+TEST(DistAttr, ctor) {
   ProgramDesc program;
   auto* global_block = program.MutableBlock(0);
   auto* x = global_block->Var("X");
@@ -49,17 +54,14 @@ TEST(DistributedAttribute, ctor) {
   std::vector<int64_t> shape = {2, 4};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
   std::vector<std::string> dim_names = {"x", "y"};
-  std::string device_type = "GPU";
-  ProcessMesh process_mesh(shape, process_ids, dim_names, device_type);
+  ProcessMesh process_mesh(shape, process_ids, dim_names);
 
   std::vector<int64_t> shape2 = {2, 2};
   std::vector<int64_t> process_ids2 = {0, 1, 2, 3};
   std::vector<std::string> dim_names2 = {"a", "b"};
-  std::string device_type2 = "GPU";
-  ProcessMesh process_mesh2(shape2, process_ids2, dim_names2, device_type2);
+  ProcessMesh process_mesh2(shape2, process_ids2, dim_names2);
 
-  TensorDistributedAttribute x_dist_attr(*x), y_dist_attr(*y),
-      out_dist_attr(*out);
+  TensorDistAttr x_dist_attr(*x), y_dist_attr(*y), out_dist_attr(*out);
   x_dist_attr.set_process_mesh(process_mesh);
   x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1}));
   x_dist_attr.set_batch_dim(0);
@@ -87,11 +89,7 @@ TEST(DistributedAttribute, ctor) {
   EXPECT_EQ(out_dist_attr.batch_dim(), 1);
   EXPECT_EQ(out_dist_attr.dynamic_dims(), std::vector<bool>({false, false}));
 
-  // std::cout << x_dist_attr << std::endl;
-  // std::cout << y_dist_attr << std::endl;
-  // std::cout << out_dist_attr << std::endl;
-
-  OperatorDistributedAttribute mul_dist_attr(*op);
+  OperatorDistAttr mul_dist_attr(*op);
   mul_dist_attr.set_input_dist_attr(x->Name(), x_dist_attr);
   mul_dist_attr.set_input_dist_attr(y->Name(), y_dist_attr);
   mul_dist_attr.set_output_dist_attr(out->Name(), out_dist_attr);
@@ -108,7 +106,7 @@ TEST(DistributedAttribute, ctor) {
             process_mesh2);
   EXPECT_EQ(mul_dist_attr.impl_type(), "dist_mul");
   EXPECT_EQ(mul_dist_attr.impl_idx(), 0);
-  // std::cout << mul_dist_attr << std::endl;
+  std::cout << mul_dist_attr << std::endl;
 }
 
 }  // namespace auto_parallel

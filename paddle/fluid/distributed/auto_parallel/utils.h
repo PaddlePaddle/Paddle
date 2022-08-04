@@ -25,6 +25,17 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
+// struct Indent {
+//   Indent(int &level) : level(level) { ++level; }
+//   ~Indent() { --level; }
+//   int &level;
+// };
+
+// inline std::string str_indent(std::string& str, cur_indent) {
+//   string spaces(cur_indent, " ");
+//   return str + std::string(cur_indent, " ");
+// }
+
 template <class T>
 bool has_duplicates(const std::vector<T>& vec) {
   std::unordered_map<T, int> map;
@@ -36,8 +47,11 @@ bool has_duplicates(const std::vector<T>& vec) {
 }
 
 inline int64_t canonical_dim(int dim, int ndim) {
-  PADDLE_ENFORCE(dim >= -ndim);
-  PADDLE_ENFORCE(dim < ndim);
+  PADDLE_ENFORCE_EQ(
+      dim >= -ndim && dim < ndim,
+      true,
+      platform::errors::InvalidArgument(
+          "Dimension %d is outside of [-%d, %d).", dim, ndim, ndim));
   if (dim < 0) {
     return dim + ndim;
   }
@@ -75,6 +89,15 @@ inline std::vector<std::string> str_split(std::string const& input,
   }
   output.push_back(input.substr(pos_start));
   return output;
+}
+
+// Refer to https://stackoverflow.com/a/29200671/2358969
+template <typename T>
+std::string to_string_with_precision(const T a_value, const int n = 2) {
+  std::ostringstream out;
+  out.precision(n);
+  out << std::fixed << a_value;
+  return out.str();
 }
 
 }  // namespace auto_parallel

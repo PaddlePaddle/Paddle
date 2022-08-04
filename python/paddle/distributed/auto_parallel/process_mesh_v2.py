@@ -12,93 +12,124 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import numpy as np
+from paddle.fluid import core
 
 
-class ProcessMesh(object):
+class ProcessMesh(core.ProcessMesh):
+    r"""
+    The class `Processmesh` describes the topology of logical processes. 
 
-    def __init__(self, mesh, dim_names=None, device_type="GPU"):
+    Args:
+        mesh (list|numpy.array): an N-dimensional array describes the toplogy
+            of logical processes.
+        dim_names (list, optional): the i-th element of this list gives the name of the
+            i-th dimension.
+    
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.distributed as dist
+            
+            paddle.enable_static()
+            
+            mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
+            assert mesh.shape == [2, 3]
+            assert mesh.processe_ids == [2, 4, 5, 0, 1, 3]
+
+    """
+
+    def __init__(self, mesh, dim_names=None):
         if not isinstance(mesh, list) and \
            not isinstance(mesh, np.ndarray):
-            raise ValueError('mesh must be an instance of list or np.ndarray.')
+            raise ValueError(
+                'The mesh must be an instance of list or np.ndarray.')
         if isinstance(mesh, list):
             mesh = np.array(mesh)
 
-        self._shape = list(mesh.shape)
+        self._mesh = mesh
 
-        self._process_ids = mesh.flatten().tolist()
+        self._shape = list(self._mesh.shape)
+
+        self._process_ids = self._mesh.flatten().tolist()
         assert all(isinstance(p, int) for p in self._process_ids), \
-            ("All elements of mesh must be integer")
+            ("All elements of the mesh must be integer")
         assert min(
-            self._process_ids) >= 0, ('All elements of mesh must be >= 0.')
+            self._process_ids) >= 0, ('All elements of the mesh must be >= 0.')
         unique_process_ids = set(self._process_ids)
         assert len(unique_process_ids) == len(
-            self._process_ids), ('All elements of mesh must be unique.')
+            self._process_ids), ('All elements of the mesh must be unique.')
 
         if dim_names is not None:
             assert len(dim_names) == len(self._shape), \
-                ("The length of dims_names must be same as the shape of mesh.")
-            self._dims_names = dim_names
+                ("The length of dims_names must be same as the shape of the mesh.")
+            self._dim_names = dim_names
         else:
             self._dim_names = ["d" + str(i) for i in range(len(self._shape))]
 
-        self._device_type = device_type
+        # Follow the requirement for using pybind11
+        core.ProcessMesh.__init__(self, self._shape, self._process_ids,
+                                  self._dim_names)
 
     @property
-    def shape(self):
-        r"""
-        Get the shape belonging to this ProcessMesh.
-        """
-        return self._shape
+    def mesh(self):
+        return self._mesh
 
-    @property
-    def process_ids(self):
-        r"""
-        Get a list of all process_ids belonging to this ProcessMesh.
-        """
-        return self._process_ids
 
-    @property
-    def dim_names(self):
-        r"""
-        Get the names of all dimensions of ProcessMesh.
-        """
-        return self._dim_names
+def compute_compatible_process_meshes(process_meshes):
+    """Compute the compatible process mesh given a list of process meshes."""
+    if not process_meshes:
+        return None
 
-    @property
-    def device_type(self):
-        r"""
-        Get the device type of ProcessMesh.
-        """
-        return self._device_type
+    def _compute_compatible_two_process_meshes(pm1, pm2):
+        if pm1 is None:
+            return True, pm2
+        if pm2 is None:
+            return True, pm1
+        if pm1 == pm2:
+            return True, pm1
+        if pm1.device_mesh != pm2.device_mesh:
+            return False, None
+        if pm1.process_ids == pm2.process_ids:
+            if len(pm1.shape) >= len(pm2.shape):
+                return True, pm1
+            else:
+                return True, pm2
+        process_set1 = set(pm1.process_ids)
+        process_set2 = set(pm2.process_ids)
+        if process_set1.issubset(process_set2):
+            return True, pm2
+        if process_set2.issubset(process_set1):
+            return True, pm1
+        return False, None
 
-    @device_type.setter
-    def device_type(self, device_type):
-        r"""
-        Set the device type of ProcessMesh.
-        """
-        self._device_type = device_type
+    compatible_result = None
+    for process_mesh in process_meshes:
+        compatible, compatible_result = _compute_compatible_two_process_meshes(
+            compatible_result, process_mesh)
+        if not compatible:
+            return None
+    return ProcessMesh(compatible_result.mesh, compatible_result.dim_names)
 
-    @property
-    def ndim(self):
-        r"""
-        Get the number of dimension of ProcessMesh.
-        """
-        return len(self._shape)
 
-    def __eq__(self, other):
-        if not isinstance(other, ProcessMesh):
-            return False
-        if self.shape != other.shape \
-                or self.process_ids != other.process_ids\
-                or self.device_type != other.device_type:
-            return False
-        return True
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __str__(self):
-        str = "{{shape:{}, process_ids:{}, dim_names:{}, device_type:{}}}".format(
-            self.shape, self.process_ids, self.dim_names, self.device_type)
-        return str
+def merge_process_meshes(process_meshes):
+    """Merge a list of process meshes."""
+    merged_process_mesh = None
+    merged_process_ids = set()
+    device_type = ""
+    for process_mesh in process_meshes:
+        if process_mesh is not None:
+            process_ids = set(process_mesh.process_ids)
+            if not device_type:
+                device_type = process_mesh.device_type
+            assert device_type != process_mesh.device_type, \
+                "All process meshes must have the same device_type."
+            merged_process_ids.union(process_ids)
+    if len(merged_process_ids) != 0:
+        merged_process_mesh = ProcessMesh(list(merged_process_ids))
+    return merged_process_mesh

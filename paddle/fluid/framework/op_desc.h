@@ -20,6 +20,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -29,6 +30,8 @@ namespace framework {
 
 class BlockDesc;
 class ProgramDesc;
+
+using paddle::distributed::auto_parallel::OperatorDistAttr;
 
 class OpDesc {
  public:
@@ -156,10 +159,15 @@ class OpDesc {
 
   const BlockDesc *Block() const { return this->block_; }
 
-  // The Id() and OrignalId() are only used for auto parallel.
+  // The following methods are only used for auto parallel.
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
+  const OperatorDistAttr &DistAttr() const { return dist_attr_; }
+  OperatorDistAttr &DistAttr() { return dist_attr_; }
+  void SetDistAttr(const OperatorDistAttr &dist_attr) {
+    dist_attr_ = dist_attr;
+  }
 
  private:
   template <typename MapType>
@@ -201,6 +209,7 @@ class OpDesc {
   // The default original_id_ is same as the id_, which means the
   // current OpDesc is not built from the other one.
   uint64_t original_id_ = id_;
+  OperatorDistAttr dist_attr_;
 };
 }  // namespace framework
 }  // namespace paddle

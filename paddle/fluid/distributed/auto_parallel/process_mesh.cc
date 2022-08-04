@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
+#include <iterator>
+
 #include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
 #include "paddle/fluid/distributed/auto_parallel/utils.h"
 
@@ -21,8 +24,7 @@ namespace auto_parallel {
 
 ProcessMesh::ProcessMesh(const std::vector<int64_t> &shape,
                          const std::vector<int64_t> &process_ids,
-                         const std::vector<std::string> &dim_names,
-                         const std::string &device_type) {
+                         const std::vector<std::string> &dim_names) {
   shape_ = shape;
   int64_t size = this->size();
   PADDLE_ENFORCE_EQ(
@@ -52,7 +54,6 @@ ProcessMesh::ProcessMesh(const std::vector<int64_t> &shape,
                         "The names [%s] of each dimension must be unique.",
                         str_join(dim_names)));
   dim_names_ = dim_names;
-  device_type_ = device_type;
 }
 
 int64_t ProcessMesh::size() const {
@@ -62,12 +63,31 @@ int64_t ProcessMesh::size() const {
   return size;
 }
 
+bool ProcessMesh::contains(int64_t process_id) const {
+  auto result =
+      std::find(std::begin(process_ids_), std::end(process_ids_), process_id);
+  if (result != std::end(process_ids_)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 std::string ProcessMesh::to_string() const {
-  std::string mesh_str = "{shape:[" + str_join(shape_) + "],";
-  mesh_str += "process_ids:[" + str_join(process_ids_) + "],";
-  mesh_str += "dim_names:[" + str_join(dim_names_) + "],";
-  mesh_str += "device_type:" + device_type_ + "}";
+  std::string mesh_str = "{shape: [" + str_join(shape_) + "], ";
+  mesh_str += "process_ids: [" + str_join(process_ids_) + "], ";
+  mesh_str += "dim_names: [" + str_join(dim_names_) + "]}";
   return mesh_str;
+}
+
+bool operator==(const ProcessMesh &lhs, const ProcessMesh &rhs) {
+  if (lhs.shape() != rhs.shape()) {
+    return false;
+  }
+  if (lhs.process_ids() != rhs.process_ids()) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace auto_parallel

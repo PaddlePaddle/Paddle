@@ -20,12 +20,15 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
 namespace framework {
+
+using paddle::distributed::auto_parallel::TensorDistAttr;
 
 // convert between std::vector and protobuf repeated.
 template <typename T>
@@ -65,19 +68,24 @@ class VarDesc {
     desc_.set_name(name);
     // TODO(paddle-dev): Why default to lodtensor.
     desc_.mutable_type()->set_type(proto::VarType::LOD_TENSOR);
+    dist_attr_ = TensorDistAttr(*this);
   }
 
-  explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {}
+  explicit VarDesc(const proto::VarDesc &desc)
+      : desc_(desc), dist_attr_(*this) {}
 
   // Explicitly implement the copy constructor for auto parallel
   VarDesc(const VarDesc &other)
       : desc_(other.desc_),
         attrs_(other.attrs_),
-        original_id_(other.original_id_) {}
+        original_id_(other.original_id_),
+        dist_attr_(other.dist_attr_) {}
+
   VarDesc &operator=(const VarDesc &other) {
     desc_ = other.desc_;
     attrs_ = other.attrs_;
     original_id_ = other.original_id_;
+    dist_attr_ = other.dist_attr_;
     return *this;
   }
 
@@ -165,10 +173,13 @@ class VarDesc {
 
   Attribute GetAttr(const std::string &name) const;
 
-  // The Id() and OriginalId() are only used for auto parallel.
+  // The following methods are only used for auto parallel.
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
+  const TensorDistAttr &DistAttr() const { return dist_attr_; }
+  TensorDistAttr &DistAttr() { return dist_attr_; }
+  void SetDistAttr(const TensorDistAttr &dist_attr) { dist_attr_ = dist_attr; }
 
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
@@ -193,6 +204,8 @@ class VarDesc {
   // The default original_id_ is same as the id_, which means the
   // current VarDesc is not built from the other one.
   uint64_t original_id_ = id_;
+  // Note: this attribute is used for auto parallel
+  TensorDistAttr dist_attr_;
 };
 
 bool operator==(const VarDesc &left, const VarDesc &right);

@@ -18,18 +18,19 @@ from paddle.distributed.auto_parallel.process_mesh_v2 import ProcessMesh
 
 class TestProcessMesh(unittest.TestCase):
 
-    def test_ctor(self):
-        mesh = [[0, 1], [2, 3]]
-        process_mesh = ProcessMesh(mesh)
-        self.assertEqual(process_mesh.shape, [2, 2])
-        self.assertEqual(process_mesh.process_ids, [0, 1, 2, 3])
-        self.assertEqual(process_mesh.dim_names, ["d0", "d1"])
-        self.assertEqual(process_mesh.device_type, "GPU")
+    def test_process_mesh(self):
+        mesh = [[0, 1, 2], [3, 4, 5]]
+        process_mesh = ProcessMesh(mesh, dim_names=["x", "y"])
+        self.assertEqual(process_mesh.shape, [2, 3])
+        self.assertEqual(process_mesh.process_ids, [0, 1, 2, 3, 4, 5])
+        self.assertEqual(process_mesh.dim_names, ["x", "y"])
         self.assertEqual(process_mesh.ndim, 2)
-        process_mesh.device_type = "CPU"
-        self.assertEqual(process_mesh.device_type, "CPU")
-        print(process_mesh)
-        # self.assertEqual(str(process_mesh), "CPU")
+        self.assertEqual(process_mesh.dim_size(0), 2)
+        self.assertEqual(process_mesh.dim_size(-1), 3)
+        self.assertEqual(process_mesh.dim_size("x"), 2)
+        self.assertEqual(process_mesh.dim_size("y"), 3)
+        self.assertEqual(process_mesh, process_mesh)
+        self.assertEqual(str(process_mesh), str(process_mesh))
 
 
 if __name__ == "__main__":

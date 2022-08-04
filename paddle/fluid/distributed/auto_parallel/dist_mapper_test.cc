@@ -27,38 +27,36 @@ TEST(DistributedMapper, Ctor) {
   std::vector<std::string> dim_names = {"x", "y"};
   std::string device_type = "GPU";
   int64_t size = shape[0] * shape[1];
-  std::vector<Device> devices(size);
+
+  DeviceMesh device_mesh("device_mesh", shape, device_ids, dim_names);
   for (int64_t i = 0; i < shape[0]; ++i) {
     for (int64_t j = 0; j < shape[1]; ++j) {
-      int64_t idx = i * shape[1] + j;
-      devices[idx].global_id = i * shape[1] + j;
-      devices[idx].local_id = j;
-      devices[idx].type = device_type;
+      int64_t global_id = i * shape[1] + j;
+      int64_t local_id = j;
+      int64_t machine_id = i;
+      device_mesh.add_device(
+          Device(global_id, local_id, machine_id, device_type));
     }
   }
-  std::unordered_map<std::int64_t, std::vector<Link>> links;
   for (int64_t i = 0; i < size; ++i) {
     for (int64_t j = 0; j < size; ++j) {
-      Link link;
-      link.source_id = i;
-      link.target_id = j;
-      links[i].push_back(link);
+      device_mesh.add_link(Link(i, j, "NVL"));
     }
   }
-  DeviceMesh device_mesh(
-      shape, device_ids, dim_names, device_type, devices, links);
+
   DistributedMapper dist_mapper;
   dist_mapper.add_device_mesh(device_mesh);
-  std::map<int64_t, std::pair<int64_t, std::vector<int64_t>>>
+  std::map<int64_t, std::pair<std::string, std::vector<int64_t>>>
       process_id_to_device_ids;
-  process_id_to_device_ids[0] = {0, {5}};
-  process_id_to_device_ids[1] = {0, {4}};
-  process_id_to_device_ids[2] = {0, {3}};
-  process_id_to_device_ids[3] = {0, {2}};
-  process_id_to_device_ids[4] = {0, {1}};
-  process_id_to_device_ids[5] = {0, {0}};
+  process_id_to_device_ids[0] = {"device_mesh", {5}};
+  process_id_to_device_ids[1] = {"device_mesh", {4}};
+  process_id_to_device_ids[2] = {"device_mesh", {3}};
+  process_id_to_device_ids[3] = {"device_mesh", {2}};
+  process_id_to_device_ids[4] = {"device_mesh", {1}};
+  process_id_to_device_ids[5] = {"device_mesh", {0}};
   dist_mapper.set_process_id_to_device_ids(process_id_to_device_ids);
-  EXPECT_EQ(*dist_mapper.device_meshes()[0], device_mesh);
+
+  EXPECT_EQ(*dist_mapper.device_meshes()["device_mesh"], device_mesh);
   EXPECT_EQ(dist_mapper.process_id_to_device_ids(), process_id_to_device_ids);
   std::cout << dist_mapper << std::endl;
 }

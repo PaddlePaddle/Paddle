@@ -26,40 +26,50 @@ TEST(DeviceMesh, Ctor) {
   std::vector<std::string> dim_names = {"x", "y"};
   std::string device_type = "GPU";
   int64_t size = shape[0] * shape[1];
-  std::vector<Device> devices(size);
+
+  DeviceMesh device_mesh("mesh", shape, device_ids, dim_names);
   for (int64_t i = 0; i < shape[0]; ++i) {
     for (int64_t j = 0; j < shape[1]; ++j) {
-      int64_t idx = i * shape[1] + j;
-      devices[idx].global_id = i * shape[1] + j;
-      devices[idx].local_id = j;
-      devices[idx].type = device_type;
+      int64_t global_id = i * shape[1] + j;
+      int64_t local_id = j;
+      int64_t machine_id = i;
+      device_mesh.add_device(
+          Device(global_id, local_id, machine_id, device_type));
     }
   }
-  std::unordered_map<std::int64_t, std::vector<Link>> links;
   for (int64_t i = 0; i < size; ++i) {
     for (int64_t j = 0; j < size; ++j) {
-      Link link;
-      link.source_id = i;
-      link.target_id = j;
-      links[i].push_back(link);
+      device_mesh.add_link(Link(i, j, "NVL"));
     }
   }
-  DeviceMesh device_mesh(
-      shape, device_ids, dim_names, device_type, devices, links);
+
+  EXPECT_EQ(device_mesh.name(), "mesh");
   EXPECT_EQ(device_mesh.shape(), shape);
   EXPECT_EQ(device_mesh.device_ids(), device_ids);
   EXPECT_EQ(device_mesh.dim_names()[0], "x");
   EXPECT_EQ(device_mesh.dim_names()[1], "y");
   EXPECT_EQ(device_mesh.device_type(), device_type);
-  EXPECT_EQ(device_mesh.devices(), devices);
-  EXPECT_EQ(device_mesh.links(), links);
   EXPECT_EQ(device_mesh.size(), size);
   EXPECT_EQ(device_mesh.ndim(), static_cast<int64_t>(shape.size()));
   EXPECT_EQ(device_mesh.dim_size(0), shape[0]);
   EXPECT_EQ(device_mesh.dim_size(-1), shape[1]);
   EXPECT_EQ(device_mesh.dim_size("x"), shape[0]);
   EXPECT_EQ(device_mesh.dim_size("y"), shape[1]);
-  // std::cout << device_mesh << std::endl;
+  for (int64_t i = 0; i < shape[0]; ++i) {
+    for (int64_t j = 0; j < shape[1]; ++j) {
+      int64_t global_id = i * shape[1] + j;
+      int64_t local_id = j;
+      int64_t machine_id = i;
+      auto device = device_mesh.devices().at(global_id);
+      EXPECT_EQ(device, Device(global_id, local_id, machine_id, device_type));
+    }
+  }
+  for (int64_t i = 0; i < size; ++i) {
+    for (int64_t j = 0; j < size; ++j) {
+      EXPECT_EQ(device_mesh.links().at(i).at(j), Link(i, j, "NVL"));
+    }
+  }
+  std::cout << device_mesh << std::endl;
 }
 
 }  // namespace auto_parallel

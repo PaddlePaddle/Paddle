@@ -417,6 +417,7 @@ OpDesc::OpDesc(const std::string &type,
   inputs_ = inputs;
   outputs_ = outputs;
   attrs_ = attrs;
+  dist_attr_ = OperatorDistAttr(*this);
   need_update_ = true;
   block_ = nullptr;
 }
@@ -432,8 +433,8 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   inputs_ = op_desc.inputs_;
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
-  // The record of original_id_ is only for auto parallel.
   original_id_ = op_desc.original_id_;
+  dist_attr_ = op_desc.dist_attr_;
   need_update_ = true;
 }
 

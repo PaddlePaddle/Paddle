@@ -17,6 +17,8 @@ limitations under the License. */
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
+#include <iterator>
 #include <map>
 #include <string>
 #include <vector>
@@ -28,26 +30,58 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
-
 struct DeviceCapability {
-  double single_precision_flops = 0;
-  double double_precision_flops = 0;
-  double memory_size_in_bytes = 0;
+  double single_precision_flops = 0.0;
+  double double_precision_flops = 0.0;
+  double memory_size_in_bytes = 0.0;
   double clock_rate_in_ghz = 0.0;
-};
 
-struct Device {
-  int64_t global_id;
-  int64_t local_id;
-  int64_t machine_id;
-  std::string type;
-  DeviceCapability capability;
-
-  Device from_string(const std::string& mesh_str);
+  // DeviceCapability from_string(const std::string& str);
   std::string to_string() const;
 
-  Device from_proto(const DeviceProto& proto);
-  DeviceProto to_proto() const;
+  // DeviceCapability from_proto(const DeviceCapabilityProto& proto);
+  // DeviceCapabilityProto to_proto() const;
+};
+
+inline std::ostream& operator<<(std::ostream& os, const DeviceCapability& obj) {
+  os << obj.to_string();
+  return os;
+}
+
+class Device {
+ public:
+  Device() = default;
+  Device(int64_t global_id,
+         int64_t local_id,
+         int64_t machine_id,
+         const std::string& type)
+      : global_id_(global_id),
+        local_id_(local_id),
+        machine_id_(machine_id),
+        type_(type) {}
+
+  int64_t global_id() const { return global_id_; }
+  int64_t local_id() const { return local_id_; }
+  int64_t machine_id() const { return machine_id_; }
+  const std::string& type() const { return type_; }
+
+  const DeviceCapability& capability() const { return capability_; }
+  void set_capability(const DeviceCapability& capability) {
+    capability_ = capability;
+  }
+
+  // Device from_string(const std::string& mesh_str);
+  std::string to_string() const;
+
+  // Device from_proto(const DeviceProto& proto);
+  // DeviceProto to_proto() const;
+
+ private:
+  int64_t global_id_;
+  int64_t local_id_;
+  int64_t machine_id_;
+  std::string type_;
+  DeviceCapability capability_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Device& obj) {
@@ -55,21 +89,7 @@ inline std::ostream& operator<<(std::ostream& os, const Device& obj) {
   return os;
 }
 
-inline bool operator==(const Device& lhs, const Device& rhs) {
-  if (lhs.global_id != rhs.global_id) {
-    return false;
-  }
-  if (lhs.local_id != rhs.local_id) {
-    return false;
-  }
-  if (lhs.machine_id != rhs.machine_id) {
-    return false;
-  }
-  if (lhs.type != rhs.type) {
-    return false;
-  }
-  return true;
-}
+bool operator==(const Device& lhs, const Device& rhs);
 
 inline bool operator!=(const Device& lhs, const Device& rhs) {
   return !operator==(lhs, rhs);
@@ -78,19 +98,46 @@ inline bool operator!=(const Device& lhs, const Device& rhs) {
 struct LinkCapability {
   double bandwidth = 0.0;  // Bytes/s
   double latency = 0.0;
-};
 
-struct Link {
-  int64_t source_id;
-  int64_t target_id;
-  std::string type;
-  LinkCapability capability;
-
-  Link from_string(const std::string& mesh_str);
+  // LinkCapability from_string(const std::string& str);
   std::string to_string() const;
 
-  Link from_proto(const LinkProto& proto);
-  LinkProto to_proto() const;
+  // LinkCapability from_proto(const LinkCapabilityProto& proto);
+  // LinkCapabilityProto to_proto() const;
+};
+
+inline std::ostream& operator<<(std::ostream& os, const LinkCapability& obj) {
+  os << obj.to_string();
+  return os;
+}
+
+class Link {
+ public:
+  Link() = default;
+
+  Link(int64_t source_id, int64_t target_id, const std::string& type)
+      : source_id_(source_id), target_id_(target_id), type_(type) {}
+
+  int64_t source_id() const { return source_id_; }
+  int64_t target_id() const { return target_id_; }
+  const std::string& type() const { return type_; }
+
+  const LinkCapability& capability() const { return capability_; }
+  void set_capability(const LinkCapability& capability) {
+    capability_ = capability;
+  }
+
+  // Link from_string(const std::string& str);
+  std::string to_string() const;
+
+  // Link from_proto(const LinkProto& proto);
+  // LinkProto to_proto() const;
+
+ private:
+  int64_t source_id_;
+  int64_t target_id_;
+  std::string type_;
+  LinkCapability capability_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Link& obj) {
@@ -98,37 +145,49 @@ inline std::ostream& operator<<(std::ostream& os, const Link& obj) {
   return os;
 }
 
-inline bool operator==(const Link& lhs, const Link& rhs) {
-  if (lhs.source_id != rhs.source_id) {
-    return false;
-  }
-  if (lhs.target_id != rhs.target_id) {
-    return false;
-  }
-  if (lhs.type != rhs.type) {
-    return false;
-  }
-  return true;
-}
+bool operator==(const Link& lhs, const Link& rhs);
 
 inline bool operator!=(const Link& lhs, const Link& rhs) {
   return !operator==(lhs, rhs);
 }
 
+class Machine {
+ public:
+  Machine() = default;
+
+  explicit Machine(int64_t id) : id_(id) {}
+
+  int64_t id() const { return id_; }
+
+  void add_device(const Device& device) {
+    devices_[device.global_id()] = &device;
+  }
+
+  void add_link(const Link& link) {
+    links_[link.source_id()][link.target_id()] = &link;
+  }
+
+  // Machine from_string(const std::string& str);
+  std::string to_string() const;
+
+ private:
+  int64_t id_;
+  std::unordered_map<int64_t, const Device*> devices_;
+  std::unordered_map<int64_t, std::unordered_map<int64_t, const Link*>> links_;
+};
+
 class DeviceMesh {
  public:
   DeviceMesh() = default;
 
-  DeviceMesh(const std::vector<int64_t>& shape,
+  DeviceMesh(const std::string& name,
+             const std::vector<int64_t>& shape,
              const std::vector<int64_t>& device_ids,
-             const std::vector<std::string>& dim_names,
-             const std::string& device_type,
-             const std::vector<Device>& devices,
-             const std::unordered_map<int64_t, std::vector<Link>>& links);
+             const std::vector<std::string>& dim_names);
 
-  int64_t id() const { return id_; }
+  const std::string& name() const { return name_; }
 
-  void set_id(int64_t id) { id_ = id; }
+  void set_name(const std::string& name) { name_ = name; }
 
   const std::vector<int64_t>& shape() const { return shape_; }
 
@@ -136,16 +195,29 @@ class DeviceMesh {
 
   const std::vector<std::string>& dim_names() const { return dim_names_; }
 
-  const std::string device_type() const { return device_type_; }
+  std::string device_type() const {
+    if (empty()) return std::string();
+    return std::begin(devices_)->second.type();
+  }
 
-  const std::vector<Device>& devices() const { return devices_; }
+  const std::unordered_map<int64_t, Device>& devices() const {
+    return devices_;
+  }
 
-  const std::unordered_map<int64_t, std::vector<Link>>& links() const {
+  const std::unordered_map<int64_t, std::unordered_map<int64_t, Link>>& links()
+      const {
     return links_;
   }
 
-  int64_t size() const;
+  const Device& device(int64_t global_id) const {
+    return devices_.at(global_id);
+  }
 
+  const Link& link(int64_t source_id, int64_t target_id) const {
+    return links_.at(source_id).at(target_id);
+  }
+
+  int64_t size() const;
   int64_t ndim() const { return shape_.size(); }
 
   int64_t dim_size(int64_t dim) const {
@@ -153,7 +225,7 @@ class DeviceMesh {
     return shape_[cdim];
   }
 
-  int64_t dim_size(std::string dim_name) const {
+  int64_t dim_size(const std::string& dim_name) const {
     for (std::size_t i = 0; i < dim_names_.size(); ++i) {
       if (dim_names_[i] == dim_name) {
         return shape_[i];
@@ -163,25 +235,26 @@ class DeviceMesh {
         "Cannot find the dimension of %s in this device mesh.", dim_name));
   }
 
-  DeviceMesh from_string(const std::string& mesh_str);
+  bool empty() const { return (shape_.empty() || device_ids_.empty()); }
+  bool contains(int64_t device_id) const;
+
+  void add_device(const Device& device);
+  void add_link(const Link& link);
+
+  // DeviceMesh from_string(const std::string& mesh_str);
   std::string to_string() const;
 
-  DeviceMesh from_proto(const DeviceMeshProto& proto);
-  DeviceMeshProto to_proto() const;
+  // DeviceMesh from_proto(const DeviceMeshProto& proto);
+  // DeviceMeshProto to_proto() const;
 
  private:
-  static int64_t generate_id() {
-    static std::atomic<int64_t> cur_id{0};
-    return cur_id++;
-  }
-
-  int64_t id_ = generate_id();
+  std::string name_;
   std::vector<int64_t> shape_;
   std::vector<int64_t> device_ids_;
   std::vector<std::string> dim_names_;
-  std::string device_type_;
-  std::vector<Device> devices_;
-  std::unordered_map<int64_t, std::vector<Link>> links_;
+  std::unordered_map<int64_t, Device> devices_;
+  std::unordered_map<int64_t, std::unordered_map<int64_t, Link>> links_;
+  std::unordered_map<int64_t, Machine> machines_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DeviceMesh& obj) {
@@ -189,27 +262,7 @@ inline std::ostream& operator<<(std::ostream& os, const DeviceMesh& obj) {
   return os;
 }
 
-inline bool operator==(const DeviceMesh& lhs, const DeviceMesh& rhs) {
-  if (lhs.id() != rhs.id()) {
-    return false;
-  }
-  if (lhs.shape() != rhs.shape()) {
-    return false;
-  }
-  if (lhs.device_ids() != rhs.device_ids()) {
-    return false;
-  }
-  if (lhs.device_type() != rhs.device_type()) {
-    return false;
-  }
-  if (lhs.devices() != rhs.devices()) {
-    return false;
-  }
-  if (lhs.links() != rhs.links()) {
-    return false;
-  }
-  return true;
-}
+bool operator==(const DeviceMesh& lhs, const DeviceMesh& rhs);
 
 inline bool operator!=(const DeviceMesh& lhs, const DeviceMesh& rhs) {
   return !operator==(lhs, rhs);
