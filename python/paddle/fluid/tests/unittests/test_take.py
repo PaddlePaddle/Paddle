@@ -96,8 +96,8 @@ class TestTakeFloat32(TestTakeAPI):
         self.index_dtype = 'int64'
 
 
-class TestTakeType(TestTakeAPI):
-    """Test take Error"""
+class TestTakeTypeError(TestTakeAPI):
+    """Test take Type Error"""
 
     def test_static_type_error(self):
         """Argument 'index' must be Tensor"""
@@ -130,6 +130,40 @@ class TestTakeType(TestTakeAPI):
         x = paddle.to_tensor(self.input_np)
         index = paddle.to_tensor(self.index_np, dtype='float32')
         self.assertRaises(TypeError, paddle.take, x, index)
+
+
+class TestTakeIndexRangeError(TestTakeAPI):
+    """Test take index out of range error"""
+
+    def setUp(self):
+        self.set_dtype()
+        self.place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.input_shape = [3, 4]
+        self.index_shape = [2, 3]
+        self.input_np = np.arange(0, 12).reshape(self.input_shape).astype(
+            self.input_dtype)
+        self.index_np = np.arange(6, 12).reshape(self.index_shape).astype(
+            self.index_dtype)
+
+    def test_static_index_error(self):
+        """When the index is out of range,
+        an error is reported directly through `paddle.index_select`"""
+        paddle.enable_static()
+        with program_guard(Program()):
+            x = fluid.data(name='input',
+                           dtype='float64',
+                           shape=self.input_shape)
+            index = fluid.data(name='index',
+                               dtype='int64',
+                               shape=self.index_shape)
+            self.assertRaises(ValueError, paddle.index_select, x, index)
+
+    def test_dygraph_index_error(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.input_np)
+        index = paddle.to_tensor(self.index_np, dtype='int64')
+        self.assertRaises(ValueError, paddle.index_select, x, index)
 
 
 if __name__ == "__main__":

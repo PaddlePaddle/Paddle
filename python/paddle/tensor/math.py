@@ -4658,13 +4658,13 @@ def frac(x, name=None):
 
 def take(input, index, name=None):
     """
-    Returns a new tensor with the elements of input at the given indices. 
+    Returns a new tensor with the elements of input at the given index.
     The input tensor is treated as if it were viewed as a 1-D tensor. 
-    The result takes the same shape as the indices.
+    The result takes the same shape as the index.
     
     Args:
-        input (Tensor): An N-D Tensor, which data type should be int32, int64, float32, float64. 
-        index (Tensor): An N-D Tensor, which data type should be int32, int64.
+        input (Tensor): An N-D Tensor, its data type should be int32, int64, float32, float64.
+        index (Tensor): An N-D Tensor, its data type should be int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4675,7 +4675,8 @@ def take(input, index, name=None):
 
             import paddle
 
-            x = paddle.arange(0, 12).reshape([3, 4])
+            x1 = paddle.arange(0, 12).reshape([3, 4])
+            x2 = paddle.arange(0, 12).reshape([3, 4])
             idx = paddle.arange(4, 10).reshape([2, 3])
 
             paddle.take(x, idx)
