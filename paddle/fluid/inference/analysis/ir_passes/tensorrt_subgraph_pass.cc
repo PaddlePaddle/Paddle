@@ -347,9 +347,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   bool calibration_mode =
       (enable_int8 && calibration_data.size() == 0 && use_calib_mode);
 
-  std::copy(params_not_shared.begin(),
-            params_not_shared.end(),
-            std::back_inserter(*repetitive_params));
+  if (!calibration_mode) {
+    std::copy(params_not_shared.begin(),
+              params_not_shared.end(),
+              std::back_inserter(*repetitive_params));
+  }
 
   // Check trt version for dynamic shape input.
 
