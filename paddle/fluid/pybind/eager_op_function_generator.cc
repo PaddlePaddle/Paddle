@@ -31,8 +31,9 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
+#include "paddle/fluid/pybind/eager_op_function_impl_blacklist.h"
 #include "paddle/fluid/pybind/op_function_generator.h"
-
+#include "paddle/phi/core/compat/convert_utils.h"
 // phi
 #include "paddle/phi/kernels/declarations.h"
 
@@ -115,6 +116,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try
   {
+    %s
     %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
@@ -343,9 +345,20 @@ std::string GenerateOpFunctionsBody(
     function_args = paddle::string::Sprintf(FUNCTION_ARGS, input_args);
   }
 
+  std::string warn;
+
+  if (api_black_list.count(phi::TransToPhiKernelName(op_type))) {
+    warn =
+        "std::cout << \"bad intermediate call " + op_type + "\" << std::endl;";
+  } else {
+    warn =
+        "std::cout << \"only intermediate call " + op_type + "\" << std::endl;";
+  }
+
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(OP_FUNCTION_TEMPLATE,
                                                  func_name,
+                                                 warn,
                                                  ins_cast_str,
                                                  op_type,
                                                  input_args_num,

@@ -294,6 +294,22 @@ if(WITH_PYTHON)
       ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function.cc)
   set(tmp_eager_impl_file ${eager_impl_file}.tmp)
 
+  set(api_yaml_path
+      "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/api.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_api.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_api.yaml"
+  )
+  set(eager_impl_file_blacklist
+      ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function_impl_blacklist.h
+  )
+  set(tmp_eager_impl_file_blacklist ${eager_impl_file_blacklist}.tmp)
+  add_custom_target(
+    eager_op_function_impl_blacklist
+    COMMAND
+      "${PYTHON_EXECUTABLE}"
+      "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function_generator_blacklist_gen.py"
+      "--api_yaml_path=${api_yaml_path}"
+      "--eager_impl_file_blacklist=${eager_impl_file_blacklist}"
+    VERBATIM)
+
   execute_process(
     COMMAND
       "${PYTHON_EXECUTABLE}"
@@ -302,8 +318,9 @@ if(WITH_PYTHON)
       "${CODE_GEN_SPLIT_FILE_COUNT}")
 
   set(OP_IMPL_DEPS op_function_generator)
-  set(EAGER_OP_IMPL_DEPS eager_op_function_generator
-                         eager_final_state_python_c_codegen)
+  set(EAGER_OP_IMPL_DEPS
+      eager_op_function_generator eager_final_state_python_c_codegen
+      eager_op_function_impl_blacklist)
 
   if(WIN32)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
