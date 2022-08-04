@@ -662,10 +662,10 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         be equal to the size of ``ref_level`` of ``y``. The rank of **x** is at least 2. \
         When rank of ``x`` is greater than 2, then it would be viewed as a 2-D tensor.
     
-    .. note::
+    Note:
 
         Please note that the input ``x`` should be LodTensor or Tensor, \
-            and input ``y`` must be LodTensor.
+        and input ``y`` must be LodTensor.
 
     **Following examples will explain how sequence_expand works:**
 
