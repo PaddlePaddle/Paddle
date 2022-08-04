@@ -85,9 +85,15 @@ class FCMKLDNNHandler
     auto dst_md = dnnl::memory::desc(
         {MB, OC}, MKLDNNGetDataType<T_out>(), dnnl::memory::format_tag::any);
     if (bias) {
-      bias_md = dnnl::memory::desc({bias->numel()},
-                                   MKLDNNGetDataType<T_w>(),
-                                   dnnl::memory::format_tag::a);
+      if (IsInt8<T_w>()) {
+        bias_md = dnnl::memory::desc({bias->numel()},
+                                     MKLDNNGetDataType<T_w>(),
+                                     dnnl::memory::format_tag::a);
+      } else {
+        bias_md = dnnl::memory::desc({bias->numel()},
+                                     MKLDNNGetDataType<float>(),
+                                     dnnl::memory::format_tag::a);
+      }
     }
 
     dnnl::primitive_attr attrs;
@@ -112,7 +118,7 @@ class FCMKLDNNHandler
         {"tanh", dnnl::algorithm::eltwise_tanh},
         {"sigmoid", dnnl::algorithm::eltwise_logistic},
         {"hard_swish", dnnl::algorithm::eltwise_hardswish},
-    };
+        {"mish", dnnl::algorithm::eltwise_mish}};
 
     std::vector<float> output_shift_scale;
     float scale = 1.0f;
