@@ -70,6 +70,7 @@ class FcOpConverter : public OpConverter {
           reshape_before_fc_shape_tensor[x_num_col_dims] =
               Prod(GetEleTensorOfShape(input_shape_tensor, i),
                    reshape_before_fc_shape_tensor[x_num_col_dims]);
+          // If not set, test_trt_matmul_quant_dequant in trt 6015 will fail
           reshape_before_fc_shape_tensor[x_num_col_dims]->setType(
               nvinfer1::DataType::kINT32);
         }
