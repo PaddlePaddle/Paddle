@@ -22,7 +22,7 @@
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
-
+    
 namespace phi {
 using paddle::platform::FastDivMod;
 
