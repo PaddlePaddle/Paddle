@@ -29,12 +29,12 @@ void FillGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     const Scalar& value,
                     DenseTensor* in_grad) {
-    if (in_grad) {
-        dev_ctx.template Alloc<T>(in_grad);
+  if (in_grad) {
+    dev_ctx.template Alloc<T>(in_grad);
 
-        phi::funcs::SetConstant<Context, T> functor;
-        functor(dev_ctx, in_grad, T(0));
-    }
+    phi::funcs::SetConstant<Context, T> functor;
+    functor(dev_ctx, in_grad, T(0));
+  }
 }
 
 }  // namespace phi

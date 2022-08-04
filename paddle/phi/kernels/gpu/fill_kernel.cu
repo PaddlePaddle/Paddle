@@ -18,6 +18,13 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/fill_kernel_impl.h"
 
-
-PD_REGISTER_KERNEL(
-    fill, GPU, ALL_LAYOUT, phi::FillKernel, float, double, int64_t, int, paddle::platform::float16, bool) {}
+PD_REGISTER_KERNEL(fill,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FillKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
+                   paddle::platform::float16,
+                   bool) {}

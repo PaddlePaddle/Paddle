@@ -28,19 +28,19 @@ template <typename T, typename Context>
 void FillKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const Scalar& value,
-                DenseTensor* out){
-    T fill_var = value.to<T>();
+                DenseTensor* out) {
+  T fill_var = value.to<T>();
 
-    PADDLE_ENFORCE_EQ(
-        std::isnan(static_cast<double>(fill_var)),
-        false,
-        paddle::platform::errors::InvalidArgument("fill value should not be NaN,"
-                                          " but received NaN"));
+  PADDLE_ENFORCE_EQ(
+      std::isnan(static_cast<double>(fill_var)),
+      false,
+      paddle::platform::errors::InvalidArgument("fill value should not be NaN,"
+                                                " but received NaN"));
 
-    dev_ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
 
-    phi::funcs::SetConstant<Context, T> functor;
-    functor(dev_ctx, out, fill_var);
+  phi::funcs::SetConstant<Context, T> functor;
+  functor(dev_ctx, out, fill_var);
 }
 
 }  // namespace phi
