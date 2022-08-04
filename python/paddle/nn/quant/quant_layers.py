@@ -27,17 +27,10 @@ from paddle import in_dynamic_mode
 from paddle.nn import Layer
 
 __all__ = [
-    'FakeQuantAbsMax',
-    'FakeQuantMovingAverageAbsMax',
-    'FakeQuantChannelWiseAbsMax',
-    'QuantizedConv2D',
-    'QuantizedConv2DTranspose',
-    'QuantizedLinear',
-    'MovingAverageAbsMaxScale',
-    'MAOutputScaleLayer',
-    'FakeQuantMAOutputScaleLayer',
-    'QuantStub',
-    'QuantizedRowParallelLinear',
+    'FakeQuantAbsMax', 'FakeQuantMovingAverageAbsMax',
+    'FakeQuantChannelWiseAbsMax', 'QuantizedConv2D', 'QuantizedConv2DTranspose',
+    'QuantizedLinear', 'MovingAverageAbsMaxScale', 'MAOutputScaleLayer',
+    'FakeQuantMAOutputScaleLayer', 'QuantStub', 'QuantizedRowParallelLinear',
     'QuantizedColumnParallelLinear'
 ]
 
@@ -91,9 +84,12 @@ class FakeQuantAbsMax(Layer):
                                          persistable=False)
             out_scale = self._scale
             if self._reduce_type == "sum":
-                out_scale = paddle.distributed.all_reduce(self._scale, op=paddle.distributed.ReduceOp.SUM)
+                out_scale = paddle.distributed.all_reduce(
+                    self._scale, op=paddle.distributed.ReduceOp.SUM)
             elif self._reduce_type == "max":
-                out_scale = paddle.distributed.all_reduce(self._scale, op=paddle.distributed.ReduceOp.MAX)
+                out_scale = paddle.distributed.all_reduce(
+                    self._scale, op=paddle.distributed.ReduceOp.MAX)
+
             if not out_scale:
                 out_scale = _varbase_creator(
                     type=core.VarDesc.VarType.LOD_TENSOR,
@@ -193,18 +189,20 @@ class FakeQuantMovingAverageAbsMax(Layer):
                                          shape=input.shape,
                                          dtype=input.dtype,
                                          persistable=False)
+            if self._reduce_type == "sum":
+                self._scale = paddle.distributed.all_reduce(
+                    self._scale, op=paddle.distributed.ReduceOp.SUM)
+            elif self._reduce_type == "max":
+                self._scale = paddle.distributed.all_reduce(
+                    self._scale, op=paddle.distributed.ReduceOp.MAX)
+
             state = self._state if self.training else None
             accum = self._accum if self.training else None
-            
-            if self._reduce_type == "sum":
-                self._scale = paddle.distributed.all_reduce(self._scale, op=paddle.distributed.ReduceOp.SUM)
 
-            elif self._reduce_type == "max":
-                self._scale = paddle.distributed.all_reduce(self._scale, op=paddle.distributed.ReduceOp.MAX)
-                
             out, _, _, _ = _C_ops.fake_quantize_dequantize_moving_average_abs_max(
                 input, self._scale, accum, state, quant_out, self._scale, state,
                 accum, *attrs)
+
             return out
 
         check_variable_and_dtype(input, 'input', ['float32'],
@@ -283,9 +281,11 @@ class FakeQuantChannelWiseAbsMax(Layer):
 
             out_scale = self._scale
             if self._reduce_type == "sum":
-                out_scale = paddle.distributed.all_reduce(self._scale, op=paddle.distributed.ReduceOp.SUM)
+                out_scale = paddle.distributed.all_reduce(
+                    self._scale, op=paddle.distributed.ReduceOp.SUM)
             elif self._reduce_type == "max":
-                out_scale = paddle.distributed.all_reduce(self._scale, op=paddle.distributed.ReduceOp.MAX)
+                out_scale = paddle.distributed.all_reduce(
+                    self._scale, op=paddle.distributed.ReduceOp.MAX)
             if out_scale is None:
                 out_scale = _varbase_creator(
                     type=core.VarDesc.VarType.LOD_TENSOR,
@@ -330,7 +330,11 @@ class FakeQuantChannelWiseAbsMax(Layer):
 
 class MovingAverageAbsMaxScale(Layer):
 
-    def __init__(self, name=None, moving_rate=0.9, dtype='float32', reduce_type=None):
+    def __init__(self,
+                 name=None,
+                 moving_rate=0.9,
+                 dtype='float32',
+                 reduce_type=None):
         r"""
         MovingAverageMaxScale layer is used to calculating the output quantization
         scale of Layer. Its computational formula is described as below:
@@ -373,17 +377,22 @@ class MovingAverageAbsMaxScale(Layer):
         if in_dynamic_mode():
             attrs = ('moving_rate', self._moving_rate, 'is_test',
                      not self.training)
-            state = self._state if self.training else None
-            accum = self._accum if self.training else None
+
             quant_out = _varbase_creator(type=input.type,
                                          name="{}.tmp".format(input.name),
                                          shape=input.shape,
                                          dtype=input.dtype,
                                          persistable=False)
             if self._reduce_type == "sum":
-                self._scale = paddle.distributed.all_reduce(self._scale, op=paddle.distributed.ReduceOp.SUM)
+                self._scale = paddle.distributed.all_reduce(
+                    self._scale, op=paddle.distributed.ReduceOp.SUM)
             elif self._reduce_type == "max":
-                self._scale = paddle.distributed.all_reduce(self._scale, op=paddle.distributed.ReduceOp.MAX)
+                self._scale = paddle.distributed.all_reduce(
+                    self._scale, op=paddle.distributed.ReduceOp.MAX)
+
+            state = self._state if self.training else None
+            accum = self._accum if self.training else None
+
             out, _, _, _ = _C_ops.moving_average_abs_max_scale(
                 input, accum, state, quant_out, self._scale, state, accum,
                 *attrs)
@@ -682,8 +691,9 @@ class QuantizedLinear(Layer):
                        name=self.name)
         return out
 
-    
+
 class QuantizedColumnParallelLinear(Layer):
+
     def __init__(self,
                  layer,
                  weight_bits=8,
@@ -696,46 +706,44 @@ class QuantizedColumnParallelLinear(Layer):
                  weight_quant_layer=None,
                  act_quant_layer=None):
         super(QuantizedColumnParallelLinear, self).__init__()
+        assert weight_quant_layer is None, "When quantizing ColumnParallelLinear, weight_quant_layer should be None."
+        assert act_quant_layer is None, "When quantizing ColumnParallelLinear, act_quant_layer should be None."
+
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
         self.name = getattr(layer, '_name')
         # For FakeQuant
         self._linear_quant_axis = 1
-        
+
         self.is_mp = getattr(layer, 'is_mp')
         self.model_parallel_group = getattr(layer, 'model_parallel_group')
         self.gather_output = getattr(layer, 'gather_output')
-        if weight_quant_layer is not None:
-            self._fake_quant_weight = weight_quant_layer()
-        else:
-            self._fake_quant_weight = _get_fake_quant_type(
-                weight_quantize_type,
-                name=self.weight.name,
-                moving_rate=moving_rate,
-                quant_bits=weight_bits,
-                dtype=self._dtype,
-                quant_on_weight=True,
-                channel_num=self.weight.shape[self._linear_quant_axis],
-                quant_axis=self._linear_quant_axis,
-                reduce_type='max')
-            
-        if act_quant_layer is not None:
-            self._fake_quant_input = act_quant_layer()
-        else:
-            self._fake_quant_input = _get_fake_quant_type(
-                activation_quantize_type,
-                name=layer.full_name(),
-                moving_rate=moving_rate,
-                quant_bits=activation_bits,
-                dtype=self._dtype,
-                quant_on_weight=False,
-                reduce_type=None)
-            
+
+        self._fake_quant_weight = _get_fake_quant_type(
+            weight_quantize_type,
+            name=self.weight.name,
+            moving_rate=moving_rate,
+            quant_bits=weight_bits,
+            dtype=self._dtype,
+            quant_on_weight=True,
+            channel_num=self.weight.shape[self._linear_quant_axis],
+            quant_axis=self._linear_quant_axis,
+            reduce_type='max')
+
+        self._fake_quant_input = _get_fake_quant_type(
+            activation_quantize_type,
+            name=layer.full_name(),
+            moving_rate=moving_rate,
+            quant_bits=activation_bits,
+            dtype=self._dtype,
+            quant_on_weight=False,
+            reduce_type=None)
+
         self._act_preprocess = act_pre_layer(
         ) if act_pre_layer is not None else None
         self._weight_preprocess = weight_pre_layer(
         ) if weight_pre_layer is not None else None
-    
+
     def forward(self, input):
         if self.is_mp:
             input_parallel = paddle.distributed.collective._c_identity(
@@ -751,12 +759,12 @@ class QuantizedColumnParallelLinear(Layer):
         if self._weight_preprocess is not None:
             weight = self._weight_preprocess(self.weight)
         quant_weight = self._fake_quant_weight(weight)
-        
+
         output_parallel = F.linear(x=quant_input,
-                       weight=quant_weight,
-                       bias=self.bias,
-                       name=self.name)
-        
+                                   weight=quant_weight,
+                                   bias=self.bias,
+                                   name=self.name)
+
         if self.gather_output and self.is_mp:
             output = paddle.distributed.collective._c_concat(
                 output_parallel, group=self.model_parallel_group)
@@ -764,7 +772,9 @@ class QuantizedColumnParallelLinear(Layer):
             output = output_parallel
         return output
 
+
 class QuantizedRowParallelLinear(Layer):
+
     def __init__(self,
                  layer,
                  weight_bits=8,
@@ -777,6 +787,9 @@ class QuantizedRowParallelLinear(Layer):
                  weight_quant_layer=None,
                  act_quant_layer=None):
         super(QuantizedRowParallelLinear, self).__init__()
+        assert weight_quant_layer is None, "When quantizing RowParallelLinear, weight_quant_layer cannot defined by yourself."
+        assert act_quant_layer is None, "When quantizing RowParallelLinear, act_quant_layer cannot defined by yourself."
+
         # For Linear
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
@@ -787,31 +800,26 @@ class QuantizedRowParallelLinear(Layer):
         self.input_is_parallel = getattr(layer, 'input_is_parallel')
         self.is_mp = getattr(layer, 'is_mp')
         self.model_parallel_group = getattr(layer, 'model_parallel_group')
-        if weight_quant_layer is not None:
-            self._fake_quant_weight = weight_quant_layer()
-        else:
-            self._fake_quant_weight = _get_fake_quant_type(
-                weight_quantize_type,
-                name=self.weight.name,
-                moving_rate=moving_rate,
-                quant_bits=weight_bits,
-                dtype=self._dtype,
-                quant_on_weight=True,
-                channel_num=self.weight.shape[self._linear_quant_axis],
-                quant_axis=self._linear_quant_axis,
-                reduce_type='max')
 
-        if act_quant_layer is not None:
-            self._fake_quant_input = act_quant_layer()
-        else:
-            self._fake_quant_input = _get_fake_quant_type(
-                activation_quantize_type,
-                name=layer.full_name(),
-                moving_rate=moving_rate,
-                quant_bits=activation_bits,
-                dtype=self._dtype,
-                quant_on_weight=False,
-                reduce_type='max')
+        self._fake_quant_weight = _get_fake_quant_type(
+            weight_quantize_type,
+            name=self.weight.name,
+            moving_rate=moving_rate,
+            quant_bits=weight_bits,
+            dtype=self._dtype,
+            quant_on_weight=True,
+            channel_num=self.weight.shape[self._linear_quant_axis],
+            quant_axis=self._linear_quant_axis,
+            reduce_type='max')
+
+        self._fake_quant_input = _get_fake_quant_type(
+            activation_quantize_type,
+            name=layer.full_name(),
+            moving_rate=moving_rate,
+            quant_bits=activation_bits,
+            dtype=self._dtype,
+            quant_on_weight=False,
+            reduce_type='max')
 
         self._act_preprocess = act_pre_layer(
         ) if act_pre_layer is not None else None
@@ -836,9 +844,8 @@ class QuantizedRowParallelLinear(Layer):
         quant_weight = self._fake_quant_weight(weight)
 
         output_parallel = F.linear(x=quant_input,
-                       weight=quant_weight,
-                       bias=self.bias,
-                       name=self.name)
+                                   weight=quant_weight,
+                                   name=self.name)
         if self.is_mp:
             output_ = paddle.distributed.collective._mp_allreduce(
                 output_parallel,
@@ -849,15 +856,20 @@ class QuantizedRowParallelLinear(Layer):
             output_ = output_parallel
         output = output_ + self.bias if self.bias is not None else output_
         return output
-    
-    
+
+
 class MAOutputScaleLayer(Layer):
     """
     Add MovingAverageMaxScale layer to the behind of the input layer.
     Calculate the scale (moving average abs max) for the output of the input layer.
     """
 
-    def __init__(self, layer=None, moving_rate=0.9, name=None, dtype='float32', reduce_type=None):
+    def __init__(self,
+                 layer=None,
+                 moving_rate=0.9,
+                 name=None,
+                 dtype='float32',
+                 reduce_type=None):
         r"""
         Construct
         """
@@ -939,4 +951,3 @@ def _get_fake_quant_type(quant_type, **kwargs):
     }
 
     return fake_quant_map[quant_type](**call_args)
-
