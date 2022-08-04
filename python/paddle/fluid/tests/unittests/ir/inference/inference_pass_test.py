@@ -191,10 +191,6 @@ class InferencePassTest(unittest.TestCase):
             if flatten:
                 paddle_out = paddle_out.flatten()
                 inference_out = inference_out.flatten()
-            print("@@@ paddle")
-            print(paddle_out)
-            print("@@@ trt")
-            print(inference_out)
             self.assertTrue(
                 np.allclose(paddle_out, inference_out, atol=atol),
                 "Output has diff between inference and training forward at {} ".
