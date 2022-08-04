@@ -297,7 +297,18 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
       }
     }
   }
-  GraphSafeRemoveNodes(graph, need_removed_nodes);
+  details::RemovedVars *saved_removed_nodes = new details::RemovedVars;
+  GraphSafeRemoveNodes(graph, need_removed_nodes, saved_removed_nodes);
+  if (!saved_removed_nodes->empty()) {
+    // TODO(pangyoki): If kRemovedVars exists, merge saved_removed_nodes into
+    // RemovedVars.
+    PADDLE_ENFORCE_EQ(graph->Has(details::kRemovedVars),
+                      false,
+                      platform::errors::PreconditionNotMet(
+                          "Removed nodes are only saved for "
+                          "fuse_elewise_add_act_pass in temporary."));
+    graph->Set(details::kRemovedVars, saved_removed_nodes);
+  }
 }
 
 void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,

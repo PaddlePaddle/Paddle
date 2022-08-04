@@ -34,28 +34,42 @@ using float16 = ::phi::dtype::float16;
 using bfloat16 = ::phi::dtype::bfloat16;
 using pstring = ::phi::dtype::pstring;
 
+// The enum valuea are consistent with jit/property.proto
 enum class DataType {
   UNDEFINED = 0,
+
   BOOL,
-  INT8,   // Char
+
   UINT8,  // BYte
-  INT16,
-  INT32,
-  UINT32,
-  INT64,
-  UINT64,
-  BFLOAT16,
-  FLOAT16,
+  INT8,   // Char
   UINT16,
+  INT16,
+  UINT32,
+  INT32,
+  UINT64,
+  INT64,
+
   FLOAT32,
   FLOAT64,
+
   COMPLEX64,
   COMPLEX128,
+
   // In Paddle 2.3, we add a new type of Tensor, StringTensor, which is designed
   // for string data management. We design the dtype of StringTensor, pstring.
   // In order to express a unique data dtype of StringTensor, we add
   // DataType::PSTRING.
   PSTRING,
+
+  // IEEE754 half-precision floating-point format (16 bits wide).
+  // This format has 1 sign bit, 5 exponent bits, and 10 mantissa bits.
+  FLOAT16,
+
+  // Non-IEEE floating-point format based on IEEE754 single-precision
+  // floating-point number truncated to 16 bits.
+  // This format has 1 sign bit, 8 exponent bits, and 7 mantissa bits.
+  BFLOAT16,
+
   NUM_DATA_TYPES,
   // See Note [ Why we need ALL in baisc kernel key member? ]
   ALL_DTYPE = UNDEFINED,

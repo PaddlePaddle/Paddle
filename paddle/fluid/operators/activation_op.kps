@@ -66,29 +66,6 @@ struct CudaSoftReluGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-template <typename T>
-struct CudaSoftsignFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
-
-  // softsign(x) = x / (1 + abs(x))
-  __device__ __forceinline__ T operator()(const T x) const {
-    return x / (one + abs(x));
-  }
-};
-
-template <typename T>
-struct CudaSoftsignGradFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
-
-  // dx = dout / (1 + abs(x))^2
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    T temp = one + abs(x);
-    return dout / (temp * temp);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
 template <typename DeviceContext, typename Functor>
 class ActivationCudaKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -174,6 +151,7 @@ USE_PHI_FUNCTOR(CudaSoftShrink)
 USE_PHI_FUNCTOR(CudaTanhShrink)
 USE_PHI_FUNCTOR(CudaSilu)
 USE_PHI_FUNCTOR(CudaELU)
+USE_PHI_FUNCTOR(CudaSoftsign)
 USE_PHI_FUNCTOR(CudaSigmoid)
 USE_PHI_FUNCTOR(CudaLogSigmoid)
 USE_PHI_FUNCTOR(CudaHardSigmoid)
@@ -216,87 +194,74 @@ using CudaELUGradNegativeAlphaFunctor =
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-#define REGISTER_ACTIVATION_CUDA_KERNEL(                               \
-    act_type, op_name, functor, grad_functor)                          \
-  REGISTER_OP_CUDA_KERNEL(                                             \
-      act_type,                                                        \
-      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
-                                ops::functor<float>>,                  \
-      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
-                                ops::functor<double>>,                 \
-      ops::ActivationCudaKernel<plat::CUDADeviceContext,               \
-                                ops::functor<plat::float16>>,          \
-      ops::ActivationCudaKernel<plat::CUDADeviceContext,               \
-                                ops::functor<plat::bfloat16>>);        \
-  REGISTER_OP_CUDA_KERNEL(                                             \
-      act_type##_grad,                                                 \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
-                                    ops::grad_functor<float>>,         \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
-                                    ops::grad_functor<double>>,        \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
-                                    ops::grad_functor<plat::float16>>, \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+#define REGISTER_ACTIVATION_CUDA_KERNEL(                                       \
+    act_type, op_name, functor, grad_functor)                                  \
+  REGISTER_OP_CUDA_KERNEL(                                                     \
+      act_type,                                                                \
+      ops::ActivationCudaKernel<phi::GPUContext, ops::functor<float>>,         \
+      ops::ActivationCudaKernel<phi::GPUContext, ops::functor<double>>,        \
+      ops::ActivationCudaKernel<phi::GPUContext, ops::functor<plat::float16>>, \
+      ops::ActivationCudaKernel<phi::GPUContext,                               \
+                                ops::functor<plat::bfloat16>>);                \
+  REGISTER_OP_CUDA_KERNEL(                                                     \
+      act_type##_grad,                                                         \
+      ops::ActivationGradCudaKernel<phi::GPUContext,                           \
+                                    ops::grad_functor<float>>,                 \
+      ops::ActivationGradCudaKernel<phi::GPUContext,                           \
+                                    ops::grad_functor<double>>,                \
+      ops::ActivationGradCudaKernel<phi::GPUContext,                           \
+                                    ops::grad_functor<plat::float16>>,         \
+      ops::ActivationGradCudaKernel<phi::GPUContext,                           \
                                     ops::grad_functor<plat::bfloat16>>);
 
-#define REGISTER_ACTIVATION_CUDA_KERNEL_INT(                           \
-    act_type, op_name, functor, grad_functor)                          \
-  REGISTER_OP_CUDA_KERNEL(                                             \
-      act_type,                                                        \
-      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
-                                ops::functor<float>>,                  \
-      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
-                                ops::functor<double>>,                 \
-      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
-                                ops::functor<int>>,                    \
-      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
-                                ops::functor<int64_t>>,                \
-      ops::ActivationCudaKernel<plat::CUDADeviceContext,               \
-                                ops::functor<plat::float16>>,          \
-      ops::ActivationCudaKernel<plat::CUDADeviceContext,               \
-                                ops::functor<plat::bfloat16>>);        \
-  REGISTER_OP_CUDA_KERNEL(                                             \
-      act_type##_grad,                                                 \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
-                                    ops::grad_functor<float>>,         \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
-                                    ops::grad_functor<double>>,        \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
-                                    ops::grad_functor<int>>,           \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
-                                    ops::grad_functor<int64_t>>,       \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
-                                    ops::grad_functor<plat::float16>>, \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+#define REGISTER_ACTIVATION_CUDA_KERNEL_INT(                                   \
+    act_type, op_name, functor, grad_functor)                                  \
+  REGISTER_OP_CUDA_KERNEL(                                                     \
+      act_type,                                                                \
+      ops::ActivationCudaKernel<phi::GPUContext, ops::functor<float>>,         \
+      ops::ActivationCudaKernel<phi::GPUContext, ops::functor<double>>,        \
+      ops::ActivationCudaKernel<phi::GPUContext, ops::functor<int>>,           \
+      ops::ActivationCudaKernel<phi::GPUContext, ops::functor<int64_t>>,       \
+      ops::ActivationCudaKernel<phi::GPUContext, ops::functor<plat::float16>>, \
+      ops::ActivationCudaKernel<phi::GPUContext,                               \
+                                ops::functor<plat::bfloat16>>);                \
+  REGISTER_OP_CUDA_KERNEL(                                                     \
+      act_type##_grad,                                                         \
+      ops::ActivationGradCudaKernel<phi::GPUContext,                           \
+                                    ops::grad_functor<float>>,                 \
+      ops::ActivationGradCudaKernel<phi::GPUContext,                           \
+                                    ops::grad_functor<double>>,                \
+      ops::ActivationGradCudaKernel<phi::GPUContext, ops::grad_functor<int>>,  \
+      ops::ActivationGradCudaKernel<phi::GPUContext,                           \
+                                    ops::grad_functor<int64_t>>,               \
+      ops::ActivationGradCudaKernel<phi::GPUContext,                           \
+                                    ops::grad_functor<plat::float16>>,         \
+      ops::ActivationGradCudaKernel<phi::GPUContext,                           \
                                     ops::grad_functor<plat::bfloat16>>);
 
 REGISTER_OP_CUDA_KERNEL(
     relu6,
-    ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
-                              ops::CudaRelu6Functor<float>>,
-    ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
-                              ops::CudaRelu6Functor<double>>,
-    ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
-                              ops::CudaRelu6Functor<int>>,
-    ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
-                              ops::CudaRelu6Functor<int64_t>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<float>>,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<double>>,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<int>>,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<int64_t>>,
+    ops::ActivationCudaKernel<phi::GPUContext,
                               ops::CudaRelu6Functor<plat::float16>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
+    ops::ActivationCudaKernel<phi::GPUContext,
                               ops::CudaRelu6Functor<plat::bfloat16>>);
 REGISTER_OP_CUDA_KERNEL(
     relu6_grad,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+    ops::ActivationGradCudaKernel<phi::GPUContext,
                                   ops::CudaRelu6GradFunctor<float>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+    ops::ActivationGradCudaKernel<phi::GPUContext,
                                   ops::CudaRelu6GradFunctor<double>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+    ops::ActivationGradCudaKernel<phi::GPUContext,
                                   ops::CudaRelu6GradFunctor<int>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+    ops::ActivationGradCudaKernel<phi::GPUContext,
                                   ops::CudaRelu6GradFunctor<int64_t>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+    ops::ActivationGradCudaKernel<phi::GPUContext,
                                   ops::CudaRelu6GradFunctor<plat::float16>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+    ops::ActivationGradCudaKernel<phi::GPUContext,
                                   ops::CudaRelu6GradFunctor<plat::bfloat16>>);
 
 #define FOR_EACH_ACTIVATION_CUDA_OP(__macro)                                  \

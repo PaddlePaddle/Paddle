@@ -305,6 +305,14 @@ class FleetWrapper {
   void Revert();
   void CheckSavePrePatchDone();
 
+  //********* for fl-coordinator
+  void InitFlWorker(const std::vector<std::string>& host_list,
+                    int index,
+                    const std::string& self_endpoint);
+  void PushFLClientInfoSync(const std::string& fl_client_info);
+  std::string PullFlStrategy();
+  //**********
+
   static std::shared_ptr<paddle::distributed::PSCore> pserver_ptr_;
   static std::shared_ptr<paddle::distributed::PSClient> worker_ptr_;
 

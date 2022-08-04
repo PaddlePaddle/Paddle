@@ -410,6 +410,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
       pass_builder_->DeletePass(ps);
     }
   }
+
+  for (auto &delete_pass : other.pass_builder()->GetAllDeletedPasses()) {
+    pass_builder_->DeletePass(delete_pass);
+  }
 }
 
 void AnalysisConfig::EnableCUDNN() {

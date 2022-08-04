@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/inplace_abn_op.h"
-#include <iostream>
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/phi/kernels/batch_norm_grad_kernel.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
@@ -226,16 +225,14 @@ namespace plat = paddle::platform;
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
 REGISTER_OP_CUDA_KERNEL(inplace_abn,
-                        ops::InplaceABNKernel<plat::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    inplace_abn_grad,
-    ops::InplaceABNGradKernel<plat::CUDADeviceContext, float>);
+                        ops::InplaceABNKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(inplace_abn_grad,
+                        ops::InplaceABNGradKernel<phi::GPUContext, float>);
 #else
 REGISTER_OP_CUDA_KERNEL(inplace_abn,
-                        ops::InplaceABNKernel<plat::CUDADeviceContext, float>,
-                        ops::InplaceABNKernel<plat::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    inplace_abn_grad,
-    ops::InplaceABNGradKernel<plat::CUDADeviceContext, float>,
-    ops::InplaceABNGradKernel<plat::CUDADeviceContext, double>);
+                        ops::InplaceABNKernel<phi::GPUContext, float>,
+                        ops::InplaceABNKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(inplace_abn_grad,
+                        ops::InplaceABNGradKernel<phi::GPUContext, float>,
+                        ops::InplaceABNGradKernel<phi::GPUContext, double>);
 #endif

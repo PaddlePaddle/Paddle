@@ -1513,6 +1513,10 @@ REGISTER_ACTIVATION_OP(tanh_shrink,
                        TanhShrinkFunctor,
                        TanhShrinkGradFunctor);
 REGISTER_ACTIVATION_OP(silu, Silu, SiluFunctor, SiluGradFunctor);
+REGISTER_ACTIVATION_OP(softsign,
+                       Softsign,
+                       SoftsignFunctor,
+                       SoftsignGradFunctor);
 REGISTER_ACTIVATION_OP(hard_sigmoid,
                        HardSigmoid,
                        HardSigmoidFunctor,

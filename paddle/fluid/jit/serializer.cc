@@ -16,10 +16,14 @@
 
 #include <set>
 
+#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#include "paddle/fluid/jit/executor_function.h"
-#include "paddle/fluid/jit/pe_function.h"
+#include "paddle/fluid/jit/function/executor_function.h"
+#include "paddle/fluid/jit/function/pe_function.h"
+#include "paddle/fluid/jit/layer.h"
+#include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/serializer_utils.h"
 
 DECLARE_string(jit_engine_type);
@@ -33,7 +37,6 @@ Layer Deserializer::operator()(const std::string& path,
   // set is ordered
   std::set<std::string> param_names_set;
   std::vector<std::shared_ptr<FunctionInfo>> infos;
-  Name2VariableMap params_dict;
   for (auto& it : pdmodel_paths) {
     auto& func_name = it.first;
     auto program_desc = LoadProgram(it.second);
@@ -52,19 +55,27 @@ Layer Deserializer::operator()(const std::string& path,
         func_name, persist_var_names, program_desc));
   }
 
+  Name2VariableMap params_dict;
+  Name2VariableMap attrs_dict;
   ReadTensorData(path + PDPARAMS_SUFFIX, param_names_set, place, &params_dict);
-  // ReadAttributeData();
 
-  Layer layer = Layer(infos, params_dict, place);
+  if (utils::FileExists(path + PROPERTY_SUFFIX)) {
+    ReadAttributeData(path + PROPERTY_SUFFIX, &attrs_dict);
+    VLOG(3) << "Read Property Success!";
+  }
+
+  Layer layer = Layer(params_dict, attrs_dict, place);
 
   for (auto& info : infos) {
     if (FLAGS_jit_engine_type == "Executor") {
-      VLOG(3) << "Add function type: ExecutorFunction.";
+      VLOG(3) << "Add function type: ExecutorFunction. name: "
+              << info->FunctionName();
       layer.SetFunction(
           info->FunctionName(),
           utils::MakeFunction<ExecutorFunction>(info, params_dict, place));
     } else if (FLAGS_jit_engine_type == "PE") {
-      VLOG(3) << "Add function type: PEFunction.";
+      VLOG(3) << "Add function type: PEFunction. name: "
+              << info->FunctionName();
       layer.SetFunction(
           info->FunctionName(),
           utils::MakeFunction<PEFunction>(info, params_dict, place));
@@ -90,12 +101,18 @@ void Deserializer::ReadTensorData(const std::string& file_name,
     // TODO(dev): Support framework::Vocab
     DenseTensor* dense_tesnor = v.GetMutable<DenseTensor>();
     framework::DeserializeFromStream(fin, dense_tesnor, dev_ctx);
-    (*params_dict)[*it] = v;
+    (*params_dict)[*it] = std::make_shared<Variable>(v);
   }
 }
 
 void Deserializer::ReadAttributeData(const std::string& file_path,
-                                     Name2VariableMap* attrs_dict) const {}
+                                     Name2VariableMap* attrs_dict) const {
+  VLOG(3) << "ReadPropertyData from: " << file_path;
+  Property p;
+  p.Deserialization(file_path);
+  *attrs_dict = static_cast<Name2VariableMap>(p.Values());
+  return;
+}
 
 framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   VLOG(3) << "LoadProgram from: " << file_name;

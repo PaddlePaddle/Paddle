@@ -2099,7 +2099,10 @@ def fold(x,
             "Unexpected type of paddings, it should be either an integer or a list"
             "of 2 or 4 integers")
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_fold(x, output_sizes, kernel_sizes, strides,
+                                      paddings, dilations)
+    elif in_dynamic_mode():
         out = _C_ops.fold(x, "output_sizes", output_sizes, "kernel_sizes",
                           kernel_sizes, "strides", strides, "paddings",
                           paddings, "dilations", dilations)

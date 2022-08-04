@@ -164,13 +164,12 @@ void TensorFromArray(const T* src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -242,13 +241,12 @@ void TensorFromVector(const std::vector<T>& src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -303,6 +301,11 @@ void TensorFromVector(const std::vector<T>& src,
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+#endif
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
         "TensorFromVector on %s is not supported.", dst_place));
@@ -335,13 +338,12 @@ inline void TensorFromVector(const std::vector<bool>& src,
   }
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -380,6 +382,11 @@ inline void TensorFromVector(const std::vector<bool>& src,
     auto stream =
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
   else {  // NOLINT
@@ -434,13 +441,12 @@ void TensorToVector(const Tensor& src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src.place(),
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src.place(),
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
@@ -493,13 +499,12 @@ inline void TensorToVector(const Tensor& src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src.place(),
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src.place(),
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
