@@ -361,10 +361,19 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                 next_node->name()));
 
         if (node_in_degree_map[next_node] == 0) {
-          if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
-            queue.push_front(std::move(next_node));
+          if (is_general_grad &&
+              GeneralGrad::Instance().IsNeededNodes(next_node)) {
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+              queue.push_front(std::move(next_node));
+            } else {
+              queue.push_back(std::move(next_node));
+            }
           } else {
-            queue.push_back(std::move(next_node));
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+              queue.push_front(std::move(next_node));
+            } else {
+              queue.push_back(std::move(next_node));
+            }
           }
         }
       }
