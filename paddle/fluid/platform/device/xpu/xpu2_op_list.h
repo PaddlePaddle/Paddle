@@ -312,6 +312,9 @@ XPUOpMap& get_kl2_ops() {
       {"mean",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"merged_momentum",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
       {"momentum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"mul",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
@@ -545,7 +548,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sequence_conv_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-
+      {"sequence_unpad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       // Fused op
       {"resnet_basic_block_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},

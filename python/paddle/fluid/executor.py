@@ -1187,8 +1187,9 @@ class Executor(object):
                results are spliced together in dimension 0 for the same Tensor values
                (Tensors in fetch_list) on different devices.
 
-        Examples 1:
+        Examples:
             .. code-block:: python
+                :name: code-example-1
 
                 import paddle
                 import numpy
@@ -1215,9 +1216,10 @@ class Executor(object):
                 print(array_val)
                 # [array([0.02153828], dtype=float32)]
 
-        Examples 2:
             .. code-block:: python
+                :name: code-example-2
 
+                # required: gpu
                 import paddle
                 import numpy as np
 
@@ -1265,7 +1267,7 @@ class Executor(object):
                 print("The merged prediction shape: {}".format(
                     np.array(merged_prediction).shape))
                 print(merged_prediction)
- 
+
                 # Out:
                 # The unmerged prediction shape: (2, 3, 2)
                 # [array([[-0.37620035, -0.19752218],
@@ -1431,7 +1433,7 @@ class Executor(object):
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
-        if self._enable_interpreter_core and _can_use_interpreter_core(
+        if return_merged and self._enable_interpreter_core and _can_use_interpreter_core(
                 program, self.place):
             inner_program = program._program if isinstance(
                 program, compiler.CompiledProgram) else program
@@ -1460,6 +1462,9 @@ class Executor(object):
                         ir_graph = framework.IrGraph(program._graph)
                         inner_program = ir_graph.to_program()
                         # print(f"Program after convert:\n {inner_program}", flush=True)
+                        logging.warning(
+                            "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
+                        )
                     else:
                         from paddle.incubate.autograd import prim_enabled, prim2orig
                         if prim_enabled() and program == default_main_program():
@@ -1501,6 +1506,10 @@ class Executor(object):
                         tensor._copy_from(cpu_tensor, tensor._place())
                     else:
                         tensor._copy_from(cpu_tensor, self.place)
+
+                warnings.warn(
+                    "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
+                )
 
                 return new_exe.run(scope, list(feed.keys()), fetch_list,
                                    return_numpy)

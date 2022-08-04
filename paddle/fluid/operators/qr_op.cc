@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/qr_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -123,7 +121,3 @@ REGISTER_OPERATOR(qr,
                   QrInferShapeFunctor);
 
 REGISTER_OPERATOR(qr_grad, ops::QrGradOp);
-
-REGISTER_OP_CPU_KERNEL(qr_grad,
-                       ops::QrGradKernel<phi::CPUContext, float>,
-                       ops::QrGradKernel<phi::CPUContext, double>);

@@ -212,6 +212,7 @@ if(WITH_MKLDNN)
   pass_library(shuffle_channel_mkldnn_detect_pass inference DIR mkldnn)
   pass_library(fc_act_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(elt_act_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(cpu_quantize_placement_pass base DIR mkldnn)
   pass_library(cpu_quantize_pass inference DIR mkldnn)
@@ -495,7 +496,7 @@ if(WITH_MKLDNN)
     SRCS mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass_tester.cc
     DEPS reshape_transpose_matmul_mkldnn_fuse_pass)
   cc_test(
-    test_matmul_transpose_reshape_mkldnn_fuse_pass
+    test_matmul_transpose_reshape_fuse_pass
     SRCS mkldnn/matmul_transpose_reshape_mkldnn_fuse_pass_tester.cc
     DEPS matmul_transpose_reshape_mkldnn_fuse_pass)
   cc_test(
