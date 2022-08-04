@@ -26,6 +26,7 @@ from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestDatasetAbstract(unittest.TestCase):
+
     def func_test_main(self):
         dataset = Dataset()
         try:
@@ -47,15 +48,20 @@ class TestDatasetAbstract(unittest.TestCase):
 
 
 class TestDatasetWithDiffOutputPlace(unittest.TestCase):
+
     def get_dataloader(self, num_workers):
         dataset = paddle.vision.datasets.MNIST(
             mode='test',
             transform=transforms.Compose([
-                transforms.CenterCrop(20), transforms.RandomResizedCrop(14),
-                transforms.Normalize(), transforms.ToTensor()
+                transforms.CenterCrop(20),
+                transforms.RandomResizedCrop(14),
+                transforms.Normalize(),
+                transforms.ToTensor()
             ]))
-        loader = paddle.io.DataLoader(
-            dataset, batch_size=32, num_workers=num_workers, shuffle=True)
+        loader = paddle.io.DataLoader(dataset,
+                                      batch_size=32,
+                                      num_workers=num_workers,
+                                      shuffle=True)
         return loader
 
     def run_check_on_cpu(self):

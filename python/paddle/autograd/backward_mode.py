@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,7 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.backward import gradients_with_optimizer
 import paddle
+
 __all__ = []
 
 
@@ -81,14 +82,16 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, "{} connot be empyt".format(name)
             for each_var in in_out_list:
-                assert isinstance(each_var, (
-                    paddle.Tensor, core.eager.Tensor
-                )), "Elements of {} must be paddle.Tensor".format(name)
+                assert isinstance(
+                    each_var,
+                    (paddle.Tensor, core.eager.Tensor
+                     )), "Elements of {} must be paddle.Tensor".format(name)
             return in_out_list
         else:
-            assert isinstance(in_out_list, (
-                paddle.Tensor, core.eager.Tensor
-            )), "{} must be Tensor or list of Tensor".format(name)
+            assert isinstance(
+                in_out_list,
+                (paddle.Tensor, core.eager.Tensor
+                 )), "{} must be Tensor or list of Tensor".format(name)
             return [in_out_list]
 
     tensors = check_tensors(tensors, "tensors")

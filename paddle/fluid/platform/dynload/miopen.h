@@ -14,10 +14,11 @@ limitations under the License. */
 
 #pragma once
 #include <glog/logging.h>
-
 #include <miopen/miopen.h>
 #include <miopen/version.h>
+
 #include <mutex>  // NOLINT
+
 #include "paddle/phi/backends/dynload/miopen.h"
 
 namespace paddle {

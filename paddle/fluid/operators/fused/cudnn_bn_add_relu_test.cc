@@ -51,7 +51,8 @@ void InitRandomTensor(const std::vector<int64_t> &dims,
 }
 
 template <typename T>
-void InitConstantTensor(const std::vector<int64_t> &dims, T value,
+void InitConstantTensor(const std::vector<int64_t> &dims,
+                        T value,
                         framework::Tensor *cpu_out) {
   T *cpu_out_ptr =
       cpu_out->mutable_data<T>(phi::make_ddim(dims), platform::CPUPlace());
@@ -61,8 +62,10 @@ void InitConstantTensor(const std::vector<int64_t> &dims, T value,
 }
 
 template <typename T>
-void CheckOutput(std::string name, const framework::Tensor &cpu_res,
-                 const framework::Tensor &cpu_base, float diff,
+void CheckOutput(std::string name,
+                 const framework::Tensor &cpu_res,
+                 const framework::Tensor &cpu_base,
+                 float diff,
                  bool is_relative_atol = false) {
   if (cpu_res.dims().size() == cpu_base.dims().size()) {
     EXPECT_EQ(cpu_res.dims(), cpu_base.dims());
@@ -103,7 +106,7 @@ void ComputeSumAndSquareSum(const framework::Tensor &cpu_x,
                             framework::Tensor *cpu_sum,
                             framework::Tensor *cpu_sum_of_square) {
   // x is in NHWC format.
-  auto dims = cpu_x.dims();
+  const auto &dims = cpu_x.dims();
   int64_t c = dims[3];
 
   const T *cpu_x_ptr = cpu_x.data<T>();
@@ -146,11 +149,15 @@ void ComputeInplaceRelu(framework::Tensor *cpu_x) {
   }
 }
 
-void ComputeBatchNormForward(const platform::CUDADeviceContext &ctx,
-                             const Tensor &cpu_x, const Tensor &cpu_scale,
-                             const Tensor &cpu_bias, Tensor *cpu_mean,
-                             Tensor *cpu_var, Tensor *cpu_saved_mean,
-                             Tensor *cpu_saved_var, Tensor *cpu_y,
+void ComputeBatchNormForward(const phi::GPUContext &ctx,
+                             const Tensor &cpu_x,
+                             const Tensor &cpu_scale,
+                             const Tensor &cpu_bias,
+                             Tensor *cpu_mean,
+                             Tensor *cpu_var,
+                             Tensor *cpu_saved_mean,
+                             Tensor *cpu_saved_var,
+                             Tensor *cpu_y,
                              Tensor *saved_reserve_space) {
   framework::Scope scope;
   auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
@@ -182,38 +189,43 @@ void ComputeBatchNormForward(const platform::CUDADeviceContext &ctx,
   std::string data_layout = "NHWC";
   attrs.insert({"data_layout", data_layout});
 
-  auto op = framework::OpRegistry::CreateOp(
-      "batch_norm", {{"X", {"X"}},
-                     {"Scale", {"Scale"}},
-                     {"Bias", {"Bias"}},
-                     {"Mean", {"Mean"}},
-                     {"Variance", {"Variance"}}},
-      {{"Y", {"Y"}},
-       {"MeanOut", {"Mean"}},
-       {"VarianceOut", {"Variance"}},
-       {"SavedMean", {"SavedMean"}},
-       {"SavedVariance", {"SavedVariance"}},
-       {"ReserveSpace", {"ReserveSpace"}}},
-      attrs);
+  auto op =
+      framework::OpRegistry::CreateOp("batch_norm",
+                                      {{"X", {"X"}},
+                                       {"Scale", {"Scale"}},
+                                       {"Bias", {"Bias"}},
+                                       {"Mean", {"Mean"}},
+                                       {"Variance", {"Variance"}}},
+                                      {{"Y", {"Y"}},
+                                       {"MeanOut", {"Mean"}},
+                                       {"VarianceOut", {"Variance"}},
+                                       {"SavedMean", {"SavedMean"}},
+                                       {"SavedVariance", {"SavedVariance"}},
+                                       {"ReserveSpace", {"ReserveSpace"}}},
+                                      attrs);
   op->Run(scope, ctx.GetPlace());
 
   paddle::framework::TensorCopySync(*y, platform::CPUPlace(), cpu_y);
   paddle::framework::TensorCopySync(*mean, platform::CPUPlace(), cpu_mean);
   paddle::framework::TensorCopySync(*var, platform::CPUPlace(), cpu_var);
-  paddle::framework::TensorCopySync(*saved_mean, platform::CPUPlace(),
-                                    cpu_saved_mean);
-  paddle::framework::TensorCopySync(*saved_var, platform::CPUPlace(),
-                                    cpu_saved_var);
+  paddle::framework::TensorCopySync(
+      *saved_mean, platform::CPUPlace(), cpu_saved_mean);
+  paddle::framework::TensorCopySync(
+      *saved_var, platform::CPUPlace(), cpu_saved_var);
   // reserved_space will stay on GPU and used in grad op.
   saved_reserve_space->ShareDataWith(*reserve_space);
 }
 
-void ComputeFusedBNAddReluForward(const platform::CUDADeviceContext &ctx,
-                                  const Tensor &cpu_x, const Tensor &cpu_z,
+void ComputeFusedBNAddReluForward(const phi::GPUContext &ctx,
+                                  const Tensor &cpu_x,
+                                  const Tensor &cpu_z,
                                   const Tensor &cpu_scale,
-                                  const Tensor &cpu_bias, Tensor *cpu_mean,
-                                  Tensor *cpu_var, Tensor *cpu_saved_mean,
-                                  Tensor *cpu_saved_var, Tensor *cpu_y,
+                                  const Tensor &cpu_bias,
+                                  Tensor *cpu_mean,
+                                  Tensor *cpu_var,
+                                  Tensor *cpu_saved_mean,
+                                  Tensor *cpu_saved_var,
+                                  Tensor *cpu_y,
                                   Tensor *saved_reserve_space) {
   framework::Scope scope;
   auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
@@ -260,20 +272,27 @@ void ComputeFusedBNAddReluForward(const platform::CUDADeviceContext &ctx,
   paddle::framework::TensorCopySync(*y, platform::CPUPlace(), cpu_y);
   paddle::framework::TensorCopySync(*mean, platform::CPUPlace(), cpu_mean);
   paddle::framework::TensorCopySync(*var, platform::CPUPlace(), cpu_var);
-  paddle::framework::TensorCopySync(*saved_mean, platform::CPUPlace(),
-                                    cpu_saved_mean);
-  paddle::framework::TensorCopySync(*saved_var, platform::CPUPlace(),
-                                    cpu_saved_var);
+  paddle::framework::TensorCopySync(
+      *saved_mean, platform::CPUPlace(), cpu_saved_mean);
+  paddle::framework::TensorCopySync(
+      *saved_var, platform::CPUPlace(), cpu_saved_var);
   // reserved_space will stay on GPU and used in grad op.
   saved_reserve_space->ShareDataWith(*reserve_space);
 }
 
-void ComputeFusedBNAddReluBackward(
-    const platform::CUDADeviceContext &ctx, const Tensor &cpu_dy,
-    const Tensor &cpu_x, const Tensor &cpu_scale, const Tensor &cpu_bias,
-    const Tensor &cpu_saved_mean, const Tensor &cpu_saved_var,
-    const Tensor &cpu_y, const Tensor &saved_reserve_space, Tensor *cpu_dx,
-    Tensor *cpu_dz, Tensor *cpu_dscale, Tensor *cpu_dbias) {
+void ComputeFusedBNAddReluBackward(const phi::GPUContext &ctx,
+                                   const Tensor &cpu_dy,
+                                   const Tensor &cpu_x,
+                                   const Tensor &cpu_scale,
+                                   const Tensor &cpu_bias,
+                                   const Tensor &cpu_saved_mean,
+                                   const Tensor &cpu_saved_var,
+                                   const Tensor &cpu_y,
+                                   const Tensor &saved_reserve_space,
+                                   Tensor *cpu_dx,
+                                   Tensor *cpu_dz,
+                                   Tensor *cpu_dscale,
+                                   Tensor *cpu_dbias) {
   framework::Scope scope;
   auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
   auto *y = scope.Var("Y")->GetMutable<framework::LoDTensor>();
@@ -314,8 +333,9 @@ void ComputeFusedBNAddReluBackward(
   attrs.insert({"epsilon", epsilon});
   attrs.insert({"act_type", act_type});
 
-  auto op = framework::OpRegistry::CreateOp(
-      "fused_bn_add_activation_grad", {{"X", {"X"}},
+  auto op =
+      framework::OpRegistry::CreateOp("fused_bn_add_activation_grad",
+                                      {{"X", {"X"}},
                                        {"Y", {"Y"}},
                                        {"Y@GRAD", {"Y@GRAD"}},
                                        {"Scale", {"Scale"}},
@@ -323,11 +343,11 @@ void ComputeFusedBNAddReluBackward(
                                        {"SavedMean", {"SavedMean"}},
                                        {"SavedVariance", {"SavedVariance"}},
                                        {"ReserveSpace", {"ReserveSpace"}}},
-      {{"X@GRAD", {"X@GRAD"}},
-       {"Z@GRAD", {"Z@GRAD"}},
-       {"Scale@GRAD", {"Scale@GRAD"}},
-       {"Bias@GRAD", {"Bias@GRAD"}}},
-      attrs);
+                                      {{"X@GRAD", {"X@GRAD"}},
+                                       {"Z@GRAD", {"Z@GRAD"}},
+                                       {"Scale@GRAD", {"Scale@GRAD"}},
+                                       {"Bias@GRAD", {"Bias@GRAD"}}},
+                                      attrs);
   op->Run(scope, ctx.GetPlace());
 
   paddle::framework::TensorCopySync(*dx, platform::CPUPlace(), cpu_dx);
@@ -339,8 +359,13 @@ void ComputeFusedBNAddReluBackward(
 template <typename T>
 class CudnnBNAddReluTester {
  public:
-  CudnnBNAddReluTester(int batch_size, int height, int width, int channels,
-                       std::string act_type, bool fuse_add, bool has_shortcut) {
+  CudnnBNAddReluTester(int batch_size,
+                       int height,
+                       int width,
+                       int channels,
+                       std::string act_type,
+                       bool fuse_add,
+                       bool has_shortcut) {
     batch_size_ = batch_size;
     height_ = height;
     width_ = width;
@@ -359,10 +384,8 @@ class CudnnBNAddReluTester {
               << ", is_relative_atol=" << is_relative_atol
               << "] act_type=" << act_type_ << ", fuse_add=" << fuse_add_
               << ", has_shortcut=" << has_shortcut_;
-    platform::CUDADeviceContext *ctx =
-        static_cast<platform::CUDADeviceContext *>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(0)));
+    phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
+        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
     auto select = [&](Tensor *in) { return has_shortcut_ ? in : nullptr; };
 
@@ -371,16 +394,26 @@ class CudnnBNAddReluTester {
     framework::Tensor cpu_mean_base_z;
     framework::Tensor cpu_var_base_z;
     if (!has_shortcut_ && fuse_add_ && (act_type_ == "relu")) {
-      BaselineForwardFusedBNAddRelu(
-          *ctx, &cpu_mean_base_x, &cpu_var_base_x, &cpu_saved_mean_base_x_,
-          &cpu_saved_var_base_x_, &cpu_y_base_, &saved_reserve_space_x_);
+      BaselineForwardFusedBNAddRelu(*ctx,
+                                    &cpu_mean_base_x,
+                                    &cpu_var_base_x,
+                                    &cpu_saved_mean_base_x_,
+                                    &cpu_saved_var_base_x_,
+                                    &cpu_y_base_,
+                                    &saved_reserve_space_x_);
     } else {
-      BaselineForward(
-          *ctx, &cpu_mean_base_x, &cpu_var_base_x, &cpu_saved_mean_base_x_,
-          &cpu_saved_var_base_x_, &cpu_y_base_, &saved_reserve_space_x_,
-          select(&cpu_mean_base_z), select(&cpu_var_base_z),
-          select(&cpu_saved_mean_base_z_), select(&cpu_saved_var_base_z_),
-          select(&saved_reserve_space_z_));
+      BaselineForward(*ctx,
+                      &cpu_mean_base_x,
+                      &cpu_var_base_x,
+                      &cpu_saved_mean_base_x_,
+                      &cpu_saved_var_base_x_,
+                      &cpu_y_base_,
+                      &saved_reserve_space_x_,
+                      select(&cpu_mean_base_z),
+                      select(&cpu_var_base_z),
+                      select(&cpu_saved_mean_base_z_),
+                      select(&cpu_saved_var_base_z_),
+                      select(&saved_reserve_space_z_));
     }
 
     framework::Tensor cpu_mean_x;
@@ -388,44 +421,61 @@ class CudnnBNAddReluTester {
     framework::Tensor cpu_y;
     framework::Tensor cpu_mean_z;
     framework::Tensor cpu_var_z;
-    FusedForward(*ctx, &cpu_mean_x, &cpu_var_x, &cpu_saved_mean_x_,
-                 &cpu_saved_var_x_, &cpu_y, &cpu_bitmask_, select(&cpu_mean_z),
-                 select(&cpu_var_z), select(&cpu_saved_mean_z_),
+    FusedForward(*ctx,
+                 &cpu_mean_x,
+                 &cpu_var_x,
+                 &cpu_saved_mean_x_,
+                 &cpu_saved_var_x_,
+                 &cpu_y,
+                 &cpu_bitmask_,
+                 select(&cpu_mean_z),
+                 select(&cpu_var_z),
+                 select(&cpu_saved_mean_z_),
                  select(&cpu_saved_var_z_));
 
-    CheckOutput<float>("Mean", cpu_mean_x, cpu_mean_base_x, diff,
+    CheckOutput<float>(
+        "Mean", cpu_mean_x, cpu_mean_base_x, diff, is_relative_atol);
+    CheckOutput<float>(
+        "Variance", cpu_var_x, cpu_var_base_x, diff, is_relative_atol);
+    CheckOutput<float>("SavedMean",
+                       cpu_saved_mean_x_,
+                       cpu_saved_mean_base_x_,
+                       diff,
                        is_relative_atol);
-    CheckOutput<float>("Variance", cpu_var_x, cpu_var_base_x, diff,
+    CheckOutput<float>("SavedVariance",
+                       cpu_saved_var_x_,
+                       cpu_saved_var_base_x_,
+                       diff,
                        is_relative_atol);
-    CheckOutput<float>("SavedMean", cpu_saved_mean_x_, cpu_saved_mean_base_x_,
-                       diff, is_relative_atol);
-    CheckOutput<float>("SavedVariance", cpu_saved_var_x_, cpu_saved_var_base_x_,
-                       diff, is_relative_atol);
     if (has_shortcut_) {
-      CheckOutput<float>("MeanZ", cpu_mean_z, cpu_mean_base_z, diff,
+      CheckOutput<float>(
+          "MeanZ", cpu_mean_z, cpu_mean_base_z, diff, is_relative_atol);
+      CheckOutput<float>(
+          "VarianceZ", cpu_var_z, cpu_var_base_z, diff, is_relative_atol);
+      CheckOutput<float>("SavedMeanZ",
+                         cpu_saved_mean_z_,
+                         cpu_saved_mean_base_z_,
+                         diff,
                          is_relative_atol);
-      CheckOutput<float>("VarianceZ", cpu_var_z, cpu_var_base_z, diff,
+      CheckOutput<float>("SavedVarianceZ",
+                         cpu_saved_var_z_,
+                         cpu_saved_var_base_z_,
+                         diff,
                          is_relative_atol);
-      CheckOutput<float>("SavedMeanZ", cpu_saved_mean_z_,
-                         cpu_saved_mean_base_z_, diff, is_relative_atol);
-      CheckOutput<float>("SavedVarianceZ", cpu_saved_var_z_,
-                         cpu_saved_var_base_z_, diff, is_relative_atol);
     }
     CheckOutput<T>("Y", cpu_y, cpu_y_base_, diff, is_relative_atol);
   }
 
   void CheckBackward(float diff, bool is_relative_atol = false) {
-    platform::CUDADeviceContext *ctx =
-        static_cast<platform::CUDADeviceContext *>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(0)));
+    phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
+        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
     framework::Tensor cpu_dx_base;
     framework::Tensor cpu_dz_base;
     framework::Tensor cpu_dscale_base;
     framework::Tensor cpu_dbias_base;
-    BaselineBackwardFusedBNAddRelu(*ctx, &cpu_dx_base, &cpu_dz_base,
-                                   &cpu_dscale_base, &cpu_dbias_base);
+    BaselineBackwardFusedBNAddRelu(
+        *ctx, &cpu_dx_base, &cpu_dz_base, &cpu_dscale_base, &cpu_dbias_base);
 
     framework::Tensor cpu_dx;
     framework::Tensor cpu_dz;
@@ -435,10 +485,10 @@ class CudnnBNAddReluTester {
 
     CheckOutput<T>("DX", cpu_dx, cpu_dx_base, diff, is_relative_atol);
     CheckOutput<T>("DZ", cpu_dz, cpu_dz_base, diff, is_relative_atol);
-    CheckOutput<float>("DScale", cpu_dscale, cpu_dscale_base, diff,
-                       is_relative_atol);
-    CheckOutput<float>("DBias", cpu_dbias, cpu_dbias_base, diff,
-                       is_relative_atol);
+    CheckOutput<float>(
+        "DScale", cpu_dscale, cpu_dscale_base, diff, is_relative_atol);
+    CheckOutput<float>(
+        "DBias", cpu_dbias, cpu_dbias_base, diff, is_relative_atol);
   }
 
  private:
@@ -460,35 +510,54 @@ class CudnnBNAddReluTester {
     InitRandomTensor<T>({batch_size_, height_, width_, channels_}, &cpu_dy_);
   }
 
-  void InitMeanVar(Tensor *cpu_mean, Tensor *cpu_var, Tensor *cpu_saved_mean,
+  void InitMeanVar(Tensor *cpu_mean,
+                   Tensor *cpu_var,
+                   Tensor *cpu_saved_mean,
                    Tensor *cpu_saved_var) {
     InitConstantTensor<float>({channels_}, static_cast<float>(0.0f), cpu_mean);
     InitConstantTensor<float>({channels_}, static_cast<float>(1.0f), cpu_var);
-    InitConstantTensor<float>({channels_}, static_cast<float>(0.0f),
-                              cpu_saved_mean);
-    InitConstantTensor<float>({channels_}, static_cast<float>(0.0f),
-                              cpu_saved_var);
+    InitConstantTensor<float>(
+        {channels_}, static_cast<float>(0.0f), cpu_saved_mean);
+    InitConstantTensor<float>(
+        {channels_}, static_cast<float>(0.0f), cpu_saved_var);
   }
 
-  void BaselineForward(const platform::CUDADeviceContext &ctx,
-                       Tensor *cpu_mean_x, Tensor *cpu_var_x,
-                       Tensor *cpu_saved_mean_x, Tensor *cpu_saved_var_x,
-                       Tensor *cpu_y, Tensor *saved_reserve_space_x,
+  void BaselineForward(const phi::GPUContext &ctx,
+                       Tensor *cpu_mean_x,
+                       Tensor *cpu_var_x,
+                       Tensor *cpu_saved_mean_x,
+                       Tensor *cpu_saved_var_x,
+                       Tensor *cpu_y,
+                       Tensor *saved_reserve_space_x,
                        Tensor *cpu_mean_z = nullptr,
                        Tensor *cpu_var_z = nullptr,
                        Tensor *cpu_saved_mean_z = nullptr,
                        Tensor *cpu_saved_var_z = nullptr,
                        Tensor *saved_reserve_space_z = nullptr) {
     InitMeanVar(cpu_mean_x, cpu_var_x, cpu_saved_mean_x, cpu_saved_var_x);
-    ComputeBatchNormForward(ctx, cpu_x_, cpu_bn_scale_x_, cpu_bn_bias_x_,
-                            cpu_mean_x, cpu_var_x, cpu_saved_mean_x,
-                            cpu_saved_var_x, cpu_y, saved_reserve_space_x);
+    ComputeBatchNormForward(ctx,
+                            cpu_x_,
+                            cpu_bn_scale_x_,
+                            cpu_bn_bias_x_,
+                            cpu_mean_x,
+                            cpu_var_x,
+                            cpu_saved_mean_x,
+                            cpu_saved_var_x,
+                            cpu_y,
+                            saved_reserve_space_x);
     if (has_shortcut_) {
       framework::Tensor cpu_z_out;
       InitMeanVar(cpu_mean_z, cpu_var_z, cpu_saved_mean_z, cpu_saved_var_z);
-      ComputeBatchNormForward(
-          ctx, cpu_z_, cpu_bn_scale_z_, cpu_bn_bias_z_, cpu_mean_z, cpu_var_z,
-          cpu_saved_mean_z, cpu_saved_var_z, &cpu_z_out, saved_reserve_space_z);
+      ComputeBatchNormForward(ctx,
+                              cpu_z_,
+                              cpu_bn_scale_z_,
+                              cpu_bn_bias_z_,
+                              cpu_mean_z,
+                              cpu_var_z,
+                              cpu_saved_mean_z,
+                              cpu_saved_var_z,
+                              &cpu_z_out,
+                              saved_reserve_space_z);
       ComputeInplaceAdd<T>(cpu_z_out, cpu_y);
     } else {
       if (fuse_add_) {
@@ -500,34 +569,61 @@ class CudnnBNAddReluTester {
     }
   }
 
-  void BaselineForwardFusedBNAddRelu(const platform::CUDADeviceContext &ctx,
-                                     Tensor *cpu_mean, Tensor *cpu_var,
+  void BaselineForwardFusedBNAddRelu(const phi::GPUContext &ctx,
+                                     Tensor *cpu_mean,
+                                     Tensor *cpu_var,
                                      Tensor *cpu_saved_mean,
-                                     Tensor *cpu_saved_var, Tensor *cpu_y,
+                                     Tensor *cpu_saved_var,
+                                     Tensor *cpu_y,
                                      Tensor *saved_reserve_space) {
     InitMeanVar(cpu_mean, cpu_var, cpu_saved_mean, cpu_saved_var);
-    ComputeFusedBNAddReluForward(
-        ctx, cpu_x_, cpu_z_, cpu_bn_scale_x_, cpu_bn_bias_x_, cpu_mean, cpu_var,
-        cpu_saved_mean, cpu_saved_var, cpu_y, saved_reserve_space);
+    ComputeFusedBNAddReluForward(ctx,
+                                 cpu_x_,
+                                 cpu_z_,
+                                 cpu_bn_scale_x_,
+                                 cpu_bn_bias_x_,
+                                 cpu_mean,
+                                 cpu_var,
+                                 cpu_saved_mean,
+                                 cpu_saved_var,
+                                 cpu_y,
+                                 saved_reserve_space);
   }
 
-  void BaselineBackwardFusedBNAddRelu(const platform::CUDADeviceContext &ctx,
-                                      Tensor *cpu_dx, Tensor *cpu_dz,
-                                      Tensor *cpu_dscale, Tensor *cpu_dbias) {
-    ComputeFusedBNAddReluBackward(
-        ctx, cpu_dy_, cpu_x_, cpu_bn_scale_x_, cpu_bn_bias_x_,
-        cpu_saved_mean_base_x_, cpu_saved_var_base_x_, cpu_y_base_,
-        saved_reserve_space_x_, cpu_dx, cpu_dz, cpu_dscale, cpu_dbias);
+  void BaselineBackwardFusedBNAddRelu(const phi::GPUContext &ctx,
+                                      Tensor *cpu_dx,
+                                      Tensor *cpu_dz,
+                                      Tensor *cpu_dscale,
+                                      Tensor *cpu_dbias) {
+    ComputeFusedBNAddReluBackward(ctx,
+                                  cpu_dy_,
+                                  cpu_x_,
+                                  cpu_bn_scale_x_,
+                                  cpu_bn_bias_x_,
+                                  cpu_saved_mean_base_x_,
+                                  cpu_saved_var_base_x_,
+                                  cpu_y_base_,
+                                  saved_reserve_space_x_,
+                                  cpu_dx,
+                                  cpu_dz,
+                                  cpu_dscale,
+                                  cpu_dbias);
   }
 
-  void ComputeFusedBNStatsFinalize(const platform::CUDADeviceContext &ctx,
+  void ComputeFusedBNStatsFinalize(const phi::GPUContext &ctx,
                                    const Tensor &cpu_x,
                                    const Tensor &cpu_bn_scale,
-                                   const Tensor &cpu_bn_bias, Tensor *sum,
-                                   Tensor *sum_of_square, Tensor *bn_scale,
-                                   Tensor *bn_bias, Tensor *mean, Tensor *var,
-                                   Tensor *saved_mean, Tensor *saved_var,
-                                   Tensor *equiv_scale, Tensor *equiv_bias) {
+                                   const Tensor &cpu_bn_bias,
+                                   Tensor *sum,
+                                   Tensor *sum_of_square,
+                                   Tensor *bn_scale,
+                                   Tensor *bn_bias,
+                                   Tensor *mean,
+                                   Tensor *var,
+                                   Tensor *saved_mean,
+                                   Tensor *saved_var,
+                                   Tensor *equiv_scale,
+                                   Tensor *equiv_bias) {
     framework::Tensor cpu_sum;
     framework::Tensor cpu_sum_of_square;
     ComputeSumAndSquareSum<T>(cpu_x, &cpu_sum, &cpu_sum_of_square);
@@ -553,16 +649,33 @@ class CudnnBNAddReluTester {
 
     auto param_shape = phi::vectorize<int>(bn_scale->dims());
     op::CudnnBNStatsFinalize<T> bn_op(ctx, param_shape);
-    bn_op.Forward(ctx, *sum, *sum_of_square, *bn_scale, *bn_bias, saved_mean,
-                  saved_var, mean, var, equiv_scale, equiv_bias, eps_,
-                  momentum_, ele_count_, true);
+    bn_op.Forward(ctx,
+                  *sum,
+                  *sum_of_square,
+                  *bn_scale,
+                  *bn_bias,
+                  saved_mean,
+                  saved_var,
+                  mean,
+                  var,
+                  equiv_scale,
+                  equiv_bias,
+                  eps_,
+                  momentum_,
+                  ele_count_,
+                  true);
   }
 
   // Get forward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
-  void FusedForward(const platform::CUDADeviceContext &ctx, Tensor *cpu_mean_x,
-                    Tensor *cpu_var_x, Tensor *cpu_saved_mean_x,
-                    Tensor *cpu_saved_var_x, Tensor *cpu_y, Tensor *cpu_bitmask,
-                    Tensor *cpu_mean_z = nullptr, Tensor *cpu_var_z = nullptr,
+  void FusedForward(const phi::GPUContext &ctx,
+                    Tensor *cpu_mean_x,
+                    Tensor *cpu_var_x,
+                    Tensor *cpu_saved_mean_x,
+                    Tensor *cpu_saved_var_x,
+                    Tensor *cpu_y,
+                    Tensor *cpu_bitmask,
+                    Tensor *cpu_mean_z = nullptr,
+                    Tensor *cpu_var_z = nullptr,
                     Tensor *cpu_saved_mean_z = nullptr,
                     Tensor *cpu_saved_var_z = nullptr) {
     framework::Tensor x;
@@ -610,15 +723,35 @@ class CudnnBNAddReluTester {
     }
 
     // 1. BN Stats Finalize
-    ComputeFusedBNStatsFinalize(ctx, cpu_x_, cpu_bn_scale_x_, cpu_bn_bias_x_,
-                                &sum_x, &sum_of_square_x, &bn_scale_x,
-                                &bn_bias_x, &mean_x, &var_x, &saved_mean_x,
-                                &saved_var_x, &equiv_scale_x, &equiv_bias_x);
+    ComputeFusedBNStatsFinalize(ctx,
+                                cpu_x_,
+                                cpu_bn_scale_x_,
+                                cpu_bn_bias_x_,
+                                &sum_x,
+                                &sum_of_square_x,
+                                &bn_scale_x,
+                                &bn_bias_x,
+                                &mean_x,
+                                &var_x,
+                                &saved_mean_x,
+                                &saved_var_x,
+                                &equiv_scale_x,
+                                &equiv_bias_x);
     if (has_shortcut_) {
-      ComputeFusedBNStatsFinalize(ctx, cpu_z_, cpu_bn_scale_z_, cpu_bn_bias_z_,
-                                  &sum_z, &sum_of_square_z, &bn_scale_z,
-                                  &bn_bias_z, &mean_z, &var_z, &saved_mean_z,
-                                  &saved_var_z, &equiv_scale_z, &equiv_bias_z);
+      ComputeFusedBNStatsFinalize(ctx,
+                                  cpu_z_,
+                                  cpu_bn_scale_z_,
+                                  cpu_bn_bias_z_,
+                                  &sum_z,
+                                  &sum_of_square_z,
+                                  &bn_scale_z,
+                                  &bn_bias_z,
+                                  &mean_z,
+                                  &var_z,
+                                  &saved_mean_z,
+                                  &saved_var_z,
+                                  &equiv_scale_z,
+                                  &equiv_bias_z);
     }
 
     y.Resize(phi::make_ddim({batch_size_, height_, width_, channels_}));
@@ -634,35 +767,49 @@ class CudnnBNAddReluTester {
     auto bitmask_shape = phi::vectorize<int>(bitmask.dims());
 
     // 2. Scale Bias + Relu
-    op::CudnnScaleBiasAddRelu<T> sbar_op(ctx, act_type_, fuse_add_,
-                                         has_shortcut_, data_shape, param_shape,
+    op::CudnnScaleBiasAddRelu<T> sbar_op(ctx,
+                                         act_type_,
+                                         fuse_add_,
+                                         has_shortcut_,
+                                         data_shape,
+                                         param_shape,
                                          bitmask_shape);
-    sbar_op.Forward(ctx, x, equiv_scale_x, equiv_bias_x, &z, &equiv_scale_z,
-                    &equiv_bias_z, &y, &bitmask);
+    sbar_op.Forward(ctx,
+                    x,
+                    equiv_scale_x,
+                    equiv_bias_x,
+                    &z,
+                    &equiv_scale_z,
+                    &equiv_bias_z,
+                    &y,
+                    &bitmask);
 
     paddle::framework::TensorCopySync(mean_x, platform::CPUPlace(), cpu_mean_x);
     paddle::framework::TensorCopySync(var_x, platform::CPUPlace(), cpu_var_x);
-    paddle::framework::TensorCopySync(saved_mean_x, platform::CPUPlace(),
-                                      cpu_saved_mean_x);
-    paddle::framework::TensorCopySync(saved_var_x, platform::CPUPlace(),
-                                      cpu_saved_var_x);
+    paddle::framework::TensorCopySync(
+        saved_mean_x, platform::CPUPlace(), cpu_saved_mean_x);
+    paddle::framework::TensorCopySync(
+        saved_var_x, platform::CPUPlace(), cpu_saved_var_x);
     if (has_shortcut_) {
-      paddle::framework::TensorCopySync(mean_z, platform::CPUPlace(),
-                                        cpu_mean_z);
+      paddle::framework::TensorCopySync(
+          mean_z, platform::CPUPlace(), cpu_mean_z);
       paddle::framework::TensorCopySync(var_z, platform::CPUPlace(), cpu_var_z);
-      paddle::framework::TensorCopySync(saved_mean_z, platform::CPUPlace(),
-                                        cpu_saved_mean_z);
-      paddle::framework::TensorCopySync(saved_var_z, platform::CPUPlace(),
-                                        cpu_saved_var_z);
+      paddle::framework::TensorCopySync(
+          saved_mean_z, platform::CPUPlace(), cpu_saved_mean_z);
+      paddle::framework::TensorCopySync(
+          saved_var_z, platform::CPUPlace(), cpu_saved_var_z);
     }
     paddle::framework::TensorCopySync(y, platform::CPUPlace(), cpu_y);
-    paddle::framework::TensorCopySync(bitmask, platform::CPUPlace(),
-                                      cpu_bitmask);
+    paddle::framework::TensorCopySync(
+        bitmask, platform::CPUPlace(), cpu_bitmask);
   }
 
   // Get backward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
-  void FusedBackward(const platform::CUDADeviceContext &ctx, Tensor *cpu_dx,
-                     Tensor *cpu_dz, Tensor *cpu_dscale, Tensor *cpu_dbias) {
+  void FusedBackward(const phi::GPUContext &ctx,
+                     Tensor *cpu_dx,
+                     Tensor *cpu_dz,
+                     Tensor *cpu_dscale,
+                     Tensor *cpu_dbias) {
     framework::Tensor dy;
     framework::Tensor x;
     framework::Tensor bn_scale;
@@ -699,10 +846,21 @@ class CudnnBNAddReluTester {
     auto bitmask_shape = phi::vectorize<int>(bitmask.dims());
 
     std::string act_type = "relu";
-    op::CudnnScaleBiasAddRelu<T> sbar_op(ctx, act_type, true, false, data_shape,
-                                         param_shape, bitmask_shape);
-    sbar_op.Backward(ctx, dy, x, bn_scale, bn_bias, saved_mean, saved_var,
-                     &bitmask, &dx, &dz, &dscale, &dbias, eps_);
+    op::CudnnScaleBiasAddRelu<T> sbar_op(
+        ctx, act_type, true, false, data_shape, param_shape, bitmask_shape);
+    sbar_op.Backward(ctx,
+                     dy,
+                     x,
+                     bn_scale,
+                     bn_bias,
+                     saved_mean,
+                     saved_var,
+                     &bitmask,
+                     &dx,
+                     &dz,
+                     &dscale,
+                     &dbias,
+                     eps_);
 
     paddle::framework::TensorCopySync(dx, platform::CPUPlace(), cpu_dx);
     paddle::framework::TensorCopySync(dz, platform::CPUPlace(), cpu_dz);

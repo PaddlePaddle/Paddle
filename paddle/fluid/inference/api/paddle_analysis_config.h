@@ -145,7 +145,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param[in] other another AnalysisConfig
   ///
-  explicit AnalysisConfig(const AnalysisConfig& other);
+  AnalysisConfig(const AnalysisConfig& other);
   ///
   /// \brief Construct a new AnalysisConfig from a no-combined model.
   ///
@@ -167,6 +167,14 @@ struct PD_INFER_DECL AnalysisConfig {
     kFloat32 = 0,  ///< fp32
     kInt8,         ///< int8
     kHalf,         ///< fp16
+    kBf16,         ///< bf16
+  };
+
+  enum class Backend {
+    kCPU = 0,
+    kGPU,
+    kXPU,
+    kNPU,
   };
 
   ///
@@ -253,19 +261,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void DisableGpu();
-  ///
-  /// \brief Enable GPU fp16 precision computation, in experimental state.
-  ///
-  /// \param op_list The operator type list.
-  ///
-  void Exp_EnableUseGpuFp16(std::unordered_set<std::string> op_list = {});
-  ///
-  /// \brief A boolean state telling whether the GPU fp16 precision is turned
-  /// on.
-  ///
-  /// \return bool Whether the GPU fp16 precision is turned on.
-  ///
-  bool gpu_fp16_enabled() const { return use_gpu_fp16_; }
 
   ///
   /// \brief Turn on XPU.
@@ -287,8 +282,10 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param precision Calculation accuracy of multi_encoder
   /// \param adaptive_seqlen Is the input of multi_encoder variable length
   ///
-  void EnableXpu(int l3_workspace_size = 0xfffc00, bool locked = false,
-                 bool autotune = true, const std::string& autotune_file = "",
+  void EnableXpu(int l3_workspace_size = 0xfffc00,
+                 bool locked = false,
+                 bool autotune = true,
+                 const std::string& autotune_file = "",
                  const std::string& precision = "int16",
                  bool adaptive_seqlen = false);
 
@@ -301,7 +298,8 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param ipu_enable_pipelining enable pipelining.
   /// \param ipu_batches_per_step the number of batches per run in pipelining.
   ///
-  void EnableIpu(int ipu_device_num = 1, int ipu_micro_batch_size = 1,
+  void EnableIpu(int ipu_device_num = 1,
+                 int ipu_micro_batch_size = 1,
                  bool ipu_enable_pipelining = false,
                  int ipu_batches_per_step = 1);
 
@@ -315,7 +313,8 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param ipu_enable_half_partial enable fp16 partial for matmul, only work
   /// with fp16.
   ///
-  void SetIpuConfig(bool ipu_enable_fp16 = false, int ipu_replica_num = 1,
+  void SetIpuConfig(bool ipu_enable_fp16 = false,
+                    int ipu_replica_num = 1,
                     float ipu_available_memory_proportion = 1.0,
                     bool ipu_enable_half_partial = false);
 
@@ -525,7 +524,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
-                            int max_batch_size = 1, int min_subgraph_size = 3,
+                            int max_batch_size = 1,
+                            int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
                             bool use_static = false,
                             bool use_calib_mode = true);
@@ -586,6 +586,25 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_allow_build_at_runtime();
 
   ///
+  /// \brief Set execution stream. If not set a stream will be created
+  /// internally.
+  ///
+  void SetExecStream(void* stream);
+
+  ///
+  /// \brief Get execution stream. The user needs to explicitly cast into a
+  /// stream type such as cudaStream_t, hipStream_t, etc.
+  ///
+  void* GetExecStream() const;
+
+  ///
+  /// \brief Whether the external stream is used, if True, the predictor clone
+  /// operation must use the external stream, otherwise the framework manages
+  /// the stream internally.
+  ///
+  bool external_stream_enabled() const;
+
+  ///
   /// \brief Collect shape info of all tensors in compute graph.
   ///
   /// \param shape_range_info_path the path to save shape info.
@@ -618,14 +637,14 @@ struct PD_INFER_DECL AnalysisConfig {
   /// may be more high-performance. Libnvinfer_plugin.so greater than
   /// V7.2.1 is needed.
   ///
-  void EnableTensorRtOSS();
+  void EnableVarseqlen();
 
   ///
   /// \brief A boolean state telling whether to use the TensorRT OSS.
   ///
   /// \return bool Whether to use the TensorRT OSS.
   ///
-  bool tensorrt_oss_enabled() { return trt_use_oss_; }
+  bool tensorrt_varseqlen_enabled() { return trt_use_varseqlen_; }
 
   ///
   /// \brief Enable TensorRT DLA
@@ -802,8 +821,10 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param params_buffer The memory buffer of the combined parameters file.
   /// \param params_buffer_size The size of the combined parameters data.
   ///
-  void SetModelBuffer(const char* prog_buffer, size_t prog_buffer_size,
-                      const char* params_buffer, size_t params_buffer_size);
+  void SetModelBuffer(const char* prog_buffer,
+                      size_t prog_buffer_size,
+                      const char* params_buffer,
+                      size_t params_buffer_size);
   ///
   /// \brief A boolean state telling whether the model is set from the CPU
   /// memory.
@@ -893,6 +914,14 @@ struct PD_INFER_DECL AnalysisConfig {
 
   const DistConfig& dist_config() const { return dist_config_; }
 
+  ///
+  /// \brief Set a list of operators that do not support mixed precision. This
+  /// interface is in the experimental stage and may change in the future. Note
+  /// that the blacklist must be the same as the model conversion blacklist.
+  ///
+  void Exp_SetBlackListOpsForMixedModel(
+      const std::unordered_set<std::string>& black_list);
+
  protected:
   // Update the config.
   void Update();
@@ -905,20 +934,18 @@ struct PD_INFER_DECL AnalysisConfig {
   mutable std::string prog_file_;
   mutable std::string params_file_;
 
+  // Mixed precision.
+  std::unordered_set<std::string> mixed_black_list_;
+
   // GPU related.
   bool use_gpu_{false};
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
   bool thread_local_stream_{false};
-  bool use_gpu_fp16_{false};
-  std::unordered_set<std::string> gpu_fp16_disabled_op_types_{
-      "conv2d_fusion", "conv2d", "roll", "strided_slice", "depthwise_conv2d",
-      "unfold", "generate_proposals_v2", "nearest_interp_v2",
-      "bilinear_interp_v2"
-      "yolo_box",
-      "multiclass_nms3", "matrix_nms"};
 
   bool use_cudnn_{false};
+  bool use_external_stream_{false};
+  void* exec_stream_{nullptr};
 
   // NPU related
   bool use_npu_{false};
@@ -954,8 +981,10 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
-  bool trt_use_oss_{false};
+  bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
+  std::string tensorrt_transformer_posid_{""};
+  std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
   int trt_dla_core_{0};
   std::map<std::string, std::vector<int>> min_input_shape_{};

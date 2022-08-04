@@ -20,6 +20,7 @@ from op_test import OpTest
 
 
 def crop(data, offsets, crop_shape):
+
     def indexOf(shape, index):
         result = []
         for dim in reversed(shape):
@@ -41,6 +42,7 @@ def crop(data, offsets, crop_shape):
 
 
 class TestCropOp(OpTest):
+
     def setUp(self):
         self.op_type = "crop"
         self.crop_by_input = False
@@ -78,6 +80,7 @@ class TestCropOp(OpTest):
 
 
 class TestCase1(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (16, 8, 32)
         self.crop_shape = [2, 2, 3]
@@ -85,6 +88,7 @@ class TestCase1(TestCropOp):
 
 
 class TestCase2(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (15, 8)
         self.crop_shape = [15, 8]
@@ -92,6 +96,7 @@ class TestCase2(TestCropOp):
 
 
 class TestCase3(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (4, 8, 16)
         self.crop_shape = [2, 2, 3]
@@ -100,6 +105,7 @@ class TestCase3(TestCropOp):
 
 
 class TestCase4(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (10, 10)
         self.crop_shape = [10, 10]
@@ -108,6 +114,7 @@ class TestCase4(TestCropOp):
 
 
 class TestCase5(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (3, 4, 10)
         self.crop_shape = [2, 2, 3]
@@ -116,6 +123,7 @@ class TestCase5(TestCropOp):
 
 
 class TestCase6(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
         self.crop_shape = [3, 3, 5]

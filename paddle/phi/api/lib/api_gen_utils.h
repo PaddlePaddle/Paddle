@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -33,25 +32,25 @@ enum class TensorType { DENSE_TENSOR, SPARSE_CSR, SPARSE_COO, STRING_TENSOR };
 
 std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(const Tensor& tensor);
 
-std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
+paddle::optional<phi::DenseTensor> TensorToDenseTensor(
     const paddle::optional<Tensor>& tensor);
 
-std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
+std::unique_ptr<std::vector<phi::DenseTensor*>> TensorToDenseTensor(
     const std::vector<Tensor>& tensors);
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor);
 
-std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
-    const paddle::optional<const Tensor&>& tensor);
+paddle::optional<phi::SelectedRows> TensorToSelectedRows(
+    const paddle::optional<Tensor>& tensor);
 
 std::shared_ptr<phi::StringTensor> TensorToStringTensor(const Tensor& tensor);
 
 /* ----------------- for infer_meta --------------------- */
 
-phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor);
+phi::MetaTensor MakeMetaTensor(const phi::TensorBase& tensor);
 
-paddle::optional<phi::MetaTensor> MakeMetaTensor(
-    const paddle::optional<const phi::DenseTensor&>& tensor);
+phi::MetaTensor MakeMetaTensor(
+    const paddle::optional<phi::DenseTensor>& tensor);
 
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<const phi::DenseTensor*>& tensors);
@@ -59,12 +58,8 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<phi::DenseTensor*>& tensors);
 
-phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor);
-
-paddle::optional<phi::MetaTensor> MakeMetaTensor(
-    const paddle::optional<const phi::SelectedRows&>& tensor);
-
-phi::MetaTensor MakeMetaTensor(const phi::StringTensor& tensor);
+phi::MetaTensor MakeMetaTensor(
+    const paddle::optional<phi::SelectedRows>& tensor);
 
 /* ------------------ for output ----------------------- */
 

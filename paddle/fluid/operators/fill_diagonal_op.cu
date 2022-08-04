@@ -18,11 +18,13 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
-__global__ void fill_constant_kernel(const int64_t featuresize, T* in_data,
-                                     int64_t strides, int offset, T fillvar,
+__global__ void fill_constant_kernel(const int64_t featuresize,
+                                     T* in_data,
+                                     int64_t strides,
+                                     int offset,
+                                     T fillvar,
                                      int dims) {
   for (int64_t idx = blockIdx.x * featuresize + threadIdx.x;
        idx * strides + offset < (blockIdx.x + 1) * featuresize;
@@ -69,8 +71,8 @@ class FillIDiagonalCUDAKernel : public framework::OpKernel<T> {
     }
 
     int64_t kBlockDim = std::min(int64_t(size / strides), kMaxBlockDim);
-    fill_constant_kernel<T><<<1, kBlockDim, 0>>>(size, out_data, strides,
-                                                 offset, temp_var, out_dims[1]);
+    fill_constant_kernel<T><<<1, kBlockDim, 0>>>(
+        size, out_data, strides, offset, temp_var, out_dims[1]);
   }
 };
 
@@ -103,8 +105,8 @@ class FillIDiagonalGradCUDAKernel : public framework::OpKernel<T> {
     }
 
     int64_t kBlockDim = std::min(int64_t(size), kMaxBlockDim);
-    fill_constant_kernel<T><<<1, kBlockDim, 0>>>(wrapsize, in_data, strides,
-                                                 offset, T(0), out_dims[1]);
+    fill_constant_kernel<T><<<1, kBlockDim, 0>>>(
+        wrapsize, in_data, strides, offset, T(0), out_dims[1]);
   }
 };
 
@@ -114,7 +116,8 @@ class FillIDiagonalGradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(fill_diagonal, ops::FillIDiagonalCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(fill_diagonal,
+                        ops::FillIDiagonalCUDAKernel<float>,
                         ops::FillIDiagonalCUDAKernel<double>,
                         ops::FillIDiagonalCUDAKernel<plat::float16>,
                         ops::FillIDiagonalCUDAKernel<int>,

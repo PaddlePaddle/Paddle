@@ -45,9 +45,11 @@ int GetNumDevices() {
   }
   int num_devices =
       popart::DeviceManager::createDeviceManager().enumerateDevices().size();
-  PADDLE_ENFORCE_GT(num_devices, 0, platform::errors::Unavailable(
-                                        "Do not found any IPU devices, please "
-                                        "make sure Poplar sdk is enabled"));
+  PADDLE_ENFORCE_GT(
+      num_devices,
+      0,
+      platform::errors::Unavailable("Do not found any IPU devices, please "
+                                    "make sure Poplar sdk is enabled"));
   return num_devices;
 }
 
@@ -61,7 +63,8 @@ std::vector<int> GetDeviceIds() {
   auto devices =
       popart::DeviceManager::createDeviceManager().enumerateDevices();
   PADDLE_ENFORCE_GT(
-      devices.size(), 0,
+      devices.size(),
+      0,
       platform::errors::Unavailable("Do not found any IPU devices, please make "
                                     "sure Poplar sdk is enabled."));
   for (auto device : devices) {

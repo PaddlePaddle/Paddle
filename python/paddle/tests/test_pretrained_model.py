@@ -26,6 +26,7 @@ import paddle.vision.models as models
 # test the predicted resutls of static graph and dynamic graph are equal
 # when used pretrained model
 class TestPretrainedModel(unittest.TestCase):
+
     def infer(self, arch):
         path = os.path.join(tempfile.mkdtemp(), '.cache_test_pretrained_model')
         if not os.path.exists(path):
@@ -56,8 +57,8 @@ class TestPretrainedModel(unittest.TestCase):
 
     def test_models(self):
         # TODO (LielinJiang): when model file cache is ok. add following test back
-        # 'resnet18', 'vgg16', 'alexnet', 'resnext50_32x4d', 'inception_v3', 
-        # 'densenet121', 'googlenet', 'wide_resnet50_2', 'wide_resnet101_2'  
+        # 'resnet18', 'vgg16', 'alexnet', 'resnext50_32x4d', 'inception_v3',
+        # 'densenet121', 'googlenet', 'wide_resnet50_2', 'wide_resnet101_2'
         arches = [
             'mobilenet_v1',
             'mobilenet_v2',

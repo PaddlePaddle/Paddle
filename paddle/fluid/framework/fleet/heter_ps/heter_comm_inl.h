@@ -84,7 +84,8 @@ template <typename KeyType,
           typename GradType,
           typename GPUAccessor>
 HeterComm<KeyType, ValType, GradType, GPUAccessor>::HeterComm(
-    size_t capacity, std::shared_ptr<HeterPsResource> resource,
+    size_t capacity,
+    std::shared_ptr<HeterPsResource> resource,
     GPUAccessor& gpu_accessor) {
   VLOG(1) << "Construct new HeterComm";
   resource_ = resource;
@@ -565,7 +566,11 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::set_sparse_sgd(
     const OptimizerConfig& optimizer_config) {
   for (int i = 0; i < resource_->total_device(); ++i) {
     AnyDeviceGuard guard(resource_->dev_id(i));
-    ptr_tables_[i]->set_sparse_sgd(optimizer_config);
+    if (!multi_mf_dim_) {
+      tables_[i]->set_sparse_sgd(optimizer_config);
+    } else {
+      ptr_tables_[i]->set_sparse_sgd(optimizer_config);
+    }
   }
 }
 
@@ -577,7 +582,11 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::set_embedx_sgd(
     const OptimizerConfig& optimizer_config) {
   for (int i = 0; i < resource_->total_device(); ++i) {
     AnyDeviceGuard guard(resource_->dev_id(i));
-    ptr_tables_[i]->set_embedx_sgd(optimizer_config);
+    if (!multi_mf_dim_) {
+      tables_[i]->set_embedx_sgd(optimizer_config);
+    } else {
+      ptr_tables_[i]->set_embedx_sgd(optimizer_config);
+    }
   }
 }
 
@@ -1563,18 +1572,25 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
     AnyDeviceGuard guard(resource_->dev_id(i));
     ptr_tables_[i]->rwlock_->RDLock();
     if (!FLAGS_gpugraph_enable_gpu_direct_access) {
-      //add default value (show, clk, EmbedW, mf_size, embding all eauqls 0) for get
-      CUDA_CHECK(cudaMemsetAsync(node.val_storage, 0, (h_right[i] - h_left[i] + 1) * val_type_size,
-        resource_->remote_stream(i, num)));
+      // add default value (show, clk, EmbedW, mf_size, embding all eauqls 0)
+      // for get
+      CUDA_CHECK(cudaMemsetAsync(node.val_storage,
+                                 0,
+                                 (h_right[i] - h_left[i] + 1) * val_type_size,
+                                 resource_->remote_stream(i, num)));
       ptr_tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
                           node.val_storage,
                           h_right[i] - h_left[i] + 1,
                           resource_->remote_stream(i, num),
                           gpu_accessor_);
     } else {
-      //add default value (show, clk, EmbedW, mf_size, embding all eauqls 0) for get
-      CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<char*>(d_shard_vals_ptr) + h_left[i] * val_type_size,
-        0, (h_right[i] - h_left[i] + 1) * val_type_size, resource_->remote_stream(i, num)));
+      // add default value (show, clk, EmbedW, mf_size, embding all eauqls 0)
+      // for get
+      CUDA_CHECK(cudaMemsetAsync(
+          reinterpret_cast<char*>(d_shard_vals_ptr) + h_left[i] * val_type_size,
+          0,
+          (h_right[i] - h_left[i] + 1) * val_type_size,
+          resource_->remote_stream(i, num)));
       ptr_tables_[i]->get(
           d_shard_keys_ptr + h_left[i],
           reinterpret_cast<char*>(d_shard_vals_ptr) + h_left[i] * val_type_size,
@@ -1603,10 +1619,11 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
       sync_stream(node.out_stream);
     }
   }
-
   heter_comm_kernel_->dy_mf_fill_dvals(
       d_shard_vals_ptr, d_vals, d_idx_ptr, len, val_type_size, stream);
+
   sync_stream(stream);
+
   if (!FLAGS_gpugraph_enable_gpu_direct_access) {
     for (int i = 0; i < total_device; ++i) {
       if (h_left[i] == -1 || h_right[i] == -1) {

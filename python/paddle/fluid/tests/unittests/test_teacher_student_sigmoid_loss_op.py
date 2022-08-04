@@ -32,11 +32,12 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
         batch_size = 100
         num_classes = 1
         self.inputs = {
-            'X': logit(
-                np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float64")),
-            'Label': np.random.uniform(0, 2, (batch_size, num_classes))
-            .astype("float64")
+            'X':
+            logit(
+                np.random.uniform(0, 1,
+                                  (batch_size, num_classes)).astype("float64")),
+            'Label':
+            np.random.uniform(0, 2, (batch_size, num_classes)).astype("float64")
         }
         outs = []
         for index, label in enumerate(self.inputs["Label"]):
@@ -61,7 +62,9 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
 
 
 class TestTeacherStudentSigmoidLossInvalidInput(unittest.TestCase):
+
     def test_error(self):
+
         def test_invalid_input():
             input = [512, 1]
             label = fluid.data(name='label', shape=[None, 1], dtype='float32')

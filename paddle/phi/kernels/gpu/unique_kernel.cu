@@ -21,12 +21,14 @@
 #include <thrust/scatter.h>
 #include <thrust/sequence.h>
 #include <thrust/unique.h>
+
 #include <iostream>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor_util.h"  // TensorToVector()
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unique_functor.h"
 
 namespace phi {

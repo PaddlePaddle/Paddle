@@ -222,6 +222,7 @@ class TestFleetHeterBase(unittest.TestCase):
         self._setup_config()
 
     def _find_free_port(self):
+
         def __free_port():
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as s:
@@ -240,16 +241,14 @@ class TestFleetHeterBase(unittest.TestCase):
         ps0_pipe = open(tempfile.gettempdir() + "/ps0_err.log", "wb+")
         ps1_pipe = open(tempfile.gettempdir() + "/ps1_err.log", "wb+")
 
-        ps0_proc = subprocess.Popen(
-            ps0_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
-            stderr=ps0_pipe,
-            env=required_envs)
-        ps1_proc = subprocess.Popen(
-            ps1_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
-            stderr=ps1_pipe,
-            env=required_envs)
+        ps0_proc = subprocess.Popen(ps0_cmd.strip().split(" "),
+                                    stdout=subprocess.PIPE,
+                                    stderr=ps0_pipe,
+                                    env=required_envs)
+        ps1_proc = subprocess.Popen(ps1_cmd.strip().split(" "),
+                                    stdout=subprocess.PIPE,
+                                    stderr=ps1_pipe,
+                                    env=required_envs)
         return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
 
     def _start_trainer(self, cmd, required_envs):
@@ -261,16 +260,14 @@ class TestFleetHeterBase(unittest.TestCase):
         tr0_out = open(tempfile.gettempdir() + "/tr0_out.log", "wb+")
         tr1_out = open(tempfile.gettempdir() + "/tr1_out.log", "wb+")
 
-        tr0_proc = subprocess.Popen(
-            tr0_cmd.strip().split(" "),
-            stdout=tr0_out,
-            stderr=tr0_pipe,
-            env=required_envs)
-        tr1_proc = subprocess.Popen(
-            tr1_cmd.strip().split(" "),
-            stdout=tr1_out,
-            stderr=tr1_pipe,
-            env=required_envs)
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(" "),
+                                    stdout=tr0_out,
+                                    stderr=tr0_pipe,
+                                    env=required_envs)
+        tr1_proc = subprocess.Popen(tr1_cmd.strip().split(" "),
+                                    stdout=tr1_out,
+                                    stderr=tr1_pipe,
+                                    env=required_envs)
 
         return tr0_proc, tr1_proc, tr0_pipe, tr1_pipe
 
@@ -287,26 +284,22 @@ class TestFleetHeterBase(unittest.TestCase):
         heter2_out = open(tempfile.gettempdir() + "/heter2_out.log", "wb+")
         heter3_out = open(tempfile.gettempdir() + "/heter3_out.log", "wb+")
 
-        heter0_proc = subprocess.Popen(
-            heter0_cmd.strip().split(" "),
-            stdout=heter0_out,
-            stderr=heter0_pipe,
-            env=required_envs)
-        heter1_proc = subprocess.Popen(
-            heter1_cmd.strip().split(" "),
-            stdout=heter1_out,
-            stderr=heter1_pipe,
-            env=required_envs)
-        heter2_proc = subprocess.Popen(
-            heter2_cmd.strip().split(" "),
-            stdout=heter2_out,
-            stderr=heter2_pipe,
-            env=required_envs)
-        heter3_proc = subprocess.Popen(
-            heter3_cmd.strip().split(" "),
-            stdout=heter3_out,
-            stderr=heter3_pipe,
-            env=required_envs)
+        heter0_proc = subprocess.Popen(heter0_cmd.strip().split(" "),
+                                       stdout=heter0_out,
+                                       stderr=heter0_pipe,
+                                       env=required_envs)
+        heter1_proc = subprocess.Popen(heter1_cmd.strip().split(" "),
+                                       stdout=heter1_out,
+                                       stderr=heter1_pipe,
+                                       env=required_envs)
+        heter2_proc = subprocess.Popen(heter2_cmd.strip().split(" "),
+                                       stdout=heter2_out,
+                                       stderr=heter2_pipe,
+                                       env=required_envs)
+        heter3_proc = subprocess.Popen(heter3_cmd.strip().split(" "),
+                                       stdout=heter3_out,
+                                       stderr=heter3_pipe,
+                                       env=required_envs)
 
         return heter0_proc, heter1_proc, heter2_proc, heter3_proc, heter0_pipe, heter1_pipe, heter2_pipe, heter3_pipe
 
@@ -414,25 +407,32 @@ class TestFleetHeterBase(unittest.TestCase):
 
 def runtime_main(test_class):
     parser = argparse.ArgumentParser(description='Run Fleet test.')
-    parser.add_argument(
-        '--role',
-        type=str,
-        required=True,
-        choices=['pserver', 'trainer', 'heter_trainer'])
+    parser.add_argument('--role',
+                        type=str,
+                        required=True,
+                        choices=['pserver', 'trainer', 'heter_trainer'])
     parser.add_argument('--endpoints', type=str, required=False, default="")
-    parser.add_argument(
-        '--trainer_endpoints', type=str, required=False, default="")
-    parser.add_argument(
-        '--heter_trainer_endpoints', type=str, required=False, default="")
-    parser.add_argument(
-        '--heter_trainer_device', type=str, required=False, default="gpu")
+    parser.add_argument('--trainer_endpoints',
+                        type=str,
+                        required=False,
+                        default="")
+    parser.add_argument('--heter_trainer_endpoints',
+                        type=str,
+                        required=False,
+                        default="")
+    parser.add_argument('--heter_trainer_device',
+                        type=str,
+                        required=False,
+                        default="gpu")
     parser.add_argument('--gloo_path', type=str, required=False, default="")
     parser.add_argument('--current_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--stage_id', type=int, required=False, default=1)
     parser.add_argument('--mode', type=str, required=False, default='async')
-    parser.add_argument(
-        '--geo_sgd_need_push_nums', type=int, required=False, default=2)
+    parser.add_argument('--geo_sgd_need_push_nums',
+                        type=int,
+                        required=False,
+                        default=2)
     parser.add_argument('--reader', type=str, required=False, default='dataset')
     args = parser.parse_args()
 

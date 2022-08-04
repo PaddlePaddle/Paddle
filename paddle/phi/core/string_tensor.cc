@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/string_tensor.h"
-#include "paddle/phi/api/lib/utils/storage.h"
+
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/common/pstring.h"
 
 namespace phi {
 
@@ -177,7 +179,7 @@ dtype::pstring* StringTensor::mutable_data(const phi::Place& place,
     size = requested_size;
   }
 
-  /* some versions of boost::variant don't have operator!= */
+  /* some versions of paddle::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset) {
     holder_.reset();

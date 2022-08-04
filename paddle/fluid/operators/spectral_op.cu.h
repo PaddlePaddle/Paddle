@@ -24,7 +24,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -61,7 +60,8 @@ struct FFTConfigKey {
   FFTConfigKey(const std::vector<int64_t>& in_shape,
                const std::vector<int64_t>& out_shape,
                const std::vector<int64_t>& signal_size,
-               FFTTransformType fft_type, ScalarType value_type) {
+               FFTTransformType fft_type,
+               ScalarType value_type) {
     // Padding bits must be zeroed for hashing
     memset(this, 0, sizeof(*this));
     signal_ndim_ = signal_size.size() - 1;
@@ -111,11 +111,15 @@ class FFTConfig {
       : FFTConfig(
             std::vector<int64_t>(plan_key.sizes_,
                                  plan_key.sizes_ + plan_key.signal_ndim_ + 1),
-            plan_key.signal_ndim_, plan_key.fft_type_, plan_key.value_type_) {}
+            plan_key.signal_ndim_,
+            plan_key.fft_type_,
+            plan_key.value_type_) {}
 
   // sizes are full signal, including batch size and always two-sided
-  FFTConfig(const std::vector<int64_t>& sizes, const int64_t signal_ndim,
-            FFTTransformType fft_type, ScalarType dtype)
+  FFTConfig(const std::vector<int64_t>& sizes,
+            const int64_t signal_ndim,
+            FFTTransformType fft_type,
+            ScalarType dtype)
       : fft_type_(fft_type), value_type_(dtype) {
     // signal sizes (excluding batch dim)
     std::vector<plan_size_type> signal_sizes(sizes.begin() + 1, sizes.end());
@@ -123,11 +127,13 @@ class FFTConfig {
     // input batch size
     const auto batch = static_cast<plan_size_type>(sizes[0]);
     // const int64_t signal_ndim = sizes.size() - 1;
-    PADDLE_ENFORCE_EQ(signal_ndim, sizes.size() - 1,
+    PADDLE_ENFORCE_EQ(signal_ndim,
+                      sizes.size() - 1,
                       platform::errors::InvalidArgument(
                           "The signal_ndim must be equal to sizes.size() - 1,"
                           "But signal_ndim is: [%d], sizes.size() - 1 is: [%d]",
-                          signal_ndim, sizes.size() - 1));
+                          signal_ndim,
+                          sizes.size() - 1));
 
     cudaDataType itype, otype, exec_type;
     const auto complex_input = has_complex_input(fft_type);
@@ -156,11 +162,21 @@ class FFTConfig {
 
     size_t ws_size_t;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cufftXtMakePlanMany(
-        plan(), signal_ndim, signal_sizes.data(),
-        /* inembed */ nullptr, /* base_istride */ 1, /* idist */ 1, itype,
-        /* onembed */ nullptr, /* base_ostride */ 1, /* odist */ 1, otype,
-        batch, &ws_size_t, exec_type));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cufftXtMakePlanMany(plan(),
+                                               signal_ndim,
+                                               signal_sizes.data(),
+                                               /* inembed */ nullptr,
+                                               /* base_istride */ 1,
+                                               /* idist */ 1,
+                                               itype,
+                                               /* onembed */ nullptr,
+                                               /* base_ostride */ 1,
+                                               /* odist */ 1,
+                                               otype,
+                                               batch,
+                                               &ws_size_t,
+                                               exec_type));
 
     ws_size = ws_size_t;
   }
@@ -220,11 +236,15 @@ class FFTConfig {
       : FFTConfig(
             std::vector<int64_t>(plan_key.sizes_,
                                  plan_key.sizes_ + plan_key.signal_ndim_ + 1),
-            plan_key.signal_ndim_, plan_key.fft_type_, plan_key.value_type_) {}
+            plan_key.signal_ndim_,
+            plan_key.fft_type_,
+            plan_key.value_type_) {}
 
   // sizes are full signal, including batch size and always two-sided
-  FFTConfig(const std::vector<int64_t>& sizes, const int64_t signal_ndim,
-            FFTTransformType fft_type, ScalarType dtype)
+  FFTConfig(const std::vector<int64_t>& sizes,
+            const int64_t signal_ndim,
+            FFTTransformType fft_type,
+            ScalarType dtype)
       : fft_type_(fft_type), value_type_(dtype) {
     // signal sizes (excluding batch dim)
     std::vector<plan_size_type> signal_sizes(sizes.begin() + 1, sizes.end());
@@ -232,11 +252,13 @@ class FFTConfig {
     // input batch size
     const auto batch = static_cast<plan_size_type>(sizes[0]);
     // const int64_t signal_ndim = sizes.size() - 1;
-    PADDLE_ENFORCE_EQ(signal_ndim, sizes.size() - 1,
+    PADDLE_ENFORCE_EQ(signal_ndim,
+                      sizes.size() - 1,
                       platform::errors::InvalidArgument(
                           "The signal_ndim must be equal to sizes.size() - 1,"
                           "But signal_ndim is: [%d], sizes.size() - 1 is: [%d]",
-                          signal_ndim, sizes.size() - 1));
+                          signal_ndim,
+                          sizes.size() - 1));
 
     hipfftType exec_type = [&] {
       if (dtype == framework::proto::VarType::FP32) {
@@ -268,11 +290,19 @@ class FFTConfig {
 
     size_t ws_size_t;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftMakePlanMany(
-        plan(), signal_ndim, signal_sizes.data(),
-        /* inembed */ nullptr, /* base_istride */ 1, /* idist */ 1,
-        /* onembed */ nullptr, /* base_ostride */ 1, /* odist */ 1, exec_type,
-        batch, &ws_size_t));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::hipfftMakePlanMany(plan(),
+                                              signal_ndim,
+                                              signal_sizes.data(),
+                                              /* inembed */ nullptr,
+                                              /* base_istride */ 1,
+                                              /* idist */ 1,
+                                              /* onembed */ nullptr,
+                                              /* base_ostride */ 1,
+                                              /* odist */ 1,
+                                              exec_type,
+                                              batch,
+                                              &ws_size_t));
 
     ws_size = ws_size_t;
   }
@@ -352,9 +382,11 @@ static_assert(CUFFT_DEFAULT_CACHE_SIZE >= 0 &&
 class FFTConfigCache {
  public:
   using kv_t = typename std::pair<FFTConfigKey, FFTConfig>;
-  using map_t = typename std::unordered_map<
-      std::reference_wrapper<FFTConfigKey>, typename std::list<kv_t>::iterator,
-      KeyHash<FFTConfigKey>, KeyEqual<FFTConfigKey>>;
+  using map_t =
+      typename std::unordered_map<std::reference_wrapper<FFTConfigKey>,
+                                  typename std::list<kv_t>::iterator,
+                                  KeyHash<FFTConfigKey>,
+                                  KeyEqual<FFTConfigKey>>;
   using map_kkv_iter_t = typename map_t::iterator;
 
   FFTConfigCache() : FFTConfigCache(CUFFT_DEFAULT_CACHE_SIZE) {}
@@ -379,7 +411,8 @@ class FFTConfigCache {
   // If key is in this cache, return the cached config. Otherwise, emplace the
   // config in this cache and return it.
   FFTConfig& lookup(FFTConfigKey params) {
-    PADDLE_ENFORCE_GT(_max_size, 0,
+    PADDLE_ENFORCE_GT(_max_size,
+                      0,
                       platform::errors::InvalidArgument(
                           "The max size of FFTConfigCache must be great than 0,"
                           "But received is [%d]",
@@ -443,15 +476,18 @@ class FFTConfigCache {
     // CUFFT_MAX_PLAN_NUM is of type size_t, we need to do non-negativity check
     // first.
     PADDLE_ENFORCE_GE(
-        new_size, 0,
+        new_size,
+        0,
         platform::errors::InvalidArgument(
             "cuFFT plan cache size must be non-negative, But received is [%d]",
             new_size));
-    PADDLE_ENFORCE_LE(new_size, CUFFT_MAX_PLAN_NUM,
+    PADDLE_ENFORCE_LE(new_size,
+                      CUFFT_MAX_PLAN_NUM,
                       platform::errors::InvalidArgument(
                           "cuFFT plan cache size can not be larger than [%d], "
                           "But received is [%d]",
-                          CUFFT_MAX_PLAN_NUM, new_size));
+                          CUFFT_MAX_PLAN_NUM,
+                          new_size));
     _max_size = static_cast<size_t>(new_size);
   }
 
@@ -497,7 +533,9 @@ static double fft_normalization_scale(FFTNormMode normalization,
 }
 
 template <typename DeviceContext, typename T>
-void exec_normalization(const DeviceContext& ctx, const Tensor* in, Tensor* out,
+void exec_normalization(const DeviceContext& ctx,
+                        const Tensor* in,
+                        Tensor* out,
                         FFTNormMode normalization,
                         const std::vector<int64_t>& sizes,
                         const std::vector<int64_t>& axes) {
@@ -506,9 +544,12 @@ void exec_normalization(const DeviceContext& ctx, const Tensor* in, Tensor* out,
     auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
     auto dev = ctx.eigen_device();
-    EigenScale<Eigen::GpuDevice, T>::Eval(*dev, eigen_out, eigen_in,
+    EigenScale<Eigen::GpuDevice, T>::Eval(*dev,
+                                          eigen_out,
+                                          eigen_in,
                                           static_cast<T>(scale),
-                                          static_cast<T>(0), false);
+                                          static_cast<T>(0),
+                                          false);
   } else {
     framework::TensorCopy(*in, ctx.GetPlace(), out);
   }
@@ -535,14 +576,19 @@ static FFTConfigKey create_fft_configkey(const framework::Tensor& input,
     auto out_size = output.dims()[i];
     signal_size[i] = std::max(in_size, out_size);
   }
-  FFTConfigKey key(phi::vectorize(input.dims()), phi::vectorize(output.dims()),
-                   signal_size, fft_type, value_type);
+  FFTConfigKey key(phi::vectorize(input.dims()),
+                   phi::vectorize(output.dims()),
+                   signal_size,
+                   fft_type,
+                   value_type);
   return key;
 }
 
 // Execute a pre-planned transform
-static void exec_cufft_plan_raw(const FFTConfig& config, void* in_data,
-                                void* out_data, bool forward) {
+static void exec_cufft_plan_raw(const FFTConfig& config,
+                                void* in_data,
+                                void* out_data,
+                                bool forward) {
   auto& plan = config.plan();
 
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cufftXtExec(
@@ -550,8 +596,10 @@ static void exec_cufft_plan_raw(const FFTConfig& config, void* in_data,
 }
 
 template <typename DeviceContext, typename Ti, typename To>
-void exec_cufft_plan(const DeviceContext& ctx, const FFTConfig& config,
-                     framework::Tensor* input, framework::Tensor* output,
+void exec_cufft_plan(const DeviceContext& ctx,
+                     const FFTConfig& config,
+                     framework::Tensor* input,
+                     framework::Tensor* output,
                      bool forward) {
   // execute transform plan
   auto fft_type = config.transform_type();
@@ -560,8 +608,8 @@ void exec_cufft_plan(const DeviceContext& ctx, const FFTConfig& config,
     framework::Tensor input_conj(input->type());
     input_conj.mutable_data<Ti>(input->dims(), ctx.GetPlace());
     platform::ForRange<DeviceContext> for_range(ctx, input->numel());
-    phi::funcs::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
-                                        input_conj.data<Ti>());
+    phi::funcs::ConjFunctor<Ti> functor(
+        input->data<Ti>(), input->numel(), input_conj.data<Ti>());
     for_range(functor);
     exec_cufft_plan_raw(config, input_conj.data(), output->data(), forward);
   } else if (fft_type == FFTTransformType::R2C && !forward) {
@@ -571,8 +619,8 @@ void exec_cufft_plan(const DeviceContext& ctx, const FFTConfig& config,
     exec_cufft_plan_raw(config, input->data(), out_conj.data(), forward);
 
     platform::ForRange<DeviceContext> for_range(ctx, output->numel());
-    phi::funcs::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
-                                        output->data<To>());
+    phi::funcs::ConjFunctor<To> functor(
+        out_conj.data<To>(), output->numel(), output->data<To>());
     for_range(functor);
   } else {
     exec_cufft_plan_raw(config, input->data(), output->data(), forward);
@@ -601,14 +649,19 @@ static FFTConfigKey create_fft_configkey(const framework::Tensor& input,
     auto out_size = output.dims()[i];
     signal_size[i] = std::max(in_size, out_size);
   }
-  FFTConfigKey key(phi::vectorize(input.dims()), phi::vectorize(output.dims()),
-                   signal_size, fft_type, value_type);
+  FFTConfigKey key(phi::vectorize(input.dims()),
+                   phi::vectorize(output.dims()),
+                   signal_size,
+                   fft_type,
+                   value_type);
   return key;
 }
 
 // Execute a pre-planned transform
-static void exec_hipfft_plan_raw(const FFTConfig& config, void* in_data,
-                                 void* out_data, bool forward) {
+static void exec_hipfft_plan_raw(const FFTConfig& config,
+                                 void* in_data,
+                                 void* out_data,
+                                 bool forward) {
   auto& plan = config.plan();
 
   auto value_type = config.data_type();
@@ -616,20 +669,23 @@ static void exec_hipfft_plan_raw(const FFTConfig& config, void* in_data,
     switch (config.transform_type()) {
       case FFTTransformType::C2C: {
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecC2C(
-            plan, static_cast<hipfftComplex*>(in_data),
+            plan,
+            static_cast<hipfftComplex*>(in_data),
             static_cast<hipfftComplex*>(out_data),
             forward ? HIPFFT_FORWARD : HIPFFT_BACKWARD));
         return;
       }
       case FFTTransformType::R2C: {
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecR2C(
-            plan, static_cast<hipfftReal*>(in_data),
+            plan,
+            static_cast<hipfftReal*>(in_data),
             static_cast<hipfftComplex*>(out_data)));
         return;
       }
       case FFTTransformType::C2R: {
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecC2R(
-            plan, static_cast<hipfftComplex*>(in_data),
+            plan,
+            static_cast<hipfftComplex*>(in_data),
             static_cast<hipfftReal*>(out_data)));
         return;
       }
@@ -638,20 +694,23 @@ static void exec_hipfft_plan_raw(const FFTConfig& config, void* in_data,
     switch (config.transform_type()) {
       case FFTTransformType::C2C: {
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecZ2Z(
-            plan, static_cast<hipfftDoubleComplex*>(in_data),
+            plan,
+            static_cast<hipfftDoubleComplex*>(in_data),
             static_cast<hipfftDoubleComplex*>(out_data),
             forward ? HIPFFT_FORWARD : HIPFFT_BACKWARD));
         return;
       }
       case FFTTransformType::R2C: {
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecD2Z(
-            plan, static_cast<hipfftDoubleReal*>(in_data),
+            plan,
+            static_cast<hipfftDoubleReal*>(in_data),
             static_cast<hipfftDoubleComplex*>(out_data)));
         return;
       }
       case FFTTransformType::C2R: {
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecZ2D(
-            plan, static_cast<hipfftDoubleComplex*>(in_data),
+            plan,
+            static_cast<hipfftDoubleComplex*>(in_data),
             static_cast<hipfftDoubleReal*>(out_data)));
         return;
       }
@@ -662,8 +721,10 @@ static void exec_hipfft_plan_raw(const FFTConfig& config, void* in_data,
 }
 
 template <typename DeviceContext, typename Ti, typename To>
-void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
-                      framework::Tensor* input, framework::Tensor* output,
+void exec_hipfft_plan(const DeviceContext& ctx,
+                      const FFTConfig& config,
+                      framework::Tensor* input,
+                      framework::Tensor* output,
                       bool forward) {
   auto fft_type = config.transform_type();
   if (fft_type == FFTTransformType::C2R && forward) {
@@ -671,8 +732,8 @@ void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
     framework::Tensor input_conj(input->type());
     input_conj.mutable_data<Ti>(input->dims(), ctx.GetPlace());
     platform::ForRange<DeviceContext> for_range(ctx, input->numel());
-    phi::funcs::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
-                                        input_conj.data<Ti>());
+    phi::funcs::ConjFunctor<Ti> functor(
+        input->data<Ti>(), input->numel(), input_conj.data<Ti>());
     for_range(functor);
     exec_hipfft_plan_raw(config, input_conj.data(), output->data(), forward);
   } else if (fft_type == FFTTransformType::R2C && !forward) {
@@ -682,8 +743,8 @@ void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
     exec_hipfft_plan_raw(config, input->data(), out_conj.data(), forward);
 
     platform::ForRange<DeviceContext> for_range(ctx, output->numel());
-    phi::funcs::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
-                                        output->data<To>());
+    phi::funcs::ConjFunctor<To> functor(
+        out_conj.data<To>(), output->numel(), output->data<To>());
     for_range(functor);
   } else {
     exec_hipfft_plan_raw(config, input->data(), output->data(), forward);
@@ -695,8 +756,11 @@ void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
 // Execute a general unnormalized fft operation (can be c2c, onesided r2c or
 // onesided c2r)
 template <typename DeviceContext, typename Ti, typename To>
-void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
-              const std::vector<int64_t>& dim, bool forward) {
+void exec_fft(const DeviceContext& ctx,
+              const Tensor* X,
+              Tensor* out,
+              const std::vector<int64_t>& dim,
+              bool forward) {
   const auto x_dims = phi::vectorize(X->dims());
   const int64_t ndim = static_cast<int64_t>(X->dims().size());
   auto tensor_place = ctx.GetPlace();
@@ -709,8 +773,9 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
     is_transformed_dim[d] = true;
   }
   auto batch_end =
-      std::partition(dim_permute.begin(), dim_permute.end(),
-                     [&](int64_t d) { return !is_transformed_dim[d]; });
+      std::partition(dim_permute.begin(), dim_permute.end(), [&](int64_t d) {
+        return !is_transformed_dim[d];
+      });
   std::sort(dim_permute.begin(), batch_end);
   std::copy(dim.cbegin(), dim.cend(), batch_end);
 
@@ -719,8 +784,8 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   framework::Tensor transposed_input;
   transposed_input.Resize(transposed_input_shape);
   transposed_input.mutable_data<Ti>(tensor_place);
-  TransCompute<DeviceContext, Ti>(ndim, ctx, *X, &transposed_input,
-                                  dim_permute);
+  TransCompute<DeviceContext, Ti>(
+      ndim, ctx, *X, &transposed_input, dim_permute);
 
   // Reshape batch dimensions into a single dimension
   const int64_t signal_ndim = static_cast<int64_t>(dim.size());
@@ -731,11 +796,13 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   auto batch_size =
       std::accumulate(transposed_input_shape_.begin(),
                       transposed_input_shape_.begin() + batch_dims,
-                      static_cast<int>(1), std::multiplies<int>());
+                      static_cast<int>(1),
+                      std::multiplies<int>());
   collapsed_input_shape[0] = batch_size;
 
   std::copy(transposed_input_shape_.begin() + batch_dims,
-            transposed_input_shape_.end(), collapsed_input_shape.begin() + 1);
+            transposed_input_shape_.end(),
+            collapsed_input_shape.begin() + 1);
 
   framework::Tensor& collapsed_input = transposed_input;
   collapsed_input.Resize(phi::make_ddim(collapsed_input_shape));
@@ -784,8 +851,8 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cufftSetWorkArea(
       config->plan(), workspace_tensor.data<To>()));
   // execute transform plan
-  exec_cufft_plan<DeviceContext, Ti, To>(ctx, *config, &collapsed_input,
-                                         &collapsed_output, forward);
+  exec_cufft_plan<DeviceContext, Ti, To>(
+      ctx, *config, &collapsed_input, &collapsed_output, forward);
 
 #elif defined(PADDLE_WITH_HIP)
   // create plan
@@ -807,8 +874,8 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftSetWorkArea(
       config->plan(), workspace_tensor.data<To>()));
   // execute transform plan
-  exec_hipfft_plan<DeviceContext, Ti, To>(ctx, *config, &collapsed_input,
-                                          &collapsed_output, forward);
+  exec_hipfft_plan<DeviceContext, Ti, To>(
+      ctx, *config, &collapsed_input, &collapsed_output, forward);
 #endif
 
   // Inverting output by reshape and transpose to original batch and dimension
@@ -822,8 +889,8 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
     reverse_dim_permute[dim_permute[i]] = i;
   }
 
-  TransCompute<DeviceContext, To>(ndim, ctx, transposed_output, out,
-                                  reverse_dim_permute);
+  TransCompute<DeviceContext, To>(
+      ndim, ctx, transposed_output, out, reverse_dim_permute);
 }
 
 // Use the optimized path to perform single R2C or C2R if transformation dim is
@@ -840,10 +907,13 @@ static bool use_optimized_fft_path(const std::vector<int64_t>& axes) {
 }
 
 template <typename Ti, typename To>
-struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
-  void operator()(const platform::CUDADeviceContext& ctx, const Tensor* X,
-                  Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {
+struct FFTC2CFunctor<phi::GPUContext, Ti, To> {
+  void operator()(const phi::GPUContext& ctx,
+                  const Tensor* X,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
+                  bool forward) {
     if (axes.empty()) {
       framework::TensorCopy(*X, ctx.GetPlace(), out);
       return;
@@ -864,8 +934,8 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
           std::min(static_cast<size_t>(kMaxFFTNdim), working_axes.size());
       first_dims.assign(working_axes.end() - max_dims, working_axes.end());
 
-      exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, p_working_tensor,
-                                                    p_out, first_dims, forward);
+      exec_fft<phi::GPUContext, Ti, To>(
+          ctx, p_working_tensor, p_out, first_dims, forward);
       working_axes.resize(working_axes.size() - max_dims);
       first_dims.clear();
 
@@ -875,16 +945,19 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
 
       std::swap(p_out, p_working_tensor);
     }
-    exec_normalization<platform::CUDADeviceContext, To>(
+    exec_normalization<phi::GPUContext, To>(
         ctx, p_out, out, normalization, out_dims, axes);
   }
 };
 
 template <typename Ti, typename To>
-struct FFTC2RFunctor<platform::CUDADeviceContext, Ti, To> {
-  void operator()(const platform::CUDADeviceContext& ctx, const Tensor* X,
-                  Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {
+struct FFTC2RFunctor<phi::GPUContext, Ti, To> {
+  void operator()(const phi::GPUContext& ctx,
+                  const Tensor* X,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
+                  bool forward) {
     std::vector<int64_t> in_dims = phi::vectorize(X->dims());
     std::vector<int64_t> out_dims = phi::vectorize(out->dims());
 
@@ -892,50 +965,51 @@ struct FFTC2RFunctor<platform::CUDADeviceContext, Ti, To> {
       framework::Tensor x_copy(X->type());
       x_copy.mutable_data<Ti>(X->dims(), ctx.GetPlace());
       framework::TensorCopy(*X, ctx.GetPlace(), &x_copy);
-      exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, &x_copy, out, axes,
-                                                    forward);
+      exec_fft<phi::GPUContext, Ti, To>(ctx, &x_copy, out, axes, forward);
     } else {
       framework::Tensor temp_tensor;
       temp_tensor.mutable_data<Ti>(X->dims(), ctx.GetPlace());
       const std::vector<int64_t> dims(axes.begin(), axes.end() - 1);
 
-      FFTC2CFunctor<platform::CUDADeviceContext, Ti, Ti> c2c_functor;
+      FFTC2CFunctor<phi::GPUContext, Ti, Ti> c2c_functor;
       c2c_functor(ctx, X, &temp_tensor, dims, FFTNormMode::none, forward);
 
-      exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, &temp_tensor, out,
-                                                    {axes.back()}, forward);
+      exec_fft<phi::GPUContext, Ti, To>(
+          ctx, &temp_tensor, out, {axes.back()}, forward);
     }
-    exec_normalization<platform::CUDADeviceContext, To>(
+    exec_normalization<phi::GPUContext, To>(
         ctx, out, out, normalization, out_dims, axes);
   }
 };
 
 // n dimension real to complex FFT use cufft lib
 template <typename Ti, typename To>
-struct FFTR2CFunctor<platform::CUDADeviceContext, Ti, To> {
-  void operator()(const platform::CUDADeviceContext& ctx, const Tensor* X,
-                  Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {
+struct FFTR2CFunctor<phi::GPUContext, Ti, To> {
+  void operator()(const phi::GPUContext& ctx,
+                  const Tensor* X,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
+                  bool forward) {
     // Step1: R2C transform on the last dimension
     framework::Tensor* r2c_out = out;
     const std::vector<int64_t> last_dim{axes.back()};
     std::vector<int64_t> out_dims = phi::vectorize(out->dims());
-    exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, X, r2c_out, last_dim,
-                                                  forward);
+    exec_fft<phi::GPUContext, Ti, To>(ctx, X, r2c_out, last_dim, forward);
 
     // Step2: C2C transform on the remaining dimension
     framework::Tensor c2c_out;
     if (axes.size() > 1) {
       c2c_out.mutable_data<To>(out->dims(), ctx.GetPlace());
       std::vector<int64_t> remain_dim(axes.begin(), axes.end() - 1);
-      FFTC2CFunctor<platform::CUDADeviceContext, To, To> fft_c2c_func;
-      fft_c2c_func(ctx, r2c_out, &c2c_out, remain_dim, FFTNormMode::none,
-                   forward);
+      FFTC2CFunctor<phi::GPUContext, To, To> fft_c2c_func;
+      fft_c2c_func(
+          ctx, r2c_out, &c2c_out, remain_dim, FFTNormMode::none, forward);
     }
 
     const auto in_sizes = phi::vectorize(X->dims());
     framework::Tensor* norm_tensor = axes.size() > 1 ? &c2c_out : r2c_out;
-    exec_normalization<platform::CUDADeviceContext, To>(
+    exec_normalization<phi::GPUContext, To>(
         ctx, norm_tensor, out, normalization, in_sizes, axes);
   }
 };

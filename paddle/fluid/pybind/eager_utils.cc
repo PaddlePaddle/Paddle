@@ -9,6 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/pybind/eager_utils.h"
+
 #include <Python.h>
 
 #include <string>
@@ -16,15 +18,17 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/scope_guard.h"
+#include "paddle/fluid/jit/executor_function.h"
+#include "paddle/fluid/jit/pe_function.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
-#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
@@ -50,6 +54,8 @@ extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 extern PyTypeObject* g_custom_op_kernel_ctx_pytype;
+extern PyTypeObject* g_executor_function_pytype;
+extern PyTypeObject* g_pe_function_pytype;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
@@ -134,7 +140,8 @@ bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "bool, but got %s",
-        arg_pos + 1, (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
+        arg_pos + 1,
+        (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
   }
 }
 
@@ -145,7 +152,8 @@ int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "int, but got %s",
-        arg_pos + 1, (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
+        arg_pos + 1,
+        (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
   }
 }
 
@@ -156,7 +164,8 @@ int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "long, but got %s",
-        arg_pos + 1, (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
+        arg_pos + 1,
+        (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
   }
 }
 
@@ -167,7 +176,8 @@ size_t CastPyArg2AttrSize_t(PyObject* obj, ssize_t arg_pos) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "long, but got %s",
-        arg_pos + 1, (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
+        arg_pos + 1,
+        (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
   }
 }
 
@@ -178,7 +188,8 @@ float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "float, but got %s",
-        arg_pos + 1, (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
+        arg_pos + 1,
+        (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
   }
 }
 
@@ -192,7 +203,8 @@ std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "str, but got %s",
-        arg_pos + 1, (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
+        arg_pos + 1,
+        (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
     return "";
   }
 }
@@ -210,13 +222,32 @@ paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "Tensor, but got %s",
-        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
 
 std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
                                                        ssize_t arg_pos) {
   return py::cast<std::shared_ptr<imperative::VarBase>>(obj);
+}
+
+std::shared_ptr<jit::BaseFunction> CastPyArg2BaseFunction(PyObject* obj,
+                                                          ssize_t arg_pos) {
+  if (PyObject_IsInstance(
+          obj, reinterpret_cast<PyObject*>(g_executor_function_pytype))) {
+    return ::pybind11::handle(obj)
+        .cast<std::shared_ptr<jit::ExecutorFunction>>();
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(g_pe_function_pytype))) {
+    return ::pybind11::handle(obj).cast<std::shared_ptr<jit::PEFunction>>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "BaseFunction, but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
@@ -238,7 +269,8 @@ std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
             "argument (position %d) must be "
             "list of Tensor, but got %s at pos %d",
             arg_pos + 1,
-            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
       }
     }
   } else if (PyTuple_Check(obj)) {
@@ -257,7 +289,8 @@ std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
             "argument (position %d) must be "
             "list of Tensor, but got %s at pos %d",
             arg_pos + 1,
-            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
       }
     }
   } else if (obj == Py_None) {
@@ -266,7 +299,8 @@ std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "list or tuple, but got %s",
-        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
   return result;
 }
@@ -285,7 +319,8 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
             "argument (position %d) must be "
             "list of int, but got %s at pos %d",
             arg_pos + 1,
-            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
       }
     }
   } else if (PyTuple_Check(obj)) {
@@ -300,7 +335,8 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
             "argument (position %d) must be "
             "list of bool, but got %s at pos %d",
             arg_pos + 1,
-            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
       }
     }
   } else if (obj == Py_None) {
@@ -309,7 +345,8 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "list or tuple, but got %s",
-        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
   return result;
 }
@@ -328,14 +365,16 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
             "argument (position %d) must be "
             "list of int, but got %s at pos %d",
             arg_pos + 1,
-            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
       }
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "list, but got %s",
-        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
   return result;
 }
@@ -354,7 +393,8 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "list but got %s",
-        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
   return result;
 }
@@ -388,7 +428,8 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
         "of(Place,CUDAPlace,CPUPlace,XPUPlace,NPUPlace,CUDAPinnedPlace,"
         "CustomPlace), "
         "but got %s",
-        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
   return place;
 }
@@ -401,7 +442,8 @@ framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "DenseTensor, but got %s",
-        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
 
@@ -422,7 +464,8 @@ std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
             "argument (position %d) must be "
             "list of LoDTensor, but got %s at pos %d",
             arg_pos + 1,
-            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
       }
     }
   } else if (PyTuple_Check(obj)) {
@@ -439,11 +482,13 @@ std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
             "argument (position %d) must be "
             "list of LoDTensor, but got %s at pos %d",
             arg_pos + 1,
-            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
       }
     }
-  } else if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(
-                                          g_framework_lodtensorarray_pytype))) {
+  } else if (PyObject_IsInstance(obj,
+                                 reinterpret_cast<PyObject*>(
+                                     g_framework_lodtensorarray_pytype))) {
     return ::pybind11::handle(obj).cast<framework::LoDTensorArray>();
   } else if (obj == Py_None) {
     return {};
@@ -451,7 +496,8 @@ std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "list or tuple, but got %s",
-        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
   return result;
 }
@@ -467,7 +513,8 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
         "argument (position %d) must be "
         "one of core.VarDesc.VarType, "
         "but got %s",
-        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
   return dtype;
 }
@@ -479,7 +526,8 @@ std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
         .cast<std::unordered_map<std::wstring, int>>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument (position %d) must be dict, but got %s", arg_pos + 1,
+        "argument (position %d) must be dict, but got %s",
+        arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
@@ -489,7 +537,8 @@ std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos) {
     return ::pybind11::handle(obj).cast<std::vector<std::string>>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument (position %d) must be list, but got %s", arg_pos + 1,
+        "argument (position %d) must be list, but got %s",
+        arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
@@ -504,7 +553,8 @@ paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
         "argument (position %d) must be "
         "one of(Place,CUDAPlace,CPUPlace,XPUPlace,NPUPlace,CUDAPinnedPlace), "
         "but got %s",
-        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
 PyObject* ToPyObject(bool value) {
@@ -560,11 +610,18 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
 }
 
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
-                     ssize_t value_idx, PyObject* args, ssize_t arg_idx) {
+                     PyObject* args,
+                     const std::map<ssize_t, ssize_t>& inplace_var_idx_map) {
+  if (!inplace_var_idx_map.empty() && inplace_var_idx_map.count(0)) {
+    return ToPyObject(args, inplace_var_idx_map.at(0));
+  } else {
+    return ToPyObject(value);
+  }
+}
+
+PyObject* ToPyObject(PyObject* args, ssize_t arg_idx) {
   // For inplace op, directly return the input PyObject of the inplace tensor.
   // [Parameter]
-  // value: Useless parameter.
-  // value_idx: Useless parameter.
   // args: Input PyObject.
   // arg_idx: Index of inplace PyObject in input args. Used to find the input
   // inplace PyObject.
@@ -730,12 +787,15 @@ PyObject* ToPyObject(
         PADDLE_THROW(
             platform::errors::Fatal("Unable to append string to py_list"));
       }
+      Py_DECREF(val_string);
     }
 
     if (PyDict_SetItem(dict, key_string, py_list) != 0) {
       PADDLE_THROW(
           platform::errors::Fatal("Unable to set key:value for py_dict"));
     }
+    Py_DECREF(py_list);
+    Py_DECREF(key_string);
   }
 
   return dict;
@@ -765,9 +825,12 @@ PyObject* ToPyObject(const std::unordered_map<std::wstring, int>& value) {
 
 // For Final State Dygraph,
 // We directly use paddle::optional(Tensor) as dispensable Tensor
-paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable) {
+paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
 
   if (PyTuple_Check(obj)) {
@@ -778,25 +841,32 @@ paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be Tensor, but got None",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
     return paddle::none;
   }
 
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
-    return paddle::make_optional<const paddle::experimental::Tensor&>(
+    return paddle::make_optional<paddle::experimental::Tensor>(
         reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
-        arg_name, arg_idx,
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s",
+        op_type,
+        arg_name,
+        arg_idx,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
 
 static paddle::experimental::Tensor& GetTensorFromPyObject(
-    const std::string& op_type, const std::string& arg_name, PyObject* obj,
-    ssize_t arg_idx, bool dispensable) {
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* obj,
+    ssize_t arg_idx,
+    bool dispensable) {
   if (PyTuple_Check(obj)) {
     obj = PyTuple_GET_ITEM(obj, 0);
   }
@@ -805,7 +875,9 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be Tensor, but got None",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
     static paddle::experimental::Tensor emptytensor;
     return emptytensor;
@@ -818,8 +890,10 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
-        arg_name, arg_idx,
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s",
+        op_type,
+        arg_name,
+        arg_idx,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
@@ -828,15 +902,19 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
 // we use an uninitialized Tensor to represent dispensable Tensor
 paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
                                                 const std::string& arg_name,
-                                                PyObject* args, ssize_t arg_idx,
+                                                PyObject* args,
+                                                ssize_t arg_idx,
                                                 bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
   return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
 }
 
 std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable) {
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
   if (list == nullptr) {
@@ -844,7 +922,9 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensor, but got "
           "None",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
     return {};
   }
@@ -858,7 +938,9 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensors, but got "
           "empty list",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
       result.emplace_back(
@@ -871,7 +953,9 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensors, but got "
           "empty list",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
       result.emplace_back(
@@ -883,7 +967,9 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be list of Tensors, but got "
         "%s",
-        op_type, arg_name, arg_idx,
+        op_type,
+        arg_name,
+        arg_idx,
         (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
   }
 
@@ -905,7 +991,9 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be Tensor, but got None",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
     static paddle::experimental::Tensor emptytensor;
     return &emptytensor;
@@ -915,15 +1003,20 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
     return &(reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
-        arg_name, arg_idx,
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s",
+        op_type,
+        arg_name,
+        arg_idx,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
 
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable) {
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
   if (list == nullptr) {
@@ -931,7 +1024,9 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensor, but got "
           "None",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
     return {};
   }
@@ -944,7 +1039,9 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensors, but got "
           "empty list",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
       result.emplace_back(
@@ -956,7 +1053,9 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensors, but got "
           "empty list",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
       result.emplace_back(
@@ -968,7 +1067,9 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be list of Tensors, but got "
         "%s",
-        op_type, arg_name, arg_idx,
+        op_type,
+        arg_name,
+        arg_idx,
         (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
   }
 
@@ -1024,7 +1125,8 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument must be "
             "list of Tensor, but got %s at pos %d",
-            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
       }
     }
   } else if (PyTuple_Check(obj)) {
@@ -1039,7 +1141,8 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument must be "
             "list of Tensor, but got %s at pos %d",
-            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
       }
     }
   } else {
@@ -1078,7 +1181,9 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
           "%s(): argument (position %d) is numpy.ndarry, the inner elements "
           "must be "
           "numpy.float32/float64 now, but got %s",
-          op_type, arg_pos + 1, type_name));  // NOLINT
+          op_type,
+          arg_pos + 1,
+          type_name));  // NOLINT
     }
   } else if (type_name == "numpy.float64") {
     double value = CastPyArg2Double(obj, op_type, arg_pos);
@@ -1096,7 +1201,9 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "numpy.float32/float64, numpy.int32/int64, but got %s",
-        op_type, arg_pos + 1, type_name));  // NOLINT
+        op_type,
+        arg_pos + 1,
+        type_name));  // NOLINT
   }
 }
 
@@ -1107,7 +1214,8 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "int, float, bool or Tensor, but got %s",
-        op_type, arg_pos + 1,
+        op_type,
+        arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 
@@ -1137,12 +1245,61 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "int, float, bool or Tensor, but got %s",
-        op_type, arg_pos + 1,
+        op_type,
+        arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 
   // Fake a Scalar
   return paddle::experimental::Scalar(1.0);
+}
+
+std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
+                                               const std::string& op_type,
+                                               ssize_t arg_pos) {
+  if (obj == Py_None) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "a list of int, float, or bool, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  PyTypeObject* type = obj->ob_type;
+  auto type_name = std::string(type->tp_name);
+  VLOG(1) << "type_name: " << type_name;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    item = PyList_GetItem(obj, 0);
+    if (PyObject_CheckFloatOrToFloat(&item)) {
+      std::vector<phi::Scalar> value;
+      for (Py_ssize_t i = 0; i < len; i++) {
+        item = PyList_GetItem(obj, i);
+        value.emplace_back(phi::Scalar{PyFloat_AsDouble(item)});
+      }
+      return value;
+    } else if (PyObject_CheckLongOrToLong(&item)) {
+      std::vector<phi::Scalar> value;
+      for (Py_ssize_t i = 0; i < len; i++) {
+        item = PyList_GetItem(obj, i);
+        value.emplace_back(
+            phi::Scalar{static_cast<int64_t>(PyLong_AsLong(item))});
+      }
+      return value;
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "a list of int, float, or bool, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  // Fake a ScalarArray
+  return std::vector<phi::Scalar>({phi::Scalar(1.0)});
 }
 
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
@@ -1155,7 +1312,8 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "list or Tensor, but got %s",
-        op_type, arg_pos + 1,
+        op_type,
+        arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 
@@ -1176,7 +1334,8 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "list or Tensor, but got %s",
-        op_type, arg_pos + 1,
+        op_type,
+        arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 
@@ -1195,15 +1354,20 @@ paddle::framework::Scope* CastPyArg2ScopePtr(PyObject* obj) {
 }
 
 std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable) {
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
   if (list == nullptr) {
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of scope, but got "
           "None",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
   }
 
@@ -1214,7 +1378,9 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of scope, but got "
           "empty list",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
       result.emplace_back(CastPyArg2ScopePtr(PyList_GetItem(list, i)));
@@ -1225,7 +1391,9 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of scope, but got "
           "empty list",
-          op_type, arg_name, arg_idx));
+          op_type,
+          arg_name,
+          arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
       result.emplace_back(CastPyArg2ScopePtr(PyList_GetItem(list, i)));
@@ -1236,18 +1404,22 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be list of Tensors, but got "
         "%s",
-        op_type, arg_name, arg_idx,
+        op_type,
+        arg_name,
+        arg_idx,
         (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
   }
   return result;
 }
 
-paddle::Place CastPyArg2Place(PyObject* obj, const std::string& op_type,
+paddle::Place CastPyArg2Place(PyObject* obj,
+                              const std::string& op_type,
                               ssize_t arg_pos) {
   return CastPyArg2Place(obj, arg_pos);
 }
 
-paddle::DataType CastPyArg2DataType(PyObject* obj, const std::string& op_type,
+paddle::DataType CastPyArg2DataType(PyObject* obj,
+                                    const std::string& op_type,
                                     ssize_t arg_pos) {
   if (obj == Py_None) {
     return paddle::experimental::DataType::UNDEFINED;
@@ -1256,5 +1428,54 @@ paddle::DataType CastPyArg2DataType(PyObject* obj, const std::string& op_type,
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
   return framework::TransToPhiDataType(type);
 }
+
+paddle::experimental::Tensor PyTensorHook::operator()(
+    const paddle::experimental::Tensor& var) {
+  py::gil_scoped_acquire gil;
+  VLOG(3) << "Call PyTensorHook for var " << var.name();
+
+  PyObject* res = nullptr;
+  try {
+    PyObject* p_tmp_var = ToPyObject(var);
+    res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
+    Py_DECREF(p_tmp_var);
+  } catch (platform::EnforceNotMet& e) {
+    throw std::move(e);
+  } catch (std::exception& e) {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Hook function of Tensor raises an exception: %s.", e.what()));
+  } catch (...) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Hook function of Tensor raises an unknown exception."));
+  }
+
+  PADDLE_ENFORCE_NOT_NULL(res,
+                          platform::errors::Unavailable(
+                              "Hook function of Tensor return a nullptr."));
+  if (res == Py_None) {
+    return var;
+  }
+  auto res_tensor = reinterpret_cast<TensorObject*>(res)->tensor;
+  Py_DECREF(res);
+  return res_tensor;
+}
+
+void PyVoidHook::operator()() {
+  py::gil_scoped_acquire gil;
+  VLOG(3) << "Call PyVoidHook";
+
+  try {
+    PyObject_CallFunctionObjArgs(py_func_, nullptr);
+  } catch (platform::EnforceNotMet& e) {
+    throw std::move(e);
+  } catch (std::exception& e) {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Hook function of Tensor raises an exception: %s.", e.what()));
+  } catch (...) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Hook function of Tensor raises an unknown exception."));
+  }
+}
+
 }  // namespace pybind
 }  // namespace paddle

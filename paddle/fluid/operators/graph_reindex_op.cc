@@ -67,11 +67,14 @@ Graph Reindex operator.
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(graph_reindex, GraphReindexInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(graph_reindex,
+                            GraphReindexInferShapeFunctor,
                             PD_INFER_META(phi::GraphReindexInferMeta));
 
 REGISTER_OPERATOR(
-    graph_reindex, ops::GraphReindexOP, ops::GraphReindexOpMaker,
+    graph_reindex,
+    ops::GraphReindexOP,
+    ops::GraphReindexOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     GraphReindexInferShapeFunctor);

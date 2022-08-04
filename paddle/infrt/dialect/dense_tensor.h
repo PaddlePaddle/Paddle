@@ -13,15 +13,15 @@
 // limitations under the License.
 
 #pragma once
+
 #include <mlir/IR/Dialect.h>
 #include <mlir/IR/OpDefinition.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
 #include <string>
 
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
-
 #include "paddle/infrt/dialect/dense_tensor_dialect.hpp.inc"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/dense_tensor.hpp.inc"

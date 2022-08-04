@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/conv_op.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/operators/conv_op.h"
-
-#include "paddle/phi/kernels/gpu/depthwise_conv.h"
-
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/gpu/depthwise_conv.h"
 
 namespace phi {
 
@@ -127,4 +124,5 @@ PD_REGISTER_KERNEL(depthwise_conv2d,
                    ALL_LAYOUT,
                    phi::DepthwiseConvKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}

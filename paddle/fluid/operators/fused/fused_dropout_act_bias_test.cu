@@ -57,7 +57,7 @@ struct TestFusedDropoutActBias {
   std::vector<uint8_t> correct_mask;
 
   platform::CUDAPlace place;
-  platform::CUDADeviceContext *ctx;
+  phi::GPUContext *ctx;
 
   TestFusedDropoutActBias() {
     rows = 32;
@@ -69,10 +69,12 @@ struct TestFusedDropoutActBias {
     has_bias = true;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
-  TestFusedDropoutActBias(int rows_, int cols_, uint64_t seed_ = 0,
+  TestFusedDropoutActBias(int rows_,
+                          int cols_,
+                          uint64_t seed_ = 0,
                           float dropout_prob_ = 0.0,
                           bool is_upscale_in_train_ = false,
                           bool is_test_ = false) {
@@ -85,7 +87,7 @@ struct TestFusedDropoutActBias {
     has_bias = true;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
   ~TestFusedDropoutActBias() {}
@@ -139,8 +141,15 @@ struct TestFusedDropoutActBias {
         }
       }
       // call dropout
-      Dropout<T>(out1, src.dims(), &correct_out, &correct_mask, *ctx, seed,
-                 dropout_prob, is_upscale_in_train, is_test);
+      Dropout<T>(out1,
+                 src.dims(),
+                 &correct_out,
+                 &correct_mask,
+                 *ctx,
+                 seed,
+                 dropout_prob,
+                 is_upscale_in_train,
+                 is_test);
     } else {
       for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -149,8 +158,15 @@ struct TestFusedDropoutActBias {
         }
       }
 
-      Dropout<T>(out1, src.dims(), &correct_out, &correct_mask, *ctx, seed,
-                 dropout_prob, is_upscale_in_train, is_test);
+      Dropout<T>(out1,
+                 src.dims(),
+                 &correct_out,
+                 &correct_mask,
+                 *ctx,
+                 seed,
+                 dropout_prob,
+                 is_upscale_in_train,
+                 is_test);
     }
     ctx->Wait();
   }
@@ -158,8 +174,13 @@ struct TestFusedDropoutActBias {
   void BaseBackward() {
     std::vector<T> _out(rows * cols);
     // call dropout_grad
-    DropoutGrad<T>(&_out, src.dims(), correct_out, correct_mask, *ctx,
-                   dropout_prob, is_upscale_in_train);
+    DropoutGrad<T>(&_out,
+                   src.dims(),
+                   correct_out,
+                   correct_mask,
+                   *ctx,
+                   dropout_prob,
+                   is_upscale_in_train);
 
     // calculate dbias
     memset(&correct_dbias[0], 0, cols * sizeof(T));
@@ -186,9 +207,11 @@ struct TestFusedDropoutActBias {
 
   void FusedForward() {
     const int VecSize = MAX_CACHE_BYTES / sizeof(T);
-    auto config = paddle::operators::Get1DBlocksAnd2DGrids(
-        *ctx, static_cast<uint64_t>(rows), static_cast<uint64_t>(cols),
-        VecSize);
+    auto config =
+        paddle::operators::Get1DBlocksAnd2DGrids(*ctx,
+                                                 static_cast<uint64_t>(rows),
+                                                 static_cast<uint64_t>(cols),
+                                                 VecSize);
     const int increment = ((cols - 1) / (config.thread_per_block.x *
                                          config.block_per_grid.x * VecSize) +
                            1) *
@@ -200,8 +223,18 @@ struct TestFusedDropoutActBias {
     }
     Functor act;
     paddle::operators::LaunchDropoutActBias<T, uint8_t, Functor>(
-        act, seed, rows, cols, increment, dropout_prob, is_upscale_in_train,
-        is_test, src.data<T>(), bias_ptr, out.data<T>(), mask.data<uint8_t>(),
+        act,
+        seed,
+        rows,
+        cols,
+        increment,
+        dropout_prob,
+        is_upscale_in_train,
+        is_test,
+        src.data<T>(),
+        bias_ptr,
+        out.data<T>(),
+        mask.data<uint8_t>(),
         *ctx);
     ctx->Wait();
   }
@@ -217,9 +250,18 @@ struct TestFusedDropoutActBias {
     }
     GradFunctor act_grad;
     paddle::operators::LaunchDropoutActBiasGrad<T, uint8_t, GradFunctor>(
-        act_grad, out.data<T>(), mask.data<uint8_t>(), src.data<T>(), bias_ptr,
-        dropout_prob, is_upscale_in_train, rows, cols, dsrc.data<T>(),
-        dbias_ptr, *ctx);
+        act_grad,
+        out.data<T>(),
+        mask.data<uint8_t>(),
+        src.data<T>(),
+        bias_ptr,
+        dropout_prob,
+        is_upscale_in_train,
+        rows,
+        cols,
+        dsrc.data<T>(),
+        dbias_ptr,
+        *ctx);
   }
 
   void Run() {
@@ -288,22 +330,27 @@ static void BaseTest(const bool is_fp16 = false) {
 }
 
 TEST(FusedDropout, GPUFusedDorpoutActBias) {
-  BaseTest<float, phi::funcs::ReluFunctor<float>,
+  BaseTest<float,
+           phi::funcs::ReluFunctor<float>,
            phi::funcs::ReluGradFunctor<float>>();
-  BaseTest<float, paddle::operators::GeluFunctor<float>,
+  BaseTest<float,
+           paddle::operators::GeluFunctor<float>,
            paddle::operators::GeluGradFunctor<float>>();
 }
 TEST(FusedDropout, GPUFusedDropoutActBiasDouble) {
-  BaseTest<double, phi::funcs::ReluFunctor<double>,
+  BaseTest<double,
+           phi::funcs::ReluFunctor<double>,
            phi::funcs::ReluGradFunctor<double>>();
-  BaseTest<double, paddle::operators::GeluFunctor<double>,
+  BaseTest<double,
+           paddle::operators::GeluFunctor<double>,
            paddle::operators::GeluGradFunctor<double>>();
 }
 
 // test fp16, For inference, check_grad is not required. ref: test_dropout_op.py
 TEST(FusedDropout, GPUFusedDropoutActBiasFp16) {
   using fp16 = platform::float16;
-  BaseTest<fp16, phi::funcs::ReluFunctor<fp16>,
+  BaseTest<fp16,
+           phi::funcs::ReluFunctor<fp16>,
            phi::funcs::ReluGradFunctor<fp16>>(true);
 }
 
@@ -311,7 +358,8 @@ TEST(FusedDropout, GPUFusedDropoutActBiasIsUpscaleInTrain) {
   const int rows = 16;
   const int cols = 16;
   for (auto is_upscale_in_train : {true, false}) {
-    TestFusedDropoutActBias<float, phi::funcs::ReluFunctor<float>,
+    TestFusedDropoutActBias<float,
+                            phi::funcs::ReluFunctor<float>,
                             phi::funcs::ReluGradFunctor<float>>
         test(rows, cols, 0, 1.0, is_upscale_in_train, false);
     test.Run();
@@ -323,7 +371,8 @@ TEST(FusedDropout, GPUFusedDropoutActBiasIsUpscaleInTrain) {
 TEST(FusedDropout, GPUFusedDropoutActBiasIsTest) {
   const int rows = 16;
   const int cols = 16;
-  TestFusedDropoutActBias<float, phi::funcs::ReluFunctor<float>,
+  TestFusedDropoutActBias<float,
+                          phi::funcs::ReluFunctor<float>,
                           phi::funcs::ReluGradFunctor<float>>
       test(rows, cols, 0, 0.35, true, true);
   test.Run();
@@ -334,7 +383,8 @@ TEST(FusedDropout, GPUFusedDropoutActBiasIsTest) {
 TEST(FusedDropout, GPUFusedDropoutActBiasSeed) {
   const int rows = 16;
   const int cols = 16;
-  TestFusedDropoutActBias<float, phi::funcs::ReluFunctor<float>,
+  TestFusedDropoutActBias<float,
+                          phi::funcs::ReluFunctor<float>,
                           phi::funcs::ReluGradFunctor<float>>
       test(rows, cols, 125, 0.0, false, false);
   test.Run();
@@ -345,7 +395,8 @@ TEST(FusedDropout, GPUFusedDropoutActBiasSeed) {
 TEST(FusedDropout, GPUFusedDropoutActBiasLargeShape) {
   const int rows = 256;
   const int cols = 4096;
-  TestFusedDropoutActBias<float, phi::funcs::ReluFunctor<float>,
+  TestFusedDropoutActBias<float,
+                          phi::funcs::ReluFunctor<float>,
                           phi::funcs::ReluGradFunctor<float>>
       test(rows, cols);
   test.Run();

@@ -25,6 +25,7 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTAffineChannelTest(InferencePassTest):
+
     def setUp(self):
         self.bs = 2
         self.channel = 8
@@ -36,7 +37,7 @@ class TRTAffineChannelTest(InferencePassTest):
         self.enable_trt = True
 
     def build(self):
-        # set min_graph_size to 2, 
+        # set min_graph_size to 2,
         # because affine channel doesn't support nhwc format
         self.trt_parameters = InferencePassTest.TensorRTParam(
             1 << 30, self.bs, 2, self.precision, self.serialize, False)
@@ -62,7 +63,9 @@ class TRTAffineChannelTest(InferencePassTest):
             out = fluid.layers.batch_norm(affine_channel_out, is_test=True)
 
         shape[0] = self.bs
-        self.feeds = {'in': np.random.random(shape).astype('float32'), }
+        self.feeds = {
+            'in': np.random.random(shape).astype('float32'),
+        }
         self.fetch_list = [out]
 
     def check_output(self):
@@ -99,9 +102,8 @@ class TRTAffineChannelTest(InferencePassTest):
             max_shape = [self.bs, self.height * 2, self.width * 2, self.channel]
             opt_shape = [self.bs, self.height, self.width, self.channel]
 
-        dynamic_shape_profile = InferencePassTest.DynamicShapeParam({
-            'in': min_shape
-        }, {'in': max_shape}, {'in': opt_shape}, False)
+        dynamic_shape_profile = InferencePassTest.DynamicShapeParam(
+            {'in': min_shape}, {'in': max_shape}, {'in': opt_shape}, False)
         dynamic_shape_opt = [None, dynamic_shape_profile]
 
         for precision, serialize, dynamic_shape in itertools.product(
@@ -123,10 +125,10 @@ class TRTAffineChannelTest(InferencePassTest):
         self.run_test()
 
     def test_dynamic(self):
-        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam({
-            'in': [self.bs, self.channel, self.height // 2, self.width // 2]
-        }, {'in': [self.bs, self.channel, self.height * 2, self.width * 2]
-            }, {'in': [self.bs, self.channel, self.height, self.width]}, False)
+        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam(
+            {'in': [self.bs, self.channel, self.height // 2, self.width // 2]},
+            {'in': [self.bs, self.channel, self.height * 2, self.width * 2]},
+            {'in': [self.bs, self.channel, self.height, self.width]}, False)
         self.run_test()
 
     def test_nchw_all(self):

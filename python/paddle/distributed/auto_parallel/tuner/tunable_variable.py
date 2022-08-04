@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Notice that the following codes are modified from KerasTuner to implement our own tuner. 
+# Notice that the following codes are modified from KerasTuner to implement our own tuner.
 # Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/hyperparameters.py.
 
 import numpy as np
@@ -49,8 +49,8 @@ class Fixed(TunableVariable):
         self.name = name
         if not isinstance(default, (str, int, float, bool)):
             raise ValueError(
-                "Fixed must be an str, int, float or bool, but found {}"
-                .format(default))
+                "Fixed must be an str, int, float or bool, but found {}".format(
+                    default))
         self._default = default
 
     def random(self, seed=None):
@@ -76,11 +76,12 @@ class Boolean(TunableVariable):
         return rng.choice((True, False))
 
     def __repr__(self):
-        return 'Boolean(name: "{}", default: {})'.format(self.name,
-                                                         self.default)
+        return 'Boolean(name: "{}", default: {})'.format(
+            self.name, self.default)
 
 
 class Choice(TunableVariable):
+
     def __init__(self, name, values, default=None):
         super(Choice, self).__init__(name=name, default=default)
 
@@ -114,8 +115,8 @@ class Choice(TunableVariable):
 
         if default is not None and default not in values:
             raise ValueError(
-                "The default value should be one of the choices {}, but found {}".
-                format(values, default))
+                "The default value should be one of the choices {}, but found {}"
+                .format(values, default))
         self._default = default
 
     @property

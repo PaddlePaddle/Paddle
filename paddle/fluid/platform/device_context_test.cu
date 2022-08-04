@@ -11,22 +11,21 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/platform/device_context.h"
-
 #include <vector>
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/platform/device_context.h"
 
 TEST(Device, Init) {
-  using paddle::platform::DeviceContext;
-  using paddle::platform::CUDADeviceContext;
   using paddle::platform::CUDAPlace;
+  using paddle::platform::DeviceContext;
+  using phi::GPUContext;
 
   int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
-    CUDADeviceContext* device_context = new CUDADeviceContext(CUDAPlace(i));
+    phi::GPUContext* device_context = new phi::GPUContext(CUDAPlace(i));
     device_context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(CUDAPlace(i), device_context->stream())
@@ -51,13 +50,13 @@ TEST(Device, Init) {
   }
 }
 
-TEST(Device, CUDADeviceContext) {
-  using paddle::platform::CUDADeviceContext;
+TEST(Device, GPUContext) {
   using paddle::platform::CUDAPlace;
+  using phi::GPUContext;
 
   int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
-    CUDADeviceContext* device_context = new CUDADeviceContext(CUDAPlace(i));
+    phi::GPUContext* device_context = new phi::GPUContext(CUDAPlace(i));
     device_context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(CUDAPlace(i), device_context->stream())
@@ -94,11 +93,11 @@ TEST(Device, CUDADeviceContext) {
 }
 
 TEST(Device, DeviceContextPool) {
-  using paddle::platform::DeviceContextPool;
-  using paddle::platform::CUDADeviceContext;
-  using paddle::platform::Place;
   using paddle::platform::CPUPlace;
   using paddle::platform::CUDAPlace;
+  using paddle::platform::DeviceContextPool;
+  using paddle::platform::Place;
+  using phi::GPUContext;
 
   DeviceContextPool& pool = DeviceContextPool::Instance();
   auto cpu_dev_ctx1 = pool.Get(CPUPlace());

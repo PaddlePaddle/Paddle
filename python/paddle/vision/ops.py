@@ -23,20 +23,11 @@ from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygr
 from paddle.common_ops_import import *
 from paddle import _C_ops
 
-__all__ = [ #noqa
-    'yolo_loss',
-    'yolo_box',
-    'deform_conv2d',
-    'DeformConv2D',
-    'read_file',
-    'decode_jpeg',
-    'roi_pool',
-    'RoIPool',
-    'psroi_pool',
-    'PSRoIPool',
-    'roi_align',
-    'RoIAlign',
-    'nms',
+__all__ = [  #noqa
+    'yolo_loss', 'yolo_box', 'deform_conv2d', 'DeformConv2D',
+    'distribute_fpn_proposals', 'generate_proposals', 'read_file',
+    'decode_jpeg', 'roi_pool', 'RoIPool', 'psroi_pool', 'PSRoIPool',
+    'roi_align', 'RoIAlign', 'nms', 'matrix_nms'
 ]
 
 
@@ -195,6 +186,12 @@ def yolo_loss(x,
                                              scale_x_y=1.)
     """
 
+    if in_dygraph_mode():
+        loss, _, _ = _C_ops.final_state_yolov3_loss(
+            x, gt_box, gt_label, gt_score, anchors, anchor_mask, class_num,
+            ignore_thresh, downsample_ratio, use_label_smooth, scale_x_y)
+        return loss
+
     if _non_static_mode():
         loss, _, _ = _C_ops.yolov3_loss(
             x, gt_box, gt_label, gt_score, 'anchors', anchors, 'anchor_mask',
@@ -238,15 +235,14 @@ def yolo_loss(x,
         "scale_x_y": scale_x_y,
     }
 
-    helper.append_op(
-        type='yolov3_loss',
-        inputs=inputs,
-        outputs={
-            'Loss': loss,
-            'ObjectnessMask': objectness_mask,
-            'GTMatchMask': gt_match_mask
-        },
-        attrs=attrs)
+    helper.append_op(type='yolov3_loss',
+                     inputs=inputs,
+                     outputs={
+                         'Loss': loss,
+                         'ObjectnessMask': objectness_mask,
+                         'GTMatchMask': gt_match_mask
+                     },
+                     attrs=attrs)
     return loss
 
 
@@ -379,9 +375,11 @@ def yolo_box(x,
                                                    scale_x_y=1.)
     """
     if in_dygraph_mode():
-        boxes, scores = _C_ops.final_state_yolo_box(
-            x, img_size, anchors, class_num, conf_thresh, downsample_ratio,
-            clip_bbox, scale_x_y, iou_aware, iou_aware_factor)
+        boxes, scores = _C_ops.final_state_yolo_box(x, img_size, anchors,
+                                                    class_num, conf_thresh,
+                                                    downsample_ratio, clip_bbox,
+                                                    scale_x_y, iou_aware,
+                                                    iou_aware_factor)
         return boxes, scores
 
     if _non_static_mode():
@@ -413,17 +411,16 @@ def yolo_box(x,
         "iou_aware_factor": iou_aware_factor
     }
 
-    helper.append_op(
-        type='yolo_box',
-        inputs={
-            "X": x,
-            "ImgSize": img_size,
-        },
-        outputs={
-            'Boxes': boxes,
-            'Scores': scores,
-        },
-        attrs=attrs)
+    helper.append_op(type='yolo_box',
+                     inputs={
+                         "X": x,
+                         "ImgSize": img_size,
+                     },
+                     outputs={
+                         'Boxes': boxes,
+                         'Scores': scores,
+                     },
+                     attrs=attrs)
     return boxes, scores
 
 
@@ -559,9 +556,10 @@ def deform_conv2d(x,
     use_deform_conv2d_v1 = True if mask is None else False
 
     if in_dygraph_mode():
-        pre_bias = _C_ops.final_state_deformable_conv(
-            x, offset, weight, mask, stride, padding, dilation,
-            deformable_groups, groups, 1)
+        pre_bias = _C_ops.final_state_deformable_conv(x, offset, weight, mask,
+                                                      stride, padding, dilation,
+                                                      deformable_groups, groups,
+                                                      1)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=1)
         else:
@@ -622,17 +620,20 @@ def deform_conv2d(x,
             'deformable_groups': deformable_groups,
             'im2col_step': 1,
         }
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
 
         if bias is not None:
             out = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [pre_bias],
-                        'Y': [bias]},
-                outputs={'Out': [out]},
-                attrs={'axis': 1})
+            helper.append_op(type='elementwise_add',
+                             inputs={
+                                 'X': [pre_bias],
+                                 'Y': [bias]
+                             },
+                             outputs={'Out': [out]},
+                             attrs={'axis': 1})
         else:
             out = pre_bias
     return out
@@ -813,22 +814,139 @@ class DeformConv2D(Layer):
             shape=filter_shape,
             attr=self._weight_attr,
             default_initializer=_get_default_param_initializer())
-        self.bias = self.create_parameter(
-            attr=self._bias_attr, shape=[self._out_channels], is_bias=True)
+        self.bias = self.create_parameter(attr=self._bias_attr,
+                                          shape=[self._out_channels],
+                                          is_bias=True)
 
     def forward(self, x, offset, mask=None):
-        out = deform_conv2d(
-            x=x,
-            offset=offset,
-            weight=self.weight,
-            bias=self.bias,
-            stride=self._stride,
-            padding=self._padding,
-            dilation=self._dilation,
-            deformable_groups=self._deformable_groups,
-            groups=self._groups,
-            mask=mask)
+        out = deform_conv2d(x=x,
+                            offset=offset,
+                            weight=self.weight,
+                            bias=self.bias,
+                            stride=self._stride,
+                            padding=self._padding,
+                            dilation=self._dilation,
+                            deformable_groups=self._deformable_groups,
+                            groups=self._groups,
+                            mask=mask)
         return out
+
+
+def distribute_fpn_proposals(fpn_rois,
+                             min_level,
+                             max_level,
+                             refer_level,
+                             refer_scale,
+                             pixel_offset=False,
+                             rois_num=None,
+                             name=None):
+    r"""
+        In Feature Pyramid Networks (FPN) models, it is needed to distribute 
+    all proposals into different FPN level, with respect to scale of the proposals, 
+    the referring scale and the referring level. Besides, to restore the order of 
+    proposals, we return an array which indicates the original index of rois 
+    in current proposals. To compute FPN level for each roi, the formula is given as follows:
+    
+    .. math::
+        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)}
+        level = floor(&\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
+    where BBoxArea is a function to compute the area of each roi.
+
+    Args:
+        fpn_rois (Tensor): The input fpn_rois. 2-D Tensor with shape [N, 4] and data type can be
+            float32 or float64.
+        min_level (int): The lowest level of FPN layer where the proposals come 
+            from.
+        max_level (int): The highest level of FPN layer where the proposals
+            come from.
+        refer_level (int): The referring level of FPN layer with specified scale.
+        refer_scale (int): The referring scale of FPN layer with specified level.
+        pixel_offset (bool, optional): Whether there is pixel offset. If True, the offset of 
+            image shape will be 1. 'False' by default.
+        rois_num (Tensor, optional): 1-D Tensor contains the number of RoIs in each image. 
+            The shape is [B] and data type is int32. B is the number of images.
+            If rois_num not None, it will return a list of 1-D Tensor. Each element 
+            is the output RoIs' number of each image on the corresponding level
+            and the shape is [B]. None by default.
+        name (str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
+
+    Returns:
+        multi_rois (List) : The proposals in each FPN level. It is a list of 2-D Tensor with shape [M, 4], where M is
+            and data type is same as `fpn_rois` . The length is max_level-min_level+1.         
+        restore_ind (Tensor): The index used to restore the order of fpn_rois. It is a 2-D Tensor with shape [N, 1]
+            , where N is the number of total rois. The data type is int32. 
+        rois_num_per_level (List): A list of 1-D Tensor and each Tensor is 
+            the RoIs' number in each image on the corresponding level. The shape 
+            is [B] and data type of int32, where B is the number of images.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            fpn_rois = paddle.rand((10, 4))
+            rois_num = paddle.to_tensor([3, 1, 4, 2], dtype=paddle.int32)
+
+            multi_rois, restore_ind, rois_num_per_level = paddle.vision.ops.distribute_fpn_proposals(
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=5,
+                refer_level=4,
+                refer_scale=224,
+                rois_num=rois_num)
+    """
+    num_lvl = max_level - min_level + 1
+
+    if _non_static_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
+                 refer_level, 'refer_scale', refer_scale, 'pixel_offset',
+                 pixel_offset)
+        multi_rois, restore_ind, rois_num_per_level = _C_ops.distribute_fpn_proposals(
+            fpn_rois, rois_num, num_lvl, num_lvl, *attrs)
+        return multi_rois, restore_ind, rois_num_per_level
+
+    else:
+        check_variable_and_dtype(fpn_rois, 'fpn_rois', ['float32', 'float64'],
+                                 'distribute_fpn_proposals')
+        helper = LayerHelper('distribute_fpn_proposals', **locals())
+        dtype = helper.input_dtype('fpn_rois')
+        multi_rois = [
+            helper.create_variable_for_type_inference(dtype)
+            for i in range(num_lvl)
+        ]
+
+        restore_ind = helper.create_variable_for_type_inference(dtype='int32')
+
+        inputs = {'FpnRois': fpn_rois}
+        outputs = {
+            'MultiFpnRois': multi_rois,
+            'RestoreIndex': restore_ind,
+        }
+
+        if rois_num is not None:
+            inputs['RoisNum'] = rois_num
+            rois_num_per_level = [
+                helper.create_variable_for_type_inference(dtype='int32')
+                for i in range(num_lvl)
+            ]
+            outputs['MultiLevelRoIsNum'] = rois_num_per_level
+        else:
+            rois_num_per_level = None
+
+        helper.append_op(type='distribute_fpn_proposals',
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs={
+                             'min_level': min_level,
+                             'max_level': max_level,
+                             'refer_level': refer_level,
+                             'refer_scale': refer_scale,
+                             'pixel_offset': pixel_offset
+                         })
+        return multi_rois, restore_ind, rois_num_per_level
 
 
 def read_file(filename, name=None):
@@ -851,15 +969,14 @@ def read_file(filename, name=None):
             import cv2
             import paddle
 
-            fake_img = (np.random.random(
-                        (400, 300, 3)) * 255).astype('uint8')
+            fake_img = (paddle.rand((400, 300, 3)).numpy() * 255).astype('uint8')            
 
             cv2.imwrite('fake.jpg', fake_img)
 
             img_bytes = paddle.vision.ops.read_file('fake.jpg')
             
             print(img_bytes.shape)
-
+            # [142915]
     """
 
     if _non_static_mode():
@@ -870,8 +987,10 @@ def read_file(filename, name=None):
 
     helper = LayerHelper("read_file", **locals())
     out = helper.create_variable_for_type_inference('uint8')
-    helper.append_op(
-        type="read_file", inputs=inputs, attrs=attrs, outputs={"Out": out})
+    helper.append_op(type="read_file",
+                     inputs=inputs,
+                     attrs=attrs,
+                     outputs={"Out": out})
 
     return out
 
@@ -920,8 +1039,10 @@ def decode_jpeg(x, mode='unchanged', name=None):
 
     helper = LayerHelper("decode_jpeg", **locals())
     out = helper.create_variable_for_type_inference('uint8')
-    helper.append_op(
-        type="decode_jpeg", inputs=inputs, attrs=attrs, outputs={"Out": out})
+    helper.append_op(type="decode_jpeg",
+                     inputs=inputs,
+                     attrs=attrs,
+                     outputs={"Out": out})
 
     return out
 
@@ -943,7 +1064,7 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         boxes_num (Tensor): The number of boxes contained in each picture in the batch.
         output_size (int|Tuple(int, int))  The pooled output size(H, W), data type 
                                is int32. If int, H and W are both equal to output_size.
-        spatial_scale (float): Multiplicative spatial scale factor to translate ROI coords from their 
+        spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their 
                                input scale to the scale used when pooling. Default: 1.0
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
@@ -955,12 +1076,15 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
+          
             import paddle
             x = paddle.uniform([2, 490, 28, 28], dtype='float32')
             boxes = paddle.to_tensor([[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32')
             boxes_num = paddle.to_tensor([1, 2], dtype='int32')
             pool_out = paddle.vision.ops.psroi_pool(x, boxes, boxes_num, 7, 1.0)
+            print(pool_out.shape)
+            # [3, 10, 7, 7]
     """
 
     check_type(output_size, 'output_size', (int, tuple, list), 'psroi_pool')
@@ -983,17 +1107,18 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     helper = LayerHelper('psroi_pool', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='psroi_pool',
-        inputs={'X': x,
-                'ROIs': boxes},
-        outputs={'Out': out},
-        attrs={
-            'output_channels': output_channels,
-            'spatial_scale': spatial_scale,
-            'pooled_height': pooled_height,
-            'pooled_width': pooled_width
-        })
+    helper.append_op(type='psroi_pool',
+                     inputs={
+                         'X': x,
+                         'ROIs': boxes
+                     },
+                     outputs={'Out': out},
+                     attrs={
+                         'output_channels': output_channels,
+                         'spatial_scale': spatial_scale,
+                         'pooled_height': pooled_height,
+                         'pooled_width': pooled_width
+                     })
     return out
 
 
@@ -1005,7 +1130,7 @@ class PSRoIPool(Layer):
     Args:
         output_size (int|Tuple(int, int))  The pooled output size(H, W), data type 
                                is int32. If int, H and W are both equal to output_size.
-        spatial_scale (float): Multiplicative spatial scale factor to translate ROI coords from their 
+        spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their 
                                input scale to the scale used when pooling. Default: 1.0.
 
     Shape:
@@ -1016,11 +1141,11 @@ class PSRoIPool(Layer):
               The output_channels equal to C / (pooled_h * pooled_w), where C is the channels of input.
 
     Returns:
-        None
+        None.
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             
             psroi_module = paddle.vision.ops.PSRoIPool(7, 1.0)
@@ -1028,7 +1153,7 @@ class PSRoIPool(Layer):
             boxes = paddle.to_tensor([[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32')
             boxes_num = paddle.to_tensor([1, 2], dtype='int32')
             pool_out = psroi_module(x, boxes, boxes_num)
-
+            print(pool_out.shape) # [3, 10, 7, 7]
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
@@ -1090,9 +1215,10 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
                                            pooled_width, spatial_scale)
     if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        pool_out, argmaxes = _C_ops.roi_pool(
-            x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
-            pooled_width, "spatial_scale", spatial_scale)
+        pool_out, argmaxes = _C_ops.roi_pool(x, boxes, boxes_num,
+                                             "pooled_height", pooled_height,
+                                             "pooled_width", pooled_width,
+                                             "spatial_scale", spatial_scale)
         return pool_out
 
     else:
@@ -1109,16 +1235,17 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         }
         if boxes_num is not None:
             inputs['RoisNum'] = boxes_num
-        helper.append_op(
-            type="roi_pool",
-            inputs=inputs,
-            outputs={"Out": pool_out,
-                     "Argmax": argmaxes},
-            attrs={
-                "pooled_height": pooled_height,
-                "pooled_width": pooled_width,
-                "spatial_scale": spatial_scale
-            })
+        helper.append_op(type="roi_pool",
+                         inputs=inputs,
+                         outputs={
+                             "Out": pool_out,
+                             "Argmax": argmaxes
+                         },
+                         attrs={
+                             "pooled_height": pooled_height,
+                             "pooled_width": pooled_width,
+                             "spatial_scale": spatial_scale
+                         })
         return pool_out
 
 
@@ -1156,12 +1283,11 @@ class RoIPool(Layer):
         self._spatial_scale = spatial_scale
 
     def forward(self, x, boxes, boxes_num):
-        return roi_pool(
-            x=x,
-            boxes=boxes,
-            boxes_num=boxes_num,
-            output_size=self._output_size,
-            spatial_scale=self._spatial_scale)
+        return roi_pool(x=x,
+                        boxes=boxes,
+                        boxes_num=boxes_num,
+                        output_size=self._output_size,
+                        spatial_scale=self._spatial_scale)
 
     def extra_repr(self):
         main_str = 'output_size={_output_size}, spatial_scale={_spatial_scale}'
@@ -1177,7 +1303,7 @@ def roi_align(x,
               aligned=True,
               name=None):
     """
-    This operator implements the roi_align layer.
+    Implementing the roi_align layer.
     Region of Interest (RoI) Align operator (also known as RoI Align) is to
     perform bilinear interpolation on inputs of nonuniform sizes to obtain
     fixed-size feature maps (e.g. 7*7), as described in Mask R-CNN.
@@ -1201,31 +1327,31 @@ def roi_align(x,
             the batch, the data type is int32.
         output_size (int or Tuple[int, int]): The pooled output size(h, w), data
             type is int32. If int, h and w are both equal to output_size.
-        spatial_scale (float32): Multiplicative spatial scale factor to translate
+        spatial_scale (float32, optional): Multiplicative spatial scale factor to translate
             ROI coords from their input scale to the scale used when pooling.
-            Default: 1.0
-        sampling_ratio (int32): number of sampling points in the interpolation
+            Default: 1.0.
+        sampling_ratio (int32, optional): number of sampling points in the interpolation
             grid used to compute the output value of each pooled output bin.
             If > 0, then exactly ``sampling_ratio x sampling_ratio`` sampling
             points per bin are used.
             If <= 0, then an adaptive number of grid points are used (computed
             as ``ceil(roi_width / output_width)``, and likewise for height).
-            Default: -1
-        aligned (bool): If False, use the legacy implementation. If True, pixel
+            Default: -1.
+        aligned (bool, optional): If False, use the legacy implementation. If True, pixel
             shift the box coordinates it by -0.5 for a better alignment with the
             two neighboring pixel indices. This version is used in Detectron2.
-            Default: True
+            Default: True.
         name(str, optional): For detailed information, please refer to :
             ref:`api_guide_Name`. Usually name is no need to set and None by
             default.
 
     Returns:
-        Tensor: The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,
+        The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,
             channels, pooled_h, pooled_w). The data type is float32 or float64.
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             from paddle.vision.ops import roi_align
 
@@ -1250,10 +1376,11 @@ def roi_align(x,
                                             sampling_ratio, aligned)
     if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        align_out = _C_ops.roi_align(
-            x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
-            pooled_width, "spatial_scale", spatial_scale, "sampling_ratio",
-            sampling_ratio, "aligned", aligned)
+        align_out = _C_ops.roi_align(x, boxes, boxes_num, "pooled_height",
+                                     pooled_height, "pooled_width",
+                                     pooled_width, "spatial_scale",
+                                     spatial_scale, "sampling_ratio",
+                                     sampling_ratio, "aligned", aligned)
         return align_out
 
     else:
@@ -1269,17 +1396,16 @@ def roi_align(x,
         }
         if boxes_num is not None:
             inputs['RoisNum'] = boxes_num
-        helper.append_op(
-            type="roi_align",
-            inputs=inputs,
-            outputs={"Out": align_out},
-            attrs={
-                "pooled_height": pooled_height,
-                "pooled_width": pooled_width,
-                "spatial_scale": spatial_scale,
-                "sampling_ratio": sampling_ratio,
-                "aligned": aligned,
-            })
+        helper.append_op(type="roi_align",
+                         inputs=inputs,
+                         outputs={"Out": align_out},
+                         attrs={
+                             "pooled_height": pooled_height,
+                             "pooled_width": pooled_width,
+                             "spatial_scale": spatial_scale,
+                             "sampling_ratio": sampling_ratio,
+                             "aligned": aligned,
+                         })
         return align_out
 
 
@@ -1296,12 +1422,12 @@ class RoIAlign(Layer):
             when pooling. Default: 1.0
 
     Returns:
-        align_out (Tensor): The output of ROIAlign operator is a 4-D tensor with
+        The output of ROIAlign operator is a 4-D tensor with
             shape (num_boxes, channels, pooled_h, pooled_w).
 
     Examples:
         ..  code-block:: python
-
+          :name: code-example1
             import paddle
             from paddle.vision.ops import RoIAlign
 
@@ -1321,13 +1447,12 @@ class RoIAlign(Layer):
         self._spatial_scale = spatial_scale
 
     def forward(self, x, boxes, boxes_num, aligned=True):
-        return roi_align(
-            x=x,
-            boxes=boxes,
-            boxes_num=boxes_num,
-            output_size=self._output_size,
-            spatial_scale=self._spatial_scale,
-            aligned=aligned)
+        return roi_align(x=x,
+                         boxes=boxes,
+                         boxes_num=boxes_num,
+                         output_size=self._output_size,
+                         spatial_scale=self._spatial_scale,
+                         aligned=aligned)
 
 
 class ConvNormActivation(Sequential):
@@ -1367,15 +1492,14 @@ class ConvNormActivation(Sequential):
         if bias is None:
             bias = norm_layer is None
         layers = [
-            Conv2D(
-                in_channels,
-                out_channels,
-                kernel_size,
-                stride,
-                padding,
-                dilation=dilation,
-                groups=groups,
-                bias_attr=bias)
+            Conv2D(in_channels,
+                   out_channels,
+                   kernel_size,
+                   stride,
+                   padding,
+                   dilation=dilation,
+                   groups=groups,
+                   bias_attr=bias)
         ]
         if norm_layer is not None:
             layers.append(norm_layer(out_channels))
@@ -1461,16 +1585,18 @@ def nms(boxes,
     """
 
     def _nms(boxes, iou_threshold):
+        if in_dygraph_mode():
+            return _C_ops.final_state_nms(boxes, iou_threshold)
+
         if _non_static_mode():
             return _C_ops.nms(boxes, 'iou_threshold', iou_threshold)
 
         helper = LayerHelper('nms', **locals())
         out = helper.create_variable_for_type_inference('int64')
-        helper.append_op(
-            type='nms',
-            inputs={'Boxes': boxes},
-            outputs={'KeepBoxesIdxs': out},
-            attrs={'iou_threshold': iou_threshold})
+        helper.append_op(type='nms',
+                         inputs={'Boxes': boxes},
+                         outputs={'KeepBoxesIdxs': out},
+                         attrs={'iou_threshold': iou_threshold})
         return out
 
     if scores is None:
@@ -1500,8 +1626,8 @@ def nms(boxes,
             continue
         cur_category_boxes = boxes[cur_category_boxes_idxs]
         cur_category_scores = scores[cur_category_boxes_idxs]
-        cur_category_sorted_indices = paddle.argsort(
-            cur_category_scores, descending=True)
+        cur_category_sorted_indices = paddle.argsort(cur_category_scores,
+                                                     descending=True)
         cur_category_sorted_boxes = cur_category_boxes[
             cur_category_sorted_indices]
 
@@ -1519,8 +1645,8 @@ def nms(boxes,
     keep_boxes_idxs = paddle.where(mask)[0]
     shape = keep_boxes_idxs.shape[0]
     keep_boxes_idxs = paddle.reshape(keep_boxes_idxs, [shape])
-    sorted_sub_indices = paddle.argsort(
-        scores[keep_boxes_idxs], descending=True)
+    sorted_sub_indices = paddle.argsort(scores[keep_boxes_idxs],
+                                        descending=True)
 
     if top_k is None:
         return keep_boxes_idxs[sorted_sub_indices]
@@ -1531,3 +1657,280 @@ def nms(boxes,
         return keep_boxes_idxs[topk_sub_indices]
 
     return keep_boxes_idxs[sorted_sub_indices][:top_k]
+
+
+def generate_proposals(scores,
+                       bbox_deltas,
+                       img_size,
+                       anchors,
+                       variances,
+                       pre_nms_top_n=6000,
+                       post_nms_top_n=1000,
+                       nms_thresh=0.5,
+                       min_size=0.1,
+                       eta=1.0,
+                       pixel_offset=False,
+                       return_rois_num=False,
+                       name=None):
+    """
+    This operation proposes RoIs according to each box with their
+    probability to be a foreground object. And 
+    the proposals of RPN output are  calculated by anchors, bbox_deltas and scores. Final proposals 
+    could be used to train detection net.
+
+    For generating proposals, this operation performs following steps:
+
+    1. Transpose and resize scores and bbox_deltas in size of
+       (H * W * A, 1) and (H * W * A, 4)
+    2. Calculate box locations as proposals candidates. 
+    3. Clip boxes to image
+    4. Remove predicted boxes with small area. 
+    5. Apply non-maximum suppression (NMS) to get final proposals as output.
+
+    Args:
+        scores (Tensor): A 4-D Tensor with shape [N, A, H, W] represents
+            the probability for each box to be an object.
+            N is batch size, A is number of anchors, H and W are height and
+            width of the feature map. The data type must be float32.
+        bbox_deltas (Tensor): A 4-D Tensor with shape [N, 4*A, H, W]
+            represents the difference between predicted box location and
+            anchor location. The data type must be float32.
+        img_size (Tensor): A 2-D Tensor with shape [N, 2] represents origin
+            image shape information for N batch, including height and width of the input sizes.
+            The data type can be float32 or float64.
+        anchors (Tensor):   A 4-D Tensor represents the anchors with a layout
+            of [H, W, A, 4]. H and W are height and width of the feature map,
+            num_anchors is the box count of each position. Each anchor is
+            in (xmin, ymin, xmax, ymax) format an unnormalized. The data type must be float32.
+        variances (Tensor): A 4-D Tensor. The expanded variances of anchors with a layout of
+            [H, W, num_priors, 4]. Each variance is in
+            (xcenter, ycenter, w, h) format. The data type must be float32.
+        pre_nms_top_n (float, optional): Number of total bboxes to be kept per
+            image before NMS. `6000` by default.
+        post_nms_top_n (float, optional): Number of total bboxes to be kept per
+            image after NMS. `1000` by default.
+        nms_thresh (float, optional): Threshold in NMS. The data type must be float32. `0.5` by default.
+        min_size (float, optional): Remove predicted boxes with either height or
+            width less than this value. `0.1` by default.
+        eta(float, optional): Apply in adaptive NMS, only works if adaptive `threshold > 0.5`,
+            `adaptive_threshold = adaptive_threshold * eta` in each iteration. 1.0 by default.
+        pixel_offset (bool, optional): Whether there is pixel offset. If True, the offset of `img_size` will be 1. 'False' by default.
+        return_rois_num (bool, optional): Whether to return `rpn_rois_num` . When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's
+            num of each image in one batch. 'False' by default.
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
+
+    Returns:
+        - rpn_rois (Tensor): The generated RoIs. 2-D Tensor with shape ``[N, 4]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
+        - rpn_roi_probs (Tensor): The scores of generated RoIs. 2-D Tensor with shape ``[N, 1]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
+        - rpn_rois_num (Tensor): Rois's num of each image in one batch. 1-D Tensor with shape ``[B,]`` while ``B`` is the batch size. And its sum equals to RoIs number ``N`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            scores = paddle.rand((2,4,5,5), dtype=paddle.float32)
+            bbox_deltas = paddle.rand((2, 16, 5, 5), dtype=paddle.float32)
+            img_size = paddle.to_tensor([[224.0, 224.0], [224.0, 224.0]])
+            anchors = paddle.rand((2,5,4,4), dtype=paddle.float32)
+            variances = paddle.rand((2,5,10,4), dtype=paddle.float32)
+            rois, roi_probs, roi_nums = paddle.vision.ops.generate_proposals(scores, bbox_deltas,
+                         img_size, anchors, variances, return_rois_num=True)
+            print(rois, roi_probs, roi_nums)
+    """
+
+    if _non_static_mode():
+        assert return_rois_num, "return_rois_num should be True in dygraph mode."
+        attrs = ('pre_nms_topN', pre_nms_top_n, 'post_nms_topN', post_nms_top_n,
+                 'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta,
+                 'pixel_offset', pixel_offset)
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals_v2(
+            scores, bbox_deltas, img_size, anchors, variances, *attrs)
+
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
+
+    helper = LayerHelper('generate_proposals_v2', **locals())
+
+    check_variable_and_dtype(scores, 'scores', ['float32'],
+                             'generate_proposals_v2')
+    check_variable_and_dtype(bbox_deltas, 'bbox_deltas', ['float32'],
+                             'generate_proposals_v2')
+    check_variable_and_dtype(img_size, 'img_size', ['float32', 'float64'],
+                             'generate_proposals_v2')
+    check_variable_and_dtype(anchors, 'anchors', ['float32'],
+                             'generate_proposals_v2')
+    check_variable_and_dtype(variances, 'variances', ['float32'],
+                             'generate_proposals_v2')
+
+    rpn_rois = helper.create_variable_for_type_inference(
+        dtype=bbox_deltas.dtype)
+    rpn_roi_probs = helper.create_variable_for_type_inference(
+        dtype=scores.dtype)
+    outputs = {
+        'RpnRois': rpn_rois,
+        'RpnRoiProbs': rpn_roi_probs,
+    }
+    if return_rois_num:
+        rpn_rois_num = helper.create_variable_for_type_inference(dtype='int32')
+        rpn_rois_num.stop_gradient = True
+        outputs['RpnRoisNum'] = rpn_rois_num
+
+    helper.append_op(type="generate_proposals_v2",
+                     inputs={
+                         'Scores': scores,
+                         'BboxDeltas': bbox_deltas,
+                         'ImShape': img_size,
+                         'Anchors': anchors,
+                         'Variances': variances
+                     },
+                     attrs={
+                         'pre_nms_topN': pre_nms_top_n,
+                         'post_nms_topN': post_nms_top_n,
+                         'nms_thresh': nms_thresh,
+                         'min_size': min_size,
+                         'eta': eta,
+                         'pixel_offset': pixel_offset
+                     },
+                     outputs=outputs)
+    rpn_rois.stop_gradient = True
+    rpn_roi_probs.stop_gradient = True
+    if not return_rois_num:
+        rpn_rois_num = None
+
+    return rpn_rois, rpn_roi_probs, rpn_rois_num
+
+
+def matrix_nms(bboxes,
+               scores,
+               score_threshold,
+               post_threshold,
+               nms_top_k,
+               keep_top_k,
+               use_gaussian=False,
+               gaussian_sigma=2.,
+               background_label=0,
+               normalized=True,
+               return_index=False,
+               return_rois_num=True,
+               name=None):
+    """
+    This operator does matrix non maximum suppression (NMS).
+    First selects a subset of candidate bounding boxes that have higher scores
+    than score_threshold (if provided), then the top k candidate is selected if
+    nms_top_k is larger than -1. Score of the remaining candidate are then
+    decayed according to the Matrix NMS scheme.
+    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    per image if keep_top_k is larger than -1.
+    Args:
+        bboxes (Tensor): A 3-D Tensor with shape [N, M, 4] represents the
+                           predicted locations of M bounding bboxes,
+                           N is the batch size. Each bounding box has four
+                           coordinate values and the layout is
+                           [xmin, ymin, xmax, ymax], when box size equals to 4.
+                           The data type is float32 or float64.
+        scores (Tensor): A 3-D Tensor with shape [N, C, M]
+                           represents the predicted confidence predictions.
+                           N is the batch size, C is the class number, M is
+                           number of bounding boxes. For each category there
+                           are total M scores which corresponding M bounding
+                           boxes. Please note, M is equal to the 2nd dimension
+                           of BBoxes. The data type is float32 or float64.
+        score_threshold (float): Threshold to filter out bounding boxes with
+                                 low confidence score.
+        post_threshold (float): Threshold to filter out bounding boxes with
+                                low confidence score AFTER decaying.
+        nms_top_k (int): Maximum number of detections to be kept according to
+                         the confidences after the filtering detections based
+                         on score_threshold.
+        keep_top_k (int): Number of total bboxes to be kept per image after NMS
+                          step. -1 means keeping all bboxes after NMS step.
+        use_gaussian (bool): Use Gaussian as the decay function. Default: False
+        gaussian_sigma (float): Sigma for Gaussian decay function. Default: 2.0
+        background_label (int): The index of background label, the background
+                                label will be ignored. If set to -1, then all
+                                categories will be considered. Default: 0
+        normalized (bool): Whether detections are normalized. Default: True
+        return_index(bool): Whether return selected index. Default: False
+        return_rois_num(bool): whether return rois_num. Default: True
+        name(str): Name of the matrix nms op. Default: None.
+    Returns:
+        A tuple with three Tensor: (Out, Index, RoisNum) if return_index is True,
+        otherwise, a tuple with two Tensor (Out, RoisNum) is returned.
+        Out (Tensor): A 2-D Tensor with shape [No, 6] containing the
+             detection results.
+             Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
+        Index (Tensor): A 2-D Tensor with shape [No, 1] containing the
+            selected indices, which are absolute values cross batches.
+        rois_num (Tensor): A 1-D Tensor with shape [N] containing
+            the number of detected boxes in each image.
+    Examples:
+        .. code-block:: python
+            import paddle
+            from paddle.vision.ops import matrix_nms
+            boxes = paddle.rand([4, 1, 4])
+            boxes[..., 2] = boxes[..., 0] + boxes[..., 2]
+            boxes[..., 3] = boxes[..., 1] + boxes[..., 3]
+            scores = paddle.rand([4, 80, 1])
+            out = matrix_nms(bboxes=boxes, scores=scores, background_label=0,
+                                 score_threshold=0.5, post_threshold=0.1,
+                                 nms_top_k=400, keep_top_k=200, normalized=False)
+    """
+    check_variable_and_dtype(bboxes, 'BBoxes', ['float32', 'float64'],
+                             'matrix_nms')
+    check_variable_and_dtype(scores, 'Scores', ['float32', 'float64'],
+                             'matrix_nms')
+    check_type(score_threshold, 'score_threshold', float, 'matrix_nms')
+    check_type(post_threshold, 'post_threshold', float, 'matrix_nms')
+    check_type(nms_top_k, 'nums_top_k', int, 'matrix_nms')
+    check_type(keep_top_k, 'keep_top_k', int, 'matrix_nms')
+    check_type(normalized, 'normalized', bool, 'matrix_nms')
+    check_type(use_gaussian, 'use_gaussian', bool, 'matrix_nms')
+    check_type(gaussian_sigma, 'gaussian_sigma', float, 'matrix_nms')
+    check_type(background_label, 'background_label', int, 'matrix_nms')
+
+    if in_dygraph_mode():
+        attrs = ('background_label', background_label, 'score_threshold',
+                 score_threshold, 'post_threshold', post_threshold, 'nms_top_k',
+                 nms_top_k, 'gaussian_sigma', gaussian_sigma, 'use_gaussian',
+                 use_gaussian, 'keep_top_k', keep_top_k, 'normalized',
+                 normalized)
+        out, index, rois_num = _C_ops.matrix_nms(bboxes, scores, *attrs)
+        if not return_index:
+            index = None
+        if not return_rois_num:
+            rois_num = None
+        return out, rois_num, index
+    else:
+        helper = LayerHelper('matrix_nms', **locals())
+        output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+        index = helper.create_variable_for_type_inference(dtype='int32')
+        outputs = {'Out': output, 'Index': index}
+        if return_rois_num:
+            rois_num = helper.create_variable_for_type_inference(dtype='int32')
+            outputs['RoisNum'] = rois_num
+
+        helper.append_op(type="matrix_nms",
+                         inputs={
+                             'BBoxes': bboxes,
+                             'Scores': scores
+                         },
+                         attrs={
+                             'background_label': background_label,
+                             'score_threshold': score_threshold,
+                             'post_threshold': post_threshold,
+                             'nms_top_k': nms_top_k,
+                             'gaussian_sigma': gaussian_sigma,
+                             'use_gaussian': use_gaussian,
+                             'keep_top_k': keep_top_k,
+                             'normalized': normalized
+                         },
+                         outputs=outputs)
+        output.stop_gradient = True
+
+        if not return_index:
+            index = None
+        if not return_rois_num:
+            rois_num = None
+        return output, rois_num, index

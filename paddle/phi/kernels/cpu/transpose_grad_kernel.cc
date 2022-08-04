@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/transpose_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"

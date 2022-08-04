@@ -14,10 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/softmax_kernel.h"
-
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/softmax_kernel.h"
 
 namespace phi {
 

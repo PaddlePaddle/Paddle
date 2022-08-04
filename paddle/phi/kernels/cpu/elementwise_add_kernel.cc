@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
 namespace phi {
@@ -32,6 +32,14 @@ void AddKernel(const Context& dev_ctx,
                DenseTensor* out) {
   int axis = -1;
   AddRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
+void GradAddKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
+  AddKernel<T>(dev_ctx, x, y, out);
 }
 
 }  // namespace phi
@@ -58,6 +66,18 @@ PD_REGISTER_KERNEL(add,
                    CPU,
                    ALL_LAYOUT,
                    phi::AddKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+
+PD_REGISTER_KERNEL(grad_add,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::GradAddKernel,
                    float,
                    double,
                    int16_t,

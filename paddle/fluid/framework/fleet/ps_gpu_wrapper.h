@@ -19,6 +19,7 @@ limitations under the License. */
 #include <ctime>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <random>
 #include <string>
 #include <unordered_map>
@@ -50,10 +51,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #endif
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"
@@ -61,6 +62,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_PSLIB
 #include "downpour_accessor.h"  // NOLINT
 #endif
+#include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 
 namespace paddle {
 namespace framework {
@@ -72,8 +74,10 @@ class AfsWrapper {
  public:
   AfsWrapper() {}
   virtual ~AfsWrapper() {}
-  void init(const std::string& fs_name, const std::string& fs_user,
-            const std::string& pass_wd, const std::string& conf);
+  void init(const std::string& fs_name,
+            const std::string& fs_user,
+            const std::string& pass_wd,
+            const std::string& conf);
   int remove(const std::string& path);
   int mkdir(const std::string& path);
   std::vector<std::string> list(const std::string& path);
@@ -150,27 +154,39 @@ class PSGPUWrapper {
     sleep_seconds_before_fail_exit_ = 300;
   }
 
-  void PullSparse(const paddle::platform::Place& place, const int table_id,
+  void PullSparse(const paddle::platform::Place& place,
+                  const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
-                  const std::vector<int>& slot_dim, const int hidden_size);
-  void PullSparse(const paddle::platform::Place& place, const int table_id,
+                  const std::vector<int>& slot_dim,
+                  const int hidden_size);
+  void PullSparse(const paddle::platform::Place& place,
+                  const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
                   const int hidden_size);
-  void PushSparseGrad(const paddle::platform::Place& place, const int table_id,
+  void PushSparseGrad(const paddle::platform::Place& place,
+                      const int table_id,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<const float*>& grad_values,
                       const std::vector<int64_t>& slot_lengths,
-                      const int hidden_size, const int batch_size);
-  void CopyKeys(const paddle::platform::Place& place, uint64_t** origin_keys,
-                uint64_t* total_keys, const int64_t* gpu_len, int slot_num,
+                      const int hidden_size,
+                      const int batch_size);
+  void CopyKeys(const paddle::platform::Place& place,
+                uint64_t** origin_keys,
+                uint64_t* total_keys,
+                const int64_t* gpu_len,
+                int slot_num,
                 int total_len);
-  void CopyKeys(const paddle::platform::Place& place, uint64_t** origin_keys,
-                uint64_t* total_keys, const int64_t* gpu_len, int slot_num,
-                int total_len, int* key2slot);
+  void CopyKeys(const paddle::platform::Place& place,
+                uint64_t** origin_keys,
+                uint64_t* total_keys,
+                const int64_t* gpu_len,
+                int slot_num,
+                int total_len,
+                int* key2slot);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
@@ -225,8 +241,8 @@ class PSGPUWrapper {
         // init inner comm
         inner_comms_.resize(dev_size);
         inter_ncclids_.resize(dev_size);
-        platform::dynload::ncclCommInitAll(&(inner_comms_[0]), dev_size,
-                                           &dev_ids[0]);
+        platform::dynload::ncclCommInitAll(
+            &(inner_comms_[0]), dev_size, &dev_ids[0]);
 // init inter comm
 #ifdef PADDLE_WITH_GLOO
         inter_comms_.resize(dev_size);
@@ -237,7 +253,8 @@ class PSGPUWrapper {
         }
 
         PADDLE_ENFORCE_EQ(
-            gloo->IsInitialized(), true,
+            gloo->IsInitialized(),
+            true,
             platform::errors::PreconditionNotMet(
                 "You must initialize the gloo environment first to use it."));
         gloo::BroadcastOptions opts(gloo->GetContext());
@@ -246,8 +263,8 @@ class PSGPUWrapper {
         gloo::broadcast(opts);
 
         for (int i = 0; i < dev_size; ++i) {
-          platform::dynload::ncclCommInitRank(&inter_comms_[i], gloo->Size(),
-                                              inter_ncclids_[i], gloo->Rank());
+          platform::dynload::ncclCommInitRank(
+              &inter_comms_[i], gloo->Size(), inter_ncclids_[i], gloo->Rank());
         }
         node_size_ = gloo->Size();
 #else
@@ -274,15 +291,27 @@ class PSGPUWrapper {
     }
   }
 
-  void SetSparseSGD(float nonclk_coeff, float clk_coeff, float min_bound,
-                    float max_bound, float learning_rate, float initial_g2sum,
-                    float initial_range, float beta1_decay_rate,
-                    float beta2_decay_rate, float ada_epsilon);
-  void SetEmbedxSGD(float mf_create_thresholds, float mf_learning_rate,
-                    float mf_initial_g2sum, float mf_initial_range,
-                    float mf_min_bound, float mf_max_bound,
-                    float mf_beta1_decay_rate, float mf_beta2_decay_rate,
-                    float mf_ada_epsilon, float nodeid_slot, float feature_learning_rate);
+  void SetSparseSGD(float nonclk_coeff,
+                    float clk_coeff,
+                    float min_bound,
+                    float max_bound,
+                    float learning_rate,
+                    float initial_g2sum,
+                    float initial_range,
+                    float beta1_decay_rate,
+                    float beta2_decay_rate,
+                    float ada_epsilon);
+  void SetEmbedxSGD(float mf_create_thresholds,
+                    float mf_learning_rate,
+                    float mf_initial_g2sum,
+                    float mf_initial_range,
+                    float mf_min_bound,
+                    float mf_max_bound,
+                    float mf_beta1_decay_rate,
+                    float mf_beta2_decay_rate,
+                    float mf_ada_epsilon,
+                    float nodeid_slot,
+                    float feature_learning_rate);
 
 #ifdef PADDLE_WITH_PSCORE
   void add_sparse_optimizer(
@@ -359,15 +388,17 @@ class PSGPUWrapper {
     config["nonclk_coeff"] = sparse_table_accessor_parameter.nonclk_coeff();
     config["clk_coeff"] = sparse_table_accessor_parameter.click_coeff();
     config["mf_create_thresholds"] = sparse_table_accessor.embedx_threshold();
-    
-    config["nodeid_slot"] = sparse_table_accessor.graph_sgd_param().nodeid_slot();
-    config["feature_learning_rate"] = sparse_table_accessor.graph_sgd_param().feature_learning_rate();
-    
+
+    config["nodeid_slot"] =
+        sparse_table_accessor.graph_sgd_param().nodeid_slot();
+    config["feature_learning_rate"] =
+        sparse_table_accessor.graph_sgd_param().feature_learning_rate();
+
     if (accessor_class_ == "CtrDymfAccessor") {
       // optimizer config for embed_w and embedx
       add_sparse_optimizer(config, sparse_table_accessor.embed_sgd_param());
-      add_sparse_optimizer(config, sparse_table_accessor.embedx_sgd_param(),
-                           "mf_");
+      add_sparse_optimizer(
+          config, sparse_table_accessor.embedx_sgd_param(), "mf_");
     }
 
     fleet_config_ = config;
@@ -438,21 +469,37 @@ class PSGPUWrapper {
     float mf_ada_epsilon = (config.find("mf_ada_epsilon") == config.end())
                                ? 1e-8
                                : config["mf_ada_epsilon"];
-    
-    float feature_learning_rate = (config.find("feature_learning_rate") == config.end())
-                                 ? 0.05
-                                 : config["feature_learning_rate"];
-    
+
+    float feature_learning_rate =
+        (config.find("feature_learning_rate") == config.end())
+            ? 0.05
+            : config["feature_learning_rate"];
+
     float nodeid_slot = (config.find("nodeid_slot") == config.end())
-                                 ? 9008
-                                 : config["nodeid_slot"];
-    this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
-                       learning_rate, initial_g2sum, initial_range,
-                       beta1_decay_rate, beta2_decay_rate, ada_epsilon);
-    this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate, mf_initial_g2sum,
-                       mf_initial_range, mf_min_bound, mf_max_bound,
-                       mf_beta1_decay_rate, mf_beta2_decay_rate,
-                       mf_ada_epsilon, nodeid_slot, feature_learning_rate);
+                            ? 9008
+                            : config["nodeid_slot"];
+
+    this->SetSparseSGD(nonclk_coeff,
+                       clk_coeff,
+                       min_bound,
+                       max_bound,
+                       learning_rate,
+                       initial_g2sum,
+                       initial_range,
+                       beta1_decay_rate,
+                       beta2_decay_rate,
+                       ada_epsilon);
+    this->SetEmbedxSGD(mf_create_thresholds,
+                       mf_learning_rate,
+                       mf_initial_g2sum,
+                       mf_initial_range,
+                       mf_min_bound,
+                       mf_max_bound,
+                       mf_beta1_decay_rate,
+                       mf_beta2_decay_rate,
+                       mf_ada_epsilon,
+                       nodeid_slot,
+                       feature_learning_rate);
 
     // set optimizer type(naive,adagrad,std_adagrad,adam,share_adam)
     optimizer_type_ = (config.find("optimizer_type") == config.end())
@@ -474,8 +521,11 @@ class PSGPUWrapper {
 
   // PSGPUWrapper singleton
   static std::shared_ptr<PSGPUWrapper> GetInstance() {
-    if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::framework::PSGPUWrapper());
+    {
+      std::lock_guard<std::mutex> lk(ins_mutex);
+      if (NULL == s_instance_) {
+        s_instance_.reset(new paddle::framework::PSGPUWrapper());
+      }
     }
     return s_instance_;
   }
@@ -553,7 +603,7 @@ class PSGPUWrapper {
     val_type_size_ = accessor_wrapper_ptr->GetFeatureValueSize(max_mf_dim_);
     grad_type_size_ = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
     pull_type_size_ = accessor_wrapper_ptr->GetPullValueSize(max_mf_dim_);
-    VLOG(0) << "InitS  lotInfo: val_type_size_" << val_type_size_
+    VLOG(0) << "InitSlotInfo: val_type_size_" << val_type_size_
             << " grad_type_size_:" << grad_type_size_
             << " pull_type_size_:" << pull_type_size_;
     slot_info_initialized_ = true;
@@ -570,8 +620,10 @@ class PSGPUWrapper {
     return afs_handler_.open_reader(filename);
   }
 
-  void InitAfsApi(const std::string& fs_name, const std::string& fs_user,
-                  const std::string& pass_wd, const std::string& conf);
+  void InitAfsApi(const std::string& fs_name,
+                  const std::string& fs_user,
+                  const std::string& pass_wd,
+                  const std::string& conf);
 #endif
 
 #ifdef PADDLE_WITH_PSCORE
@@ -582,12 +634,14 @@ class PSGPUWrapper {
 
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
+  static std::mutex ins_mutex;
   Dataset* dataset_;
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::AfsApiWrapper afs_handler_;
 #endif
   std::unordered_map<
-      uint64_t, std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
+      uint64_t,
+      std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
       local_tables_;
   HeterPsBase* HeterPs_;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse

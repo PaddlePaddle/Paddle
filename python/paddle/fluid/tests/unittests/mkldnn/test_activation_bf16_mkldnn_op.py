@@ -28,6 +28,7 @@ from paddle.fluid.tests.unittests.test_gelu_op import gelu
 @OpTestTool.skip_if_not_cpu_bf16()
 @six.add_metaclass(abc.ABCMeta)
 class MKLDNNBF16ActivationOp(object):
+
     @abc.abstractmethod
     def config(self):
         pass
@@ -72,6 +73,7 @@ class MKLDNNBF16ActivationOp(object):
 
 
 class TestMKLDNNSigmoidBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "sigmoid"
 
@@ -83,6 +85,7 @@ class TestMKLDNNSigmoidBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNSqrtBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "sqrt"
 
@@ -97,6 +100,7 @@ class TestMKLDNNSqrtBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNGeluErfBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "gelu"
 
@@ -110,11 +114,13 @@ class TestMKLDNNGeluErfBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNGeluErfDim2BF16Op(TestMKLDNNGeluErfBF16Op):
+
     def init_data(self):
         self.x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
 
 
 class TestMKLDNNGeluTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "gelu"
 
@@ -133,11 +139,13 @@ class TestMKLDNNGeluTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNGeluTanhDim2BF16Op(TestMKLDNNGeluTanhBF16Op):
+
     def init_data(self):
         self.x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
 
 
 class TestMKLDNNReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "relu"
 
@@ -149,6 +157,7 @@ class TestMKLDNNReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "mish"
 
@@ -156,13 +165,14 @@ class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         return x * np.tanh(np.log(1 + np.exp(x)))
 
     def op_grad(self, dout, x):
-        omega = np.exp(3 * x) + 4 * np.exp(2 * x) + np.exp(x) * (4 * x + 6
-                                                                 ) + 4 * (x + 1)
+        omega = np.exp(
+            3 * x) + 4 * np.exp(2 * x) + np.exp(x) * (4 * x + 6) + 4 * (x + 1)
         delta = np.exp(2 * x) + 2 * np.exp(x) + 2
         return dout * ((np.exp(x) * omega) / delta**2)
 
 
 class TestMKLDNNRelu6BF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "relu6"
 
@@ -174,6 +184,7 @@ class TestMKLDNNRelu6BF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNLeakyReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "leaky_relu"
 
@@ -189,6 +200,7 @@ class TestMKLDNNLeakyReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "swish"
 
@@ -207,6 +219,7 @@ class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNHardSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "hard_swish"
 
@@ -220,6 +233,7 @@ class TestMKLDNNHardSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "tanh"
 
@@ -231,6 +245,7 @@ class TestMKLDNNTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNAbsBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "abs"
 
@@ -242,6 +257,7 @@ class TestMKLDNNAbsBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNEluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "elu"
 
@@ -257,6 +273,7 @@ class TestMKLDNNEluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
 
 class TestMKLDNNExpBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+
     def config(self):
         self.op_type = "exp"
 

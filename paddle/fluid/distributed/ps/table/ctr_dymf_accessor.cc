@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
+
 #include <gflags/gflags.h>
+
 #include "glog/logging.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -41,7 +43,8 @@ int CtrDymfAccessor::Initialize() {
   if (_config.ctr_accessor_param().show_scale()) {
     _show_scale = true;
   }
-  VLOG(0) << " INTO CtrDymfAccessor::Initialize(); embed_sgd_dim:" << common_feature_value.embed_sgd_dim
+  VLOG(0) << " INTO CtrDymfAccessor::Initialize(); embed_sgd_dim:"
+          << common_feature_value.embed_sgd_dim
           << " embedx_dim:" << common_feature_value.embedx_dim
           << "  embedx_sgd_dim:" << common_feature_value.embedx_sgd_dim;
   InitAccessorInfo();
@@ -63,8 +66,6 @@ void CtrDymfAccessor::InitAccessorInfo() {
 }
 
 bool CtrDymfAccessor::Shrink(float* value) {
-  auto base_threshold = _config.ctr_accessor_param().base_threshold();
-  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delete_after_unseen_days =
       _config.ctr_accessor_param().delete_after_unseen_days();
   auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
@@ -83,7 +84,8 @@ bool CtrDymfAccessor::Shrink(float* value) {
   return false;
 }
 
-bool CtrDymfAccessor::SaveCache(float* value, int param,
+bool CtrDymfAccessor::SaveCache(float* value,
+                                int param,
                                 double global_cache_threshold) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
   auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -173,7 +175,6 @@ void CtrDymfAccessor::UpdateStatAfterSave(float* value, int param) {
 }
 
 int32_t CtrDymfAccessor::Create(float** values, size_t num) {
-  auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
     value[common_feature_value.UnseenDaysIndex()] = 0;
@@ -182,9 +183,10 @@ int32_t CtrDymfAccessor::Create(float** values, size_t num) {
     value[common_feature_value.ClickIndex()] = 0;
     value[common_feature_value.SlotIndex()] = -1;
     value[common_feature_value.MfDimIndex()] = -1;
-    _embed_sgd_rule->InitValue(value + common_feature_value.EmbedWIndex(),
-                               value + common_feature_value.EmbedG2SumIndex(),
-                               false); // adam embed init not zero, adagrad embed init zero
+    _embed_sgd_rule->InitValue(
+        value + common_feature_value.EmbedWIndex(),
+        value + common_feature_value.EmbedG2SumIndex(),
+        false);  // adam embed init not zero, adagrad embed init zero
     _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                                 value + common_feature_value.EmbedxG2SumIndex(),
                                 false);
@@ -200,12 +202,13 @@ bool CtrDymfAccessor::NeedExtendMF(float* value) {
   return score >= _config.embedx_threshold();
 }
 
-bool CtrDymfAccessor::HasMF(size_t size) {
+bool CtrDymfAccessor::HasMF(int size) {
   return size > common_feature_value.EmbedxG2SumIndex();
 }
 
 // from CommonFeatureValue to CtrDymfPullValue
-int32_t CtrDymfAccessor::Select(float** select_values, const float** values,
+int32_t CtrDymfAccessor::Select(float** select_values,
+                                const float** values,
                                 size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
@@ -228,7 +231,8 @@ int32_t CtrDymfAccessor::Select(float** select_values, const float** values,
 // first dim: item
 // second dim: field num
 int32_t CtrDymfAccessor::Merge(float** update_values,
-                               const float** other_update_values, size_t num) {
+                               const float** other_update_values,
+                               size_t num) {
   // currently merge in cpu is not supported
   return 0;
 }
@@ -237,7 +241,8 @@ int32_t CtrDymfAccessor::Merge(float** update_values,
 // first dim: item
 // second dim: field num
 int32_t CtrDymfAccessor::Update(float** update_values,
-                                const float** push_values, size_t num) {
+                                const float** push_values,
+                                size_t num) {
   // currently update in cpu is not supported
   return 0;
 }
@@ -290,7 +295,8 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4];
   //    << v[5] << " " << v[6];
   for (int i = common_feature_value.EmbedG2SumIndex();
-       i < common_feature_value.EmbedxG2SumIndex(); i++) {
+       i < common_feature_value.EmbedxG2SumIndex();
+       i++) {
     os << " " << v[i];
   }
   auto show = common_feature_value.Show(const_cast<float*>(v));
@@ -300,7 +306,8 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   if (score >= _config.embedx_threshold() &&
       param > common_feature_value.EmbedxG2SumIndex()) {
     for (auto i = common_feature_value.EmbedxG2SumIndex();
-         i < common_feature_value.Dim(mf_dim); ++i) {
+         i < common_feature_value.Dim(mf_dim);
+         ++i) {
       os << " " << v[i];
     }
   }

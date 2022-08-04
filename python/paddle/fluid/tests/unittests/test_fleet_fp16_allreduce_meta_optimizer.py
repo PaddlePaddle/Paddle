@@ -23,25 +23,28 @@ paddle.enable_static()
 
 
 class TestFleetFP16CompressOptimizer(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
 
     def net(self, main_prog, startup_prog, dtype='float32'):
         with fluid.program_guard(main_prog, startup_prog):
-            input_x = paddle.fluid.layers.data(
-                name="x", shape=[32], dtype=dtype)
-            input_y = paddle.fluid.layers.data(
-                name="y", shape=[1], dtype='int64')
+            input_x = paddle.fluid.layers.data(name="x",
+                                               shape=[32],
+                                               dtype=dtype)
+            input_y = paddle.fluid.layers.data(name="y",
+                                               shape=[1],
+                                               dtype='int64')
 
             fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
             fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
             prediction = paddle.fluid.layers.fc(input=[fc_2],
                                                 size=2,
                                                 act='softmax')
-            cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=input_y)
-            avg_cost = paddle.fluid.layers.mean(x=cost)
+            cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                     label=input_y)
+            avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.fp16_allreduce = True

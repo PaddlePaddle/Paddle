@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 
 import paddle
@@ -29,15 +30,19 @@ paddle.enable_static()
 
 
 class TestActivationOPBase(XPUOpTest):
+
     def setUp(self):
         self.place = paddle.XPUPlace(0)
         self.init_dtype()
+        self.set_shape()
         self.set_case()
+
+    def set_shape(self):
+        self.shape = [11, 17]
 
     def set_case(self):
         self.op_type = 'exp'
-
-        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = np.exp(x)
         self.attrs = {'use_xpu': True}
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -54,11 +59,13 @@ class TestActivationOPBase(XPUOpTest):
 
 
 class XPUTestExpOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'exp'
         self.use_dynamic_create_class = False
 
     class XPUTestExp(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = 'exp'
             self.dtype = self.in_type
@@ -76,11 +83,13 @@ for stype in support_types:
 
 
 class XPUTestSigmoidOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'sigmoid'
         self.use_dynamic_create_class = False
 
     class XPUTestSigmoid(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "sigmoid"
             self.dtype = self.in_type
@@ -95,18 +104,22 @@ class XPUTestSigmoidOP(XPUOpTestWrapper):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
 
     class XPUTestSigmoid2(XPUTestSigmoid):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2, [100]).astype(self.dtype)
 
     class XPUTestSigmoid3(XPUTestSigmoid):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2, [10, 12, 15]).astype(self.dtype)
 
     class XPUTestSigmoid4(XPUTestSigmoid):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2, [19, 19]).astype(self.dtype)
 
     class XPUTestSigmoid5(XPUTestSigmoid):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2,
                                        [10, 20, 30, 40]).astype(self.dtype)
@@ -118,11 +131,13 @@ for stype in support_types:
 
 
 class XPUTestTanhOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'tanh'
         self.use_dynamic_create_class = False
 
     class XPUTestTanh(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "tanh"
             self.dtype = self.in_type
@@ -140,11 +155,13 @@ for stype in support_types:
 
 
 class XPUTestSqrtOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'sqrt'
         self.use_dynamic_create_class = False
 
     class XPUTestSqrt(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "sqrt"
             self.dtype = self.in_type
@@ -163,11 +180,13 @@ for stype in support_types:
 
 
 class XPUTestAbsOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'abs'
         self.use_dynamic_create_class = False
 
     class XPUTestAbs(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "abs"
             self.dtype = self.in_type
@@ -191,11 +210,13 @@ for stype in support_types:
 
 
 class XPUTestReluOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'relu'
         self.use_dynamic_create_class = False
 
     class XPUTestRelu(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "relu"
             self.dtype = self.in_type
@@ -216,11 +237,13 @@ for stype in support_types:
 
 
 class XPUTestGeluOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'gelu'
         self.use_dynamic_create_class = False
 
     class XPUTestGelu(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "gelu"
             self.dtype = self.in_type
@@ -242,19 +265,21 @@ for stype in support_types:
 def gelu(x, approximate):
     from scipy.special import erf
     if approximate:
-        y_ref = 0.5 * x * (1.0 + np.tanh(
-            np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+        y_ref = 0.5 * x * (
+            1.0 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
     else:
         y_ref = 0.5 * x * (1 + erf(x / np.sqrt(2)))
     return y_ref.astype(x.dtype)
 
 
 class XPUTestHardSwishOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'hard_swish'
         self.use_dynamic_create_class = False
 
     class XPUTestHardSwish(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "hard_swish"
             self.dtype = self.in_type
@@ -281,21 +306,42 @@ def hard_swish(x, offset, threshold, scale):
 
 
 class XPUTestLogOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'log'
         self.use_dynamic_create_class = False
 
     class XPUTestLog(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "log"
             self.dtype = self.in_type
-
-            x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+            x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
             out = np.log(x)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
             self.outputs = {'Out': out}
+
+    class TestLogCase1(XPUTestLog):
+
+        def set_shape(self):
+            self.shape = [1, 11, 17]
+
+    class TestLogCase2(XPUTestLog):
+
+        def set_shape(self):
+            self.shape = [2, 2, 2]
+
+    class TestLogCase3(XPUTestLog):
+
+        def set_shape(self):
+            self.shape = [2]
+
+    class TestLogCase4(XPUTestLog):
+
+        def set_shape(self):
+            self.shape = [1, 2, 3, 4]
 
 
 support_types = get_xpu_op_support_types('log')
@@ -304,11 +350,13 @@ for stype in support_types:
 
 
 class XPUTestSquareOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'square'
         self.use_dynamic_create_class = False
 
     class XPUTestSquare(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "square"
             self.dtype = self.in_type
@@ -323,18 +371,22 @@ class XPUTestSquareOP(XPUOpTestWrapper):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
 
     class XPUTestSquare2(XPUTestSquare):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2, [100]).astype(self.dtype)
 
     class XPUTestSquare3(XPUTestSquare):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2, [1, 15, 19]).astype(self.dtype)
 
     class XPUTestSquare4(XPUTestSquare):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2, [100, 10]).astype(self.dtype)
 
     class XPUTestSquare5(XPUTestSquare):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2, [1, 2, 5, 17]).astype(self.dtype)
 
@@ -345,11 +397,13 @@ for stype in support_types:
 
 
 class XPUTestPowOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'pow'
         self.use_dynamic_create_class = False
 
     class XPUTestPowBase(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "pow"
             self.dtype = self.in_type
@@ -366,34 +420,40 @@ class XPUTestPowOP(XPUOpTestWrapper):
             self.factor = 3.0
 
     class XPUTestPow1(XPUTestPowBase):
+
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [1024, 8]).astype(self.dtype)
             self.factor = 1
 
     class XPUTestPow2(XPUTestPowBase):
+
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [1024, 8]).astype(self.dtype)
             self.factor = 2
 
     class XPUTestPow3(XPUTestPowBase):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2,
                                        [4, 512, 15, 15]).astype(self.dtype)
             self.factor = 3
 
     class XPUTestPow4(XPUTestPowBase):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2,
                                        [4, 256, 22, 22]).astype(self.dtype)
             self.factor = 4
 
     class XPUTestPow5(XPUTestPowBase):
+
         def init_config(self):
             self.x = np.random.uniform(0, 1,
                                        [4, 256, 22, 22]).astype(self.dtype)
             self.factor = 1.2
 
     class XPUTestPow6(XPUTestPowBase):
+
         def init_config(self):
             self.x = np.random.uniform(0, 1, [1024, 8]).astype(self.dtype)
             self.factor = 3.2
@@ -405,11 +465,13 @@ for stype in support_types:
 
 
 class XPUTestLeakyReluOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'leaky_relu'
         self.use_dynamic_create_class = False
 
     class XPUTestLeakyRelu(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "leaky_relu"
             self.dtype = self.in_type
@@ -417,7 +479,8 @@ class XPUTestLeakyReluOP(XPUOpTestWrapper):
             x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
             alpha = np.random.uniform(
                 0,
-                1, )
+                1,
+            )
             out = leaky_relu(x, alpha)
 
             self.inputs = {'X': x}
@@ -439,11 +502,13 @@ def leaky_relu(x, alpha):
 
 
 class XPUTestReciprocalOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'reciprocal'
         self.use_dynamic_create_class = False
 
     class XPUTestRecipocal(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "reciprocal"
             self.dtype = self.in_type
@@ -463,11 +528,13 @@ for stype in support_types:
 
 
 class XPUTestSoftPlusOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'softplus'
         self.use_dynamic_create_class = False
 
     class XPUTestSoftPlusBase(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "softplus"
             self.dtype = self.in_type
@@ -485,15 +552,18 @@ class XPUTestSoftPlusOP(XPUOpTestWrapper):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
 
     class XPUTestSoftPlus2(XPUTestSoftPlusBase):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2, [1024, 8]).astype(self.dtype)
 
     class XPUTestSoftPlus3(XPUTestSoftPlusBase):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2,
                                        [4, 512, 15, 15]).astype(self.dtype)
 
     class XPUTestSoftPlus4(XPUTestSoftPlusBase):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2,
                                        [4, 256, 22, 22]).astype(self.dtype)
@@ -513,11 +583,13 @@ def ref_softplus(x, beta=1, threshold=20):
 
 # XPU_KP unittests, these ops can be found from xpu_op_kpfirst_list.h
 class XPUTestBReluOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'brelu'
         self.use_dynamic_create_class = False
 
     class XPUTestBRelu(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "brelu"
             self.dtype = self.in_type
@@ -544,11 +616,13 @@ for stype in support_types:
 
 
 class XPUTestCeilOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'ceil'
         self.use_dynamic_create_class = False
 
     class XPUTestCeil(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "ceil"
             self.dtype = self.in_type
@@ -568,11 +642,13 @@ for stype in support_types:
 
 
 class XPUTestCeluOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'celu'
         self.use_dynamic_create_class = False
 
     class XPUTestCelu(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "celu"
             self.dtype = self.in_type
@@ -597,11 +673,13 @@ def ref_celu(x, alpha):
 
 
 class XPUTestEluOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'elu'
         self.use_dynamic_create_class = False
 
     class XPUTestElu(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "elu"
             self.dtype = self.in_type
@@ -626,11 +704,13 @@ def ref_elu(x, alpha):
 
 
 class XPUTestFloorOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'floor'
         self.use_dynamic_create_class = False
 
     class XPUTestFloor(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "floor"
             self.dtype = self.in_type
@@ -650,11 +730,13 @@ for stype in support_types:
 
 
 class XPUTestHardShrinkOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'hard_shrink'
         self.use_dynamic_create_class = False
 
     class XPUTestHardShrink(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "hard_shrink"
             self.dtype = self.in_type
@@ -682,11 +764,13 @@ def ref_hardshrink(x, threshold):
 
 
 class XPUTestHardSigmoidOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'hard_sigmoid'
         self.use_dynamic_create_class = False
 
     class XPUTestHardSigmoid(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "hard_sigmoid"
             self.dtype = self.in_type
@@ -723,11 +807,13 @@ def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
 
 
 class XPUTestLog1pOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'log1p'
         self.use_dynamic_create_class = False
 
     class XPUTestLog1p(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "log1p"
             self.dtype = self.in_type
@@ -747,11 +833,13 @@ for stype in support_types:
 
 
 class XPUTestLogsigmoidOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'logsigmoid'
         self.use_dynamic_create_class = False
 
     class XPUTestLogsigmoid(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "logsigmoid"
             self.dtype = self.in_type
@@ -771,11 +859,13 @@ for stype in support_types:
 
 
 class XPUTestRelu6OP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'relu6'
         self.use_dynamic_create_class = False
 
     class XPUTestRelu6(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "relu6"
             self.dtype = self.in_type
@@ -803,11 +893,13 @@ def ref_relu6(x, threshold=6.0):
 
 
 class XPUTestSiluOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'silu'
         self.use_dynamic_create_class = False
 
     class XPUTestSilu(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "silu"
             self.dtype = self.in_type
@@ -827,11 +919,13 @@ for stype in support_types:
 
 
 class XPUTestSoftReluOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'soft_relu'
         self.use_dynamic_create_class = False
 
     class XPUTestSoftRelu(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "soft_relu"
             self.dtype = self.in_type
@@ -858,11 +952,13 @@ for stype in support_types:
 
 
 class XPUTestSoftSignOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'softsign'
         self.use_dynamic_create_class = False
 
     class XPUTestSoftSign(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "softsign"
             self.dtype = self.in_type
@@ -887,11 +983,13 @@ def ref_softsign(x):
 
 
 class XPUTestSoftshrinkOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'softshrink'
         self.use_dynamic_create_class = False
 
     class XPUTestSoftshrink(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "softshrink"
             self.dtype = self.in_type
@@ -919,11 +1017,13 @@ def ref_softshrink(x, threshold=0.5):
 
 
 class XPUTestSwishOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'swish'
         self.use_dynamic_create_class = False
 
     class XPUTestSwishBase(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "swish"
             self.dtype = self.in_type
@@ -939,15 +1039,18 @@ class XPUTestSwishOP(XPUOpTestWrapper):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
 
     class XPUTestSwish2(XPUTestSwishBase):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2, [1024, 8]).astype(self.dtype)
 
     class XPUTestSwish3(XPUTestSwishBase):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2,
                                        [4, 512, 15, 15]).astype(self.dtype)
 
     class XPUTestSwish4(XPUTestSwishBase):
+
         def init_config(self):
             self.x = np.random.uniform(-2, 2,
                                        [4, 256, 22, 22]).astype(self.dtype)
@@ -965,11 +1068,13 @@ def ref_swish(x):
 
 
 class XPUTestThresholdedReluOP(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'thresholded_relu'
         self.use_dynamic_create_class = False
 
     class XPUTestThresholdedRelu(TestActivationOPBase):
+
         def set_case(self):
             self.op_type = "thresholded_relu"
             self.dtype = self.in_type

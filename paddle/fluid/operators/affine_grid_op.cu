@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/affine_grid_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -29,8 +29,11 @@ __global__ void LinspaceKernel(T start, T step, int64_t size, T* out) {
 }
 
 template <typename T>
-struct Linspace<paddle::platform::CUDADeviceContext, T> {
-  void operator()(T start, T end, int count, bool align_corners,
+struct Linspace<phi::GPUContext, T> {
+  void operator()(T start,
+                  T end,
+                  int count,
+                  bool align_corners,
                   framework::Tensor* numbers,
                   const framework::ExecutionContext& ctx) {
     T* number_data = numbers->mutable_data<T>({count}, ctx.GetPlace());
@@ -42,14 +45,20 @@ struct Linspace<paddle::platform::CUDADeviceContext, T> {
     auto stream = ctx.cuda_device_context().stream();
     int block = 512;
     int grid = (count + block - 1) / block;
-    LinspaceKernel<T><<<grid, block, 0, stream>>>(start, slice, count,
-                                                  number_data);
+    LinspaceKernel<T>
+        <<<grid, block, 0, stream>>>(start, slice, count, number_data);
   }
 };
 
 template <typename T>
-__global__ void affine_grid_kernel(const int count, int n, int out_h, int out_w,
-                                   T h_start, T w_start, T h_step, T w_step,
+__global__ void affine_grid_kernel(const int count,
+                                   int n,
+                                   int out_h,
+                                   int out_w,
+                                   T h_start,
+                                   T w_start,
+                                   T h_step,
+                                   T w_step,
                                    const T* theta,  // N, 2, 3
                                    T* output) {
   CUDA_KERNEL_LOOP(index, count) {
@@ -72,9 +81,14 @@ __global__ void affine_grid_kernel(const int count, int n, int out_h, int out_w,
 }
 
 template <typename T>
-__global__ void affine_grid_grad_kernel(const int count, int n, int out_h,
-                                        int out_w, T h_start, T w_start,
-                                        T h_step, T w_step,
+__global__ void affine_grid_grad_kernel(const int count,
+                                        int n,
+                                        int out_h,
+                                        int out_w,
+                                        T h_start,
+                                        T w_start,
+                                        T h_step,
+                                        T w_step,
                                         const T* out_grad,  // N, H, W, 2
                                         T* theta_grad) {    // N, 2, 3
   CUDA_KERNEL_LOOP(index, count) {
@@ -141,7 +155,14 @@ class AffineGridOpCUDAKernel : public framework::OpKernel<T> {
     int grid = (count + block - 1) / block;
     auto cu_stream = ctx.cuda_device_context().stream();
     affine_grid_kernel<<<grid, block, 0, cu_stream>>>(
-        count, n, h, w, h_start, w_start, h_step, w_step,
+        count,
+        n,
+        h,
+        w,
+        h_start,
+        w_start,
+        h_step,
+        w_step,
         theta->data<T>(),  // N, 2, 3
         out_data);
   }
@@ -170,7 +191,7 @@ class AffineGridGradOpCUDAKernel : public framework::OpKernel<T> {
       w = size_attr[3];
     }
     T* theta_grad_data = theta_grad->mutable_data<T>({n, 2, 3}, ctx.GetPlace());
-    phi::funcs::SetConstant<paddle::platform::CUDADeviceContext, T>()(
+    phi::funcs::SetConstant<phi::GPUContext, T>()(
         ctx.cuda_device_context(), theta_grad, static_cast<T>(0));
 
     T h_step;
@@ -195,8 +216,16 @@ class AffineGridGradOpCUDAKernel : public framework::OpKernel<T> {
     int grid = (count + block - 1) / block;
     auto cu_stream = ctx.cuda_device_context().stream();
     affine_grid_grad_kernel<<<grid, block, 0, cu_stream>>>(
-        count, n, h, w, h_start, w_start, h_step, w_step,
-        output_grad->data<T>(), theta_grad_data);
+        count,
+        n,
+        h,
+        w,
+        h_start,
+        w_start,
+        h_step,
+        w_step,
+        output_grad->data<T>(),
+        theta_grad_data);
   }
 };
 
@@ -204,7 +233,8 @@ class AffineGridGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(affine_grid, ops::AffineGridOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(affine_grid,
+                        ops::AffineGridOpCUDAKernel<float>,
                         ops::AffineGridOpCUDAKernel<double>);
 REGISTER_OP_CUDA_KERNEL(affine_grid_grad,
                         ops::AffineGridGradOpCUDAKernel<float>,

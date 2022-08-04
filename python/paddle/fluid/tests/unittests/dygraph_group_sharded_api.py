@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,6 +35,7 @@ batch_size = 100
 
 
 class MLP(fluid.Layer):
+
     def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
         super(MLP, self).__init__()
 
@@ -50,6 +51,7 @@ class MLP(fluid.Layer):
 
 
 def reader_decorator(linear_size=1000):
+
     def __reader__():
         for _ in range(100):
             img = np.random.rand(linear_size).astype('float32')
@@ -80,18 +82,20 @@ def train_mlp(model, shard_level, use_pure_fp16, output_dir):
     model = paddle.amp.decorate(models=model, level='O2', save_dtype='float32')
     scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
 
-    model, optimizer, scaler = group_sharded_parallel(
-        model=model, optimizer=optimizer, level=shard_level, scaler=scaler)
+    model, optimizer, scaler = group_sharded_parallel(model=model,
+                                                      optimizer=optimizer,
+                                                      level=shard_level,
+                                                      scaler=scaler)
 
-    train_reader = paddle.batch(
-        reader_decorator(), batch_size=batch_size, drop_last=True)
+    train_reader = paddle.batch(reader_decorator(),
+                                batch_size=batch_size,
+                                drop_last=True)
 
-    train_loader = paddle.io.DataLoader.from_generator(
-        capacity=32,
-        use_double_buffer=True,
-        iterable=True,
-        return_list=True,
-        use_multiprocess=True)
+    train_loader = paddle.io.DataLoader.from_generator(capacity=32,
+                                                       use_double_buffer=True,
+                                                       iterable=True,
+                                                       return_list=True,
+                                                       use_multiprocess=True)
     train_loader.set_sample_list_generator(train_reader)
 
     for eop in range(epoch):
@@ -102,8 +106,8 @@ def train_mlp(model, shard_level, use_pure_fp16, output_dir):
             img.stop_gradient = True
             with paddle.amp.auto_cast(True, level='O2'):
                 out = model(img)
-                loss = paddle.nn.functional.cross_entropy(
-                    input=out, label=label)
+                loss = paddle.nn.functional.cross_entropy(input=out,
+                                                          label=label)
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
 
             if not use_pure_fp16:
@@ -129,17 +133,20 @@ def test_sharding_api():
     output_dir = tempfile.mkdtemp()
 
     # fp16
-    stage2_params = train_mlp(
-        mlp1, shard_level="os_g", use_pure_fp16=True, output_dir=output_dir)
-    stage3_params = train_mlp(
-        mlp2, shard_level="p_g_os", use_pure_fp16=True, output_dir=output_dir)
+    stage2_params = train_mlp(mlp1,
+                              shard_level="os_g",
+                              use_pure_fp16=True,
+                              output_dir=output_dir)
+    stage3_params = train_mlp(mlp2,
+                              shard_level="p_g_os",
+                              use_pure_fp16=True,
+                              output_dir=output_dir)
 
     for i in range(len(stage3_params)):
-        np.testing.assert_allclose(
-            stage2_params[i].numpy(),
-            stage3_params[i].numpy(),
-            rtol=1e-4,
-            atol=1e-3)
+        np.testing.assert_allclose(stage2_params[i].numpy(),
+                                   stage3_params[i].numpy(),
+                                   rtol=1e-4,
+                                   atol=1e-3)
     shutil.rmtree(output_dir)
 
 

@@ -69,7 +69,8 @@ std::shared_ptr<tf_pd<Type>> MKLDNNFwdPrimitiveDesc(const Engine& e,
 }
 
 template <typename Type, typename Engine, typename Primitive, typename... Args>
-tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
+tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e,
+                                   const Primitive& p,
                                    Args&&... args) {
   auto desc = tf_desc<Type>(args...);
   return tf_pd<Type>(desc, e, p);
@@ -84,8 +85,8 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
     if (!dims.empty()) {
       oss << "[";
       // Convert all but the last element to avoid a trailing ","
-      std::copy(dims.begin(), dims.end() - 1,
-                std::ostream_iterator<int>(oss, ","));
+      std::copy(
+          dims.begin(), dims.end() - 1, std::ostream_iterator<int>(oss, ","));
 
       // Now add the last element with no delimiter
       oss << dims.back() << "]";
@@ -148,8 +149,6 @@ inline void ClearMKLDNNCache(const platform::Place& place,
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place);
     dev_ctx->ResetBlobMap(ptr);
-    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-        paddle::framework::DataLayout::kNCHW);
   }
 }
 
@@ -190,13 +189,15 @@ inline dnnl::memory::data_type MKLDNNGetDataType<paddle::platform::bfloat16>() {
   return dnnl::memory::data_type::bf16;
 }
 
-inline void Reorder(dnnl::memory src, dnnl::memory dst,
+inline void Reorder(dnnl::memory src,
+                    dnnl::memory dst,
                     const dnnl::engine& engine) {
   auto reorder_prim = dnnl::reorder(src, dst);
   auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
                                        platform::TracerEventType::UserDefined,
-                                       2, platform::EventRole::kUniqueOp);
+                                       2,
+                                       platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }
@@ -232,15 +233,21 @@ inline dnnl::memory::format_tag GetMKLDNNFormat(dnnl::memory::desc mem_desc) {
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3]) {
-        return dnnl::memory::format_tag::nchw;
+        return dnnl::memory::format_tag::abcd;
       } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
                  strides[1] >= strides[0]) {
         return dnnl::memory::format_tag::cdba;
-      } else if (strides[3] >= strides[2] && strides[2] >= strides[0] &&
-                 strides[0] >= strides[1]) {
-        return dnnl::memory::format_tag::dcab;
+      } else if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
+                 strides[3] >= strides[1]) {
+        return dnnl::memory::format_tag::acdb;
+      } else if (strides[0] >= strides[1] && strides[1] >= strides[3] &&
+                 strides[3] >= strides[2]) {
+        return dnnl::memory::format_tag::abdc;
+      } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
+                 strides[1] >= strides[0]) {
+        return dnnl::memory::format_tag::cdba;
       } else {
-        return dnnl::memory::format_tag::nhwc;
+        return dnnl::memory::format_tag::dcab;
       }
     } else if (inner_nblks == 1) {
       if (inner_blks[0] == 16 && inner_idxs[0] == 1) {

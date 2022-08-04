@@ -26,12 +26,12 @@ import hypothesis.strategies as st
 
 
 class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        # If the problem has been fixed, the judgment 
+        # If the problem has been fixed, the judgment
         # needs to be deleted!!!
         if 0 in attrs[2]['shape']:
             return False
@@ -67,40 +67,39 @@ class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
             else:
                 return np.random.random(shape_y).astype(np.float32)
 
-        matmul_op = OpConfig(
-            type="matmul",
-            inputs={"X": ["input_data1"],
-                    "Y": ["input_data2"]},
-            outputs={"Out": ["matmul_output"]},
-            attrs={
-                "transpose_X": transpose_X,
-                "transpose_Y": transpose_Y,
-                "alpha": alpha,
-                "fused_reshape_X": [],
-                "fused_reshape_Y": [],
-                "fused_transpose_X": [],
-                "fused_transpose_Y": [],
-                "fused_reshape_Out": [],
-                "fused_transpose_Out": []
-            })
+        matmul_op = OpConfig(type="matmul",
+                             inputs={
+                                 "X": ["input_data1"],
+                                 "Y": ["input_data2"]
+                             },
+                             outputs={"Out": ["matmul_output"]},
+                             attrs={
+                                 "transpose_X": transpose_X,
+                                 "transpose_Y": transpose_Y,
+                                 "alpha": alpha,
+                                 "fused_reshape_X": [],
+                                 "fused_reshape_Y": [],
+                                 "fused_transpose_X": [],
+                                 "fused_transpose_Y": [],
+                                 "fused_reshape_Out": [],
+                                 "fused_transpose_Out": []
+                             })
 
-        transpose2_op = OpConfig(
-            type="transpose2",
-            inputs={"X": ["matmul_output"]},
-            outputs={
-                "Out": ["transpose2_output"],
-                "XShape": ["transpose2_xshape"]
-            },
-            attrs={'axis': axis})
+        transpose2_op = OpConfig(type="transpose2",
+                                 inputs={"X": ["matmul_output"]},
+                                 outputs={
+                                     "Out": ["transpose2_output"],
+                                     "XShape": ["transpose2_xshape"]
+                                 },
+                                 attrs={'axis': axis})
 
-        reshape2_op = OpConfig(
-            type="reshape2",
-            inputs={"X": ["transpose2_output"]},
-            outputs={
-                "Out": ["reshape2_output"],
-                "XShape": ["reshape2_xshape"]
-            },
-            attrs={'shape': shape})
+        reshape2_op = OpConfig(type="reshape2",
+                               inputs={"X": ["transpose2_output"]},
+                               outputs={
+                                   "Out": ["reshape2_output"],
+                                   "XShape": ["reshape2_xshape"]
+                               },
+                               attrs={'shape': shape})
 
         model_net = [matmul_op, transpose2_op, reshape2_op]
 
@@ -122,8 +121,8 @@ class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
         yield config, ["matmul"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
-            quant=False, passes=["matmul_transpose_reshape_fuse_pass"])
+        self.run_and_statis(quant=False,
+                            passes=["matmul_transpose_reshape_fuse_pass"])
 
 
 if __name__ == "__main__":

@@ -23,12 +23,20 @@ __device__ inline T clip(T in) {
 }
 
 template <typename T>
-__global__ void GenPriorBox(T* out, const T* aspect_ratios, const int height,
-                            const int width, const int im_height,
-                            const int im_width, const int as_num,
-                            const T offset, const T step_width,
-                            const T step_height, const T* min_sizes,
-                            const T* max_sizes, const int min_num, bool is_clip,
+__global__ void GenPriorBox(T* out,
+                            const T* aspect_ratios,
+                            const int height,
+                            const int width,
+                            const int im_height,
+                            const int im_width,
+                            const int as_num,
+                            const T offset,
+                            const T step_width,
+                            const T step_height,
+                            const T* min_sizes,
+                            const T* max_sizes,
+                            const int min_num,
+                            bool is_clip,
                             bool min_max_aspect_ratios_order) {
   int num_priors = max_sizes ? as_num * min_num + min_num : as_num * min_num;
   int box_num = height * width * num_priors;
@@ -84,7 +92,9 @@ __global__ void GenPriorBox(T* out, const T* aspect_ratios, const int height,
 }
 
 template <typename T>
-__global__ void SetVariance(T* out, const T* var, const int vnum,
+__global__ void SetVariance(T* out,
+                            const T* var,
+                            const int vnum,
                             const int num) {
   CUDA_KERNEL_LOOP(i, num) { out[i] = var[i % vnum]; }
 }
@@ -139,8 +149,7 @@ class PriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     int block = 512;
     int grid = (box_num + block - 1) / block;
 
-    auto stream =
-        ctx.template device_context<platform::CUDADeviceContext>().stream();
+    auto stream = ctx.template device_context<phi::GPUContext>().stream();
 
     boxes->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
@@ -158,22 +167,29 @@ class PriorBoxOpCUDAKernel : public framework::OpKernel<T> {
       max_data = max.data<T>();
     }
 
-    GenPriorBox<T><<<grid, block, 0, stream>>>(
-        boxes->data<T>(), r.data<T>(), height, width, im_height, im_width,
-        aspect_ratios.size(), offset, step_width, step_height, min.data<T>(),
-        max_data, min_num, clip, min_max_aspect_ratios_order);
+    GenPriorBox<T><<<grid, block, 0, stream>>>(boxes->data<T>(),
+                                               r.data<T>(),
+                                               height,
+                                               width,
+                                               im_height,
+                                               im_width,
+                                               aspect_ratios.size(),
+                                               offset,
+                                               step_width,
+                                               step_height,
+                                               min.data<T>(),
+                                               max_data,
+                                               min_num,
+                                               clip,
+                                               min_max_aspect_ratios_order);
 
     framework::Tensor v;
     framework::TensorFromVector(variances, ctx.device_context(), &v);
     grid = (box_num * 4 + block - 1) / block;
-    SetVariance<T><<<grid, block, 0, stream>>>(vars->data<T>(), v.data<T>(),
-                                               variances.size(), box_num * 4);
+    SetVariance<T><<<grid, block, 0, stream>>>(
+        vars->data<T>(), v.data<T>(), variances.size(), box_num * 4);
   }
 };  // namespace operators
 
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(prior_box, ops::PriorBoxOpCUDAKernel<float>,
-                        ops::PriorBoxOpCUDAKernel<double>);

@@ -24,6 +24,20 @@ void AssignValueInferMeta(const std::vector<int>& shape,
 }
 
 void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
+  if (!shape.FromTensor()) {
+    const auto& data = shape.GetData();
+    for (size_t i = 0; i < data.size(); ++i) {
+      PADDLE_ENFORCE_GE(
+          data[i],
+          0,
+          phi::errors::InvalidArgument(
+              "Each value of attribute 'shape' is expected to be no less "
+              "than 0. But recieved: shape[%u] = %d; shape = [%s].",
+              i,
+              data[i],
+              phi::make_ddim(data)));
+    }
+  }
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
@@ -115,4 +129,27 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
   out->set_layout(DataLayout::NCHW);
 }
 
+void TrilIndicesInferMeta(
+    int rows, int cols, int offset, DataType dtype, MetaTensor* out) {
+  // number of elements in the first row of the tril,bounded by [0, cols]
+  auto n_first_row =
+      offset > 0 ? std::min<int64_t>(cols, 1 + offset) : rows + offset > 0;
+  // number of elements in the last row of the tril, bounded by [0, cols]
+  auto n_last_row =
+      std::max<int64_t>(0, std::min<int64_t>(cols, rows + offset));
+  // number of rows, bounded by [0, rows]
+  auto n_row_all = std::max<int64_t>(0, std::min<int64_t>(rows, rows + offset));
+  auto n_row_trapezoid = (n_last_row - n_first_row + 1);
+  // calculate # of elements in the top trapezoid
+  auto tril_size = (n_first_row + n_last_row) * n_row_trapezoid >> 1;
+  // calculate # of elements in the bottom rectangle if there is any
+  auto diff_row = n_row_all - n_row_trapezoid;
+  if (diff_row > 0) {
+    tril_size += diff_row * cols;
+  }
+  std::vector<int64_t> tmp = {2, tril_size};
+  auto out_dims = phi::make_ddim(tmp);
+  out->set_dims(out_dims);
+  out->set_dtype(dtype);
+}
 }  // namespace phi

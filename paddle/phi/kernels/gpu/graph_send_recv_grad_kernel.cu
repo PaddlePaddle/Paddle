@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/graph_send_recv_grad_kernel.h"
 
 #include <algorithm>
@@ -21,6 +20,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 
 namespace phi {
 
@@ -75,12 +75,9 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
   int64_t input_size = src_dims[0];
   if (pool_type == "SUM") {
     GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
-    GraphSendRecvCUDAKernel<
-        T,
-        IndexT,
-        GraphSendRecvSumCUDAFunctor<T,
-                                    IndexT>><<<grid, block, 0, ctx.stream()>>>(
-        p_src, d_index, s_index, p_output, index_size, slice_size, functor);
+    GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
+        <<<grid, block, 0, ctx.stream()>>>(
+            p_src, d_index, s_index, p_output, index_size, slice_size, functor);
   } else if (pool_type == "MEAN") {
     const int32_t* s_count = dst_count->data<int32_t>();
     ManipulateMeanGradCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
@@ -88,15 +85,15 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
   } else if (pool_type == "MAX" || pool_type == "MIN") {
     const T* ptr_input = x.data<T>();
     const T* ptr_output = out->data<T>();
-    ManipulateMinMaxGradCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-        p_src,
-        d_index,
-        s_index,
-        p_output,
-        index_size,
-        slice_size,
-        ptr_input,
-        ptr_output);
+    ManipulateMinMaxGradCUDAKernel<T, IndexT>
+        <<<grid, block, 0, ctx.stream()>>>(p_src,
+                                           d_index,
+                                           s_index,
+                                           p_output,
+                                           index_size,
+                                           slice_size,
+                                           ptr_input,
+                                           ptr_output);
   }
 }
 
@@ -105,8 +102,8 @@ void GraphSendRecvGradKernel(const Context& ctx,
                              const DenseTensor& x,
                              const DenseTensor& src_index,
                              const DenseTensor& dst_index,
-                             paddle::optional<const DenseTensor&> out,
-                             paddle::optional<const DenseTensor&> dst_count,
+                             const paddle::optional<DenseTensor>& out,
+                             const paddle::optional<DenseTensor>& dst_count,
                              const DenseTensor& out_grad,
                              const std::string& pool_type,
                              DenseTensor* x_grad) {

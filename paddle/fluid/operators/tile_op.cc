@@ -39,13 +39,14 @@ class TileOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -107,8 +108,10 @@ class TileGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "TileGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "TileGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "TileGrad");
 
     auto x_dims = ctx->GetInputDim("X");
 
@@ -134,12 +137,16 @@ class TileGradOp : public framework::OperatorWithKernel {
       } else {
         if (ctx->IsRuntime()) {
           PADDLE_ENFORCE_EQ(
-              x_dim_vec[i] * repeat_times[i], out_dims[i],
+              x_dim_vec[i] * repeat_times[i],
+              out_dims[i],
               platform::errors::InvalidArgument(
                   "The size (%d) of the dimension %d of Input(Out@GRAD) should "
                   "be equal to the multiplication of the crroresponding "
                   "dimension size of Input(X) (%d) and repeat_times (%d).",
-                  out_dims[i], i, x_dim_vec[i], repeat_times[i]));
+                  out_dims[i],
+                  i,
+                  x_dim_vec[i],
+                  repeat_times[i]));
         }
       }
     }
@@ -159,13 +166,14 @@ class TileGradOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -213,14 +221,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(TileGradNoNeedBufVarsInferer, "X");
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(tile, TileInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(tile,
+                            TileInferMetaFunctor,
                             PD_INFER_META(phi::TileInferMeta));
 
-REGISTER_OPERATOR(tile, ops::TileOp, ops::TileOpMaker,
+REGISTER_OPERATOR(tile,
+                  ops::TileOp,
+                  ops::TileOpMaker,
                   ops::TileGradOpMaker<paddle::framework::OpDesc>,
                   ops::TileGradOpMaker<paddle::imperative::OpBase>,
                   TileInferMetaFunctor);
-REGISTER_OPERATOR(tile_grad, ops::TileGradOp,
+REGISTER_OPERATOR(tile_grad,
+                  ops::TileGradOp,
                   ops::TileDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::TileDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::TileGradNoNeedBufVarsInferer);

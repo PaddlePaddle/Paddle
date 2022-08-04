@@ -74,11 +74,7 @@ void IpuBackend::WeightsToHost() { executor_->WeightsToHost(); }
 
 void IpuBackend::Detach() { executor_->Detach(); }
 
-void IpuBackend::Reset() {
-  executor_->Detach();
-  compiler_.reset();
-  executor_.reset();
-}
+void IpuBackend::Reset() { executor_->Reset(); }
 
 void IpuBackend::SetScope(const framework::Scope& scope) {
   scope_ = &scope;

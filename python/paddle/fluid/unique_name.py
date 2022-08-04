@@ -109,7 +109,7 @@ def generate(key):
 # cause memory leak in dygraph mode. It is because the previous
 # naming rule would use `conv_0.tmp` as the key, and in dygraph
 # mode, `conv_i` increases as batch increases. Thus, keys would
-# increase in a way like `conv_0.tmp`, `conv_1.tmp`, .... 
+# increase in a way like `conv_0.tmp`, `conv_1.tmp`, ....
 # Not find a better way to fix this bug in dygraph mode. In TF,
 # variable name is meaningless in eager execution mode, and in
 # PyTorch, there is no variable name at all. Maybe we should
@@ -118,10 +118,10 @@ def generate(key):
 # Another concern is that save/load interfaces. Usually, user
 # would save model in static graph mode, and load it in dygraph
 # mode. Therefore, we keep the variable name of Parameter currently.
-# 
-# Please fix me if a better method is found.    
-# 
-# NOTE(zhiqiu): use c++ unique_name_generator in dygraph mode, 
+#
+# Please fix me if a better method is found.
+#
+# NOTE(zhiqiu): use c++ unique_name_generator in dygraph mode,
 # in order to keep name consistency.
 def generate_with_ignorable_key(key):
     from .framework import _non_static_mode, _dygraph_tracer

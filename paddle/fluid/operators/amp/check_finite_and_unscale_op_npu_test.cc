@@ -20,6 +20,7 @@ limitations under the License. */
 #include <cstdlib>
 #include <memory>
 #include <random>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -81,8 +82,10 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
   // run
   f::AttributeMap attrs;
   auto op = f::OpRegistry::CreateOp(
-      "check_finite_and_unscale", {{"X", {"x", "x1"}}, {"Scale", {"scale"}}},
-      {{"Out", {"out", "out1"}}, {"FoundInfinite", {"found_inf"}}}, attrs);
+      "check_finite_and_unscale",
+      {{"X", {"x", "x1"}}, {"Scale", {"scale"}}},
+      {{"Out", {"out", "out1"}}, {"FoundInfinite", {"found_inf"}}},
+      attrs);
   op->Run(*scope, place);
   ctx.Wait();
 

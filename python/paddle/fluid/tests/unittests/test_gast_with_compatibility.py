@@ -22,6 +22,7 @@ import unittest
 
 
 class GastNodeTransformer(gast.NodeTransformer):
+
     def __init__(self, root):
         self.root = root
 
@@ -123,6 +124,7 @@ def code_ast(source):
 
 
 class TestPythonCompatibility(unittest.TestCase):
+
     def _check_compatibility(self, source, target):
         source_dump = code_gast_ast(source)
         target_dump = code_ast(target)
@@ -144,12 +146,12 @@ class TestPythonCompatibility(unittest.TestCase):
         self._check_compatibility(source, target)
 
     # The 0.3.3 version of gast has a bug in python3.8 that
-    # would cause the following tests to fail. But this 
-    # problem doesn't affect the use of Paddle's related 
-    # functions, therefore, the following tests would be 
+    # would cause the following tests to fail. But this
+    # problem doesn't affect the use of Paddle's related
+    # functions, therefore, the following tests would be
     # disable in python3.8.
     #
-    # This problem had been fixed and updated to version 
+    # This problem had been fixed and updated to version
     # 0.4.1 of gast.
     #
     # More information please refer to:

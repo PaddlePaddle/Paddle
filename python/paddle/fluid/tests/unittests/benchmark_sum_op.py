@@ -25,6 +25,7 @@ from op_test import OpTest
 
 
 class TestSumOp(BenchmarkSuite):
+
     def setUp(self):
         self.op_type = "sum"
         self.customize_testcase()

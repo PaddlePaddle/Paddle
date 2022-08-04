@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/beam_search.h"
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -101,8 +102,18 @@ void TestBeamSearch() {
   size_t beam_size = 2;
   int end_id = 0;
   paddle::operators::math::BeamSearchFunctor<DeviceContext, float> beamsearch;
-  beamsearch(*context, &pre_ids, &pre_scores, &ids, &scores, &selected_ids,
-             &selected_scores, &parent_idx, level, beam_size, end_id, true);
+  beamsearch(*context,
+             &pre_ids,
+             &pre_scores,
+             &ids,
+             &scores,
+             &selected_ids,
+             &selected_scores,
+             &parent_idx,
+             level,
+             beam_size,
+             end_id,
+             true);
 
   ASSERT_EQ(selected_ids.lod(), selected_scores.lod());
 
@@ -133,15 +144,14 @@ void TestBeamSearch() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-void TestBeamSearch<paddle::platform::CUDADeviceContext,
-                    paddle::platform::CUDAPlace>() {
+void TestBeamSearch<phi::GPUContext, paddle::platform::CUDAPlace>() {
   paddle::framework::LoDTensor ids;
   paddle::framework::LoDTensor scores;
   paddle::framework::LoDTensor pre_ids;
   paddle::framework::LoDTensor pre_scores;
 
   auto* place = new paddle::platform::CUDAPlace();
-  auto* context = new paddle::platform::CUDADeviceContext(*place);
+  auto* context = new phi::GPUContext(*place);
   context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(*place, context->stream())
                             .get());
@@ -174,11 +184,19 @@ void TestBeamSearch<paddle::platform::CUDADeviceContext,
   size_t level = 0;
   size_t beam_size = 2;
   int end_id = 0;
-  paddle::operators::math::BeamSearchFunctor<
-      paddle::platform::CUDADeviceContext, float>
-      beamsearch;
-  beamsearch(*context, &pre_ids, &pre_scores, &ids, &scores, &selected_ids,
-             &selected_scores, &parent_idx, level, beam_size, end_id, true);
+  paddle::operators::math::BeamSearchFunctor<phi::GPUContext, float> beamsearch;
+  beamsearch(*context,
+             &pre_ids,
+             &pre_scores,
+             &ids,
+             &scores,
+             &selected_ids,
+             &selected_scores,
+             &parent_idx,
+             level,
+             beam_size,
+             end_id,
+             true);
 
   ASSERT_EQ(selected_ids.lod(), selected_scores.lod());
 
@@ -209,13 +227,11 @@ void TestBeamSearch<paddle::platform::CUDADeviceContext,
 #endif
 
 TEST(BeamSearch, CPU) {
-  TestBeamSearch<paddle::platform::CPUDeviceContext,
-                 paddle::platform::CPUPlace>();
+  TestBeamSearch<phi::CPUContext, paddle::platform::CPUPlace>();
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(BeamSearch, GPU) {
-  TestBeamSearch<paddle::platform::CUDADeviceContext,
-                 paddle::platform::CUDAPlace>();
+  TestBeamSearch<phi::GPUContext, paddle::platform::CUDAPlace>();
 }
 #endif

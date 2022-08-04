@@ -37,7 +37,7 @@ const int NUM_STREAMS = 8;
 const int N = 2;
 const float DELTA = 1e-1;
 
-using CudaDevCtxVec = std::vector<std::unique_ptr<platform::CUDADeviceContext>>;
+using CudaDevCtxVec = std::vector<std::unique_ptr<phi::GPUContext>>;
 
 __global__ void kernel(float *x, int n) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -50,19 +50,22 @@ void CheckKernelOutput(float *x, int n) {
   auto host_x = std::unique_ptr<float[]>(new float[n]);
   for (int i = 0; i < n; ++i) {
 #ifdef PADDLE_WITH_HIP
-    EXPECT_TRUE(hipSuccess == hipMemcpy(host_x.get(), x, n * sizeof(float),
-                                        hipMemcpyDeviceToHost));
+    EXPECT_TRUE(
+        hipSuccess ==
+        hipMemcpy(host_x.get(), x, n * sizeof(float), hipMemcpyDeviceToHost));
 #else
-    EXPECT_TRUE(cudaSuccess == cudaMemcpy(host_x.get(), x, n * sizeof(float),
-                                          cudaMemcpyDeviceToHost));
+    EXPECT_TRUE(
+        cudaSuccess ==
+        cudaMemcpy(host_x.get(), x, n * sizeof(float), cudaMemcpyDeviceToHost));
 #endif
     EXPECT_GE(host_x[i] + DELTA, 3.14159f * i);
     EXPECT_LE(host_x[i] - DELTA, 3.14159f * i);
   }
 }
 
-void MultiStreamCompute(float **data, float **second_data,
-                        const platform::CUDADeviceContext &ctx) {
+void MultiStreamCompute(float **data,
+                        float **second_data,
+                        const phi::GPUContext &ctx) {
   // multi-streams
   AllocationPtr allocation_ptr = Alloc(ctx, N * sizeof(float));
   EXPECT_GE(allocation_ptr->size(), N * sizeof(float));
@@ -78,14 +81,14 @@ void MultiStreamCompute(float **data, float **second_data,
   EXPECT_GE(allocation_ptr->size(), N * sizeof(float));
   *second_data = reinterpret_cast<float *>(allocation_ptr->ptr());
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL((kernel), dim3(1), dim3(64), 0, ctx.stream(), *second_data,
-                     N);
+  hipLaunchKernelGGL(
+      (kernel), dim3(1), dim3(64), 0, ctx.stream(), *second_data, N);
 #else
   kernel<<<1, 64, 0, ctx.stream()>>>(*second_data, N);
 #endif
 }
 
-TEST(Malloc, CUDADeviceContextMultiStream) {
+TEST(Malloc, GPUContextMultiStream) {
   auto place = platform::CUDAPlace(0);
   platform::SetDeviceId(0);
 
@@ -107,8 +110,7 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   main_stream_alloc_ptr.reset();
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    auto ctx = std::unique_ptr<platform::CUDADeviceContext>(
-        new platform::CUDADeviceContext(place));
+    auto ctx = std::unique_ptr<phi::GPUContext>(new phi::GPUContext(place));
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());
@@ -140,7 +142,7 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   }
 }
 
-TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
+TEST(Malloc, GPUContextMultiThreadMultiStream) {
   auto place = platform::CUDAPlace(0);
   platform::SetDeviceId(0);
 
@@ -163,8 +165,7 @@ TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
   main_stream_alloc_ptr.reset();
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    auto ctx = std::unique_ptr<platform::CUDADeviceContext>(
-        new platform::CUDADeviceContext(place));
+    auto ctx = std::unique_ptr<phi::GPUContext>(new phi::GPUContext(place));
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());
@@ -182,8 +183,8 @@ TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
             .get());
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(std::move(ctx));
-    threads.push_back(std::thread(MultiStreamCompute, &data[i], &second_data[i],
-                                  std::cref(*dev_ctx[i])));
+    threads.push_back(std::thread(
+        MultiStreamCompute, &data[i], &second_data[i], std::cref(*dev_ctx[i])));
   }
 
   for (int i = 0; i < NUM_STREAMS; ++i) {

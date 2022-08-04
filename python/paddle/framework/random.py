@@ -38,16 +38,14 @@ def seed(seed):
 
     """
     #TODO(zhiqiu): 1. remove program.random_seed when all random-related op upgrade
-    # 2. support gpu generator by global device 
+    # 2. support gpu generator by global device
 
     seed = int(seed)
 
     if core.is_compiled_with_cuda():
         for i in range(core.get_cuda_device_count()):
-            core.default_cuda_generator(i)._is_init_py = True
             core.default_cuda_generator(i).manual_seed(seed)
 
-    core.default_cpu_generator()._is_init_py = True
     return core.default_cpu_generator().manual_seed(seed)
 
 

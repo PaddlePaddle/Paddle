@@ -52,8 +52,7 @@ class iterator_range {
   template <typename Container>
   iterator_range(Container &&c)
       // TODO: Consider ADL/non-member begin/end calls.
-      : begin_iterator(c.begin()),
-        end_iterator(c.end()) {}
+      : begin_iterator(c.begin()), end_iterator(c.end()) {}
   iterator_range(IteratorT begin_iterator, IteratorT end_iterator)
       : begin_iterator(std::move(begin_iterator)),
         end_iterator(std::move(end_iterator)) {}
@@ -132,10 +131,8 @@ class small_vector_base {
 };
 
 template <class T>
-using SmallVectorSizeType =
-    typename std::conditional<sizeof(T) < 4 && sizeof(void *) >= 8,
-                              uint64_t,
-                              uint32_t>::type;
+using SmallVectorSizeType = typename std::
+    conditional<sizeof(T) < 4 && sizeof(void *) >= 8, uint64_t, uint32_t>::type;
 
 /// Figure out the offset of the first element.
 template <class T, typename = void>
@@ -296,8 +293,8 @@ class small_vector_template_common
   using Base::size;
 
   // forward iterator creation methods.
-  iterator begin() { return (iterator) this->BeginX; }
-  const_iterator begin() const { return (const_iterator) this->BeginX; }
+  iterator begin() { return (iterator)this->BeginX; }
+  const_iterator begin() const { return (const_iterator)this->BeginX; }
   iterator end() { return begin() + size(); }
   const_iterator end() const { return begin() + size(); }
 
@@ -451,7 +448,7 @@ class small_vector_template_base : public small_vector_template_common<T> {
   }
 
   template <typename... ArgTypes>
-  T &growAndEmplaceBack(ArgTypes &&... Args) {
+  T &growAndEmplaceBack(ArgTypes &&...Args) {
     // Grow manually in case one of Args is an internal reference.
     size_t NewCapacity;
     T *NewElts = mallocForGrow(0, NewCapacity);
@@ -599,7 +596,7 @@ class small_vector_template_base<T, true>
   }
 
   template <typename... ArgTypes>
-  T &growAndEmplaceBack(ArgTypes &&... Args) {
+  T &growAndEmplaceBack(ArgTypes &&...Args) {
     // Use push_back with a copy in case Args has an internal reference,
     // side-stepping reference invalidation problems without losing the realloc
     // optimization.
@@ -972,7 +969,7 @@ class small_vector_impl : public small_vector_template_base<T> {
   }
 
   template <typename... ArgTypes>
-  reference emplace_back(ArgTypes &&... Args) {
+  reference emplace_back(ArgTypes &&...Args) {
     if (this->size() >= this->capacity())
       return this->growAndEmplaceBack(std::forward<ArgTypes>(Args)...);
 
@@ -1359,7 +1356,7 @@ struct Struct16B {
 struct Struct32B {
   alignas(32) void *X;
 };
-}
+}  // namespace
 static_assert(sizeof(small_vector<void *, 0>) ==
                   sizeof(unsigned) * 2 + sizeof(void *),
               "wasted space in small_vector size 0");

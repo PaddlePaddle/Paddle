@@ -14,10 +14,9 @@
 
 #include "paddle/phi/kernels/gaussian_random_kernel.h"
 
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/framework/generator.h"
 
 namespace phi {
 

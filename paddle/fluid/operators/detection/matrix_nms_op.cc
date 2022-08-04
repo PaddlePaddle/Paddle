@@ -34,29 +34,34 @@ class MatrixNMSOp : public framework::OperatorWithKernel {
     auto score_size = score_dims.size();
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(score_size == 3, true,
+      PADDLE_ENFORCE_EQ(score_size == 3,
+                        true,
                         platform::errors::InvalidArgument(
                             "The rank of Input(Scores) must be 3. "
                             "But received rank = %d.",
                             score_size));
-      PADDLE_ENFORCE_EQ(box_dims.size(), 3,
+      PADDLE_ENFORCE_EQ(box_dims.size(),
+                        3,
                         platform::errors::InvalidArgument(
                             "The rank of Input(BBoxes) must be 3."
                             "But received rank = %d.",
                             box_dims.size()));
-      PADDLE_ENFORCE_EQ(box_dims[2] == 4, true,
+      PADDLE_ENFORCE_EQ(box_dims[2] == 4,
+                        true,
                         platform::errors::InvalidArgument(
                             "The last dimension of Input (BBoxes) must be 4, "
                             "represents the layout of coordinate "
                             "[xmin, ymin, xmax, ymax]."));
       PADDLE_ENFORCE_EQ(
-          box_dims[1], score_dims[2],
+          box_dims[1],
+          score_dims[2],
           platform::errors::InvalidArgument(
               "The 2nd dimension of Input(BBoxes) must be equal to "
               "last dimension of Input(Scores), which represents the "
               "predicted bboxes."
               "But received box_dims[1](%s) != socre_dims[2](%s)",
-              box_dims[1], score_dims[2]));
+              box_dims[1],
+              score_dims[2]));
     }
     ctx->SetOutputDim("Out", {box_dims[1], box_dims[2] + 2});
     ctx->SetOutputDim("Index", {box_dims[1], 1});
@@ -96,9 +101,13 @@ struct decay_score<T, false> {
 };
 
 template <typename T, bool gaussian>
-void NMSMatrix(const Tensor& bbox, const Tensor& scores,
-               const T score_threshold, const T post_threshold,
-               const float sigma, const int64_t top_k, const bool normalized,
+void NMSMatrix(const Tensor& bbox,
+               const Tensor& scores,
+               const T score_threshold,
+               const T post_threshold,
+               const float sigma,
+               const int64_t top_k,
+               const bool normalized,
                std::vector<int>* selected_indices,
                std::vector<T>* decayed_scores) {
   int64_t num_boxes = bbox.dims()[0];
@@ -109,10 +118,10 @@ void NMSMatrix(const Tensor& bbox, const Tensor& scores,
 
   std::vector<int32_t> perm(num_boxes);
   std::iota(perm.begin(), perm.end(), 0);
-  auto end = std::remove_if(perm.begin(), perm.end(),
-                            [&score_ptr, score_threshold](int32_t idx) {
-                              return score_ptr[idx] <= score_threshold;
-                            });
+  auto end = std::remove_if(
+      perm.begin(), perm.end(), [&score_ptr, score_threshold](int32_t idx) {
+        return score_ptr[idx] <= score_threshold;
+      });
 
   auto sort_fn = [&score_ptr](int32_t lhs, int32_t rhs) {
     return score_ptr[lhs] > score_ptr[rhs];
@@ -136,8 +145,8 @@ void NMSMatrix(const Tensor& bbox, const Tensor& scores,
     auto idx_a = perm[i];
     for (int64_t j = 0; j < i; j++) {
       auto idx_b = perm[j];
-      auto iou = JaccardOverlap<T>(bbox_ptr + idx_a * box_size,
-                                   bbox_ptr + idx_b * box_size, normalized);
+      auto iou = JaccardOverlap<T>(
+          bbox_ptr + idx_a * box_size, bbox_ptr + idx_b * box_size, normalized);
       max_iou = std::max(max_iou, iou);
       iou_matrix[i * (i - 1) / 2 + j] = iou;
     }
@@ -168,12 +177,18 @@ void NMSMatrix(const Tensor& bbox, const Tensor& scores,
 template <typename T>
 class MatrixNMSKernel : public framework::OpKernel<T> {
  public:
-  size_t MultiClassMatrixNMS(const Tensor& scores, const Tensor& bboxes,
-                             std::vector<T>* out, std::vector<int>* indices,
-                             int start, int64_t background_label,
-                             int64_t nms_top_k, int64_t keep_top_k,
-                             bool normalized, T score_threshold,
-                             T post_threshold, bool use_gaussian,
+  size_t MultiClassMatrixNMS(const Tensor& scores,
+                             const Tensor& bboxes,
+                             std::vector<T>* out,
+                             std::vector<int>* indices,
+                             int start,
+                             int64_t background_label,
+                             int64_t nms_top_k,
+                             int64_t keep_top_k,
+                             bool normalized,
+                             T score_threshold,
+                             T post_threshold,
+                             bool use_gaussian,
                              float gaussian_sigma) const {
     std::vector<int> all_indices;
     std::vector<T> all_scores;
@@ -189,13 +204,25 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
       if (c == background_label) continue;
       score_slice = scores.Slice(c, c + 1);
       if (use_gaussian) {
-        NMSMatrix<T, true>(bboxes, score_slice, score_threshold, post_threshold,
-                           gaussian_sigma, nms_top_k, normalized, &all_indices,
+        NMSMatrix<T, true>(bboxes,
+                           score_slice,
+                           score_threshold,
+                           post_threshold,
+                           gaussian_sigma,
+                           nms_top_k,
+                           normalized,
+                           &all_indices,
                            &all_scores);
       } else {
-        NMSMatrix<T, false>(bboxes, score_slice, score_threshold,
-                            post_threshold, gaussian_sigma, nms_top_k,
-                            normalized, &all_indices, &all_scores);
+        NMSMatrix<T, false>(bboxes,
+                            score_slice,
+                            score_threshold,
+                            post_threshold,
+                            gaussian_sigma,
+                            nms_top_k,
+                            normalized,
+                            &all_indices,
+                            &all_scores);
       }
       for (size_t i = 0; i < all_indices.size() - num_det; i++) {
         all_classes.push_back(static_cast<T>(c));
@@ -215,7 +242,9 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
     std::vector<int32_t> perm(all_indices.size());
     std::iota(perm.begin(), perm.end(), 0);
 
-    std::partial_sort(perm.begin(), perm.begin() + num_det, perm.end(),
+    std::partial_sort(perm.begin(),
+                      perm.begin() + num_det,
+                      perm.end(),
                       [&all_scores](int lhs, int rhs) {
                         return all_scores[lhs] > all_scores[rhs];
                       });
@@ -273,10 +302,19 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
       boxes_slice = boxes->Slice(i, i + 1);
       boxes_slice.Resize({score_dims[2], box_dim});
       int start = i * score_dims[2];
-      num_out = MultiClassMatrixNMS(
-          scores_slice, boxes_slice, &detections, &indices, start,
-          background_label, nms_top_k, keep_top_k, normalized, score_threshold,
-          post_threshold, use_gaussian, gaussian_sigma);
+      num_out = MultiClassMatrixNMS(scores_slice,
+                                    boxes_slice,
+                                    &detections,
+                                    &indices,
+                                    start,
+                                    background_label,
+                                    nms_top_k,
+                                    keep_top_k,
+                                    normalized,
+                                    score_threshold,
+                                    post_threshold,
+                                    use_gaussian,
+                                    gaussian_sigma);
       offsets.push_back(offsets.back() + num_out);
       num_per_batch.emplace_back(num_out);
     }
@@ -295,8 +333,8 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
     if (ctx.HasOutput("RoisNum")) {
       auto* rois_num = ctx.Output<Tensor>("RoisNum");
       rois_num->mutable_data<int>({batch_size}, ctx.GetPlace());
-      std::copy(num_per_batch.begin(), num_per_batch.end(),
-                rois_num->data<int>());
+      std::copy(
+          num_per_batch.begin(), num_per_batch.end(), rois_num->data<int>());
     }
     framework::LoD lod;
     lod.emplace_back(offsets);
@@ -399,13 +437,15 @@ https://arxiv.org/abs/2003.10152
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    matrix_nms, ops::MatrixNMSOp, ops::MatrixNMSOpMaker,
+    matrix_nms,
+    ops::MatrixNMSOp,
+    ops::MatrixNMSOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(matrix_nms, ops::MatrixNMSKernel<float>,
+REGISTER_OP_CPU_KERNEL(matrix_nms,
+                       ops::MatrixNMSKernel<float>,
                        ops::MatrixNMSKernel<double>);
 REGISTER_OP_VERSION(matrix_nms)
-    .AddCheckpoint(
-        R"ROC(Upgrade matrix_nms: add a new output [RoisNum].)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewOutput(
-            "RoisNum", "The number of RoIs in each image."));
+    .AddCheckpoint(R"ROC(Upgrade matrix_nms: add a new output [RoisNum].)ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewOutput(
+                       "RoisNum", "The number of RoIs in each image."));

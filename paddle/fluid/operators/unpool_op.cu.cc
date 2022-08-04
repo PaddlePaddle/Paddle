@@ -15,17 +15,15 @@ limitations under the License. */
 #include "paddle/fluid/operators/unpool_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    unpool, ops::UnpoolKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::UnpoolKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    unpool_grad,
-    ops::UnpoolGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::UnpoolGradKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    unpool3d, ops::Unpool3dKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::Unpool3dKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    unpool3d_grad,
-    ops::Unpool3dGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::Unpool3dGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(unpool,
+                        ops::UnpoolKernel<phi::GPUContext, float>,
+                        ops::UnpoolKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(unpool_grad,
+                        ops::UnpoolGradKernel<phi::GPUContext, float>,
+                        ops::UnpoolGradKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(unpool3d,
+                        ops::Unpool3dKernel<phi::GPUContext, float>,
+                        ops::Unpool3dKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(unpool3d_grad,
+                        ops::Unpool3dGradKernel<phi::GPUContext, float>,
+                        ops::Unpool3dGradKernel<phi::GPUContext, double>);

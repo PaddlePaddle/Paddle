@@ -16,6 +16,7 @@ limitations under the License. */
 #include <cstring>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
@@ -35,19 +36,24 @@ class GenerateProposalsV2Op : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Scores"), true,
+        ctx->HasInput("Scores"),
+        true,
         platform::errors::NotFound("Input(Scores) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("BboxDeltas"), true,
+        ctx->HasInput("BboxDeltas"),
+        true,
         platform::errors::NotFound("Input(BboxDeltas) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("ImShape"), true,
+        ctx->HasInput("ImShape"),
+        true,
         platform::errors::NotFound("Input(ImShape) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Anchors"), true,
+        ctx->HasInput("Anchors"),
+        true,
         platform::errors::NotFound("Input(Anchors) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Variances"), true,
+        ctx->HasInput("Variances"),
+        true,
         platform::errors::NotFound("Input(Variances) shouldn't be null."));
 
     ctx->SetOutputDim("RpnRois", {-1, 4});
@@ -74,10 +80,14 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
     auto *scores = context.Input<Tensor>("Scores");
     auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
     auto *im_shape = context.Input<Tensor>("ImShape");
-    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"), "Input",
-                                   "Anchors", "GenerateProposals");
+    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"),
+                                   "Input",
+                                   "Anchors",
+                                   "GenerateProposals");
     auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
-                                     "Input", "Variances", "GenerateProposals");
+                                     "Input",
+                                     "Variances",
+                                     "GenerateProposals");
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
@@ -89,8 +99,7 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
     float eta = context.Attr<float>("eta");
     bool pixel_offset = context.Attr<bool>("pixel_offset");
 
-    auto &dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
+    auto &dev_ctx = context.template device_context<phi::CPUContext>();
 
     auto &scores_dim = scores->dims();
     int64_t num = scores_dim[0];
@@ -113,7 +122,7 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
     scores_swap.mutable_data<T>({num, h_score, w_score, c_score},
                                 dev_ctx.GetPlace());
 
-    phi::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans;
+    phi::funcs::Transpose<phi::CPUContext, T, 4> trans;
     std::vector<int> axis = {0, 2, 3, 1};
     trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
     trans(dev_ctx, *scores, &scores_swap, axis);
@@ -135,10 +144,19 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
       bbox_deltas_slice.Resize({h_bbox * w_bbox * c_bbox / 4, 4});
       scores_slice.Resize({h_score * w_score * c_score, 1});
 
-      std::pair<Tensor, Tensor> tensor_pair = ProposalForOneImage(
-          dev_ctx, im_shape_slice, anchors, variances, bbox_deltas_slice,
-          scores_slice, pre_nms_top_n, post_nms_top_n, nms_thresh, min_size,
-          eta, pixel_offset);
+      std::pair<Tensor, Tensor> tensor_pair =
+          ProposalForOneImage(dev_ctx,
+                              im_shape_slice,
+                              anchors,
+                              variances,
+                              bbox_deltas_slice,
+                              scores_slice,
+                              pre_nms_top_n,
+                              post_nms_top_n,
+                              nms_thresh,
+                              min_size,
+                              eta,
+                              pixel_offset);
       Tensor &proposals = tensor_pair.first;
       Tensor &scores = tensor_pair.second;
 
@@ -164,12 +182,18 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
   }
 
   std::pair<Tensor, Tensor> ProposalForOneImage(
-      const platform::CPUDeviceContext &ctx, const Tensor &im_shape_slice,
-      const Tensor &anchors, const Tensor &variances,
+      const phi::CPUContext &ctx,
+      const Tensor &im_shape_slice,
+      const Tensor &anchors,
+      const Tensor &variances,
       const Tensor &bbox_deltas_slice,  // [M, 4]
       const Tensor &scores_slice,       // [N, 1]
-      int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size,
-      float eta, bool pixel_offset = true) const {
+      int pre_nms_top_n,
+      int post_nms_top_n,
+      float nms_thresh,
+      float min_size,
+      float eta,
+      bool pixel_offset = true) const {
     auto *scores_data = scores_slice.data<T>();
 
     // Sort index
@@ -186,8 +210,8 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
     if (pre_nms_top_n <= 0 || pre_nms_top_n >= scores_slice.numel()) {
       std::sort(index, index + scores_slice.numel(), compare);
     } else {
-      std::nth_element(index, index + pre_nms_top_n,
-                       index + scores_slice.numel(), compare);
+      std::nth_element(
+          index, index + pre_nms_top_n, index + scores_slice.numel(), compare);
       index_t.Resize({pre_nms_top_n});
     }
 
@@ -204,18 +228,18 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
 
     Tensor proposals;
     proposals.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
-    BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals,
-                pixel_offset);
+    BoxCoder<T>(
+        ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals, pixel_offset);
 
-    ClipTiledBoxes<T>(ctx, im_shape_slice, proposals, &proposals, false,
-                      pixel_offset);
+    ClipTiledBoxes<T>(
+        ctx, im_shape_slice, proposals, &proposals, false, pixel_offset);
 
     Tensor keep;
-    FilterBoxes<T>(ctx, &proposals, min_size, im_shape_slice, false, &keep,
-                   pixel_offset);
+    FilterBoxes<T>(
+        ctx, &proposals, min_size, im_shape_slice, false, &keep, pixel_offset);
     // Handle the case when there is no keep index left
     if (keep.numel() == 0) {
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
       bbox_sel.mutable_data<T>({1, 4}, ctx.GetPlace());
       set_zero(ctx, &bbox_sel, static_cast<T>(0));
       Tensor scores_filter;
@@ -285,7 +309,8 @@ class GenerateProposalsV2OpMaker : public framework::OpProtoAndCheckerMaker {
                    "Proposal height and width both need to be greater "
                    "than this min_size.");
     AddAttr<float>("eta", "The parameter for adaptive NMS.");
-    AddAttr<bool>("pixel_offset", "(bool, default True),",
+    AddAttr<bool>("pixel_offset",
+                  "(bool, default True),",
                   "If true, im_shape pixel offset is 1.")
         .SetDefault(true);
     AddComment(R"DOC(
@@ -313,7 +338,8 @@ to before and will not effect the result.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    generate_proposals_v2, ops::GenerateProposalsV2Op,
+    generate_proposals_v2,
+    ops::GenerateProposalsV2Op,
     ops::GenerateProposalsV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

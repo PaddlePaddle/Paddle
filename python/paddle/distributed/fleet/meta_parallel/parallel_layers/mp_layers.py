@@ -23,11 +23,12 @@ from paddle.autograd import PyLayer
 __all__ = []
 
 # Follow this paper to achieve the file:
-# Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter 
+# Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter
 # language models using model parallelism[J]. arXiv preprint arXiv:1909.08053, 2019. (https://arxiv.org/abs/1909.08053)
 
 
 class VocabParallelEmbedding(Layer):
+
     def __init__(self,
                  num_embeddings,
                  embedding_dim,
@@ -58,17 +59,15 @@ class VocabParallelEmbedding(Layer):
 
         if self.is_mp and paddle.in_dynamic_mode():
             with get_rng_state_tracker().rng_state():
-                self.weight = self.create_parameter(
-                    attr=self._weight_attr,
-                    shape=self._size,
-                    dtype=self._dtype,
-                    is_bias=False)
+                self.weight = self.create_parameter(attr=self._weight_attr,
+                                                    shape=self._size,
+                                                    dtype=self._dtype,
+                                                    is_bias=False)
         else:
-            self.weight = self.create_parameter(
-                attr=self._weight_attr,
-                shape=self._size,
-                dtype=self._dtype,
-                is_bias=False)
+            self.weight = self.create_parameter(attr=self._weight_attr,
+                                                shape=self._size,
+                                                dtype=self._dtype,
+                                                is_bias=False)
 
         self.weight.is_distributed = True if self.is_mp else False
 
@@ -85,16 +84,16 @@ class VocabParallelEmbedding(Layer):
                 use_calc_stream=True,
                 use_model_parallel=True)
         else:
-            output = F.embedding(
-                x,
-                weight=self.weight,
-                padding_idx=None,
-                sparse=False,
-                name=self._name)
+            output = F.embedding(x,
+                                 weight=self.weight,
+                                 padding_idx=None,
+                                 sparse=False,
+                                 name=self._name)
         return output
 
 
 class ColumnParallelLinear(Layer):
+
     def __init__(self,
                  in_features,
                  out_features,
@@ -114,8 +113,8 @@ class ColumnParallelLinear(Layer):
         self.gather_output = gather_output
         assert out_features % self.world_size == 0, (
             "Number of column of the weight for linear ({}) must be"
-            " divisible by model parallel size ({})".format(out_features,
-                                                            self.world_size))
+            " divisible by model parallel size ({})".format(
+                out_features, self.world_size))
         self.output_size_per_partition = out_features // self.world_size
 
         self._weight_attr = weight_attr
@@ -156,8 +155,10 @@ class ColumnParallelLinear(Layer):
         else:
             input_parallel = x
 
-        output_parallel = F.linear(
-            input_parallel, self.weight, self.bias, name=self._name)
+        output_parallel = F.linear(input_parallel,
+                                   self.weight,
+                                   self.bias,
+                                   name=self._name)
 
         if self.gather_output and self.is_mp:
             output = paddle.distributed.collective._c_concat(
@@ -168,6 +169,7 @@ class ColumnParallelLinear(Layer):
 
 
 class RowParallelLinear(Layer):
+
     def __init__(self,
                  in_features,
                  out_features,
@@ -193,8 +195,8 @@ class RowParallelLinear(Layer):
         self.is_mp = (self.world_size > 1)
         assert in_features % self.world_size == 0, (
             "Number of row of the weight for linear ({}) must be"
-            " divisible by model parallel size ({})".format(in_features,
-                                                            self.world_size))
+            " divisible by model parallel size ({})".format(
+                in_features, self.world_size))
 
         self.input_size_per_partition = in_features // self.world_size
 
@@ -247,6 +249,7 @@ class RowParallelLinear(Layer):
 
 
 class ParallelCrossEntropy(Layer):
+
     def __init__(self, name=None):
         super(ParallelCrossEntropy, self).__init__()
         self.name = name

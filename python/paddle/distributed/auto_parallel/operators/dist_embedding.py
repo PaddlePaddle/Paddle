@@ -31,9 +31,13 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_idx_in_axis, _get_corresponding_rank
+from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op
+from ..cost import build_comm_costs_from_descs, build_comp_costs_from_descs, build_dp_costs
+from ..cost import EmbeddingOpCost, EmbeddingGradOpCost, AllreduceSumOpCost, IdentityOpCost
 
 
 class DistributedEmbedding(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedEmbedding, self).__init__(op_type)
 
@@ -46,10 +50,100 @@ register_distributed_operator_impl_container(
 
 # RowParallel
 class DistributedEmbeddingImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedEmbeddingImpl, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
+
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        """Calculate the cost by the op role."""
+        cost = None
+        if int(op_role) == int(OpRole.Forward):
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        elif int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        # embedding need start_index
+        cost_mapping = build_comp_costs_from_descs(EmbeddingOpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+
+        serial_op = dist_op.serial_op
+        parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
+            serial_op.input("W")[0])[0]
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+        var_names = serial_op.output("Out")
+        c_allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(
+            "c_allreduce_sum",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+
+        comm_op_cost_list = build_comm_costs_from_descs(
+            AllreduceSumOpCost, ctx, processes, c_allreduce_sum_desc_mapping,
+            cluster)
+
+        res_cost = [cost_mapping, comm_op_cost_list]
+
+        return res_cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # by now the backward function only insert the gradient allreduce for dist op itself
+        res = []
+        backward_op = dist_op.serial_op
+        main_block = backward_op.block
+        dist_attr = dist_op.dist_attr
+
+        embedding_row_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("W")[0])[0]
+        parallel_axis = embedding_row_dim_mapping
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+        var_names = [backward_op.input("Out@GRAD")[0]]
+        c_identity_desc_mapping = build_comm_desc_from_dist_op(
+            "c_identity",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
+        comm_op_cost_list = build_comm_costs_from_descs(
+            IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster)
+        res.append(comm_op_cost_list)
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        cost_mapping = build_comp_costs_from_descs(EmbeddingGradOpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+        res.append(cost_mapping)
+
+        # need gradient allreduce
+        var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("Ids")[0])
+        mesh_shape = process_mesh.topology
+        batch_size_axis = var_dim_mapping[0]
+        if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+            parallel_axis = batch_size_axis
+            attrs = {"use_calc_stream": True}
+            var_names = [backward_op.output('W@GRAD')[0]]
+            build_dp_costs(res, dist_op, ctx, var_names, attrs, parallel_axis,
+                           cluster)
+
+        return res
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -58,8 +152,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         w_name = op_desc.input('W')[0]
         ids_dims_mapping = op_dist_attr.get_input_dims_mapping(ids_name)
         w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
-        if is_dim_replicate(w_dims_mapping[-2]) or is_dim_shard(w_dims_mapping[
-                -1]):
+        if is_dim_replicate(w_dims_mapping[-2]) or is_dim_shard(
+                w_dims_mapping[-1]):
             return False
         # Other dimensions must be replicate except the batch dimension
         for mapping in ids_dims_mapping[1:]:
@@ -215,10 +309,15 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
         c_embedding_op = main_block.append_op(
             type='c_embedding',
-            inputs={'Ids': [Ids_var],
-                    'W': [Weight_var]},
+            inputs={
+                'Ids': [Ids_var],
+                'W': [Weight_var]
+            },
             outputs={'Out': [intermediate_var_0]},
-            attrs={"start_index": relative_idx})
+            attrs={
+                "start_index": relative_idx,
+                OP_ROLE_KEY: src_op.attr('op_role')
+            })
         if intermediate_var_0.shape != ref_shape:
             intermediate_var_0.desc.set_shape(ref_shape)
 
@@ -231,6 +330,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 'ring_id': group.id,
                 'use_calc_stream': True,
                 'use_model_parallel': True,
+                OP_ROLE_KEY: src_op.attr('op_role')
             })
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)
@@ -295,17 +395,15 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                                                   rank_id)
                     sync_group = new_process_group(group_ranks)
 
-                    startup_block.append_op(
-                        type='c_broadcast',
-                        inputs={'X': param},
-                        outputs={'Out': param},
-                        attrs={
-                            'ring_id': sync_group.id,
-                            'root': 0,
-                            'use_calc_stream': True,
-                            OP_ROLE_KEY: OpRole.Forward
-                        })
-            startup_block._sync_with_cpp()
+                    startup_block.append_op(type='c_broadcast',
+                                            inputs={'X': param},
+                                            outputs={'Out': param},
+                                            attrs={
+                                                'ring_id': sync_group.id,
+                                                'root': 0,
+                                                'use_calc_stream': True,
+                                                OP_ROLE_KEY: OpRole.Forward
+                                            })
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -405,8 +503,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         set_comm_op_dist_attr_for_program(c_identity_op, dist_attr.process_mesh,
                                           out_grad_dist_attr, ctx)
 
-        main_block._sync_with_cpp()
-        c_embedding_grad_op_desc = main_block.desc.append_op()
+        c_embedding_grad_op_desc = main_block.append_op(type='nop').desc
         c_embedding_grad_op_desc.set_type("c_embedding_grad")
         c_embedding_grad_op_desc.set_input('Ids', [Ids_var.name])
         c_embedding_grad_op_desc.set_input('W', [Weight_var.name])
@@ -415,7 +512,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         c_embedding_grad_op_desc.set_output('W@GRAD', [Weight_grad.name])
         c_embedding_grad_op_desc._set_attr('start_index', relative_idx)
         c_embedding_grad_op_desc._set_attr(OP_ROLE_KEY, OpRole.Backward)
-        main_block._sync_with_cpp()
 
         c_embedding_grad_op = main_block.ops[-1]
         assert c_embedding_grad_op.type == "c_embedding_grad"
@@ -439,28 +535,34 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             dp_group = new_process_group(group_ranks)
 
         if need_gradient_allreduce:
+            added_ops = []
             W_Grad_var = main_block.var(kwargs['W@GRAD'][0])
-            allreduce_op = main_block.append_op(
-                type='c_allreduce_sum',
-                inputs={'X': [W_Grad_var]},
-                outputs={'Out': [W_Grad_var]},
-                attrs={
-                    'ring_id': dp_group.id,
-                    'use_calc_stream': True,
-                    OP_ROLE_KEY: OpRole.Backward
-                })
-            scale_op = main_block.append_op(
-                type='scale',
-                inputs={'X': W_Grad_var},
-                outputs={'Out': W_Grad_var},
-                attrs={'scale': 1.0 / dp_degree,
-                       OP_ROLE_KEY: OpRole.Backward})
+            allreduce_op = main_block.append_op(type='c_allreduce_sum',
+                                                inputs={'X': [W_Grad_var]},
+                                                outputs={'Out': [W_Grad_var]},
+                                                attrs={
+                                                    'ring_id': dp_group.id,
+                                                    'use_calc_stream': True,
+                                                    OP_ROLE_KEY: OpRole.Backward
+                                                })
+            added_ops.append(allreduce_op)
+
+            if ctx.gradient_scale:
+                scale_op = main_block.append_op(type='scale',
+                                                inputs={'X': W_Grad_var},
+                                                outputs={'Out': W_Grad_var},
+                                                attrs={
+                                                    'scale': 1.0 / dp_degree,
+                                                    OP_ROLE_KEY: OpRole.Backward
+                                                })
+                added_ops.append(scale_op)
+
             main_block._sync_with_cpp()
 
             dims_mapping = ctx.get_tensor_dist_attr_for_program(
                 W_Grad_var).dims_mapping
             process_mesh = dist_attr.process_mesh
-            for op in [allreduce_op, scale_op]:
+            for op in added_ops:
                 op_attr = OperatorDistributedAttribute()
                 op_attr.process_mesh = process_mesh
                 op_attr.set_output_dims_mapping(W_Grad_var.name, dims_mapping)

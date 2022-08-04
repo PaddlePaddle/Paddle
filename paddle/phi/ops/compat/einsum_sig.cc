@@ -17,14 +17,21 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature EinsumOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("einsum", {"Operands"}, {"equation"}, {"Out"});
+  if (ctx.OutputSize("XShape") > 0 && ctx.OutputSize("InnerCache") > 0) {
+    return KernelSignature("einsum_raw",
+                           {"Operands"},
+                           {"equation"},
+                           {"Out", "InnerCache", "XShape"});
+  } else {
+    return KernelSignature("einsum", {"Operands"}, {"equation"}, {"Out"});
+  }
 }
 
 KernelSignature EinsumGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("einsum_grad",
-                         {"Operands", {"Out@GRAD"}},
+                         {"Operands", "InnerCache", "Out@GRAD"},
                          {"equation"},
-                         {{"Operands@GRAD"}});
+                         {"Operands@GRAD"});
 }
 }  // namespace phi
 

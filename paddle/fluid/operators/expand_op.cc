@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -38,14 +39,17 @@ class ExpandOp : public framework::OperatorWithKernel {
     }
 
     PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(x_dims.size()), expand_times.size(),
+        static_cast<size_t>(x_dims.size()),
+        expand_times.size(),
         platform::errors::InvalidArgument(
             "The number of elements (%d) of 'expand_times' for "
             "Op(expand) must be equal to the number of dimensions "
             "(%d) of the input.",
-            expand_times.size(), static_cast<size_t>(x_dims.size())));
+            expand_times.size(),
+            static_cast<size_t>(x_dims.size())));
     PADDLE_ENFORCE_LE(
-        x_dims.size(), 6,
+        x_dims.size(),
+        6,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input for Op(expand) "
             "must not be greater than 6, but the value received is %d.",
@@ -57,11 +61,13 @@ class ExpandOp : public framework::OperatorWithKernel {
         out_shape[i] = -1;
       } else {
         PADDLE_ENFORCE_GT(
-            expand_times[i], 0,
+            expand_times[i],
+            0,
             platform::errors::InvalidArgument(
                 "The %uth element of 'expand_times' for Op(expand) must be "
                 "greater than 0, but the value given is %d.",
-                i, expand_times[i]));
+                i,
+                expand_times[i]));
         out_shape[i] = x_dims[i] * expand_times[i];
       }
     }
@@ -81,13 +87,14 @@ class ExpandOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "expand_times_tensor" || var_name == "ExpandTimes") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -150,8 +157,10 @@ class ExpandGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "ExpandGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "ExpandGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> expand_times =
@@ -162,11 +171,13 @@ class ExpandGradOp : public framework::OperatorWithKernel {
     size_t start_pos = 0u;
     if (!ctx->IsRuntime() && x_dims[0] < 0) {
       PADDLE_ENFORCE_EQ(
-          x_dims[0], out_dims[0],
+          x_dims[0],
+          out_dims[0],
           platform::errors::InvalidArgument(
               "The first dimension size (%d) of Input(Out@GRAD) should be "
               "equal to the crroresponding dimension size (%d) of Input(X)",
-              out_dims[0], x_dims[0]));
+              out_dims[0],
+              x_dims[0]));
       start_pos = 1u;
     }
 
@@ -176,12 +187,16 @@ class ExpandGradOp : public framework::OperatorWithKernel {
       } else {
         if (ctx->IsRuntime()) {
           PADDLE_ENFORCE_EQ(
-              x_dims[i] * expand_times[i], out_dims[i],
+              x_dims[i] * expand_times[i],
+              out_dims[i],
               platform::errors::InvalidArgument(
                   "The %uth dimension size (%d) of Input(Out@GRAD) should be "
                   "equal to the multiplication of the crroresponding dimension "
                   "sizes of Input(X) (%d) and expand_times (%d).",
-                  i, out_dims[i], x_dims[i], expand_times[i]));
+                  i,
+                  out_dims[i],
+                  x_dims[i],
+                  expand_times[i]));
         }
       }
     }
@@ -201,13 +216,14 @@ class ExpandGradOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "expand_times_tensor") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -254,40 +270,41 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ExpandGradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(expand, ops::ExpandOp, ops::ExpandOpMaker,
+REGISTER_OPERATOR(expand,
+                  ops::ExpandOp,
+                  ops::ExpandOpMaker,
                   ops::ExpandGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(expand_grad, ops::ExpandGradOp,
+REGISTER_OPERATOR(expand_grad,
+                  ops::ExpandGradOp,
                   ops::ExpandDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ExpandGradNoNeedBufVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandKernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
-    expand_grad,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(expand,
+                       ops::ExpandKernel<phi::CPUContext, float>,
+                       ops::ExpandKernel<phi::CPUContext, double>,
+                       ops::ExpandKernel<phi::CPUContext, int>,
+                       ops::ExpandKernel<phi::CPUContext, int64_t>,
+                       ops::ExpandKernel<phi::CPUContext, bool>);
+REGISTER_OP_CPU_KERNEL(expand_grad,
+                       ops::ExpandGradKernel<phi::CPUContext, float>,
+                       ops::ExpandGradKernel<phi::CPUContext, double>,
+                       ops::ExpandGradKernel<phi::CPUContext, int>,
+                       ops::ExpandGradKernel<phi::CPUContext, int64_t>);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
-    expand, ops::ExpandKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::float16>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, bool>);
+    expand,
+    ops::ExpandKernel<phi::GPUContext, float>,
+    ops::ExpandKernel<phi::GPUContext, double>,
+    ops::ExpandKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::ExpandKernel<phi::GPUContext, int>,
+    ops::ExpandKernel<phi::GPUContext, int64_t>,
+    ops::ExpandKernel<phi::GPUContext, bool>);
 REGISTER_OP_CUDA_KERNEL(
     expand_grad,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::float16>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::ExpandGradKernel<phi::GPUContext, float>,
+    ops::ExpandGradKernel<phi::GPUContext, double>,
+    ops::ExpandGradKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::ExpandGradKernel<phi::GPUContext, int>,
+    ops::ExpandGradKernel<phi::GPUContext, int64_t>);
 #endif

@@ -14,6 +14,7 @@
 
 #pragma once
 #include <time.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
@@ -23,6 +24,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
@@ -107,7 +109,7 @@ class AllInGpuGraphSampler : public GraphSampler {
   // std::shared_ptr<std::mt19937_64> random;
   int gpu_num;
 };
-}
-};
+}  // namespace framework
+};  // namespace paddle
 #include "paddle/fluid/framework/fleet/heter_ps/graph_sampler_inl.h"
 #endif

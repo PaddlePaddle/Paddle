@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "com_baidu_paddle_inference_Config.h"
-#include <iostream>
-#include "jni_convert_util.h"  // NOLINT
 
+#include <iostream>
+
+#include "jni_convert_util.h"  // NOLINT
 #include "pd_inference_api.h"  // NOLINT
 
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_cppConfigDestroy(
@@ -41,9 +42,12 @@ Java_com_baidu_paddle_inference_Config_isCppConfigValid(
 
 // 2. not combined model settings
 
-JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_setCppModel(
-    JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer, jstring modelFile,
-    jstring paramsFile) {
+JNIEXPORT void JNICALL
+Java_com_baidu_paddle_inference_Config_setCppModel(JNIEnv* env,
+                                                   jobject obj,
+                                                   jlong cppPaddleConfigPointer,
+                                                   jstring modelFile,
+                                                   jstring paramsFile) {
   PD_ConfigSetModel(reinterpret_cast<PD_Config*>(cppPaddleConfigPointer),
                     jstring_to_cpp_string(env, modelFile).c_str(),
                     jstring_to_cpp_string(env, paramsFile).c_str());
@@ -64,7 +68,9 @@ JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_setCppProgFile(
 }
 
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_setCppParamsFile(
-    JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer,
+    JNIEnv* env,
+    jobject obj,
+    jlong cppPaddleConfigPointer,
     jstring paramsFile) {
   PD_ConfigSetParamsFile(reinterpret_cast<PD_Config*>(cppPaddleConfigPointer),
                          jstring_to_cpp_string(env, paramsFile).c_str());
@@ -73,29 +79,34 @@ JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_setCppParamsFile(
 JNIEXPORT jstring JNICALL Java_com_baidu_paddle_inference_Config_modelDir(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer) {
   return cpp_string_to_jstring(
-      env, PD_ConfigGetModelDir(
-               reinterpret_cast<PD_Config*>(cppPaddleConfigPointer)));
+      env,
+      PD_ConfigGetModelDir(
+          reinterpret_cast<PD_Config*>(cppPaddleConfigPointer)));
 }
 
 JNIEXPORT jstring JNICALL Java_com_baidu_paddle_inference_Config_progFile(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer) {
   return cpp_string_to_jstring(
-      env, PD_ConfigGetProgFile(
-               reinterpret_cast<PD_Config*>(cppPaddleConfigPointer)));
+      env,
+      PD_ConfigGetProgFile(
+          reinterpret_cast<PD_Config*>(cppPaddleConfigPointer)));
 }
 
 JNIEXPORT jstring JNICALL Java_com_baidu_paddle_inference_Config_paramsFile(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer) {
   return cpp_string_to_jstring(
-      env, PD_ConfigGetParamsFile(
-               reinterpret_cast<PD_Config*>(cppPaddleConfigPointer)));
+      env,
+      PD_ConfigGetParamsFile(
+          reinterpret_cast<PD_Config*>(cppPaddleConfigPointer)));
 }
 
 // 4. cpu settings
 
 JNIEXPORT void JNICALL
 Java_com_baidu_paddle_inference_Config_setCpuMathLibraryNumThreads(
-    JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer,
+    JNIEnv* env,
+    jobject obj,
+    jlong cppPaddleConfigPointer,
     jint mathThreadsNum) {
   int math_threads_num = reinterpret_cast<int>(mathThreadsNum);
   PD_ConfigSetCpuMathLibraryNumThreads(
@@ -143,10 +154,14 @@ Java_com_baidu_paddle_inference_Config_mkldnnBfloat16Enabled(
 // 6. gpu setting
 
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_enableUseGpu(
-    JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer, jlong memorySize,
+    JNIEnv* env,
+    jobject obj,
+    jlong cppPaddleConfigPointer,
+    jlong memorySize,
     jint deviceId) {
   PD_ConfigEnableUseGpu(reinterpret_cast<PD_Config*>(cppPaddleConfigPointer),
-                        (uint64_t)memorySize, (int32_t)deviceId);
+                        (uint64_t)memorySize,
+                        (int32_t)deviceId);
 }
 
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_disableGpu(

@@ -55,7 +55,7 @@ class GroupShardedOptimizerStage2(Optimizer):
 
     """
 
-    # TODO (Baibaifan) 
+    # TODO (Baibaifan)
     # Feature Notes:
     # 1. Unified memory for parameters and parameters.grad to InternalStorage.
     # 2. Support the segmentation of optimizer parameters and partial updating of parameters.
@@ -103,8 +103,8 @@ class GroupShardedOptimizerStage2(Optimizer):
                 filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
                        self._local_params))) > 0
 
-        self._group = new_group(_get_global_group()
-                                .ranks) if group is None else group
+        self._group = new_group(
+            _get_global_group().ranks) if group is None else group
 
         self.world_size = self._group.nranks
         self._rank = self._group.rank
@@ -152,11 +152,10 @@ class GroupShardedOptimizerStage2(Optimizer):
         """
 
         for p in self._local_params:
-            broadcast(
-                p,
-                src=self._global_root_rank,
-                group=self._group,
-                use_calc_stream=True)
+            broadcast(p,
+                      src=self._global_root_rank,
+                      group=self._group,
+                      use_calc_stream=True)
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -225,8 +224,9 @@ class GroupShardedOptimizerStage2(Optimizer):
             # Assign the parameters of each rank according to the type
             for param in self._local_params:
                 if param.dtype not in self._dtype_rank_params.keys():
-                    self._dtype_rank_params[
-                        param.dtype] = [[] for _ in range(self.world_size)]
+                    self._dtype_rank_params[param.dtype] = [
+                        [] for _ in range(self.world_size)
+                    ]
                 self._dtype_rank_params[param.dtype][self.param2rank[
                     param.name]].append(param)
 
@@ -410,8 +410,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         # Exchange all the shards with the other ranks
         for dtype_per_rank in self.param_storages.values():
             for dst_rank, internal_storage in dtype_per_rank.items():
-                broadcast(
-                    tensor=internal_storage.buffer,
-                    src=self._group.ranks[dst_rank],
-                    group=self._group,
-                    use_calc_stream=True)
+                broadcast(tensor=internal_storage.buffer,
+                          src=self._group.ranks[dst_rank],
+                          group=self._group,
+                          use_calc_stream=True)

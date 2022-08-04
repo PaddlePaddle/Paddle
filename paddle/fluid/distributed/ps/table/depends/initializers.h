@@ -20,10 +20,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "gflags/gflags.h"
-
 #include "paddle/fluid/framework/generator.h"
-
 #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 
 namespace paddle {

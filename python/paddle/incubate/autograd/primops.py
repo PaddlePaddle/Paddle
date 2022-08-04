@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
+
 from .primreg import REGISTER_FN
 
 
@@ -33,9 +34,13 @@ def _simple_binop(helper):
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(
-        type=optype, inputs={'X': x,
-                             'Y': y}, outputs={'Z': out}, attrs={})
+    helper.append_op(type=optype,
+                     inputs={
+                         'X': x,
+                         'Y': y
+                     },
+                     outputs={'Z': out},
+                     attrs={})
     return out
 
 
@@ -51,8 +56,10 @@ def _manipulation_unop(helper):
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(
-        type=optype, inputs={'X': x}, outputs={'Y': out}, attrs=attrs)
+    helper.append_op(type=optype,
+                     inputs={'X': x},
+                     outputs={'Y': out},
+                     attrs=attrs)
     return out
 
 
@@ -75,12 +82,13 @@ def set_value(x, y, axis, starts, ends, strides, out):
     assert x is out, "x and out should be the same Tensor in set_value"
     attrs = {'axes': axis, 'starts': starts, 'ends': ends, 'steps': strides}
     helper = LayerHelper('set_value', **locals())
-    helper.append_op(
-        type=helper.layer_type,
-        inputs={'Input': x,
-                'ValueTensor': y},
-        outputs={'Out': out},
-        attrs=attrs)
+    helper.append_op(type=helper.layer_type,
+                     inputs={
+                         'Input': x,
+                         'ValueTensor': y
+                     },
+                     outputs={'Out': out},
+                     attrs=attrs)
     return out
 
 
@@ -114,6 +122,21 @@ def tanh(x, out=None):
     return _simple_unop(LayerHelper('tanh_p', **locals()))
 
 
+@REGISTER_FN('sin_p', 'X', 'Y')
+def sin(x, out=None):
+    return _simple_unop(LayerHelper('sin_p', **locals()))
+
+
+@REGISTER_FN('cos_p', 'X', 'Y')
+def cos(x, out=None):
+    return _simple_unop(LayerHelper('cos_p', **locals()))
+
+
+@REGISTER_FN('exp_p', 'X', 'Y')
+def exp(x, out=None):
+    return _simple_unop(LayerHelper('exp_p', **locals()))
+
+
 @REGISTER_FN('reshape_p', 'X', 'Y')
 def reshape(x, shape, out=None):
     return _manipulation_unop(LayerHelper('reshape_p', **locals()))
@@ -136,7 +159,8 @@ def split(x, num_or_sections, axis=0, outs=None):
     else:
         if not isinstance(num_or_sections, int):
             raise TypeError(
-                f'num_or_sections must be int, but got {type(num_or_sections)}.')
+                f'num_or_sections must be int, but got {type(num_or_sections)}.'
+            )
         n = num_or_sections
 
     attrs = {'num_or_sections': num_or_sections, 'axis': axis}
@@ -147,11 +171,10 @@ def split(x, num_or_sections, axis=0, outs=None):
             helper.create_variable_for_type_inference(dtype=x.dtype)
             for i in range(n)
         ]
-    helper.append_op(
-        type=helper.layer_type,
-        inputs={'X': x},
-        outputs={'YS': outs},
-        attrs=attrs)
+    helper.append_op(type=helper.layer_type,
+                     inputs={'X': x},
+                     outputs={'YS': outs},
+                     attrs=attrs)
     return outs
 
 
@@ -163,11 +186,10 @@ def concat(xs, axis=0, out=None):
     helper = LayerHelper('concat_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=xs[0].dtype)
-    helper.append_op(
-        type=helper.layer_type,
-        inputs={'XS': xs},
-        outputs={'Y': out},
-        attrs=attrs)
+    helper.append_op(type=helper.layer_type,
+                     inputs={'XS': xs},
+                     outputs={'Y': out},
+                     attrs=attrs)
     return out
 
 
@@ -183,11 +205,10 @@ def reduce(x, axis, keepdim=False, out=None):
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(
-        type=helper.layer_type,
-        inputs={'X': x},
-        outputs={'Y': out},
-        attrs=attrs)
+    helper.append_op(type=helper.layer_type,
+                     inputs={'X': x},
+                     outputs={'Y': out},
+                     attrs=attrs)
     return out
 
 
@@ -217,11 +238,10 @@ def slice_select(x, axis, starts, ends, strides, out=None):
     helper = LayerHelper('slice_select_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type=helper.layer_type,
-        inputs={'X': x},
-        outputs={'Y': out},
-        attrs=attrs)
+    helper.append_op(type=helper.layer_type,
+                     inputs={'X': x},
+                     outputs={'Y': out},
+                     attrs=attrs)
     return out
 
 
@@ -239,12 +259,13 @@ def slice_assign(x, y, axis, starts, ends, strides, out=None):
     helper = LayerHelper('slice_assign_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type=helper.layer_type,
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Z': out},
-        attrs=attrs)
+    helper.append_op(type=helper.layer_type,
+                     inputs={
+                         'X': x,
+                         'Y': y
+                     },
+                     outputs={'Z': out},
+                     attrs=attrs)
     return out
 
 
@@ -254,12 +275,13 @@ def gather(x, indextensor, axis, out=None):
     helper = LayerHelper('gather_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type=helper.layer_type,
-        inputs={'X': x,
-                'IndexTensor': indextensor},
-        outputs={'Y': out},
-        attrs=attrs)
+    helper.append_op(type=helper.layer_type,
+                     inputs={
+                         'X': x,
+                         'IndexTensor': indextensor
+                     },
+                     outputs={'Y': out},
+                     attrs=attrs)
     return out
 
 
@@ -279,11 +301,12 @@ def scatter_add(x, y, indextensor, axis, out=None):
     helper = LayerHelper('scatter_add_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type=helper.layer_type,
-        inputs={'X': x,
-                'Y': y,
-                'IndexTensor': indextensor},
-        outputs={'Z': out},
-        attrs=attrs)
+    helper.append_op(type=helper.layer_type,
+                     inputs={
+                         'X': x,
+                         'Y': y,
+                         'IndexTensor': indextensor
+                     },
+                     outputs={'Z': out},
+                     attrs=attrs)
     return out

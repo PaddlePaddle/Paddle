@@ -73,8 +73,8 @@ def _squared_l2_norm(x):
     if in_dygraph_mode():
         if x.is_selected_rows():
             new_x = paddle.to_tensor(x.numpy())
-            return _C_ops.squared_l2_norm(new_x)
-        return _C_ops.squared_l2_norm(x)
+            return _C_ops.final_state_squared_l2_norm(new_x)
+        return _C_ops.final_state_squared_l2_norm(x)
     else:
         if _in_legacy_dygraph():
             return _C_ops.squared_l2_norm(x)
@@ -91,6 +91,7 @@ def _squared_l2_norm(x):
 
 
 class BaseErrorClipAttr(object):
+
     def __str__(self):
         raise NotImplementedError()
 
@@ -165,8 +166,8 @@ def error_clip_callback(block, context):
     for grad_n in [n for n in op_desc.output_arg_names() if n in grad_to_var]:
         fwd_var = block._var_recursive(grad_to_var[grad_n])
         error_clip = getattr(fwd_var, "error_clip", None)
-        if not (error_clip is None or isinstance(error_clip,
-                                                 BaseErrorClipAttr)):
+        if not (error_clip is None
+                or isinstance(error_clip, BaseErrorClipAttr)):
             raise TypeError(
                 "Variable's error_clip should be an instance of BaseErrorClipAttr or None."
             )
@@ -175,6 +176,7 @@ def error_clip_callback(block, context):
 
 
 class ClipGradBase(object):
+
     def __init__(self):
         super(ClipGradBase, self).__init__()
 
@@ -526,21 +528,22 @@ class ClipGradByGlobalNorm(ClipGradBase):
             global_norm_var.append(global_norm_var_fp64)
         global_norm_var = paddle.add_n(global_norm_var)
         global_norm_var = layers.sqrt(global_norm_var)
-        max_global_norm = layers.fill_constant(
-            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
+        max_global_norm = layers.fill_constant(shape=[1],
+                                               dtype=global_norm_var.dtype,
+                                               value=self.clip_norm)
 
         need_clip = False
         if not self.auto_skip_clip:  # always apply clip
             need_clip = True
-            clip_var = layers.elementwise_div(
-                x=max_global_norm,
-                y=layers.elementwise_max(
-                    x=global_norm_var, y=max_global_norm))
+            clip_var = layers.elementwise_div(x=max_global_norm,
+                                              y=layers.elementwise_max(
+                                                  x=global_norm_var,
+                                                  y=max_global_norm))
         elif global_norm_var > max_global_norm:
             # only when global_norm_var > max_global_norm, grad need clip
             need_clip = True
-            clip_var = layers.elementwise_div(
-                x=max_global_norm, y=global_norm_var)
+            clip_var = layers.elementwise_div(x=max_global_norm,
+                                              y=global_norm_var)
 
         for p, g in params_grads:
             if g is None:
@@ -550,9 +553,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 continue
             # TODO(wangxi): use inplace elementwise_mul
             if need_clip:
-                clip_input = (clip_var.astype('float16')
-                              if g.dtype == core.VarDesc.VarType.FP16 else
-                              clip_var)
+                clip_input = (clip_var.astype('float16') if g.dtype
+                              == core.VarDesc.VarType.FP16 else clip_var)
                 new_grad = _C_ops.elementwise_mul(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
@@ -621,10 +623,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     shape=[1],
                     dtype=global_norm_var.dtype,
                     value=self.clip_norm)
-                scale_var = layers.elementwise_div(
-                    x=max_global_norm,
-                    y=layers.elementwise_max(
-                        x=max_global_norm, y=global_norm_var))
+                scale_var = layers.elementwise_div(x=max_global_norm,
+                                                   y=layers.elementwise_max(
+                                                       x=max_global_norm,
+                                                       y=global_norm_var))
             param_new_grad_name_dict = dict()
             for p, g in params_grads:
                 if g is None:
@@ -645,20 +647,20 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     # We need to handle the correct block, otherwise will encounter
                     # a 'NotFoundError' during compile time.
                     block = default_main_program().current_block()
-                    block.append_op(
-                        type='elementwise_mul',
-                        inputs={'X': new_g,
-                                'Y': scale_input},
-                        outputs={'Out': new_g})
+                    block.append_op(type='elementwise_mul',
+                                    inputs={
+                                        'X': new_g,
+                                        'Y': scale_input
+                                    },
+                                    outputs={'Out': new_g})
                     if new_g is not g:
-                        block.append_op(
-                            type='cast',
-                            inputs={'X': new_g},
-                            outputs={'Out': g},
-                            attrs={
-                                'in_dtype': new_g.dtype,
-                                'out_dtype': g.dtype
-                            })
+                        block.append_op(type='cast',
+                                        inputs={'X': new_g},
+                                        outputs={'Out': g},
+                                        attrs={
+                                            'in_dtype': new_g.dtype,
+                                            'out_dtype': g.dtype
+                                        })
 
                 param_new_grad_name_dict[p.name] = g.name
                 params_and_grads.append((p, g))
@@ -694,19 +696,20 @@ class ClipGradByGlobalNorm(ClipGradBase):
             group_norm_var = layers.sums(input=self.context[self.group_name])
             group_norm_var = layers.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
-            group_scale_var = layers.elementwise_div(
-                x=clip_var,
-                y=layers.elementwise_max(
-                    x=clip_var, y=group_norm_var))
+            group_scale_var = layers.elementwise_div(x=clip_var,
+                                                     y=layers.elementwise_max(
+                                                         x=clip_var,
+                                                         y=group_norm_var))
             assert group_scale_var.shape == (1, )
             self.context[group_scale_name] = group_scale_var
 
         # inplace
-        param.block.append_op(
-            type='elementwise_mul',
-            inputs={'X': grad,
-                    'Y': self.context[group_scale_name]},
-            outputs={'Out': grad})
+        param.block.append_op(type='elementwise_mul',
+                              inputs={
+                                  'X': grad,
+                                  'Y': self.context[group_scale_name]
+                              },
+                              outputs={'Out': grad})
 
         return param, grad
 
@@ -868,7 +871,7 @@ def append_gradient_clip_ops(param_grads):
 
 
 # change wrong mapping relation between param & grad in clip op
-# Note: This function is sensitive to the time cost of the network with gradient clipping 
+# Note: This function is sensitive to the time cost of the network with gradient clipping
 # and should not be changed easily. If you must change, please test the time cost.
 def _correct_clip_op_role_var(params_grads, param_new_grad_name_dict):
     block_id_list = []

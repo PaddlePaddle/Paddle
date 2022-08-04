@@ -59,23 +59,31 @@ class CompatMetaTensor : public phi::MetaTensor {
 
   bool initialized() const override { return initialized_; };
 
+  operator unspecified_bool_type() const override {
+    return initialized_ ? unspecified_bool_true : 0;
+  }
+
+  bool operator!() const override { return !initialized_; }
+
  private:
   const LoD& GetRuntimeLoD() const {
-    auto* var = BOOST_GET_CONST(Variable*, var_);
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
     return var->Get<LoDTensor>().lod();
   }
 
   int32_t GetCompileTimeLoD() const {
-    auto* var = BOOST_GET_CONST(VarDesc*, var_);
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
     return var->GetLoDLevel();
   }
 
   const phi::SelectedRows& GetSelectedRows() const {
-    PADDLE_ENFORCE_EQ(is_runtime_, true,
+    PADDLE_ENFORCE_EQ(is_runtime_,
+                      true,
                       platform::errors::Unavailable(
                           "Only can get Tensor from MetaTensor in rumtime."));
-    auto* var = BOOST_GET_CONST(Variable*, var_);
-    PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(), true,
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(),
+                      true,
                       platform::errors::Unavailable(
                           "The Tensor in MetaTensor is not SelectedRows."));
     return var->Get<phi::SelectedRows>();
@@ -107,13 +115,11 @@ class CompatInferMetaContext : public phi::InferMetaContext {
           outputs);
 
   const phi::MetaTensor& InputAt(size_t idx) const override;
-  paddle::optional<const phi::MetaTensor&> OptionalInputAt(
-      size_t idx) const override;
 
   std::vector<const phi::MetaTensor*> InputsBetween(size_t start,
                                                     size_t end) const override;
-  paddle::optional<const std::vector<const phi::MetaTensor*>>
-  OptionalInputsBetween(size_t start, size_t end) const override;
+  paddle::optional<std::vector<const phi::MetaTensor*>> OptionalInputsBetween(
+      size_t start, size_t end) const override;
 
   phi::MetaTensor* MutableOutputAt(size_t idx) override;
   std::vector<phi::MetaTensor*> MutableOutputBetween(size_t start,

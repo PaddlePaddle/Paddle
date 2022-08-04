@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+
 os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 import paddle
@@ -22,6 +23,7 @@ paddle.enable_static()
 
 
 class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_PSERVER_NUMS"] = "2"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
@@ -43,16 +45,17 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         paddle.fluid.framework.switch_startup_program(startup_program)
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32')
+        input_x = paddle.fluid.layers.data(name="x",
+                                           shape=[32],
+                                           dtype='float32')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
+        cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                 label=input_y)
+        avg_cost = paddle.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
@@ -75,16 +78,17 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         paddle.fluid.framework.switch_startup_program(startup_program)
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32')
+        input_x = paddle.fluid.layers.data(name="x",
+                                           shape=[32],
+                                           dtype='float32')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
+        cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                 label=input_y)
+        avg_cost = paddle.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True

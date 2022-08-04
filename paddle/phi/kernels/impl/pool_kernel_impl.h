@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/pool_kernel.h"
-
 #include <algorithm>
+
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+#include "paddle/phi/kernels/pool_kernel.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
 #include "paddle/phi/kernels/funcs/reduce_function.h"

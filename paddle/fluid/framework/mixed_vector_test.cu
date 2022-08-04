@@ -38,7 +38,7 @@ static __global__ void multiply_10(int* ptr) {
 }
 
 gpuStream_t GetCUDAStream(paddle::platform::CUDAPlace place) {
-  return reinterpret_cast<const paddle::platform::CUDADeviceContext*>(
+  return reinterpret_cast<const phi::GPUContext*>(
              paddle::platform::DeviceContextPool::Instance().Get(place))
       ->stream();
 }
@@ -53,7 +53,11 @@ TEST(mixed_vector, GPU_VECTOR) {
   paddle::platform::CUDAPlace gpu(0);
 
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(multiply_10, dim3(1), dim3(1), 0, GetCUDAStream(gpu),
+  hipLaunchKernelGGL(multiply_10,
+                     dim3(1),
+                     dim3(1),
+                     0,
+                     GetCUDAStream(gpu),
                      tmp.MutableData(gpu));
 #else
   multiply_10<<<1, 1, 0, GetCUDAStream(gpu)>>>(tmp.MutableData(gpu));
@@ -81,7 +85,11 @@ TEST(mixed_vector, MultiGPU) {
   paddle::platform::SetDeviceId(0);
 
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(multiply_10, dim3(1), dim3(1), 0, GetCUDAStream(gpu0),
+  hipLaunchKernelGGL(multiply_10,
+                     dim3(1),
+                     dim3(1),
+                     0,
+                     GetCUDAStream(gpu0),
                      tmp.MutableData(gpu0));
 #else
   multiply_10<<<1, 1, 0, GetCUDAStream(gpu0)>>>(tmp.MutableData(gpu0));
@@ -91,8 +99,8 @@ TEST(mixed_vector, MultiGPU) {
   paddle::platform::SetDeviceId(1);
 
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(multiply_10, dim3(1), dim3(1), 0, GetCUDAStream(gpu1),
-                     gpu1_ptr);
+  hipLaunchKernelGGL(
+      multiply_10, dim3(1), dim3(1), 0, GetCUDAStream(gpu1), gpu1_ptr);
 #else
   multiply_10<<<1, 1, 0, GetCUDAStream(gpu1)>>>(gpu1_ptr);
 #endif

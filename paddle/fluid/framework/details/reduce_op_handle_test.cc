@@ -69,7 +69,7 @@ struct TestReduceOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CUDAPlace(i);
         gpu_list_.push_back(p);
-        ctxs_.emplace_back(new p::CUDADeviceContext(p));
+        ctxs_.emplace_back(new p::phi::GPUContext(p));
       }
       nccl_ctxs_.reset(new platform::NCCLContextMap(gpu_list_));
 #else
@@ -81,7 +81,7 @@ struct TestReduceOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CPUPlace();
         gpu_list_.push_back(p);
-        ctxs_.emplace_back(new p::CPUDeviceContext(p));
+        ctxs_.emplace_back(new phi::CPUContext(p));
       }
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       nccl_ctxs_.reset(nullptr);
@@ -105,16 +105,16 @@ struct TestReduceOpHandle {
     nodes.emplace_back(new ir::Node("node"));
     if (use_gpu_) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      op_handle_.reset(new ReduceOpHandle(nodes.back().get(), local_scopes_,
-                                          gpu_list_, nccl_ctxs_.get()));
+      op_handle_.reset(new ReduceOpHandle(
+          nodes.back().get(), local_scopes_, gpu_list_, nccl_ctxs_.get()));
 #else
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with NCLL."));
 #endif
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      op_handle_.reset(new ReduceOpHandle(nodes.back().get(), local_scopes_,
-                                          gpu_list_, nccl_ctxs_.get()));
+      op_handle_.reset(new ReduceOpHandle(
+          nodes.back().get(), local_scopes_, gpu_list_, nccl_ctxs_.get()));
 #else
       op_handle_.reset(
           new ReduceOpHandle(nodes.back().get(), local_scopes_, gpu_list_));
@@ -146,8 +146,8 @@ struct TestReduceOpHandle {
 
     // add output
     nodes.emplace_back(new ir::Node("node2"));
-    auto *out_var_handle = new VarHandle(nodes.back().get(), 2, out_scope_idx,
-                                         "out", gpu_list_[out_scope_idx]);
+    auto *out_var_handle = new VarHandle(
+        nodes.back().get(), 2, out_scope_idx, "out", gpu_list_[out_scope_idx]);
     vars_.emplace_back(out_var_handle);
     op_handle_->AddOutput(out_var_handle);
 
@@ -172,8 +172,9 @@ struct TestReduceOpHandle {
       auto in_var = param_scopes_[input_scope_idx]->FindVar("input");
 
       PADDLE_ENFORCE_NOT_NULL(
-          in_var, platform::errors::NotFound(
-                      "Variable %s is not found in scope.", "input"));
+          in_var,
+          platform::errors::NotFound("Variable %s is not found in scope.",
+                                     "input"));
       auto in_selected_rows = in_var->GetMutable<phi::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
@@ -208,18 +209,23 @@ struct TestReduceOpHandle {
     auto &out_select_rows = out_var->Get<phi::SelectedRows>();
     auto rt = out_select_rows.value();
 
-    PADDLE_ENFORCE_EQ(out_select_rows.height(), height,
+    PADDLE_ENFORCE_EQ(out_select_rows.height(),
+                      height,
                       platform::errors::InvalidArgument(
                           "The height of SelectedRows is not equal to "
                           "the expected, expect %d, but got %d.",
-                          height, out_select_rows.height()));
+                          height,
+                          out_select_rows.height()));
     for (size_t k = 0; k < out_select_rows.rows().size(); ++k) {
       PADDLE_ENFORCE_EQ(
-          out_select_rows.rows()[k], rows[k % rows.size()],
+          out_select_rows.rows()[k],
+          rows[k % rows.size()],
           platform::errors::InvalidArgument(
               "The item at position %d of rows of SelectedRows is not equal to "
               "the expected, expect %d, but got %d.",
-              k, rows[k % rows.size()], out_select_rows.rows()[k]));
+              k,
+              rows[k % rows.size()],
+              out_select_rows.rows()[k]));
     }
 
     f::Tensor result_tensor;
@@ -242,8 +248,9 @@ struct TestReduceOpHandle {
          ++input_scope_idx) {
       auto in_var = param_scopes_[input_scope_idx]->FindVar("input");
       PADDLE_ENFORCE_NOT_NULL(
-          in_var, platform::errors::NotFound(
-                      "Variable %s is not found in scope.", "input"));
+          in_var,
+          platform::errors::NotFound("Variable %s is not found in scope.",
+                                     "input"));
       auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
       in_lod_tensor->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
       in_lod_tensor->set_lod(lod);

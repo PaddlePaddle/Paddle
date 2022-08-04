@@ -26,22 +26,29 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename GPUAccessor, template<typename T> class GPUOptimizer>
+template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 class HeterPs : public HeterPsBase {
  public:
   HeterPs() {}
-  HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource,
+  HeterPs(size_t capacity,
+          std::shared_ptr<HeterPsResource> resource,
           GPUAccessor& gpu_accessor);
   virtual ~HeterPs();
   HeterPs(const HeterPs&) = delete;
   HeterPs& operator=(const HeterPs&) = delete;
 
-  void pull_sparse(int num, FeatureKey* d_keys, float* d_vals,
+  void pull_sparse(int num,
+                   FeatureKey* d_keys,
+                   float* d_vals,
                    size_t len) override;
   // void build_ps(int num, FeatureKey* h_keys, float* h_vals, size_t len,
   //               size_t chunk_size, int stream_num) override;
-  void build_ps(int num, FeatureKey* h_keys, char* pool, size_t len,
-                size_t feature_value_size, size_t chunk_size,
+  void build_ps(int num,
+                FeatureKey* h_keys,
+                char* pool,
+                size_t len,
+                size_t feature_value_size,
+                size_t chunk_size,
                 int stream_num) override;
 #if defined(PADDLE_WITH_CUDA)
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,

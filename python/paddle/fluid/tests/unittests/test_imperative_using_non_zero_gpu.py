@@ -21,6 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativeUsingNonZeroGpu(unittest.TestCase):
+
     def run_main(self, np_arr, place):
         with guard(place):
             var = to_variable(np_arr)

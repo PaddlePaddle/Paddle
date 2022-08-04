@@ -128,25 +128,22 @@ def _hsv_to_rgb(img):
     q = paddle.clip(v * (1.0 - s * f), 0.0, 1.0)
     t = paddle.clip(v * (1.0 - s * (1.0 - f)), 0.0, 1.0)
 
-    mask = paddle.equal(
-        i.unsqueeze(axis=-3),
-        paddle.arange(
-            6, dtype=i.dtype).reshape((-1, 1, 1))).astype(img.dtype)
-    matrix = paddle.stack(
-        [
-            paddle.stack(
-                [v, q, p, p, t, v], axis=-3), paddle.stack(
-                    [t, v, v, q, p, p], axis=-3), paddle.stack(
-                        [p, p, t, v, v, q], axis=-3)
-        ],
-        axis=-4)
+    mask = paddle.equal(i.unsqueeze(axis=-3),
+                        paddle.arange(6, dtype=i.dtype).reshape(
+                            (-1, 1, 1))).astype(img.dtype)
+    matrix = paddle.stack([
+        paddle.stack([v, q, p, p, t, v], axis=-3),
+        paddle.stack([t, v, v, q, p, p], axis=-3),
+        paddle.stack([p, p, t, v, v, q], axis=-3)
+    ],
+                          axis=-4)
     return paddle.einsum("...ijk, ...xijk -> ...xjk", mask, matrix)
 
 
 def _blend_images(img1, img2, ratio):
     max_value = 1.0 if paddle.is_floating_point(img1) else 255.0
-    return paddle.lerp(img2, img1, float(ratio)).clip(
-        0, max_value).astype(img1.dtype)
+    return paddle.lerp(img2, img1,
+                       float(ratio)).clip(0, max_value).astype(img1.dtype)
 
 
 def normalize(img, mean, std, data_format='CHW'):
@@ -194,8 +191,8 @@ def to_grayscale(img, num_output_channels=1, data_format='CHW'):
     if num_output_channels not in (1, 3):
         raise ValueError('num_output_channels should be either 1 or 3')
 
-    rgb_weights = paddle.to_tensor(
-        [0.2989, 0.5870, 0.1140], place=img.place).astype(img.dtype)
+    rgb_weights = paddle.to_tensor([0.2989, 0.5870, 0.1140],
+                                   place=img.place).astype(img.dtype)
 
     if _is_channel_first(data_format):
         rgb_weights = rgb_weights.reshape((-1, 1, 1))
@@ -231,12 +228,15 @@ def _grid_transform(img, grid, mode, fill):
             shape=[img.shape[0], grid.shape[1], grid.shape[2], grid.shape[3]])
 
     if fill is not None:
-        dummy = paddle.ones(
-            (img.shape[0], 1, img.shape[2], img.shape[3]), dtype=img.dtype)
+        dummy = paddle.ones((img.shape[0], 1, img.shape[2], img.shape[3]),
+                            dtype=img.dtype)
         img = paddle.concat((img, dummy), axis=1)
 
-    img = F.grid_sample(
-        img, grid, mode=mode, padding_mode="zeros", align_corners=False)
+    img = F.grid_sample(img,
+                        grid,
+                        mode=mode,
+                        padding_mode="zeros",
+                        align_corners=False)
 
     # Fill with required color
     if fill is not None:
@@ -287,8 +287,11 @@ def affine(img, matrix, interpolation="nearest", fill=None, data_format='CHW'):
     matrix = matrix.reshape((1, 2, 3))
     shape = img.shape
 
-    grid = _affine_grid(
-        matrix, w=shape[-1], h=shape[-2], ow=shape[-1], oh=shape[-2])
+    grid = _affine_grid(matrix,
+                        w=shape[-1],
+                        h=shape[-2],
+                        ow=shape[-1],
+                        oh=shape[-2])
 
     if isinstance(fill, int):
         fill = tuple([fill] * 3)
@@ -377,8 +380,8 @@ def rotate(img,
              [0.5 * w, 0.5 * h, 1.0], [0.5 * w, -0.5 * h, 1.0]],
             place=matrix.place).astype(matrix.dtype)
 
-        _pos = corners.reshape(
-            (1, -1, 3)).bmm(matrix.transpose((0, 2, 1))).reshape((1, -1, 2))
+        _pos = corners.reshape((1, -1, 3)).bmm(matrix.transpose(
+            (0, 2, 1))).reshape((1, -1, 2))
         _min = _pos.min(axis=-2).floor()
         _max = _pos.max(axis=-2).ceil()
 
@@ -574,13 +577,12 @@ def center_crop(img, output_size, data_format='CHW'):
     crop_height, crop_width = output_size
     crop_top = int(round((image_height - crop_height) / 2.))
     crop_left = int(round((image_width - crop_width) / 2.))
-    return crop(
-        img,
-        crop_top,
-        crop_left,
-        crop_height,
-        crop_width,
-        data_format=data_format)
+    return crop(img,
+                crop_top,
+                crop_left,
+                crop_height,
+                crop_width,
+                data_format=data_format)
 
 
 def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
@@ -705,11 +707,10 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
         oh, ow = size
 
     img = img.unsqueeze(0)
-    img = F.interpolate(
-        img,
-        size=(oh, ow),
-        mode=interpolation.lower(),
-        data_format='N' + data_format.upper())
+    img = F.interpolate(img,
+                        size=(oh, ow),
+                        mode=interpolation.lower(),
+                        data_format='N' + data_format.upper())
 
     return img.squeeze(0)
 
@@ -755,11 +756,13 @@ def adjust_contrast(img, contrast_factor):
     channels = _get_image_num_channels(img, 'CHW')
     dtype = img.dtype if paddle.is_floating_point(img) else paddle.float32
     if channels == 1:
-        extreme_target = paddle.mean(
-            img.astype(dtype), axis=(-3, -2, -1), keepdim=True)
+        extreme_target = paddle.mean(img.astype(dtype),
+                                     axis=(-3, -2, -1),
+                                     keepdim=True)
     elif channels == 3:
-        extreme_target = paddle.mean(
-            to_grayscale(img).astype(dtype), axis=(-3, -2, -1), keepdim=True)
+        extreme_target = paddle.mean(to_grayscale(img).astype(dtype),
+                                     axis=(-3, -2, -1),
+                                     keepdim=True)
     else:
         raise ValueError("channels of input should be either 1 or 3.")
 

@@ -31,9 +31,10 @@ const int CUDA_NUM_THREADS = platform::PADDLE_CUDA_NUM_THREADS;
 #define GET_BLOCK(N) ((N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS)
 #define CUDA_BLOCK(N) GET_BLOCK(N), CUDA_NUM_THREADS, 0
 
-
-__global__ void CopyKeysKernel(uint64_t** src_keys, uint64_t* dest_total_keys,
-                               const int64_t* len, int slot_num,
+__global__ void CopyKeysKernel(uint64_t** src_keys,
+                               uint64_t* dest_total_keys,
+                               const int64_t* len,
+                               int slot_num,
                                int total_len) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
@@ -51,8 +52,13 @@ __global__ void CopyKeysKernel(uint64_t** src_keys, uint64_t* dest_total_keys,
   }
 }
 
-__global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
-                         int hidden, int slot_num, int total_len, int bs,
+__global__ void PushCopy(FeaturePushValue* dest,
+                         float** src,
+                         int64_t* len,
+                         int hidden,
+                         int slot_num,
+                         int total_len,
+                         int bs,
                          int* slot_vector) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
@@ -79,10 +85,12 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
 PSGPUWrapper::~PSGPUWrapper() { delete HeterPs_; }
 
 void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
-                            uint64_t** origin_keys, uint64_t* total_keys,
-                            const int64_t* gpu_len, int slot_num,
+                            uint64_t** origin_keys,
+                            uint64_t* total_keys,
+                            const int64_t* gpu_len,
+                            int slot_num,
                             int total_len) {
-  auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+  auto stream = dynamic_cast<phi::GPUContext*>(
                     platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   CopyKeysKernel<<<(total_len + 1024 - 1) / 1024, 1024, 0, stream>>>(
@@ -90,13 +98,12 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
   cudaStreamSynchronize(stream);
 }
 
-__global__ void CopyKeysKernel2(
-        const int total_len,  
-        uint64_t** src_keys,
-        uint64_t* dest_total_keys,
-        const int slot_num,
-        const int64_t* slot_lens, 
-        int* key2slots) {
+__global__ void CopyKeysKernel2(const int total_len,
+                                uint64_t** src_keys,
+                                uint64_t* dest_total_keys,
+                                const int slot_num,
+                                const int64_t* slot_lens,
+                                int* key2slots) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -115,10 +122,13 @@ __global__ void CopyKeysKernel2(
 }
 
 void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
-                            uint64_t** origin_keys, uint64_t* total_keys,
-                            const int64_t* slot_lens, int slot_num,
-                            int total_len, int* key2slot) {
-  auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+                            uint64_t** origin_keys,
+                            uint64_t* total_keys,
+                            const int64_t* slot_lens,
+                            int slot_num,
+                            int total_len,
+                            int* key2slot) {
+  auto stream = dynamic_cast<phi::GPUContext*>(
                     platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   CopyKeysKernel2<<<CUDA_BLOCK(total_len), stream>>>(
@@ -126,27 +136,50 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
   cudaStreamSynchronize(stream);
 }
 
-void PSGPUWrapper::SetSparseSGD(float nonclk_coeff, float clk_coeff,
-                                float min_bound, float max_bound,
-                                float learning_rate, float initial_g2sum,
-                                float initial_range, float beta1_decay_rate,
-                                float beta2_decay_rate, float ada_epsilon) {
-  optimizer_config_.set_sparse_sgd(nonclk_coeff, clk_coeff, min_bound,
-                                   max_bound, learning_rate, initial_g2sum,
-                                   initial_range, beta1_decay_rate,
-                                   beta2_decay_rate, ada_epsilon);
+void PSGPUWrapper::SetSparseSGD(float nonclk_coeff,
+                                float clk_coeff,
+                                float min_bound,
+                                float max_bound,
+                                float learning_rate,
+                                float initial_g2sum,
+                                float initial_range,
+                                float beta1_decay_rate,
+                                float beta2_decay_rate,
+                                float ada_epsilon) {
+  optimizer_config_.set_sparse_sgd(nonclk_coeff,
+                                   clk_coeff,
+                                   min_bound,
+                                   max_bound,
+                                   learning_rate,
+                                   initial_g2sum,
+                                   initial_range,
+                                   beta1_decay_rate,
+                                   beta2_decay_rate,
+                                   ada_epsilon);
 }
 
 void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
-                                float mf_learning_rate, float mf_initial_g2sum,
-                                float mf_initial_range, float mf_min_bound,
-                                float mf_max_bound, float mf_beta1_decay_rate,
+                                float mf_learning_rate,
+                                float mf_initial_g2sum,
+                                float mf_initial_range,
+                                float mf_min_bound,
+                                float mf_max_bound,
+                                float mf_beta1_decay_rate,
                                 float mf_beta2_decay_rate,
-                                float mf_ada_epsilon, float nodeid_slot, float feature_learning_rate) {
-  optimizer_config_.set_embedx_sgd(
-      mf_create_thresholds, mf_learning_rate, mf_initial_g2sum,
-      mf_initial_range, mf_min_bound, mf_max_bound, mf_beta1_decay_rate,
-      mf_beta2_decay_rate, mf_ada_epsilon, nodeid_slot, feature_learning_rate);
+                                float mf_ada_epsilon,
+                                float nodeid_slot,
+                                float feature_learning_rate) {
+  optimizer_config_.set_embedx_sgd(mf_create_thresholds,
+                                   mf_learning_rate,
+                                   mf_initial_g2sum,
+                                   mf_initial_range,
+                                   mf_min_bound,
+                                   mf_max_bound,
+                                   mf_beta1_decay_rate,
+                                   mf_beta2_decay_rate,
+                                   mf_ada_epsilon,
+                                   nodeid_slot,
+                                   feature_learning_rate);
 }
 
 }  // end namespace framework

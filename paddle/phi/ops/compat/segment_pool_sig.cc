@@ -20,7 +20,11 @@ KernelSignature SegmentPoolGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("segment_pool_grad",
                          {
-                             "X", "SegmentIds", "Out", "SummedIds", "Out@GRAD",
+                             "X",
+                             "SegmentIds",
+                             "Out",
+                             "SummedIds",
+                             "Out@GRAD",
                          },
                          {"pooltype"},
                          {"X@GRAD"});

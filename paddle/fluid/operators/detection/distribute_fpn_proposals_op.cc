@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -24,21 +25,25 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("FpnRois"), true,
+        ctx->HasInput("FpnRois"),
+        true,
         platform::errors::NotFound("Input(FpnRois) of DistributeFpnProposalsOp"
                                    " is not found"));
-    PADDLE_ENFORCE_GE(ctx->Outputs("MultiFpnRois").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Outputs("MultiFpnRois").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "Outputs(MultiFpnRois) of "
                           "DistributeFpnProposalsOp should not be empty"));
     size_t min_level = static_cast<size_t>(ctx->Attrs().Get<int>("min_level"));
     size_t max_level = static_cast<size_t>(ctx->Attrs().Get<int>("max_level"));
     PADDLE_ENFORCE_GE(
-        max_level, min_level,
+        max_level,
+        min_level,
         platform::errors::InvalidArgument(
             "max_level must not lower than "
             "min_level. But received max_level = %d, min_level = %d",
-            max_level, min_level));
+            max_level,
+            min_level));
     // Set the output shape
     size_t num_out_rois = max_level - min_level + 1;
     std::vector<framework::DDim> outs_dims;
@@ -103,7 +108,8 @@ class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("refer_scale",
                  "The referring scale of FPN layer with"
                  " specified level");
-    AddAttr<bool>("pixel_offset", "(bool, default True),",
+    AddAttr<bool>("pixel_offset",
+                  "(bool, default True),",
                   "If true, im_shape pixel offset is 1.")
         .SetDefault(true);
     AddComment(R"DOC(
@@ -120,7 +126,8 @@ we return an array which indicate the original index of rois in
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    distribute_fpn_proposals, ops::DistributeFpnProposalsOp,
+    distribute_fpn_proposals,
+    ops::DistributeFpnProposalsOp,
     ops::DistributeFpnProposalsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

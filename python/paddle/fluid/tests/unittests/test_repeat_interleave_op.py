@@ -24,6 +24,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestRepeatInterleaveOp(OpTest):
+
     def setUp(self):
         self.op_type = "repeat_interleave"
         self.init_dtype_type()
@@ -63,6 +64,7 @@ class TestRepeatInterleaveOp(OpTest):
 
 
 class TestRepeatInterleaveOp2(OpTest):
+
     def setUp(self):
         self.op_type = "repeat_interleave"
         self.init_dtype_type()
@@ -100,6 +102,7 @@ class TestRepeatInterleaveOp2(OpTest):
 
 
 class TestIndexSelectAPI(unittest.TestCase):
+
     def input_data(self):
         self.data_x = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
                                 [9.0, 10.0, 11.0, 12.0]])
@@ -112,15 +115,16 @@ class TestIndexSelectAPI(unittest.TestCase):
         # case 1:
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
-                name='repeats',
-                shape=[4],
-                dtype='int32',
-                append_batch_size=False)
+            index = fluid.layers.data(name='repeats',
+                                      shape=[4],
+                                      dtype='int32',
+                                      append_batch_size=False)
             z = paddle.repeat_interleave(x, index, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': self.data_x,
-                                 'repeats': self.data_index},
+            res, = exe.run(feed={
+                'x': self.data_x,
+                'repeats': self.data_index
+            },
                            fetch_list=[z.name],
                            return_numpy=False)
         expect_out = np.repeat(self.data_x, self.data_index, axis=1)
@@ -130,11 +134,10 @@ class TestIndexSelectAPI(unittest.TestCase):
         repeats = np.array([1, 2, 1]).astype('int32')
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
-                name='repeats',
-                shape=[3],
-                dtype='int32',
-                append_batch_size=False)
+            index = fluid.layers.data(name='repeats',
+                                      shape=[3],
+                                      dtype='int32',
+                                      append_batch_size=False)
             z = paddle.repeat_interleave(x, index, axis=0)
             exe = fluid.Executor(fluid.CPUPlace())
             res, = exe.run(feed={

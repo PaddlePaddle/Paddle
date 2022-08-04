@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/mean_iou_op.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -24,9 +24,12 @@ namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
-__global__ void CountCUDAKernel(const int num_classes, const int count,
-                                const T* predictions, const T* labels,
-                                int* wrong, int* correct) {
+__global__ void CountCUDAKernel(const int num_classes,
+                                const int count,
+                                const T* predictions,
+                                const T* labels,
+                                int* wrong,
+                                int* correct) {
   extern __shared__ int blcok_cache[];
   int* wrong_c = blcok_cache;
   int* correct_c = blcok_cache + num_classes;
@@ -57,8 +60,8 @@ __global__ void CountCUDAKernel(const int num_classes, const int count,
   }
 }
 
-__global__ void ComputeIoUCUDAKernel(const int num_classes, int* wrong,
-                                     int* correct, float* ious, float* iou) {
+__global__ void ComputeIoUCUDAKernel(
+    const int num_classes, int* wrong, int* correct, float* ious, float* iou) {
   __shared__ int valid_count_c;
   if (threadIdx.x == 0) {
     valid_count_c = 0;
@@ -89,7 +92,7 @@ template <typename T>
 class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto& place = *dev_ctx.eigen_device();
     // get input and output tensor
     auto* predictions = ctx.Input<Tensor>("Predictions");
@@ -140,12 +143,18 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     int block = PADDLE_CUDA_NUM_THREADS;
     int grid = (predictions->numel() + block - 1) / block;
     int cache_size = (num_classes * 2 + 1) * sizeof(int);
-    CountCUDAKernel<T><<<grid, block, cache_size, stream>>>(
-        num_classes, predictions->numel(), predictions_data, labels_data,
-        out_wrong_data, out_correct_data);
+    CountCUDAKernel<T>
+        <<<grid, block, cache_size, stream>>>(num_classes,
+                                              predictions->numel(),
+                                              predictions_data,
+                                              labels_data,
+                                              out_wrong_data,
+                                              out_correct_data);
 
-    ComputeIoUCUDAKernel<<<1, block, 0, stream>>>(num_classes, out_wrong_data,
-                                                  out_correct_data, ious_data,
+    ComputeIoUCUDAKernel<<<1, block, 0, stream>>>(num_classes,
+                                                  out_wrong_data,
+                                                  out_correct_data,
+                                                  ious_data,
                                                   out_mean_iou_data);
   }
 };
@@ -154,6 +163,7 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(mean_iou, ops::MeanIoUCUDAOpKernel<int>,
+REGISTER_OP_CUDA_KERNEL(mean_iou,
+                        ops::MeanIoUCUDAOpKernel<int>,
                         ops::MeanIoUCUDAOpKernel<int64_t>,
                         ops::MeanIoUCUDAOpKernel<int32_t>);

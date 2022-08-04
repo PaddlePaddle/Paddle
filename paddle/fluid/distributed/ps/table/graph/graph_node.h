@@ -22,8 +22,8 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_weighted_sampler.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace distributed {
@@ -106,17 +106,11 @@ class FeatureNode : public Node {
   }
 
   virtual int get_feature_ids(std::vector<uint64_t> *res) const {
-    PADDLE_ENFORCE_NOT_NULL(res);
+    PADDLE_ENFORCE_NOT_NULL(res,
+                            paddle::platform::errors::InvalidArgument(
+                                "get_feature_ids res should not be null"));
     errno = 0;
     for (auto &feature_item : feature) {
-      //      const char *feat_str = feature_item.c_str();
-      //      auto fields = paddle::string::split_string<std::string>(feat_str,
-      //      " "); char *head_ptr = NULL; for (auto &field : fields) {
-      //        PADDLE_ENFORCE_EQ(field.empty(), false);
-      //        uint64_t feasign = strtoull(field.c_str(), &head_ptr, 10);
-      //        PADDLE_ENFORCE_EQ(field.c_str() + field.length(), head_ptr);
-      //        res->insert(feasign);
-      //      }
       const uint64_t *feas = (const uint64_t *)(feature_item.c_str());
       size_t num = feature_item.length() / sizeof(uint64_t);
       CHECK((feature_item.length() % sizeof(uint64_t)) == 0)
@@ -127,37 +121,37 @@ class FeatureNode : public Node {
         (*res)[n + i] = feas[i];
       }
     }
-    PADDLE_ENFORCE_EQ(errno, 0);
+    PADDLE_ENFORCE_EQ(
+        errno,
+        0,
+        paddle::platform::errors::InvalidArgument(
+            "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
 
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
-    PADDLE_ENFORCE_NOT_NULL(res);
+    PADDLE_ENFORCE_NOT_NULL(res,
+                            paddle::platform::errors::InvalidArgument(
+                                "get_feature_ids res should not be null"));
     res->clear();
     errno = 0;
     if (slot_idx < (int)this->feature.size()) {
-      //      const char *feat_str = this->feature[slot_idx].c_str();
-      //      auto fields = paddle::string::split_string<std::string>(feat_str,
-      //      " "); char *head_ptr = NULL; for (auto &field : fields) {
-      //        PADDLE_ENFORCE_EQ(field.empty(), false);
-      //        uint64_t feasign = strtoull(field.c_str(), &head_ptr, 10);
-      //        //PADDLE_ENFORCE_EQ(field.c_str() + field.length(), head_ptr);
-      //        CHECK(field.c_str() + field.length( ) == head_ptr)
-      //            << "field:[" << field << "], head_ptr:[" << head_ptr << "]";
-      //        res->push_back(feasign);
-      //      }
       const std::string &s = this->feature[slot_idx];
       const uint64_t *feas = (const uint64_t *)(s.c_str());
 
       size_t num = s.length() / sizeof(uint64_t);
       CHECK((s.length() % sizeof(uint64_t)) == 0)
-                << "bad feature_item: [" << s << "]";
+          << "bad feature_item: [" << s << "]";
       res->resize(num);
       for (size_t i = 0; i < num; ++i) {
         (*res)[i] = feas[i];
       }
     }
-    PADDLE_ENFORCE_EQ(errno, 0);
+    PADDLE_ENFORCE_EQ(
+        errno,
+        0,
+        paddle::platform::errors::InvalidArgument(
+            "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
 
@@ -193,7 +187,8 @@ class FeatureNode : public Node {
   template <typename T>
   static void parse_value_to_bytes(
       std::vector<std::string>::iterator feat_str_begin,
-      std::vector<std::string>::iterator feat_str_end, std::string *output) {
+      std::vector<std::string>::iterator feat_str_end,
+      std::string *output) {
     T v;
     size_t feat_str_size = feat_str_end - feat_str_begin;
     size_t Tsize = sizeof(T) * feat_str_size;

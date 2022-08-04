@@ -21,6 +21,18 @@ namespace phi {
 namespace kps {
 namespace details {
 
+static inline int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
+
+static inline int GetXpuReadLens(int numel, int block_num, int grid_num) {
+  const int buf_size = 256;
+  int nthreads = block_num * grid_num;
+  if (numel / nthreads == 1) {
+    return numel / nthreads * 4;
+  }
+  int read_lens = std::min(buf_size, RoundUpDiv(numel, 32 * nthreads) * 32);
+  return read_lens;
+}
+
 enum class OptType {    // Optimize type of calc after input shape compressed
   CanNotOptimize = -1,  // can not optimize, broadcast first
   N_1,                  // just like {1} op {100} or {100} op {1}
@@ -70,6 +82,7 @@ struct BroadcastConfig {
   int strides_out[phi::DDim::kMaxRank];
   int in_dim[phi::DDim::kMaxRank];
   int dim_after_cmp[phi::DDim::kMaxRank];
+  int y_dim_after_cmp[phi::DDim::kMaxRank];
   int dim_size_after_cmp = 0;
   int cmp_res = 0;
   OptType cmp_type = OptType::CanNotOptimize;
@@ -82,7 +95,7 @@ struct BroadcastConfig {
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
                              const std::vector<int64_t>& in_dims,
-                             const std::vector<int64_t>& another_in_dims,
+                             const std::vector<int64_t>& y_in_dims,
                              int dim_size) {
     std::vector<int> strides_in_tmp;
     std::vector<int> strides_out_tmp;
@@ -95,22 +108,36 @@ struct BroadcastConfig {
       strides_out_tmp[i] = strides_out_tmp[i - 1] * out_dims[i - 1];
     }
 
+    int numel_out = 1;
     for (int i = 0; i < dim_size; i++) {
       dim_tmp[i] = in_dims[i];
+      numel_out = out_dims[i] * numel_out;
     }
     kDims = dim_size;
     memcpy(strides_in, strides_in_tmp.data(), kDims * sizeof(int));
     memcpy(strides_out, strides_out_tmp.data(), kDims * sizeof(int));
     memcpy(in_dim, dim_tmp.data(), kDims * sizeof(int));
 
-    cmp_res = get_mnk_for_broadcast_ops(in_dims, another_in_dims);
-    get_opt_type(another_in_dims);
-    buf_len = get_buf_len();
+    cmp_res = get_mnk_for_broadcast_ops(in_dims, y_in_dims);
+    get_opt_type();
+    buf_len = get_buf_len(numel_out);
+    int numel_x = 1;
+    int numel_y = 1;
+    for (int i = 0; i < dim_size; i++) {
+      numel_x = in_dims[i] * numel_x;
+      numel_y = y_in_dims[i] * numel_y;
+    }
+    if (numel_out == numel_x && numel_out == numel_y) {
+      buf_len = GetXpuReadLens(numel_out, 8, 64);
+    }
   }
 
-  int get_buf_len() {
+  int get_buf_len(int numel) {
     if (cmp_type == OptType::CanNotOptimize) {
       return 256;
+    }
+    if (cmp_type == OptType::N_1) {
+      return kps::details::GetXpuReadLens(numel, 8, 64);
     }
     int max_buf_len = 512;
     int buf_len = m / 16 * 16;
@@ -154,7 +181,7 @@ struct BroadcastConfig {
     return index_src;
   }
 
-  void get_opt_type(const std::vector<int64_t>& y_dim_after_cmp) {
+  void get_opt_type() {
     if (dim_size_after_cmp == 1) {
       if (dim_after_cmp[0] == 1 && y_dim_after_cmp[0] != 1) {  // {1} op {n}
         n = y_dim_after_cmp[0];
@@ -241,6 +268,7 @@ struct BroadcastConfig {
     int cmp_x = 0;
     int cmp_y = 0;
     bool is_same = false;
+
     std::vector<int64_t> xshape_after_remove_ones = xshape;
     std::vector<int64_t> yshape_after_remove_ones = yshape;
     // first step: remove excess ones
@@ -275,6 +303,7 @@ struct BroadcastConfig {
       }
       idx = idx + 1;
       dim_after_cmp[after_cmp_idx] = cmp_x;
+      y_dim_after_cmp[after_cmp_idx] = cmp_y;
       after_cmp_idx++;
       if (idx == xshape_after_remove_ones.size()) {
         dim_size_after_cmp = after_cmp_idx;
@@ -291,6 +320,7 @@ __device__ __forceinline__ void WriteData(T _global_ptr_* dst,
                                           T* src,
                                           int num) {
   if (num > 0) {
+    mfence_local();
     LM2GM(src, dst, num * sizeof(T));
   }
 }
@@ -358,6 +388,7 @@ __device__ __inline__ void ReadData(Ty* dst,
           break;
         }
       }
+      mfence_local();
       GM2LM(src + thread_offset + idy * stride_ny, in_temp, sizeof(Tx));
       dst[idy] = static_cast<Ty>(in_temp[0]);
     }
@@ -369,6 +400,7 @@ __device__ __inline__ void ReadData(Ty* dst,
           break;
         }
       }
+      mfence_local();
       GM2LM(src + thread_offset + idx * stride_nx, in_temp, sizeof(Tx));
       dst[idx] = static_cast<Ty>(in_temp[0]);
     }
@@ -383,6 +415,7 @@ __device__ __inline__ void ReadData(Ty* dst,
           }
         }
         int fix = thread_offset + idx * stride_nx + idy * stride_ny;
+        mfence_local();
         GM2LM(src + fix, in_temp, sizeof(Tx));
         dst[idy * NX + idx] = static_cast<Ty>(in_temp[0]);
       }
@@ -422,9 +455,10 @@ __device__ __inline__ void Init(T* dst, T init_data, int read_lens) {
  * it supports different data types of inputs.
  */
 template <typename T, typename ArgsT, int Index, int NX>
-__device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
+__device__ __forceinline__ void Init(ArgsT* dst, T init_data, int read_lens) {
+  mfence();
 #pragma unroll
-  for (int i = 0; i < NX; i++) {
+  for (int i = 0; i < read_lens; i++) {
     std::get<Index>(dst[i]) = init_data;
   }
 }
@@ -454,14 +488,13 @@ template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
 __device__ __inline__ void ReadData(T* dst,
                                     const T _global_ptr_* src,
                                     int num) {
+  mfence_local();
   int thread_offset = core_id() * NX;
-  __local__ T in_temp[1];
   if (IsBoundary) {  // core_num() * NX > num
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if (idx + thread_offset < num) {
-        GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
-        dst[idx] = in_temp[0];
+        GM2LM(src + thread_offset + idx, dst + idx, sizeof(T));
       }
     }
   } else {  // core_num() * NX < num
@@ -475,13 +508,12 @@ __device__ __inline__ void ReadData(T* dst,
                                     int num,
                                     int read_lens) {
   int thread_offset = core_id() * read_lens;
-  __local__ T in_temp[1];
+  mfence_local();
   if (IsBoundary) {  // core_num() * read_lens > num
 #pragma unroll
     for (int idx = 0; idx < read_lens; ++idx) {
       if (idx + thread_offset < num) {
-        GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
-        dst[idx] = in_temp[0];
+        GM2LM(src + thread_offset + idx, dst + idx, sizeof(T));
       }
     }
   } else {  // core_num() * read_lens < num
@@ -520,22 +552,24 @@ template <typename T,
           bool IsBoundary>
 __device__ __forceinline__ void ReadData(ArgsT* dst,
                                          const T _global_ptr_* src,
-                                         int num) {
-  int thread_offset = core_id() * NX;
+                                         int num,
+                                         int read_lens) {
+  int thread_offset = core_id() * read_lens;
   __local__ T in_temp[1];
   __local__ T in_vec[NX];
-  if (IsBoundary) {  // core_num() * NX > num
+  if (IsBoundary) {  // core_num() * read_lens > num
 #pragma unroll
-    for (int idx = 0; idx < NX; ++idx) {
+    for (int idx = 0; idx < read_lens; ++idx) {
       if (idx + thread_offset < num) {
         GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
         std::get<Index>(dst[idx]) = in_temp[0];
+        mfence();
       }
     }
-  } else {  // core_num() * NX < num
-    GM2LM(src + thread_offset, in_vec, NX * sizeof(T));
+  } else {  // core_num() * read_lens < num
+    GM2LM(src + thread_offset, in_vec, read_lens * sizeof(T));
 #pragma unroll
-    for (int idx = 0; idx < NX; ++idx) {
+    for (int idx = 0; idx < read_lens; ++idx) {
       std::get<Index>(dst[idx]) = in_vec[idx];
     }
   }
@@ -575,8 +609,7 @@ __device__ __inline__ void ReadDataBc(T* dst,
                                       int stride_ny) {
   uint32_t thread_offset = block_offset + core_id();
   uint32_t index_src = 0;
-  __local__ T in_temp[1];
-
+  mfence_local();
 #pragma unroll
   for (int ny = 0; ny < NY; ++ny) {
 #pragma unroll
@@ -589,8 +622,7 @@ __device__ __inline__ void ReadDataBc(T* dst,
         }
       }
       index_src = config(index_output);
-      GM2LM(src + index_src, in_temp, sizeof(T));
-      dst[nx + ny * NX] = in_temp[0];
+      GM2LM(src + index_src, dst + nx + ny * NX, sizeof(T));
     }
   }
 }
@@ -666,8 +698,10 @@ __device__ __forceinline__ void ReadDataReduce(
         }
       }
       uint32_t index_src = index_cal(thread_offset + block_offset);
+      mfence_local();
       GM2LM(src + index_src, in_temp, sizeof(Tx));
       dst[ny] = static_cast<Ty>(func(in_temp[0]));
+
       thread_offset += stride_ny;
     }
   } else {
@@ -682,6 +716,7 @@ __device__ __forceinline__ void ReadDataReduce(
           }
         }
         uint32_t index_src = index_cal(thread_offset + block_offset);
+        mfence_local();
         GM2LM(src + index_src, in_temp, sizeof(Tx));
         dst[nx + ny * NX] = static_cast<Ty>(func(in_temp[0]));
         thread_offset += stride_ny;
@@ -717,14 +752,13 @@ __device__ void WriteData(T _global_ptr_* dst,
                           int num,
                           int read_lens) {
   int thread_offset = core_id() * read_lens;
-  __local__ T in_temp[1];
+  mfence_local();
 
   if (IsBoundary) {  // core_num() * read_lens > num
 #pragma unroll
     for (int idx = 0; idx < read_lens; ++idx) {
       if (idx + thread_offset < num) {
-        in_temp[0] = src[idx];
-        LM2GM(in_temp, dst + idx + thread_offset, sizeof(T));
+        LM2GM(src + idx, dst + idx + thread_offset, sizeof(T));
       }
     }
   } else {  // core_num() * read_lens < num
@@ -735,17 +769,17 @@ __device__ void WriteData(T _global_ptr_* dst,
 template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
 __device__ void WriteData(T _global_ptr_* dst, const T* src, int num) {
   int thread_offset = core_id() * NX;
-  __local__ T in_temp[1];
+  mfence_local();
 
   if (IsBoundary) {  // core_num() * NX > num
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if (idx + thread_offset < num) {
-        in_temp[0] = src[idx];
-        LM2GM(in_temp, dst + idx + thread_offset, sizeof(T));
+        LM2GM(src + idx, dst + idx + thread_offset, sizeof(T));
       }
     }
   } else {  // core_num() * NX < num
+    mfence_local();
     LM2GM(src, dst + thread_offset, NX * sizeof(T));
   }
 }
@@ -797,10 +831,12 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
     if (IsBoundary) {
       if (left_size_nx > 0) {
         in_temp[0] = static_cast<Ty>(src[0]);
+        mfence_local();
         LM2GM(in_temp, dst + thread_offset, sizeof(Ty));
       }
     } else {
       in_temp[0] = static_cast<Ty>(src[0]);
+      mfence_local();
       LM2GM(in_temp, dst + thread_offset, sizeof(Ty));
     }
   } else if (NX == 1) {
@@ -813,6 +849,7 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
       }
 
       in_temp[0] = static_cast<Ty>(src[idy]);
+      mfence_local();
       LM2GM(in_temp, dst + thread_offset + idy * stride_ny, sizeof(Ty));
     }
   } else if (NY == 1) {  // for NY == 1 and NX != 1
@@ -825,6 +862,7 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
       }
 
       in_temp[0] = static_cast<Ty>(src[idx]);
+      mfence_local();
       LM2GM(in_temp, dst + thread_offset + idx * stride_nx, sizeof(Ty));
     }
   } else {  // for NX != 1 and NY != 1
@@ -843,6 +881,7 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
           }
         }
         in_temp[0] = static_cast<Ty>(src[idx + idy * NX]);
+        mfence_local();
         LM2GM(in_temp,
               dst + thread_offset + idx * stride_nx + idy * stride_ny,
               sizeof(Ty));
@@ -995,6 +1034,7 @@ __device__ __inline__ void ReadDataBc1NMn(
     for (int i = 0; i < last_col; i++) {
       dst[i] = in_temp;
     }
+    mfence_local();
     GM2LM(src + index_base + 1, &in_temp, sizeof(T));
     for (int i = 0; i < read_lens - last_col; i++) {
       dst[last_col + i] = in_temp;
@@ -1049,6 +1089,7 @@ __device__ __inline__ void ReadDataBc1N1Mnk(
     } else {
       next_part_index = 0;
     }
+    mfence_local();
     GM2LM(src + next_part_index, &in_temp, sizeof(T));
     for (int i = 0; i < read_lens - last_col; i++) {
       dst[last_col + i] = in_temp;
@@ -1135,6 +1176,7 @@ __device__ __inline__ void ReadDataBcCanNotCmp(
     if (index_src >= index_base && index_src < index_base + cache_size) {
       in_temp = src_temp[index_src - index_base];
     } else {
+      mfence_local();
       GM2LM(src + index_src, &in_temp, sizeof(T));
     }
     dst[nx] = in_temp;

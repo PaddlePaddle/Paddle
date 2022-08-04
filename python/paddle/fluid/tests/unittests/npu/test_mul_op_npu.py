@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
@@ -59,7 +60,8 @@ class TestMul(OpTest):
             self.place,
             ['X', 'Y'],
             'Out',
-            max_relative_error=0.0065, )
+            max_relative_error=0.0065,
+        )
 
     def test_check_grad_ingore_x(self):
         self.check_grad_with_place(
@@ -67,7 +69,8 @@ class TestMul(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            max_relative_error=0.0065, )
+            max_relative_error=0.0065,
+        )
 
     def test_check_grad_ingore_y(self):
         self.check_grad_with_place(
@@ -75,12 +78,14 @@ class TestMul(OpTest):
             ['X'],
             'Out',
             no_grad_set=set("Y"),
-            max_relative_error=0.0065, )
+            max_relative_error=0.0065,
+        )
 
 
 @skip_check_grad_ci(
     reason="Don't support grad checking for NPU OP with FP16 data type.")
 class TestMulFP16(TestMul):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -119,6 +124,7 @@ class TestMul2(TestMul):
 @skip_check_grad_ci(
     reason="Don't support grad checking for NPU OP with FP16 data type.")
 class TestMul2FP16(TestMul2):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -157,6 +163,7 @@ class TestMul3(TestMul):
 @skip_check_grad_ci(
     reason="Don't support grad checking for NPU OP with FP16 data type.")
 class TestMul3FP16(TestMul3):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -195,6 +202,7 @@ class TestMul4(TestMul):
 @skip_check_grad_ci(
     reason="Don't support grad checking for NPU OP with FP16 data type.")
 class TestMul4FP16(TestMul4):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -209,6 +217,7 @@ class TestMul4FP16(TestMul4):
 
 
 class TestMulNet(unittest.TestCase):
+
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -230,8 +239,9 @@ class TestMulNet(unittest.TestCase):
             b = paddle.static.data(name="b", shape=[2, 3], dtype=self.dtype)
             c = paddle.static.data(name="c", shape=[3, 2], dtype=self.dtype)
             d = paddle.static.data(name="d", shape=[3, 2], dtype=self.dtype)
-            label = paddle.static.data(
-                name="label", shape=[2, 1], dtype='int64')
+            label = paddle.static.data(name="label",
+                                       shape=[2, 1],
+                                       dtype='int64')
 
             sum_1 = paddle.add(a, b)
             sum_2 = paddle.add(c, d)
@@ -280,6 +290,7 @@ class TestMulNet(unittest.TestCase):
 
 
 class TestMulNet3_2(unittest.TestCase):
+
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -301,8 +312,9 @@ class TestMulNet3_2(unittest.TestCase):
             b = paddle.static.data(name="b", shape=[2, 3, 4], dtype=self.dtype)
             c = paddle.static.data(name="c", shape=[12, 5], dtype=self.dtype)
             d = paddle.static.data(name="d", shape=[12, 5], dtype=self.dtype)
-            label = paddle.static.data(
-                name="label", shape=[2, 1], dtype='int64')
+            label = paddle.static.data(name="label",
+                                       shape=[2, 1],
+                                       dtype='int64')
 
             sum_1 = paddle.add(a, b)
             sum_2 = paddle.add(c, d)
@@ -346,12 +358,13 @@ class TestMulNet3_2(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(
-            npu_pred, cpu_pred, atol=1e-5))  # atol needed on cann 20.3
+        self.assertTrue(np.allclose(npu_pred, cpu_pred,
+                                    atol=1e-5))  # atol needed on cann 20.3
         self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-5))
 
 
 class TestMulNet3_2_xc2(unittest.TestCase):
+
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -373,8 +386,9 @@ class TestMulNet3_2_xc2(unittest.TestCase):
             b = paddle.static.data(name="b", shape=[2, 3, 4], dtype=self.dtype)
             c = paddle.static.data(name="c", shape=[4, 5], dtype=self.dtype)
             d = paddle.static.data(name="d", shape=[4, 5], dtype=self.dtype)
-            label = paddle.static.data(
-                name="label", shape=[2, 1], dtype='int64')
+            label = paddle.static.data(name="label",
+                                       shape=[2, 1],
+                                       dtype='int64')
 
             sum_1 = paddle.add(a, b)
             sum_2 = paddle.add(c, d)
@@ -424,6 +438,7 @@ class TestMulNet3_2_xc2(unittest.TestCase):
 
 
 class TestMulNet4_2(unittest.TestCase):
+
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -445,8 +460,9 @@ class TestMulNet4_2(unittest.TestCase):
             b = paddle.static.data(name="b", shape=[12, 5], dtype=self.dtype)
             c = paddle.static.data(name="c", shape=[12, 5], dtype=self.dtype)
             d = paddle.static.data(name="d", shape=[12, 5], dtype=self.dtype)
-            label = paddle.static.data(
-                name="label", shape=[2, 1], dtype='int64')
+            label = paddle.static.data(name="label",
+                                       shape=[2, 1],
+                                       dtype='int64')
 
             sum_1 = paddle.add(a, b)  # [12, 5]
             sum_2 = paddle.add(c, d)  # [12, 5]
@@ -493,8 +509,8 @@ class TestMulNet4_2(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(
-            npu_pred, cpu_pred, atol=1e-5))  # atol needed on cann 20.3
+        self.assertTrue(np.allclose(npu_pred, cpu_pred,
+                                    atol=1e-5))  # atol needed on cann 20.3
         self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-5))
 
 

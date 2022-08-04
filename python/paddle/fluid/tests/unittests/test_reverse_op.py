@@ -23,6 +23,7 @@ from paddle.fluid import core
 
 
 class TestReverseOp(OpTest):
+
     def initTestCase(self):
         self.x = np.random.random((3, 40)).astype('float64')
         self.axis = [0]
@@ -30,6 +31,7 @@ class TestReverseOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = "reverse"
+        self.python_api = fluid.layers.reverse
         self.inputs = {"X": self.x}
         self.attrs = {'axis': self.axis}
         out = self.x
@@ -38,61 +40,70 @@ class TestReverseOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestCase0(TestReverseOp):
+
     def initTestCase(self):
         self.x = np.random.random((3, 40)).astype('float64')
         self.axis = [1]
 
 
 class TestCase0_neg(TestReverseOp):
+
     def initTestCase(self):
         self.x = np.random.random((3, 40)).astype('float64')
         self.axis = [-1]
 
 
 class TestCase1(TestReverseOp):
+
     def initTestCase(self):
         self.x = np.random.random((3, 40)).astype('float64')
         self.axis = [0, 1]
 
 
 class TestCase1_neg(TestReverseOp):
+
     def initTestCase(self):
         self.x = np.random.random((3, 40)).astype('float64')
         self.axis = [0, -1]
 
 
 class TestCase2(TestReverseOp):
+
     def initTestCase(self):
         self.x = np.random.random((3, 4, 10)).astype('float64')
         self.axis = [0, 2]
 
 
 class TestCase2_neg(TestReverseOp):
+
     def initTestCase(self):
         self.x = np.random.random((3, 4, 10)).astype('float64')
         self.axis = [0, -2]
 
 
 class TestCase3(TestReverseOp):
+
     def initTestCase(self):
         self.x = np.random.random((3, 4, 10)).astype('float64')
         self.axis = [1, 2]
 
 
 class TestCase3_neg(TestReverseOp):
+
     def initTestCase(self):
         self.x = np.random.random((3, 4, 10)).astype('float64')
         self.axis = [-1, -2]
 
 
 class TestCase4(unittest.TestCase):
+
     def test_error(self):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -100,8 +111,9 @@ class TestCase4(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            label = fluid.layers.data(
-                name="label", shape=[1, 1, 1, 1, 1, 1, 1, 1], dtype="int64")
+            label = fluid.layers.data(name="label",
+                                      shape=[1, 1, 1, 1, 1, 1, 1, 1],
+                                      dtype="int64")
             rev = fluid.layers.reverse(label, axis=[-1, -2])
 
         def _run_program():
@@ -112,10 +124,11 @@ class TestCase4(unittest.TestCase):
 
 
 class TestReverseLoDTensorArray(unittest.TestCase):
+
     def setUp(self):
         self.shapes = [[5, 25], [5, 20], [5, 5]]
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
         self.exe = fluid.Executor(self.place)
 
     def run_program(self, arr_len, axis=0):

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
+
 #include <memory>
+
 #include "llvm/Support/ErrorHandling.h"
 #include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/common/string.h"

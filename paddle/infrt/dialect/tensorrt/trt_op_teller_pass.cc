@@ -16,6 +16,7 @@
 
 #include <llvm/Support/Casting.h>
 #include <mlir/IR/Builders.h>
+
 #include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/benchmark/op_tester_config.h"
@@ -54,8 +55,11 @@ class OpTester {
 
   template <typename T>
   void SetupTensor(framework::LoDTensor *input,
-                   const std::vector<int64_t> &shape, T lower, T upper,
-                   const std::string &initializer, const std::string &filename);
+                   const std::vector<int64_t> &shape,
+                   T lower,
+                   T upper,
+                   const std::string &initializer,
+                   const std::string &filename);
 
   void RunImpl();
 

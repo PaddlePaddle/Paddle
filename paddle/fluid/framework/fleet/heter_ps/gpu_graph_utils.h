@@ -13,34 +13,28 @@
 // limitations under the License.
 
 #pragma once
-#include <stdio.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
+#include <stdio.h>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
-#define CUDA_CHECK(cmd) do {                  \
-    cudaError_t e = cmd;                      \
-    CHECK(e == cudaSuccess)                   \
-                  << "Cuda failure "          \
-                  << __FILE__ << ":"          \
-                  << __LINE__ << " "          \
-                  << cudaGetErrorString(e)    \
-                  << std::endl;               \
-} while (0)
+#define CUDA_CHECK(cmd)                                                       \
+  do {                                                                        \
+    cudaError_t e = cmd;                                                      \
+    CHECK(e == cudaSuccess) << "Cuda failure " << __FILE__ << ":" << __LINE__ \
+                            << " " << cudaGetErrorString(e) << std::endl;     \
+  } while (0)
 
 class CudaDeviceRestorer {
-public:
-  CudaDeviceRestorer() {
-    cudaGetDevice(&dev_);
-  }
-  ~CudaDeviceRestorer() {
-    cudaSetDevice(dev_);
-  }
-private:
+ public:
+  CudaDeviceRestorer() { cudaGetDevice(&dev_); }
+  ~CudaDeviceRestorer() { cudaSetDevice(dev_); }
+
+ private:
   int dev_;
 };
 
@@ -51,13 +45,15 @@ inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
   size_t total{0};
   cudaSetDevice(gpu_id);
   auto err = cudaMemGetInfo(&avail, &total);
-  PADDLE_ENFORCE_EQ(err, cudaSuccess,
-          platform::errors::InvalidArgument("cudaMemGetInfo failed!"));
+  PADDLE_ENFORCE_EQ(
+      err,
+      cudaSuccess,
+      platform::errors::InvalidArgument("cudaMemGetInfo failed!"));
   VLOG(0) << "updatex gpu memory on device " << gpu_id << ", "
-      << "avail=" << avail/1024.0/1024.0/1024.0 << "g, "
-      << "total=" << total/1024.0/1024.0/1024.0 << "g, "
-      << "use_rate=" << (total-avail)/double(total) << "%, "
-      << "desc=" << desc;
+          << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
+          << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
+          << "use_rate=" << (total - avail) / double(total) << "%, "
+          << "desc=" << desc;
 }
 
 inline void debug_gpu_memory_info(const char* desc) {
@@ -65,24 +61,27 @@ inline void debug_gpu_memory_info(const char* desc) {
 
   int device_num = 0;
   auto err = cudaGetDeviceCount(&device_num);
-  PADDLE_ENFORCE_EQ(err, cudaSuccess,
-          platform::errors::InvalidArgument("cudaGetDeviceCount failed!"));
+  PADDLE_ENFORCE_EQ(
+      err,
+      cudaSuccess,
+      platform::errors::InvalidArgument("cudaGetDeviceCount failed!"));
 
   size_t avail{0};
   size_t total{0};
   for (int i = 0; i < device_num; ++i) {
     cudaSetDevice(i);
     auto err = cudaMemGetInfo(&avail, &total);
-    PADDLE_ENFORCE_EQ(err, cudaSuccess,
-            platform::errors::InvalidArgument("cudaMemGetInfo failed!"));
+    PADDLE_ENFORCE_EQ(
+        err,
+        cudaSuccess,
+        platform::errors::InvalidArgument("cudaMemGetInfo failed!"));
     VLOG(0) << "update gpu memory on device " << i << ", "
-            << "avail=" << avail/1024.0/1024.0/1024.0 << "g, "
-            << "total=" << total/1024.0/1024.0/1024.0 << "g, "
-            << "use_rate=" << (total-avail)/double(total) << "%, "
+            << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
+            << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
+            << "use_rate=" << (total - avail) / double(total) << "%, "
             << "desc=" << desc;
   }
 }
 
-}; // namespace framework
-}; // namespace paddle
-
+};  // namespace framework
+};  // namespace paddle

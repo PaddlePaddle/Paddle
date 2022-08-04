@@ -12,18 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "gtest/gtest.h"
-
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
+
+#include "gtest/gtest.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
+using ::cinn::frontend::NetBuilder;
 using ir::Graph;
 using ir::Node;
-using ::cinn::frontend::NetBuilder;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
 using OpMapperContext = CinnGraphSymbolization::OpMapperContext;
 using CinnOpDesc = CinnGraphSymbolization::CinnOpDesc;
@@ -47,7 +47,8 @@ class CinnGraphSymbolizationForTest {
   OpMapperContext CreateNewContext(NetBuilder* builder,
                                    const FeedInfoMap& feed_map) {
     return OpMapperContext(*cinn_symbol_->CreateCinnScope(feed_map),
-                           cinn_symbol_->target_, builder,
+                           cinn_symbol_->target_,
+                           builder,
                            &cinn_symbol_->var_map_,
                            &cinn_symbol_->var_model_to_program_map_,
                            &cinn_symbol_->fetch_var_names_);
@@ -77,8 +78,8 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     target_ = CreateDefaultTarget();
     feed_tensors_ = CreateFeedTensors();
     feed_targets_ = ConvertFeedType(feed_tensors_);
-    symbol_ = std::make_unique<CinnGraphSymbolization>(graph_id, *graph_,
-                                                       target_, feed_targets_);
+    symbol_ = std::make_unique<CinnGraphSymbolization>(
+        graph_id, *graph_, target_, feed_targets_);
     builder_ = std::make_unique<NetBuilder>("NetBuilder_of_graph_" +
                                             std::to_string(graph_id));
     test_ = std::make_unique<CinnGraphSymbolizationForTest>(symbol_.get());

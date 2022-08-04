@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -28,7 +29,8 @@ namespace tensorrt {
 class MultiClassNMS3OpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid multiclassNMS3 op to tensorrt plugin";
 
     // for now, only work for static shape and regular tensor
@@ -44,14 +46,14 @@ class MultiClassNMS3OpConverter : public OpConverter {
     auto* scores_tensor = engine_->GetITensor(scores);
 
     int background_label =
-        BOOST_GET_CONST(int, op_desc.GetAttr("background_label"));
+        PADDLE_GET_CONST(int, op_desc.GetAttr("background_label"));
     float score_threshold =
-        BOOST_GET_CONST(float, op_desc.GetAttr("score_threshold"));
-    int nms_top_k = BOOST_GET_CONST(int, op_desc.GetAttr("nms_top_k"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("score_threshold"));
+    int nms_top_k = PADDLE_GET_CONST(int, op_desc.GetAttr("nms_top_k"));
     float nms_threshold =
-        BOOST_GET_CONST(float, op_desc.GetAttr("nms_threshold"));
-    int keep_top_k = BOOST_GET_CONST(int, op_desc.GetAttr("keep_top_k"));
-    bool normalized = BOOST_GET_CONST(bool, op_desc.GetAttr("normalized"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("nms_threshold"));
+    int keep_top_k = PADDLE_GET_CONST(int, op_desc.GetAttr("keep_top_k"));
+    bool normalized = PADDLE_GET_CONST(bool, op_desc.GetAttr("normalized"));
     int num_classes = scores_tensor->getDimensions().d[0];
 
     auto bboxes_dims = bboxes_tensor->getDimensions();
@@ -74,14 +76,20 @@ class MultiClassNMS3OpConverter : public OpConverter {
 
     const std::vector<nvinfer1::PluginField> fields{
         {"shareLocation", &shareLocation, nvinfer1::PluginFieldType::kINT32, 1},
-        {"backgroundLabelId", &background_label,
-         nvinfer1::PluginFieldType::kINT32, 1},
+        {"backgroundLabelId",
+         &background_label,
+         nvinfer1::PluginFieldType::kINT32,
+         1},
         {"numClasses", &num_classes, nvinfer1::PluginFieldType::kINT32, 1},
         {"topK", &nms_top_k, nvinfer1::PluginFieldType::kINT32, 1},
         {"keepTopK", &keep_top_k, nvinfer1::PluginFieldType::kINT32, 1},
-        {"scoreThreshold", &score_threshold,
-         nvinfer1::PluginFieldType::kFLOAT32, 1},
-        {"iouThreshold", &nms_threshold, nvinfer1::PluginFieldType::kFLOAT32,
+        {"scoreThreshold",
+         &score_threshold,
+         nvinfer1::PluginFieldType::kFLOAT32,
+         1},
+        {"iouThreshold",
+         &nms_threshold,
+         nvinfer1::PluginFieldType::kFLOAT32,
          1},
         {"isNormalized", &normalized, nvinfer1::PluginFieldType::kINT32, 1},
         {"clipBoxes", &clip_boxes, nvinfer1::PluginFieldType::kINT32, 1},
@@ -127,16 +135,18 @@ class MultiClassNMS3OpConverter : public OpConverter {
     // multiclass_nms3
     std::vector<uint32_t> index(1, 0);
     auto constant_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Constant, nvinfer1::Dims2(1, 1),
-        nvinfer1::Weights{nvinfer1::DataType::kINT32,
-                          static_cast<void*>(index.data()), 1});
+        engine_,
+        Constant,
+        nvinfer1::Dims2(1, 1),
+        nvinfer1::Weights{
+            nvinfer1::DataType::kINT32, static_cast<void*>(index.data()), 1});
 
-    RreplenishLayerAndOutput(batch_nms_layer, "multiclass_nms3",
-                             {rois_num_name}, test_mode);
-    RreplenishLayerAndOutput(nms_concat_layer, "multiclass_nms3", {output_name},
-                             test_mode);
-    RreplenishLayerAndOutput(constant_layer, "multiclass_nms3", {index_name},
-                             test_mode);
+    RreplenishLayerAndOutput(
+        batch_nms_layer, "multiclass_nms3", {rois_num_name}, test_mode);
+    RreplenishLayerAndOutput(
+        nms_concat_layer, "multiclass_nms3", {output_name}, test_mode);
+    RreplenishLayerAndOutput(
+        constant_layer, "multiclass_nms3", {index_name}, test_mode);
   }
 };
 

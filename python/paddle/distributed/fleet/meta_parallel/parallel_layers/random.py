@@ -105,12 +105,13 @@ def determinate_seed(rng_name):
     helper = LayerHelper('seed', **locals())
     out = helper.create_variable_for_type_inference(dtype=paddle.int32)
     # set force_cpu to reduce sync copy from CPU->GPU->CPU, and reduce pipeline hang
-    helper.append_op(
-        type='seed',
-        outputs={'Out': out},
-        attrs={'deterministic': True,
-               'rng_name': rng_name,
-               'force_cpu': True})
+    helper.append_op(type='seed',
+                     outputs={'Out': out},
+                     attrs={
+                         'deterministic': True,
+                         'rng_name': rng_name,
+                         'force_cpu': True
+                     })
     return out
 
 
@@ -218,15 +219,18 @@ def dropout(x,
     mask = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-    helper.append_op(
-        type='dropout',
-        inputs={'X': [x],
-                'Seed': seed},
-        outputs={'Out': [out],
-                 'Mask': [mask]},
-        attrs={
-            'dropout_prob': p,
-            'is_test': not training,
-            'dropout_implementation': mode,
-        })
+    helper.append_op(type='dropout',
+                     inputs={
+                         'X': [x],
+                         'Seed': seed
+                     },
+                     outputs={
+                         'Out': [out],
+                         'Mask': [mask]
+                     },
+                     attrs={
+                         'dropout_prob': p,
+                         'is_test': not training,
+                         'dropout_implementation': mode,
+                     })
     return out

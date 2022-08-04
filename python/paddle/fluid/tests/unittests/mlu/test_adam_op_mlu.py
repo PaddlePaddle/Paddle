@@ -15,6 +15,7 @@
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -27,6 +28,7 @@ SEED = 2022
 
 
 class TestAdam(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "adam"
@@ -78,6 +80,7 @@ class TestAdam(OpTest):
 
 
 class TestAdamWithEpsilonTensor(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "adam"
@@ -132,6 +135,7 @@ class TestAdamWithEpsilonTensor(OpTest):
 
 
 class TestAdamOpWithSkipUpdate(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "adam"
@@ -184,6 +188,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
 
 
 class TestAdamOpWithGlobalBetaPow(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "adam"
@@ -241,6 +246,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
 
 
 class TestNet(unittest.TestCase):
+
     def _test(self, run_mlu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -255,8 +261,9 @@ class TestNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
 
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
@@ -280,12 +287,13 @@ class TestNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(
-                main_prog,
-                feed={"a": a_np,
-                      "b": b_np,
-                      "label": label_np},
-                fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
             if epoch % 10 == 0:
                 print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
                     epoch, pred_res[0], loss_res))

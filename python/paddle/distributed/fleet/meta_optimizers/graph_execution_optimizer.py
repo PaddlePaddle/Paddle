@@ -24,6 +24,7 @@ __all__ = []
 
 
 class GraphExecutionOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(GraphExecutionOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -68,6 +69,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         if trainer_id == 0 and not paddle.is_compiled_with_npu():
             wait_server_ready(other_trainers)
 
+        if build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy._NoReduce:
+            return
+
         if core.is_compiled_with_cuda():
             comm_id_var = startup_program.global_block().create_var(
                 name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
@@ -94,9 +98,12 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 inputs={},
                 outputs={"NCCLID": comm_id_var},
                 attrs={
-                    "trainers": trainer_endpoints,
-                    "trainer_id": trainer_id,
-                    "nccl_comm_num": build_strategy.nccl_comm_num,
+                    "trainers":
+                    trainer_endpoints,
+                    "trainer_id":
+                    trainer_id,
+                    "nccl_comm_num":
+                    build_strategy.nccl_comm_num,
                     "use_hierarchical_allreduce":
                     build_strategy.use_hierarchical_allreduce,
                     "hierarchical_allreduce_inter_ranks":
@@ -120,9 +127,12 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 inputs={},
                 outputs={"BKCLID": comm_id_var},
                 attrs={
-                    "trainers": trainer_endpoints,
-                    "trainer_id": trainer_id,
-                    "nccl_comm_num": build_strategy.nccl_comm_num,
+                    "trainers":
+                    trainer_endpoints,
+                    "trainer_id":
+                    trainer_id,
+                    "nccl_comm_num":
+                    build_strategy.nccl_comm_num,
                     "use_hierarchical_allreduce":
                     build_strategy.use_hierarchical_allreduce,
                     "hierarchical_allreduce_inter_ranks":

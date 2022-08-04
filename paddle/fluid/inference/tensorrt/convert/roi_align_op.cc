@@ -35,7 +35,8 @@ namespace tensorrt {
 class RoiAlignOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid roi align op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -44,14 +45,14 @@ class RoiAlignOpConverter : public OpConverter {
     std::string output_name = op_desc.Output("Out").front();
 
     const auto pooled_height =
-        BOOST_GET_CONST(int, op_desc.GetAttr("pooled_height"));
+        PADDLE_GET_CONST(int, op_desc.GetAttr("pooled_height"));
     const auto pooled_width =
-        BOOST_GET_CONST(int, op_desc.GetAttr("pooled_width"));
+        PADDLE_GET_CONST(int, op_desc.GetAttr("pooled_width"));
     const auto spatial_scale =
-        BOOST_GET_CONST(float, op_desc.GetAttr("spatial_scale"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("spatial_scale"));
     const auto sampling_ratio =
-        BOOST_GET_CONST(int, op_desc.GetAttr("sampling_ratio"));
-    const auto aligned = BOOST_GET_CONST(bool, op_desc.GetAttr("aligned"));
+        PADDLE_GET_CONST(int, op_desc.GetAttr("sampling_ratio"));
+    const auto aligned = PADDLE_GET_CONST(bool, op_desc.GetAttr("aligned"));
 
     const auto input_tensor = engine_->GetITensor(input_name);
     const auto rois_tensor = engine_->GetITensor(rois_name);
@@ -63,9 +64,12 @@ class RoiAlignOpConverter : public OpConverter {
     std::vector<nvinfer1::ITensor*> inputs{input_tensor, rois_tensor};
     nvinfer1::ILayer* layer = nullptr;
 
-    auto* roi_align_plugin = new plugin::RoiAlignPluginDynamic(
-        data_type_, pooled_height, pooled_width, spatial_scale, sampling_ratio,
-        aligned);
+    auto* roi_align_plugin = new plugin::RoiAlignPluginDynamic(data_type_,
+                                                               pooled_height,
+                                                               pooled_width,
+                                                               spatial_scale,
+                                                               sampling_ratio,
+                                                               aligned);
     auto roi_align_layer = engine_->network()->addPluginV2(
         inputs.data(), inputs.size(), *roi_align_plugin);
     layer = roi_align_layer;

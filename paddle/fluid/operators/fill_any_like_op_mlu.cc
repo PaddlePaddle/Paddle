@@ -24,7 +24,8 @@ class FillAnyLikeMLUKernel : public framework::OpKernel<T> {
   using CommonType = typename std::common_type<
       float,
       typename std::conditional<std::is_same<T, platform::float16>::value,
-                                float, T>::type>::type;
+                                float,
+                                T>::type>::type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* out = ctx.Output<framework::Tensor>("Out");
@@ -46,17 +47,19 @@ class FillAnyLikeMLUKernel : public framework::OpKernel<T> {
             "and %f, but now value is %f.",
             typeid(T).name(),
             static_cast<CommonType>(std::numeric_limits<T>::lowest()),
-            static_cast<CommonType>(std::numeric_limits<T>::max()), value));
+            static_cast<CommonType>(std::numeric_limits<T>::max()),
+            value));
 
     PADDLE_ENFORCE_EQ(
-        std::isnan(value), false,
+        std::isnan(value),
+        false,
         platform::errors::InvalidArgument("The filled value is NaN."));
 
     auto value_t = static_cast<T>(value);
     MLUCnnlTensorDesc out_desc(*out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
 
-    MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &value_t, out_desc.get(),
-                  GetBasePtr(out));
+    MLUCnnl::Fill(
+        ctx, CNNL_POINTER_MODE_HOST, &value_t, out_desc.get(), GetBasePtr(out));
   }
 };
 
@@ -66,7 +69,8 @@ class FillAnyLikeMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(fill_any_like, ops::FillAnyLikeMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(fill_any_like,
+                       ops::FillAnyLikeMLUKernel<int>,
                        ops::FillAnyLikeMLUKernel<int64_t>,
                        ops::FillAnyLikeMLUKernel<float>,
                        ops::FillAnyLikeMLUKernel<plat::float16>);

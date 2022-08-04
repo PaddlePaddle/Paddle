@@ -13,17 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <ThreadPool.h>
-
 #include <unistd.h>
+
 #include <string>
 #include <thread>  // NOLINT
 
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/depends/sparse_utils.h"
 #include "paddle/fluid/distributed/ps/table/memory_sparse_geo_table.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {

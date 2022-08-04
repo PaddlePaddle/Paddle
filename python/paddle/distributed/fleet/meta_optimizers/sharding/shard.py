@@ -20,6 +20,7 @@ __all__ = []
 
 
 class Shard(object):
+
     def __init__(self, ):
         self.global_params = set([])
         self.worker_idx = -1
@@ -30,7 +31,7 @@ class Shard(object):
     def setup(self, params_grads, worker_idx, worker_num):
         # param names of all devices
         self.global_params = set([x[0].name for x in params_grads])
-        # _param(str) -> device_id(int) 
+        # _param(str) -> device_id(int)
         self.worker_idx = worker_idx
         self.worker_num = worker_num
         # global_param2device contains fp32 params and fp16 params
@@ -138,6 +139,7 @@ class Shard(object):
 
 
 class ProgramSegment(object):
+
     def __init__(self, block):
         self._block = block
         self._allreduce_vars = []

@@ -88,7 +88,8 @@ class FleetTranspiler(Fleet):
         if role_maker is None:
             role_maker = MPISymetricRoleMaker()
         super(FleetTranspiler, self).init(role_maker)
-        self._fleet_ptr = core.Fleet()
+        if self._fleet_ptr is None:
+            self._fleet_ptr = core.Fleet()
 
     def _init_transpiler_worker(self):
         """
@@ -109,13 +110,15 @@ class FleetTranspiler(Fleet):
             return kwargs
 
         def geo_strategy_envs():
+
             def get_sparse_attrs():
                 opt_init_map = {}
                 opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
                 opt_init_map["fill_constant"] = ["value"]
                 opt_init_map["uniform_random"] = ["seed", "min", "max"]
-                opt_init_map[
-                    "truncated_gaussian_random"] = ["seed", "mean", "std"]
+                opt_init_map["truncated_gaussian_random"] = [
+                    "seed", "mean", "std"
+                ]
 
                 dist_varnames = get_sparse_tablenames(self._origin_main_program,
                                                       True)
@@ -129,8 +132,8 @@ class FleetTranspiler(Fleet):
 
                 init_attrs = []
                 for value_name in sparse_varnames:
-                    value_var = self._origin_main_program.global_block().vars[
-                        value_name]
+                    value_var = self._origin_main_program.global_block(
+                    ).vars[value_name]
                     value_attr = [
                         value_name,
                         ",".join([str(dim) for dim in value_var.shape])
@@ -238,14 +241,13 @@ class FleetTranspiler(Fleet):
                                                    distribtued_varnames),
                     self.main_program.list_vars()))
 
-            fluid.io.load_vars(
-                self._executor,
-                main_program=self.main_program,
-                dirname=model_dir,
-                vars=remaining_vars)
+            fluid.io.load_vars(self._executor,
+                               main_program=self.main_program,
+                               dirname=model_dir,
+                               vars=remaining_vars)
 
-            self._load_sparse_params(
-                dirname=model_dir, varnames=sparse_varnames)
+            self._load_sparse_params(dirname=model_dir,
+                                     varnames=sparse_varnames)
 
             # todo(tangwei12) load distributed vars
             # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
@@ -324,7 +326,8 @@ class FleetTranspiler(Fleet):
             raise ValueError("optimizer must be an instance of Optimizer")
         if not self._is_initialized:
             raise ValueError(
-                "fleet.init(role) to initialize before optimizer.minimize(loss)")
+                "fleet.init(role) to initialize before optimizer.minimize(loss)"
+            )
 
         if not strategy:
             _strategy = StrategyFactory.create_async_strategy()
@@ -439,8 +442,9 @@ class FleetTranspiler(Fleet):
         reshaped_val_map["adamax"] = ["moment_0", "inf_norm_0"]
         reshaped_val_map["momentum"] = ["velocity_0"]
         reshaped_val_map["lars_momentum"] = ["velocity_0"]
-        reshaped_val_map[
-            "rmsprop"] = ["momentum_0", "mean_square_0", "mean_grad_0"]
+        reshaped_val_map["rmsprop"] = [
+            "momentum_0", "mean_square_0", "mean_grad_0"
+        ]
         reshaped_val_map["decayed_adagrad"] = ["moment_0"]
         reshaped_val_map["ftrl"] = ["squared_0", "linear_0"]
 
@@ -450,8 +454,8 @@ class FleetTranspiler(Fleet):
 
         if op not in supported_opts:
             raise ValueError(
-                "fleet can not support optimizer: {}, only this can be supported: {}".
-                format(op, supported_opts))
+                "fleet can not support optimizer: {}, only this can be supported: {}"
+                .format(op, supported_opts))
 
         reshaped_names = [
             param_name + "_" + val for val in reshaped_val_map[op]
@@ -492,19 +496,23 @@ class FleetTranspiler(Fleet):
 
             for var_name in [varname] + reshaped_varnames + origin_varnames:
                 var = self._origin_main_program.global_block().vars[var_name]
-                block.append_op(
-                    type='recv_save',
-                    attrs={
-                        "trainer_id": self._role_maker.worker_index(),
-                        "shape": var.shape,
-                        "slice_shapes":
-                        [",".join([str(i) for i in var.shape])],
-                        "slice_varnames": [var.name],
-                        "remote_varnames": [var.name],
-                        "is_sparse": False,
-                        "endpoints": var_ctx.split_endpoints(),
-                        "file_path": os.path.join(dirname, var.name)
-                    })
+                block.append_op(type='recv_save',
+                                attrs={
+                                    "trainer_id":
+                                    self._role_maker.worker_index(),
+                                    "shape":
+                                    var.shape,
+                                    "slice_shapes":
+                                    [",".join([str(i) for i in var.shape])],
+                                    "slice_varnames": [var.name],
+                                    "remote_varnames": [var.name],
+                                    "is_sparse":
+                                    False,
+                                    "endpoints":
+                                    var_ctx.split_endpoints(),
+                                    "file_path":
+                                    os.path.join(dirname, var.name)
+                                })
 
         executor.run(prog)
         return local_vars
@@ -532,30 +540,37 @@ class FleetTranspiler(Fleet):
             for section in var_ctx.sections():
                 slice_shapes.append(str(section) + dims1)
 
-            block.append_op(
-                type='recv_save',
-                attrs={
-                    "trainer_id": self._role_maker.worker_index(),
-                    "shape": var.shape,
-                    "slice_shapes": slice_shapes,
-                    "slice_varnames": var_ctx.split_varnames(),
-                    "remote_varnames": var_ctx.split_varnames(),
-                    "is_sparse": True,
-                    "endpoints": var_ctx.split_endpoints(),
-                    "pserver_num":
-                    len(self._role_maker.get_pserver_endpoints()),
-                    "file_path": os.path.join(dirname, var.name)
-                })
+            block.append_op(type='recv_save',
+                            attrs={
+                                "trainer_id":
+                                self._role_maker.worker_index(),
+                                "shape":
+                                var.shape,
+                                "slice_shapes":
+                                slice_shapes,
+                                "slice_varnames":
+                                var_ctx.split_varnames(),
+                                "remote_varnames":
+                                var_ctx.split_varnames(),
+                                "is_sparse":
+                                True,
+                                "endpoints":
+                                var_ctx.split_endpoints(),
+                                "pserver_num":
+                                len(self._role_maker.get_pserver_endpoints()),
+                                "file_path":
+                                os.path.join(dirname, var.name)
+                            })
 
             for reshaped_varname in reshaped_varnames:
-                var = self._origin_main_program.global_block().vars[
-                    reshaped_varname]
+                var = self._origin_main_program.global_block(
+                ).vars[reshaped_varname]
 
                 slice_varnames = []
                 remote_varnames = []
                 for i in range(len(var_ctx.split_varnames())):
-                    slice_varnames.append("{}.block{}".format(reshaped_varname,
-                                                              i))
+                    slice_varnames.append("{}.block{}".format(
+                        reshaped_varname, i))
                     remote_varnames.append(reshaped_varname)
 
                 block.append_op(
@@ -574,22 +589,26 @@ class FleetTranspiler(Fleet):
                     })
 
             for origin_varname in origin_varnames:
-                var = self._origin_main_program.global_block().vars[
-                    origin_varname]
+                var = self._origin_main_program.global_block(
+                ).vars[origin_varname]
 
-                block.append_op(
-                    type='recv_save',
-                    attrs={
-                        "trainer_id": self._role_maker.worker_index(),
-                        "shape": var.shape,
-                        "slice_shapes":
-                        [",".join([str(i) for i in var.shape])],
-                        "slice_varnames": [origin_varname],
-                        "remote_varnames": [origin_varname],
-                        "is_sparse": False,
-                        "endpoints": var_ctx.split_endpoints()[:1],
-                        "file_path": os.path.join(dirname, var.name)
-                    })
+                block.append_op(type='recv_save',
+                                attrs={
+                                    "trainer_id":
+                                    self._role_maker.worker_index(),
+                                    "shape":
+                                    var.shape,
+                                    "slice_shapes":
+                                    [",".join([str(i) for i in var.shape])],
+                                    "slice_varnames": [origin_varname],
+                                    "remote_varnames": [origin_varname],
+                                    "is_sparse":
+                                    False,
+                                    "endpoints":
+                                    var_ctx.split_endpoints()[:1],
+                                    "file_path":
+                                    os.path.join(dirname, var.name)
+                                })
         executor.run(prog)
         return context.keys()
 
@@ -599,16 +618,15 @@ class FleetTranspiler(Fleet):
         block = prog.global_block()
 
         for name, var_ctx in context.items():
-            block.append_op(
-                type='checkpoint_notify',
-                attrs={
-                    "varname": name,
-                    "is_slice": True,
-                    "slice_varnames": var_ctx.split_varnames(),
-                    "remote_varnames": var_ctx.split_varnames(),
-                    "endpoints": var_ctx.split_endpoints(),
-                    "dirname": dirname
-                })
+            block.append_op(type='checkpoint_notify',
+                            attrs={
+                                "varname": name,
+                                "is_slice": True,
+                                "slice_varnames": var_ctx.split_varnames(),
+                                "remote_varnames": var_ctx.split_varnames(),
+                                "endpoints": var_ctx.split_endpoints(),
+                                "dirname": dirname
+                            })
 
         executor.run(prog)
         return context.keys()
@@ -626,8 +644,9 @@ class FleetTranspiler(Fleet):
         recv_dense_varnames = self._save_dense_params(executor, dirname,
                                                       dense_ctx, main_program)
 
-        recv_sparse_varnames = self._save_sparse_params(
-            executor, dirname, sparse_ctx, main_program)
+        recv_sparse_varnames = self._save_sparse_params(executor, dirname,
+                                                        sparse_ctx,
+                                                        main_program)
 
         recv_distributed_varnames = self._save_distributed_params(
             executor, dirname, distributed_ctx, main_program)
@@ -636,15 +655,13 @@ class FleetTranspiler(Fleet):
             recv_sparse_varnames) + list(recv_distributed_varnames)
 
         remaining_vars = list(
-            filter(
-                FleetTranspiler.__exclude_vars(saved_varnames),
-                main_program.list_vars()))
+            filter(FleetTranspiler.__exclude_vars(saved_varnames),
+                   main_program.list_vars()))
 
-        fluid.io.save_vars(
-            executor,
-            main_program=main_program,
-            dirname=dirname,
-            vars=remaining_vars)
+        fluid.io.save_vars(executor,
+                           main_program=main_program,
+                           dirname=dirname,
+                           vars=remaining_vars)
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
@@ -690,6 +707,7 @@ if you would like to save all variables in a
 
     @staticmethod
     def __exclude_vars(exclude_var_names=[]):
+
         def is_valid(var):
             if var.name in exclude_var_names:
                 return False
@@ -738,10 +756,11 @@ class ParameterServerOptimizer(DistributedOptimizer):
         if self._mode == PSMode.PSLIB:
             self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
             if optimizer.type != "adam":
-                print("Currently, distributed optimizer only support Adam"
-                      "Will config built-in adam for you."
-                      "We will support more functions in DistributedOptimizer",
-                      sys.stderr)
+                print(
+                    "Currently, distributed optimizer only support Adam"
+                    "Will config built-in adam for you."
+                    "We will support more functions in DistributedOptimizer",
+                    sys.stderr)
                 self._optimizer_name = "DistributedAdam"
 
             self._optimizer = globals()[self._optimizer_name](optimizer)
@@ -779,8 +798,8 @@ class ParameterServerOptimizer(DistributedOptimizer):
             # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
             _startup = worker.init_from_server_pass(_startup, compiled_config)
-            _startup = worker.delet_extra_optimizes_pass(_startup,
-                                                         compiled_config)
+            _startup = worker.delet_extra_optimizes_pass(
+                _startup, compiled_config)
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
@@ -803,11 +822,11 @@ class ParameterServerOptimizer(DistributedOptimizer):
                                                       compiled_config, True)
 
             if not compiled_config.is_sync_mode():
-                _main = server.delete_unused_in_main_pass(_main,
-                                                          compiled_config)
+                _main = server.delete_unused_in_main_pass(
+                    _main, compiled_config)
 
-            _startup = server.delete_unused_in_startup_pass(_startup, _main,
-                                                            compiled_config)
+            _startup = server.delete_unused_in_startup_pass(
+                _startup, _main, compiled_config)
         else:
             _main = server.add_listen_and_serv_pass(_main, compiled_config)
             _main = server.add_rpc_global_flags_pass(_main, compiled_config)
@@ -818,8 +837,8 @@ class ParameterServerOptimizer(DistributedOptimizer):
                 _startup, _main, compiled_config)
             _startup = server.large_scale_sparse_pass(_startup, _main,
                                                       compiled_config, True)
-            _startup = server.delete_unused_in_startup_pass(_startup, _main,
-                                                            compiled_config)
+            _startup = server.delete_unused_in_startup_pass(
+                _startup, _main, compiled_config)
 
         return _main, _startup
 

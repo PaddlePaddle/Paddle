@@ -16,20 +16,19 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    fill_any, ops::FillAnyKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FillAnyKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FillAnyKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::FillAnyKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FillAnyKernel<paddle::platform::CUDADeviceContext,
-                       paddle::platform::float16>,
-    ops::FillAnyKernel<paddle::platform::CUDADeviceContext, bool>);
+    fill_any,
+    ops::FillAnyKernel<phi::GPUContext, float>,
+    ops::FillAnyKernel<phi::GPUContext, double>,
+    ops::FillAnyKernel<phi::GPUContext, int64_t>,
+    ops::FillAnyKernel<phi::GPUContext, int>,
+    ops::FillAnyKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::FillAnyKernel<phi::GPUContext, bool>);
 
 REGISTER_OP_CUDA_KERNEL(
     fill_any_grad,
-    ops::FillAnyGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FillAnyGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FillAnyGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::FillAnyGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FillAnyGradKernel<paddle::platform::CUDADeviceContext,
-                           paddle::platform::float16>,
-    ops::FillAnyGradKernel<paddle::platform::CUDADeviceContext, bool>);
+    ops::FillAnyGradKernel<phi::GPUContext, float>,
+    ops::FillAnyGradKernel<phi::GPUContext, double>,
+    ops::FillAnyGradKernel<phi::GPUContext, int64_t>,
+    ops::FillAnyGradKernel<phi::GPUContext, int>,
+    ops::FillAnyGradKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::FillAnyGradKernel<phi::GPUContext, bool>);

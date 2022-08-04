@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/platform/profiler.h"
+
 #include <mutex>  // NOLINT
 #include <random>
 #include <sstream>
@@ -20,7 +22,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
@@ -29,12 +30,16 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 
-PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler, false,
+PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
+                            false,
                             "Enable rpc profiler or not.");
 
-DEFINE_bool(enable_host_event_recorder_hook, false,
+DEFINE_bool(enable_host_event_recorder_hook,
+            false,
             "enable HostEventRecorder, hook Profiler");
 
 namespace paddle {
@@ -42,8 +47,11 @@ namespace platform {
 
 MemEvenRecorder MemEvenRecorder::recorder;
 
-Event::Event(EventType type, std::string name, uint32_t thread_id,
-             EventRole role, std::string attr)
+Event::Event(EventType type,
+             std::string name,
+             uint32_t thread_id,
+             EventRole role,
+             std::string attr)
     : type_(type),
       name_(name),
       thread_id_(thread_id),
@@ -67,8 +75,10 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-RecordEvent::RecordEvent(const char *name, const TracerEventType type,
-                         uint32_t level, const EventRole role) {
+RecordEvent::RecordEvent(const char *name,
+                         const TracerEventType type,
+                         uint32_t level,
+                         const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -99,8 +109,10 @@ RecordEvent::RecordEvent(const char *name, const TracerEventType type,
   start_ns_ = PosixInNsec();
 }
 
-RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
-                         uint32_t level, const EventRole role) {
+RecordEvent::RecordEvent(const std::string &name,
+                         const TracerEventType type,
+                         uint32_t level,
+                         const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -129,8 +141,10 @@ RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
   start_ns_ = PosixInNsec();
 }
 
-RecordEvent::RecordEvent(const std::string &name, const std::string &attr,
-                         const TracerEventType type, uint32_t level,
+RecordEvent::RecordEvent(const std::string &name,
+                         const std::string &attr,
+                         const TracerEventType type,
+                         uint32_t level,
                          const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
@@ -191,15 +205,15 @@ void RecordEvent::End() {
   if (LIKELY(FLAGS_enable_host_event_recorder_hook && is_enabled_)) {
     uint64_t end_ns = PosixInNsec();
     if (LIKELY(shallow_copy_name_ != nullptr)) {
-      HostEventRecorder::GetInstance().RecordEvent(
+      HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
           shallow_copy_name_, start_ns_, end_ns, role_, type_);
     } else if (name_ != nullptr) {
       if (attr_ == nullptr) {
-        HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
-                                                     role_, type_);
+        HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
+            *name_, start_ns_, end_ns, role_, type_);
       } else {
-        HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
-                                                     role_, type_, *attr_);
+        HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
+            *name_, start_ns_, end_ns, role_, type_, *attr_);
         delete attr_;
       }
       delete name_;
@@ -214,8 +228,8 @@ void RecordEvent::End() {
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer) {
     uint64_t end_ns = PosixInNsec();
-    tracer->AddCPURecords(CurAnnotationName(), start_ns_, end_ns, BlockDepth(),
-                          g_thread_id);
+    tracer->AddCPURecords(
+        CurAnnotationName(), start_ns_, end_ns, BlockDepth(), g_thread_id);
   }
   ClearCurAnnotation();
   PopEvent(*name_, role_);
@@ -225,31 +239,519 @@ void RecordEvent::End() {
   is_enabled_ = false;
 }
 
-RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
+RecordInstantEvent::RecordInstantEvent(const char *name,
+                                       TracerEventType type,
                                        uint32_t level) {
   if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
   }
   auto start_end_ns = PosixInNsec();
-  HostEventRecorder::GetInstance().RecordEvent(name, start_end_ns, start_end_ns,
-                                               EventRole::kOrdinary, type);
+  HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
+      name, start_end_ns, start_end_ns, EventRole::kOrdinary, type);
 }
 
-void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
+RecordOpInfoSupplement::RecordOpInfoSupplement(
+    const std::string &type,
+    const framework::AttributeMap &attrs,
+    const framework::InferShapeContext &shape_ctx,
+    const framework::RuntimeContext &ctx) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    return;
+  }
+  std::map<std::string, std::vector<framework::DDim>> input_shapes;
+  std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
+  for (auto it = ctx.inputs.begin(); it != ctx.inputs.end(); it++) {
+    input_shapes[it->first] = shape_ctx.GetInputsDim(it->first);
+    dtypes[it->first] = shape_ctx.GetInputsVarType(it->first);
+  }
+
+  const std::vector<std::string> *callstack_ptr = nullptr;
+  std::vector<std::string> callstack;
+  auto iter = attrs.find(
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  if (iter != attrs.end()) {
+    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+    callstack = *callstack_ptr;
+  }
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes, dtypes, callstack);
+}
+
+RecordOpInfoSupplement::RecordOpInfoSupplement(
+    const std::string &type,
+    const framework::AttributeMap &attrs,
+    const framework::InferShapeContext &shape_ctx,
+    const phi::KernelSignature &kernel_signature) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    return;
+  }
+  std::map<std::string, std::vector<framework::DDim>> input_shapes;
+  std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
+  for (auto it = kernel_signature.input_names.begin();
+       it != kernel_signature.input_names.end();
+       it++) {
+    std::string input_name(*it);
+    if (shape_ctx.HasInputs(input_name)) {
+      input_shapes[input_name] = shape_ctx.GetInputsDim(input_name);
+      dtypes[input_name] = shape_ctx.GetInputsVarType(input_name);
+    }
+  }
+  const std::vector<std::string> *callstack_ptr = nullptr;
+  std::vector<std::string> callstack;
+  auto iter = attrs.find(
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  if (iter != attrs.end()) {
+    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+    callstack = *callstack_ptr;
+  }
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes, dtypes, callstack);
+}
+
+std::map<const char *, std::map<uint64_t, std::vector<uint64_t>>>
+    RecordMemEvent::size_cache;
+
+std::map<const char *, std::map<uint64_t, bool>>
+    RecordMemEvent::has_initialized;
+
+RecordMemEvent::RecordMemEvent(const void *ptr,
+                               const phi::Place &place,
+                               size_t size,
+                               const TracerMemEventType type) {
+  if (g_state == ProfilerState::kDisabled &&
+      FLAGS_enable_host_event_recorder_hook == false) {
+    return;
+  }
+  if (type == TracerMemEventType::Allocate) {
+    uint64_t current_allocated;
+    uint64_t peak_allocated;
+    uint64_t current_reserved = 0;  // 0 means keep the same as before
+    uint64_t peak_reserved = 0;     // 0 means keep the same as before
+    if (platform::is_cpu_place(place) ||
+        platform::is_cuda_pinned_place(place)) {
+      if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] = true;
+      } else {
+        current_allocated =
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+        peak_allocated =
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0] =
+            current_allocated;
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2] =
+            peak_allocated;
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+      }
+
+    } else {
+      if (RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
+      } else {
+        current_allocated =
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+        peak_allocated =
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0] =
+            current_allocated;
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2] =
+            peak_allocated;
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+      }
+    }
+    platform::MemEvenRecorder::Instance().PushMemRecord(ptr,
+                                                        place,
+                                                        size,
+                                                        type,
+                                                        current_allocated,
+                                                        current_reserved,
+                                                        peak_allocated,
+                                                        peak_reserved);
+  } else if (type == TracerMemEventType::ReservedAllocate) {
+    uint64_t current_reserved;
+    uint64_t peak_reserved;
+    uint64_t current_allocated = 0;  // 0 means keep the same as before
+    uint64_t peak_allocated = 0;     // 0 means keep the same as before
+    if (platform::is_cpu_place(place) ||
+        platform::is_cuda_pinned_place(place)) {
+      if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] = true;
+      } else {
+        current_reserved =
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+        peak_reserved =
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1] =
+            current_reserved;
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3] =
+            peak_reserved;
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+      }
+    } else {
+      if (RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
+      } else {
+        current_reserved =
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+        peak_reserved =
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1] =
+            current_reserved;
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3] =
+            peak_reserved;
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+      }
+    }
+    platform::MemEvenRecorder::Instance().PushMemRecord(ptr,
+                                                        place,
+                                                        size,
+                                                        type,
+                                                        current_allocated,
+                                                        current_reserved,
+                                                        peak_allocated,
+                                                        peak_reserved);
+  } else if (type == TracerMemEventType::Free) {
+    uint64_t current_allocated;
+    uint64_t peak_allocated;
+    uint64_t current_reserved = 0;  // 0 means keep the same as before
+    uint64_t peak_reserved = 0;     // 0 means keep the same as before
+    if (platform::is_cpu_place(place) ||
+        platform::is_cuda_pinned_place(place)) {
+      if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] = true;
+      } else {
+        current_allocated =
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+        peak_allocated =
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0] =
+            current_allocated;
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2] =
+            peak_allocated;
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+      }
+    } else {
+      if (RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
+      } else {
+        current_allocated =
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+        peak_allocated =
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0] =
+            current_allocated;
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2] =
+            peak_allocated;
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+      }
+    }
+    platform::MemEvenRecorder::Instance().PopMemRecord(ptr,
+                                                       place,
+                                                       size,
+                                                       type,
+                                                       current_allocated,
+                                                       current_reserved,
+                                                       peak_allocated,
+                                                       peak_reserved);
+  } else if (type == TracerMemEventType::ReservedFree) {
+    uint64_t current_reserved;
+    uint64_t peak_reserved;
+    uint64_t current_allocated = 0;  // 0 means keep the same as before
+    uint64_t peak_allocated = 0;     // 0 means keep the same as before
+    if (platform::is_cpu_place(place) ||
+        platform::is_cuda_pinned_place(place)) {
+      if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] = true;
+      } else {
+        current_reserved =
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+        peak_reserved =
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1] =
+            current_reserved;
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3] =
+            peak_reserved;
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+      }
+    } else {
+      if (RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
+      } else {
+        current_reserved =
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+        peak_reserved =
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1] =
+            current_reserved;
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3] =
+            peak_reserved;
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+      }
+    }
+    platform::MemEvenRecorder::Instance().PopMemRecord(ptr,
+                                                       place,
+                                                       size,
+                                                       type,
+                                                       current_allocated,
+                                                       current_reserved,
+                                                       peak_allocated,
+                                                       peak_reserved);
+  }
+}
+
+void MemEvenRecorder::PushMemRecord(const void *ptr,
+                                    const Place &place,
                                     size_t size) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled) {
+    return;
+  }
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
-  PADDLE_ENFORCE_EQ(events.count(ptr), 0,
+  PADDLE_ENFORCE_EQ(events.count(ptr),
+                    0,
                     platform::errors::InvalidArgument(
                         "The Place can't exist in the stage of PushMemRecord"));
-  events.emplace(ptr, std::unique_ptr<RecordMemEvent>(
-                          new MemEvenRecorder::RecordMemEvent(place, size)));
+  events.emplace(ptr,
+                 std::unique_ptr<RecordMemEvent>(
+                     new MemEvenRecorder::RecordMemEvent(place, size)));
+}
+
+void MemEvenRecorder::PushMemRecord(const void *ptr,
+                                    const Place &place,
+                                    size_t size,
+                                    TracerMemEventType type,
+                                    uint64_t current_allocated,
+                                    uint64_t current_reserved,
+                                    uint64_t peak_allocated,
+                                    uint64_t peak_reserved) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
+    HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
+        PosixInNsec(),
+        reinterpret_cast<uint64_t>(ptr),
+        type,
+        size,
+        place,
+        current_allocated,
+        current_reserved,
+        peak_allocated,
+        peak_reserved);
+    return;
+  }
+  if (type == TracerMemEventType::ReservedAllocate) {
+    // old profiler only analyse memory managed by paddle.
+    return;
+  }
+  if (g_state == ProfilerState::kDisabled) return;
+  auto &events = address_memevent_[place];
+  PADDLE_ENFORCE_EQ(events.count(ptr),
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The Place can't exist in the stage of PushMemRecord"));
+  events.emplace(ptr,
+                 std::unique_ptr<RecordMemEvent>(
+                     new MemEvenRecorder::RecordMemEvent(place, size)));
 }
 
 void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled) {
+    return;
+  }
   std::lock_guard<std::mutex> guard(mtx_);
+  auto &events = address_memevent_[place];
+  auto iter = events.find(ptr);
+  // The ptr maybe not in address_memevent
+  if (iter != events.end()) {
+    events.erase(iter);
+  }
+}
+
+void MemEvenRecorder::PopMemRecord(const void *ptr,
+                                   const Place &place,
+                                   size_t size,
+                                   TracerMemEventType type,
+                                   uint64_t current_allocated,
+                                   uint64_t current_reserved,
+                                   uint64_t peak_allocated,
+                                   uint64_t peak_reserved) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
+    HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
+        PosixInNsec(),
+        reinterpret_cast<uint64_t>(ptr),
+        type,
+        -size,
+        place,
+        current_allocated,
+        current_reserved,
+        peak_allocated,
+        peak_reserved);
+    return;
+  }
+  if (type == TracerMemEventType::ReservedFree) {
+    // old profiler only analyse memory managed by paddle.
+    return;
+  }
+  if (g_state == ProfilerState::kDisabled) return;
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
   // The ptr maybe not in address_memevent
@@ -278,8 +780,13 @@ MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {
 
   auto annotation_free = CurAnnotationName();
   if (tracer) {
-    tracer->AddMemInfoRecord(start_ns_, end_ns_, bytes_, place_, alloc_in_,
-                             annotation_free, g_mem_thread_id);
+    tracer->AddMemInfoRecord(start_ns_,
+                             end_ns_,
+                             bytes_,
+                             place_,
+                             alloc_in_,
+                             annotation_free,
+                             g_mem_thread_id);
   }
   PopMemEvent(start_ns_, end_ns_, bytes_, place_, annotation_free);
 }
@@ -306,44 +813,62 @@ RecordBlock::~RecordBlock() {
   if (tracer) {
     // We try to put all blocks at the same nested depth in the
     // same timeline lane. and distinguish the using thread_id.
-    tracer->AddCPURecords(name_, start_ns_, PosixInNsec(), BlockDepth(),
-                          g_thread_id);
+    tracer->AddCPURecords(
+        name_, start_ns_, PosixInNsec(), BlockDepth(), g_thread_id);
   }
   ClearCurBlock();
 }
 
-void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                  const Place &place, const std::string &annotation) {
-  GetMemEventList().Record(EventType::kPushRange, start_ns, end_ns, bytes,
-                           place, g_mem_thread_id, annotation);
+void PushMemEvent(uint64_t start_ns,
+                  uint64_t end_ns,
+                  size_t bytes,
+                  const Place &place,
+                  const std::string &annotation) {
+  GetMemEventList().Record(EventType::kPushRange,
+                           start_ns,
+                           end_ns,
+                           bytes,
+                           place,
+                           g_mem_thread_id,
+                           annotation);
 }
 
-void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                 const Place &place, const std::string &annotation) {
-  GetMemEventList().Record(EventType::kPopRange, start_ns, end_ns, bytes, place,
-                           g_mem_thread_id, annotation);
+void PopMemEvent(uint64_t start_ns,
+                 uint64_t end_ns,
+                 size_t bytes,
+                 const Place &place,
+                 const std::string &annotation) {
+  GetMemEventList().Record(EventType::kPopRange,
+                           start_ns,
+                           end_ns,
+                           bytes,
+                           place,
+                           g_mem_thread_id,
+                           annotation);
 }
 
 void Mark(const std::string &name) {
   if (FLAGS_enable_host_event_recorder_hook) {
-    HostEventRecorder::GetInstance().RecordEvent(
+    HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
         name, 0, 0, EventRole::kOrdinary, TracerEventType::UserDefined);
     return;
   }
   GetEventList().Record(EventType::kMark, name, g_thread_id);
 }
 
-Event *PushEvent(const std::string &name, const EventRole role,
+Event *PushEvent(const std::string &name,
+                 const EventRole role,
                  std::string attr) {
-  return GetEventList().Record(EventType::kPushRange, name, g_thread_id, role,
-                               attr);
+  return GetEventList().Record(
+      EventType::kPushRange, name, g_thread_id, role, attr);
 }
 
 void PopEvent(const std::string &name, const EventRole role, std::string attr) {
   GetEventList().Record(EventType::kPopRange, name, g_thread_id, role, attr);
 }
 void EnableProfiler(ProfilerState state) {
-  PADDLE_ENFORCE_NE(state, ProfilerState::kDisabled,
+  PADDLE_ENFORCE_NE(state,
+                    ProfilerState::kDisabled,
                     platform::errors::InvalidArgument(
                         "Can't enable profiling, since the input state is"
                         "ProfilerState::kDisabled"));
@@ -379,7 +904,8 @@ void ResetProfiler() {
     (*it)->Clear();
   }
   for (auto it = g_all_mem_event_lists.begin();
-       it != g_all_mem_event_lists.end(); ++it) {
+       it != g_all_mem_event_lists.end();
+       ++it) {
     (*it)->Clear();
   }
 }
@@ -521,7 +1047,8 @@ void DisableHostEventRecorder() {
 
 std::string PrintHostEvents() {
   std::ostringstream oss;
-  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
+  auto host_evt_sec =
+      HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   for (const auto &thr_evt_sec : host_evt_sec.thr_sections) {
     oss << thr_evt_sec.thread_id << std::endl;
     for (const auto &evt : thr_evt_sec.events) {
@@ -533,8 +1060,9 @@ std::string PrintHostEvents() {
   return oss.str();
 }
 
-static void EmulateEventPushAndPop(const HostEventSection &host_sec,
-                                   std::map<uint64_t, ThreadEvents> *out) {
+static void EmulateEventPushAndPop(
+    const HostEventSection<CommonEvent> &host_sec,
+    std::map<uint64_t, ThreadEvents> *out) {
   for (const auto &thr_sec : host_sec.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
     auto cur_thr_list = std::make_shared<EventList<Event>>();
@@ -573,15 +1101,16 @@ static void EmulateEventPushAndPop(const HostEventSection &host_sec,
       std::string name =
           prefix_stk.empty() ? evt.name : prefix_stk.top() + "/" + evt.name;
       const char *attr = (evt.attr == nullptr ? "none" : evt.attr);
-      Event *orig_evt = cur_thr_list->Record(EventType::kPushRange, name, tid,
-                                             evt.role, attr);
+      Event *orig_evt = cur_thr_list->Record(
+          EventType::kPushRange, name, tid, evt.role, attr);
       (*out)[tid][evt.end_ns] = std::make_pair(orig_evt, evt.start_ns);
       cur_thr_list->Record(EventType::kPopRange, name, tid, evt.role, attr);
     }
   }
 }
 
-static void EmulateCPURecordsAdd(const HostEventSection &host_sec) {
+static void EmulateCPURecordsAdd(
+    const HostEventSection<CommonEvent> &host_sec) {
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer == nullptr) {
     return;
@@ -589,8 +1118,8 @@ static void EmulateCPURecordsAdd(const HostEventSection &host_sec) {
   for (const auto &thr_sec : host_sec.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
     for (const auto &evt : thr_sec.events) {
-      tracer->AddCPURecords(evt.name, evt.start_ns, evt.end_ns, BlockDepth(),
-                            tid);
+      tracer->AddCPURecords(
+          evt.name, evt.start_ns, evt.end_ns, BlockDepth(), tid);
     }
   }
 }
@@ -609,7 +1138,8 @@ static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart() {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return thr_events;
   }
-  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
+  auto host_evt_sec =
+      HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   EmulateEventPushAndPop(host_evt_sec, &thr_events);
   EmulateCPURecordsAdd(host_evt_sec);
   return thr_events;

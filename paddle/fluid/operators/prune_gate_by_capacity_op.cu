@@ -79,9 +79,11 @@ class PruneGateByCapacityFunctor {
     int blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;
 
-    prune_gate_by_capacity_kernel<T1,
-                                  T2><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        gate_idx_data, new_gate_idx_data_, expert_count_out_data, batch_size);
+    prune_gate_by_capacity_kernel<T1, T2>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(gate_idx_data,
+                                                   new_gate_idx_data_,
+                                                   expert_count_out_data,
+                                                   batch_size);
   }
 
  private:
@@ -128,4 +130,4 @@ class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
 
 REGISTER_OP_CUDA_KERNEL(
     prune_gate_by_capacity,
-    ops::PruneGateByCapacityCUDAKernel<plat::CUDADeviceContext, int64_t>);
+    ops::PruneGateByCapacityCUDAKernel<phi::GPUContext, int64_t>);

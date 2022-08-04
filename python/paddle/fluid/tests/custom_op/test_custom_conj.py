@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -91,6 +91,7 @@ def conj_static(func, shape, dtype, np_input):
 
 
 class TestCustomConjJit(unittest.TestCase):
+
     def setUp(self):
         self.dtypes = ['float32', 'float64']
         self.shape = [2, 20, 2, 3]
@@ -98,8 +99,8 @@ class TestCustomConjJit(unittest.TestCase):
     def check_output(self, out, pd_out, name):
         self.assertTrue(
             np.array_equal(out, pd_out),
-            "custom op {}: {},\n paddle api {}: {}".format(name, out, name,
-                                                           pd_out))
+            "custom op {}: {},\n paddle api {}: {}".format(
+                name, out, name, pd_out))
 
     def run_dynamic(self, dtype, np_input):
         out, x_grad = conj_dynamic(custom_ops.custom_conj, dtype, np_input)

@@ -24,4 +24,4 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             const DenseTensor& out_grad,
                             DenseTensor* x_grad);
 
-}  // namspace phi
+}  // namespace phi

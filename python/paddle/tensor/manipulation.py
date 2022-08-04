@@ -23,7 +23,7 @@ from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layers import utils
 import numpy as np
-# TODO: define functions to manipulate a tensor  
+# TODO: define functions to manipulate a tensor
 from ..fluid.layers.nn import _elementwise_op_in_dygraph
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
@@ -84,12 +84,13 @@ def cast(x, dtype):
     helper = LayerHelper('cast', **locals())
     out = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=x.stop_gradient)
-    helper.append_op(
-        type='cast',
-        inputs={'X': [x]},
-        outputs={'Out': [out]},
-        attrs={'in_dtype': x.dtype,
-               'out_dtype': out.dtype})
+    helper.append_op(type='cast',
+                     inputs={'X': [x]},
+                     outputs={'Out': [out]},
+                     attrs={
+                         'in_dtype': x.dtype,
+                         'out_dtype': out.dtype
+                     })
     return out
 
 
@@ -233,8 +234,8 @@ def slice(input, axes, starts, ends):
 
             else:
                 raise ValueError(
-                    "Input axes must be a python list or tuple, but reveived {}".
-                    format(type(axes)))
+                    "Input axes must be a python list or tuple, but reveived {}"
+                    .format(type(axes)))
 
             infer_flags = list(1 for i in range(len(axes)))
 
@@ -321,8 +322,10 @@ def slice(input, axes, starts, ends):
     attrs['infer_flags'] = infer_flags
     out = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype('input'))
-    helper.append_op(
-        type='slice', inputs=inputs, attrs=attrs, outputs={'Out': out})
+    helper.append_op(type='slice',
+                     inputs=inputs,
+                     attrs=attrs,
+                     outputs={'Out': out})
 
     return out
 
@@ -407,12 +410,13 @@ def transpose(x, perm, name=None):
     helper = LayerHelper('transpose', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     x_shape = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='transpose2',
-        inputs={'X': [x]},
-        outputs={'Out': [out],
-                 'XShape': [x_shape]},
-        attrs={'axis': perm})
+    helper.append_op(type='transpose2',
+                     inputs={'X': [x]},
+                     outputs={
+                         'Out': [out],
+                         'XShape': [x_shape]
+                     },
+                     attrs={'axis': perm})
     return out
 
 
@@ -450,6 +454,13 @@ def unstack(x, axis=0, num=None):
             y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
+    if in_dygraph_mode():
+        if num == None:
+            num = x.shape[axis]
+        if num == 0:
+            return []
+        return _C_ops.final_state_unstack(x, axis, num)
+
     if _non_static_mode():
         if num == None:
             num = x.shape[axis]
@@ -468,12 +479,13 @@ def unstack(x, axis=0, num=None):
     for _ in range(num):
         outs.append(helper.create_variable_for_type_inference(x.dtype))
 
-    helper.append_op(
-        type='unstack',
-        inputs={'X': [x]},
-        outputs={'Y': outs},
-        attrs={'axis': axis,
-               'num': num})
+    helper.append_op(type='unstack',
+                     inputs={'X': [x]},
+                     outputs={'Y': outs},
+                     attrs={
+                         'axis': axis,
+                         'num': num
+                     })
     return outs
 
 
@@ -535,17 +547,16 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
                          (shard_id, nshards))
 
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [input]},
-        outputs={'Out': out},
-        attrs={
-            'index_num': index_num,
-            'nshards': nshards,
-            'shard_id': shard_id,
-            'ignore_value': ignore_value
-        },
-        stop_gradient=True)
+    helper.append_op(type=op_type,
+                     inputs={'X': [input]},
+                     outputs={'Out': out},
+                     attrs={
+                         'index_num': index_num,
+                         'nshards': nshards,
+                         'shard_id': shard_id,
+                         'ignore_value': ignore_value
+                     },
+                     stop_gradient=True)
     return out
 
 
@@ -636,6 +647,7 @@ def crop(x, shape=None, offsets=None, name=None):
             # if offsets = [1, 1], out = [[5,6], [8,9]]
 
     """
+
     helper = LayerHelper('crop_tensor', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'crop_tensor')
@@ -645,6 +657,9 @@ def crop(x, shape=None, offsets=None, name=None):
 
     if offsets is None:
         offsets = [0] * len(x.shape)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_crop_tensor(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
@@ -713,8 +728,11 @@ def crop(x, shape=None, offsets=None, name=None):
             else:
                 _attr_shape_check(dim_size)
                 temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant(
-                    [1], 'int32', dim_size, force_cpu=True, out=temp_out)
+                fill_constant([1],
+                              'int32',
+                              dim_size,
+                              force_cpu=True,
+                              out=temp_out)
                 new_shape_tensor.append(temp_out)
                 shape_attr.append(dim_size)
         ipts['ShapeTensor'] = new_shape_tensor
@@ -724,11 +742,10 @@ def crop(x, shape=None, offsets=None, name=None):
             _attr_shape_check(dim_size)
         attrs['shape'] = shape
 
-    helper.append_op(
-        type='crop_tensor',
-        inputs=ipts,
-        outputs={'Out': out},
-        attrs=None if len(attrs) == 0 else attrs)
+    helper.append_op(type='crop_tensor',
+                     inputs=ipts,
+                     outputs={'Out': out},
+                     attrs=None if len(attrs) == 0 else attrs)
     return out
 
 
@@ -762,8 +779,8 @@ def fill_(x, value):
         raise TypeError(
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
-    return _C_ops.fill_any_(x, "value_float",
-                            float(value), "value_int", int(value))
+    return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
+                            int(value))
 
 
 @dygraph_only
@@ -857,12 +874,11 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
     for i in range(len(inshape)):
         if i != dim1 and i != dim2:
             predshape.append(inshape[i])
-    diaglen = min(
-        min(inshape[dim1], inshape[dim1] + offset),
-        min(inshape[dim2], inshape[dim2] - offset))
+    diaglen = min(min(inshape[dim1], inshape[dim1] + offset),
+                  min(inshape[dim2], inshape[dim2] - offset))
     predshape.append(diaglen)
-    assert tuple(predshape) == tuple(y.shape), (
-        "the y shape should be {}".format(predshape))
+    assert tuple(predshape) == tuple(
+        y.shape), ("the y shape should be {}".format(predshape))
     if len(y.shape) == 1:
         y = y.reshape([1, -1])
 
@@ -902,8 +918,12 @@ def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
             print(x.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
 
     """
-    return _fill_diagonal_tensor_impl(
-        x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=True)
+    return _fill_diagonal_tensor_impl(x,
+                                      y,
+                                      offset=offset,
+                                      dim1=dim1,
+                                      dim2=dim2,
+                                      inplace=True)
 
 
 def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
@@ -932,8 +952,12 @@ def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
             print(nx.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
 
     """
-    return _fill_diagonal_tensor_impl(
-        x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=False)
+    return _fill_diagonal_tensor_impl(x,
+                                      y,
+                                      offset=offset,
+                                      dim1=dim1,
+                                      dim2=dim2,
+                                      inplace=False)
 
 
 @dygraph_only
@@ -1038,7 +1062,8 @@ def concat(x, axis=0, name=None):
                 'concat')
             if x.dtype != input[0].dtype:
                 raise TypeError(
-                    "All the Tensors in the input must have the same data type.")
+                    "All the Tensors in the input must have the same data type."
+                )
     else:
         input = [input]
     check_type(axis, 'axis', (int, Variable), 'concat')
@@ -1046,7 +1071,8 @@ def concat(x, axis=0, name=None):
     if isinstance(axis, Variable):
         check_dtype(
             axis.dtype, 'axis', ['int32', 'int64'], 'concat',
-            "The data type of axis must be int32 or int64 when axis is a Tensor")
+            "The data type of axis must be int32 or int64 when axis is a Tensor"
+        )
 
     helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -1059,13 +1085,16 @@ def concat(x, axis=0, name=None):
         assert len(input) == 1, "If the elements of 'input' in concat are Variable(LoDTensorArray), " \
                 "number of the elements must be 1, but received %s." % len(input)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
-        helper.append_op(
-            type='tensor_array_to_tensor',
-            inputs={'X': input[0]},
-            outputs={'Out': [out],
-                     'OutIndex': [out_index]},
-            attrs={'axis': axis,
-                   'use_stack': False})
+        helper.append_op(type='tensor_array_to_tensor',
+                         inputs={'X': input[0]},
+                         outputs={
+                             'Out': [out],
+                             'OutIndex': [out_index]
+                         },
+                         attrs={
+                             'axis': axis,
+                             'use_stack': False
+                         })
     else:
         inputs = {'X': input}
         attrs = {}
@@ -1075,8 +1104,10 @@ def concat(x, axis=0, name=None):
         else:
             attrs['axis'] = axis
 
-        helper.append_op(
-            type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
+        helper.append_op(type='concat',
+                         inputs=inputs,
+                         outputs={'Out': [out]},
+                         attrs=attrs)
     return out
 
 
@@ -1108,7 +1139,9 @@ def broadcast_tensors(input, name=None):
     """
 
     num_inputs = len(input)
-    if paddle.in_dynamic_mode():
+    if paddle.framework.in_dygraph_mode():
+        return _C_ops.final_state_broadcast_tensors(input)
+    if paddle.framework._non_static_mode():
         return _C_ops.broadcast_tensors(input, num_inputs)
 
     check_type(input, 'input', (list, tuple), 'broadcast_tensors')
@@ -1142,8 +1175,8 @@ def broadcast_tensors(input, name=None):
                 output_shape_r.append(shape[i])
                 output_shape_r_last_tensor_index.append(j)
             else:
-                invalid = (output_shape_r[i] != shape[i] and
-                           output_shape_r[i] != 1 and shape[i] != 1)
+                invalid = (output_shape_r[i] != shape[i]
+                           and output_shape_r[i] != 1 and shape[i] != 1)
                 if invalid:
                     last_index = output_shape_r_last_tensor_index[i]
                     raise TypeError(
@@ -1161,14 +1194,15 @@ def broadcast_tensors(input, name=None):
     out = []
     while i < num_inputs:
         out.append(
-            helper.create_variable_for_type_inference(dtype=helper.input_dtype(
-            )))
+            helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype()))
         i += 1
 
     inputs = {'X': input}
-    helper.append_op(
-        type='broadcast_tensors', inputs=inputs, outputs={'Out': out},
-        attrs={})
+    helper.append_op(type='broadcast_tensors',
+                     inputs=inputs,
+                     outputs={'Out': out},
+                     attrs={})
 
     return out
 
@@ -1223,17 +1257,16 @@ def flip(x, axis, name=None):
     else:
         out = helper.create_variable(name=name, dtype=dtype, persistable=False)
 
-    helper.append_op(
-        type="flip",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={"axis": axis})
+    helper.append_op(type="flip",
+                     inputs={"X": x},
+                     outputs={"Out": out},
+                     attrs={"axis": axis})
     return out
 
 
 def rot90(x, k=1, axes=[0, 1], name=None):
     """
-    Rotate a n-D tensor by 90 degrees. The rotation direction and times are specified by axes. Rotation direction is from axes[0] towards axes[1] if k > 0, and from axes[1] towards axes[0] for k < 0.
+    Rotate a n-D tensor by 90 degrees. The rotation direction and times are specified by axes and the absolute value of k. Rotation direction is from axes[0] towards axes[1] if k > 0, and from axes[1] towards axes[0] for k < 0.
 
     Args:
         x (Tensor): The input Tensor(or LoDTensor). The data type of the input Tensor x
@@ -1294,23 +1327,25 @@ def rot90(x, k=1, axes=[0, 1], name=None):
     input_total_dims = len(x.shape)
     total_rot_dims = len(axes)
     if total_rot_dims != 2:
-        raise ValueError("expected total rotation axes == 2, but got axes = {}".
-                         format(total_rot_dims))
+        raise ValueError(
+            "expected total rotation axes == 2, but got axes = {}".format(
+                total_rot_dims))
     if input_total_dims < 2:
-        raise ValueError("expected total dims >= 2, but got total dims = {}".
-                         format(input_total_dims))
+        raise ValueError(
+            "expected total dims >= 2, but got total dims = {}".format(
+                input_total_dims))
 
     if not (axes[0] != axes[1] and abs(axes[0] - axes[1]) != input_total_dims):
         raise ValueError(
-            "expected rotation axes to be different, but got axis0 = {}, and axis1 = {}".
-            format(axes[0], axes[1]))
+            "expected rotation axes to be different, but got axis0 = {}, and axis1 = {}"
+            .format(axes[0], axes[1]))
 
     if not (axes[0] < input_total_dims and axes[0] >= -input_total_dims):
-        raise ValueError("Rotation axis0 out of range, axis0 = {}".format(axes[
-            0]))
+        raise ValueError("Rotation axis0 out of range, axis0 = {}".format(
+            axes[0]))
     if not (axes[1] < input_total_dims and axes[1] >= -input_total_dims):
-        raise ValueError("Rotation axis1 out of range, axis1 = {}".format(axes[
-            1]))
+        raise ValueError("Rotation axis1 out of range, axis1 = {}".format(
+            axes[1]))
 
     k %= 4
     if k == 0:
@@ -1408,12 +1443,12 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             'flatten')
 
     x_dim = len(x.shape)
-    if not (isinstance(start_axis, int)) or (
-            start_axis > x_dim - 1) or start_axis < -x_dim:
+    if not (isinstance(start_axis,
+                       int)) or (start_axis > x_dim - 1) or start_axis < -x_dim:
         raise ValueError(
             "The start_axis should be a int, and in range [-rank(x), rank(x))")
-    if not (isinstance(stop_axis, int)) or (
-            stop_axis > x_dim - 1) or stop_axis < -x_dim:
+    if not (isinstance(stop_axis,
+                       int)) or (stop_axis > x_dim - 1) or stop_axis < -x_dim:
         raise ValueError(
             "The stop_axis should be a int, and in range [-rank(x), rank(x))")
     if start_axis < 0:
@@ -1434,13 +1469,16 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     helper = LayerHelper('flatten', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     x_shape = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='flatten_contiguous_range',
-        inputs={"X": x},
-        outputs={'Out': out,
-                 'XShape': x_shape},
-        attrs={"start_axis": start_axis,
-               "stop_axis": stop_axis})
+    helper.append_op(type='flatten_contiguous_range',
+                     inputs={"X": x},
+                     outputs={
+                         'Out': out,
+                         'XShape': x_shape
+                     },
+                     attrs={
+                         "start_axis": start_axis,
+                         "stop_axis": stop_axis
+                     })
     return out
 
 
@@ -1454,12 +1492,12 @@ def flatten_(x, start_axis=0, stop_axis=-1, name=None):
         raise ValueError("The input x should be a Tensor")
 
     x_dim = len(x.shape)
-    if not (isinstance(start_axis, int)) or (
-            start_axis > x_dim - 1) or start_axis < -x_dim:
+    if not (isinstance(start_axis,
+                       int)) or (start_axis > x_dim - 1) or start_axis < -x_dim:
         raise ValueError(
             "The start_axis should be a int, and in range [-rank(x), rank(x))")
-    if not (isinstance(stop_axis, int)) or (
-            stop_axis > x_dim - 1) or stop_axis < -x_dim:
+    if not (isinstance(stop_axis,
+                       int)) or (stop_axis > x_dim - 1) or stop_axis < -x_dim:
         raise ValueError(
             "The stop_axis should be a int, and in range [-rank(x), rank(x))")
     if start_axis < 0:
@@ -1528,8 +1566,8 @@ def roll(x, shifts, axis=None, name=None):
         for i in range(len(axis)):
             if axis[i] >= len_origin_shape or axis[i] < -len_origin_shape:
                 raise ValueError(
-                    "axis is out of range, it should be in range [{}, {}), but received {}".
-                    format(-len_origin_shape, len_origin_shape, axis))
+                    "axis is out of range, it should be in range [{}, {}), but received {}"
+                    .format(-len_origin_shape, len_origin_shape, axis))
     else:
         axis = []
 
@@ -1545,20 +1583,22 @@ def roll(x, shifts, axis=None, name=None):
     out = helper.create_variable_for_type_inference(x.dtype)
 
     if isinstance(shifts, Variable):
-        helper.append_op(
-            type='roll',
-            inputs={'X': x,
-                    "ShiftsTensor": shifts},
-            outputs={'Out': out},
-            attrs={'axis': axis})
+        helper.append_op(type='roll',
+                         inputs={
+                             'X': x,
+                             "ShiftsTensor": shifts
+                         },
+                         outputs={'Out': out},
+                         attrs={'axis': axis})
     else:
         check_type(shifts, 'shifts', (list, tuple), 'roll')
-        helper.append_op(
-            type='roll',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'axis': axis,
-                   'shifts': shifts})
+        helper.append_op(type='roll',
+                         inputs={'X': x},
+                         outputs={'Out': out},
+                         attrs={
+                             'axis': axis,
+                             'shifts': shifts
+                         })
     return out
 
 
@@ -1663,10 +1703,10 @@ def stack(x, axis=0, name=None):
         ) == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             x = [x]
         else:
-            raise TypeError("The type of '%s' in %s must be %s, but received %s"
-                            % ('x', 'stack',
-                               'list[Tensor], tuple[Tensor] or TensorArray',
-                               type(x)))
+            raise TypeError(
+                "The type of '%s' in %s must be %s, but received %s" %
+                ('x', 'stack', 'list[Tensor], tuple[Tensor] or TensorArray',
+                 type(x)))
 
     helper = LayerHelper('stack', **locals())
 
@@ -1680,19 +1720,21 @@ def stack(x, axis=0, name=None):
             check_variable_and_dtype(i, 'x', \
                 ['float16', 'float32', 'float64', 'int32', 'int64'], 'stack')
 
-        helper.append_op(
-            type='tensor_array_to_tensor',
-            inputs={'X': x[0]},
-            outputs={'Out': [out],
-                     'OutIndex': [out_index]},
-            attrs={'axis': axis,
-                   'use_stack': True})
+        helper.append_op(type='tensor_array_to_tensor',
+                         inputs={'X': x[0]},
+                         outputs={
+                             'Out': [out],
+                             'OutIndex': [out_index]
+                         },
+                         attrs={
+                             'axis': axis,
+                             'use_stack': True
+                         })
     else:
-        helper.append_op(
-            type='stack',
-            inputs={'X': x},
-            outputs={'Y': out},
-            attrs={'axis': axis})
+        helper.append_op(type='stack',
+                         inputs={'X': x},
+                         outputs={'Y': out},
+                         attrs={'axis': axis})
 
     return out
 
@@ -1702,7 +1744,7 @@ def split(x, num_or_sections, axis=0, name=None):
     Split the input tensor into multiple sub-Tensors.
     
     Args:
-        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, uint8, int8, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections`` 
             indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
@@ -1766,8 +1808,8 @@ def split(x, num_or_sections, axis=0, name=None):
             if utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
                     if isinstance(item, Variable):
-                        num_or_sections[index] = num_or_sections[index].numpy()[
-                            0]
+                        num_or_sections[index] = num_or_sections[index].numpy(
+                        )[0]
                 attrs += ('sections', list(num_or_sections))
             else:
                 attrs += ('sections', list(num_or_sections))
@@ -1779,9 +1821,10 @@ def split(x, num_or_sections, axis=0, name=None):
         _C_ops.split(input, out, *attrs)
         return out
 
-    check_variable_and_dtype(
-        input, 'input',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'split')
+    check_variable_and_dtype(input, 'input', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8',
+        'int8'
+    ], 'split')
     check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
     check_type(dim, 'dim', (int, Variable), 'split')
     if isinstance(dim, Variable):
@@ -1809,8 +1852,11 @@ def split(x, num_or_sections, axis=0, name=None):
                         idx)
                     unk_dim_idx = idx
                 temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant(
-                    [1], 'int32', dim_size, force_cpu=True, out=temp_out)
+                fill_constant([1],
+                              'int32',
+                              dim_size,
+                              force_cpu=True,
+                              out=temp_out)
                 tensor_list.append(temp_out)
         return tensor_list
 
@@ -1836,8 +1882,8 @@ def split(x, num_or_sections, axis=0, name=None):
                 dim], 'len(num_or_sections) must not be more than input.shape[dim].'
         num = len(num_or_sections)
         attrs['sections'] = list(
-            map(lambda ele: -1 if isinstance(ele, Variable) else ele,
-                num_or_sections))
+            map(lambda ele: -1
+                if isinstance(ele, Variable) else ele, num_or_sections))
         if utils._contain_var(num_or_sections):
             inputs['SectionsTensorList'] = _get_SectionsTensorList(
                 num_or_sections)
@@ -1846,14 +1892,16 @@ def split(x, num_or_sections, axis=0, name=None):
         helper.create_variable_for_type_inference(dtype=helper.input_dtype())
         for i in range(num)
     ]
-    helper.append_op(
-        type='split', inputs=inputs, outputs={'Out': outs}, attrs=attrs)
+    helper.append_op(type='split',
+                     inputs=inputs,
+                     outputs={'Out': outs},
+                     attrs=attrs)
     return outs
 
 
 def squeeze(x, axis=None, name=None):
     """
-    This OP will squeeze the dimension(s) of size 1 of input tensor x's shape. 
+    Squeeze the dimension(s) of size 1 of input tensor x's shape. 
     
     Note that the output Tensor will share data with origin Tensor and doesn't have a 
     Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, 
@@ -1910,7 +1958,7 @@ def squeeze(x, axis=None, name=None):
 
     Examples:
         .. code-block:: python
-
+	  :name: code-example1
             import paddle
             
             x = paddle.rand([5, 1, 10])
@@ -1947,12 +1995,13 @@ def squeeze(x, axis=None, name=None):
     check_type(axes, 'axis/axes', (list, tuple), 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type="squeeze2",
-        inputs={"X": input},
-        attrs={"axes": axes},
-        outputs={"Out": out,
-                 "XShape": x_shape})
+    helper.append_op(type="squeeze2",
+                     inputs={"X": input},
+                     attrs={"axes": axes},
+                     outputs={
+                         "Out": out,
+                         "XShape": x_shape
+                     })
 
     return out
 
@@ -2031,7 +2080,18 @@ def unique_consecutive(x,
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        out, inverse, counts = _C_ops.final_state_unique_consecutive(
+            x, return_inverse, return_counts, axis, attr_dtype)
+        outs = [out]
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+        if len(outs) == 1:
+            return outs[0]
+        return tuple(outs)
+    elif paddle.in_dynamic_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
             'return_counts', return_counts, 'axis', axis)
@@ -2058,23 +2118,22 @@ def unique_consecutive(x,
         "return_counts": return_counts,
         "axis": axis,
     }
-    out = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
-    inverse = helper.create_variable_for_type_inference(
-        dtype=attr_dtype, stop_gradient=True)
-    counts = helper.create_variable_for_type_inference(
-        dtype=attr_dtype, stop_gradient=True)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype,
+                                                    stop_gradient=True)
+    inverse = helper.create_variable_for_type_inference(dtype=attr_dtype,
+                                                        stop_gradient=True)
+    counts = helper.create_variable_for_type_inference(dtype=attr_dtype,
+                                                       stop_gradient=True)
     outputs = {"Out": out, "Index": inverse, "Counts": counts}
     outs = [out]
     if return_inverse:
         outs.append(inverse)
     if return_counts:
         outs.append(counts)
-    helper.append_op(
-        type="unique_consecutive",
-        inputs={"X": x},
-        attrs=attrs,
-        outputs=outputs)
+    helper.append_op(type="unique_consecutive",
+                     inputs={"X": x},
+                     attrs=attrs,
+                     outputs=outputs)
     if len(outs) == 1:
         return outs[0]
     return tuple(outs)
@@ -2105,13 +2164,13 @@ def unique(x,
             :ref:`api_guide_Name`. Default: None.
 
     Returns: 
-        tuple: (out, indices, inverse, counts). `out` is the unique tensor for `x`. `indices` is \
+        tuple (out, indices, inverse, counts). `out` is the unique tensor for `x`. `indices` is \
             provided only if `return_index` is True. `inverse` is provided only if `return_inverse` \
             is True. `counts` is provided only if `return_counts` is True.
 
     Examples:
         .. code-block:: python
-
+	  :name: code-example1
             import paddle
 
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
@@ -2177,14 +2236,14 @@ def unique(x,
         "axis": axis,
         "is_sorted": True
     }
-    out = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
-    indices = helper.create_variable_for_type_inference(
-        dtype=attr_dtype, stop_gradient=True)
-    inverse = helper.create_variable_for_type_inference(
-        dtype=attr_dtype, stop_gradient=True)
-    counts = helper.create_variable_for_type_inference(
-        dtype=attr_dtype, stop_gradient=True)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype,
+                                                    stop_gradient=True)
+    indices = helper.create_variable_for_type_inference(dtype=attr_dtype,
+                                                        stop_gradient=True)
+    inverse = helper.create_variable_for_type_inference(dtype=attr_dtype,
+                                                        stop_gradient=True)
+    counts = helper.create_variable_for_type_inference(dtype=attr_dtype,
+                                                       stop_gradient=True)
     outputs = {
         "Out": out,
         "Indices": indices,
@@ -2199,8 +2258,10 @@ def unique(x,
     if return_counts:
         outs.append(counts)
 
-    helper.append_op(
-        type="unique", inputs={"X": x}, attrs=attrs, outputs=outputs)
+    helper.append_op(type="unique",
+                     inputs={"X": x},
+                     attrs=attrs,
+                     outputs=outputs)
 
     if len(outs) == 1:
         return outs[0]
@@ -2301,12 +2362,13 @@ def unsqueeze(x, axis, name=None):
 
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type="unsqueeze2",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"Out": out,
-                 "XShape": x_shape})
+    helper.append_op(type="unsqueeze2",
+                     inputs=inputs,
+                     attrs=attrs,
+                     outputs={
+                         "Out": out,
+                         "XShape": x_shape
+                     })
 
     return out
 
@@ -2397,21 +2459,25 @@ def gather(x, index, axis=None, name=None):
     dtype = helper.input_dtype('x')
     out = helper.create_variable_for_type_inference(dtype)
     if not isinstance(axis, Variable):
-        helper.append_op(
-            type="gather",
-            inputs={"X": x,
-                    "Index": index},
-            attrs={'axis': axis,
-                   'overwrite': False},
-            outputs={"Out": out})
+        helper.append_op(type="gather",
+                         inputs={
+                             "X": x,
+                             "Index": index
+                         },
+                         attrs={
+                             'axis': axis,
+                             'overwrite': False
+                         },
+                         outputs={"Out": out})
     else:
-        helper.append_op(
-            type="gather",
-            inputs={"X": x,
-                    "Index": index,
-                    "Axis": axis},
-            attrs={"overwrite": False},
-            outputs={"Out": out})
+        helper.append_op(type="gather",
+                         inputs={
+                             "X": x,
+                             "Index": index,
+                             "Axis": axis
+                         },
+                         attrs={"overwrite": False},
+                         outputs={"Out": out})
 
     return out
 
@@ -2470,11 +2536,10 @@ def unbind(input, axis=0):
         helper.create_variable_for_type_inference(dtype=helper.input_dtype())
         for i in range(num)
     ]
-    helper.append_op(
-        type="unbind",
-        inputs={"X": input},
-        outputs={"Out": outs},
-        attrs={"axis": axis})
+    helper.append_op(type="unbind",
+                     inputs={"X": input},
+                     outputs={"Out": outs},
+                     attrs={"axis": axis})
     return outs
 
 
@@ -2559,18 +2624,19 @@ def scatter(x, index, updates, overwrite=True, name=None):
             return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
         else:
             check_variable_and_dtype(
-                x, 'dtype',
-                ['float32', 'float64', 'float16', 'int32', 'int64'], 'scatter')
+                x, 'dtype', ['float32', 'float64', 'float16', 'int32', 'int64'],
+                'scatter')
             check_type(overwrite, 'overwrite', bool, 'scatter')
             helper = LayerHelper('scatter', **locals())
             out = helper.create_variable_for_type_inference(x.dtype)
-            helper.append_op(
-                type="scatter",
-                inputs={"X": x,
-                        "Ids": index,
-                        "Updates": updates},
-                attrs={'overwrite': overwrite},
-                outputs={"Out": out})
+            helper.append_op(type="scatter",
+                             inputs={
+                                 "X": x,
+                                 "Ids": index,
+                                 "Updates": updates
+                             },
+                             attrs={'overwrite': overwrite},
+                             outputs={"Out": out})
             return out
 
 
@@ -2653,8 +2719,7 @@ def scatter_nd_add(x, index, updates, name=None):
             # [3, 5, 9, 10]
     """
     if in_dygraph_mode():
-        op = getattr(_C_ops, 'scatter_nd_add')
-        return op(x, index, updates)
+        return _C_ops.final_state_scatter_nd_add(x, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')
@@ -2666,12 +2731,13 @@ def scatter_nd_add(x, index, updates, name=None):
             helper = LayerHelper('scatter_nd_add', **locals())
             dtype = helper.input_dtype(input_param_name='x')
             output = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type="scatter_nd_add",
-                inputs={"X": x,
-                        "Index": index,
-                        "Updates": updates},
-                outputs={"Out": output})
+            helper.append_op(type="scatter_nd_add",
+                             inputs={
+                                 "X": x,
+                                 "Index": index,
+                                 "Updates": updates
+                             },
+                             outputs={"Out": output})
             return output
 
 
@@ -2800,8 +2866,7 @@ def tile(x, repeat_times, name=None):
     """
     if in_dygraph_mode():
         if isinstance(repeat_times, core.eager.Tensor):
-            assert (repeat_times.ndim == 1,
-                    "Only support ndim == 1 while repeat_times is a Tensor.")
+            assert repeat_times.ndim == 1, "Only support ndim == 1 while repeat_times is a Tensor."
             repeat_times = repeat_times.numpy().tolist()
 
         return _C_ops.final_state_tile(x, repeat_times)
@@ -2811,8 +2876,8 @@ def tile(x, repeat_times, name=None):
 
     check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
     if isinstance(repeat_times, Variable):
-        assert len(repeat_times.shape) == 1, (
-            'repeat_times must be an 1-D Tensor.')
+        assert len(
+            repeat_times.shape) == 1, ('repeat_times must be an 1-D Tensor.')
     else:
         for elem in repeat_times:
             if isinstance(elem, Variable):
@@ -2823,8 +2888,9 @@ def tile(x, repeat_times, name=None):
                 assert isinstance(elem, type_tuple), (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
 
-    check_variable_and_dtype(
-        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
+    check_variable_and_dtype(x, 'x',
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
+                             'tile')
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
         raise ValueError(
             "When the date type is bool for the input 'x' of tile op, you "
@@ -2859,8 +2925,10 @@ def tile(x, repeat_times, name=None):
 
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='tile', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    helper.append_op(type='tile',
+                     inputs=inputs,
+                     outputs={'Out': out},
+                     attrs=attrs)
     return out
 
 
@@ -2896,8 +2964,9 @@ def expand_as(x, y, name=None):
     if _non_static_mode():
         return _C_ops.expand_as_v2(x, 'target_shape', y.shape)
 
-    check_variable_and_dtype(
-        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand_as')
+    check_variable_and_dtype(x, 'x',
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
+                             'expand_as')
     check_type(y, 'y', Variable, 'expand_as')
 
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
@@ -2911,11 +2980,10 @@ def expand_as(x, y, name=None):
     helper = LayerHelper('expand_as', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='expand_as_v2',
-        inputs=inputs,
-        attrs={'target_shape': y.shape},
-        outputs={'Out': out})
+    helper.append_op(type='expand_as_v2',
+                     inputs=inputs,
+                     attrs={'target_shape': y.shape},
+                     outputs={'Out': out})
     return out
 
 
@@ -2946,7 +3014,9 @@ def broadcast_to(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_expand(x, shape)
+    if _in_legacy_dygraph():
         return _C_ops.expand_v2(x, 'shape', shape)
 
     if isinstance(shape, Variable):
@@ -3000,8 +3070,10 @@ def broadcast_to(x, shape, name=None):
 
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    helper.append_op(type='expand_v2',
+                     inputs=inputs,
+                     outputs={'Out': out},
+                     attrs=attrs)
     return out
 
 
@@ -3010,7 +3082,7 @@ def expand(x, shape, name=None):
 
     Expand the input tensor to a given shape.
 
-    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. The dimension to expand must have a value 1.
+    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 1.
 
 
     Args:
@@ -3088,8 +3160,10 @@ def expand(x, shape, name=None):
 
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    helper.append_op(type='expand_v2',
+                     inputs=inputs,
+                     outputs={'Out': out},
+                     attrs=attrs)
     return out
 
 
@@ -3169,7 +3243,7 @@ def reshape(x, shape, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
-            out, _ = _C_ops.reshape2(x, None, 'shape', shape)
+            out = _C_ops.final_state_reshape(x, shape)
         elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
             out, _ = _C_ops.reshape2(x, shape)
@@ -3263,12 +3337,13 @@ def reshape(x, shape, name=None):
     out = x if inplace else helper.create_variable_for_type_inference(
         dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="reshape2",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"Out": out,
-                 "XShape": x_shape})
+    helper.append_op(type="reshape2",
+                     inputs=inputs,
+                     attrs=attrs,
+                     outputs={
+                         "Out": out,
+                         "XShape": x_shape
+                     })
 
     return helper.append_activation(out)
 
@@ -3376,11 +3451,12 @@ def gather_nd(x, index, name=None):
     helper = LayerHelper('gather_nd', **locals())
     dtype = helper.input_dtype()
     output = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="gather_nd",
-        inputs={"X": x,
-                "Index": index},
-        outputs={"Out": output})
+    helper.append_op(type="gather_nd",
+                     inputs={
+                         "X": x,
+                         "Index": index
+                     },
+                     outputs={"Out": output})
     return output
 
 
@@ -3572,8 +3648,10 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
         attrs['infer_flags'] = infer_flags
     out = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype('x'))
-    helper.append_op(
-        type='strided_slice', inputs=inputs, attrs=attrs, outputs={'Out': out})
+    helper.append_op(type='strided_slice',
+                     inputs=inputs,
+                     attrs=attrs,
+                     outputs={'Out': out})
 
     return out
 
@@ -3814,8 +3892,10 @@ def as_complex(x, name=None):
             # [[ 0. +1.j  2. +3.j  4. +5.j]
             #  [ 6. +7.j  8. +9.j 10.+11.j]]
     """
-    if paddle.in_dynamic_mode():
-        return paddle._C_ops.as_complex(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_as_complex(x)
+    if _in_legacy_dygraph():
+        return _C_ops.as_complex(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
     op_type = "as_complex"
@@ -3863,8 +3943,10 @@ def as_real(x, name=None):
             #   [ 8.  9.]
             #   [10. 11.]]]
     """
-    if paddle.in_dynamic_mode():
-        return paddle._C_ops.as_real(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_as_real(x)
+    if _in_legacy_dygraph():
+        return _C_ops.as_real(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
     op_type = "as_real"
@@ -3930,17 +4012,18 @@ def repeat_interleave(x, repeats, axis=None, name=None):
 
     out = helper.create_variable_for_type_inference(x.dtype)
 
-    helper.append_op(
-        type='repeat_interleave',
-        inputs={
-            'X': x,
-            'RepeatsTensor': repeats if isinstance(repeats, Variable) else None
-        },
-        outputs={'Out': out},
-        attrs={
-            'dim': axis,
-            'Repeats': repeats if isinstance(repeats, int) else 0
-        })
+    helper.append_op(type='repeat_interleave',
+                     inputs={
+                         'X':
+                         x,
+                         'RepeatsTensor':
+                         repeats if isinstance(repeats, Variable) else None
+                     },
+                     outputs={'Out': out},
+                     attrs={
+                         'dim': axis,
+                         'Repeats': repeats if isinstance(repeats, int) else 0
+                     })
     return out
 
 
@@ -3970,7 +4053,7 @@ def moveaxis(x, source, destination, name=None):
             # [4, 3, 2]
 
             x = paddle.ones([2, 3])
-            paddle.moveaxis(x, 0, 1) # equivalent to paddle.t(x)
+            paddle.moveaxis(x, 0, 1).shape # equivalent to paddle.t(x)
             # [3, 2]  
     """
     src = [source] if isinstance(source, int) else source
@@ -4036,12 +4119,13 @@ def moveaxis(x, source, destination, name=None):
     helper = LayerHelper('moveaxis', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     x_shape = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='transpose2',
-        inputs={'X': [x]},
-        outputs={'Out': [out],
-                 'XShape': [x_shape]},
-        attrs={'axis': perm})
+    helper.append_op(type='transpose2',
+                     inputs={'X': [x]},
+                     outputs={
+                         'Out': [out],
+                         'XShape': [x_shape]
+                     },
+                     attrs={'axis': perm})
     return out
 
 
@@ -4059,7 +4143,7 @@ def non_negative_axis(arr, axis):
 
 
 def infer_broadcast_shape(arr, indices, axis):
-    # This function is used in take/put_along_axis 
+    # This function is used in take/put_along_axis
     broadcast_shape_list = list(arr.shape)
     broadcast_shape_list[axis] = list(indices.shape)[axis]
     broadcast_shape = tuple(broadcast_shape_list)
@@ -4126,12 +4210,13 @@ def take_along_axis(arr, indices, axis):
     helper = LayerHelper('take_along_axis', **locals())
     dtype = helper.input_dtype()
     result = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="take_along_axis",
-        inputs={"Input": arr,
-                "Index": indices},
-        attrs={"Axis": axis},
-        outputs={"Result": result})
+    helper.append_op(type="take_along_axis",
+                     inputs={
+                         "Input": arr,
+                         "Index": indices
+                     },
+                     attrs={"Axis": axis},
+                     outputs={"Result": result})
     return result
 
 
@@ -4192,14 +4277,17 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
     helper = LayerHelper('put_along_axis', **locals())
     dtype = helper.input_dtype()
     result = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="put_along_axis",
-        inputs={"Input": arr,
-                "Index": indices,
-                "Value": values},
-        attrs={"Axis": axis,
-               "Reduce": reduce},
-        outputs={"Result": result})
+    helper.append_op(type="put_along_axis",
+                     inputs={
+                         "Input": arr,
+                         "Index": indices,
+                         "Value": values
+                     },
+                     attrs={
+                         "Axis": axis,
+                         "Reduce": reduce
+                     },
+                     outputs={"Result": result})
     return result
 
 

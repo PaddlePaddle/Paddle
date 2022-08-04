@@ -24,6 +24,7 @@
  **/
 
 #include "paddle/fluid/operators/detection/gpc.h"
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace gpc {
@@ -142,8 +143,8 @@ static edge_node **bound_list(lmt_node **lmt, double y) {
 
   if (!*lmt) {
     /* Add node onto the tail end of the LMT */
-    gpc_malloc<lmt_node>(*lmt, sizeof(lmt_node),
-                         const_cast<char *>("LMT insertion"));
+    gpc_malloc<lmt_node>(
+        *lmt, sizeof(lmt_node), const_cast<char *>("LMT insertion"));
     (*lmt)->y = y;
     (*lmt)->first_bound = NULL;
     (*lmt)->next = NULL;
@@ -151,8 +152,8 @@ static edge_node **bound_list(lmt_node **lmt, double y) {
   } else if (y < (*lmt)->y) {
     /* Insert a new LMT node before the current node */
     existing_node = *lmt;
-    gpc_malloc<lmt_node>(*lmt, sizeof(lmt_node),
-                         const_cast<char *>("LMT insertion"));
+    gpc_malloc<lmt_node>(
+        *lmt, sizeof(lmt_node), const_cast<char *>("LMT insertion"));
     (*lmt)->y = y;
     (*lmt)->first_bound = NULL;
     (*lmt)->next = existing_node;
@@ -171,7 +172,8 @@ static edge_node **bound_list(lmt_node **lmt, double y) {
 static void add_to_sbtree(int *entries, sb_tree **sbtree, double y) {
   if (!*sbtree) {
     /* Add a new tree node here */
-    gpc_malloc<sb_tree>(*sbtree, sizeof(sb_tree),
+    gpc_malloc<sb_tree>(*sbtree,
+                        sizeof(sb_tree),
                         const_cast<char *>("scanbeam tree insertion"));
     (*sbtree)->y = y;
     (*sbtree)->less = NULL;
@@ -225,8 +227,12 @@ static int count_optimal_vertices(gpc_vertex_list c) {
   return result;
 }
 
-static edge_node *build_lmt(lmt_node **lmt, sb_tree **sbtree, int *sbt_entries,
-                            gpc_polygon *p, int type, gpc_op op) {
+static edge_node *build_lmt(lmt_node **lmt,
+                            sb_tree **sbtree,
+                            int *sbt_entries,
+                            gpc_polygon *p,
+                            int type,
+                            gpc_op op) {
   int c = 0;
   int i = 0;
   int min = 0;
@@ -244,7 +250,8 @@ static edge_node *build_lmt(lmt_node **lmt, sb_tree **sbtree, int *sbt_entries,
   }
 
   /* Create the entire input polygon edge table in one go */
-  gpc_malloc<edge_node>(edge_table, total_vertices * sizeof(edge_node),
+  gpc_malloc<edge_node>(edge_table,
+                        total_vertices * sizeof(edge_node),
                         const_cast<char *>("edge table creation"));
 
   for (c = 0; c < p->num_contours; c++) {
@@ -397,14 +404,14 @@ static void add_edge_to_aet(edge_node **aet, edge_node *edge, edge_node *prev) {
   }
 }
 
-static void add_intersection(it_node **it, edge_node *edge0, edge_node *edge1,
-                             double x, double y) {
+static void add_intersection(
+    it_node **it, edge_node *edge0, edge_node *edge1, double x, double y) {
   it_node *existing_node;
 
   if (!*it) {
     /* Append a new node to the tail of the list */
-    gpc_malloc<it_node>(*it, sizeof(it_node),
-                        const_cast<char *>("IT insertion"));
+    gpc_malloc<it_node>(
+        *it, sizeof(it_node), const_cast<char *>("IT insertion"));
     (*it)->ie[0] = edge0;
     (*it)->ie[1] = edge1;
     (*it)->point.x = x;
@@ -414,8 +421,8 @@ static void add_intersection(it_node **it, edge_node *edge0, edge_node *edge1,
     if ((*it)->point.y > y) {
       /* Insert a new node mid-list */
       existing_node = *it;
-      gpc_malloc<it_node>(*it, sizeof(it_node),
-                          const_cast<char *>("IT insertion"));
+      gpc_malloc<it_node>(
+          *it, sizeof(it_node), const_cast<char *>("IT insertion"));
       (*it)->ie[0] = edge0;
       (*it)->ie[1] = edge1;
       (*it)->point.x = x;
@@ -428,7 +435,9 @@ static void add_intersection(it_node **it, edge_node *edge0, edge_node *edge1,
   }
 }
 
-static void add_st_edge(st_node **st, it_node **it, edge_node *edge,
+static void add_st_edge(st_node **st,
+                        it_node **it,
+                        edge_node *edge,
                         double dy) {
   st_node *existing_node;
   double den = 0.0;
@@ -438,8 +447,8 @@ static void add_st_edge(st_node **st, it_node **it, edge_node *edge,
 
   if (!*st) {
     /* Append edge onto the tail end of the ST */
-    gpc_malloc<st_node>(*st, sizeof(st_node),
-                        const_cast<char *>("ST insertion"));
+    gpc_malloc<st_node>(
+        *st, sizeof(st_node), const_cast<char *>("ST insertion"));
     (*st)->edge = edge;
     (*st)->xb = edge->xb;
     (*st)->xt = edge->xt;
@@ -453,8 +462,8 @@ static void add_st_edge(st_node **st, it_node **it, edge_node *edge,
         (fabs(den) <= DBL_EPSILON)) {
       /* No intersection - insert edge here (before the ST edge) */
       existing_node = *st;
-      gpc_malloc<st_node>(*st, sizeof(st_node),
-                          const_cast<char *>("ST insertion"));
+      gpc_malloc<st_node>(
+          *st, sizeof(st_node), const_cast<char *>("ST insertion"));
       (*st)->edge = edge;
       (*st)->xb = edge->xb;
       (*st)->xt = edge->xt;
@@ -532,13 +541,14 @@ static int count_contours(polygon_node *polygon) {
 }
 
 static void add_left(polygon_node *p, double x, double y) {
-  PADDLE_ENFORCE_NOT_NULL(p, paddle::platform::errors::InvalidArgument(
-                                 "Input polygon node is nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(p,
+                          paddle::platform::errors::InvalidArgument(
+                              "Input polygon node is nullptr."));
   vertex_node *nv = NULL;
 
   /* Create a new vertex node and set its fields */
-  gpc_malloc<vertex_node>(nv, sizeof(vertex_node),
-                          const_cast<char *>("vertex node creation"));
+  gpc_malloc<vertex_node>(
+      nv, sizeof(vertex_node), const_cast<char *>("vertex node creation"));
   nv->x = x;
   nv->y = y;
 
@@ -575,8 +585,8 @@ static void add_right(polygon_node *p, double x, double y) {
   vertex_node *nv = NULL;
 
   /* Create a new vertex node and set its fields */
-  gpc_malloc<vertex_node>(nv, sizeof(vertex_node),
-                          const_cast<char *>("vertex node creation"));
+  gpc_malloc<vertex_node>(
+      nv, sizeof(vertex_node), const_cast<char *>("vertex node creation"));
   nv->x = x;
   nv->y = y;
   nv->next = NULL;
@@ -589,8 +599,9 @@ static void add_right(polygon_node *p, double x, double y) {
 }
 
 static void merge_right(polygon_node *p, polygon_node *q, polygon_node *list) {
-  PADDLE_ENFORCE_NOT_NULL(p, paddle::platform::errors::InvalidArgument(
-                                 "Input polygon node is nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(p,
+                          paddle::platform::errors::InvalidArgument(
+                              "Input polygon node is nullptr."));
   polygon_node *target = NULL;
 
   /* Label contour as external */
@@ -611,19 +622,21 @@ static void merge_right(polygon_node *p, polygon_node *q, polygon_node *list) {
   }
 }
 
-static void add_local_min(polygon_node **p, edge_node *edge, double x,
+static void add_local_min(polygon_node **p,
+                          edge_node *edge,
+                          double x,
                           double y) {
   polygon_node *existing_min = NULL;
   vertex_node *nv = NULL;
 
   existing_min = *p;
 
-  gpc_malloc<polygon_node>(*p, sizeof(polygon_node),
-                           const_cast<char *>("polygon node creation"));
+  gpc_malloc<polygon_node>(
+      *p, sizeof(polygon_node), const_cast<char *>("polygon node creation"));
 
   /* Create a new vertex node and set its fields */
-  gpc_malloc<vertex_node>(nv, sizeof(vertex_node),
-                          const_cast<char *>("vertex node creation"));
+  gpc_malloc<vertex_node>(
+      nv, sizeof(vertex_node), const_cast<char *>("vertex node creation"));
   nv->x = x;
   nv->y = y;
   nv->next = NULL;
@@ -654,7 +667,8 @@ static int count_tristrips(polygon_node *tn) {
 
 void add_vertex(vertex_node **t, double x, double y) {
   if (!(*t)) {
-    gpc_malloc<vertex_node>(*t, sizeof(vertex_node),
+    gpc_malloc<vertex_node>(*t,
+                            sizeof(vertex_node),
                             const_cast<char *>("tristrip vertex creation"));
     (*t)->x = x;
     (*t)->y = y;
@@ -666,16 +680,20 @@ void add_vertex(vertex_node **t, double x, double y) {
 }
 
 void gpc_vertex_create(edge_node *e, int p, int s, double x, double y) {
-  PADDLE_ENFORCE_NOT_NULL(e, paddle::platform::errors::InvalidArgument(
-                                 "Input edge node is nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      e,
+      paddle::platform::errors::InvalidArgument("Input edge node is nullptr."));
   add_vertex(&(e->outp[p]->v[s]), x, y);
   e->outp[p]->active++;
 }
 
-static void new_tristrip(polygon_node **tn, edge_node *edge, double x,
+static void new_tristrip(polygon_node **tn,
+                         edge_node *edge,
+                         double x,
                          double y) {
   if (!(*tn)) {
-    gpc_malloc<polygon_node>(*tn, sizeof(polygon_node),
+    gpc_malloc<polygon_node>(*tn,
+                             sizeof(polygon_node),
                              const_cast<char *>("tristrip node creation"));
     (*tn)->next = NULL;
     (*tn)->v[LEFT] = NULL;
@@ -694,10 +712,12 @@ static bbox *create_contour_bboxes(gpc_polygon *p) {
   int c = 0;
   int v = 0;
 
-  gpc_malloc<bbox>(box, p->num_contours * sizeof(bbox),
+  gpc_malloc<bbox>(box,
+                   p->num_contours * sizeof(bbox),
                    const_cast<char *>("Bounding box creation"));
-  PADDLE_ENFORCE_NOT_NULL(box, paddle::platform::errors::ResourceExhausted(
-                                   "Failed to malloc box memory."));
+  PADDLE_ENFORCE_NOT_NULL(box,
+                          paddle::platform::errors::ResourceExhausted(
+                              "Failed to malloc box memory."));
 
   /* Construct contour bounding boxes */
   for (c = 0; c < p->num_contours; c++) {
@@ -859,7 +879,8 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   gpc_vertex_list *extended_contour = NULL;
 
   /* Create an extended hole array */
-  gpc_malloc<int>(extended_hole, (p->num_contours + 1) * sizeof(int),
+  gpc_malloc<int>(extended_hole,
+                  (p->num_contours + 1) * sizeof(int),
                   const_cast<char *>("contour hole addition"));
   PADDLE_ENFORCE_NOT_NULL(extended_hole,
                           paddle::platform::errors::ResourceExhausted(
@@ -898,7 +919,9 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
 }
 
 // gpc_polygon_clip
-void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
+void gpc_polygon_clip(gpc_op op,
+                      gpc_polygon *subj,
+                      gpc_polygon *clip,
                       gpc_polygon *result) {
   sb_tree *sbtree = NULL;
   it_node *it = NULL;
@@ -979,10 +1002,11 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   }
 
   /* Build scanbeam table from scanbeam tree */
-  gpc_malloc<double>(sbt, sbt_entries * sizeof(double),
-                     const_cast<char *>("sbt creation"));
-  PADDLE_ENFORCE_NOT_NULL(sbt, paddle::platform::errors::ResourceExhausted(
-                                   "Failed to malloc scanbeam table memory."));
+  gpc_malloc<double>(
+      sbt, sbt_entries * sizeof(double), const_cast<char *>("sbt creation"));
+  PADDLE_ENFORCE_NOT_NULL(sbt,
+                          paddle::platform::errors::ResourceExhausted(
+                              "Failed to malloc scanbeam table memory."));
 
   build_sbt(&scanbeam, sbt, sbtree);
   scanbeam = 0;
@@ -1025,8 +1049,9 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
     e0 = aet;
     e1 = aet;
     /* Set up bundle fields of first edge */
-    PADDLE_ENFORCE_NOT_NULL(aet, paddle::platform::errors::InvalidArgument(
-                                     "Edge node AET is nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        aet,
+        paddle::platform::errors::InvalidArgument("Edge node AET is nullptr."));
 
     aet->bundle[ABOVE][aet->type] = (aet->top.y != yb);
     aet->bundle[ABOVE][!aet->type] = 0;
@@ -1474,7 +1499,8 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   result->hole = NULL;
   result->num_contours = count_contours(out_poly);
   if (result->num_contours > 0) {
-    gpc_malloc<int>(result->hole, result->num_contours * sizeof(int),
+    gpc_malloc<int>(result->hole,
+                    result->num_contours * sizeof(int),
                     const_cast<char *>("hole flag table creation"));
     gpc_malloc<gpc_vertex_list>(result->contour,
                                 result->num_contours * sizeof(gpc_vertex_list),
@@ -1536,7 +1562,9 @@ void gpc_polygon_to_tristrip(gpc_polygon *s, gpc_tristrip *t) {
 }
 
 // gpc_tristrip_clip
-void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
+void gpc_tristrip_clip(gpc_op op,
+                       gpc_polygon *subj,
+                       gpc_polygon *clip,
                        gpc_tristrip *result) {
   sb_tree *sbtree = NULL;
   it_node *it = NULL;
@@ -1620,10 +1648,11 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   }
 
   /* Build scanbeam table from scanbeam tree */
-  gpc_malloc<double>(sbt, sbt_entries * sizeof(double),
-                     const_cast<char *>("sbt creation"));
-  PADDLE_ENFORCE_NOT_NULL(sbt, paddle::platform::errors::ResourceExhausted(
-                                   "Failed to malloc scanbeam table memory."));
+  gpc_malloc<double>(
+      sbt, sbt_entries * sizeof(double), const_cast<char *>("sbt creation"));
+  PADDLE_ENFORCE_NOT_NULL(sbt,
+                          paddle::platform::errors::ResourceExhausted(
+                              "Failed to malloc scanbeam table memory."));
   build_sbt(&scanbeam, sbt, sbtree);
   scanbeam = 0;
   free_sbtree(&sbtree);
@@ -1661,8 +1690,9 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
     e1 = aet;
 
     /* Set up bundle fields of first edge */
-    PADDLE_ENFORCE_NOT_NULL(aet, paddle::platform::errors::InvalidArgument(
-                                     "Edge node AET is nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        aet,
+        paddle::platform::errors::InvalidArgument("Edge node AET is nullptr."));
     aet->bundle[ABOVE][aet->type] = (aet->top.y != yb);
     aet->bundle[ABOVE][!aet->type] = 0;
     aet->bstate[ABOVE] = UNBUNDLED;

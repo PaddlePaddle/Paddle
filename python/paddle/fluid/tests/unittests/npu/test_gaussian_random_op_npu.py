@@ -17,6 +17,7 @@ from __future__ import print_function
 import sys
 import unittest
 import numpy as np
+
 sys.path.append("..")
 import paddle
 import paddle.fluid as fluid
@@ -27,6 +28,7 @@ paddle.enable_static()
 
 
 class TestNPUGaussianRandomOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "gaussian_random"
@@ -68,10 +70,8 @@ class TestNPUGaussianRandomOp(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
-        self.assertTrue(
-            np.allclose(
-                hist, hist2, rtol=0, atol=0.01),
-            "hist: " + str(hist) + " hist2: " + str(hist2))
+        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
+                        "hist: " + str(hist) + " hist2: " + str(hist2))
 
 
 if __name__ == "__main__":

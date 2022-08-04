@@ -49,10 +49,9 @@ def md5(doc):
         md5sum = hashinst.hexdigest()
     except UnicodeDecodeError as e:
         md5sum = None
-        print(
-            "Error({}) occurred when `md5({})`, discard it.".format(
-                str(e), doc),
-            file=sys.stderr)
+        print("Error({}) occurred when `md5({})`, discard it.".format(
+            str(e), doc),
+              file=sys.stderr)
 
     return md5sum
 
@@ -110,8 +109,8 @@ def visit_all_module(mod):
                 if hasattr(instance,
                            '__name__') and member_name != instance.__name__:
                     print(
-                        "Found alias API, alias name is: {}, original name is: {}".
-                        format(member_name, instance.__name__),
+                        "Found alias API, alias name is: {}, original name is: {}"
+                        .format(member_name, instance.__name__),
                         file=sys.stderr)
         except:
             if not cur_name in ErrorSet and not cur_name in skiplist:
@@ -168,8 +167,8 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
         logger.warning("AttributeError occurred when `id(eval(%s))`", full_name)
         return None
     except Exception as e:
-        logger.warning("Exception(%s) occurred when `id(eval(%s))`",
-                       str(e), full_name)
+        logger.warning("Exception(%s) occurred when `id(eval(%s))`", str(e),
+                       full_name)
         return None
     else:
         logger.debug("adding %s to api_info_dict.", full_name)
@@ -190,8 +189,8 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
                 api_info_dict[fc_id]["gen_doc_anno"] = gen_doc_anno
             if inspect.isfunction(obj):
                 api_info_dict[fc_id]["signature"] = repr(
-                    inspect.getfullargspec(obj)).replace('FullArgSpec',
-                                                         'ArgSpec', 1)
+                    inspect.getfullargspec(obj)).replace(
+                        'FullArgSpec', 'ArgSpec', 1)
         return api_info_dict[fc_id]
 
 
@@ -212,8 +211,8 @@ def process_module(m, attr="__all__"):
                 api_counter += 1
                 if inspect.isclass(api_info['object']):
                     for name, value in inspect.getmembers(api_info['object']):
-                        if (not name.startswith("_")) and hasattr(value,
-                                                                  '__name__'):
+                        if (not name.startswith("_")) and hasattr(
+                                value, '__name__'):
                             method_full_name = full_name + '.' + name  # value.__name__
                             method_api_info = insert_api_into_dict(
                                 method_full_name, 'class_method')
@@ -225,44 +224,17 @@ def process_module(m, attr="__all__"):
 def check_public_api():
     import paddle
     modulelist = [  #npqa
-        paddle,
-        paddle.amp,
-        paddle.nn,
-        paddle.nn.functional,
-        paddle.nn.initializer,
-        paddle.nn.utils,
-        paddle.static,
-        paddle.static.nn,
-        paddle.io,
-        paddle.jit,
-        paddle.metric,
-        paddle.distribution,
-        paddle.optimizer,
-        paddle.optimizer.lr,
-        paddle.regularizer,
-        paddle.text,
-        paddle.utils,
-        paddle.utils.download,
-        paddle.utils.profiler,
-        paddle.utils.cpp_extension,
-        paddle.sysconfig,
-        paddle.vision,
-        paddle.vision.datasets,
-        paddle.vision.models,
-        paddle.vision.transforms,
-        paddle.vision.ops,
-        paddle.distributed,
-        paddle.distributed.fleet,
-        paddle.distributed.fleet.utils,
-        paddle.distributed.parallel,
-        paddle.distributed.utils,
-        paddle.callbacks,
-        paddle.hub,
-        paddle.autograd,
-        paddle.incubate,
-        paddle.inference,
-        paddle.onnx,
-        paddle.device
+        paddle, paddle.amp, paddle.nn, paddle.nn.functional,
+        paddle.nn.initializer, paddle.nn.utils, paddle.static, paddle.static.nn,
+        paddle.io, paddle.jit, paddle.metric, paddle.distribution,
+        paddle.optimizer, paddle.optimizer.lr, paddle.regularizer, paddle.text,
+        paddle.utils, paddle.utils.download, paddle.utils.profiler,
+        paddle.utils.cpp_extension, paddle.sysconfig, paddle.vision,
+        paddle.vision.datasets, paddle.vision.models, paddle.vision.transforms,
+        paddle.vision.ops, paddle.distributed, paddle.distributed.fleet,
+        paddle.distributed.fleet.utils, paddle.distributed.parallel,
+        paddle.distributed.utils, paddle.callbacks, paddle.hub, paddle.autograd,
+        paddle.incubate, paddle.inference, paddle.onnx, paddle.device
     ]
 
     apinum = 0
@@ -294,8 +266,8 @@ def check_public_api():
             cur_name = module + '.' + member_name
             instance = eval(cur_name)
             doc_md5 = md5(instance.__doc__)
-            member_dict[cur_name] = "({}, ('document', '{}'))".format(cur_name,
-                                                                      doc_md5)
+            member_dict[cur_name] = "({}, ('document', '{}'))".format(
+                cur_name, doc_md5)
 
 
 def check_allmodule_callable():
@@ -313,14 +285,18 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description='Print Apis Signatures')
     parser.add_argument('--debug', dest='debug', action="store_true")
-    parser.add_argument(
-        '--method',
-        dest='method',
-        type=str,
-        default='get_all_api',
-        help="using get_all_api or from_modulelist")
-    parser.add_argument(
-        'module', type=str, help='module', default='paddle')  # not used
+    parser.add_argument('--method',
+                        dest='method',
+                        type=str,
+                        default='get_all_api',
+                        help="using get_all_api or from_modulelist")
+    parser.add_argument('module', type=str, help='module',
+                        default='paddle')  # not used
+    parser.add_argument('--skipped',
+                        dest='skipped',
+                        type=str,
+                        help='Skip Checking submodules',
+                        default='paddle.fluid.core_avx.eager.ops')
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['paddle'])
@@ -349,17 +325,17 @@ if __name__ == '__main__':
             all_api_names_to_k[api_name] = k
         all_api_names_sorted = sorted(all_api_names_to_k.keys())
         for api_name in all_api_names_sorted:
+            if args.skipped != '' and api_name.find(args.skipped) >= 0:
+                continue
             api_info = api_info_dict[all_api_names_to_k[api_name]]
             print("{0} ({2}, ('document', '{1}'))".format(
-                api_name,
-                md5(api_info['docstring']), api_info['signature']
+                api_name, md5(api_info['docstring']), api_info['signature']
                 if 'signature' in api_info else 'ArgSpec()'))
 
     if len(ErrorSet) == 0:
         sys.exit(0)
     else:
         for erroritem in ErrorSet:
-            print(
-                "Error, new function {} is unreachable".format(erroritem),
-                file=sys.stderr)
+            print("Error, new function {} is unreachable".format(erroritem),
+                  file=sys.stderr)
         sys.exit(1)

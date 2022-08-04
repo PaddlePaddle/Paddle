@@ -16,21 +16,23 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(
-    eigvalsh,
-    ops::EigvalshKernel<paddle::platform::CUDADeviceContext, float, float>,
-    ops::EigvalshKernel<paddle::platform::CUDADeviceContext, double, double>,
-    ops::EigvalshKernel<paddle::platform::CUDADeviceContext, float,
-                        paddle::platform::complex<float>>,
-    ops::EigvalshKernel<paddle::platform::CUDADeviceContext, double,
-                        paddle::platform::complex<double>>);
+REGISTER_OP_CUDA_KERNEL(eigvalsh,
+                        ops::EigvalshKernel<phi::GPUContext, float, float>,
+                        ops::EigvalshKernel<phi::GPUContext, double, double>,
+                        ops::EigvalshKernel<phi::GPUContext,
+                                            float,
+                                            paddle::platform::complex<float>>,
+                        ops::EigvalshKernel<phi::GPUContext,
+                                            double,
+                                            paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     eigvalsh_grad,
-    ops::EigvalshGradKernel<paddle::platform::CUDADeviceContext, float, float>,
-    ops::EigvalshGradKernel<paddle::platform::CUDADeviceContext, double,
-                            double>,
-    ops::EigvalshGradKernel<paddle::platform::CUDADeviceContext, float,
+    ops::EigvalshGradKernel<phi::GPUContext, float, float>,
+    ops::EigvalshGradKernel<phi::GPUContext, double, double>,
+    ops::EigvalshGradKernel<phi::GPUContext,
+                            float,
                             paddle::platform::complex<float>>,
-    ops::EigvalshGradKernel<paddle::platform::CUDADeviceContext, double,
+    ops::EigvalshGradKernel<phi::GPUContext,
+                            double,
                             paddle::platform::complex<double>>);
