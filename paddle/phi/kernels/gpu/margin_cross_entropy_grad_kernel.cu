@@ -173,16 +173,17 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
                                   float margin2,
                                   float margin3,
                                   float scale,
-                                  DenseTensor* logit_grad) {
+                                  DenseTensor* logits_grad) {
   const auto softmax_dims = softmax.dims();
   const int axis = softmax_dims.size() - 1;
   const int N = phi::funcs::SizeToAxis(axis, softmax_dims);
   const int D = phi::funcs::SizeFromAxis(axis, softmax_dims);
 
   if (return_softmax) {
-    phi::Copy<Context>(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
+    phi::Copy<Context>(
+        dev_ctx, softmax, dev_ctx.GetPlace(), false, logits_grad);
   } else {
-    logit_grad->ShareDataWith(softmax);
+    logits_grad->ShareDataWith(softmax);
   }
 
   int blocks = NumBlocks(N * D);
@@ -203,7 +204,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
   if (label_type == paddle::framework::proto::VarType::INT32) {
     typedef int32_t LabelT;
     CalculateGrad<T, LabelT>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(logit_grad->data<T>(),
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(logits_grad->data<T>(),
                                                    loss_grad.data<T>(),
                                                    logits.data<T>(),
                                                    label.data<LabelT>(),
@@ -217,7 +218,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
   } else if (label_type == paddle::framework::proto::VarType::INT64) {
     typedef int64_t LabelT;
     CalculateGrad<T, LabelT>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(logit_grad->data<T>(),
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(logits_grad->data<T>(),
                                                    loss_grad.data<T>(),
                                                    logits.data<T>(),
                                                    label.data<LabelT>(),

@@ -30,5 +30,5 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
                                   float margin2,
                                   float margin3,
                                   float scale,
-                                  DenseTensor* logit_grad);
+                                  DenseTensor* logits_grad);
 }  // namespace phi
