@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/data_set.h"
 
-#include "gflags/gflags.h"
 #include "google/protobuf/text_format.h"
 #if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
@@ -27,7 +26,6 @@
 
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
-#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
 
 #if defined _WIN32 || defined __APPLE__
@@ -36,8 +34,6 @@
 #endif
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
-DECLARE_bool(graph_get_neighbor_id);
-
 namespace paddle {
 namespace framework {
 
@@ -196,18 +192,9 @@ template <typename T>
 void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
   slots_shuffle_fea_eval_ = fea_eval;
   slots_shuffle_rclist_.ReSize(record_candidate_size);
+  slots_record_shuffle_rclist_.ReSize(record_candidate_size);
   VLOG(3) << "SetFeaEval fea eval mode: " << fea_eval
           << " with record candidate size: " << record_candidate_size;
-}
-
-template <typename T>
-void DatasetImpl<T>::SetGpuGraphMode(int is_graph_mode) {
-  gpu_graph_mode_ = is_graph_mode;
-}
-
-template <typename T>
-int DatasetImpl<T>::GetGpuGraphMode() {
-  return gpu_graph_mode_;
 }
 
 template <typename T>
@@ -454,91 +441,12 @@ void DatasetImpl<T>::LoadIntoMemory() {
   platform::Timer timeline;
   timeline.Start();
   std::vector<std::thread> load_threads;
-  if (gpu_graph_mode_) {
-    VLOG(0) << "in gpu_graph_mode";
-#ifdef PADDLE_WITH_HETERPS
-    graph_all_type_total_keys_.clear();
-    auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-    auto node_to_id = gpu_graph_ptr->feature_to_id;
-    auto edge_to_id = gpu_graph_ptr->edge_to_id;
-    graph_all_type_total_keys_.resize(node_to_id.size());
-    int cnt = 0;
-    for (auto& iter : node_to_id) {
-      int node_idx = iter.second;
-      std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
-      gpu_graph_ptr->get_all_id(
-          1, node_idx, thread_num_, &gpu_graph_device_keys);
-      auto& type_total_key = graph_all_type_total_keys_[cnt];
-      type_total_key.resize(thread_num_);
-      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
-        VLOG(2) << "node type: " << node_idx << ", gpu_graph_device_keys[" << i
-                << "] = " << gpu_graph_device_keys[i].size();
-        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
-          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
-          type_total_key[i].push_back(gpu_graph_device_keys[i][j]);
-        }
-      }
-
-      for (size_t i = 0; i < readers_.size(); i++) {
-        readers_[i]->SetDeviceKeys(&type_total_key[i], node_idx);
-        readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
-      }
-      cnt++;
-    }
-
-    VLOG(2) << "begin add feature_id into gpu_graph_total_keys_ size["
-            << gpu_graph_total_keys_.size() << "]";
-    for (auto& iter : node_to_id) {
-      std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
-      int node_idx = iter.second;
-      gpu_graph_ptr->get_all_feature_ids(
-          1, node_idx, thread_num_, &gpu_graph_device_keys);
-      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
-        VLOG(2) << "begin node type: " << node_idx << ", gpu_graph_device_keys["
-                << i << "] = " << gpu_graph_device_keys[i].size();
-        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
-          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
-        }
-        VLOG(2) << "end node type: " << node_idx << ", gpu_graph_device_keys["
-                << i << "] = " << gpu_graph_device_keys[i].size();
-      }
-    }
-    VLOG(2) << "end add feature_id into gpu_graph_total_keys_ size["
-            << gpu_graph_total_keys_.size() << "]";
-
-    // FIX: trick for iterate edge table
-    for (auto& iter : edge_to_id) {
-      int edge_idx = iter.second;
-      std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
-      gpu_graph_ptr->get_all_id(
-          0, edge_idx, thread_num_, &gpu_graph_device_keys);
-      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
-        VLOG(1) << "edge type: " << edge_idx << ", gpu_graph_device_keys[" << i
-                << "] = " << gpu_graph_device_keys[i].size();
-        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
-          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
-        }
-      }
-      if (FLAGS_graph_get_neighbor_id) {
-        std::vector<std::vector<uint64_t>> gpu_graph_neighbor_keys;
-        gpu_graph_ptr->get_all_neighbor_id(
-            0, edge_idx, thread_num_, &gpu_graph_neighbor_keys);
-        for (size_t i = 0; i < gpu_graph_neighbor_keys.size(); i++) {
-          for (size_t k = 0; k < gpu_graph_neighbor_keys[i].size(); k++) {
-            gpu_graph_total_keys_.push_back(gpu_graph_neighbor_keys[i][k]);
-          }
-        }
-      }
-    }
-#endif
-  } else {
-    for (int64_t i = 0; i < thread_num_; ++i) {
-      load_threads.push_back(std::thread(
-          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
-    }
-    for (std::thread& t : load_threads) {
-      t.join();
-    }
+  for (int64_t i = 0; i < thread_num_; ++i) {
+    load_threads.push_back(std::thread(
+        &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
+  }
+  for (std::thread& t : load_threads) {
+    t.join();
   }
   input_channel_->Close();
   int64_t in_chan_size = input_channel_->Size();
@@ -1608,6 +1516,71 @@ void MultiSlotDataset::GetRandomData(
           << " repush feasign num: " << debug_push_cnt;
 }
 
+void SlotRecordDataset::GetRandomData(
+    const std::unordered_set<uint16_t>& slots_to_replace,
+    std::vector<SlotRecord>* result) {
+  int debug_erase_cnt = 0;
+  int debug_push_cnt = 0;
+  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
+  slots_record_shuffle_rclist_.ReInit();
+  const auto& slots_shuffle_original_data = GetSlotsOriginalData();
+  for (const auto& rec : slots_shuffle_original_data) {
+    SlotRecordCandidate rand_rec;
+    SlotRecord new_rec = rec;
+    slots_record_shuffle_rclist_.AddAndGet(rec, &rand_rec);
+    for (auto it = new_rec->slot_uint64_feasigns_.slot_pos.begin();
+         it != new_rec->slot_uint64_feasigns_.slot_pos.end();) {
+      auto slot_it = slots_to_replace.begin();
+      int pos_slot = 0;
+      for (; slot_it != slots_to_replace.end(); ++slot_it, ++pos_slot) {
+        if (*slot_it == *it) break;
+      }
+      if (slot_it != slots_to_replace.end()) {
+        int erase_begin =
+            new_rec->slot_uint64_feasigns_.slot_offsets.at(pos_slot);
+        int erase_end =
+            new_rec->slot_uint64_feasigns_.slot_offsets.at(pos_slot + 1);
+        for (int idx = erase_begin;
+             it != new_rec->slot_uint64_feasigns_.slot_pos.end() &&
+             idx < erase_end;) {
+          it = new_rec->slot_uint64_feasigns_.slot_values.erase(it);
+          debug_erase_cnt += 1;
+        }
+        auto range = rand_rec.feas_.equal_range(pos_slot);
+        std::vector<uint16_t> slot_v;
+        for (auto it_val = range.first; it_val != range.second; ++it_val) {
+          slot_v.push_back(it_val->second);
+          debug_push_cnt += 1;
+        }
+        new_rec->slot_uint64_feasigns_.slot_values.insert(
+            new_rec->slot_uint64_feasigns_.slot_values.begin() + erase_begin,
+            slot_v.begin(),
+            slot_v.end());
+        new_rec->slot_uint64_feasigns_.slot_offsets[pos_slot + 1] =
+            slot_v.size();
+      } else {
+        ++it;
+      }
+    }
+    /*
+    for (auto slot : slots_to_replace) {
+      int slot_p = std::find(new_rec->slot_uint64_feasigns_.slot_pos.begin(),
+    new_rec->slot_uint64_feasigns_.slot_pos.end(), slot) -
+    new_rec->slot_uint64_feasigns_.slot_pos.begin(); auto range =
+    rand_rec.feas_.equal_range(slot_p); for (auto it = range.first; it !=
+    range.second; ++it) { int slot_offset_id = it->first; auto fea_value =
+    it->second;
+        new_rec->slot_uint64_feasigns_.slot_values.insert(new_rec->slot_uint64_feasigns_.slot_values.begin()
+    + slot_offset_id, fea_value); debug_push_cnt += 1;
+      }
+    }
+    */
+    result->push_back(std::move(new_rec));
+  }
+  VLOG(2) << "erase feasign num: " << debug_erase_cnt
+          << " repush feasign num: " << debug_push_cnt;
+}
+
 void MultiSlotDataset::PreprocessChannel(
     const std::set<std::string>& slots_to_replace,
     std::unordered_set<uint16_t>& index_slots) {  // NOLINT
@@ -1718,6 +1691,115 @@ void MultiSlotDataset::PreprocessChannel(
       << "input channel should be empty before slots shuffle";
 }
 
+void SlotRecordDataset::PreprocessChannel(
+    const std::set<std::string>& slots_to_replace,
+    std::unordered_set<uint16_t>& index_slots) {  // NOLINT
+  int out_channel_size = 0;
+  if (cur_channel_ == 0) {
+    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+      out_channel_size += multi_output_channel_[i]->Size();
+    }
+  } else {
+    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+      out_channel_size += multi_consume_channel_[i]->Size();
+    }
+  }
+  VLOG(2) << "DatasetImpl<T>::SlotsShuffle() begin with input channel size: "
+          << input_channel_->Size()
+          << " output channel size: " << out_channel_size;
+
+  if ((!input_channel_ || input_channel_->Size() == 0) &&
+      slots_shuffle_original_data_.size() == 0 && out_channel_size == 0) {
+    VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, no data to slots shuffle";
+    return;
+  }
+
+  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
+  for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
+    std::string cur_slot = multi_slot_desc.slots(i).name();
+    if (slots_to_replace.find(cur_slot) != slots_to_replace.end()) {
+      index_slots.insert(i);
+    }
+  }
+  if (slots_shuffle_original_data_.size() == 0) {
+    // before first slots shuffle, instances could be in
+    // input_channel, oupput_channel or consume_channel
+    if (input_channel_ && input_channel_->Size() != 0) {
+      slots_shuffle_original_data_.reserve(input_channel_->Size());
+      input_channel_->Close();
+      input_channel_->ReadAll(slots_shuffle_original_data_);
+    } else {
+      CHECK(out_channel_size > 0);  // NOLINT
+      if (cur_channel_ == 0) {
+        for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+          std::vector<SlotRecord> vec_data;
+          multi_output_channel_[i]->Close();
+          multi_output_channel_[i]->ReadAll(vec_data);
+          slots_shuffle_original_data_.reserve(
+              slots_shuffle_original_data_.size() + vec_data.size());
+          slots_shuffle_original_data_.insert(
+              slots_shuffle_original_data_.end(),
+              std::make_move_iterator(vec_data.begin()),
+              std::make_move_iterator(vec_data.end()));
+          vec_data.clear();
+          vec_data.shrink_to_fit();
+          multi_output_channel_[i]->Clear();
+        }
+      } else {
+        for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+          std::vector<SlotRecord> vec_data;
+          multi_consume_channel_[i]->Close();
+          multi_consume_channel_[i]->ReadAll(vec_data);
+          slots_shuffle_original_data_.reserve(
+              slots_shuffle_original_data_.size() + vec_data.size());
+          slots_shuffle_original_data_.insert(
+              slots_shuffle_original_data_.end(),
+              std::make_move_iterator(vec_data.begin()),
+              std::make_move_iterator(vec_data.end()));
+          vec_data.clear();
+          vec_data.shrink_to_fit();
+          multi_consume_channel_[i]->Clear();
+        }
+      }
+    }
+  } else {
+    // if already have original data for slots shuffle, clear channel
+    input_channel_->Clear();
+    if (cur_channel_ == 0) {
+      for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+        if (!multi_output_channel_[i]) {
+          continue;
+        }
+        multi_output_channel_[i]->Clear();
+      }
+    } else {
+      for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+        if (!multi_consume_channel_[i]) {
+          continue;
+        }
+        multi_consume_channel_[i]->Clear();
+      }
+    }
+  }
+  int end_size = 0;
+  if (cur_channel_ == 0) {
+    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+      if (!multi_output_channel_[i]) {
+        continue;
+      }
+      end_size += multi_output_channel_[i]->Size();
+    }
+  } else {
+    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+      if (!multi_consume_channel_[i]) {
+        continue;
+      }
+      end_size += multi_consume_channel_[i]->Size();
+    }
+  }
+  CHECK(input_channel_->Size() == 0)
+      << "input channel should be empty before slots shuffle";
+}
 // slots shuffle to input_channel_ with needed-shuffle slots
 void MultiSlotDataset::SlotsShuffle(
     const std::set<std::string>& slots_to_replace) {
@@ -1731,6 +1813,35 @@ void MultiSlotDataset::SlotsShuffle(
   PreprocessChannel(slots_to_replace, index_slots);
 
   std::vector<Record> random_data;
+  random_data.clear();
+  // get slots shuffled random_data
+  GetRandomData(index_slots, &random_data);
+  input_channel_->Open();
+  input_channel_->Write(std::move(random_data));
+  random_data.clear();
+  random_data.shrink_to_fit();
+  input_channel_->Close();
+  cur_channel_ = 0;
+
+  timeline.Pause();
+  VLOG(2) << "DatasetImpl<T>::SlotsShuffle() end"
+          << ", memory data size for slots shuffle=" << input_channel_->Size()
+          << ", cost time=" << timeline.ElapsedSec() << " seconds";
+}
+
+// slots shuffle to input_channel_ with needed-shuffle slots
+void SlotRecordDataset::SlotsShuffle(
+    const std::set<std::string>& slots_to_replace) {
+  PADDLE_ENFORCE_EQ(slots_shuffle_fea_eval_,
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "fea eval mode off, need to set on for slots shuffle"));
+  platform::Timer timeline;
+  timeline.Start();
+  std::unordered_set<uint16_t> index_slots;
+  PreprocessChannel(slots_to_replace, index_slots);
+
+  std::vector<SlotRecord> random_data;
   random_data.clear();
   // get slots shuffled random_data
   GetRandomData(index_slots, &random_data);

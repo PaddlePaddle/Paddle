@@ -181,6 +181,47 @@ void RecordCandidateList::AddAndGet(const Record& record,
   mutex_.unlock();
 }
 
+void SlotRecordCandidateList::ReSize(size_t length) {
+  mutex_.lock();
+  capacity_ = length;
+  CHECK(capacity_ > 0);  // NOLINT
+  candidate_list_.clear();
+  candidate_list_.resize(capacity_);
+  full_ = false;
+  cur_size_ = 0;
+  total_size_ = 0;
+  mutex_.unlock();
+}
+
+void SlotRecordCandidateList::ReInit() {
+  mutex_.lock();
+  full_ = false;
+  cur_size_ = 0;
+  total_size_ = 0;
+  mutex_.unlock();
+}
+
+void SlotRecordCandidateList::AddAndGet(const SlotRecord& record,
+                                        SlotRecordCandidate* result) {
+  mutex_.lock();
+  size_t index = 0;
+  ++total_size_;
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  if (!full_) {
+    candidate_list_[cur_size_++] = record;
+    full_ = (cur_size_ == capacity_);
+  } else {
+    CHECK(cur_size_ == capacity_);
+    index = fleet_ptr->LocalRandomEngine()() % total_size_;
+    if (index < capacity_) {
+      candidate_list_[index] = record;
+    }
+  }
+  index = fleet_ptr->LocalRandomEngine()() % cur_size_;
+  *result = candidate_list_[index];
+  mutex_.unlock();
+}
+
 void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
   CheckInit();
   for (size_t i = 0; i < use_slots_.size(); ++i) {
@@ -2108,9 +2149,6 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   } else {
     so_parser_name_.clear();
   }
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  gpu_graph_data_generator_.SetConfig(data_feed_desc);
-#endif
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemory() {
@@ -2424,7 +2462,7 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
 
   int float_total_slot_num = 0;
   int uint64_total_slot_num = 0;
-
+  std::vector<uint64_t> uint_slot_pos;
   for (size_t i = 0; i < all_slots_info_.size(); ++i) {
     auto& info = all_slots_info_[i];
     int num = strtol(&str[pos], &endptr, 10);
@@ -2446,7 +2484,8 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
           slot_fea.push_back(feasign);
           ++float_total_slot_num;
         }
-      } else if (info.type[0] == 'u') {  // uint64
+      } else if (info.type[0] == 'u') {  // uint64i
+        uint_slot_pos.push_back(i);
         auto& slot_fea = slot_uint64_feasigns[info.slot_value_idx];
         slot_fea.clear();
         for (int j = 0; j < num; ++j) {
@@ -2470,6 +2509,7 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
                                               float_total_slot_num);
   rec->slot_uint64_feasigns_.add_slot_feasigns(slot_uint64_feasigns,
                                                uint64_total_slot_num);
+  rec->slot_uint64_feasigns_.add_slot_pos(std::move(uint_slot_pos));
 
   return (uint64_total_slot_num > 0);
 }
@@ -2648,42 +2688,33 @@ bool SlotRecordInMemoryDataFeed::Start() {
   CHECK(paddle::platform::is_gpu_place(this->place_));
   pack_ = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
 #endif
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  gpu_graph_data_generator_.AllocResource(this->place_, feed_vec_);
-#endif
   return true;
 }
 
 int SlotRecordInMemoryDataFeed::Next() {
 #ifdef _LINUX
   this->CheckStart();
-  if (!gpu_graph_mode_) {
-    VLOG(3) << "enable heter next: " << offset_index_
+
+  VLOG(3) << "enable heter next: " << offset_index_
+          << " batch_offsets: " << batch_offsets_.size();
+  if (offset_index_ >= batch_offsets_.size()) {
+    VLOG(3) << "offset_index: " << offset_index_
             << " batch_offsets: " << batch_offsets_.size();
-    if (offset_index_ >= batch_offsets_.size()) {
-      VLOG(3) << "offset_index: " << offset_index_
-              << " batch_offsets: " << batch_offsets_.size();
-      return 0;
-    }
-    auto& batch = batch_offsets_[offset_index_++];
-    this->batch_size_ = batch.second;
-    VLOG(3) << "batch_size_=" << this->batch_size_
-            << ", thread_id=" << thread_id_;
-    if (this->batch_size_ != 0) {
-      PutToFeedVec(&records_[batch.first], this->batch_size_);
-    } else {
-      VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
-              << thread_id_;
-    }
-    VLOG(3) << "enable heter next: " << offset_index_
-            << " batch_offsets: " << batch_offsets_.size()
-            << " baych_size: " << this->batch_size_;
-  } else {
-    VLOG(3) << "datafeed in gpu graph mode";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    this->batch_size_ = gpu_graph_data_generator_.GenerateBatch();
-#endif
+    return 0;
   }
+  auto& batch = batch_offsets_[offset_index_++];
+  this->batch_size_ = batch.second;
+  VLOG(3) << "batch_size_=" << this->batch_size_
+          << ", thread_id=" << thread_id_;
+  if (this->batch_size_ != 0) {
+    PutToFeedVec(&records_[batch.first], this->batch_size_);
+  } else {
+    VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
+            << thread_id_;
+  }
+  VLOG(3) << "enable heter next: " << offset_index_
+          << " batch_offsets: " << batch_offsets_.size()
+          << " baych_size: " << this->batch_size_;
 
   return this->batch_size_;
 #else
@@ -2809,7 +2840,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
 MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
                                    const std::vector<UsedSlotInfo>& infos) {
   place_ = place;
-  stream_ = dynamic_cast<phi::GPUContext*>(
+  stream_ = dynamic_cast<platform::CUDADeviceContext*>(
                 platform::DeviceContextPool::Instance().Get(place))
                 ->stream();
 
@@ -2843,7 +2874,7 @@ MiniBatchGpuPack::~MiniBatchGpuPack() {}
 
 void MiniBatchGpuPack::reset(const paddle::platform::Place& place) {
   place_ = place;
-  stream_ = dynamic_cast<phi::GPUContext*>(
+  stream_ = dynamic_cast<platform::CUDADeviceContext*>(
                 platform::DeviceContextPool::Instance().Get(place))
                 ->stream();
   ins_num_ = 0;
