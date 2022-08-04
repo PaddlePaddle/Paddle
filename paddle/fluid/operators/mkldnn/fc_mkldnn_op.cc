@@ -128,16 +128,23 @@ class FCMKLDNNHandler
       attrs.set_output_scales(mask, output_shift_scale);
     }
 
+    dnnl::post_ops post_ops;
+
+    constexpr float sum_scale = 1.0f;
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
+      post_ops.append_sum(sum_scale);
+    }
+
     std::string activation_type = ctx.Attr<std::string>("activation_type");
 
     if (activation_type.empty() == false) {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
 
-      dnnl::post_ops post_ops;
       post_ops.append_eltwise(scale, algo_map[activation_type], alpha, beta);
-      attrs.set_post_ops(post_ops);
     }
+    attrs.set_post_ops(post_ops);
   }
 
   // Compute the bias scales so that its values correspond to the
@@ -311,6 +318,27 @@ class FCMKLDNNHandler
     }
     return memory_p;
   }
+
+  std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(
+      const ExecutionContext& ctx, Tensor* out) {
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
+      auto* residual_param = ctx.Output<Tensor>("ResidualData");
+
+      PADDLE_ENFORCE_EQ(
+          out->dims(),
+          residual_param->dims(),
+          platform::errors::InvalidArgument(
+              "Output and elementwise parameter need to have the "
+              "same dimension sizes, but got output's dimension = %d"
+              " and residual param's dimension =%d .",
+              out->dims().size(),
+              residual_param->dims().size()));
+
+      out->ShareDataWith(*residual_param);
+    }
+    return this->template AcquireDstMemory<T_out>(out);
+  }
 };
 
 template <typename T_in, typename T_w>
@@ -364,11 +392,9 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
     auto weights_memory_p =
         handler.AcquireWeightsMemoryWithReorder(weights, scale_weights);
-
-    auto dst_memory_p = handler.template AcquireDstMemory<T_out>(out);
+    auto dst_memory_p = handler.AcquireCustomDstMemory(ctx, out);
 
     auto fc_p = handler.AcquireForwardPrimitive();
-
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
 
     std::unordered_map<int, dnnl::memory> fc_args = {
