@@ -23,7 +23,8 @@ class SplitOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     VLOG(4) << "convert a fluid split op to tensorrt split layer";
 
     framework::OpDesc op_desc(op, nullptr);

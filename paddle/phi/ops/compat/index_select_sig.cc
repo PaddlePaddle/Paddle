@@ -22,7 +22,12 @@ KernelSignature IndexSelectGradOpArgumentMapping(
       "index_select_grad", {"X", "Index", "Out@GRAD"}, {"dim"}, {"X@GRAD"});
 }
 
+KernelSignature IndexSelectOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("index_select", {"X", "Index"}, {"dim"}, {"Out"});
+}
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(index_select_grad,
                            phi::IndexSelectGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(index_select, phi::IndexSelectOpArgumentMapping);

@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
@@ -41,7 +42,8 @@ class OpConverter {
   // Converter logic for an op.
   virtual void operator()(const framework::proto::OpDesc& op,
                           const framework::Scope& scope,
-                          bool test_mode = false) {}
+                          bool test_mode = false,
+                          const framework::proto::BlockDesc* block = nullptr) {}
 
   // Convert a single fluid operator and add the corresponding layer to TRT.
   // test_mode: whether the instance executes in an unit test.
@@ -49,7 +51,8 @@ class OpConverter {
                  const std::unordered_set<std::string>& parameters,
                  const framework::Scope& scope,
                  TensorRTEngine* engine,
-                 bool test_mode = false) {
+                 bool test_mode = false,
+                 const framework::proto::BlockDesc* block = nullptr) {
     framework::OpDesc op_desc(op, nullptr);
 
     OpConverter* it{nullptr};
@@ -148,13 +151,29 @@ class OpConverter {
     if (!it) {
       it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
     }
+    if (!it) {
+      LOG(INFO) << "no OpConverter for optype " << op_desc.Type()
+                << " now use generic_plugin_creater!";
+      auto& generic_plugin_teller = OpTeller::Global().GetGenericPluginTeller();
+      if ((*generic_plugin_teller)(op_desc.Type(), op_desc, false)) {
+        it = Registry<OpConverter>::Global().Lookup("generic_plugin_creater");
+      }
+    }
+    if (!it) {
+      LOG(INFO) << "no OpConverter for optype " << op_desc.Type()
+                << " now use custom_plugin_creater!";
+      auto& custom_plugin_teller = OpTeller::Global().GetCustomPluginTeller();
+      if ((*custom_plugin_teller)(op_desc.Type(), op_desc, false)) {
+        it = Registry<OpConverter>::Global().Lookup("custom_plugin_creater");
+      }
+    }
     PADDLE_ENFORCE_NOT_NULL(
         it,
         platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                         op_desc.Type()));
 
     it->SetEngine(engine);
-    (*it)(op, scope, test_mode);
+    (*it)(op, scope, test_mode, block);
 
     size_t output_num = op_desc.OutputNames().size();
     // only one out settensordynamicRange
@@ -257,7 +276,7 @@ class OpConverter {
     }
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
-      ConvertOp(op, parameters, scope, engine);
+      ConvertOp(op, parameters, scope, engine, false, &block);
     }
     for (int i = 0; i < engine->network()->getNbLayers(); i++) {
       auto layer = engine->network()->getLayer(i);

@@ -34,7 +34,8 @@ class EqualOpConverter : public OpConverter {
   EqualOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
 #if IS_TRT_VERSION_GE(8000)
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;

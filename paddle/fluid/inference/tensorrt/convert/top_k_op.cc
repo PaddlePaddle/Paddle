@@ -42,7 +42,8 @@ class TopKOpConverter : public OpConverter {
   TopKOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
@@ -75,7 +76,8 @@ class TopKv2OpConverter : public OpConverter {
   TopKv2OpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);

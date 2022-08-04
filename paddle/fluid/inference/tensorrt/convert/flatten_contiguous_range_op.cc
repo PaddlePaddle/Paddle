@@ -30,7 +30,8 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     VLOG(3) << "convert a fluid flatten_contiguous_range op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

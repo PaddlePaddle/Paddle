@@ -36,7 +36,8 @@ class RemovePadding : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(platform::errors::Fatal(
           "remove_padding_op: If you want to use transformer, must "

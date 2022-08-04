@@ -121,7 +121,8 @@ class Conv3dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     ConvertConv3d(
         engine_,
         op,
@@ -152,7 +153,8 @@ class Deconv3dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     ConvertConv3d(
         engine_,
         op,

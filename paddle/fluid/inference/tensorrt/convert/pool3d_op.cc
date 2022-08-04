@@ -75,7 +75,8 @@ class Pool3dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc &op,
                   const framework::Scope &scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc *block = nullptr) override {
     VLOG(4)
         << "convert a fluid pool3d op to tensorrt pool3d layer without bias";
     framework::OpDesc op_desc(op, nullptr);

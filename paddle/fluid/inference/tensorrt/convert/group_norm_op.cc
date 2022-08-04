@@ -31,7 +31,8 @@ class GroupNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     VLOG(3) << "convert a fluid group_norm op";
 
     framework::OpDesc op_desc(op, nullptr);

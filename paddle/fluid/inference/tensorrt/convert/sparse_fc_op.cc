@@ -106,7 +106,8 @@ class SparseFcOpConverter : public OpConverter {
 
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     VLOG(3) << "convert a sparse_fc op to tensorrt sparse_fc plugin";
     framework::OpDesc op_desc(op, nullptr);
     auto output_name = op_desc.Output("Out").front();

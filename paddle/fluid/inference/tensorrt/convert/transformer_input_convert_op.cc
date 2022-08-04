@@ -36,7 +36,8 @@ class TransformerInputConvert : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     VLOG(3) << "Convert Transformer Input(pos_id, max_seqlen), use "
                "transformer_input_convert_plugin";
     if (!engine_->with_dynamic_shape()) {

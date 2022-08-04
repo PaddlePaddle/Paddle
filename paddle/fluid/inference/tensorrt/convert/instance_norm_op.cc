@@ -36,7 +36,8 @@ class InstanceNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     VLOG(4) << "convert fluid prelu op to tensorrt instance norm layer";
 
     framework::OpDesc op_desc(op, nullptr);

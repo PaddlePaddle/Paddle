@@ -34,7 +34,8 @@ namespace tensorrt {
 class DeformableConvOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     VLOG(3) << "convert a deformable conv op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);

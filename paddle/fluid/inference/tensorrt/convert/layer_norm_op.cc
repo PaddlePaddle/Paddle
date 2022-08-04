@@ -23,7 +23,8 @@ class LayerNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     VLOG(4) << "convert a fluid layer_norm op to tensorrt layer_norm plugin";
     framework::OpDesc op_desc(op, nullptr);
 

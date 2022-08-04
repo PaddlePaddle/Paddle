@@ -30,7 +30,8 @@ class MultiClassNMS3OpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     VLOG(3) << "convert a fluid multiclassNMS3 op to tensorrt plugin";
 
     // for now, only work for static shape and regular tensor

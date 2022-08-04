@@ -22,7 +22,8 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
 #if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert fused preln_skip_layernorm op to tensorrt layer";
     if (!(engine_->use_varseqlen() && engine_->with_interleaved())) {

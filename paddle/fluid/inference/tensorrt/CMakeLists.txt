@@ -13,9 +13,17 @@ else()
     DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context)
 endif()
 nv_library(
+  tensorrt_dynamic_shape_infermeta_factory
+  SRCS dynamic_shape_infermeta_factory.cc dynamic_shape_infermeta.cc
+  DEPS framework_proto)
+nv_library(
+  tensorrt_plugin_arg_mapping_context
+  SRCS plugin_arg_mapping_context.cc
+  DEPS framework_proto)
+nv_library(
   tensorrt_op_teller
   SRCS op_teller.cc
-  DEPS framework_proto device_context)
+  DEPS framework_proto device_context tensorrt_dynamic_shape_infermeta_factory)
 nv_test(
   test_tensorrt
   SRCS test_tensorrt.cc

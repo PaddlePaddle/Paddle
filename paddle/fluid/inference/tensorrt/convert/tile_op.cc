@@ -31,7 +31,8 @@ class TileOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
 #if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert a fluid tile op to tensorrt tile layer";
 

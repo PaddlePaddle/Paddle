@@ -39,7 +39,8 @@ class ReduceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     VLOG(4) << "convert a paddle " << op_type << " op to tensorrt reduce layer";
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ReduceOperation reduce_type = nvinfer1::ReduceOperation::kSUM;

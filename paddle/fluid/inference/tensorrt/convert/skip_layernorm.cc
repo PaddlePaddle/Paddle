@@ -25,7 +25,8 @@ class SkipLayerNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
 #if IS_TRT_VERSION_GE(6000)
     VLOG(4) << "convert fused skip layernorm op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);

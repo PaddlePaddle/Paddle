@@ -25,7 +25,8 @@ class PrelnResidualBiasOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override {
+                  bool test_mode,
+                  const framework::proto::BlockDesc* block = nullptr) override {
     VLOG(4) << "convert fused preln_residual_bias op to tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(platform::errors::Fatal(
