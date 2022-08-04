@@ -44,6 +44,12 @@ class Laplace(distribution.Distribution):
         self.name = name if name is not None else 'Laplace'
         self.dtype = 'float32'
 
+        assert type(loc) == type(
+            scale), "type of loc and scale must ne identity!"
+        if not isinstance(loc, paddle.Tensor) and not isinstance(
+                loc, np.ndarray):
+            self.batch_size_unknown = True
+
         if self._validate_args(loc, scale):
             if paddle.is_integer(loc):
                 loc = paddle.cast(loc, self.dtype)
@@ -51,7 +57,6 @@ class Laplace(distribution.Distribution):
                 scale = paddle.cast(scale, self.dtype)
             self.loc = loc
             self.scale = scale
-            self.batch_size_unknown = True
         else:
             if isinstance(loc, float) and isinstance(scale, float):
                 self.all_arg_is_float = True
@@ -178,7 +183,7 @@ class Laplace(distribution.Distribution):
                 self.scale * (term).sign() * \
                 paddle.log1p(-2 * term.abs())
 
-    def sample(self, shape=()):
+    def sample(self, shape=(), seed=0):
         """Generate samples of the specified shape.
 
         Args:
@@ -199,7 +204,7 @@ class Laplace(distribution.Distribution):
             raise TypeError('sample shape must be Iterable object.')
 
         with paddle.no_grad():
-            return self.rsample(shape)
+            return self.rsample(shape, seed=seed)
 
     def rsample(self, shape, seed=0):
         """reparameterized sample
@@ -234,7 +239,7 @@ class Laplace(distribution.Distribution):
                 raise TypeError("self.loc requires a floating point type")
 
         shape = self._extend_shape(shape)
-        u = paddle.uniform(shape=shape, min=eps - 1, max=1)
+        u = paddle.uniform(shape=shape, min=eps - 1, max=1, seed=seed)
 
         return self.loc - \
                 self.scale *\
@@ -256,6 +261,9 @@ class Laplace(distribution.Distribution):
         >>> m._extend_shape([1, 2])
         [1, 2, 1]
         """
+
+        if self.batch_size_unknown:
+            self._batch_shape = ()
         return list(sample_shape) +\
              list(self._batch_shape) +\
             list(self._event_shape)

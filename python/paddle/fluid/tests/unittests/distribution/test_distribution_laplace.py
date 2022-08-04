@@ -20,14 +20,16 @@ import scipy.stats
 import config
 import parameterize
 
+SEED = 2022
+
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'loc', 'scale'), [
     ('one-dim', parameterize.xrand((2, )),\
              parameterize.xrand((2, ))),
-    ('multi-dim', parameterize.xrand((10, 20)),\
-             parameterize.xrand((10, 20))),
+    ('multi-dim', parameterize.xrand((10, 10)),\
+             parameterize.xrand((10, 10))),
     ])
 class TestLaplace(unittest.TestCase):
 
@@ -65,11 +67,36 @@ class TestLaplace(unittest.TestCase):
         self.assertEqual(entropy.numpy().dtype, self.scale.dtype)
 
     def test_sample(self):
-        sample_shape = ()
-        samples = self._dist.sample(sample_shape)
+
+        sample_shape = (30000, )
+        samples = self._dist.sample(sample_shape, seed=SEED)
+        sample_values = samples.numpy()
+
         self.assertEqual(samples.numpy().dtype, self.scale.dtype)
         self.assertEqual(tuple(samples.shape),
                          tuple(self._dist._extend_shape(sample_shape)))
+
+        self.assertEqual(samples.shape, list(sample_shape + self.loc.shape))
+        self.assertEqual(sample_values.shape, sample_shape + self.loc.shape)
+
+        np.testing.assert_allclose(sample_values.mean(axis=0),
+                                   scipy.stats.laplace.mean(self.loc,
+                                                            scale=self.scale),
+                                   rtol=0.1,
+                                   atol=0.)
+        np.testing.assert_allclose(sample_values.var(axis=0),
+                                   scipy.stats.laplace.var(self.loc,
+                                                           scale=self.scale),
+                                   rtol=0.1,
+                                   atol=0.)
+
+        # the input of ks test must be 1-D array
+        tmp_loc = 4.0
+        tmp_scale = 3.0
+        tmp_dist = paddle.distribution.Laplace(loc=tmp_loc, scale=tmp_scale)
+        samples = tmp_dist.sample(sample_shape, seed=SEED)
+        sample_values = samples.numpy()
+        self.assertTrue(self._kstest(tmp_loc, tmp_scale, sample_values))
 
     def _np_mean(self):
         return self.loc
@@ -84,6 +111,13 @@ class TestLaplace(unittest.TestCase):
     def _np_entropy(self):
         return scipy.stats.laplace.entropy(loc=self.loc, scale=self.scale)
 
+    def _kstest(self, loc, scale, samples):
+        # Uses the Kolmogorov-Smirnov test for goodness of fit.
+        ks, p_value = scipy.stats.kstest(
+            samples,
+            scipy.stats.laplace(loc, scale=scale).cdf)
+        return ks < 0.02
+
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
@@ -96,7 +130,7 @@ class TestLaplace(unittest.TestCase):
         ('value-multi-dim', np.array([0.2, 0.3]), np.array([2, 3]),\
                          np.array([[4., 6], [8, 2]])),
     ])
-class TestMultinomialPdf(unittest.TestCase):
+class TestLaplacePDF(unittest.TestCase):
 
     def setUp(self):
         self._dist = paddle.distribution.Laplace(loc=paddle.to_tensor(self.loc),
@@ -139,7 +173,7 @@ class TestMultinomialPdf(unittest.TestCase):
     ('kl', np.array([0.0]), np.array([1.0]), \
         np.array([1.0]), np.array([0.5]))
     ])
-class TestMultinomialKl(unittest.TestCase):
+class TestLaplaceAndLaplaceKL(unittest.TestCase):
 
     def setUp(self):
         self._dist_1 = paddle.distribution.Laplace(loc=paddle.to_tensor(self.loc1),
@@ -150,7 +184,8 @@ class TestMultinomialKl(unittest.TestCase):
                                                      self.scale2))
 
     def test_kl_divergence(self):
-        np.testing.assert_allclose(self._dist_1.kl_divergence(self._dist_2),
+        np.testing.assert_allclose(paddle.distribution.kl_divergence(
+            self._dist_1, self._dist_2),
                                    self._np_kl(),
                                    atol=0,
                                    rtol=0.50)
