@@ -87,7 +87,7 @@ namespace phi {
     }                                                                         \
   }()
 
-#define PD_SPARSE_VISIT_INTEGRAL_TYPES(TYPE, NAME, ...)                       \
+#define PD_VISIT_BASE_INTEGRAL_TYPES(TYPE, NAME, ...)                         \
   [&] {                                                                       \
     const auto& __dtype__ = TYPE;                                             \
     switch (__dtype__) {                                                      \

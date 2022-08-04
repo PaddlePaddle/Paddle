@@ -139,7 +139,7 @@ void MaxPoolCooKernel(const Context& dev_ctx,
                       SparseCooTensor* out,
                       DenseTensor* rulebook,
                       DenseTensor* counter) {
-  PD_SPARSE_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "MaxPoolCooGPUKernel", ([&] {
         MaxPoolCooGPUKernel<T, data_t>(dev_ctx,
                                        x,

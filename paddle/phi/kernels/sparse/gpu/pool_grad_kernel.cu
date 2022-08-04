@@ -116,7 +116,7 @@ void MaxPoolCooGradKernel(const Context& dev_ctx,
                           const SparseCooTensor& out_grad,
                           const std::vector<int>& kernel_sizes,
                           SparseCooTensor* x_grad) {
-  PD_SPARSE_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "MaxPoolCooGradGPUKernel", ([&] {
         MaxPoolCooGradGPUKernel<T, data_t>(
             dev_ctx, x, rulebook, counter, out, out_grad, kernel_sizes, x_grad);

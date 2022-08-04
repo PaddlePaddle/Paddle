@@ -105,7 +105,7 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
   dim3 grid((total_row_number + 3) / 4);
   dim3 block(32, 4);
 
-  PD_SPARSE_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_crows().dtype(), "CsrSoftmaxKernel", ([&] {
         SoftmaxGpuKernel<T, data_t><<<grid, block, 0, dev_ctx.stream()>>>(
             x.non_zero_crows().data<data_t>(),
