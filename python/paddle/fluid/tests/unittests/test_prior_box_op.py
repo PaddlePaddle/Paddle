@@ -19,6 +19,35 @@ import numpy as np
 import sys
 import math
 from op_test import OpTest
+import paddle
+
+
+def python_prior_box(input,
+                     image,
+                     min_sizes,
+                     aspect_ratios=[1.],
+                     variances=[0.1, 0.1, 0.2, 0.2],
+                     max_sizes=None,
+                     flip=False,
+                     clip=False,
+                     step_w=0,
+                     step_h=0,
+                     offset=0.5,
+                     min_max_aspect_ratios_order=False,
+                     name=None):
+    return paddle.fluid.layers.detection.prior_box(
+        input,
+        image,
+        min_sizes=min_sizes,
+        max_sizes=max_sizes,
+        aspect_ratios=aspect_ratios,
+        variance=variances,
+        flip=flip,
+        clip=clip,
+        steps=[step_w, step_h],
+        offset=offset,
+        name=name,
+        min_max_aspect_ratios_order=min_max_aspect_ratios_order)
 
 
 class TestPriorBoxOp(OpTest):
@@ -35,10 +64,10 @@ class TestPriorBoxOp(OpTest):
             'variances': self.variances,
             'flip': self.flip,
             'clip': self.clip,
-            'min_max_aspect_ratios_order': self.min_max_aspect_ratios_order,
             'step_w': self.step_w,
             'step_h': self.step_h,
-            'offset': self.offset
+            'offset': self.offset,
+            'min_max_aspect_ratios_order': self.min_max_aspect_ratios_order,
         }
         if len(self.max_sizes) > 0:
             self.attrs['max_sizes'] = self.max_sizes
@@ -46,10 +75,11 @@ class TestPriorBoxOp(OpTest):
         self.outputs = {'Boxes': self.out_boxes, 'Variances': self.out_var}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def setUp(self):
         self.op_type = "prior_box"
+        self.python_api = python_prior_box
         self.set_data()
 
     def set_max_sizes(self):
@@ -191,4 +221,5 @@ class TestPriorBoxOpWithSpecifiedOutOrder(TestPriorBoxOp):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

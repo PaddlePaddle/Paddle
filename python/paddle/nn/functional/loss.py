@@ -532,6 +532,10 @@ def edit_distance(input,
                          attrs={"tokens": ignored_tokens})
         label = erased_label
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_edit_distance(input, label, input_length,
+                                                label_length, normalized)
+
     this_inputs = {"Hyps": [input], "Refs": [label]}
     if input_length is not None and label_length is not None:
         this_inputs['HypsLength'] = [input_length]

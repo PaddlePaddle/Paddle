@@ -33,7 +33,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
@@ -44,6 +43,11 @@
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/distributed/collective/HCCLTools.h"
 #include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
+#endif
+
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/fluid/distributed/collective/CustomCCLTools.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupCustom.h"
 #endif
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \

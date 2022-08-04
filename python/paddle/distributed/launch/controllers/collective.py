@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .controller import Controller, ControleMode
+from ..context.device import DeviceType
 
 import json
 import os
@@ -98,6 +99,8 @@ class CollectiveController(Controller):
                 "PADDLE_RANK_IN_NODE": str(i),
             }
             if len(selected_dev_list) > 0:
+                if self.ctx.node.device.dtype == DeviceType.CUSTOM_DEVICE:
+                    e.update(self.ctx.node.device.get_custom_device_envs())
                 if self.pod.replicas == 1:
                     e.update({selected_dev_key: ",".join(selected_dev_list)})
                 else:
@@ -131,7 +134,8 @@ class CollectiveElasticController(CollectiveController):
 
     def run(self):
 
-        timeout = self.ctx.args.elastic_timeout if self.job.elastic else self.ctx.args.elastic_timeout * 10
+        timeout = int(self.ctx.args.elastic_timeout)
+        timeout = timeout if self.job.elastic else timeout * 10
         self.register()
 
         while self.pod.restart <= self.ctx.args.max_restart:

@@ -57,8 +57,6 @@ class Context(object):
             return True
 
         legacy_env_list = [
-            'DISTRIBUTED_TRAINER_ENDPOINTS',
-            'PADDLE_ELASTIC_JOB_ID',
             'FLAGS_START_PORT',
         ]
 
@@ -101,7 +99,6 @@ class Context(object):
             return False
 
     def set_env_in_args(self):
-        # this logic may not propre to replace args with env, but ...
         for k, v in env_args_mapping.items():
             if k in self.envs:
-                setattr(self.args, v, type(getattr(self.args, v))(self.envs[k]))
+                setattr(self.args, v, self.envs[k])

@@ -186,6 +186,12 @@ def yolo_loss(x,
                                              scale_x_y=1.)
     """
 
+    if in_dygraph_mode():
+        loss, _, _ = _C_ops.final_state_yolov3_loss(
+            x, gt_box, gt_label, gt_score, anchors, anchor_mask, class_num,
+            ignore_thresh, downsample_ratio, use_label_smooth, scale_x_y)
+        return loss
+
     if _non_static_mode():
         loss, _, _ = _C_ops.yolov3_loss(
             x, gt_box, gt_label, gt_score, 'anchors', anchors, 'anchor_mask',
@@ -1024,7 +1030,6 @@ def decode_jpeg(x, mode='unchanged', name=None):
 
             print(img.shape)
     """
-
     if _non_static_mode():
         return _C_ops.decode_jpeg(x, "mode", mode)
 
@@ -1579,6 +1584,9 @@ def nms(boxes,
     """
 
     def _nms(boxes, iou_threshold):
+        if in_dygraph_mode():
+            return _C_ops.final_state_nms(boxes, iou_threshold)
+
         if _non_static_mode():
             return _C_ops.nms(boxes, 'iou_threshold', iou_threshold)
 
@@ -1732,7 +1740,15 @@ def generate_proposals(scores,
             print(rois, roi_probs, roi_nums)
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert return_rois_num, "return_rois_num should be True in dygraph mode."
+        attrs = (pre_nms_top_n, post_nms_top_n, nms_thresh, min_size, eta,
+                 pixel_offset)
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.final_state_generate_proposals_v2(
+            scores, bbox_deltas, img_size, anchors, variances, *attrs)
+
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
+    elif _non_static_mode():
         assert return_rois_num, "return_rois_num should be True in dygraph mode."
         attrs = ('pre_nms_topN', pre_nms_top_n, 'post_nms_topN', post_nms_top_n,
                  'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta,
@@ -1882,6 +1898,16 @@ def matrix_nms(bboxes,
     check_type(background_label, 'background_label', int, 'matrix_nms')
 
     if in_dygraph_mode():
+        out, index, rois_num = _C_ops.final_state_matrix_nms(
+            bboxes, scores, score_threshold, nms_top_k, keep_top_k,
+            post_threshold, use_gaussian, gaussian_sigma, background_label,
+            normalized)
+        if not return_index:
+            index = None
+        if not return_rois_num:
+            rois_num = None
+        return out, rois_num, index
+    elif _in_legacy_dygraph():
         attrs = ('background_label', background_label, 'score_threshold',
                  score_threshold, 'post_threshold', post_threshold, 'nms_top_k',
                  nms_top_k, 'gaussian_sigma', gaussian_sigma, 'use_gaussian',
