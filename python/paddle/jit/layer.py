@@ -27,7 +27,6 @@ class Layer(object):
     def load(self, load_path, place):
         self.cpp_layer = Load(load_path, place)
         function_dict = self.cpp_layer.function_dict()
-
         for name, function in function_dict.items():
             self.functions[name] = Function(function)
             setattr(self, name, self.functions[name])
