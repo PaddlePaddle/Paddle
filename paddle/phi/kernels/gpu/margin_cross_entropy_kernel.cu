@@ -21,15 +21,10 @@ namespace cub = hipcub;
 #endif
 
 #include <vector>
-#include "paddle/phi/core/dense_tensor.h"
-
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/margin_cross_entropy_kernel.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
@@ -41,7 +36,6 @@ namespace cub = hipcub;
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-using Tensor = DenseTensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -59,7 +53,7 @@ void GetClassInterval(const gpuStream_t& stream,
                       const int rank,
                       const int nranks,
                       const int D,
-                      Tensor* class_interval) {
+                      DenseTensor* class_interval) {
   std::vector<int> shard_dim_vec(nranks + 1, 0);
   shard_dim_vec[rank + 1] = D;
   if (nranks <= 1) {
@@ -68,7 +62,7 @@ void GetClassInterval(const gpuStream_t& stream,
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  Tensor num_classes_per_device;
+  DenseTensor num_classes_per_device;
   paddle::framework::TensorFromVector(
       shard_dim_vec, dev_ctx, &num_classes_per_device);
   int* num_classes_per_device_ptr = num_classes_per_device.data<int>();
@@ -278,11 +272,11 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   // and it also be used when calculate grad
   phi::Copy<Context>(dev_ctx, logits, dev_ctx.GetPlace(), true, softmax);
 
-  Tensor softmax_2d;
+  DenseTensor softmax_2d;
   softmax_2d.ShareDataWith(*softmax).Resize({N, D});
   T* logits_ptr = softmax_2d.data<T>();
 
-  Tensor class_interval;
+  DenseTensor class_interval;
   GetClassInterval<T, Context>(dev_ctx.stream(),
                                dev_ctx.GetPlace(),
                                dev_ctx,
@@ -337,7 +331,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       logits_ptr, scale, N, D);
 
   // step 2, obtain logit_max
-  Tensor logits_max;
+  DenseTensor logits_max;
   logits_max.Resize({N, 1});
   dev_ctx.template Alloc<T>(&logits_max);
   T* logits_max_buff = dev_ctx.template Alloc<T>(&logits_max);
@@ -381,7 +375,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       logits_ptr, logits_max_buff, N, D);
 
   // step 4, sum(exp(logit - logit_max))
-  Tensor sum_exp_logits;
+  DenseTensor sum_exp_logits;
   sum_exp_logits.Resize({N, 1});
   dev_ctx.template Alloc<T>(&sum_exp_logits);
   // T* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
