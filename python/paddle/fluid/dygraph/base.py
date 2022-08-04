@@ -485,8 +485,9 @@ def grad(outputs,
         inside `inputs`, and the i-th returned Tensor is the sum of gradients of 
         `outputs` with respect to the i-th `inputs`.
 
-    Examples 1:
+    Examples:
         .. code-block:: python
+            :name: code-example-1
 
             import paddle
 
@@ -519,8 +520,8 @@ def grad(outputs,
             print(test_dygraph_grad(create_graph=False)) # [2.]
             print(test_dygraph_grad(create_graph=True)) # [4.]
 
-    Examples 2:
         .. code-block:: python
+            :name: code-example-2
 
             import paddle
 

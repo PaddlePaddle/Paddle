@@ -89,11 +89,12 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     if is_compiled_with_rocm():
         use_cudnn = False  # ROCM platform do not have MIOPEN kernel for affine_grid
 
-    if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
-            isinstance(out_shape, Variable)):
-        raise ValueError("The out_shape should be a list, tuple or Tensor.")
-
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        _out_shape = out_shape.numpy().tolist() if isinstance(
+            out_shape, Variable) else out_shape
+        return _C_ops.final_state_affine_grid(theta, _out_shape, use_cudnn,
+                                              align_corners)
+    elif in_dynamic_mode():
         _out_shape = out_shape.numpy().tolist() if isinstance(
             out_shape, Variable) else out_shape
         return _C_ops.affine_grid(theta, "output_shape", _out_shape,
@@ -366,7 +367,6 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
 
     Examples:
         .. code-block:: python
-            :name: pixel_unshuffle-example
 
             import paddle
             import paddle.nn.functional as F
@@ -423,7 +423,6 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
 
     Examples:
         .. code-block:: python
-            :name: channel_shuffle-example
 
             import paddle
             import paddle.nn.functional as F

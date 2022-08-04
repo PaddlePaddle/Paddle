@@ -48,7 +48,9 @@ PD_REGISTER_KERNEL(shape,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(shape,

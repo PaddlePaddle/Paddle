@@ -590,7 +590,7 @@ class ChainTransform(Transform):
 class ExpTransform(Transform):
     r"""Exponent transformation with mapping :math:`y = \exp(x)`.
 
-    Exapmles:
+    Examples:
 
         .. code-block:: python
 
@@ -1169,7 +1169,7 @@ class StickBreakingTransform(Transform):
 class TanhTransform(Transform):
     r"""Tanh transformation with mapping :math:`y = \tanh(x)`.
 
-    Examples
+    Examples:
 
         .. code-block:: python
 

@@ -45,6 +45,8 @@ namespace details {
 // This attr is not recommended, because the graph should not dependence
 // the program once it is built.
 constexpr char kStaleProgramOpDescs[] = "stale_program_op_descs";
+constexpr char kRemovedVars[] = "removed_vars";
+typedef std::unordered_set<std::shared_ptr<ir::Node>> RemovedVars;
 }  //  namespace details
 
 namespace ir {

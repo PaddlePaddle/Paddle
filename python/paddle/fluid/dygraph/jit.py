@@ -22,6 +22,7 @@ import functools
 from collections import OrderedDict
 import inspect
 import threading
+from typing import Text, Tuple, Any, List
 
 import six
 import paddle
@@ -34,7 +35,7 @@ from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import ConversionOptions, CONVERSION_OPTIONS
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticFunction, unwrap_decorators
-from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
+from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX, INFER_PROPERTY_SUFFIX
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Block, ParamBase, Program, Variable, Parameter, EagerParamBase
@@ -644,6 +645,40 @@ def _run_save_pre_hooks(func):
     return wrapper
 
 
+def _save_property(filename: Text, property_vals: List[Tuple[Any, Text]]):
+    """class property serialization.
+
+    Args:
+        filename (Text): *.meta
+        property_vals (List[Tuple): class property.
+    """
+
+    def set_property(meta, key, val):
+        if isinstance(val, float):
+            meta.set_float(key, val)
+        elif isinstance(val, int):
+            meta.set_int(key, val)
+        elif isinstance(val, str):
+            meta.set_string(key, val)
+        elif isinstance(val, (tuple, list)):
+            if isinstance(val[0], float):
+                meta.set_floats(key, val)
+            elif isinstance(val[0], int):
+                meta.set_ints(key, val)
+            elif isinstance(val[0], str):
+                meta.set_strings(key, val)
+        else:
+            raise ValueError(f"Note support val type: {type(val)}")
+        return
+
+    with open(filename, 'wb') as f:
+        meta = paddle.framework.core.Property()
+        for item in property_vals:
+            val, key = item[0], item[1]
+            set_property(meta, key, val)
+        f.write(meta.serialize_to_string())
+
+
 @_run_save_pre_hooks
 @switch_to_static_graph
 def save(layer, path, input_spec=None, **configs):
@@ -1043,7 +1078,9 @@ def save(layer, path, input_spec=None, **configs):
                                         filter(paddle.fluid.io.is_persistable,
                                                ordered_vars)),
                                     filename=params_filename)
-        # TODO: save property
+        # save property
+        property_filename = file_prefix + INFER_PROPERTY_SUFFIX
+        _save_property(property_filename, property_vals)
 
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:

@@ -195,7 +195,7 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
       default_stream_,
       this);
   VLOG(8) << "Allocate " << allocation->size() << " bytes at address "
-          << allocation->ptr();
+          << allocation->ptr() << "  , stream: " << default_stream_;
   return allocation;
 }
 

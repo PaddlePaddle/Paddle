@@ -113,7 +113,6 @@ endif()
 
 add_subdirectory(device)
 add_subdirectory(dynload)
-add_subdirectory(stream)
 
 cc_library(
   cpu_helper
@@ -130,7 +129,7 @@ if(WITH_DGC)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  set(GPU_CTX_DEPS dynload_cuda dynamic_loader cuda_stream)
+  set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
 endif()
 
 if(WITH_IPU)
@@ -266,15 +265,6 @@ cc_library(
 set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
-if(WITH_XPU)
-  cc_library(
-    device_event_xpu
-    SRCS device_event_xpu.cc
-    DEPS device_event_base xpu_info)
-  set(DEVICE_EVENT_LIBS
-      device_event_xpu
-      CACHE INTERNAL "device event libs")
-endif()
 
 if(WITH_ASCEND_CL)
   cc_library(

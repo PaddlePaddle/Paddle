@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/cuda_stream.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
@@ -117,10 +118,10 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
-          hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream_));
+          hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
-          cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream_));
+          cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream()));
 #endif
     }
     return semaphore_;
@@ -212,12 +213,14 @@ struct GPUContext::Impl {
                            &max_threads_per_mp_,
                            &max_threads_per_block_,
                            &max_grid_dim_size_);
-    phi::InitStream(&stream_);
+    stream_ = new CUDAStream(place_);
+    InitEigenDevice();
     InitDnnWorkspace();
   }
 
   void PartialInitWithoutAllocator() {
     owned_ = true;
+    stream_owned_ = true;
     backends::gpu::GPUDeviceGuard guard(place_.device);
     phi::InitGpuProperties(place_,
                            &compute_capability_,
@@ -227,16 +230,15 @@ struct GPUContext::Impl {
                            &max_threads_per_mp_,
                            &max_threads_per_block_,
                            &max_grid_dim_size_);
-    phi::InitStream(&stream_);
+    stream_ = new CUDAStream(place_);
   }
 
   void PartialInitWithAllocator() {
     owned_ = true;
+    stream_owned_ = true;
     backends::gpu::GPUDeviceGuard guard(place_.device);
     InitDnnWorkspace();
   }
-
-  Impl() : place_(GPUPlace()) {}
 
   explicit Impl(const GPUPlace& place) : place_(place) {}
 
@@ -257,7 +259,9 @@ struct GPUContext::Impl {
       phi::DestroyBlasHandle(blas_tensor_core_handle_);
       phi::DestroyBlasHandle(blas_tf32_tensor_core_handle_);
       phi::DestroyBlasLtHandle(blaslt_handle_);
-      phi::DestoryStream(stream_);
+    }
+    if (stream_owned_ && stream_) {
+      delete stream_;
     }
   }
 
@@ -270,7 +274,7 @@ struct GPUContext::Impl {
   void InitDnnWorkspace() {
     PD_CHECK(allocator_ != nullptr,
              "the device allocator for gpu context is nullptr.");
-    workspace_ = new DnnWorkspaceHandle(allocator_, stream_);
+    workspace_ = new DnnWorkspaceHandle(allocator_, stream());
   }
 
   void DestoryInternalWorkspace() {
@@ -288,12 +292,34 @@ struct GPUContext::Impl {
   DnnWorkspaceHandle GetDnnWorkspace() {
     PD_CHECK(allocator_ != nullptr,
              "the device allocator for gpu context is nullptr.");
-    return DnnWorkspaceHandle(allocator_, stream_);
+    return DnnWorkspaceHandle(allocator_, stream());
   }
 
-  void SetStream(gpuStream_t stream) { stream_ = stream; }
+  void SetStream(gpuStream_t stream) {
+    if (stream_ == nullptr) {
+      auto s = Stream(reinterpret_cast<StreamId>(stream));
+      stream_ = new CUDAStream(place_, s);
+      stream_owned_ = true;
+    }
+    stream_->set_raw_stream(stream);
+  }
 
-  gpuStream_t GetStream() const {
+  void SetCUDAStream(CUDAStream* stream, bool clear = true) {
+    if (clear && stream_owned_ && stream_) {
+      delete stream_;
+    }
+    stream_owned_ = false;
+    stream_ = stream;
+    // TODO(phi): reset related handles?
+  }
+
+  gpuStream_t stream() const {
+    auto s = stream_->raw_stream();
+    PD_CHECK(s != nullptr, "the gpu stream is nullptr.");
+    return s;
+  }
+
+  CUDAStream* cuda_stream() const {
     PD_CHECK(stream_ != nullptr, "the gpu stream is nullptr.");
     return stream_;
   }
@@ -302,7 +328,7 @@ struct GPUContext::Impl {
     PD_CHECK(allocator_ != nullptr,
              "the allocator for eigen device is nullptr.");
     eigen_stream_.reset(new internal::EigenGpuStreamDevice());
-    eigen_stream_->Reinitialize(stream_, allocator_, place_);
+    eigen_stream_->Reinitialize(stream(), allocator_, place_);
     eigen_device_ = new Eigen::GpuDevice(eigen_stream_.get());
   }
 
@@ -335,29 +361,32 @@ struct GPUContext::Impl {
   blasHandle_t GetBlasHandle() {
     std::call_once(flag_blas_, [&]() {
       if (!blas_handle_) {
-        if (!blas_handle_creator_)
-          phi::InitBlasHandle(&blas_handle_, stream_);
-        else
+        if (!blas_handle_creator_) {
+          phi::InitBlasHandle(&blas_handle_, stream());
+        } else {
           blas_handle_ = blas_handle_creator_();
+        }
       }
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
-        if (!blas_tensor_core_handle_creator_)
-          phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
-        else
+        if (!blas_tensor_core_handle_creator_) {
+          phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
+        } else {
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
+        }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
       }
 #endif
 #if CUDA_VERSION >= 11000
       if (!blas_tf32_tensor_core_handle_) {
-        if (!blas_tf32_tensor_core_handle_creator_)
-          phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
-        else
+        if (!blas_tf32_tensor_core_handle_creator_) {
+          phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream());
+        } else {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
+        }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
@@ -412,10 +441,11 @@ struct GPUContext::Impl {
   dnnHandle_t GetDnnHandle() {
     std::call_once(flag_dnn_, [&]() {
       if (!dnn_handle_) {
-        if (!dnn_handle_creator_)
-          phi::InitDnnHandle(&dnn_handle_, stream_, place_);
-        else
+        if (!dnn_handle_creator_) {
+          phi::InitDnnHandle(&dnn_handle_, stream(), place_);
+        } else {
           dnn_handle_ = dnn_handle_creator_();
+        }
       }
     });
     PD_CHECK(dnn_handle_ != nullptr, "the gpu dnn handle is nullptr.");
@@ -445,10 +475,11 @@ struct GPUContext::Impl {
   solverHandle_t GetSolverHandle() {
     std::call_once(flag_slover_, [&]() {
       if (!solver_handle_) {
-        if (!solver_handle_creator_)
-          phi::InitSolverHandle(&solver_handle_, stream_);
-        else
+        if (!solver_handle_creator_) {
+          phi::InitSolverHandle(&solver_handle_, stream());
+        } else {
           solver_handle_ = solver_handle_creator_();
+        }
       }
     });
     PD_CHECK(solver_handle_ != nullptr, "the gpu solver handle is nullptr.");
@@ -464,10 +495,11 @@ struct GPUContext::Impl {
   sparseHandle_t GetSparseHandle() {
     std::call_once(flag_sparse_, [&]() {
       if (!sparse_handle_) {
-        if (!sparse_handle_creator_)
-          phi::InitSparseHandle(&sparse_handle_, stream_);
-        else
+        if (!sparse_handle_creator_) {
+          phi::InitSparseHandle(&sparse_handle_, stream());
+        } else {
           sparse_handle_ = sparse_handle_creator_();
+        }
       }
     });
     PD_CHECK(sparse_handle_ != nullptr, "the gpu sparse handle is nullptr.");
@@ -484,9 +516,9 @@ struct GPUContext::Impl {
 #ifdef PADDLE_WITH_HIP
     hipError_t e_sync = hipSuccess;
 #if !defined(_WIN32)
-    e_sync = hipStreamSynchronize(stream_);
+    e_sync = hipStreamSynchronize(stream());
 #else
-    while (e_sync = hipStreamQuery(stream_)) {
+    while (e_sync = hipStreamQuery(stream())) {
       if (e_sync == hipErrorNotReady) continue;
       break;
     }
@@ -494,9 +526,9 @@ struct GPUContext::Impl {
 #else   // PADDLE_WITH_HIP
     cudaError_t e_sync = cudaSuccess;
 #if !defined(_WIN32)
-    e_sync = cudaStreamSynchronize(stream_);
+    e_sync = cudaStreamSynchronize(stream());
 #else
-    while (e_sync = cudaStreamQuery(stream_)) {
+    while (e_sync = cudaStreamQuery(stream())) {
       if (e_sync == cudaErrorNotReady) continue;
       break;
     }
@@ -508,9 +540,9 @@ struct GPUContext::Impl {
 
   void WaitEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream_, ev, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream(), ev, 0));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(stream_, ev, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(stream(), ev, 0));
 #endif
   }
 
@@ -531,29 +563,32 @@ struct GPUContext::Impl {
   inline void CublasCall(const std::function<void(blasHandle_t)>& callback) {
     std::call_once(flag_cublas_, [&]() {
       if (!blas_handle_) {
-        if (!blas_handle_creator_)
-          phi::InitBlasHandle(&blas_handle_, stream_);
-        else
+        if (!blas_handle_creator_) {
+          phi::InitBlasHandle(&blas_handle_, stream());
+        } else {
           blas_handle_ = blas_handle_creator_();
+        }
       }
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
-        if (!blas_tensor_core_handle_creator_)
-          phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
-        else
-          blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
+        if (!blas_tensor_core_handle_creator_) {
+          phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
+        } else {
+          phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
+        }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
       }
 #endif
 #if CUDA_VERSION >= 11000
       if (!blas_tf32_tensor_core_handle_) {
-        if (!blas_tf32_tensor_core_handle_creator_)
-          phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
-        else
+        if (!blas_tf32_tensor_core_handle_creator_) {
+          phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream());
+        } else {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
+        }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
@@ -573,29 +608,32 @@ struct GPUContext::Impl {
       const std::function<void(blasHandle_t)>& callback) {
     std::call_once(flag_tensorcore_cublas_, [&]() {
       if (!blas_handle_) {
-        if (!blas_handle_creator_)
-          phi::InitBlasHandle(&blas_handle_, stream_);
-        else
+        if (!blas_handle_creator_) {
+          phi::InitBlasHandle(&blas_handle_, stream());
+        } else {
           blas_handle_ = blas_handle_creator_();
+        }
       }
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
-        if (!blas_tensor_core_handle_creator_)
-          phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
-        else
+        if (!blas_tensor_core_handle_creator_) {
+          phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
+        } else {
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
+        }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
       }
 #endif
 #if CUDA_VERSION >= 11000
       if (!blas_tf32_tensor_core_handle_) {
-        if (!blas_tf32_tensor_core_handle_creator_)
-          phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
-        else
+        if (!blas_tf32_tensor_core_handle_creator_) {
+          phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream());
+        } else {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
+        }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
@@ -615,10 +653,11 @@ struct GPUContext::Impl {
       const std::function<void(sparseHandle_t)>& callback) {
     std::call_once(flag_sparse_, [&]() {
       if (!sparse_handle_) {
-        if (!sparse_handle_creator_)
-          phi::InitSparseHandle(&sparse_handle_, stream_);
-        else
+        if (!sparse_handle_creator_) {
+          phi::InitSparseHandle(&sparse_handle_, stream());
+        } else {
           sparse_handle_ = sparse_handle_creator_();
+        }
       }
     });
     std::lock_guard<std::mutex> guard(sparse_mtx_);
@@ -632,9 +671,9 @@ struct GPUContext::Impl {
 
   void RecordEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(ev, stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(ev, stream()));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(ev, stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(ev, stream()));
 #endif
   }
 
@@ -653,22 +692,22 @@ struct GPUContext::Impl {
 
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(
-        hipStreamAddCallback(stream_, internal::StreamCallbackFunc, func, 0));
+        hipStreamAddCallback(stream(), internal::StreamCallbackFunc, func, 0));
 #endif
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaLaunchHostFunc(stream_, internal::StreamCallbackFunc, func));
+        cudaLaunchHostFunc(stream(), internal::StreamCallbackFunc, func));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaStreamAddCallback(stream_, internal::StreamCallbackFunc, func, 0));
+        cudaStreamAddCallback(stream(), internal::StreamCallbackFunc, func, 0));
 #endif
 #endif
   }
 
   void WaitStreamCallback() const {
 #if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
-    phi::backends::gpu::GpuStreamSync(stream_);
+    phi::backends::gpu::GpuStreamSync(stream());
 #endif
     {
       std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
@@ -678,7 +717,10 @@ struct GPUContext::Impl {
     }
   }
 
+  // use one flag for all handles?
+  // they should be accessed consistently
   bool owned_{false};
+  bool stream_owned_{false};
   Place place_;
   int compute_capability_;
   int runtime_version_;
@@ -688,7 +730,7 @@ struct GPUContext::Impl {
   int max_threads_per_block_;
   std::array<int, 3> max_grid_dim_size_;
 
-  gpuStream_t stream_{nullptr};
+  CUDAStream* stream_{nullptr};
   Eigen::GpuDevice* eigen_device_{nullptr};
   std::function<Eigen::GpuDevice*()> eigen_device_creator_{nullptr};
   blasHandle_t blas_handle_{nullptr};
@@ -740,20 +782,24 @@ struct GPUContext::Impl {
   std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
 };
 
-GPUContext::GPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {}
-
 GPUContext::GPUContext(GPUContext&&) = default;
 
 GPUContext& GPUContext::operator=(GPUContext&&) = default;
 
-GPUContext::GPUContext(const GPUPlace& place)
-    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {}
+GPUContext::GPUContext(const GPUPlace& place, bool init)
+    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
+  if (init) {
+    impl_->PartialInitWithoutAllocator();
+  }
+}
 
 GPUContext::~GPUContext() = default;
 
 const Place& GPUContext::GetPlace() const { return impl_->GetPlace(); }
 
-gpuStream_t GPUContext::stream() const { return impl_->GetStream(); }
+gpuStream_t GPUContext::stream() const { return impl_->stream(); }
+
+CUDAStream* GPUContext::cuda_stream() const { return impl_->cuda_stream(); }
 
 dnnHandle_t GPUContext::cudnn_handle() const { return impl_->GetDnnHandle(); }
 
@@ -848,6 +894,11 @@ void GPUContext::Init() {
 void GPUContext::SetStream(gpuStream_t stream) {
   impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
   impl_->SetStream(stream);
+}
+
+void GPUContext::SetCUDAStream(CUDAStream* stream, bool clear) {
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->SetCUDAStream(stream, clear);
 }
 
 void GPUContext::SetEigenDevice(Eigen::GpuDevice* device) {
