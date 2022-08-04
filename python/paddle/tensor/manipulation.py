@@ -779,7 +779,7 @@ def fill_(x, value):
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
     if in_dygraph_mode():
-        return _C_ops.final_state_fill(x, value)
+        return _C_ops.final_state_fill_(x, value)
     else:
         return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
                                 int(value))
@@ -811,7 +811,7 @@ def zero_(x):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_fill(x, 0.)
+        return _C_ops.final_state_fill_(x, 0.)
     else:
         return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
 
