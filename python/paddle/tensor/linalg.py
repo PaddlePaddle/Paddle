@@ -420,7 +420,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                  keepdim=False,
                  asvector=False,
                  name=None):
-        helper = LayerHelper('frobenius_norm', **locals())
+        helper = LayerHelper('inf_norm', **locals())
         out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
         helper.append_op(type='abs', inputs={'X': input}, outputs={'Out': out})
@@ -473,7 +473,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                             'keep_dim': keepdim,
                             'reduce_all': True if axis is None else False
                         })
-        porder
         block.append_op(type='pow',
                         inputs={'X': sum_out},
                         outputs={'Out': out},
@@ -1999,7 +1998,13 @@ def qr(x, mode="reduced", name=None):
             
             # one can verify : X = Q * R ;     
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        q, r = _C_ops.final_state_qr(x, mode)
+        if mode == "r":
+            return r
+        else:
+            return q, r
+    if _in_legacy_dygraph():
         q, r = _C_ops.qr(x, 'mode', mode)
         if mode == "r":
             return r
@@ -2199,6 +2204,11 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
 
             # one can verify : X = P @ L @ U ;   
     """
+
+    if in_dygraph_mode():
+        P, L, U = _C_ops.final_state_lu_unpack(x, y, unpack_ludata,
+                                               unpack_pivots)
+        return P, L, U
 
     if paddle.in_dynamic_mode():
         P, L, U = _C_ops.lu_unpack(x, y, 'unpack_ludata', unpack_ludata,
@@ -3042,7 +3052,11 @@ def eigvalsh(x, UPLO='L', name=None):
             print(out_value)
             #[0.17157288, 5.82842712]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        values, _ = _C_ops.final_state_eigvalsh(x, UPLO, x.stop_gradient)
+        return values
+
+    elif paddle.in_dynamic_mode():
         is_test = x.stop_gradient
         values, _ = _C_ops.eigvalsh(x, 'UPLO', UPLO, 'is_test', is_test)
         return values
@@ -3174,21 +3188,12 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
     if _non_static_mode():
-        solution, rank, singular_values = _C_ops.lstsq(x, y, "rcond", rcond,
-                                                       "driver", driver)
-        if x.shape[-2] > x.shape[-1]:
-            matmul_out = _varbase_creator(dtype=x.dtype)
-            _C_ops.matmul(x, solution, matmul_out, 'trans_x', False, 'trans_y',
-                          False)
-            minus_out = _C_ops.elementwise_sub(matmul_out, y)
-            pow_out = _C_ops.pow(minus_out, 'factor', 2)
-            if in_dygraph_mode():
-                residuals = _C_ops.final_state_sum(pow_out, [-2], None, False)
-            else:
-                residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
-                                              False, 'reduce_all', False)
+        if in_dygraph_mode():
+            solution, residuals, rank, singular_values = _C_ops.final_state_lstsq(
+                x, y, rcond, driver)
         else:
-            residuals = paddle.empty(shape=[0], dtype=x.dtype)
+            solution, residuals, rank, singular_values = _C_ops.lstsq(
+                x, y, 'rcond', rcond, 'driver', driver)
 
         if driver == "gels":
             rank = paddle.empty(shape=[0], dtype=paddle.int32)
@@ -3218,47 +3223,13 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
                      },
                      outputs={
                          'Solution': solution,
+                         'Residuals': residuals,
                          'Rank': rank,
                          'SingularValues': singular_values
                      },
                      attrs={
                          'rcond': rcond,
                          'driver': driver
-                     })
-
-    matmul_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    minus_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    pow_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='matmul_v2',
-                     inputs={
-                         'X': x,
-                         'Y': solution
-                     },
-                     outputs={'Out': matmul_out},
-                     attrs={
-                         'trans_x': False,
-                         'trans_y': False,
-                     })
-
-    helper.append_op(type='elementwise_sub',
-                     inputs={
-                         'X': matmul_out,
-                         'Y': y
-                     },
-                     outputs={'Out': minus_out})
-
-    helper.append_op(type='pow',
-                     inputs={'X': minus_out},
-                     outputs={'Out': pow_out},
-                     attrs={'factor': 2})
-
-    helper.append_op(type='reduce_sum',
-                     inputs={'X': pow_out},
-                     outputs={'Out': residuals},
-                     attrs={
-                         'dim': [-2],
-                         'keep_dim': False,
-                         'reduce_all': False
                      })
 
     if driver == "gels":

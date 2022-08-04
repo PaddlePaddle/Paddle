@@ -47,7 +47,7 @@ class CWaitComputeOp : public framework::OperatorBase {
     int ring_id = Attr<int>("ring_id");
 
     auto compute_stream =
-        static_cast<platform::CUDADeviceContext*>(
+        static_cast<phi::GPUContext*>(
             platform::DeviceContextPool::Instance().Get(place))
             ->stream();
     auto comm_stream =

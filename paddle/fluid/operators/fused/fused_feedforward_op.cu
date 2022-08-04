@@ -36,7 +36,7 @@ using Tensor = framework::Tensor;
 template <typename T>
 static void AllReduce(framework::Tensor& tensor,  // NOLINT
                       const int ring_id,
-                      const platform::CUDADeviceContext& ctx) {
+                      const phi::GPUContext& ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
@@ -73,7 +73,7 @@ static void AllReduce(framework::Tensor& tensor,  // NOLINT
 template <typename DeviceContext, typename T>
 class FusedFeedForwardKernel : public framework::OpKernel<T> {
  public:
-  void MatMul(const platform::CUDADeviceContext& ctx,
+  void MatMul(const phi::GPUContext& ctx,
               const framework::Tensor& a,
               const framework::Tensor& b,
               framework::Tensor* c) const {
@@ -86,7 +86,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     blas.MatMul(a, mat_dim_a, b, mat_dim_b, alpha, c, T(0));
   }
 
-  void FFN(const platform::CUDADeviceContext& ctx,
+  void FFN(const phi::GPUContext& ctx,
            const framework::Tensor& x,
            const framework::Tensor& linear1_weight,
            const framework::Tensor* linear1_bias,
@@ -309,7 +309,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
  public:
-  void MatMulGrad(const platform::CUDADeviceContext& ctx,
+  void MatMulGrad(const phi::GPUContext& ctx,
                   const framework::Tensor& d_out,
                   const framework::Tensor& a,
                   const framework::Tensor& b,
@@ -327,7 +327,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     blas.MatMul(a, mat_dim_a, d_out, mat_dim_dout, alpha, d_b, T(0));
   }
 
-  void FFNGrad(const platform::CUDADeviceContext& ctx,
+  void FFNGrad(const phi::GPUContext& ctx,
                const framework::Tensor& d_out,
                const framework::Tensor& x,
                const framework::Tensor& dropout1_mask,
@@ -630,14 +630,12 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     fused_feedforward,
-    ops::FusedFeedForwardKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FusedFeedForwardKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FusedFeedForwardKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::float16>);
+    ops::FusedFeedForwardKernel<phi::GPUContext, float>,
+    ops::FusedFeedForwardKernel<phi::GPUContext, double>,
+    ops::FusedFeedForwardKernel<phi::GPUContext, paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
     fused_feedforward_grad,
-    ops::FusedFeedForwardGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FusedFeedForwardGradKernel<paddle::platform::CUDADeviceContext,
-                                    double>,
-    ops::FusedFeedForwardGradKernel<paddle::platform::CUDADeviceContext,
+    ops::FusedFeedForwardGradKernel<phi::GPUContext, float>,
+    ops::FusedFeedForwardGradKernel<phi::GPUContext, double>,
+    ops::FusedFeedForwardGradKernel<phi::GPUContext,
                                     paddle::platform::float16>);
