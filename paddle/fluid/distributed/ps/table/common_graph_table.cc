@@ -32,6 +32,7 @@
 #include "paddle/fluid/string/string_helper.h"
 
 DECLARE_bool(graph_load_in_parallel);
+DECLARE_bool(graph_get_neighbor_id);
 
 namespace paddle {
 namespace distributed {
@@ -1068,6 +1069,7 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype,
   auto ntypes = paddle::string::split_string<std::string>(ntype, ",");
   VLOG(0) << "etypes size: " << etypes.size();
   VLOG(0) << "whether reverse: " << reverse;
+  is_load_reverse_edge = reverse;
   std::string delim = ";";
   size_t total_len = etypes.size() + 1;  // 1 is for node
 
@@ -1967,6 +1969,17 @@ int GraphTable::get_all_feature_ids(
     tasks[i].wait();
   }
   return 0;
+}
+
+int GraphTable::get_node_embedding_ids(int slice_num,
+        std::vector<std::vector<uint64_t>> *output) {
+    if (is_load_reverse_edge and !FLAGS_graph_get_neighbor_id) {
+        return get_all_id(0, slice_num, output);
+    }
+    else {
+        get_all_id(0, slice_num, output);
+        return get_all_neighbor_id(0, slice_num, output);
+    }
 }
 
 int32_t GraphTable::pull_graph_list(int type_id, int idx, int start,

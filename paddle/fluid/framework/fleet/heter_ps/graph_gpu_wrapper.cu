@@ -59,6 +59,12 @@ int GraphGpuWrapper::get_all_feature_ids(int type, int idx, int slice_num,
       ->cpu_graph_table_->get_all_feature_ids(type, idx, slice_num, output);
 }
 
+int GraphGpuWrapper::get_node_embedding_ids(int slice_num, 
+                                           std::vector<std::vector<uint64_t>> *output) {
+  return ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table_->get_node_embedding_ids(slice_num, output);
+}
+
 void GraphGpuWrapper::set_up_types(std::vector<std::string> &edge_types,
                                    std::vector<std::string> &node_types) {
   id_to_edge = edge_types;

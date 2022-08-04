@@ -539,6 +539,8 @@ class GraphTable : public Table {
                           std::vector<std::vector<uint64_t>> *output);
   int get_all_feature_ids(int type, int idx, int slice_num,
                           std::vector<std::vector<uint64_t>> *output);
+  int get_node_embedding_ids(int slice_num,
+            std::vector<std::vector<uint64_t>> *output);
   int32_t load_nodes(const std::string &path,
                      std::string node_type = std::string());
   std::pair<uint64_t, uint64_t> parse_edge_file(const std::string &path,
@@ -681,6 +683,7 @@ class GraphTable : public Table {
   int cache_ttl;
   mutable std::mutex mutex_;
   bool build_sampler_on_cpu;
+  bool is_load_reverse_edge = false;
   std::shared_ptr<pthread_rwlock_t> rw_lock;
 #ifdef PADDLE_WITH_HETERPS
   // paddle::framework::GpuPsGraphTable gpu_graph_table;

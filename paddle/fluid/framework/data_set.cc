@@ -470,6 +470,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
     auto edge_to_id = gpu_graph_ptr->edge_to_id;
     graph_all_type_total_keys_.resize(node_to_id.size());
     int cnt = 0;
+    //set sample start node
     for (auto& iter : node_to_id) {
       int node_idx = iter.second;
       std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
@@ -480,7 +481,6 @@ void DatasetImpl<T>::LoadIntoMemory() {
         VLOG(2) << "node type: " << node_idx << ", gpu_graph_device_keys[" << i
                 << "] = " << gpu_graph_device_keys[i].size();
         for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
-          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
           type_total_key[i].push_back(gpu_graph_device_keys[i][j]);
         }
       }
@@ -492,6 +492,16 @@ void DatasetImpl<T>::LoadIntoMemory() {
       cnt++;
     }
 
+    //add node embedding id
+    std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
+    gpu_graph_ptr->get_node_embedding_ids(thread_num_, &gpu_graph_device_keys);
+    for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
+      for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
+        gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+      }
+    }
+
+    //add feature embedding id
     VLOG(2) << "begin add feature_id into gpu_graph_total_keys_ size[" << gpu_graph_total_keys_.size() << "]";
     for (auto& iter : node_to_id) {
       std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
@@ -508,30 +518,6 @@ void DatasetImpl<T>::LoadIntoMemory() {
       }
     }
     VLOG(2) << "end add feature_id into gpu_graph_total_keys_ size[" << gpu_graph_total_keys_.size() << "]";
-
-    // FIX: trick for iterate edge table
-    for (auto& iter : edge_to_id) {
-      int edge_idx = iter.second;
-      std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
-      gpu_graph_ptr->get_all_id(0, edge_idx, thread_num_, &gpu_graph_device_keys);
-      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
-        VLOG(1) << "edge type: " << edge_idx << ", gpu_graph_device_keys[" << i
-                << "] = " << gpu_graph_device_keys[i].size();
-        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
-          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
-        }
-      }
-      if (FLAGS_graph_get_neighbor_id) {
-        std::vector<std::vector<uint64_t>> gpu_graph_neighbor_keys;
-        gpu_graph_ptr->get_all_neighbor_id(0, edge_idx, thread_num_, &gpu_graph_neighbor_keys);
-        for (size_t i = 0; i < gpu_graph_neighbor_keys.size(); i++) {
-          for (size_t k = 0; k < gpu_graph_neighbor_keys[i].size(); k++) {
-            gpu_graph_total_keys_.push_back(gpu_graph_neighbor_keys[i][k]);
-          }
-        }
-      }
-    }
-
   } else {
     for (int64_t i = 0; i < thread_num_; ++i) {
       load_threads.push_back(std::thread(

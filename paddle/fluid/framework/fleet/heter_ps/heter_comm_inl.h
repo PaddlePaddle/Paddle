@@ -1563,12 +1563,18 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
     AnyDeviceGuard guard(resource_->dev_id(i));
     ptr_tables_[i]->rwlock_->RDLock();
     if (!FLAGS_gpugraph_enable_gpu_direct_access) {
+      //add default value (show, clk, EmbedW, mf_size, embding all eauqls 0) for get
+      CUDA_CHECK(cudaMemsetAsync(node.val_storage, 0, (h_right[i] - h_left[i] + 1) * val_type_size,
+        resource_->remote_stream(i, num)));
       ptr_tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
                           node.val_storage,
                           h_right[i] - h_left[i] + 1,
                           resource_->remote_stream(i, num),
                           gpu_accessor_);
     } else {
+      //add default value (show, clk, EmbedW, mf_size, embding all eauqls 0) for get
+      CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<char*>(d_shard_vals_ptr) + h_left[i] * val_type_size,
+        0, (h_right[i] - h_left[i] + 1) * val_type_size, resource_->remote_stream(i, num)));
       ptr_tables_[i]->get(
           d_shard_keys_ptr + h_left[i],
           reinterpret_cast<char*>(d_shard_vals_ptr) + h_left[i] * val_type_size,
