@@ -2457,8 +2457,7 @@
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta :
     func : BatchNormInferMeta
-  kernel :
-    func : sync_batch_norm
+  invoke : sync_batch_norm_impl(x, scale, bias, mean, variance, momentum, epsilon, data_layout, is_test, use_global_stats, trainable_statistics, fuse_with_relu)
   backward : sync_batch_norm_grad
 
 # take_along_axis

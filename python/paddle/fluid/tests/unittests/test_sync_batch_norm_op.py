@@ -347,5 +347,19 @@ class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):
             self.assertRaises(ValueError, my_sync_batch_norm, x)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSyncBatchNormOpFP16(unittest.TestCase):
+
+    def test_fp16(self):
+        model = nn.Sequential(nn.Conv2D(3, 5, 3, bias_attr=False),
+                              nn.BatchNorm2D(5))
+        sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        x = np.random.random((4, 3, 8, 8)).astype('float32')
+        x = paddle.to_tensor(x)
+        with paddle.amp.auto_cast():
+            out = sync_model(x)
+
+
 if __name__ == '__main__':
     unittest.main()
