@@ -57,11 +57,6 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     ENVS "PADDLE_DIST_UT_PORT=20197;http_proxy=;https_proxy=")
   set_tests_properties(test_fleet_distributed_strategy PROPERTIES TIMEOUT "300")
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  py_test_modules(test_fleet_elastic_init MODULES test_fleet_elastic_init ENVS
-                  "PADDLE_DIST_UT_PORT=20201;http_proxy=;https_proxy=")
-  set_tests_properties(test_fleet_elastic_init PROPERTIES TIMEOUT "300")
-endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_fleet_exe_dist_model_run MODULES test_fleet_exe_dist_model_run ENVS
@@ -379,11 +374,6 @@ if((WITH_GPU
     ENVS
     "PADDLE_DIST_UT_PORT=20275;http_proxy=;https_proxy=;TEST_TIMEOUT=350")
   set_tests_properties(test_fleet_run_random_port PROPERTIES TIMEOUT "300")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  py_test_modules(test_fleet_runtime MODULES test_fleet_runtime ENVS
-                  "PADDLE_DIST_UT_PORT=20277;http_proxy=;https_proxy=")
-  set_tests_properties(test_fleet_runtime PROPERTIES TIMEOUT "300")
 endif()
 if((WITH_GPU
     OR WITH_XPU

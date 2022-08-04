@@ -8,7 +8,6 @@ test_fleet_base_single,,gpu;rocm,120,DIST,test_runner.py,20191,http_proxy=;https
 test_fleet_checkpoint,linux,,500,EXCLUSIVE:NIGHTLY,test_runner.py,20193,http_proxy=;https_proxy=,
 test_fleet_dgc_meta_optimizer,linux;win32,,300,DIST,test_runner.py,20195,http_proxy=;https_proxy=,WITH_DGC
 test_fleet_distributed_strategy,linux;win32,,300,DIST,test_runner.py,20197,http_proxy=;https_proxy=,
-test_fleet_elastic_init,,,300,DIST,test_runner.py,20201,http_proxy=;https_proxy=,
 test_fleet_exe_dist_model_run,linux,gpu;rocm,120,DIST,test_runner.py,20205,http_proxy=;https_proxy=,
 test_fleet_exe_dist_model_tensor,linux,gpu;rocm,300,DIST,test_runner.py,20207,http_proxy=;https_proxy=,
 test_fleet_executor,linux,gpu;rocm,200,DIST,test_runner.py,20209,http_proxy=;https_proxy=,
@@ -40,7 +39,6 @@ test_fleet_recompute_meta_optimizer,linux;win32,gpu;xpu;ASCEND;ASCEND_CL,300,DIS
 test_fleet_rolemaker_2,linux;apple,,300,DIST,test_runner.py,20265,http_proxy=;https_proxy=,
 test_fleet_rolemaker_new,linux;apple,,300,DIST,test_runner.py,20273,http_proxy=;https_proxy=,
 test_fleet_run_random_port,,gpu;xpu;ASCEND;ASCEND_CL,300,DIST,test_fleet_run_random_port.sh,20275,http_proxy=;https_proxy=;TEST_TIMEOUT=350,
-test_fleet_runtime,,,300,DIST,test_runner.py,20277,http_proxy=;https_proxy=,
 test_fleet_sharding_meta_optimizer,,gpu;xpu;ASCEND;ASCEND_CL,300,DIST,test_runner.py,20279,http_proxy=;https_proxy=,
 test_fleet_static_mp_layers,linux;win32,,300,DIST,test_runner.py,20281,http_proxy=;https_proxy=,
 test_fleet_utils,linux;apple,,120,DIST,test_runner.py,20287,http_proxy=;https_proxy=,
