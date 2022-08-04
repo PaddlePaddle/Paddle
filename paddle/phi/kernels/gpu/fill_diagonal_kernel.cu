@@ -19,6 +19,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
 
