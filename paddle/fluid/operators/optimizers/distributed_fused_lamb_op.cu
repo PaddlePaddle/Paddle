@@ -1697,35 +1697,37 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
         // (1) ReduceScater first
         if (local_shard) {
           if (use_hierarchical_allreduce) {
-            NCCLAllReduceWithScale(fp32_grad,
-                                   fp32_sum_grad,
-                                   fp32_numel,
-                                   nranks / num_devices,
-                                   external_comm,
-                                   stream,
-                                   dev_ctx);
             NCCLReduceScatterWithScale(
-                fp32_sum_grad,
+                fp32_grad,
                 fp32_sum_grad + local_rank * fp32_numel_each_device,
                 fp32_numel_each_device,
                 num_devices,
                 local_comm,
                 stream,
                 dev_ctx);
+            NCCLAllReduceWithScale(
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_numel_each_device,
+                nranks / num_devices,
+                external_comm,
+                stream,
+                dev_ctx);
 
-            NCCLAllReduceWithScale(fp16_grad,
-                                   fp16_sum_grad,
-                                   fp16_numel,
-                                   nranks / num_devices,
-                                   external_comm,
-                                   stream,
-                                   dev_ctx);
             NCCLReduceScatterWithScale(
-                fp16_sum_grad,
+                fp16_grad,
                 fp16_sum_grad + local_rank * fp16_numel_each_device,
                 fp16_numel_each_device,
                 num_devices,
                 local_comm,
+                stream,
+                dev_ctx);
+            NCCLAllReduceWithScale(
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_numel_each_device,
+                nranks / num_devices,
+                external_comm,
                 stream,
                 dev_ctx);
           } else {
@@ -1839,37 +1841,39 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
         // (3) Do ReduceScatter with scale
         if (local_shard) {
           if (use_hierarchical_allreduce) {
-            NCCLAllReduceWithScale(fp32_grad,
-                                   fp32_sum_grad,
-                                   fp32_numel,
-                                   nranks / num_devices,
-                                   external_comm,
-                                   stream,
-                                   dev_ctx,
-                                   fp32_scale);
             NCCLReduceScatterWithScale(
-                fp32_sum_grad,
+                fp32_grad,
                 fp32_sum_grad + local_rank * fp32_numel_each_device,
                 fp32_numel_each_device,
                 num_devices,
                 local_comm,
                 stream,
+                dev_ctx,
+                fp32_scale);
+            NCCLAllReduceWithScale(
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_numel_each_device,
+                nranks / num_devices,
+                external_comm,
+                stream,
                 dev_ctx);
 
-            NCCLAllReduceWithScale(fp16_grad,
-                                   fp16_sum_grad,
-                                   fp16_numel,
-                                   nranks / num_devices,
-                                   external_comm,
-                                   stream,
-                                   dev_ctx,
-                                   fp16_scale);
             NCCLReduceScatterWithScale(
-                fp16_sum_grad,
+                fp16_grad,
                 fp16_sum_grad + local_rank * fp16_numel_each_device,
                 fp16_numel_each_device,
                 num_devices,
                 local_comm,
+                stream,
+                dev_ctx,
+                fp16_scale);
+            NCCLAllReduceWithScale(
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_numel_each_device,
+                nranks / num_devices,
+                external_comm,
                 stream,
                 dev_ctx);
           } else {
@@ -1917,35 +1921,37 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
     } else {
       if (local_shard) {
         if (use_hierarchical_allreduce) {
-          NCCLAllReduceWithScale(fp32_grad,
-                                 fp32_sum_grad,
-                                 fp32_numel,
-                                 nranks / num_devices,
-                                 external_comm,
-                                 stream,
-                                 dev_ctx);
           NCCLReduceScatterWithScale(
-              fp32_sum_grad,
+              fp32_grad,
               fp32_sum_grad + local_rank * fp32_numel_each_device,
               fp32_numel_each_device,
               num_devices,
               local_comm,
               stream,
               dev_ctx);
+          NCCLAllReduceWithScale(
+              fp32_sum_grad + local_rank * fp32_numel_each_device,
+              fp32_sum_grad + local_rank * fp32_numel_each_device,
+              fp32_numel_each_device,
+              nranks / num_devices,
+              external_comm,
+              stream,
+              dev_ctx);
 
-          NCCLAllReduceWithScale(fp16_grad,
-                                 fp16_sum_grad,
-                                 fp16_numel,
-                                 nranks / num_devices,
-                                 external_comm,
-                                 stream,
-                                 dev_ctx);
           NCCLReduceScatterWithScale(
-              fp16_sum_grad,
+              fp16_grad,
               fp16_sum_grad + local_rank * fp16_numel_each_device,
               fp16_numel_each_device,
               num_devices,
               local_comm,
+              stream,
+              dev_ctx);
+          NCCLAllReduceWithScale(
+              fp16_sum_grad + local_rank * fp16_numel_each_device,
+              fp16_sum_grad + local_rank * fp16_numel_each_device,
+              fp16_numel_each_device,
+              nranks / num_devices,
+              external_comm,
               stream,
               dev_ctx);
         } else {
