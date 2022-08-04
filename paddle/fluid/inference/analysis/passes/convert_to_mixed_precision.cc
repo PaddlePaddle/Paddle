@@ -207,7 +207,7 @@ bool OutShouldNotConvert(ir::Node* var_node) {
 }
 void ProcessOutputNode(ir::Node* var_node,
                        framework::proto::VarType::Type to_type) {
-  if (var_node->IsCtrlVar()) return;
+  if (!NodeVarHasDtype(var_node)) return;
   auto* out_var = var_node->Var();
   if (out_var->GetDataType() == framework::proto::VarType::FP32) {
     if (OutShouldNotConvert(var_node)) return;
@@ -265,7 +265,7 @@ void ProcessInputNode(
     bool is_main_block,
     std::unordered_map<std::string, framework::proto::VarType::Type>*
         vars_in_multi_block_map) {
-  if (in_node->IsCtrlVar()) return;
+  if (!NodeVarHasDtype(in_node)) return;
   auto* in_var = in_node->Var();
   auto in_var_type = in_var->GetDataType();
   if (!is_main_block && vars_in_multi_block_map->count(in_var->Name())) {
@@ -707,7 +707,7 @@ void ConvertToMixedPrecision(const std::string& model_file,
 
   for (size_t i = 0; i < main_graph->SubGraphsSize(); ++i) {
     auto graph = main_graph->GetSubGraph(i);
-    VLOG(2) << " --------  handle subgrapph " << i << ", has "
+    VLOG(2) << " --------  handle subgraph " << i << ", has "
             << graph->Nodes().size() << " nodes";
 
     program_desc->Block(i).LocalVarNames();
