@@ -180,4 +180,4 @@ REGISTER_OPERATOR(rnn,
                   ops::RNNGradOpMaker<paddle::framework::OpDesc>,
                   ops::RNNGradOpMaker<paddle::imperative::OpBase>,
                   RnnInferShapeFunctor);
-REGISTER_OPERATOR(rnn_grad, ops::RNNGradOp);
+REGISTER_OPERATOR(rnn_grad, ops::RNNGradOp, RnnGradInferShapeFunctor);

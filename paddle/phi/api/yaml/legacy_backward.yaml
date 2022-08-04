@@ -1933,11 +1933,12 @@
   invoke : reverse(out_grad, axis)
 
 - backward_api : rnn_grad
-  forward : (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test) -> Tensor(out), Tensor(dropout_state), Tensor[](state), Tensor(reserve)
-  args : (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor[] sequence_length, Tensor out, Tensor dropout_state, Tensor reserve, Tensor out_grad, Tensor[] state_grad, float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test)
-  output : Tensor(x_grad), Tensor[](pre_state_grad){pre_state.size()}, Tensor[](weight_grad_list){weight_list.size()}
+  forward : rnn (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test) -> Tensor(out), Tensor(dropout_state), Tensor[](state), Tensor(reserve)
+  args : (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor out, Tensor dropout_state, Tensor reserve, Tensor out_grad, Tensor[] state_grad, float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test)
+  output : Tensor(x_grad), Tensor[](pre_state_grad){pre_state.size()}, Tensor[](weight_list_grad){weight_list.size()}
   infer_meta :
     func : RnnGradInferMeta
+    param : [x, pre_state, weight_list]
   kernel :
     func : rnn_grad
     data_type: out_grad
