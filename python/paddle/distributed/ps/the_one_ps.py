@@ -1248,12 +1248,13 @@ class TheOnePSRuntime(RuntimeBase):
         #                tensor, os.path.join(dirname, var), use_binary_format=True)
 
         vars = [program.global_block().var(i) for i in save_var_names]
-        with fluid.scope_guard(scope):
-            fluid.io.save_vars(executor,
-                               "./",
-                               program,
-                               vars=vars,
-                               filename=dirname)
+        import paddle
+        with paddle.static.scope_guard(scope):
+            paddle.static.save_vars(executor,
+                                    "./",
+                                    program,
+                                    vars=vars,
+                                    filename=dirname)
 
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
