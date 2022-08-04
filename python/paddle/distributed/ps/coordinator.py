@@ -23,10 +23,13 @@ import abc
 import os
 import logging
 
-logging.basicConfig(
-    format='%(asctime)s %(levelname)-2s [%(filename)s:%(lineno)d] %(message)s',
-    level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(
+    fmt='%(asctime)s %(levelname)-2s [%(filename)s:%(lineno)d] %(message)s')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 
 class ClientInfoAttr:
