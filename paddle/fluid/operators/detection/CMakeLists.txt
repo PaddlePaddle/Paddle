@@ -93,7 +93,7 @@ if(WITH_GPU OR WITH_ROCM)
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc
                     generate_proposals_op.cu DEPS ${TMPDEPS})
   detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc
-                    generate_proposals_v2_op.cu DEPS ${TMPDEPS})
+                    DEPS ${TMPDEPS})
   detection_library(
     distribute_fpn_proposals_op SRCS distribute_fpn_proposals_op.cc
     distribute_fpn_proposals_op.cu DEPS ${TMPDEPS})
