@@ -38,10 +38,10 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=20191;http_proxy=;https_proxy=;CUDA_VISIBLE_DEVICES=0")
   set_tests_properties(test_fleet_base_single PROPERTIES TIMEOUT "120")
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX))
+if((WITH_GPT OR WITH_ROCM) AND (LINUX))
   py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint ENVS
                   "PADDLE_DIST_UT_PORT=20193;http_proxy=;https_proxy=")
-  set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT "500")
+  set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT "200")
 endif()
 if(LOCAL_ALL_ARCH
    AND (LINUX OR WIN32)

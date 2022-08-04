@@ -867,7 +867,7 @@ if(WITH_DISTRIBUTE)
       # py_test_modules(
       #   test_fleet_gradient_merge_meta_optimizer MODULES
       #   test_fleet_gradient_merge_meta_optimizer ENVS ${dist_ENVS})
-      # py_test_modules(test_fleet_graph_executor MODULES
+      # py_test_modules(test_fleet_hybrid_meta_optimizer MODULES
       #                 test_fleet_graph_executor ENVS ${dist_ENVS})
       # py_test_modules(test_fleet_hybrid_meta_optimizer MODULES
       #                 test_fleet_hybrid_meta_optimizer ENVS ${dist_ENVS})

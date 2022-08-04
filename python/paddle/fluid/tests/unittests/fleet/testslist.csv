@@ -5,7 +5,7 @@ test_fleet_base,linux;win32,,300,DIST,test_runner.py,20183,http_proxy=;https_pro
 test_fleet_base_2,linux;win32,,300,DIST,test_runner.py,20185,http_proxy=;https_proxy=,
 test_fleet_base_3,linux;win32,,300,DIST,test_runner.py,20187,http_proxy=;https_proxy=,
 test_fleet_base_single,,gpu;rocm,120,DIST,test_runner.py,20191,http_proxy=;https_proxy=;CUDA_VISIBLE_DEVICES=0,
-test_fleet_checkpoint,linux,,500,EXCLUSIVE:NIGHTLY,test_runner.py,20193,http_proxy=;https_proxy=,
+test_fleet_checkpoint,linux,gpt;rocm,200,EXCLUSIVE:NIGHTLY,test_runner.py,20193,http_proxy=;https_proxy=,
 test_fleet_dgc_meta_optimizer,linux;win32,,300,DIST,test_runner.py,20195,http_proxy=;https_proxy=,WITH_DGC
 test_fleet_distributed_strategy,linux;win32,,300,DIST,test_runner.py,20197,http_proxy=;https_proxy=,
 test_fleet_exe_dist_model_run,linux,gpu;rocm,120,DIST,test_runner.py,20205,http_proxy=;https_proxy=,
