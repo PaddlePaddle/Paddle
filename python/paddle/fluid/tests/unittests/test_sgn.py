@@ -63,9 +63,8 @@ class TestSignAPI(unittest.TestCase):
 
     def test_complex(self):
         for dtype in ['complex64', 'complex128']:
-            np_x = np.array(
-                [[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]],
-                dtype=dtype)
+            np_x = np.array([[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]],
+                            dtype=dtype)
             x = paddle.to_tensor(np_x)
             z = paddle.sgn(x)
             np_z = z.numpy()
