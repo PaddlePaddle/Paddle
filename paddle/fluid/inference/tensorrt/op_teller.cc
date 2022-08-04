@@ -1063,14 +1063,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
-        if (with_dynamic_shape) {
-          if (decrease_axis.size() > 1) {
-            return false;
-          }
-        } else {
-          if (decrease_axis.size() > 0) {
-            VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
-                       "is not supported in TensorRT";
+        if (!with_dynamic_shape) {
+          if (decrease_axis.end() !=
+              std::find(decrease_axis.begin(), decrease_axis.end(), 0)) {
             return false;
           }
         }
@@ -1102,15 +1097,28 @@ bool OpTeller::Tell(const framework::ir::Node* node,
               return false;
             }
           }
-        } else {
-          for (size_t i = 0; i < axes.size(); i++) {
-            if (starts[i] < 0 || ends[i] < 0) {
-              VLOG(3) << "Invalid slice attribute 'starts' or 'ends'. "
-                         "Negative starts or ends not supported in TensorRT "
-                         "when running in dynamic shape mode.";
-              return false;
-            }
-          }
+        }
+      }
+      // not support following four inputs for slice in paddle-trt
+      auto slice_inputs = desc.Inputs();  // its size == 5
+      if (slice_inputs.find("StartsTensor") != slice_inputs.end()) {
+        if (desc.Input("StartsTensor").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("EndsTensor") != slice_inputs.end()) {
+        if (desc.Input("EndsTensor").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("StartsTensorList") != slice_inputs.end()) {
+        if (desc.Input("StartsTensorList").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("EndsTensorList") != slice_inputs.end()) {
+        if (desc.Input("EndsTensorList").size()) {
+          return false;
         }
       }
     }
