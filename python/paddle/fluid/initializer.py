@@ -139,13 +139,19 @@ class ConstantInitializer(Initializer):
 
         if in_dygraph_mode():
             place = _current_expected_place()
-            _C_ops.final_state_fill_constant_(var, var.shape, self._value,
-                                              var.dtype, place)
+            if isinstance(self._value, str):
+                value_ = self._value
+            else:
+                value_ = str(float(self._value))
+
+            _C_ops.final_state_fill_constant_(var, var.shape, value_, var.dtype,
+                                              place)
             return None
         elif _in_legacy_dygraph():
             _C_ops.fill_constant(var, 'value', float(self._value),
                                  'force_cpu', self._force_cpu, 'dtype',
-                                 int(var.dtype), 'shape', var.shape)
+                                 int(var.dtype), 'str_value',
+                                 str(float(self._value)), 'shape', var.shape)
             return None
         else:
             op = block.append_op(type="fill_constant",
@@ -154,6 +160,7 @@ class ConstantInitializer(Initializer):
                                      "shape": var.shape,
                                      "dtype": int(var.dtype),
                                      "value": float(self._value),
+                                     'str_value': str(float(self._value)),
                                      'force_cpu': self._force_cpu
                                  },
                                  stop_gradient=True)
