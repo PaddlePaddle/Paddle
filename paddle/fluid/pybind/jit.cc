@@ -18,10 +18,10 @@ limitations under the License. */
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/fluid/jit/executor_function.h"
+#include "paddle/fluid/jit/function/executor_function.h"
+#include "paddle/fluid/jit/function/pe_function.h"
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/layer.h"
-#include "paddle/fluid/jit/pe_function.h"
 #include "paddle/fluid/jit/serializer.h"
 
 namespace py = pybind11;

@@ -297,6 +297,17 @@ void FillDiagonalGradInferMeta(const MetaTensor& dout,
   }
 }
 
+void FillDiagonalTensorGradInferMeta(const MetaTensor& out_grad,
+                                     int64_t offset,
+                                     int dim1,
+                                     int dim2,
+                                     MetaTensor* x_grad) {
+  if (x_grad != nullptr) {
+    x_grad->set_dims(out_grad.dims());
+    x_grad->set_dtype(out_grad.dtype());
+  }
+}
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,

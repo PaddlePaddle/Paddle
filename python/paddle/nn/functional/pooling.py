@@ -782,7 +782,11 @@ def max_unpool1d(x,
     output_size = _unpool_output_size(x, kernel_size, stride, padding,
                                       output_size)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        output = _C_ops.final_state_unpool(x, indices, kernel_size, stride,
+                                           padding, output_size, data_format)
+        return squeeze(output, [2])
+    elif in_dynamic_mode():
         output = _C_ops.unpool(x, indices, 'unpooling_type', 'max', 'ksize',
                                kernel_size, 'strides', stride, 'paddings',
                                padding, "output_size", output_size,
@@ -838,7 +842,6 @@ def max_unpool2d(x,
             it must contain an integer.
         stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
             it must contain an integer.
-        kernel_size (int|tuple): Size of the max unpooling window.
         padding (int | tuple): Padding that was added to the input.
         output_size(list|tuple, optional): The target output size. If output_size is not specified, 
                            the actual output shape will be automatically calculated by (input_shape,
@@ -898,7 +901,11 @@ def max_unpool2d(x,
     output_size = _unpool_output_size(x, kernel_size, stride, padding,
                                       output_size)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        output = _C_ops.final_state_unpool(x, indices, kernel_size, stride,
+                                           padding, output_size, data_format)
+
+    elif in_dynamic_mode():
         output = _C_ops.unpool(x, indices, 'unpooling_type', 'max', 'ksize',
                                kernel_size, 'strides', stride, 'paddings',
                                padding, "output_size", output_size,
@@ -1011,7 +1018,10 @@ def max_unpool3d(x,
     output_size = _unpool_output_size(x, kernel_size, stride, padding,
                                       output_size)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        output = _C_ops.final_state_unpool3d(x, indices, kernel_size, stride,
+                                             padding, output_size, data_format)
+    elif in_dynamic_mode():
         output = _C_ops.unpool3d(x, indices, 'unpooling_type', 'max', 'ksize',
                                  kernel_size, 'strides', stride, 'paddings',
                                  padding, "output_size", output_size,
