@@ -1190,7 +1190,16 @@ PD_REGISTER_KERNEL(batch_norm,
                    ALL_LAYOUT,
                    phi::BatchNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+}
 #else
 PD_REGISTER_KERNEL(batch_norm,
                    GPU,
@@ -1200,6 +1209,10 @@ PD_REGISTER_KERNEL(batch_norm,
                    double,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
