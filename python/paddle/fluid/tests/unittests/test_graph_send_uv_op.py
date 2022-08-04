@@ -37,6 +37,7 @@ def compute_graph_send_uv(inputs, attributes):
         results = gather_x + gather_y
     elif compute_type == "MUL":
         results = gather_x * gather_y
+
     return results
 
 
@@ -69,3 +70,58 @@ class TestGraphSendUVOp(OpTest):
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.compute_type = 'ADD'
+
+
+class TestCase1(TestGraphSendUVOp):
+
+    def set_config(self):
+        self.x = np.random.random((10, 20)).astype("float64")
+        self.y = np.random.random((10, 20)).astype("float64")
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'
+
+
+class TestCase2(TestGraphSendUVOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.y = np.random.random((100, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+
+class TestCase3(TestGraphSendUVOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 20)).astype("float64")
+        self.y = np.random.random((100, 1)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+
+class TestCase4(TestGraphSendUVOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.y = np.random.random((100, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'
+
+
+class TestCase5(TestGraphSendUVOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 20)).astype("float64")
+        self.y = np.random.random((100, 1)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'

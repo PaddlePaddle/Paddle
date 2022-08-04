@@ -27,6 +27,29 @@
 
 namespace phi {
 
+/*template <typename Context, typename T, typename IndexT>
+__global__ void GraphSendUVCUDAKernel(const T* out_grad,
+                                      const IndexT* src_indices,
+                                      const IndexT* dst_indices,
+                                      int64_t index_size,
+                                      int64_t slice_size,
+                                      T* x_grad) {
+  Idx ty = blockIdx.y * blockDim.y + threadIdx.y;
+  const Idx stride_y = blockDim.y * gridDim.y;
+  while (ty < index_size) {
+    IndexT src = src_indices[ty];
+    IndexT dst = dst_indices[ty];
+    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t stride_x = blockDim.x * gridDim.x;
+
+    const T* e_off = e_data + ty * slice_size;
+    T* x_grad_off = x_grad + dst * slice_size;
+    while (tx < slice_size) {
+
+    }
+  }
+}*/
+
 template <typename Context, typename T, typename IndexT>
 void CalculateGrad(const Context& ctx,
                    const T* out_grad,
@@ -64,12 +87,17 @@ void CalculateGrad(const Context& ctx,
                                              slice_size,
                                              functor);
     } else {
+      // TODO(daisiming): 反向很多bug
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, x_grad_dims);
-      DenseTensor x_grad_v2 = phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
+      auto out_grad_dims_1 = phi::vectorize<int>(out_grad_dims);
+      std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
+                                       out_grad_dims_1.end());
+      out_grad_dims_2.insert(out_grad_dims_2.begin(), x_grad_dims[0]);
+      DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
       phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
       GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
-          <<<grid, block, 0, ctx.stream()>>>(out_grad,
+          <<<grid, block, 0, ctx.stream()>>>(out_grad,  // 觉得有点怪
                                              d_index,
                                              s_index,
                                              x_grad,
@@ -132,7 +160,11 @@ void CalculateGrad(const Context& ctx,
               mul_functor,
               sum_functor);
     } else {
-      DenseTensor x_grad_v2 = phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
+      auto out_grad_dims_1 = phi::vectorize<int>(out_grad_dims);
+      std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
+                                       out_grad_dims_1.end());
+      out_grad_dims_2.insert(out_grad_dims_2.begin(), x_grad_dims[0]);
+      DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
       phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
       GraphSendUERecvCUDAKernel<T,
