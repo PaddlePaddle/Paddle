@@ -200,9 +200,7 @@ REGISTER_OP_CPU_KERNEL(im2sequence,
 REGISTER_OP_CPU_KERNEL(im2sequence_grad,
                        ops::Im2SequenceGradKernel<phi::CPUContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(
-    im2sequence,
-    ops::Im2SequenceKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    im2sequence_grad,
-    ops::Im2SequenceGradKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(im2sequence,
+                        ops::Im2SequenceKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(im2sequence_grad,
+                        ops::Im2SequenceGradKernel<phi::GPUContext, float>);

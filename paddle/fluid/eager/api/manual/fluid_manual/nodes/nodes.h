@@ -531,3 +531,67 @@ class fused_attentionGradNodeCompat : public egr::GradNodeBase {
   paddle::framework::AttributeMap attr_map_;
   paddle::framework::AttributeMap default_attr_map_;
 };
+
+class fused_gemm_epilogueGradNodeCompat : public egr::GradNodeBase {
+ public:
+  fused_gemm_epilogueGradNodeCompat() : egr::GradNodeBase() {
+    VLOG(7) << " Construct fused_gemm_epilogueGradNodeCompat ";
+  }
+  fused_gemm_epilogueGradNodeCompat(size_t bwd_in_slot_num,
+                                    size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
+    VLOG(7) << " Construct fused_gemm_epilogueGradNodeCompat ";
+  }
+  ~fused_gemm_epilogueGradNodeCompat() override {
+    VLOG(6) << " Destruct fused_gemm_epilogueGradNodeCompat ";
+  }
+
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,  // NOLINT
+                           egr::kSlotSmallVectorSize>& grads,          // NOLINT
+      bool create_graph = false,
+      bool is_new_grad = false) override;
+
+  void ClearTensorWrappers() override {
+    X_.clear();
+    Y_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+  std::string name() override { return "fused_gemm_epilogueGradNodeCompat"; }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    {
+      auto copied_node = std::shared_ptr<fused_gemm_epilogueGradNodeCompat>(
+          new fused_gemm_epilogueGradNodeCompat(*this));
+      return copied_node;
+    }
+  }
+
+  // SetX, SetY, ...
+  void SetTensorWrapperX(const paddle::experimental::Tensor& X) {
+    X_ = egr::TensorWrapper(X, false);
+  }
+  void SetTensorWrapperY(const paddle::experimental::Tensor& Y) {
+    Y_ = egr::TensorWrapper(Y, false);
+  }
+
+  // SetAttrMap
+  void SetAttrMap(paddle::framework::AttributeMap&& attr_map) {
+    attr_map_ = std::move(attr_map);
+  }
+  void SetDefaultAttrMap(paddle::framework::AttributeMap&& default_attr_map) {
+    default_attr_map_ = std::move(default_attr_map);
+  }
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper X_;
+  egr::TensorWrapper Y_;
+
+  // Attribute Map
+  paddle::framework::AttributeMap attr_map_;
+  paddle::framework::AttributeMap default_attr_map_;
+};

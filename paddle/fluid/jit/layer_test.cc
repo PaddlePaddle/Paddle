@@ -14,6 +14,7 @@
 
 #include <cmath>
 #include <string>
+#include <vector>
 
 #include "gtest/gtest.h"
 
@@ -71,8 +72,31 @@ TEST(CpuLayerTest, Construct) {
   auto place = phi::CPUPlace();
   std::string path = "./multi_program_load/export";
   auto layer = jit::Load(path, place);
-  auto inputs = PrepareInputs(place);
 
+  float fbias = layer.Attribute<float>("fbias");
+  EXPECT_FLOAT_EQ(fbias, 1.4);
+
+  int ds = layer.Attribute<int>("down_sampling");
+  EXPECT_EQ(ds, 4);
+
+  std::string fstr = layer.Attribute<std::string>("fstr");
+  EXPECT_STREQ(fstr.c_str(), "save str property");
+
+  std::vector<int> ints = layer.Attribute<std::vector<int>>("ints");
+  EXPECT_EQ(ints[0], 10);
+  EXPECT_EQ(ints[1], 20);
+
+  std::vector<float> floats = layer.Attribute<std::vector<float>>("floats");
+  EXPECT_FLOAT_EQ(floats[0], 1.1);
+  EXPECT_FLOAT_EQ(floats[1], 2.2);
+
+  std::vector<std::string> strs =
+      layer.Attribute<std::vector<std::string>>("strs");
+  EXPECT_STREQ(strs[0].c_str(), "hello");
+  EXPECT_STREQ(strs[1].c_str(), "world");
+
+  // functions
+  auto inputs = PrepareInputs(place);
   auto outs = layer.forward(inputs);
   auto out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
