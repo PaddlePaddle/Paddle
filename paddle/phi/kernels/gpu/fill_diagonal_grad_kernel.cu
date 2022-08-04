@@ -61,7 +61,7 @@ void FillDiagonalGradKernel(const Context& ctx,
 
   auto size = x_grad->numel();
   auto out_dims = x_grad->dims();
-  auto strides = CalStride(out_dims);
+  auto strides = funcs::CalStride(out_dims);
 
   auto wrapsize = std::min(size, out_dims[1] * out_dims[1]);
   // The wrap mode supported only the dims equels to 2; In wrap mode, the

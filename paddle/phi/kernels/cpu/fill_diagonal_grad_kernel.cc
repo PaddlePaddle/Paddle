@@ -31,7 +31,7 @@ void FillDiagonalGradKernel(const Context& ctx,
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
 
     auto dx_dims = x_grad->dims();
-    auto strides = CalStride(dx_dims);
+    auto strides = funcs::CalStride(dx_dims);
     auto size = x_grad->numel();
     auto wrapsize = std::min(size, dx_dims[1] * dx_dims[1]);
 

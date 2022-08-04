@@ -33,7 +33,7 @@ void FillDiagonalKernel(const Context& ctx,
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
 
   auto out_dims = out->dims();
-  auto strides = CalStride(out_dims);
+  auto strides = funcs::CalStride(out_dims);
   auto size = out->numel();
 
   // The wrap mode supported only the dims equels to 2; In wrap mode, the
