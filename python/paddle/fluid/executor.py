@@ -1187,8 +1187,9 @@ class Executor(object):
                results are spliced together in dimension 0 for the same Tensor values
                (Tensors in fetch_list) on different devices.
 
-        Examples 1:
+        Examples:
             .. code-block:: python
+                :name: code-example-1
 
                 import paddle
                 import numpy
@@ -1215,9 +1216,10 @@ class Executor(object):
                 print(array_val)
                 # [array([0.02153828], dtype=float32)]
 
-        Examples 2:
             .. code-block:: python
+                :name: code-example-2
 
+                # required: gpu
                 import paddle
                 import numpy as np
 
@@ -1265,7 +1267,7 @@ class Executor(object):
                 print("The merged prediction shape: {}".format(
                     np.array(merged_prediction).shape))
                 print(merged_prediction)
- 
+
                 # Out:
                 # The unmerged prediction shape: (2, 3, 2)
                 # [array([[-0.37620035, -0.19752218],
