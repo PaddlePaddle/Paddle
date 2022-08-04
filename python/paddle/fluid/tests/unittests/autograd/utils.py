@@ -21,7 +21,6 @@ import functools
 import contextlib
 import collections
 import numpy as np
-import uuid
 import paddle
 from paddle.incubate.autograd.utils import as_tensors
 
@@ -401,12 +400,11 @@ def gen_static_data_and_feed(xs, v, stop_gradient=True):
     feed = {}
     if isinstance(xs, typing.Sequence):
         static_xs = []
-        for i, value in enumerate(xs):
-            var_id = f"x{uuid.uuid4()}"
-            x = paddle.static.data(var_id, value.shape, value.dtype)
+        for i, x in enumerate(xs):
+            x = paddle.static.data(f"x{i}", x.shape, x.dtype)
             x.stop_gradient = stop_gradient
             static_xs.append(x)
-            feed[var_id] = value
+        feed.update({f'x{idx}': value for idx, value in enumerate(xs)})
     else:
         static_xs = paddle.static.data('x', xs.shape, xs.dtype)
         static_xs.stop_gradient = stop_gradient

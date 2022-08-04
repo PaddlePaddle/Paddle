@@ -79,9 +79,6 @@ class TestWithoutProgramGuard(unittest.TestCase):
             exe.run(sp)
             out = exe.run(mp, feed=feed, fetch_list=ys_grad)
             paddle.incubate.autograd.disable_prim()
-            paddle.fluid.framework.switch_main_program(paddle.static.Program())
-            paddle.fluid.framework.switch_startup_program(
-                paddle.static.Program())
             return out
 
         expected = with_program_guard()
@@ -124,9 +121,6 @@ class TestWithoutProgramGuard(unittest.TestCase):
             exe.run(sp)
             out = exe.run(mp, feed=feed, fetch_list=xs_grad)
             paddle.incubate.autograd.disable_prim()
-            paddle.fluid.framework.switch_main_program(paddle.static.Program())
-            paddle.fluid.framework.switch_startup_program(
-                paddle.static.Program())
             return out
 
         expected = with_program_guard()
