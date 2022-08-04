@@ -19,13 +19,13 @@ from .base import topology as tp
 from .base.topology import ParallelMode
 from .meta_parallel import TensorParallel, model_parallel_random_seed
 from .meta_parallel import PipelineParallel, ShardingParallel
-from paddle import _C_ops
 from paddle.fluid import core
 from paddle.distributed.fleet.utils.recompute import LegacyRecomputeFunction
 from .scaler import Scaler
 from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 
 _grad_scalar = None
+
 
 class _RecomputeModelWrapper(paddle.nn.Layer):
 
@@ -61,7 +61,9 @@ class _RecomputeModelWrapper(paddle.nn.Layer):
             input = self._checkpoint(self._run_func(begin, end), input)
         return self._run_func(end, len(self._layers))(input)
 
+
 class Model(object):
+
     def __init__(self, fleet):
         self.fleet = fleet
 
@@ -144,7 +146,7 @@ class Model(object):
                 'decr_every_n_nan_or_inf']
             use_dynamic_loss_scaling = strategy.amp_configs[
                 'use_dynamic_loss_scaling']
-            
+
             global _grad_scalar
             _grad_scalar = paddle.amp.GradScaler(
                 init_loss_scaling=init_loss_scaling,
@@ -166,10 +168,9 @@ class Model(object):
                 find_unused_parameters=strategy.find_unused_parameters)
             return distributed_model
 
-        if self.fleet._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
-            model = ShardingParallel(model,
-                                     self.fleet._hcg,
-                                     strategy=strategy)
+        if self.fleet._hcg.get_parallel_mode(
+        ) == ParallelMode.SHARDING_PARALLEL:
+            model = ShardingParallel(model, self.fleet._hcg, strategy=strategy)
         elif self.fleet._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
 
             # NOTE (JZ-LIANG) init parameters broadcast within sharding group
@@ -184,13 +185,11 @@ class Model(object):
                 comm_buffer_size=strategy.fuse_grad_size_in_MB,
                 last_comm_buffer_size=strategy.last_comm_group_size_MB,
                 find_unused_parameters=strategy.find_unused_parameters)
-        elif self.fleet._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
-            model = TensorParallel(model,
-                                   self.fleet._hcg,
-                                   strategy=strategy)
-        elif self.fleet._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
-            model = PipelineParallel(model,
-                                     self.fleet._hcg,
-                                     strategy=strategy)
+        elif self.fleet._hcg.get_parallel_mode(
+        ) == ParallelMode.TENSOR_PARALLEL:
+            model = TensorParallel(model, self.fleet._hcg, strategy=strategy)
+        elif self.fleet._hcg.get_parallel_mode(
+        ) == ParallelMode.PIPELINE_PARALLEL:
+            model = PipelineParallel(model, self.fleet._hcg, strategy=strategy)
 
         return model

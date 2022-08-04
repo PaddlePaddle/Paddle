@@ -20,10 +20,11 @@ import numpy as np
 from paddle.fluid.framework import dygraph_only, _global_flags
 from .base.distributed_strategy import DistributedStrategy
 from .meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
-from paddle import _C_ops
 from paddle.fluid import core
 
+
 class Optimizer(object):
+
     def __init__(self, fleet):
         self.fleet = fleet
 
@@ -73,14 +74,15 @@ class Optimizer(object):
 
         if self.fleet.worker_num() > 1:
             if self.fleet._user_defined_strategy.heter_ccl_mode == False:
-                return HybridParallelOptimizer(optimizer, self.fleet._hcg,
-                                               self.fleet._user_defined_strategy)
+                return HybridParallelOptimizer(
+                    optimizer, self.fleet._hcg,
+                    self.fleet._user_defined_strategy)
             else:
                 return HeterParallelOptimizer(optimizer,
                                               self.fleet._user_defined_strategy)
         else:
             return optimizer
-        
+
     @dygraph_only
     def state_dict(self):
         """
@@ -340,4 +342,3 @@ class Optimizer(object):
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.clear_grad()
-

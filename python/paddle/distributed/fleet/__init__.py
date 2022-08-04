@@ -93,9 +93,13 @@ shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
 distributed_model = Model(fleet).distributed_model
 distributed_scaler = Scaler().distributed_scaler
+
+
 def opt_func(*args, **kwargs):
     if paddle.fluid.framework._non_static_mode():
         return fleet_optimizer.distributed_optimizer(*args, **kwargs)
     else:
         return fleet.distributed_optimizer(*args, **kwargs)
+
+
 distributed_optimizer = opt_func

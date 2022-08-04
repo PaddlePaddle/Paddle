@@ -35,6 +35,7 @@ from paddle.fluid import core
 
 __all__ = []
 
+
 def apply_ir_passes(main_program, startup_program, config):
     build_strategy = config._user_defined_strategy.build_strategy._copy()
     if not _global_flags()['FLAGS_apply_pass_to_program']:
@@ -910,7 +911,6 @@ class Fleet(object):
         self._context = {}
 
         return self
-
 
     def _get_amp_optimizer(self):
         # imitate target optimizer retrieval
