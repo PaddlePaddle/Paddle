@@ -26,5 +26,8 @@ KernelSignature FillGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
+PD_REGISTER_BASE_KERNEL_NAME(fill_any, fill);
+PD_REGISTER_BASE_KERNEL_NAME(fill_any_grad, fill_grad);
+
 PD_REGISTER_ARG_MAPPING_FN(fill_any, phi::FillOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(fill_any_grad, phi::FillGradOpArgumentMapping);

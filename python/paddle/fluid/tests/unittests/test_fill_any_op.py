@@ -19,12 +19,14 @@ import paddle.fluid.core as core
 import unittest
 import numpy as np
 from op_test import OpTest
+from paddle.tensor.manipulation import fill_
 
 
 class TestFillAnyOp(OpTest):
 
     def setUp(self):
         self.op_type = "fill_any"
+        self.python_api = fill_
         self.dtype = 'float64'
         self.value = 0.0
         self.init()
@@ -42,10 +44,10 @@ class TestFillAnyOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
 
 class TestFillAnyOpFloat32(TestFillAnyOp):

@@ -778,8 +778,11 @@ def fill_(x, value):
         raise TypeError(
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
-    return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
-                            int(value))
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill(x, value)
+    else:
+        return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
+                                int(value))
 
 
 @dygraph_only
@@ -807,7 +810,10 @@ def zero_(x):
             print(tensor.tolist())   #[0, 0, 0, 0, 0]
 
     """
-    return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill(x, 0.)
+    else:
+        return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
 
 
 @dygraph_only

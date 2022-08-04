@@ -864,6 +864,17 @@
     data_type : dtype
     backend : place
 
+- api : fill
+  args : (Tensor x, Scalar value)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fill
+  inplace : (x -> out)
+  backward: fill_grad
+
 - api : fill_diagonal
   args : (Tensor x, float value, int offset, bool wrap)
   output : Tensor(out)
