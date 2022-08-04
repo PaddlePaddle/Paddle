@@ -26,13 +26,13 @@
 namespace paddle {
 namespace jit {
 
-class ExecutorFunction : public BaseFunction {
+class ExecutorEngine : public BaseEngine {
  public:
-  ExecutorFunction(const std::shared_ptr<FunctionInfo> &info,
-                   const Name2VariableMap &params_dict,
-                   const phi::Place &place);
+  ExecutorEngine(const std::shared_ptr<FunctionInfo> &info,
+                 const Name2VariableMap &params_dict,
+                 const phi::Place &place);
 
-  ~ExecutorFunction() noexcept {}
+  ~ExecutorEngine() noexcept {}
 
   std::vector<Tensor> operator()(const std::vector<Tensor> &inputs);
 

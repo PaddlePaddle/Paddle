@@ -22,14 +22,14 @@ namespace jit {
 using Tensor = paddle::experimental::Tensor;
 using DenseTensor = phi::DenseTensor;
 
-class BaseFunction {
+class BaseEngine {
  public:
   virtual std::vector<DenseTensor> operator()(
       const std::vector<DenseTensor> &inputs) = 0;
 
   virtual std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) = 0;
 
-  virtual ~BaseFunction() {}
+  virtual ~BaseEngine() {}
 };
 
 }  // namespace jit

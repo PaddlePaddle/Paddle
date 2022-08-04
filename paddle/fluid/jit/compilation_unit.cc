@@ -21,7 +21,7 @@
 namespace paddle {
 namespace jit {
 
-std::shared_ptr<BaseFunction> CompilationUnit::Function(
+std::shared_ptr<BaseEngine> CompilationUnit::Function(
     const std::string &name) const {
   PADDLE_ENFORCE_EQ(
       function_map_.count(name),
@@ -31,8 +31,8 @@ std::shared_ptr<BaseFunction> CompilationUnit::Function(
   return function_map_.at(name);
 }
 
-void CompilationUnit::SetFunction(
-    const std::string &name, const std::shared_ptr<BaseFunction> &function) {
+void CompilationUnit::SetFunction(const std::string &name,
+                                  const std::shared_ptr<BaseEngine> &function) {
   function_map_[name] = function;
 }
 

@@ -232,19 +232,18 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
   return py::cast<std::shared_ptr<imperative::VarBase>>(obj);
 }
 
-std::shared_ptr<jit::BaseFunction> CastPyArg2BaseFunction(PyObject* obj,
-                                                          ssize_t arg_pos) {
+std::shared_ptr<jit::BaseEngine> CastPyArg2BaseEngine(PyObject* obj,
+                                                      ssize_t arg_pos) {
   if (PyObject_IsInstance(
           obj, reinterpret_cast<PyObject*>(g_executor_engine_pytype))) {
-    return ::pybind11::handle(obj)
-        .cast<std::shared_ptr<jit::ExecutorFunction>>();
+    return ::pybind11::handle(obj).cast<std::shared_ptr<jit::ExecutorEngine>>();
   } else if (PyObject_IsInstance(
                  obj, reinterpret_cast<PyObject*>(g_pe_engine_pytype))) {
-    return ::pybind11::handle(obj).cast<std::shared_ptr<jit::PEFunction>>();
+    return ::pybind11::handle(obj).cast<std::shared_ptr<jit::PEEngine>>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
-        "BaseFunction, but got %s",
+        "BaseEngine, but got %s",
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }

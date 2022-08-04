@@ -38,13 +38,13 @@ using ExecutionStrategy = framework::details::ExecutionStrategy;
 using ParallelExecutor = framework::ParallelExecutor;
 using Graph = framework::ir::Graph;
 
-class PEFunction : public BaseFunction {
+class PEEngine : public BaseEngine {
  public:
-  PEFunction(const std::shared_ptr<FunctionInfo> &info,
-             const Name2VariableMap &params_dict,
-             const phi::Place &place);
+  PEEngine(const std::shared_ptr<FunctionInfo> &info,
+           const Name2VariableMap &params_dict,
+           const phi::Place &place);
 
-  ~PEFunction() noexcept {}
+  ~PEEngine() noexcept {}
 
   void CreateGraphAndPE();
 

@@ -32,7 +32,7 @@ Layer::Layer(const Name2VariableMap& params_dict,
   unit_.reset(new CompilationUnit());
 }
 
-std::shared_ptr<BaseFunction> Layer::Function(const std::string& name) const {
+std::shared_ptr<BaseEngine> Layer::Function(const std::string& name) const {
   return unit_->Function(name);
 }
 
@@ -50,7 +50,7 @@ std::vector<DenseTensor> Layer::forward(
 void Layer::to(const phi::Place& place) {}
 
 void Layer::SetFunction(const std::string& name,
-                        const std::shared_ptr<BaseFunction>& function) {
+                        const std::shared_ptr<BaseEngine>& function) {
   unit_->SetFunction(name, function);
 }
 

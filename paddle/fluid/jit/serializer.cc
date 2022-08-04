@@ -68,17 +68,16 @@ Layer Deserializer::operator()(const std::string& path,
 
   for (auto& info : infos) {
     if (FLAGS_jit_engine_type == "Executor") {
-      VLOG(3) << "Add function type: ExecutorFunction. name: "
+      VLOG(3) << "Add function type: ExecutorEngine, name: "
               << info->FunctionName();
       layer.SetFunction(
           info->FunctionName(),
-          utils::MakeFunction<ExecutorFunction>(info, params_dict, place));
+          utils::MakeFunction<ExecutorEngine>(info, params_dict, place));
     } else if (FLAGS_jit_engine_type == "PE") {
-      VLOG(3) << "Add function type: PEFunction. name: "
-              << info->FunctionName();
+      VLOG(3) << "Add function type: PEEngine, name: " << info->FunctionName();
       layer.SetFunction(
           info->FunctionName(),
-          utils::MakeFunction<PEFunction>(info, params_dict, place));
+          utils::MakeFunction<PEEngine>(info, params_dict, place));
     } else {
       PD_THROW("Invalid JitLayer funciton type.");
     }

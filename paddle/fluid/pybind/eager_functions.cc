@@ -373,8 +373,8 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
-  std::shared_ptr<jit::BaseFunction> function =
-      CastPyArg2BaseFunction(PyTuple_GET_ITEM(args, 0), 0);
+  std::shared_ptr<jit::BaseEngine> function =
+      CastPyArg2BaseEngine(PyTuple_GET_ITEM(args, 0), 0);
   std::vector<paddle::experimental::Tensor> ins =
       CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   std::vector<paddle::experimental::Tensor> outs = (*function)(ins);

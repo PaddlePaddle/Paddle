@@ -21,9 +21,9 @@
 namespace paddle {
 namespace jit {
 
-ExecutorFunction::ExecutorFunction(const std::shared_ptr<FunctionInfo> &info,
-                                   const Name2VariableMap &params_dict,
-                                   const phi::Place &place)
+ExecutorEngine::ExecutorEngine(const std::shared_ptr<FunctionInfo> &info,
+                               const Name2VariableMap &params_dict,
+                               const phi::Place &place)
     : info_(info), place_(place), inner_exe_(place_) {
   info_->RemoveDescFeedFetch();
   PADDLE_ENFORCE_GT(
@@ -35,13 +35,13 @@ ExecutorFunction::ExecutorFunction(const std::shared_ptr<FunctionInfo> &info,
   VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
 }
 
-std::vector<Tensor> ExecutorFunction::operator()(
+std::vector<Tensor> ExecutorEngine::operator()(
     const std::vector<Tensor> &inputs) {
   auto dense_tensors = utils::ToDenseTensors(inputs);
   return utils::ToTensors(this->operator()(dense_tensors));
 }
 
-std::vector<DenseTensor> ExecutorFunction::operator()(
+std::vector<DenseTensor> ExecutorEngine::operator()(
     const std::vector<DenseTensor> &inputs) {
   utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
   inner_exe_.Run(info_->ProgramDesc(),
@@ -55,7 +55,7 @@ std::vector<DenseTensor> ExecutorFunction::operator()(
   return outputs;
 }
 
-const std::shared_ptr<FunctionInfo> &ExecutorFunction::Info() const {
+const std::shared_ptr<FunctionInfo> &ExecutorEngine::Info() const {
   return info_;
 }
 

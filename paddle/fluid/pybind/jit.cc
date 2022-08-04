@@ -39,16 +39,16 @@ void BindJit(pybind11::module *m) {
            &jit::Layer::FunctionMap,
            py::return_value_policy::reference);
 
-  py::class_<jit::ExecutorFunction, std::shared_ptr<jit::ExecutorFunction>>
+  py::class_<jit::ExecutorEngine, std::shared_ptr<jit::ExecutorEngine>>
       executor_engine(*m, "ExectorFunction", R"DOC(ExectorFunction Class.)DOC");
   g_executor_engine_pytype =
       reinterpret_cast<PyTypeObject *>(executor_engine.ptr());
-  executor_engine.def("info", &jit::ExecutorFunction::Info);
+  executor_engine.def("info", &jit::ExecutorEngine::Info);
 
-  py::class_<jit::PEFunction, std::shared_ptr<jit::PEFunction>> pe_engine(
-      *m, "PEFunction", R"DOC(PEFunction Class.)DOC");
+  py::class_<jit::PEEngine, std::shared_ptr<jit::PEEngine>> pe_engine(
+      *m, "PEEngine", R"DOC(PEEngine Class.)DOC");
   g_pe_engine_pytype = reinterpret_cast<PyTypeObject *>(pe_engine.ptr());
-  pe_engine.def("info", &jit::PEFunction::Info);
+  pe_engine.def("info", &jit::PEEngine::Info);
 
   py::class_<jit::FunctionInfo, std::shared_ptr<jit::FunctionInfo>>(
       *m, "FunctionInfo", R"DOC(FunctionInfo Class.)DOC")

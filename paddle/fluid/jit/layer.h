@@ -38,7 +38,7 @@ using Variable = paddle::framework::Variable;
 using Name2VariableMap =
     std::unordered_map<std::string, std::shared_ptr<Variable>>;
 using Name2FunctionMap =
-    std::unordered_map<std::string, std::shared_ptr<BaseFunction>>;
+    std::unordered_map<std::string, std::shared_ptr<BaseEngine>>;
 
 class Layer {
  public:
@@ -46,7 +46,7 @@ class Layer {
         const Name2VariableMap& attrs_dict_,
         const phi::Place& place);
 
-  std::shared_ptr<BaseFunction> Function(const std::string& name) const;
+  std::shared_ptr<BaseEngine> Function(const std::string& name) const;
 
   template <typename T>
   T Attribute(const std::string& name) const;
@@ -58,7 +58,7 @@ class Layer {
   void to(const phi::Place& place);
 
   void SetFunction(const std::string& name,
-                   const std::shared_ptr<BaseFunction>& function);
+                   const std::shared_ptr<BaseEngine>& function);
 
   std::vector<std::string> FunctionNames() const;
 
