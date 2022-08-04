@@ -583,4 +583,12 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
 
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
+void FoldInferMeta(const MetaTensor& x,
+                   const std::vector<int>& output_sizes,
+                   const std::vector<int>& kernel_sizes,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
+                   const std::vector<int>& dilations,
+                   MetaTensor* out);
+
 }  // namespace phi

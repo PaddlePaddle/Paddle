@@ -252,7 +252,6 @@ void SliceOneClass(const Context& ctx,
                    const DenseTensor& items,
                    const int class_id,
                    DenseTensor* one_class_item) {
-  //   T* item_data = one_class_item->mutable_data<T>(ctx.GetPlace());
   T* item_data = ctx.template Alloc<T>(one_class_item);
   const T* items_data = items.data<T>();
   const int64_t num_item = items.dims()[0];
