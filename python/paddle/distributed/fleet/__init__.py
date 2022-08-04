@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # TODO: define distributed api under this directory,
+import paddle
 from .base.role_maker import Role  # noqa: F401
 from .base.role_maker import UserDefinedRoleMaker  # noqa: F401
 from .base.role_maker import PaddleCloudRoleMaker  # noqa: F401
@@ -28,11 +29,11 @@ from .data_generator.data_generator import MultiSlotStringDataGenerator  # noqa:
 from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
-from .base.fleet_base import Fleet
-#from .Fleet import Fleet
-#from .model import Model
-#from .optimizer import Optimizer
-#from .scaler import Scaler
+#from .base.fleet_base import Fleet
+from .Fleet import Fleet
+from .model import Model
+from .optimizer import Optimizer
+from .scaler import Scaler
 
 __all__ = [  #noqa
     "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
@@ -42,6 +43,7 @@ __all__ = [  #noqa
 ]
 
 fleet = Fleet()
+fleet_optimizer = Optimizer(fleet)
 _final_strategy = fleet._final_strategy
 _get_applied_meta_list = fleet._get_applied_meta_list
 _get_applied_graph_list = fleet._get_applied_graph_list
@@ -81,21 +83,19 @@ save_persistables = fleet.save_persistables
 save_cache_model = fleet.save_cache_model
 load_model = fleet.load_model
 minimize = fleet.minimize
-step = fleet.step
-clear_grad = fleet.clear_grad
-set_lr = fleet.set_lr
-get_lr = fleet.get_lr
-state_dict = fleet.state_dict
-set_state_dict = fleet.set_state_dict
+step = fleet_optimizer.step
+clear_grad = fleet_optimizer.clear_grad
+set_lr = fleet_optimizer.set_lr
+get_lr = fleet_optimizer.get_lr
+state_dict = fleet_optimizer.state_dict
+set_state_dict = fleet_optimizer.set_state_dict
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
-#distributed_model = Model(fleet).distributed_model
-#distributed_scaler = Scaler().distributed_scaler
-#if paddle.fluid.framework._non_static_mode():
-#    distributed_optimizer = Optimizer(fleet).distributed_optimizer
-#else:
-#    distributed_optimizer = fleet.distributed_optimizer
+distributed_model = Model(fleet).distributed_model
+distributed_scaler = Scaler().distributed_scaler
 
-distributed_model = fleet.distributed_model
-distributed_scaler = fleet.distributed_scaler
-distributed_optimizer = fleet.distributed_optimizer
+if paddle.fluid.framework._non_static_mode():
+    distributed_optimizer = fleet_optimizer.distributed_optimizer
+else:
+    distributed_optimizer = fleet.distributed_optimizer
+
