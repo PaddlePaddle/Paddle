@@ -1687,6 +1687,64 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void MatrixNMSInferMeta(const MetaTensor& bboxes,
+                        const MetaTensor& scores,
+                        float score_threshold,
+                        int nms_top_k,
+                        int keep_top_k,
+                        float post_threshold,
+                        bool use_gaussian,
+                        float gaussian_sigma,
+                        int background_label,
+                        bool normalized,
+                        MetaTensor* out,
+                        MetaTensor* index,
+                        MetaTensor* roisnum,
+                        MetaConfig config) {
+  auto box_dims = bboxes.dims();
+  auto score_dims = scores.dims();
+  auto score_size = score_dims.size();
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        score_size == 3,
+        true,
+        errors::InvalidArgument("The rank of Input(Scores) must be 3. "
+                                "But received rank = %d.",
+                                score_size));
+    PADDLE_ENFORCE_EQ(
+        box_dims.size(),
+        3,
+        errors::InvalidArgument("The rank of Input(BBoxes) must be 3."
+                                "But received rank = %d.",
+                                box_dims.size()));
+    PADDLE_ENFORCE_EQ(box_dims[2] == 4,
+                      true,
+                      errors::InvalidArgument(
+                          "The last dimension of Input (BBoxes) must be 4, "
+                          "represents the layout of coordinate "
+                          "[xmin, ymin, xmax, ymax]."));
+    PADDLE_ENFORCE_EQ(
+        box_dims[1],
+        score_dims[2],
+        errors::InvalidArgument(
+            "The 2nd dimension of Input(BBoxes) must be equal to "
+            "last dimension of Input(Scores), which represents the "
+            "predicted bboxes."
+            "But received box_dims[1](%s) != socre_dims[2](%s)",
+            box_dims[1],
+            score_dims[2]));
+  }
+  out->set_dims({box_dims[1], box_dims[2] + 2});
+  out->set_dtype(bboxes.dtype());
+  index->set_dims({box_dims[1], 1});
+  index->set_dtype(phi::DataType::INT32);
+  if (roisnum != nullptr) {
+    roisnum->set_dims({-1});
+    roisnum->set_dtype(phi::DataType::INT32);
+  }
+}
+
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,
                             bool use_default_tol,
@@ -1959,6 +2017,52 @@ void PriorBoxInferMeta(const MetaTensor& input,
   var->set_dims(phi::make_ddim(dim_vec));
 }
 
+void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
+                                              const MetaTensor& repeats,
+                                              int dim,
+                                              MetaTensor* out) {
+  const auto& input_dim = x.dims();
+  auto output_dim = phi::vectorize(input_dim);
+  PADDLE_ENFORCE_EQ(
+      dim < input_dim.size() && dim >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          dim));
+
+  auto repeats_dim = repeats.dims();
+
+  PADDLE_ENFORCE_EQ(
+      repeats_dim.size() == 1 ||
+          (repeats_dim.size() == 2 && repeats_dim[1] == 1),
+      true,
+      phi::errors::InvalidArgument(
+          "The 'shape' of Input(RepeatsTensor) must be 1-D tensor. "
+          "But received: the 'shape' of Input(Index) is [%s], "
+          "the dimension of Input(Index) is [%d].",
+          repeats_dim,
+          repeats_dim.size()));
+
+  PADDLE_ENFORCE_EQ(repeats_dim[0] != 0,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The length of Input(RepeatsTensor) can't be 0."));
+  PADDLE_ENFORCE_NE(out,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "repeat_interleave's output tensor can't be nullptr"));
+  if (dim < 0) {
+    dim += input_dim.size();
+  }
+  output_dim[dim] = -1;
+
+  out->set_dims(phi::make_ddim(output_dim));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
                            bool out_int32,

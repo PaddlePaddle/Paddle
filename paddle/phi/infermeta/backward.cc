@@ -18,6 +18,16 @@ limitations under the License. */
 
 namespace phi {
 
+void AffineGridGradInferMeta(const MetaTensor& output_grad,
+                             const IntArray& outputShape,
+                             bool align_corners,
+                             MetaTensor* input_grad) {
+  if (input_grad) {
+    auto output_dims = output_grad.dims();
+    input_grad->set_dims(phi::make_ddim({output_dims[0], 2, 3}));
+  }
+}
+
 void AngleGradInferMeta(const MetaTensor& x,
                         const MetaTensor& out_grad,
                         MetaTensor* x_grad) {
@@ -260,6 +270,30 @@ void EigGradInferMeta(const MetaTensor& out_w,
 
   if (dx) {
     dx->set_dims(dims);
+  }
+}
+
+void EigvalshGradInferMeta(const MetaTensor& out_v,
+                           const MetaTensor& out_w_grad,
+                           const std::string& uplo,
+                           bool is_test,
+                           MetaTensor* x_grad) {
+  auto dims = out_v.dims();
+  if (x_grad != nullptr) {
+    x_grad->set_dims(dims);
+    x_grad->set_dtype(out_v.dtype());
+  }
+}
+
+void FillDiagonalGradInferMeta(const MetaTensor& dout,
+                               float value,
+                               int offset,
+                               bool wrap,
+                               MetaTensor* dx) {
+  auto x_dims = dout.dims();
+  if (dx) {
+    dx->set_dims(x_dims);
+    dx->set_dtype(dout.dtype());
   }
 }
 
@@ -784,6 +818,24 @@ void StackGradInferMeta(const MetaTensor& out_grad,
       x_grad[i]->set_dtype(out_grad.dtype());
     }
   }
+}
+
+void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
+                                       float min,
+                                       float max,
+                                       int seed,
+                                       int diag_num,
+                                       int diag_step,
+                                       float diag_val,
+                                       MetaTensor* x_grad) {
+  PADDLE_ENFORCE_NE(
+      x_grad,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The X@GRAD in UniformRandomInplaceGradInferMeta can't be nullptr."));
+  auto dims = out_grad.dims();
+  x_grad->set_dims(dims);
+  x_grad->set_dtype(out_grad.dtype());
 }
 
 void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
