@@ -319,7 +319,7 @@
     func : AucInferMeta
   kernel :
     func : auc
-  optional : ins_tag_weight 
+  optional : ins_tag_weight
 
 #average_accumulates
 - api : average_accumulates_
@@ -864,6 +864,26 @@
     data_type : dtype
     backend : place
 
+- api : fill_diagonal
+  args : (Tensor x, float value, int offset, bool wrap)
+  output : Tensor(out)
+  infer_meta :
+    func : FillDiagonalInferMeta
+  kernel :
+    func : fill_diagonal
+  inplace : (x -> out)
+  backward : fill_diagonal_grad
+
+- api : fill_diagonal_tensor
+  args : (Tensor x, Tensor y, int64_t offset, int dim1, int dim2)
+  output : Tensor(out)
+  infer_meta :
+    func : FillDiagonalTensorInferMeta
+  kernel :
+    func : fill_diagonal_tensor
+  inplace : (x -> out)
+  backward : fill_diagonal_tensor_grad
+
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
   output : Tensor(out), Tensor(xshape)
@@ -1029,6 +1049,14 @@
   kernel :
     func : gelu
   backward : gelu_grad
+
+- api : generate_proposals_v2
+  args : (Tensor scores, Tensor bbox_deltas, Tensor im_shape, Tensor anchors, Tensor variances, int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size, float eta, bool pixel_offset=true)
+  output : Tensor(rpn_rois), Tensor(rpn_roi_probs), Tensor(rpn_rois_num)
+  infer_meta :
+    func : GenerateProposalsV2InferMeta
+  kernel :
+    func : generate_proposals_v2
 
 - api : graph_send_recv
   args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0)
@@ -1784,6 +1812,11 @@
     func : OneHotInferMeta
   kernel :
     func : one_hot
+
+- api : ones
+  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  output : Tensor
+  invoke : full(shape, 1, dtype, place)
 
 - api : ones_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place={})
@@ -2728,6 +2761,11 @@
   optional : gt_score
   backward : yolov3_loss_grad
 
+- api : zeros
+  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  output : Tensor
+  invoke : full(shape, 0, dtype, place)
+
 - api : zeros_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor
@@ -2761,6 +2799,16 @@
     func: eig
   backward: eig_grad
 
+# fold
+- api: fold
+  args: (Tensor x, int[] output_sizes, int[] kernel_sizes,  int[] strides, int[] paddings, int[] dilations)
+  output: Tensor(out)
+  infer_meta:
+    func: FoldInferMeta
+  kernel:
+    func: fold
+  backward: fold_grad
+
 # overlap_add
 - api: overlap_add
   args: (Tensor x, int hop_length, int axis)
@@ -2781,3 +2829,25 @@
     data_type: x
   inplace: (x -> out)
   backward: uniform_random_inplace_grad
+
+# unpool
+- api: unpool
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
+  output: Tensor(out)
+  infer_meta:
+    func: UnpoolInferMeta
+  kernel:
+    func: unpool
+    data_type: x
+  backward: unpool_grad
+
+# unpool3d
+- api: unpool3d
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
+  output: Tensor(out)
+  infer_meta:
+    func: Unpool3dInferMeta
+  kernel:
+    func: unpool3d
+    data_type: x
+  backward: unpool3d_grad
