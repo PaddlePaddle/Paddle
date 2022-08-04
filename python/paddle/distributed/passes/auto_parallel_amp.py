@@ -226,6 +226,8 @@ class AMPState(object):
         while idx < len(ops):
             num_cast_ops = 0
             grad_op = ops[idx]
+            if int(grad_op.attr('op_role')) == int(OpRole.Optimize):
+                break
             grad_op_orig_id = grad_op.desc.original_id()
             dist_op_context = dist_context.dist_op_context
             if grad_op_orig_id in dist_op_context.grad_op_id_to_op_id:

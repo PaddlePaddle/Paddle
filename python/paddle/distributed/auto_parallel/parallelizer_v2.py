@@ -64,6 +64,14 @@ class Parallelizer:
             params_grads = self._generate_backward(serial_main_program,
                                                    serial_startup_program,
                                                    serial_loss)
+            # Generate optimizer
+            time0 = time.time()
+            self._generate_optimizer(serial_main_program,
+                                     serial_startup_program, serial_optimizer,
+                                     params_grads)
+            self._logger.info(
+                "within parallel optimizer time: {}, mode {}".format(
+                    time.time() - time0, self._mode))
             # Apply pre optimization passes
             time0 = time.time()
             self._apply_pre_optimization(serial_main_program,
@@ -79,13 +87,6 @@ class Parallelizer:
                 serial_main_program, serial_startup_program, params_grads)
             self._logger.info(
                 "within parallel partitioner time: {}, mode {}".format(
-                    time.time() - time0, self._mode))
-            # Generate optimizer
-            time0 = time.time()
-            self._generate_optimizer(dist_main_prog, dist_startup_prog,
-                                     serial_optimizer, dist_params_grads)
-            self._logger.info(
-                "within parallel optimizer time: {}, mode {}".format(
                     time.time() - time0, self._mode))
             # Do reshard process
             time0 = time.time()

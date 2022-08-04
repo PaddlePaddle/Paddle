@@ -24,7 +24,7 @@ from paddle.fluid.backward import ProgramStats, _rename_arg_, _find_op_path_
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_attr, set_dist_op_desc_original_id
-from paddle.distributed.auto_parallel.utils import naive_set_dist_op_attr_for_program_by_mesh_and_mapping
+from paddle.distributed.auto_parallel.utils import naive_set_dist_op_attr_for_program_by_mesh_and_mapping, is_optimize_op
 
 
 class RecomputeState(ProgramStats):
@@ -337,6 +337,9 @@ class RecomputePass(PassBase):
         # segments ops should be inserted.
         for i in range(len(ops) - 1, loss_op_idx, -1):
             grad_op = ops[i]
+            if is_optimize_op(grad_op):
+                continue
+
             # remove some attrs of dropout_grad op's desc
             if grad_op.type == "dropout_grad":
                 grad_op.desc.remove_attr("fix_seed")
