@@ -108,6 +108,9 @@ class ControllerBase(object):
                 fc = self.pod.failed_container()
                 self.ctx.logger.info("Pod {}".format(status))
                 self.ctx.logger.error("Container failed !!!\n{}".format(fc[0]))
+                self.ctx.logger.info(
+                    "------------------------- ERROR LOG DETAIL -------------------------"
+                )
                 fc[0].tail()
 
                 if self.ctx.args.elastic_level <= 0:
