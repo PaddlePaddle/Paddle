@@ -70,6 +70,10 @@ class OpTeller {
             bool use_no_calib_int8 = false,
             bool with_dynamic_shape = false);
 
+  std::unique_ptr<Teller>& GetGenericPluginTeller() { return tellers_.at(1); }
+
+  std::unique_ptr<Teller>& GetCustomPluginTeller() { return tellers_.at(2); }
+
  private:
   OpTeller();
 

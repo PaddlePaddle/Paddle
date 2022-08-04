@@ -74,7 +74,8 @@ list(
   sum_op.cc
   shape_op.cc
   fill_constant_op.cc
-  fused_token_prune_op.cc)
+  fused_token_prune_op.cc
+  generic_and_custom_plugin_creater.cc)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
@@ -83,7 +84,12 @@ endif()
 nv_library(
   tensorrt_converter
   SRCS ${CONVERT_FILES}
-  DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto
+  DEPS tensorrt_engine
+       tensorrt_plugin
+       operator
+       scope
+       framework_proto
+       tensorrt_op_teller
        op_registry)
 
 nv_test(

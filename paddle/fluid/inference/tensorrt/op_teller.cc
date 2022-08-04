@@ -18,6 +18,10 @@
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
+#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -287,6 +291,53 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "fused_token_prune"};
+};
+
+struct GenericPluginTeller : public Teller {
+ public:
+  GenericPluginTeller() {}
+  bool operator()(const std::string& op_type,
+                  const framework::OpDesc& desc,
+                  bool use_no_calib_int8) override {
+    // [TODO](weishengying)
+    if (use_no_calib_int8) {
+      LOG(INFO) << "GenericPlugin don't support int8.";
+      return false;
+    } else {
+      framework::InitDefaultKernelSignatureMap();
+      bool res = phi::OpUtilsMap::Instance().HasArgumentMappingFn(op_type) ||
+                 phi::DefaultKernelSignatureMap::Instance().Has(op_type);
+      if (!res) {
+        LOG(INFO) << op_type << " has no KernelSignature";
+        return false;
+      }
+      res = phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type);
+      if (!res) {
+        LOG(INFO) << op_type << " has no CompatiblePhiKernel in phi.";
+        return false;
+      }
+      auto& dynamic_infermeta_factory =
+          tensorrt::DynamicMetaFnFactory::Instance();
+      res = dynamic_infermeta_factory.Contains(op_type);
+      if (!res) {
+        LOG(INFO) << op_type << " has no DynamicMetaFn.";
+        return false;
+      }
+      return true;
+    }
+  }
+};
+
+struct CustomPluginTeller : public Teller {
+ public:
+  CustomPluginTeller() {}
+  bool operator()(const std::string& op_type,
+                  const framework::OpDesc& desc,
+                  bool use_no_calib_int8) override {
+    auto creator = GetPluginRegistry()->getPluginCreator(op_type.c_str(), "1");
+    if (creator) return true;
+    return false;
+  }
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,
@@ -2036,7 +2087,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           return false;
         }
       }
-      if (with_dynamic_shape) return false;
+      // if (with_dynamic_shape) return false;
       if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
     }
 #endif
@@ -2226,7 +2277,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 
   return false;
 }
-OpTeller::OpTeller() { tellers_.emplace_back(new SimpleOpTypeSetTeller); }
+OpTeller::OpTeller() {
+  tellers_.emplace_back(new tensorrt::SimpleOpTypeSetTeller);
+  tellers_.emplace_back(new tensorrt::GenericPluginTeller);
+  tellers_.emplace_back(new tensorrt::CustomPluginTeller);
+}
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
