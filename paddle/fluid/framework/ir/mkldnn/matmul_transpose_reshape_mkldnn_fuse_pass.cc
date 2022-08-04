@@ -66,27 +66,25 @@ void MatmulTransposeReshapeMKLDNNPass::Fuse(
     auto transpose_axis =
         PADDLE_GET_CONST(std::vector<int>, transpose_op->Op()->GetAttr("axis"));
 
-    auto reshape_out_size = reshape_shape.size();
-    auto transpose_out_size = transpose_axis.size();
     const std::vector<int> supported_axis{0, 2, 1, 3};
-    const bool supported_transpose_axis = std::equal(
-        transpose_axis.begin(), transpose_axis.end(), supported_axis.begin());
-    if (transpose_out_size != 4) {
-      VLOG(3) << "do not perform " + matmul_type + "_transpose_reshape fuse: "
-              << "supported rank is 4, received " << transpose_out_size;
-      return;
-    }
-    if (!supported_transpose_axis) {
+    if (transpose_axis != supported_axis) {
       VLOG(3) << "do not perform " + matmul_type + "_transpose_reshape fuse: "
               << "supported transpose axis for the fuse are {0, 2, 1, 3}";
       return;
     }
-    if (reshape_out_size != 3) {
+
+    if (reshape_shape.size() != 3) {
       VLOG(3) << "do not perform " + matmul_type + "_transpose_reshape fuse: "
               << "reshape_out supported rank is 3, received "
-              << reshape_out_size;
+              << reshape_shape.size();
       return;
     }
+
+    if (std::count(reshape_shape.begin(), reshape_shape.end(), -1) > 1) {
+      VLOG(3) << "Only one dim can be undefined / marked as '-1'";
+      return;
+    }
+
     OpDesc *matmul_desc = matmul_op->Op();
     matmul_desc->SetOutput("Out", {reshape_out->Name()});
     matmul_desc->SetAttr("is_output_fused", true);

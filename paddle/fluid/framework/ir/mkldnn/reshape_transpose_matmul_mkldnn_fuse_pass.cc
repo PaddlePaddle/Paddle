@@ -78,28 +78,45 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, rtm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, rtm_pattern);
 
+    OpDesc *matmul_desc = matmul_op->Op();
+    std::string input_var_name = transpose_out->Name();
+    std::string matmul_input_name;
+    if (matmul_desc->Inputs().at("X").at(0) == input_var_name) {
+      matmul_input_name = "X";
+    } else if (matmul_desc->Inputs().at("Y").at(0) == input_var_name) {
+      matmul_input_name = "Y";
+    } else {
+      throw platform::errors::InvalidArgument("Unexpected input to " +
+                                              matmul_type + " encountered.");
+    }
+
     auto reshape_shape =
         paddle::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
     auto transpose_axis =
         paddle::get<std::vector<int>>(transpose_op->Op()->GetAttr("axis"));
 
-    OpDesc *matmul_desc = matmul_op->Op();
-    std::string input_var_name = transpose_out->Name();
-
-    auto UpdateMatmul = [&](std::string matmul_input_name) {
-      matmul_desc->SetInput(matmul_input_name, {(reshape_in)->Name()});
-      matmul_desc->SetAttr("fused_reshape_" + matmul_input_name, reshape_shape);
-      matmul_desc->SetAttr("fused_transpose_" + matmul_input_name,
-                           transpose_axis);
-    };
-    if (matmul_desc->Inputs().at("X").at(0) == input_var_name) {
-      UpdateMatmul("X");
-    } else if (matmul_desc->Inputs().at("Y").at(0) == input_var_name) {
-      UpdateMatmul("Y");
-    } else {
-      throw platform::errors::InvalidArgument("Unexpected input to " +
-                                              matmul_type + " encountered.");
+    if (reshape_shape.size() < 2 || reshape_shape.size() > 4) {
+      VLOG(3) << "shape_" + matmul_input_name + " attribute of " + matmul_type +
+                     " was implemented for 2, 3 or 4 dimensions.";
+      return;
     }
+
+    if (reshape_shape.size() != transpose_axis.size()) {
+      VLOG(3) << "Ranks of shape_" + matmul_input_name + " and axis_" +
+                     matmul_input_name + "attributes of " + matmul_type +
+                     " must be equal.";
+      return;
+    }
+
+    if (std::count(reshape_shape.begin(), reshape_shape.end(), -1) > 1) {
+      VLOG(3) << "Only one dim can be undefined / marked as '-1'";
+      return;
+    }
+
+    matmul_desc->SetInput(matmul_input_name, {(reshape_in)->Name()});
+    matmul_desc->SetAttr("fused_reshape_" + matmul_input_name, reshape_shape);
+    matmul_desc->SetAttr("fused_transpose_" + matmul_input_name,
+                         transpose_axis);
 
     std::unordered_set<const ir::Node *> nodes_to_remove{
         reshape_op, reshape_out, transpose_op, transpose_out};
