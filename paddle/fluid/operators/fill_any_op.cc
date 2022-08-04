@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_any_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -92,21 +93,3 @@ REGISTER_OPERATOR(fill_any,
 REGISTER_OPERATOR(fill_any_grad,
                   ops::FillAnyGradOp,
                   ops::FillAnyGradInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    fill_any,
-    ops::FillAnyKernel<phi::CPUContext, float>,
-    ops::FillAnyKernel<phi::CPUContext, double>,
-    ops::FillAnyKernel<phi::CPUContext, int64_t>,
-    ops::FillAnyKernel<phi::CPUContext, int>,
-    ops::FillAnyKernel<phi::CPUContext, paddle::platform::float16>,
-    ops::FillAnyKernel<phi::CPUContext, bool>);
-
-REGISTER_OP_CPU_KERNEL(
-    fill_any_grad,
-    ops::FillAnyGradKernel<phi::CPUContext, float>,
-    ops::FillAnyGradKernel<phi::CPUContext, double>,
-    ops::FillAnyGradKernel<phi::CPUContext, int64_t>,
-    ops::FillAnyGradKernel<phi::CPUContext, int>,
-    ops::FillAnyGradKernel<phi::CPUContext, paddle::platform::float16>,
-    ops::FillAnyGradKernel<phi::CPUContext, bool>);
