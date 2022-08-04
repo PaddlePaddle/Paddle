@@ -332,10 +332,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
         if (op_desc.HasAttr("BiasQK_directInput")) {
           is_BiasQK_directInput=PADDLE_GET_CONST(bool, op_desc.GetAttr("BiasQK_directInput"));
         }
-        VLOG(3)<<"@@@ is_BiasQK_directInput:"<<is_BiasQK_directInput;
+        // VLOG(1)<<"@@@ is_BiasQK_directInput:"<<is_BiasQK_directInput;
         nvinfer1::ILayer* biasQK_constLayer = nullptr;
         if (is_BiasQK_directInput){
           auto biasqk_name=op_desc.Input("BiasQK").front();
+          // VLOG(1)<<"@@@ directInput swin biasqk name: "<<biasqk_name;
           //auto biasqk_constlayer_outputname=biasqk_name+".cl";
           auto* biasqk_v = scope.FindVar(biasqk_name);
           auto* biasqk_t = biasqk_v->GetMutable<framework::LoDTensor>();

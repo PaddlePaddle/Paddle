@@ -1360,6 +1360,31 @@ struct PriorBox : public PatternBase {
   PATTERN_DECL_NODE(prior_box_variances);
 };
 
+struct SwinAttentionBiasQkFold : public PatternBase{
+SwinAttentionBiasQkFold(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "swin_attention_bisqk_fold") {}
+PDNode* operator()(PDNode* elw_add_in);
+PATTERN_DECL_NODE(elementwise_00_op);
+PATTERN_DECL_NODE(elementwise_00_in_y);
+PATTERN_DECL_NODE(elementwise_00_out);
+
+PATTERN_DECL_NODE(unsqueeze_01_op);
+PATTERN_DECL_NODE(unsqueeze_01_op_x);
+PATTERN_DECL_NODE(unsqueeze_01_out);
+
+PATTERN_DECL_NODE(reshape_10_op);
+PATTERN_DECL_NODE(reshape_10_out);
+
+PATTERN_DECL_NODE(unsqueeze_11_op);
+PATTERN_DECL_NODE(unsqueeze_11_out);
+
+PATTERN_DECL_NODE(elementwise_20_op);
+PATTERN_DECL_NODE(elementwise_20_out);
+
+PATTERN_DECL_NODE(reshape_30_op);
+PATTERN_DECL_NODE(reshape_30_out);
+};
+
 struct SwinAttention1Fuse : public PatternBase{
   SwinAttention1Fuse(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "swin_attention1_fuse") {}

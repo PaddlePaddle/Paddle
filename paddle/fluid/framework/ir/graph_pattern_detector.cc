@@ -2250,6 +2250,78 @@ std::unordered_set<std::string> conv_act_set(
 std::unordered_set<std::string> conv_act_set({"identity", "relu"});
 #endif
 
+PDNode *patterns::SwinAttentionBiasQkFold::operator()(PDNode *elw_add_in){
+  elw_add_in->AsInput();
+
+  auto elementwise_00_op=pattern->NewNode(elementwise_00_op_repr())
+                         ->assert_is_op("elementwise_add");
+                         
+  auto elementwise_00_in_y=pattern->NewNode(elementwise_00_in_y_repr())
+                          ->AsInput()
+                          ->assert_is_op_input("elementwise_add","Y");
+  auto elementwise_00_out=pattern->NewNode(elementwise_00_out_repr())
+                          ->assert_is_op_output("elementwise_add","Out")
+                          ->assert_is_op_input("reshape2","X")
+                          ->AsIntermediate();
+  
+  auto unsqueeze_01_op=pattern->NewNode(unsqueeze_01_op_repr())
+                              ->assert_is_op("unsqueeze2");
+  auto unsqueeze_01_op_x=pattern->NewNode(unsqueeze_01_op_x_repr())
+                                ->AsInput()
+                                ->assert_is_op_input("unsqueeze2","X");
+  auto unsqueeze_01_out=pattern->NewNode(unsqueeze_01_out_repr())
+                               ->assert_is_op_output("unsqueeze2","Out")
+                               ->assert_is_op_input("unsqueeze2","X")
+                               ->AsIntermediate();
+
+  auto reshape_10_op=pattern->NewNode(reshape_10_op_repr())
+                            ->assert_is_op("reshape2");
+  auto reshape_10_out=pattern->NewNode(reshape_10_out_repr())
+                             ->assert_is_op_output("reshape2","Out")
+                             ->assert_is_op_input("elementwise_add","X")
+                             ->AsIntermediate();
+
+  auto unsqueeze_11_op=pattern->NewNode(unsqueeze_11_op_repr())
+                              ->assert_is_op("unsqueeze2");
+  auto unsqueeze_11_out=pattern->NewNode(unsqueeze_11_out_repr())
+                               ->assert_is_op_output("unsqueeze2","Out")
+                               ->assert_is_op_input("elementwise_add","Y")
+                               ->AsIntermediate();
+
+  auto elementwise_20_op=pattern->NewNode(elementwise_20_op_repr())
+                                ->assert_is_op("elementwise_add");
+  auto elementwise_20_out=pattern->NewNode(elementwise_20_out_repr())
+                                 ->assert_is_op_output("elementwise_add","Out")
+                                 ->assert_is_op_input("reshape2","X")
+                                 ->AsIntermediate();
+
+  auto reshape_30_op=pattern->NewNode(reshape_30_op_repr())
+                            ->assert_is_op("reshape2");
+  auto reshape_30_out=pattern->NewNode(reshape_30_out_repr())
+                             ->assert_is_op_output("reshape2","Out")
+                             ->assert_is_op_input("softmax","X")
+                             ->AsOutput();
+
+  elementwise_00_op->LinksFrom({elw_add_in,elementwise_00_in_y});
+  elementwise_00_out->LinksFrom({elementwise_00_op});
+  
+  unsqueeze_01_op->LinksFrom({unsqueeze_01_op_x});
+  unsqueeze_01_out->LinksFrom({unsqueeze_01_op});
+
+  reshape_10_op->LinksFrom({elementwise_00_out});
+  reshape_10_out->LinksFrom({reshape_10_op});
+
+  unsqueeze_11_op->LinksFrom({unsqueeze_01_out});
+  unsqueeze_11_out->LinksFrom({unsqueeze_11_op});
+
+  elementwise_20_op->LinksFrom({reshape_10_out,unsqueeze_11_out});
+  elementwise_20_out->LinksFrom({elementwise_20_op});
+
+  reshape_30_op->LinksFrom({elementwise_20_out});
+  reshape_30_out->LinksFrom({reshape_30_op});
+  return reshape_30_out;
+}
+
 PDNode *patterns::SwinAttention1Fuse::operator()(PDNode *atten1_in){
   atten1_in->AsInput();
   // std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
@@ -2292,7 +2364,7 @@ PDNode *patterns::SwinAttention1Fuse::operator()(PDNode *atten1_in){
   auto slice_40_out=pattern->NewNode(slice_40_out_repr())
                             ->assert_is_op_output("slice","Out")
                             ->assert_is_op_input("matmul_v2","Y") 
-                            ->AsOutput();
+                            ->AsIntermediate(); //wangbojun check
 
   auto slice_41_op=pattern->NewNode(slice_41_op_repr())
                                 ->assert_is_op("slice");

@@ -99,6 +99,7 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
         desc.SetInput("W", {matmul_00_in_y->Name()});
         desc.SetInput("Bias",{elementwise_10_in_y->Name()});
         desc.SetInput("BiasQK",{elementwise_70_in_y->Name()});
+        // VLOG(1)<<"@@@ swin attention1, biasqk name: "<<elementwise_70_in_y->Name();
         desc.SetOutput("Out",{reshape_b0_out->Name()});
         desc.SetAttr("head_number",static_cast<int>(softmax_shape[1]));
         desc.SetAttr("alpha",alpha);
