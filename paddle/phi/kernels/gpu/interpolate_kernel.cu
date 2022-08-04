@@ -38,7 +38,7 @@ __forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(
   *in_img_idx = static_cast<int>(src_x);
   *x_id = (*in_img_idx < in_img_x - 1) ? 1 : 0;
   *lambda1 = src_x - static_cast<T>(*in_img_idx);
-  *lambda2 = static_cast<T>(1) - *lambda1;
+  *lambda2 = static_cast<T>(1.0) - *lambda1;
 }
 
 template <typename T>
