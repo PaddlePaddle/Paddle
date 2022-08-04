@@ -618,7 +618,11 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # phi backends headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/infermeta', recursive=True)) +  # phi infermeta headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels', recursive=True)) +  # phi kernels headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels')) +  # phi kernels headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/sparse')) +  # phi sparse kernels headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/selected_rows')) +  # phi selected_rows kernels headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/strings')) +  # phi sparse kernels headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/primitive')) +  # phi kernel primitive api headers
     # capi headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/capi', recursive=True)) +  # phi capi headers
     # utils api headers

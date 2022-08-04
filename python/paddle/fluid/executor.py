@@ -1431,7 +1431,7 @@ class Executor(object):
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
-        if self._enable_interpreter_core and _can_use_interpreter_core(
+        if return_merged and self._enable_interpreter_core and _can_use_interpreter_core(
                 program, self.place):
             inner_program = program._program if isinstance(
                 program, compiler.CompiledProgram) else program
@@ -1460,6 +1460,9 @@ class Executor(object):
                         ir_graph = framework.IrGraph(program._graph)
                         inner_program = ir_graph.to_program()
                         # print(f"Program after convert:\n {inner_program}", flush=True)
+                        logging.warning(
+                            "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
+                        )
                     else:
                         from paddle.incubate.autograd import prim_enabled, prim2orig
                         if prim_enabled() and program == default_main_program():
@@ -1501,6 +1504,10 @@ class Executor(object):
                         tensor._copy_from(cpu_tensor, tensor._place())
                     else:
                         tensor._copy_from(cpu_tensor, self.place)
+
+                warnings.warn(
+                    "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
+                )
 
                 return new_exe.run(scope, list(feed.keys()), fetch_list,
                                    return_numpy)

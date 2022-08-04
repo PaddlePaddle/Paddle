@@ -28,6 +28,7 @@ class TestQrOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
+        self.python_api = paddle.linalg.qr
         np.random.seed(7)
         self.op_type = "qr"
         a, q, r = self.get_input_and_output()
@@ -72,10 +73,11 @@ class TestQrOp(OpTest):
         return a, q, r
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], ['Q', 'R'],
+                        check_eager=True,
                         numeric_grad_delta=1e-5,
                         max_relative_error=1e-6)
 
@@ -175,7 +177,7 @@ class TestQrAPI(unittest.TestCase):
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors
@@ -253,7 +255,7 @@ class TestQrAPI(unittest.TestCase):
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors
