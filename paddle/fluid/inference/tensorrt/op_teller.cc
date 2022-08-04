@@ -114,6 +114,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "bilinear_interp_v2",
       "cast",
       "pool3d",
+      "squeeze2",
+      "unsqueeze2",
       "deformable_conv",
       "relu6",
       "hard_sigmoid",
@@ -179,6 +181,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "nearest_interp_v2",
       "cast",
       "pool3d",
+      "squeeze2",
+      "unsqueeze2",
       "deformable_conv",
       "relu6",
       "hard_sigmoid",
@@ -888,6 +892,44 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         VLOG(3) << "HardSwish op has only 1 output, but got "
                 << desc.Output("Out").size();
         return false;
+      }
+    }
+
+    if (op_type == "squeeze2") {
+      std::vector<int> axes;
+      if (desc.HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+      }
+      if (axes.size() == 0) {
+        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
+                   "missing.";
+        return false;
+      }
+      if (!with_dynamic_shape) {
+        if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+          VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                     "supported in static shape";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "unsqueeze2") {
+      std::vector<int> axes;
+      if (desc.HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+      }
+      if (axes.size() == 0) {
+        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
+                   "missing.";
+        return false;
+      }
+      if (!with_dynamic_shape) {
+        if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+          VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                     "supported in static shape";
+          return false;
+        }
       }
     }
 
