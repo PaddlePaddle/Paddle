@@ -108,24 +108,6 @@ phi::DDim GetDimForInput(const ExecutionContext &ctx, std::string input_name) {
   auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
   auto input_dims = ctx.Input<Tensor>(input_name)->dims();
   if (!shape.empty() && !axis.empty()) {
-    auto it_zero = std::find(shape.begin(), shape.end(), 0);
-    if (it_zero != shape.end()) {
-      for (uint64_t i = 0; i < shape.size(); i++) {
-        if (shape[i] == 0) {
-          PADDLE_ENFORCE_LT(i,
-                            input_dims.size(),
-                            paddle::platform::errors::InvalidArgument(
-                                "The index of 0 in fused_reshape_%s ",
-                                "should be less than output dim size, ",
-                                "but the index is %d and output dim size is %d",
-                                input_name,
-                                i,
-                                input_dims.size()));
-          shape[i] = input_dims.at(i);
-        }
-      }
-    }
-
     return input_dims.reshape(shape).transpose(axis);
   }
   return input_dims;
@@ -270,25 +252,6 @@ class MatMulMKLDNNHandler
     auto input_dims = ctx.Input<Tensor>(input_name)->dims();
     auto new_dims = input_dims;
     if (!shape.empty() && !axis.empty()) {
-      auto it_zero = std::find(shape.begin(), shape.end(), 0);
-      if (it_zero != shape.end()) {
-        for (uint64_t i = 0; i < shape.size(); i++) {
-          if (shape[i] == 0) {
-            PADDLE_ENFORCE_LT(
-                i,
-                input_dims.size(),
-                paddle::platform::errors::InvalidArgument(
-                    "The index of 0 in fused_reshape_%s ",
-                    "should be less than output dim size, ",
-                    "but the index is %d and output dim size is %d",
-                    input_name,
-                    i,
-                    input_dims.size()));
-            shape[i] = input_dims.at(i);
-          }
-        }
-      }
-
       new_dims = input_dims.reshape(shape).transpose(axis);
     }
 
@@ -598,23 +561,6 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext &ctx,
   auto input_dims = ctx.Input<Tensor>(input_name)->dims();
   auto new_dims = input_dims;
   if (!shape.empty() && !axis.empty()) {
-    auto it_zero = std::find(shape.begin(), shape.end(), 0);
-    if (it_zero != shape.end()) {
-      for (uint64_t i = 0; i < shape.size(); i++) {
-        if (shape[i] == 0) {
-          PADDLE_ENFORCE_LT(i,
-                            input_dims.size(),
-                            paddle::platform::errors::InvalidArgument(
-                                "The index of 0 in fused_reshape_%s ",
-                                "should be less than output dim size, ",
-                                "but the index is %d and output dim size is %d",
-                                input_name,
-                                i,
-                                input_dims.size()));
-          shape[i] = input_dims.at(i);
-        }
-      }
-    }
     new_dims = input_dims.reshape(shape).transpose(axis);
   }
 

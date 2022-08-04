@@ -177,6 +177,15 @@ DDim DDim::reshape(std::vector<int>& shape) const {
   DDim out_dims;
   out_dims.rank_ = shape.size();
 
+  auto it_zero = std::find(shape.begin(), shape.end(), 0);
+  if (it_zero != shape.end()) {
+    for (uint64_t i = 0; i < shape.size(); i++) {
+      if (shape[i] == 0) {
+        shape[i] = in_dims.at(i);
+      }
+    }
+  }
+
   // Dim marked as "-1" must be inferred
   auto it = std::find(shape.begin(), shape.end(), -1);
   if (it != shape.end()) {

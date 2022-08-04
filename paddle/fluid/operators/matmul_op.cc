@@ -360,24 +360,6 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
 
   // if mkldnn reshape+transpose+matmul fuse activated
   if (!shape.empty() && !axis.empty()) {
-    auto it_zero = std::find(shape.begin(), shape.end(), 0);
-    if (it_zero != shape.end()) {
-      for (uint64_t i = 0; i < shape.size(); i++) {
-        if (shape[i] == 0) {
-          PADDLE_ENFORCE_LT(i,
-                            dim.size(),
-                            platform::errors::InvalidArgument(
-                                "The index of 0 in fused_reshape_%s ",
-                                "should be less than output dim size, ",
-                                "but the index is %d and output dim size is %d",
-                                input_name,
-                                i,
-                                dim.size()));
-          shape[i] = dim.at(i);
-        }
-      }
-    }
-
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
