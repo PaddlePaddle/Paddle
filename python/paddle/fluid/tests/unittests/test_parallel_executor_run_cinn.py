@@ -99,11 +99,8 @@ def train(dot_save_dir, prefix, seed=1234):
     feed = rand_data(img.name, label.name, iters)
     loss_values = []
     for step in range(iters):
-        loss_v = exe.run(compiled_program,
-                         feed=feed[step],
-                         fetch_list=[loss],
-                         return_merged=False)
-        loss_values.append(loss_v[0][0][0])
+        loss_v = exe.run(compiled_program, feed=feed[step], fetch_list=[loss])
+        loss_values.append(loss_v[0][0])
     return loss_values
 
 

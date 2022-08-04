@@ -154,18 +154,21 @@ const std::vector<std::string> kLiteSubgraphPasses({
 // support fp16/bf16 precision, temporarily use low precision pass to prevent
 // running errors. After fusion operator supports low precision, delete this.
 const std::vector<std::string> kGpuLowerPrecisionPasses{
+    "simplify_with_basic_ops_pass",
     "conv_bn_fuse_pass",
     "conv_eltwiseadd_bn_fuse_pass",
     "conv_elementwise_add_act_fuse_pass",
     "conv_elementwise_add2_act_fuse_pass",
     "conv_elementwise_add_fuse_pass",
-    "gpu_cpu_map_matmul_v2_to_mul_pass",     //
-    "gpu_cpu_map_matmul_v2_to_matmul_pass",  //
+    "multihead_matmul_fuse_pass_v2",
+    "gpu_cpu_map_matmul_v2_to_mul_pass",
+    "gpu_cpu_map_matmul_v2_to_matmul_pass",
     "fc_fuse_pass",
     "fc_elementwise_layernorm_fuse_pass",
 };
 
 const std::vector<std::string> kTrtLowerPrecisionPasses{
+    "simplify_with_basic_ops_pass",
     // "conv_bn_fuse_pass",
     // "conv_eltwiseadd_bn_fuse_pass",
     "trt_map_matmul_v2_to_mul_pass",
@@ -300,6 +303,8 @@ void CpuPassStrategy::EnableMKLDNN() {
              "scale_matmul_fuse_pass",                     //
              "reshape_transpose_matmul_mkldnn_fuse_pass",  //
              "matmul_transpose_reshape_mkldnn_fuse_pass",  //
+             "matmul_elementwise_add_mkldnn_fuse_pass",    //
+             "matmul_activation_mkldnn_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
              //  "fc_mkldnn_pass",
              //  "fc_act_mkldnn_fuse_pass",
@@ -308,7 +313,6 @@ void CpuPassStrategy::EnableMKLDNN() {
              "softplus_activation_mkldnn_fuse_pass",  //
              "shuffle_channel_mkldnn_detect_pass",    //
              "elt_act_mkldnn_fuse_pass",              //
-             "matmul_activation_mkldnn_fuse_pass",    //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after
