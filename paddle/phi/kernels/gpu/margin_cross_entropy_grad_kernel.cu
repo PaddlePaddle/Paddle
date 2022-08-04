@@ -27,7 +27,6 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/softmax_kernel_impl.h"
 #include "paddle/phi/kernels/margin_cross_entropy_grad_kernel.h"
-#include "paddle/phi/kernels/margin_cross_entropy_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
