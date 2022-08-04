@@ -46,7 +46,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
       gc_(gc) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
-    dev_ctx_ = reinterpret_cast<platform::CUDADeviceContext *>(
+    dev_ctx_ = reinterpret_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     if (dynamic_cast<StreamGarbageCollector *>(gc_)) {
       platform::CUDADeviceGuard guard(place.device);

@@ -420,7 +420,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                  keepdim=False,
                  asvector=False,
                  name=None):
-        helper = LayerHelper('frobenius_norm', **locals())
+        helper = LayerHelper('inf_norm', **locals())
         out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
         helper.append_op(type='abs', inputs={'X': input}, outputs={'Out': out})
@@ -473,7 +473,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                             'keep_dim': keepdim,
                             'reduce_all': True if axis is None else False
                         })
-        porder
         block.append_op(type='pow',
                         inputs={'X': sum_out},
                         outputs={'Out': out},
@@ -1999,7 +1998,13 @@ def qr(x, mode="reduced", name=None):
             
             # one can verify : X = Q * R ;     
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        q, r = _C_ops.final_state_qr(x, mode)
+        if mode == "r":
+            return r
+        else:
+            return q, r
+    if _in_legacy_dygraph():
         q, r = _C_ops.qr(x, 'mode', mode)
         if mode == "r":
             return r
@@ -2199,6 +2204,11 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
 
             # one can verify : X = P @ L @ U ;   
     """
+
+    if in_dygraph_mode():
+        P, L, U = _C_ops.final_state_lu_unpack(x, y, unpack_ludata,
+                                               unpack_pivots)
+        return P, L, U
 
     if paddle.in_dynamic_mode():
         P, L, U = _C_ops.lu_unpack(x, y, 'unpack_ludata', unpack_ludata,
@@ -3042,7 +3052,11 @@ def eigvalsh(x, UPLO='L', name=None):
             print(out_value)
             #[0.17157288, 5.82842712]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        values, _ = _C_ops.final_state_eigvalsh(x, UPLO, x.stop_gradient)
+        return values
+
+    elif paddle.in_dynamic_mode():
         is_test = x.stop_gradient
         values, _ = _C_ops.eigvalsh(x, 'UPLO', UPLO, 'is_test', is_test)
         return values
@@ -3253,8 +3267,7 @@ def corrcoef(x, rowvar=True, name=None):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
-        
+
             import paddle
 
             xt = paddle.rand((3,4))

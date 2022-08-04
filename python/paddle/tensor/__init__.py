@@ -251,6 +251,7 @@ from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
 from .search import searchsorted  # noqa: F401
+from .search import bucketize  # noqa: F401
 from .search import topk  # noqa: F401
 from .search import where  # noqa: F401
 from .search import index_select  # noqa: F401
@@ -279,8 +280,8 @@ from .array import create_array  # noqa: F401
 
 from .einsum import einsum  # noqa: F401
 
-#this list used in math_op_patch.py for _binary_creator_
-tensor_method_func = [  #noqa
+# this list used in math_op_patch.py for _binary_creator_
+tensor_method_func = [  # noqa
     'matmul',
     'dot',
     'cov',
@@ -505,9 +506,10 @@ tensor_method_func = [  #noqa
     'exponential_',
     'heaviside',
     'take',
+    'bucketize',
 ]
 
-#this list used in math_op_patch.py for magic_method bind
+# this list used in math_op_patch.py for magic_method bind
 magic_method_func = [
     ('__and__', 'bitwise_and'),
     ('__or__', 'bitwise_or'),

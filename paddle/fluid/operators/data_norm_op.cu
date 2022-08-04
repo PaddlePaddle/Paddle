@@ -104,8 +104,7 @@ __global__ void KernelUpdateParam(int C,
 }
 
 template <typename T>
-class DataNormKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class DataNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
@@ -130,8 +129,7 @@ class DataNormKernel<platform::CUDADeviceContext, T>
     T *scale_out_data =
         ctx.Output<Tensor>("Scales")->mutable_data<T>(ctx.GetPlace());
 
-    auto stream =
-        ctx.template device_context<platform::CUDADeviceContext>().stream();
+    auto stream = ctx.template device_context<phi::GPUContext>().stream();
 
     KernelMeanScale<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         C,
@@ -146,8 +144,7 @@ class DataNormKernel<platform::CUDADeviceContext, T>
 };
 
 template <typename T>
-class DataNormGradKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class DataNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
@@ -180,8 +177,7 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
         ctx.Output<Tensor>(framework::GradVarName("BatchSquareSum"))
             ->mutable_data<T>(ctx.GetPlace());
 
-    auto stream =
-        ctx.template device_context<platform::CUDADeviceContext>().stream();
+    auto stream = ctx.template device_context<phi::GPUContext>().stream();
     if (d_x != nullptr) {
       KernelDataNormBP<<<GET_BLOCKS(C * N),
                          PADDLE_CUDA_NUM_THREADS,
@@ -259,11 +255,9 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    data_norm,
-    ops::DataNormKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::DataNormKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    data_norm_grad,
-    ops::DataNormGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::DataNormGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(data_norm,
+                        ops::DataNormKernel<phi::GPUContext, float>,
+                        ops::DataNormKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(data_norm_grad,
+                        ops::DataNormGradKernel<phi::GPUContext, float>,
+                        ops::DataNormGradKernel<phi::GPUContext, double>);

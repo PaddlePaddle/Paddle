@@ -80,8 +80,8 @@ set(COMMON_KERNEL_DEPS
     lod_utils
     custom_kernel
     string_infermeta
-    utf8proc
-    gpc)
+    gpc
+    utf8proc)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 
