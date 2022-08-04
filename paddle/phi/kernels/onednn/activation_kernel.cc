@@ -42,12 +42,12 @@ namespace phi {
   }
 
 template <typename T>
-void eltwise_forward(const OneDNNContext& dev_ctx,
-                     const DenseTensor& x,
-                     float alpha,
-                     float beta,
-                     DenseTensor* out,
-                     dnnl::algorithm algorithm) {
+void EltwiseForward(const OneDNNContext& dev_ctx,
+                    const DenseTensor& x,
+                    float alpha,
+                    float beta,
+                    DenseTensor* out,
+                    dnnl::algorithm algorithm) {
   PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
                     true,
                     phi::errors::PreconditionNotMet(
@@ -84,7 +84,7 @@ struct MKLDNNActivationFunc : public funcs::BaseActivationFunctor<T> {
                   float alpha,
                   float beta,
                   DenseTensor* out) const {
-    eltwise_forward<T>(dev_ctx, x, alpha, beta, out, algorithm);
+    EltwiseForward<T>(dev_ctx, x, alpha, beta, out, algorithm);
   }
 };
 
