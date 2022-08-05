@@ -40,7 +40,7 @@ void BindJit(pybind11::module *m) {
            py::return_value_policy::reference);
 
   py::class_<jit::ExecutorEngine, std::shared_ptr<jit::ExecutorEngine>>
-      executor_engine(*m, "ExectorFunction", R"DOC(ExectorFunction Class.)DOC");
+      executor_engine(*m, "ExecutorEngine", R"DOC(ExecutorEngine Class.)DOC");
   g_executor_engine_pytype =
       reinterpret_cast<PyTypeObject *>(executor_engine.ptr());
   executor_engine.def("info", &jit::ExecutorEngine::Info);
