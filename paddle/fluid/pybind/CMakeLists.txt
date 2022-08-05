@@ -40,7 +40,8 @@ set(PYBIND_DEPS
     tcp_store
     new_profiler
     auto_parallel
-    jit_layer)
+    jit_layer
+    jit_property)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -155,6 +156,9 @@ if(NOT ON_INFER)
     if(WITH_PSCORE)
       set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
     endif()
+  endif()
+  if(WITH_CUSTOM_DEVICE)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_custom)
   endif()
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()

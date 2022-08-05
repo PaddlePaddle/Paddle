@@ -624,7 +624,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(deformable_psroi_pooling,
                         ops::DeformablePSROIPoolCUDAKernel<CUDA, float>,
                         ops::DeformablePSROIPoolCUDAKernel<CUDA, double>);

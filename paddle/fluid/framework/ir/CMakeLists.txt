@@ -67,7 +67,7 @@ cc_library(
 cc_library(
   graph_helper
   SRCS graph_helper.cc
-  DEPS graph)
+  DEPS graph program_utils scale_loss_grad_op_handle)
 cc_library(
   pass
   SRCS pass.cc
@@ -212,6 +212,7 @@ if(WITH_MKLDNN)
   pass_library(shuffle_channel_mkldnn_detect_pass inference DIR mkldnn)
   pass_library(fc_act_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(elt_act_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(cpu_quantize_placement_pass base DIR mkldnn)
   pass_library(cpu_quantize_pass inference DIR mkldnn)

@@ -157,26 +157,18 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 REGISTER_OP_CUDA_KERNEL(
     top_k,
-    paddle::operators::TopkOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        float>,
-    paddle::operators::TopkOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        double>,
-    paddle::operators::TopkOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        int>,
-    paddle::operators::TopkOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        int64_t>,
-    paddle::operators::TopkOpCUDAKernel<paddle::platform::CUDADeviceContext,
+    paddle::operators::TopkOpCUDAKernel<phi::GPUContext, float>,
+    paddle::operators::TopkOpCUDAKernel<phi::GPUContext, double>,
+    paddle::operators::TopkOpCUDAKernel<phi::GPUContext, int>,
+    paddle::operators::TopkOpCUDAKernel<phi::GPUContext, int64_t>,
+    paddle::operators::TopkOpCUDAKernel<phi::GPUContext,
                                         paddle::platform::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     top_k_grad,
-    paddle::operators::TopkOpGradCUDAKernel<paddle::platform::CUDADeviceContext,
-                                            float>,
-    paddle::operators::TopkOpGradCUDAKernel<paddle::platform::CUDADeviceContext,
-                                            double>,
-    paddle::operators::TopkOpGradCUDAKernel<paddle::platform::CUDADeviceContext,
-                                            int>,
-    paddle::operators::TopkOpGradCUDAKernel<paddle::platform::CUDADeviceContext,
-                                            int64_t>,
-    paddle::operators::TopkOpGradCUDAKernel<paddle::platform::CUDADeviceContext,
+    paddle::operators::TopkOpGradCUDAKernel<phi::GPUContext, float>,
+    paddle::operators::TopkOpGradCUDAKernel<phi::GPUContext, double>,
+    paddle::operators::TopkOpGradCUDAKernel<phi::GPUContext, int>,
+    paddle::operators::TopkOpGradCUDAKernel<phi::GPUContext, int64_t>,
+    paddle::operators::TopkOpGradCUDAKernel<phi::GPUContext,
                                             paddle::platform::float16>);

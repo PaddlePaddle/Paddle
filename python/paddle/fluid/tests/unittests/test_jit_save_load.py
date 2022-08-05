@@ -1,4 +1,5 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1156,7 +1157,7 @@ class LayerSaved(paddle.nn.Layer):
 class Net(paddle.nn.Layer):
 
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.fc1 = paddle.nn.Linear(4, 4)
         self.fc2 = paddle.nn.Linear(4, 4)
         self.bias = 0.4
@@ -1185,13 +1186,49 @@ class Net(paddle.nn.Layer):
     def fbias(self):
         return self.bias + 1
 
-    # For extra Tensor
+    @paddle.jit.to_static(property=True)
+    def down_sampling(self):
+        return 4
+
+    @paddle.jit.to_static(property=True)
+    def fstr(self):
+        return "save str property"
+
+    @paddle.jit.to_static(property=True)
+    def ints(self):
+        return [10, 20]
+
+    @paddle.jit.to_static(property=True)
+    def floats(self):
+        return [1.1, 2.2]
+
+    @paddle.jit.to_static(property=True)
+    def strs(self):
+        return ["hello", "world"]
+
+
+class NetTensor(paddle.nn.Layer):
+
+    def __init__(self):
+        super().__init__()
+        self.fc1 = paddle.nn.Linear(4, 4)
+        self.fc2 = paddle.nn.Linear(4, 4)
+        self.bias = 0.4
+        self.flag = paddle.ones([2], dtype="int32")
+
+    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
+    def forward(self, x):
+        out = self.fc1(x)
+        out = paddle.nn.functional.relu(out)
+        out = paddle.mean(out)
+        return out
+
     @paddle.jit.to_static(property=True)
     def fflag(self):
-        return self.flag
+        return True
 
 
-class TestJitSaveCombine(unittest.TestCase):
+class TestJitSaveCombineProperty(unittest.TestCase):
 
     def setUp(self):
         # enable dygraph mode
@@ -1201,14 +1238,22 @@ class TestJitSaveCombine(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_save_load_finetune_load(self):
+    def test_jit_save_combine_property(self):
         model_path = os.path.join(self.temp_dir.name,
                                   "test_jit_save_combine/model")
-
         # Use new namespace
         with unique_name.guard():
             net = Net()
         #save
+        paddle.jit.save(net, model_path, combine_params=True)
+
+    def test_jit_save_tensor_property(self):
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_jit_save_combine/model")
+        # Use new namespace
+        with unique_name.guard():
+            net = NetTensor()
+
         paddle.jit.save(net, model_path, combine_params=True)
 
 

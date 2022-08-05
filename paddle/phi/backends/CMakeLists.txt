@@ -1,7 +1,7 @@
 add_subdirectory(dynload)
 
 set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc)
-set(BACKENDS_DEPS enforce place flags)
+set(BACKENDS_DEPS enforce place flags eigen3)
 
 if(WITH_GPU OR WITH_ROCM)
   list(APPEND BACKENDS_SRCS gpu/gpu_context.cc gpu/gpu_info.cc
@@ -40,6 +40,7 @@ endif()
 
 add_library(phi_backends "${BACKENDS_SRCS}")
 target_link_libraries(phi_backends ${BACKENDS_DEPS})
+add_dependencies(phi_backends eigen3)
 
 # for inference library
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
@@ -50,7 +51,7 @@ if(WITH_CUSTOM_DEVICE)
   cc_test(
     custom_device_test
     SRCS custom/custom_device_test.cc
-    DEPS phi_backends phi_device_context)
+    DEPS phi_backends phi_device_context gradient_accumulator)
   cc_test(
     capi_test
     SRCS custom/capi_test.cc

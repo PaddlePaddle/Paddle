@@ -4,17 +4,17 @@ if(WITH_GPU)
   nv_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
@@ -325,8 +325,8 @@ add_custom_command(
           ${dygraph_api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_source_file_tmp}
           ${dygraph_api_source_file}
-  DEPENDS ${api_yaml_file} ${sparse_api_yaml_file} ${im_api_gen_file}
-          ${api_gen_base} ${api_gen_file}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${sparse_api_yaml_file}
+          ${im_api_gen_file} ${api_gen_base} ${api_gen_file}
   VERBATIM)
 
 # generate wrapped infermeta

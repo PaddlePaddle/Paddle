@@ -850,7 +850,9 @@ def bilinear(x1, x2, weight, bias=None, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_bilinear_tensor_product(x1, x2, weight, bias)
+    elif _non_static_mode():
         return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
 
     check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
@@ -2101,7 +2103,10 @@ def fold(x,
             "Unexpected type of paddings, it should be either an integer or a list"
             "of 2 or 4 integers")
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_fold(x, output_sizes, kernel_sizes, strides,
+                                      paddings, dilations)
+    elif in_dynamic_mode():
         out = _C_ops.fold(x, "output_sizes", output_sizes, "kernel_sizes",
                           kernel_sizes, "strides", strides, "paddings",
                           paddings, "dilations", dilations)
