@@ -852,15 +852,19 @@ class TestSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
             'Z':
             self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
         }
+        self.prim_attrs = {}
 
         # Set JVP
+        Cond_DOT = paddle.static.data(name='Cond_DOT',
+                                      shape=[9, 5],
+                                      dtype='float64')
         X_DOT = paddle.static.data(name='X_DOT', shape=[9, 5], dtype='float64')
         Y_DOT = paddle.static.data(name='Y_DOT', shape=[9, 5], dtype='float64')
-        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_args = (Cond_DOT, X_DOT, Y_DOT)
         self.jvp_out_shape_map = {0: self.prim_output['Z']}
 
         # Set transpose
-        check_dot = lambda v: v is X or v is Y
+        check_dot = lambda v: True
         Z_BAR = paddle.static.data(name='Z_BAR', shape=[9, 5], dtype='float64')
         self.transpose_args = (check_dot, Z_BAR)
         self.transpose_out_shape_map = {0: X, 1: Y}
@@ -871,6 +875,7 @@ class TestSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
             # jvp op:
             'select_p',
             # transpose op:
+            'fill_constant_p',
             'fill_constant_p',
             'fill_constant_p',
             'select_p',

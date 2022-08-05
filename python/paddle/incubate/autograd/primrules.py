@@ -639,7 +639,7 @@ def scatter_add_jvp(op, x_dot, y_dot):
 
 
 @REGISTER_JVP('select_p')
-def select_jvp(op, x_dot, y_dot):
+def select_jvp(op, cond_dot, x_dot, y_dot):
     if x_dot is None and y_dot is None:
         return None
 
@@ -837,14 +837,17 @@ def scatter_add_transpose(op, check_dot, z_bar):
 @REGISTER_TRANSPOSE('select_p')
 def select_transpose(op, check_dot, z_bar):
     cond, x, y = op_position_inputs(op)
-    assert check_dot(x) and check_dot(y), (
-        f'(check_dot(x) and check_dot(y)) must be True, '
-        f'but check_dot(x)={check_dot(x)} and check_dot(y)={check_dot(y)}.')
+    assert check_dot(cond) or check_dot(x) or check_dot(y), (
+        f'check_dot(cond) ^ (check_dot(x) ^ check_dot(y)) must be True, '
+        f'but check_dot(cond)={check_dot(cond)}, check_dot(x)={check_dot(x)} and check_dot(y)={check_dot(y)}.'
+    )
 
     zeros_x = fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
     zeros_y = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
-    cond_bar = None
-    x_bar = select(cond, z_bar, zeros_x)
-    y_bar = select(cond, zeros_y, z_bar)
 
-    return x_bar, y_bar, cond_bar
+    cond_bar = fill_const(value=0.0, shape=y.shape,
+                          dtype=cond.dtype) if check_dot(cond) else None
+    x_bar = select(cond, z_bar, zeros_x) if check_dot(x) else None
+    y_bar = select(cond, zeros_y, z_bar) if check_dot(y) else None
+
+    return cond_bar, x_bar, y_bar
