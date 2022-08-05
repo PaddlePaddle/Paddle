@@ -348,37 +348,36 @@ inline void RunProgramAPI(
       details::ShareTensorsFromScopeWithPartialBlock(
           dout, *forward_global_block, *backward_global_block, &scope);
     } else {
-      // 有cahce
-      VLOG(1) << "Get a interpretercore from cache by: <program_id: "
-              << program_id << ", is_grad: False.";
-      // (1) 拿到缓存的interpretorcore
+      VLOG(2) << "Get interpretercore cahce by program:" << program_id;
+
+      // Step 1. get cache interpretercore
       auto &cached_value =
           interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false);
       auto &interpreter_core = cached_value.core_;
-      // (2) 更新scope
+
+      // Step 2. update scope for cache interpretercore
       details::BuildScopeByBlock(*forward_global_block, &scope);
-      // share input_vars & parameters into scope
       details::ShareTensorsIntoScope(x, &scope);
       details::ShareTensorsIntoScope(params, &scope);
-      // 替换新的scope
       interpreter_core->reset_scope(&scope);
 
-      // (3)如果前向op数量>0则构建执行器并执行
+      // Step 3. interpretercore run
       if (forward_global_block->OpSize() > 0) {
         VLOG(2) << "interpreter_core->Run start.";
-        // 执行器执行
         interpreter_core->Run({});
         VLOG(2) << "interpreter_core->Run done.";
       }
+
       // Step 4. Get Output
       details::ShareTensorsFromScopeWithPartialBlock(
           out, *forward_global_block, *backward_global_block, &scope);
       details::ShareTensorsFromScopeWithPartialBlock(
           dout, *forward_global_block, *backward_global_block, &scope);
     }
-    // Debug info: scope info when run end
+    // (4) Debug info: scope info when run end
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
-    // Step 5. Drop all children scopes while testing.
+
+    // (5) Drop all children scopes while testing.
     if (is_test) {
       out_scope_vec->front()->DropKids();
     }
@@ -468,7 +467,6 @@ inline void RunProgramGradAPI(
 
   bool use_interpretorcore =
       PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
-  VLOG(2) << "whether use interpretorcore: " << use_interpretorcore;
 
   auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
 
@@ -478,9 +476,7 @@ inline void RunProgramGradAPI(
       1,
       paddle::platform::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
-
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
-  VLOG(2) << "global_inner_scope ptr is: " << global_inner_scope;
   auto sub_scope_num = global_inner_scope->kids().size();
   VLOG(2) << "The number of sub scopes before backward: " << sub_scope_num;
   PADDLE_ENFORCE_GT(sub_scope_num,
@@ -490,21 +486,20 @@ inline void RunProgramGradAPI(
                         "least one sub scope."));
 
   auto &scope = *(global_inner_scope->kids().front());
+  VLOG(2) << "RunProgramGradOpKernel will use scope " << &scope
+          << " to execute program " << program_id;
   const auto &place = egr::Controller::Instance().GetExpectedPlace();
 
-  VLOG(2) << "use_interpretorcore is: " << use_interpretorcore;
-
   if (use_interpretorcore) {
-    VLOG(2) << "RunProgramGradOpKernel execute with interpretorcore.";
+    VLOG(2) << "RunProgramGradOpKernel will use interpretercore to execute "
+               "program.";
 
-    // 前向+反向block
+    // (1) get all block
     auto *forward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc *, attrs.at("forward_global_block"));
     auto *backward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc *, attrs.at("backward_global_block"));
-
-    VLOG(2) << "backward_global_block op size is: "
-            << backward_global_block->OpSize();
+    auto *backward_program = backward_global_block->Program();
 
     auto out_grad_names = details::GetTensorsName(out_grad);
     // NOTE: after PR22939 [Add double grad] merged, the grad op maker's
@@ -518,48 +513,44 @@ inline void RunProgramGradAPI(
     if (!params_grad.empty()) {
       param_grad_names = details::GetTensorsName(params_grad);
     }
-    // Step 2. prepare executor and scope
-    auto *backward_program = backward_global_block->Program();
-
+    // (2) get interpretercore by cahce
     auto &interpretercore_info_cache =
         paddle::framework::InterpreterCoreInfoCache::Instance();
 
     if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/true)) {
-      // （3）创新新的interpretorcore
+      VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
+
       details::ShareTensorsIntoScope(out_grad, &scope);
       auto interpreter_core =
           paddle::framework::CreateInterpreterCoreInfoToCache(
               *backward_program, place, /*is_grad=*/true, program_id, &scope);
-      // （4）更新gc
+
+      // get all eager gc vars
       std::set<std::string> skip_eager_delete_vars;
       // all out_vars are skip_eager_var
       skip_eager_delete_vars.insert(x_grad_names.begin(), x_grad_names.end());
       // initialize skip gc vars by forward_program and backward_program
       paddle::framework::details::AppendSkipDeletionVars(
           param_grad_names, &skip_eager_delete_vars);
-      // 更新interpreter core的skip_gc_var参数
       interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
       interpretercore_info_cache.UpdateSkipEagerDeleteVars(
           program_id, /*is_grad=*/true, skip_eager_delete_vars);
       VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
+
       if (backward_global_block->OpSize() > 0) {
         // Debug info: scope info when run end
         VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(
             out_scope_vec->front());
-        // Step 3. run ops
         VLOG(2) << "interpreter_core->Run start.";
         interpreter_core->Run({});
         VLOG(2) << "interpreter_core->Run done.";
       }
     } else {
-      // 有cahce
-      VLOG(1) << "Get a interpretercore from cache by: <program_id: "
-              << program_id << ", is_grad: True.";
-      // (1) 拿到缓存的interpretorcore
+      VLOG(2) << "Get interpretercore cahce by program:" << program_id;
       auto &cached_value =
           interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/true);
       auto &interpreter_core = cached_value.core_;
-      // (2) 更新scope
+      // update scope
       details::BuildScopeByBlock(*backward_global_block, &scope);
       details::ShareTensorsIntoScope(out_grad, &scope);
       interpreter_core->reset_scope(&scope);
@@ -568,7 +559,6 @@ inline void RunProgramGradAPI(
         // Debug info: scope info when run end
         VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(
             out_scope_vec->front());
-        // Step 3. run ops
         VLOG(2) << "interpreter_core->DryRun start.";
         interpreter_core->Run({});
         VLOG(2) << "interpreter_core->DryRun done.";
