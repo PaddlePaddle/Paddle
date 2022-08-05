@@ -23,6 +23,7 @@ from .core import VarDesc
 from . import unique_name
 from .data_feeder import check_variable_and_dtype, check_type, check_dtype
 from paddle import _C_ops
+import paddle
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
@@ -599,9 +600,15 @@ class XavierInitializer(Initializer):
         if framework._non_static_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
-                out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
-                                                -limit, 'max', limit, 'seed',
-                                                self._seed, 'dtype', out_dtype)
+                if in_dygraph_mode():
+                    out_var = _C_ops.final_state_uniform_random(
+                        out_var.shape, out_dtype, -limit, limit, self._seed,
+                        _current_expected_place())
+                elif _in_legacy_dygraph():
+                    out_var = _C_ops.uniform_random('shape', out_var.shape,
+                                                    'min', -limit, 'max', limit,
+                                                    'seed', self._seed, 'dtype',
+                                                    out_dtype)
             else:
                 std = math.sqrt(2.0 / float(fan_in + fan_out))
 
@@ -617,8 +624,11 @@ class XavierInitializer(Initializer):
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
+                if in_dygraph_mode():
+                    var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
+                elif _in_legacy_dygraph():
+                    var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
+                                          'out_dtype', var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -1177,7 +1187,7 @@ def calculate_gain(nonlinearity, param=None):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
             gain = paddle.nn.initializer.calculate_gain('tanh') # 5.0 / 3
             gain = paddle.nn.initializer.calculate_gain('leaky_relu', param=1.0) # 1.0 = math.sqrt(2.0 / (1+param^2))

@@ -65,7 +65,8 @@ set(COMMON_KERNEL_DEPS
     matrix_solve
     phi_dynload_warpctc
     sequence_padding
-    sequence_scale)
+    sequence_scale
+    fft)
 
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
@@ -80,6 +81,7 @@ set(COMMON_KERNEL_DEPS
     lod_utils
     custom_kernel
     string_infermeta
+    gpc
     utf8proc)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})

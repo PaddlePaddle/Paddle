@@ -14,9 +14,20 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/common/type_traits.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace phi {
+
+void AffineGridGradInferMeta(const MetaTensor& output_grad,
+                             const IntArray& outputShape,
+                             bool align_corners,
+                             MetaTensor* input_grad) {
+  if (input_grad) {
+    auto output_dims = output_grad.dims();
+    input_grad->set_dims(phi::make_ddim({output_dims[0], 2, 3}));
+  }
+}
 
 void AngleGradInferMeta(const MetaTensor& x,
                         const MetaTensor& out_grad,
@@ -260,6 +271,82 @@ void EigGradInferMeta(const MetaTensor& out_w,
 
   if (dx) {
     dx->set_dims(dims);
+  }
+}
+
+void EigvalshGradInferMeta(const MetaTensor& out_v,
+                           const MetaTensor& out_w_grad,
+                           const std::string& uplo,
+                           bool is_test,
+                           MetaTensor* x_grad) {
+  auto dims = out_v.dims();
+  if (x_grad != nullptr) {
+    x_grad->set_dims(dims);
+    x_grad->set_dtype(out_v.dtype());
+  }
+}
+
+void FFTC2RGradInferMeta(const MetaTensor& x,
+                         const std::vector<int64_t>& axes,
+                         const std::string& normalization,
+                         bool forward,
+                         int64_t last_dim_size,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(out,
+                          phi::errors::InvalidArgument(
+                              "Output of fft_c2r _grad should not be null."));
+  const phi::DDim x_dim = x.dims();
+
+  // only ensure that fft axes' size greater than zero at runtime
+  // they might be -1 to indicate unknown size ar compile time
+  if (config.is_runtime) {
+    for (size_t i = 0; i < axes.size(); i++) {
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+    }
+  }
+
+  out->set_layout(x.layout());
+  out->set_dtype(ToComplexType(x.dtype()));
+
+  phi::DDim out_dim = x.dims();
+  const int64_t last_fft_axis = axes.back();
+  if (last_dim_size > 0) {
+    out_dim.at(last_fft_axis) = last_dim_size / 2 + 1;
+  } else if (config.is_runtime) {
+    const int64_t last_fft_dim_size = x_dim[last_fft_axis];
+    out_dim.at(last_fft_axis) = last_fft_dim_size / 2 + 1;
+  } else {
+    const int64_t last_fft_dim_size = x_dim[last_fft_axis];
+    out_dim.at(last_fft_axis) =
+        last_fft_dim_size == -1 ? -1 : last_fft_dim_size / 2 + 1;
+  }
+  out->set_dims(out_dim);
+}
+
+void FillDiagonalGradInferMeta(const MetaTensor& dout,
+                               float value,
+                               int offset,
+                               bool wrap,
+                               MetaTensor* dx) {
+  auto x_dims = dout.dims();
+  if (dx) {
+    dx->set_dims(x_dims);
+    dx->set_dtype(dout.dtype());
+  }
+}
+
+void FillDiagonalTensorGradInferMeta(const MetaTensor& out_grad,
+                                     int64_t offset,
+                                     int dim1,
+                                     int dim2,
+                                     MetaTensor* x_grad) {
+  if (x_grad != nullptr) {
+    x_grad->set_dims(out_grad.dims());
+    x_grad->set_dtype(out_grad.dtype());
   }
 }
 
@@ -784,6 +871,24 @@ void StackGradInferMeta(const MetaTensor& out_grad,
       x_grad[i]->set_dtype(out_grad.dtype());
     }
   }
+}
+
+void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
+                                       float min,
+                                       float max,
+                                       int seed,
+                                       int diag_num,
+                                       int diag_step,
+                                       float diag_val,
+                                       MetaTensor* x_grad) {
+  PADDLE_ENFORCE_NE(
+      x_grad,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The X@GRAD in UniformRandomInplaceGradInferMeta can't be nullptr."));
+  auto dims = out_grad.dims();
+  x_grad->set_dims(dims);
+  x_grad->set_dtype(out_grad.dtype());
 }
 
 void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
