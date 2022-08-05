@@ -4718,12 +4718,10 @@ def take(input, index, name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            n = np.arange(0, 12).reshape([3, 4])
-            x_int = paddle.to_tensor(n, dtype='int64')
-            x_float = paddle.to_tensor(n, dtype='float64')
+            x_int = paddle.arange(0, 12).reshape([3, 4])
+            x_float = x_int.astype(paddle.float64)
 
             idx_pos = paddle.arange(4, 10).reshape([2, 3])  # positive index
             idx_neg = paddle.arange(-2, 4).reshape([2, 3])  # negative index
