@@ -4718,18 +4718,32 @@ def take(input, index, name=None):
     Examples:
         .. code-block:: python
 
+            import numpy as np
             import paddle
 
-            x1 = paddle.arange(0, 12).reshape([3, 4])
-            x2 = paddle.arange(0, 12).reshape([3, 4])
-            idx = paddle.arange(4, 10).reshape([2, 3])
+            n = np.arange(0, 12).reshape([3, 4])
+            x_int = paddle.to_tensor(n, dtype='int64')
+            x_float = paddle.to_tensor(n, dtype='float64')
 
-            paddle.take(x, idx)
+            idx_pos = paddle.arange(4, 10).reshape([2, 3])  # positive index
+            idx_neg = paddle.arange(-2, 4).reshape([2, 3])  # negative index
+
+            paddle.take(x_int, idx_pos)
             # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             #        [[4, 5, 6],
             #         [7, 8, 9]])
 
-            x.take(idx)
+            paddle.take(x_int, idx_neg)
+            # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[10, 11, 0 ],
+            #         [1 , 2 , 3 ]])
+
+            paddle.take(x_float, idx_pos)
+            # Tensor(shape=[2, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[4., 5., 6.],
+            #         [7., 8., 9.]])
+
+            x_int.take(idx_pos)
             # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             #        [[4, 5, 6],
             #         [7, 8, 9]])
