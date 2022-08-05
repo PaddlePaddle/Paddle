@@ -551,4 +551,8 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
 
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
+void MemcpyH2DInferMeta(const MetaTensor& src,
+                        int dst_place_type,
+                        MetaTensor* out);
+
 }  // namespace phi

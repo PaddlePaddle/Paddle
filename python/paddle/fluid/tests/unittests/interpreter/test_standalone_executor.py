@@ -162,8 +162,13 @@ class MultiStreamModelTestCase(unittest.TestCase):
             0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
 
     def test_result(self):
-        ground_truths = self.run_test(False)
         res = self.run_test(True)
+        print("ne", res)
+
+        ground_truths = self.run_test(False)
+        
+
+        print("gt", ground_truths)
 
         for gt, out in zip(ground_truths, res):
             self.assertEqual(gt[0], out[0])

@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -110,33 +112,75 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   runtime_context.inputs["X"] = {scope_->FindVar(var_name)};
   runtime_context.outputs["Out"] = {scope_->Var(new_var_name)};
   InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
-
-  // 2. Execute infer shape and choose kernel
-  auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
   op.get()->Info().infer_shape_(&infer_shape_ctx);
-  auto kernels_iter = all_op_kernels.find(op_type);
-  PADDLE_ENFORCE_NE(kernels_iter,
-                    all_op_kernels.end(),
-                    platform::errors::Unavailable(
-                        "There are no kernels which are registered in "
-                        "the %s operator.",
-                        op_type));
-  OpKernelMap& kernels = kernels_iter->second;
+
+  // 2. choose kernel
+  
+  // prepare a ptr to OperatorWithKernel
+  OperatorBase* op_ptr = op.get();
+  if (dynamic_cast<framework::OperatorWithKernel*>(op_ptr) == nullptr) {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "%s should be OperatorWithKernel type.", op_ptr->Type()));
+  } 
+  auto op_with_kernel = static_cast<framework::OperatorWithKernel*>(op_ptr);
+  
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place_);
-  Scope scope;
-  auto exec_ctx = ExecutionContext(*op, scope, *dev_ctx, runtime_context);
-  auto expected_kernel_key =
-      dynamic_cast<const framework::OperatorWithKernel*>(op.get())
-          ->GetExpectedKernelType(exec_ctx);
-  auto kernel_iter = kernels.find(expected_kernel_key);
+  auto exec_ctx = ExecutionContext(*op, Scope(), *dev_ctx, runtime_context);
+  auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(exec_ctx);
+
+  VLOG(0) << "expected_kernel_key " << expected_kernel_key << "\n";
+  VLOG(0) << "op_with_kernel->Type() " << op_with_kernel->Type() << "\n";
+  
+  bool run_phi_kernel = false;
+
+  //check if phi kernel exists
+  auto phi_kernel_map = phi::KernelFactory::Instance().SelectKernelMap(op_with_kernel->Type());
+  if (phi_kernel_map.size() > 0) {
+    auto pt_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+    auto pt_kernel_name = op_with_kernel->PhiKernelSignature()->name;
+    
+    VLOG(0) << "pt_kernel_key " << pt_kernel_key << "\n";
+
+    if (op_with_kernel->PhiKernel()->IsValid()) {
+      run_phi_kernel = true;
+    } else {
+      if (!op_with_kernel->SupportsKernelType(expected_kernel_key)) {
+        auto pt_cpu_kernel_key = FallBackToCpu(
+            expected_kernel_key, pt_kernel_key, *op_with_kernel);
+        op_with_kernel->ResetPhiKernel(
+            new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
+                pt_kernel_name, pt_cpu_kernel_key)));
+        if (op_with_kernel->PhiKernel()->IsValid()) {
+          VLOG(6) << "Static mode PrepareImpl - kernel name: "
+                  << pt_kernel_name
+                  << " | kernel key: " << pt_cpu_kernel_key
+                  << " | kernel: " << *(op_with_kernel->PhiKernel());
+          op_with_kernel->ResetKernelType(new OpKernelType(
+              TransPhiKernelKeyToOpKernelType(pt_cpu_kernel_key)));
+          run_phi_kernel = true;
+        }
+      }
+    }
+  }
 
   // 3. Execute transfer op and construct OpFuncNode
   OpFuncNode new_op_func_node;
   new_op_func_node.input_index["X"] = {var_scope_->VarId(var_name)};
   new_op_func_node.output_index["Out"] = {var_scope_->VarId(new_var_name)};
-  new_op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
-  new_op_func_node.kernel_func_(exec_ctx);
+
+  if (!run_phi_kernel) {
+    op_with_kernel->ChooseKernel(exec_ctx);
+    new_op_func_node.kernel_func_ = *op_with_kernel->kernel_func();
+    new_op_func_node.kernel_func_(exec_ctx);
+  } else {
+    new_op_func_node.pt_kernel_ = op_with_kernel->PhiKernel();
+    phi::KernelContext pt_kernel_context;
+    op_with_kernel->BuildPhiKernelContext(
+        runtime_context, dev_ctx, &pt_kernel_context);
+    (*new_op_func_node.pt_kernel_)(&pt_kernel_context);
+  }
+
   // NOTE(winter-wang): in npu device, D2H kernel is asynchronous. need to
   // explicit synchronization.
 #ifdef PADDLE_WITH_ASCEND_CL
