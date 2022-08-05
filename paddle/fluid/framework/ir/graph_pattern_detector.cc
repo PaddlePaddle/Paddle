@@ -91,12 +91,15 @@ void GraphPatternDetector::operator()(Graph *graph,
   if (!MarkPDNodesInGraph(*graph)) {
     return;
   }
+  LOG(ERROR) << "MarkPDNodesInGraph passed";
 
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
   SortSubgraphs(&subgraphs);
   RemoveOverlappedMatch(&subgraphs);
+  LOG(ERROR) << "RemoveOverlappedMatch subgraphs size: " << subgraphs.size();
   ValidateByNodeRole(&subgraphs);
+  LOG(ERROR) << "ValidateByNodeRole subgraphs size: " << subgraphs.size();
 
   if (subgraphs.empty()) return;
 
@@ -114,7 +117,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   for (auto &node : GraphTraits::DFS(graph)) {
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
-        VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
+        // LOG(ERROR) << "Node " << node.Name() << " marked as " << pdnode->name();
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
     }
@@ -249,12 +252,12 @@ GraphPatternDetector::DetectPatterns() {
         }
       }
     }
-    VLOG(3) << "step " << step << " get records: " << cur_groups.size();
+    LOG(ERROR) << "step " << step << " get records: " << cur_groups.size();
     for (auto &group : cur_groups) {
       for (auto &item : group.roles) {
         VLOG(4) << "node " << item.second->id() << " as " << item.first->name();
       }
-      VLOG(4) << "=========================================================";
+      // LOG(ERROR) << "=========================================================";
     }
   }
 
