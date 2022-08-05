@@ -180,7 +180,6 @@ class QuantizationPass(PassBase):
                             quant_op_dist_attr.set_output_dist_attr(
                                 output_name, consume_input_dist_attr)
                         else:
-                            assert "scale" in output_name
                             tensor_dist_attr = TensorDistributedAttribute()
                             tensor_dist_attr.process_mesh = ref_process_mesh
                             tensor_dist_attr.dims_mapping = [-1]
