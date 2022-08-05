@@ -20,9 +20,9 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#include "paddle/fluid/jit/executor_function.h"
+#include "paddle/fluid/jit/function/executor_function.h"
+#include "paddle/fluid/jit/function/pe_function.h"
 #include "paddle/fluid/jit/layer.h"
-#include "paddle/fluid/jit/pe_function.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/serializer_utils.h"
 

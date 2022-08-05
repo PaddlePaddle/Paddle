@@ -21,7 +21,7 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 
-#include "base_function.h"  //NOLINT
+#include "function/base_function.h"  //NOLINT
 
 namespace paddle {
 

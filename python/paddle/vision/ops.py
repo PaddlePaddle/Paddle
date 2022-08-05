@@ -1075,8 +1075,7 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
-          
+
             import paddle
             x = paddle.uniform([2, 490, 28, 28], dtype='float32')
             boxes = paddle.to_tensor([[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32')
@@ -1144,7 +1143,7 @@ class PSRoIPool(Layer):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
             
             psroi_module = paddle.vision.ops.PSRoIPool(7, 1.0)
@@ -1350,7 +1349,7 @@ def roi_align(x,
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
             from paddle.vision.ops import roi_align
 
@@ -1426,7 +1425,7 @@ class RoIAlign(Layer):
 
     Examples:
         ..  code-block:: python
-          :name: code-example1
+
             import paddle
             from paddle.vision.ops import RoIAlign
 
@@ -1740,7 +1739,15 @@ def generate_proposals(scores,
             print(rois, roi_probs, roi_nums)
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert return_rois_num, "return_rois_num should be True in dygraph mode."
+        attrs = (pre_nms_top_n, post_nms_top_n, nms_thresh, min_size, eta,
+                 pixel_offset)
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.final_state_generate_proposals_v2(
+            scores, bbox_deltas, img_size, anchors, variances, *attrs)
+
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
+    elif _non_static_mode():
         assert return_rois_num, "return_rois_num should be True in dygraph mode."
         attrs = ('pre_nms_topN', pre_nms_top_n, 'post_nms_topN', post_nms_top_n,
                  'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta,
