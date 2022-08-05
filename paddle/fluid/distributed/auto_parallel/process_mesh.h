@@ -69,8 +69,8 @@ class ProcessMesh {
   // ProcessMesh from_string(const std::string& mesh_str);
   std::string to_string() const;
 
-  // ProcessMesh from_proto(const ProcessMeshProto& proto);
-  // ProcessMeshProto to_proto() const;
+  ProcessMesh from_proto(const ProcessMeshProto& proto);
+  ProcessMeshProto to_proto() const;
 
  private:
   std::vector<int64_t> shape_;

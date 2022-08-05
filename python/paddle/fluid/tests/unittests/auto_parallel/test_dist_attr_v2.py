@@ -132,46 +132,54 @@ class TestDistAttr(unittest.TestCase):
         self.assertTrue(op_dist_attr.verify())
         self.assertTrue(str(op_dist_attr), str(op_dist_attr))
 
-    # def test_operator_dist_attr(self):
-    #     train_program = static.Program()
-    #     start_program = static.Program()
-    #     with static.program_guard(train_program, start_program):
-    #         input0 = static.data(name="input0", shape=[2, 3], dtype='float32')
-    #         input1 = static.data(name="input1", shape=[3, 4], dtype='float32')
-    #         output = paddle.matmul(input0, input1)
-    #     op = train_program.current_block().ops[0]
-    #     process_mesh = ProcessMesh([[0, 1, 2], [3, 4, 5]])
-    #     op_dist_attr = op.desc.dist_attr
-    #     print("op 0", flush=True)
-    #     print(op_dist_attr)
+    def test_operator_dist_attr(self):
+        train_program = static.Program()
+        start_program = static.Program()
+        with static.program_guard(train_program, start_program):
+            input0 = static.data(name="input0", shape=[2, 3], dtype='float32')
+            input1 = static.data(name="input1", shape=[3, 4], dtype='float32')
+            output = paddle.matmul(input0, input1)
+        op = train_program.current_block().ops[0]
+        process_mesh = ProcessMesh([[0, 1, 2], [3, 4, 5]])
+        op_dist_attr = op.desc.dist_attr
+        print(op_dist_attr)
 
-    #     op_dist_attr.process_mesh = process_mesh
-    #     # Set the distributed attribute of input0
-    #     input0_dist_attr = TensorDistAttr(input0.desc)
-    #     input0_dist_attr.dims_mapping = [0, -1]
-    #     op_dist_attr.set_input_dist_attr(input0.name, input0_dist_attr)
-    #     # Set the distributed attribute of input1
-    #     input1_dist_attr = TensorDistAttr(input1.desc)
-    #     input1_dist_attr.dims_mapping = [-1, 1]
-    #     op_dist_attr.set_input_dist_attr(input1.name, input1_dist_attr)
-    #     # Set the distributed attribute of output
-    #     output_dist_attr = TensorDistAttr(output.desc)
-    #     output_dist_attr.dims_mapping = [0, 1]
-    #     op_dist_attr.set_output_dist_attr(output.name, output_dist_attr)
+        op_dist_attr.process_mesh = process_mesh
+        # Set the distributed attribute of input0
+        input0_dist_attr = TensorDistAttr(input0.desc)
+        input0_dist_attr.dims_mapping = [0, -1]
+        op_dist_attr.set_input_dist_attr(input0.name, input0_dist_attr)
+        # Set the distributed attribute of input1
+        input1_dist_attr = TensorDistAttr(input1.desc)
+        input1_dist_attr.dims_mapping = [-1, 1]
+        op_dist_attr.set_input_dist_attr(input1.name, input1_dist_attr)
+        # Set the distributed attribute of output
+        output_dist_attr = TensorDistAttr(output.desc)
+        output_dist_attr.dims_mapping = [0, 1]
+        op_dist_attr.set_output_dist_attr(output.name, output_dist_attr)
 
-    #     self.assertEqual(op.desc.dist_attr.process_mesh, process_mesh)
-    #     self.assertEqual(op.desc.dist_attr.input_dist_attr(input0.name).process_mesh, process_mesh)
-    #     self.assertEqual(op.desc.dist_attr.input_dist_attr(input1.name).process_mesh, process_mesh)
-    #     print("op 1", flush=True)
-    #     print(op_dist_attr)
-    #     print(op_dist_attr.input_dist_attr(input0.name))
-    #     self.assertEqual(op_dist_attr.input_dist_attr(input0.name).dims_mapping, [0, -1])
-    #     # self.assertEqual(op.desc.dist_attr.input_dist_attr(input0.name).dims_mapping, [0, -1])
-    #     # self.assertEqual(op.desc.dist_attr.input_dist_attr(input1.name).dims_mapping, [-1, 1])
-    #     # self.assertEqual(op.desc.dist_attr.output_dist_attr(output.name).dims_mapping, [0, 1])
-    #     # self.assertTrue(op.desc.dist_attr.verify())
-    #     # self.assertTrue(str(op_dist_attr), str(op_dist_attr))
-    #     # print(op_dist_attr)
+        self.assertEqual(op.desc.dist_attr.process_mesh, process_mesh)
+        self.assertEqual(
+            op.desc.dist_attr.input_dist_attr(input0.name).process_mesh,
+            process_mesh)
+        self.assertEqual(
+            op.desc.dist_attr.input_dist_attr(input1.name).process_mesh,
+            process_mesh)
+        self.assertEqual(
+            op.desc.dist_attr.input_dist_attr(input0.name).dims_mapping,
+            [0, -1])
+        self.assertEqual(
+            op.desc.dist_attr.input_dist_attr(input0.name).dims_mapping,
+            [0, -1])
+        self.assertEqual(
+            op.desc.dist_attr.input_dist_attr(input1.name).dims_mapping,
+            [-1, 1])
+        self.assertEqual(
+            op.desc.dist_attr.output_dist_attr(output.name).dims_mapping,
+            [0, 1])
+        self.assertTrue(op.desc.dist_attr.verify())
+        self.assertTrue(str(op_dist_attr), str(op_dist_attr))
+        print(op_dist_attr)
 
 
 if __name__ == "__main__":

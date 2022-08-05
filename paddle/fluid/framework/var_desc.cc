@@ -344,6 +344,20 @@ Attribute VarDesc::GetAttr(const std::string &name) const {
   return it->second;
 }
 
+TensorDistAttr &VarDesc::MutableDistAttr() {
+  // If dist_attr_ is nullptr, construct a new one and return.
+  if (dist_attr_) {
+    return *dist_attr_;
+  } else {
+    dist_attr_.reset(new TensorDistAttr(*this));
+    return *dist_attr_;
+  }
+}
+
+void VarDesc::SetDistAttr(const TensorDistAttr &dist_attr) {
+  dist_attr_.reset(new TensorDistAttr(dist_attr));
+}
+
 bool operator==(const VarDesc &left, const VarDesc &right) {
   return left.Proto()->SerializeAsString() ==
          right.Proto()->SerializeAsString();

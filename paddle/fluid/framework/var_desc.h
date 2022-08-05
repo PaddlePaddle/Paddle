@@ -68,24 +68,22 @@ class VarDesc {
     desc_.set_name(name);
     // TODO(paddle-dev): Why default to lodtensor.
     desc_.mutable_type()->set_type(proto::VarType::LOD_TENSOR);
-    dist_attr_ = TensorDistAttr(*this);
   }
 
-  explicit VarDesc(const proto::VarDesc &desc)
-      : desc_(desc), dist_attr_(*this) {}
+  explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {}
 
   // Explicitly implement the copy constructor for auto parallel
   VarDesc(const VarDesc &other)
       : desc_(other.desc_),
         attrs_(other.attrs_),
         original_id_(other.original_id_),
-        dist_attr_(other.dist_attr_) {}
+        dist_attr_(new TensorDistAttr(*other.dist_attr_)) {}
 
   VarDesc &operator=(const VarDesc &other) {
     desc_ = other.desc_;
     attrs_ = other.attrs_;
     original_id_ = other.original_id_;
-    dist_attr_ = other.dist_attr_;
+    dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
     return *this;
   }
 
@@ -177,9 +175,8 @@ class VarDesc {
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
-  const TensorDistAttr &DistAttr() const { return dist_attr_; }
-  TensorDistAttr &DistAttr() { return dist_attr_; }
-  void SetDistAttr(const TensorDistAttr &dist_attr) { dist_attr_ = dist_attr; }
+  TensorDistAttr &MutableDistAttr();
+  void SetDistAttr(const TensorDistAttr &dist_attr);
 
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
@@ -205,7 +202,7 @@ class VarDesc {
   // current VarDesc is not built from the other one.
   uint64_t original_id_ = id_;
   // Note: this attribute is used for auto parallel
-  TensorDistAttr dist_attr_;
+  std::unique_ptr<TensorDistAttr> dist_attr_;
 };
 
 bool operator==(const VarDesc &left, const VarDesc &right);

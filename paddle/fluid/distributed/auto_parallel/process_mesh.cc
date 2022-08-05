@@ -80,6 +80,43 @@ std::string ProcessMesh::to_string() const {
   return mesh_str;
 }
 
+ProcessMesh ProcessMesh::from_proto(const ProcessMeshProto &proto) {
+  ProcessMesh mesh;
+
+  mesh.shape_.resize(proto.shape_size());
+  for (int64_t i = 0; i < proto.shape_size(); ++i) {
+    mesh.shape_[i] = proto.shape(i);
+  }
+
+  mesh.process_ids_.resize(proto.process_ids_size());
+  for (int64_t i = 0; i < proto.process_ids_size(); ++i) {
+    mesh.process_ids_[i] = proto.process_ids(i);
+  }
+
+  mesh.dim_names_.resize(proto.dim_names_size());
+  for (int64_t i = 0; i < proto.dim_names_size(); ++i) {
+    mesh.dim_names_[i] = proto.dim_names(i);
+  }
+}
+
+ProcessMeshProto ProcessMesh::to_proto() const {
+  ProcessMeshProto mesh_proto;
+
+  for (const auto &i : shape_) {
+    mesh_proto.add_shape(i);
+  }
+
+  for (const auto &i : process_ids_) {
+    mesh_proto.add_process_ids(i);
+  }
+
+  for (const auto &i : dim_names_) {
+    mesh_proto.add_dim_names(i);
+  }
+
+  return mesh_proto;
+}
+
 bool operator==(const ProcessMesh &lhs, const ProcessMesh &rhs) {
   if (lhs.shape() != rhs.shape()) {
     return false;

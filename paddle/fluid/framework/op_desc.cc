@@ -417,9 +417,14 @@ OpDesc::OpDesc(const std::string &type,
   inputs_ = inputs;
   outputs_ = outputs;
   attrs_ = attrs;
-  dist_attr_ = OperatorDistAttr(*this);
   need_update_ = true;
   block_ = nullptr;
+}
+
+OpDesc::OpDesc(const OpDesc &other) {
+  CopyFrom(other);
+  block_ = other.block_;
+  need_update_ = true;
 }
 
 OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
@@ -434,7 +439,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
   original_id_ = op_desc.original_id_;
-  dist_attr_ = op_desc.dist_attr_;
+  dist_attr_.reset(new OperatorDistAttr(*op_desc.dist_attr_));
   need_update_ = true;
 }
 
@@ -915,6 +920,19 @@ void OpDesc::InferVarType(BlockDesc *block) const {
     InferVarTypeContext context(this, block);
     info.infer_var_type_(&context);
   }
+}
+
+OperatorDistAttr &OpDesc::MutableDistAttr() {
+  if (dist_attr_) {
+    return *dist_attr_;
+  } else {
+    dist_attr_.reset(new OperatorDistAttr(*this));
+    return *dist_attr_;
+  }
+}
+
+void OpDesc::SetDistAttr(const OperatorDistAttr &dist_attr) {
+  dist_attr_.reset(new OperatorDistAttr(dist_attr));
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(

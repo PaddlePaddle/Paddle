@@ -18,19 +18,16 @@ package paddle.distributed.auto_parallel;
 
 // ProcessMesh is used to organize processes and like n-dimension array.
 message ProcessMeshProto {
-  // The name of each dimension. 
-  repeated string dim_names = 1;
-
   // The size of each dimension.
-  repeated int64 shape = 2;
+  repeated int64 shape = 1;
 
   // These process ids are stored by a row-major way.
   // There are no duplicate process ids within one process mesh.
-  repeated int64 process_ids = 3;
+  repeated int64 process_ids = 2;
 
-  // The device type required by this mesh.
-  // Only one device type is allowed since the process mesh is homogeneous. 
-  optional string device_type = 4;
+  // The name of each dimension. 
+  repeated string dim_names = 3;
+
 }
 
 // This distributed attribute describes how to distribute the corresponding tensor,
@@ -72,6 +69,9 @@ message OperatorDistAttrProto {
   // The distributed attribute of the actual tensor may be not the same as that within 
   // the distributed attribute of the operator.
   repeated TensorDistAttrMappingEntryProto output_dist_attrs = 2;
+
+  // The process mesh where a op is distributed.
+  optional ProcessMeshProto process_mesh = 3;
 
   // A operator ideally has a distributed operator which may have multiple distributed implementations.
   // This filed is usually same as the operator type. However, some operators such as the element-wise operators
@@ -120,13 +120,13 @@ message LinkCapabilityProto {
 
 message LinkProto {
   // The global id of the source device.
-  optional int64 source_id = 2;
+  optional int64 source_id = 1;
 
   // The global id of the source device.
-  optional int64 target_id = 3;
+  optional int64 target_id = 2;
 
   // Represent the link type.
-  optional string type = 1;
+  optional string type = 3;
       
   // The capability of this link.
   optional LinkCapabilityProto capability = 4; 
@@ -137,22 +137,18 @@ message DeviceMeshProto {
   // The global id of this mesh. 
   optional string name = 1;
 
-  // The name of each dimension. 
-  repeated string dim_names = 2;
-
   // The size of each dimension.
-  repeated int64 shape = 3;
+  repeated int64 shape = 2;
 
   // These device ids are stored by a row-major way.
   // There are no duplicate device ids within one device mesh.
-  repeated int64 device_ids = 4;
+  repeated int64 device_ids = 3;
 
-  // The device type constructed by this mesh.
-  // Only one device type is allowed since the device mesh is homogeneous. 
-  optional string device_type = 5;
+  // The name of each dimension. 
+  repeated string dim_names = 4;
 
   // The devices of this mesh.
-  repeated DeviceProto devices = 6;
+  repeated DeviceProto devices = 5;
 
   message LinkEntryProto {
     optional int64 source_id = 1;
@@ -160,14 +156,14 @@ message DeviceMeshProto {
   }
 
   // Some links are between devices. 
-  repeated LinkEntryProto links = 7;
+  repeated LinkEntryProto links = 6;
 }
 
 // Record the mapping between the logical processes and the physical devices.
 message DistributedMapperProto {
-  // The device mesh used by this distributed computation,
+  // The device meshes used by this distributed computation,
   // which may be shared by different multiple device meshes.
-  optional DeviceMeshProto device_mesh = 1;
+  repeated DeviceMeshProto device_meshes = 1;
 
   message MapperEntryProto {
     optional int64 process_id = 1;

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -41,6 +42,8 @@ class OpDesc {
          const VariableNameMap &inputs,
          const VariableNameMap &outputs,
          const AttributeMap &attrs);
+
+  OpDesc(const OpDesc &desc);
 
   OpDesc(const proto::OpDesc &desc, BlockDesc *block);
 
@@ -163,11 +166,8 @@ class OpDesc {
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
-  const OperatorDistAttr &DistAttr() const { return dist_attr_; }
-  OperatorDistAttr &DistAttr() { return dist_attr_; }
-  void SetDistAttr(const OperatorDistAttr &dist_attr) {
-    dist_attr_ = dist_attr;
-  }
+  OperatorDistAttr &MutableDistAttr();
+  void SetDistAttr(const OperatorDistAttr &dist_attr);
 
  private:
   template <typename MapType>
@@ -209,7 +209,7 @@ class OpDesc {
   // The default original_id_ is same as the id_, which means the
   // current OpDesc is not built from the other one.
   uint64_t original_id_ = id_;
-  OperatorDistAttr dist_attr_;
+  std::unique_ptr<OperatorDistAttr> dist_attr_;
 };
 }  // namespace framework
 }  // namespace paddle

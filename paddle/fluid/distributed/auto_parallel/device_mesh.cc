@@ -218,6 +218,50 @@ std::string DeviceMesh::to_string() const {
   return mesh_str;
 }
 
+DeviceMesh DeviceMesh::from_proto(const DeviceMeshProto &proto) {
+  DeviceMesh mesh;
+
+  mesh.name_ = proto.name();
+
+  mesh.shape_.resize(proto.shape_size());
+  for (int64_t i = 0; i < proto.shape_size(); ++i) {
+    mesh.shape_[i] = proto.shape(i);
+  }
+
+  mesh.device_ids_.resize(proto.device_ids_size());
+  for (int64_t i = 0; i < proto.device_ids_size(); ++i) {
+    mesh.device_ids_[i] = proto.device_ids(i);
+  }
+
+  mesh.dim_names_.resize(proto.dim_names_size());
+  for (int64_t i = 0; i < proto.dim_names_size(); ++i) {
+    mesh.dim_names_[i] = proto.dim_names(i);
+  }
+
+  mesh.shape_.resize(proto.shape_size());
+  for (int64_t i = 0; i < proto.shape_size(); ++i) {
+    mesh.shape_[i] = proto.shape(i);
+  }
+}
+
+DeviceMeshProto DeviceMesh::to_proto() const {
+  DeviceMeshProto mesh_proto;
+
+  for (const auto &i : shape_) {
+    mesh_proto.add_shape(i);
+  }
+
+  for (const auto &i : device_ids_) {
+    mesh_proto.add_device_ids(i);
+  }
+
+  for (const auto &i : dim_names_) {
+    mesh_proto.add_dim_names(i);
+  }
+
+  return mesh_proto;
+}
+
 bool operator==(const DeviceMesh &lhs, const DeviceMesh &rhs) {
   // Use the unique name to do the fast comparison
   if (lhs.name() != rhs.name()) {

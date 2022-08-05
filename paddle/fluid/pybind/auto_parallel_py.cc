@@ -15,13 +15,13 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
-#include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/distributed/auto_parallel/device_mesh.h"
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/distributed/auto_parallel/dist_mapper.h"
 #include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/pybind/auto_parallel_py.h"
 
 namespace py = pybind11;
 
@@ -40,7 +40,6 @@ using paddle::distributed::auto_parallel::ProcessMesh;
 using paddle::distributed::auto_parallel::TensorDistAttr;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
-
 
 void BindAutoParallel(py::module *m) {
   py::class_<ProcessMesh>(*m, "ProcessMesh")

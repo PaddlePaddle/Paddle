@@ -237,8 +237,7 @@ void BindVarDsec(pybind11::module *m) {
       .def("original_id", &pd::VarDesc::OriginalId)
       .def("set_original_id", &pd::VarDesc::SetOriginalId)
       .def_property("dist_attr",
-                    static_cast<TensorDistAttr &(pd::VarDesc::*)()>(
-                        &pd::VarDesc::DistAttr),
+                    &pd::VarDesc::MutableDistAttr,
                     &pd::VarDesc::SetDistAttr,
                     pybind11::return_value_policy::reference)
       .def("attr", &pd::VarDesc::GetAttr);
@@ -348,8 +347,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("original_id", &pd::OpDesc::OriginalId)
       .def("set_original_id", &pd::OpDesc::SetOriginalId)
       .def_property("dist_attr",
-                    static_cast<OperatorDistAttr &(pd::OpDesc::*)()>(
-                        &pd::OpDesc::DistAttr),
+                    &pd::OpDesc::MutableDistAttr,
                     &pd::OpDesc::SetDistAttr,
                     pybind11::return_value_policy::reference)
       .def("inputs", &pd::OpDesc::Inputs)
