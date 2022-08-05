@@ -70,6 +70,7 @@ struct SimpleOpTypeSetTeller : public Teller {
   std::unordered_set<std::string> int8_teller_set{
       "mul",
       "matmul",
+      "matmul_v2",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -177,6 +178,7 @@ struct SimpleOpTypeSetTeller : public Teller {
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
+      "matmul_v2",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -523,6 +525,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                 << paddings.size();
         return false;
       }
+    }
+
+    if (op_type == "matmul_v2") {
+      auto* block = desc.Block();
+      if (block) {
+        std::cout << "The block desc is nullptr" << std::endl;
+      }
+      return true;
     }
 
     if (op_type == "matmul") {
