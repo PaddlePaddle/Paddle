@@ -1426,9 +1426,9 @@ class Executor(object):
                     return False
 
                 # Unsupported case 6 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM
-                if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
-                                  None) not in [1, '1', True, 'True', 'true']:
-                    return False
+                # if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
+                #                   None) not in [1, '1', True, 'True', 'true']:
+                #     return False
 
                 return True
             else:
