@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -31,7 +32,7 @@ class Variable;
 
 namespace jit {
 class CompilationUnit;
-class Function;
+class FunctionInfo;
 
 using DenseTensor = phi::DenseTensor;
 using Tensor = paddle::experimental::Tensor;
@@ -40,11 +41,14 @@ using Name2VariableMap =
     std::unordered_map<std::string, std::shared_ptr<Variable>>;
 using Name2EngineMap =
     std::unordered_map<std::string, std::shared_ptr<BaseEngine>>;
+using Name2FunctionInfoMap =
+    std::unordered_map<std::string, std::shared_ptr<FunctionInfo>>;
 
 class Layer {
  public:
-  Layer(const Name2VariableMap& params_dict,
-        const Name2VariableMap& attrs_dict_,
+  Layer(const Name2VariableMap& params_map,
+        const Name2VariableMap& attrs_map_,
+        const Name2FunctionInfoMap& info_map,
         const phi::Place& place);
 
   jit::Function Function(const std::string& name) const;
@@ -63,10 +67,14 @@ class Layer {
 
   const Name2EngineMap& EngineMap() const;
 
+  const std::shared_ptr<jit::FunctionInfo>& FunctionInfo(
+      const std::string& name) const;
+
  private:
-  Name2VariableMap params_dict_;
-  Name2VariableMap attrs_dict_;
+  Name2VariableMap params_map_;
+  Name2VariableMap attrs_map_;
   std::shared_ptr<CompilationUnit> unit_;
+  Name2FunctionInfoMap info_map_;
 };
 
 }  // namespace jit

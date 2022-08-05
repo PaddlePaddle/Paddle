@@ -28,7 +28,7 @@ namespace jit {
 
 class ExecutorEngine : public BaseEngine {
  public:
-  ExecutorEngine(const std::shared_ptr<EngineInfo> &info,
+  ExecutorEngine(const std::shared_ptr<FunctionInfo> &info,
                  const Name2VariableMap &params_dict,
                  const phi::Place &place);
 
@@ -38,10 +38,10 @@ class ExecutorEngine : public BaseEngine {
 
   std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs);
 
-  const std::shared_ptr<EngineInfo> &Info() const;
+  const std::shared_ptr<FunctionInfo> &Info() const;
 
  private:
-  std::shared_ptr<EngineInfo> info_;
+  std::shared_ptr<FunctionInfo> info_;
   framework::Scope scope_;
   phi::Place place_;
   framework::Executor inner_exe_;

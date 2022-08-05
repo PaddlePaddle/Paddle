@@ -50,11 +50,11 @@ void BindJit(pybind11::module *m) {
   g_pe_engine_pytype = reinterpret_cast<PyTypeObject *>(pe_engine.ptr());
   pe_engine.def("info", &jit::PEEngine::Info);
 
-  py::class_<jit::EngineInfo, std::shared_ptr<jit::EngineInfo>>(
-      *m, "EngineInfo", R"DOC(EngineInfo Class.)DOC")
-      .def("name", &jit::EngineInfo::FunctionName)
-      .def("input_names", &jit::EngineInfo::InputArgNames)
-      .def("output_names", &jit::EngineInfo::OutputArgNames);
+  py::class_<jit::FunctionInfo, std::shared_ptr<jit::FunctionInfo>>(
+      *m, "FunctionInfo", R"DOC(FunctionInfo Class.)DOC")
+      .def("name", &jit::FunctionInfo::FunctionName)
+      .def("input_names", &jit::FunctionInfo::InputArgNames)
+      .def("output_names", &jit::FunctionInfo::OutputArgNames);
 
   m->def("Load",
          [](const std::string &path, const platform::CPUPlace &cpu_place) {

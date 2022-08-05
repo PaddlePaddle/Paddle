@@ -23,10 +23,11 @@ namespace jit {
 
 std::shared_ptr<BaseEngine> CompilationUnit::GetEngine(
     const std::string &name) const {
-  PADDLE_ENFORCE_EQ(engine_map_.count(name),
-                    1,
-                    phi::errors::InvalidArgument(
-                        "Funciton name %s is not exist in engine_map_.", name));
+  PADDLE_ENFORCE_EQ(
+      engine_map_.count(name),
+      1,
+      phi::errors::InvalidArgument(
+          "Funciton named %s is not exist in engine_map_.", name));
   return engine_map_.at(name);
 }
 

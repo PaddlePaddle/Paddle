@@ -26,10 +26,11 @@
 namespace paddle {
 namespace jit {
 
-Layer::Layer(const Name2VariableMap& params_dict,
-             const Name2VariableMap& attrs_dict,
+Layer::Layer(const Name2VariableMap& params_map,
+             const Name2VariableMap& attrs_map,
+             const Name2FunctionInfoMap& info_map,
              const phi::Place& place)
-    : params_dict_(params_dict), attrs_dict_(attrs_dict) {
+    : params_map_(params_map), attrs_map_(attrs_map), info_map_(info_map) {
   unit_.reset(new CompilationUnit());
 }
 
@@ -57,15 +58,25 @@ void Layer::SetEngine(const std::string& name,
 
 const Name2EngineMap& Layer::EngineMap() const { return unit_->EngineMap(); }
 
+const std::shared_ptr<jit::FunctionInfo>& Layer::FunctionInfo(
+    const std::string& name) const {
+  PADDLE_ENFORCE_EQ(
+      info_map_.count(name),
+      1,
+      phi::errors::InvalidArgument(
+          "FuncitonInfo named %s is not exist in info_map_.", name));
+  return info_map_.at(name);
+}
+
 #define PD_SPECIALZE_ATTRIBUTE_TYPE(T)                                \
   template <>                                                         \
   T Layer::Attribute<T>(const std::string& name) const {              \
-    if (attrs_dict_.find(name) == attrs_dict_.end()) {                \
+    if (attrs_map_.find(name) == attrs_map_.end()) {                  \
       PADDLE_THROW(phi::errors::NotFound(                             \
           "Attribute can not found %s, please check if it exists.")); \
       return T();                                                     \
     }                                                                 \
-    auto var = attrs_dict_.at(name);                                  \
+    auto var = attrs_map_.at(name);                                   \
     T ret = var->Get<T>();                                            \
     return ret;                                                       \
   }
