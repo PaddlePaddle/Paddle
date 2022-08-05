@@ -52,7 +52,6 @@ class StackOpConverter : public OpConverter {
       }
     }
 
-
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     int output_rank = inputs[0]->getDimensions().nbDims + 1;
     if (axis < 0) {
