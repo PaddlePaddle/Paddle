@@ -659,7 +659,7 @@ float ComputeOutputScale(const ExecutionContext &ctx) {
   return alpha * scale_out / (scale_x * scale_y);
 }
 
-template <typename T>
+template <typename T, typename T_out>
 void ExecuteMatMulV2(const ExecutionContext &ctx,
                      const MKLDNNDeviceContext &dev_ctx,
                      const dnnl::engine onednn_engine,
@@ -675,16 +675,16 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
                      int execution_number = 0) {
   std::vector<int64_t> x_strides_override = GetInputStrides(ctx, "X");
   std::vector<int64_t> y_strides_override = GetInputStrides(ctx, "Y");
-  MatMulV2MKLDNNHandler<T> handler(ctx,
-                                   onednn_engine,
-                                   ctx.GetPlace(),
-                                   x_dims,
-                                   trans_x,
-                                   y_dims,
-                                   trans_y,
-                                   IsOutputFused(ctx),
-                                   x_strides_override,
-                                   y_strides_override);
+  MatMulV2MKLDNNHandler<T, T, T_out> handler(ctx,
+                                             onednn_engine,
+                                             ctx.GetPlace(),
+                                             x_dims,
+                                             trans_x,
+                                             y_dims,
+                                             trans_y,
+                                             IsOutputFused(ctx),
+                                             x_strides_override,
+                                             y_strides_override);
 
   const auto src_memory_p = handler.AcquireSrcMemory(x);
   const auto weights_memory_p = handler.AcquireWeightsMemory(y);
@@ -707,17 +707,41 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
   auto &astream = MKLDNNDeviceContext::tls().get_stream();
   matmul_p->execute(astream, matmul_args);
   astream.wait();
-
-  auto format = paddle::platform::MKLDNNFormatForSize(
-      out->dims().size(), dnnl::memory::format_tag::nchw);
-  out->set_layout(paddle::framework::DataLayout::kMKLDNN);
+  auto format =
+      MKLDNNFormatForSize(out->dims().size(), dnnl::memory::format_tag::nchw);
   out->set_format(format);
+  out->set_layout(DataLayout::kMKLDNN);
 }
 
 template <typename T>
 class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
  public:
-  void Compute(const ExecutionContext &ctx) const override { RunKernel(ctx); }
+  void Compute(const ExecutionContext &ctx) const override {
+    if (ctx.HasAttr("head_number")) {
+      PADDLE_ENFORCE_EQ(
+          ctx.Attr<int>("head_number"),
+          1,
+          paddle::platform::errors::Unimplemented(
+              "oneDNN matmul doesn't support multiple heads. Expected "
+              "head_number=1. But received `head_number` is %d",
+              ctx.Attr<int>("head_number")));
+    }
+    constexpr bool is_int8 = IsInt8<T>();
+    constexpr bool is_bfloat16 = IsBfloat16<T>();
+    const bool force_fp32_output = ctx.HasAttr("force_fp32_output")
+                                       ? ctx.Attr<bool>("force_fp32_output")
+                                       : false;
+    constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
+    if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
+      RunKernel<float>(ctx);
+    } else if (is_bfloat16) {
+      RunKernel<paddle::platform::bfloat16>(ctx);
+    } else if (fuse_relu) {
+      RunKernel<uint8_t>(ctx);
+    } else {
+      RunKernel<int8_t>(ctx);
+    }
+  }
 
  private:
   void CalculateMatrixDims(const ExecutionContext &ctx,
@@ -768,6 +792,7 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
     }
   }
 
+  template <typename T_out>
   void RunKernel(const ExecutionContext &ctx) const {
     const auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto &onednn_engine = dev_ctx.GetEngine();
@@ -793,18 +818,18 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
     CalculateMatrixDims(
         ctx, x_dims, y_dims, &x_bd_dims, &y_bd_dims, &out_dims, out);
 
-    ExecuteMatMulV2<T>(ctx,
-                       dev_ctx,
-                       onednn_engine,
-                       ctx.GetPlace(),
-                       x,
-                       x_bd_dims,
-                       trans_x,
-                       y,
-                       y_bd_dims,
-                       trans_y,
-                       out,
-                       out_dims);
+    ExecuteMatMulV2<T, T_out>(ctx,
+                              dev_ctx,
+                              onednn_engine,
+                              ctx.GetPlace(),
+                              x,
+                              x_bd_dims,
+                              trans_x,
+                              y,
+                              y_bd_dims,
+                              trans_y,
+                              out,
+                              out_dims);
   }
 };
 
@@ -939,113 +964,113 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
         ctx, &dx_tmp, &dy_tmp, x_dims, y_dims, &dx_bd_dims, &dy_bd_dims);
 
     if (trans_x && trans_y) {
-      ExecuteMatMulV2<T>(ctx,
-                         dev_ctx,
-                         onednn_engine,
-                         ctx.GetPlace(),
-                         y,
-                         y_dims,
-                         true,
-                         dout,
-                         dout_dims,
-                         true,
-                         &dx_tmp,
-                         dx_bd_dims,
-                         1);
-      ExecuteMatMulV2<T>(ctx,
-                         dev_ctx,
-                         onednn_engine,
-                         ctx.GetPlace(),
-                         dout,
-                         dout_dims,
-                         true,
-                         x,
-                         x_dims,
-                         true,
-                         &dy_tmp,
-                         dy_bd_dims,
-                         2);
+      ExecuteMatMulV2<T, T>(ctx,
+                            dev_ctx,
+                            onednn_engine,
+                            ctx.GetPlace(),
+                            y,
+                            y_dims,
+                            true,
+                            dout,
+                            dout_dims,
+                            true,
+                            &dx_tmp,
+                            dx_bd_dims,
+                            1);
+      ExecuteMatMulV2<T, T>(ctx,
+                            dev_ctx,
+                            onednn_engine,
+                            ctx.GetPlace(),
+                            dout,
+                            dout_dims,
+                            true,
+                            x,
+                            x_dims,
+                            true,
+                            &dy_tmp,
+                            dy_bd_dims,
+                            2);
     } else if (trans_x) {
-      ExecuteMatMulV2<T>(ctx,
-                         dev_ctx,
-                         onednn_engine,
-                         ctx.GetPlace(),
-                         y,
-                         y_dims,
-                         false,
-                         dout,
-                         dout_dims,
-                         true,
-                         &dx_tmp,
-                         dx_bd_dims,
-                         1);
-      ExecuteMatMulV2<T>(ctx,
-                         dev_ctx,
-                         onednn_engine,
-                         ctx.GetPlace(),
-                         x,
-                         x_dims,
-                         false,
-                         dout,
-                         dout_dims,
-                         false,
-                         &dy_tmp,
-                         dy_bd_dims,
-                         2);
+      ExecuteMatMulV2<T, T>(ctx,
+                            dev_ctx,
+                            onednn_engine,
+                            ctx.GetPlace(),
+                            y,
+                            y_dims,
+                            false,
+                            dout,
+                            dout_dims,
+                            true,
+                            &dx_tmp,
+                            dx_bd_dims,
+                            1);
+      ExecuteMatMulV2<T, T>(ctx,
+                            dev_ctx,
+                            onednn_engine,
+                            ctx.GetPlace(),
+                            x,
+                            x_dims,
+                            false,
+                            dout,
+                            dout_dims,
+                            false,
+                            &dy_tmp,
+                            dy_bd_dims,
+                            2);
     } else if (trans_y) {
-      ExecuteMatMulV2<T>(ctx,
-                         dev_ctx,
-                         onednn_engine,
-                         ctx.GetPlace(),
-                         dout,
-                         dout_dims,
-                         false,
-                         y,
-                         y_dims,
-                         false,
-                         &dx_tmp,
-                         dx_bd_dims,
-                         1);
-      ExecuteMatMulV2<T>(ctx,
-                         dev_ctx,
-                         onednn_engine,
-                         ctx.GetPlace(),
-                         dout,
-                         dout_dims,
-                         true,
-                         x,
-                         x_dims,
-                         false,
-                         &dy_tmp,
-                         dy_bd_dims,
-                         2);
+      ExecuteMatMulV2<T, T>(ctx,
+                            dev_ctx,
+                            onednn_engine,
+                            ctx.GetPlace(),
+                            dout,
+                            dout_dims,
+                            false,
+                            y,
+                            y_dims,
+                            false,
+                            &dx_tmp,
+                            dx_bd_dims,
+                            1);
+      ExecuteMatMulV2<T, T>(ctx,
+                            dev_ctx,
+                            onednn_engine,
+                            ctx.GetPlace(),
+                            dout,
+                            dout_dims,
+                            true,
+                            x,
+                            x_dims,
+                            false,
+                            &dy_tmp,
+                            dy_bd_dims,
+                            2);
     } else {
-      ExecuteMatMulV2<T>(ctx,
-                         dev_ctx,
-                         onednn_engine,
-                         ctx.GetPlace(),
-                         dout,
-                         dout_dims,
-                         false,
-                         y,
-                         y_dims,
-                         true,
-                         &dx_tmp,
-                         dx_bd_dims,
-                         1);
-      ExecuteMatMulV2<T>(ctx,
-                         dev_ctx,
-                         onednn_engine,
-                         ctx.GetPlace(),
-                         x,
-                         x_dims,
-                         true,
-                         dout,
-                         dout_dims,
-                         false,
-                         &dy_tmp,
-                         dy_bd_dims,
-                         2);
+      ExecuteMatMulV2<T, T>(ctx,
+                            dev_ctx,
+                            onednn_engine,
+                            ctx.GetPlace(),
+                            dout,
+                            dout_dims,
+                            false,
+                            y,
+                            y_dims,
+                            true,
+                            &dx_tmp,
+                            dx_bd_dims,
+                            1);
+      ExecuteMatMulV2<T, T>(ctx,
+                            dev_ctx,
+                            onednn_engine,
+                            ctx.GetPlace(),
+                            x,
+                            x_dims,
+                            true,
+                            dout,
+                            dout_dims,
+                            false,
+                            &dy_tmp,
+                            dy_bd_dims,
+                            2);
     }
 
     if (x_dims != dx_bd_dims) {
@@ -1234,34 +1259,13 @@ template class MatMulGradMKLDNNKernel<paddle::platform::bfloat16>;
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(matmul,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    S8,
-                                    0,
-                                    MatMulMKLDNNKernel<int8_t>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(matmul,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    U8,
-                                    0,
-                                    MatMulMKLDNNKernel<uint8_t>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(matmul,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    FP32,
-                                    0,
-                                    MatMulV2MKLDNNKernel<float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    matmul,
-    MKLDNN,
-    ::paddle::platform::CPUPlace,
-    BF16,
-    0,
-    MatMulV2MKLDNNKernel<paddle::platform::bfloat16>);
+REGISTER_OP_KERNEL(matmul,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   MatMulV2MKLDNNKernel<float>,
+                   MatMulV2MKLDNNKernel<paddle::platform::bfloat16>,
+                   MatMulV2MKLDNNKernel<int8_t>,
+                   MatMulV2MKLDNNKernel<uint8_t>);
 
 REGISTER_OP_KERNEL(matmul_grad,
                    MKLDNN,
@@ -1273,7 +1277,9 @@ REGISTER_OP_KERNEL(matmul_v2,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
                    MatMulV2MKLDNNKernel<float>,
-                   MatMulV2MKLDNNKernel<paddle::platform::bfloat16>);
+                   MatMulV2MKLDNNKernel<paddle::platform::bfloat16>,
+                   MatMulV2MKLDNNKernel<int8_t>,
+                   MatMulV2MKLDNNKernel<uint8_t>);
 
 REGISTER_OP_KERNEL(matmul_v2_grad,
                    MKLDNN,
