@@ -446,7 +446,6 @@ class MatMulMKLDNNHandler
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
     }
-
     paddle::platform::AppendActivation(ctx, post_operations);
 
     matmul_attrs.set_post_ops(post_operations);
@@ -697,6 +696,13 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
       {DNNL_ARG_SRC, *src_memory_p},
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
+
+  if (ctx.HasInput("ResidualData")) {
+    auto *residual_data = ctx.Input<Tensor>("ResidualData");
+    const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
+    matmul_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
+                        *residual_data_memory_p});
+  }
 
   auto &astream = MKLDNNDeviceContext::tls().get_stream();
   matmul_p->execute(astream, matmul_args);

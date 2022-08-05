@@ -208,7 +208,7 @@ def slice(input, axes, starts, ends):
                 if isinstance(item, tmp_tensor_type) else item for item in ends
             ]
         elif isinstance(ends, tmp_tensor_type):
-            etensor_t = ends.numpy()
+            tensor_t = ends.numpy()
             ends = [ele for ele in tensor_t]
             infer_flags = list(-1 for i in range(len(axes)))
 
@@ -619,7 +619,6 @@ def crop(x, shape=None, offsets=None, name=None):
     Examples:
 
         .. code-block:: python
-          :name: code-example1
 
             import paddle
             x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
@@ -888,10 +887,17 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
         y = y.reshape([1, -1])
 
     if inplace:
-        return _C_ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
-                                            'offset', offset)
-    return _C_ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
-                                       'offset', offset)
+        if in_dygraph_mode():
+            return _C_ops.final_state_fill_diagonal_tensor_(
+                x, y, offset, dim1, dim2)
+        else:
+            return _C_ops.fill_diagonal_tensor_(x, y, 'offset', offset, 'dim1',
+                                                dim1, 'dim2', dim2)
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_diagonal_tensor(x, y, offset, dim1, dim2)
+    else:
+        return _C_ops.fill_diagonal_tensor(x, y, 'offset', offset, 'dim1', dim1,
+                                           'dim2', dim2)
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
@@ -1968,7 +1974,7 @@ def squeeze(x, axis=None, name=None):
 
     Examples:
         .. code-block:: python
-	  :name: code-example1
+
             import paddle
             
             x = paddle.rand([5, 1, 10])
@@ -2180,7 +2186,7 @@ def unique(x,
 
     Examples:
         .. code-block:: python
-	  :name: code-example1
+
             import paddle
 
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
@@ -3212,7 +3218,6 @@ def reshape(x, shape, name=None):
 
     Examples:
         .. code-block:: python
-           :name: code-example1
 
             import paddle
 
@@ -4178,7 +4183,6 @@ def take_along_axis(arr, indices, axis):
     
     Examples:
         .. code-block:: python
-           :name: code-example1
 
             import paddle
 
@@ -4244,7 +4248,6 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
     
     Examples:
         .. code-block:: python
-            :name: code-example1
 
             import paddle
 
