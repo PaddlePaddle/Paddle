@@ -34,17 +34,12 @@ void IndexAddInner(const Context& ctx,
   auto index_size = index.dims()[0];
   auto add_value_dim = add_value->dims();
 
-  // DenseTensor index_cpu_copy;
-  // if (!paddle::platform::is_cpu_place(index.place())) {
-  //   phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
-  // }
-  // const IndexT* index_data = paddle::platform::is_cpu_place(index.place())
-  //                                ? index.data<IndexT>()
-  //                                : index_cpu_copy.data<IndexT>();
   const IndexT* index_data = index.data<IndexT>();
 
   ctx.template Alloc<T>(output);
+
   // copy x to output.
+  // todo(@limin29): inplace do not need copy.
   phi::Copy(ctx, *input, ctx.GetPlace(), false, output);
 
   auto slice_size = 1;
@@ -106,7 +101,6 @@ void IndexAddBaseKernel(const Context& dev_ctx,
                         int axis,
                         const DenseTensor& add_value,
                         DenseTensor* output) {
-  std::cout << "limin: " << std::endl;
   const auto& index_type = index.dtype();
   if (axis < 0) {
     axis += x.dims().size();

@@ -40,24 +40,27 @@ class TestIndexAddOp(OpTest):
         outer_loop = np.prod(self.x_shape[:self.axis])
         x_reshape = [outer_loop] + list(self.x_shape[self.axis:])
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
-        out_list = []
+
+        add_value_reshape = [np.prod(self.add_value_shape[:self.axis])] + list(
+            self.add_value_shape[self.axis:])
+        add_value_np_reshape = np.reshape(add_value_np,
+                                          tuple(add_value_reshape))
+
+        out_np = x_np
         for i in range(outer_loop):
             for j in range(self.index_size):
-                out_list.append(x_np_reshape[i, index_np[j]])
-        self.out_shape = list(self.x_shape)
-        self.out_shape[self.axis] = self.index_size
-        self.out_shape = tuple(self.out_shape)
+                out_np[i, index_np[j]] += add_value_np_reshape[i, j]
 
-        out = np.reshape(out_list, self.out_shape)
+        out = np.reshape(out_np, self.x_shape)
         self.outputs = {'Out': out}
 
     def init_dtype_type(self):
         self.axis = 1
         self.x_type = np.float64
         self.index_type = np.int64
-        self.x_shape = (100, 4, 5)
-        self.index_size = 100
-        self.add_value_shape = (100, 100, 5)
+        self.x_shape = (100, 100, 5)
+        self.index_size = 20
+        self.add_value_shape = (100, 20, 5)
 
     def test_check_output(self):
         self.check_output(check_eager=True)

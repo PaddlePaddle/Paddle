@@ -1040,6 +1040,7 @@
   kernel :
     func : index_add
     data_type : x
+  inplace : (x -> out)
   backward : index_add_grad
 
 - api : index_sample

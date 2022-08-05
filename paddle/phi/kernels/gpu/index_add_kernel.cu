@@ -52,6 +52,8 @@ void IndexAddKernel(const Context& ctx,
                     const DenseTensor& add_value,
                     int axis,
                     DenseTensor* output) {
+  VLOG(10) << " limin: begin IndexAddKernel ";
+
   int dim = axis;
   auto input_dim = x.dims();
   auto output_dim = output->dims();
@@ -73,10 +75,12 @@ void IndexAddKernel(const Context& ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
 
-  // limin-todo: check add_value's shape?
-
+  VLOG(10) << " limin: begin x.data() ";
   auto* in_data = x.data<T>();
+  VLOG(10) << " limin: after x.data() ";
+  VLOG(10) << " limin: begin malloc ";
   T* out_data = ctx.template Alloc<T>(output);
+  VLOG(10) << " limin: after malloc ";
   auto* add_value_data = add_value.data<T>();
 
   int64_t numel = add_value.numel();
@@ -90,6 +94,7 @@ void IndexAddKernel(const Context& ctx,
   paddle::platform::LimitGridDim(ctx, &grid_dim);
 
   // copy input to output.
+  // todo(@limin29): inplace do not need copy.
   phi::Copy(ctx, x, ctx.GetPlace(), false, output);
 
   if (index_type == phi::DataType::INT64) {

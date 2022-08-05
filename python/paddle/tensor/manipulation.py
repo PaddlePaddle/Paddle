@@ -4329,7 +4329,7 @@ def _index_add_params_check(x, index, add_value, axis):
     # as long as it can be broadcast to the shape of sliced x
 
 
-def index_add(x, index, add_value, axis):
+def index_add(x, index, add_value, axis=0, name=None):
     """
     Adds the elements of the input tensor with add_value by selecting the indices in the order given in index.
     Args:
@@ -4393,6 +4393,17 @@ def index_add(x, index, add_value, axis):
                      outputs={'Out': out},
                      attrs={'axis': axis})
     return out
+
+
+@inplace_apis_in_dygraph_only
+def index_add_(x, index, add_value, axis=0, name=None):
+    """
+    Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_index_add`.
+    """
+
+    _index_add_params_check(x, index, add_value, axis)
+    return _C_ops.index_add_(x, index, add_value, "axis", axis)
 
 
 # TODO(dev): We need avoid implementing it by this way.
