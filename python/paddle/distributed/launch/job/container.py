@@ -118,6 +118,7 @@ class Container(object):
         if not self._log_handler:
             self._log_handler = open(self._out)
             self._log_handler.seek(0, 2)
+            self._log_start_offset = self._log_handler.tell()
 
         self._proc = ProcessContext(self._entrypoint,
                                     env=self._env,
@@ -176,6 +177,8 @@ class Container(object):
 
         try:
             if offset != 0 or whence != 1:
+                if whence == 0 and offset < self._log_start_offset:
+                    offset = self._log_start_offset
                 self._log_handler.seek(offset, whence)
 
             for _ in range(limit):
