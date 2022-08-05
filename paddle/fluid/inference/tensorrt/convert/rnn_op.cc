@@ -24,7 +24,11 @@ class RnnNativeOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
+<<<<<<< HEAD
     VLOG(4) << "convert a fluid rnn op to tensorrt rnn native layer";
+=======
+    VLOG(4) << "convert a fluid rnn op to tensorrt rnn layer";
+>>>>>>> develop
 
     framework::OpDesc op_desc(op, nullptr);
     // [seq_len, batch ,in_size],

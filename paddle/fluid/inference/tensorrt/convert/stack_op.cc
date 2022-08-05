@@ -54,19 +54,20 @@ class StackOpConverter : public OpConverter {
 
 
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
+    int output_rank = inputs[0]->getDimensions().nbDims + 1;
     if (axis < 0) {
-      axis = axis + inputs[0]->getDimensions().nbDims + 1;
+      axis = axis + output_rank;
     }
+    // Now, axis is relative to output_rank.
 
     auto* shape_tensor = Shape(inputs[0]);
     std::vector<nvinfer1::ITensor*> shape_tensor_vec;
-    for (int i = 0; i < inputs[0]->getDimensions().nbDims + 1; i++) {
-      if(i < axis) {
+    for (int i = 0; i < output_rank; i++) {
+      if (i < axis) {
         shape_tensor_vec.push_back(GetEleTensorOfShape(shape_tensor, i));
-      } else if(i > axis) {
+      } else if (i > axis) {
         shape_tensor_vec.push_back(GetEleTensorOfShape(shape_tensor, i - 1));
-      }
-      else {
+      } else {
         shape_tensor_vec.push_back(Add1DConstantLayer(1));
       }
     }

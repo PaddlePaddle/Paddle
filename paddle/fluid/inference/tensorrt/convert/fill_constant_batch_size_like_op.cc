@@ -21,7 +21,8 @@ namespace tensorrt {
 class FillConstantBatchSizeLikeOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert a fluid fill_constant_batch_size_like op to tensorrt "
                "fill_constant_batch_size_like layer";
@@ -30,7 +31,12 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
     // be float
-    PADDLE_ENFORCE_EQ(dtype, 5);
+    PADDLE_ENFORCE_EQ(dtype,
+                      5,
+                      platform::errors::InvalidArgument(
+                          "fill_constant_batch_size_like's input data type "
+                          "must be float in Paddle-TRT."));
+
     int input_dim_idx = PADDLE_GET_CONST(int, op_desc.GetAttr("input_dim_idx"));
     size_t output_dim_idx =
         PADDLE_GET_CONST(int, op_desc.GetAttr("output_dim_idx"));
@@ -41,9 +47,8 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
     float value = std::stof(str_value);
 
     auto* input_shape_tensor = Shape(input);
-    std::vector<int32_t> gather_batch_indices{input_dim_idx};
+    auto* batch_tensor = GetEleTensorOfShape(input_shape_tensor, input_dim_idx);
     std::string name = "_add_fill_constant_batch_size_like_op_";
-    auto* batch_tensor = Gather(input_shape_tensor, gather_batch_indices);
     auto shape_attr_tensor = Add1DConstantLayer(shape, name + "shape_attr");
     std::vector<int32_t> gather_out_shape_indices;
     for (size_t i = 0; i < shape.size(); i++) {
@@ -57,18 +62,18 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
                                                   batch_tensor};
     auto out_shape_tensor =
         Gather(Concat(concat_inputs), gather_out_shape_indices);
-    auto layer = TRT_ENGINE_ADD_LAYER(engine_, Fill, nvinfer1::Dims{},
-                                      nvinfer1::FillOperation::kLINSPACE);
+    auto layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Fill, nvinfer1::Dims{}, nvinfer1::FillOperation::kLINSPACE);
     std::vector<float> value_vec(1, value);
     std::vector<float> beta_vec(3, 0.);
     layer->setAlpha(value);
-    layer->setBeta(0.);
+    layer->setBeta(0.f);
     layer->setInput(0, *out_shape_tensor);
     layer->setInput(1, *Add1DConstantLayer(value_vec, name + "alpha", true));
     layer->setInput(2, *Add1DConstantLayer(beta_vec, name + "beta", false));
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "fill_constant_batch_size_like",
-                             {output_name}, test_mode);
+    RreplenishLayerAndOutput(
+        layer, "fill_constant_batch_size_like", {output_name}, test_mode);
 #endif
   }
 };

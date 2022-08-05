@@ -77,7 +77,7 @@ struct ScaleLossGradFunctor {
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       OutT cast_coeff = static_cast<OutT>(coeff_);
-      auto stream = static_cast<platform::CUDADeviceContext *>(ctx_)->stream();
+      auto stream = static_cast<phi::GPUContext *>(ctx_)->stream();
       memory::Copy(place_,
                    out_data,
                    platform::CPUPlace(),
