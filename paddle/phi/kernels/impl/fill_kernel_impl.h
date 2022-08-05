@@ -16,8 +16,6 @@
 
 #include "paddle/phi/kernels/fill_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -31,11 +29,10 @@ void FillKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   T fill_var = value.to<T>();
 
-  PADDLE_ENFORCE_EQ(
-      std::isnan(static_cast<double>(fill_var)),
-      false,
-      paddle::platform::errors::InvalidArgument("fill value should not be NaN,"
-                                                " but received NaN"));
+  PADDLE_ENFORCE_EQ(std::isnan(static_cast<double>(fill_var)),
+                    false,
+                    phi::errors::InvalidArgument("fill value should not be NaN,"
+                                                 " but received NaN"));
 
   dev_ctx.template Alloc<T>(out);
 

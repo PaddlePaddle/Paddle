@@ -103,6 +103,15 @@ class TestFillAnyInplace(unittest.TestCase):
             tensor.fill_(1)
             self.assertEqual((tensor.numpy() == target).all().item(), True)
 
+    def test_backward(self):
+        with paddle.fluid.dygraph.guard():
+            x = paddle.full([10, 10], -1., dtype='float32')
+            x.stop_gradient = False
+            y = 2 * x
+            y.fill_(1)
+            y.backward()
+            self.assertTrue(np.array_equal(x.grad.numpy(), np.zeros([10, 10])))
+
 
 if __name__ == "__main__":
     unittest.main()

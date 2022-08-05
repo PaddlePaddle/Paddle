@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -35,30 +38,11 @@ class FillAnyOpMaker : public framework::OpProtoAndCheckerMaker {
 class FillAnyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "FillAny");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "FillAny");
-    auto x_dims = context->GetInputDim("X");
-    context->SetOutputDim("Out", x_dims);
-  }
 };
 
 class FillAnyGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   "Out@GRAD",
-                   "mul");
-    auto x_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto x_grad_name = framework::GradVarName("X");
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
-    }
-  }
 };
 
 template <typename T>
@@ -83,13 +67,22 @@ DECLARE_INPLACE_OP_INFERER(FillAnyGradInplaceInferer,
 }  // namespace paddle
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(fill_any,
+                            FillInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(fill_any_grad,
+                            FillAnyInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 REGISTER_OPERATOR(fill_any,
                   ops::FillAnyOp,
                   ops::FillAnyOpMaker,
                   ops::FillAnyGradOpMaker<paddle::framework::OpDesc>,
                   ops::FillAnyGradOpMaker<paddle::imperative::OpBase>,
-                  ops::FillAnyOpInplaceInferer);
+                  ops::FillAnyOpInplaceInferer,
+                  FillInferShapeFunctor);
 
 REGISTER_OPERATOR(fill_any_grad,
                   ops::FillAnyGradOp,
-                  ops::FillAnyGradInplaceInferer);
+                  ops::FillAnyGradInplaceInferer,
+                  FillAnyInferShapeFunctor);
