@@ -874,7 +874,7 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
   int device_id = 0;
   auto len = PyTuple_GET_SIZE(args);
   PyObject* Py_device_id = PyTuple_GET_ITEM(args, 1);
-  if (len > 1) {
+  if (len == 2) {
     device_id = CastPyArg2AttrLong(Py_device_id, 1);
   }
 
