@@ -183,11 +183,7 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
     int64_t *pre_ids_data = nullptr;
 
     int r = 0;
-    if (nullptr == pre_ids_data_xpu) {
-      PADDLE_ENFORCE_NE(pre_ids_data_xpu,
-                        nullptr,
-                        platform::errors::External("Pre ids data is null"));
-    } else {
+    if (pre_ids_data_xpu != nullptr) {
       r = CopyData<int64_t>(pre_ids_data_xpu, &pre_ids_data, pre_ids->numel());
       PADDLE_ENFORCE_EQ(
           r,
@@ -287,11 +283,7 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
     auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
     int64_t *pre_ids_data = nullptr;
 
-    if (nullptr == pre_ids_data_xpu) {
-      PADDLE_ENFORCE_NE(pre_ids_data_xpu,
-                        nullptr,
-                        platform::errors::External("Pre ids data is null"));
-    } else {
+    if (pre_ids_data_xpu != nullptr) {
       r = CopyData<int64_t>(pre_ids_data_xpu, &pre_ids_data, pre_ids->numel());
       PADDLE_ENFORCE_EQ(
           r,
@@ -301,11 +293,7 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
 
     auto *pre_scores_data_xpu = pre_scores->data<float>();
     float *pre_scores_data = nullptr;
-    if (nullptr == pre_scores_data_xpu) {
-      PADDLE_ENFORCE_NE(pre_ids_data_xpu,
-                        nullptr,
-                        platform::errors::External("Pre scores data is null"));
-    } else {
+    if (pre_scores_data_xpu != nullptr) {
       r = CopyData<float>(
           pre_scores_data_xpu, &pre_scores_data, pre_scores->numel());
       PADDLE_ENFORCE_EQ(
@@ -317,11 +305,7 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
     auto *ids_data_xpu = ids ? ids->data<int64_t>() : nullptr;
     int64_t *ids_data = nullptr;
 
-    if (nullptr == ids_data_xpu) {
-      PADDLE_ENFORCE_NE(pre_ids_data_xpu,
-                        nullptr,
-                        platform::errors::External("Ids data is null"));
-    } else {
+    if (ids_data_xpu != nullptr) {
       r = CopyData<int64_t>(ids_data_xpu, &ids_data, ids->numel());
       PADDLE_ENFORCE_EQ(
           r,
@@ -332,11 +316,7 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
     auto *scores_data_xpu = scores->data<float>();
     float *scores_data = nullptr;
 
-    if (nullptr == scores_data_xpu) {
-      PADDLE_ENFORCE_NE(pre_ids_data_xpu,
-                        nullptr,
-                        platform::errors::External("Scores data is null"));
-    } else {
+    if (scores_data_xpu != nullptr) {
       r = CopyData<float>(scores_data_xpu, &scores_data, scores->numel());
       PADDLE_ENFORCE_EQ(
           r,
