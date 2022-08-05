@@ -23,14 +23,24 @@ namespace ir {
 
 void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(Graph *graph) const {
   auto matmul_types = {"matmul", "matmul_v2"};
-  bool with_reshape_xshape = true;
-  bool with_transpose_xshape = true;
 
   for (const auto &matmul_type : matmul_types) {
-    Fuse(graph, matmul_type, with_reshape_xshape, with_transpose_xshape);
-    Fuse(graph, matmul_type, with_reshape_xshape, !with_transpose_xshape);
-    Fuse(graph, matmul_type, !with_reshape_xshape, with_transpose_xshape);
-    Fuse(graph, matmul_type, !with_reshape_xshape, !with_transpose_xshape);
+    Fuse(graph,
+         matmul_type,
+         false /*with_reshape_xshape*/,
+         false /*with_transpose_xshape*/);
+    Fuse(graph,
+         matmul_type,
+         false /*with_reshape_xshape*/,
+         true /*with_transpose_xshape*/);
+    Fuse(graph,
+         matmul_type,
+         true /*with_reshape_xshape*/,
+         false /*with_transpose_xshape*/);
+    Fuse(graph,
+         matmul_type,
+         true /*with_reshape_xshape*/,
+         true /*with_transpose_xshape*/);
   }
 }
 
