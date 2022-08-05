@@ -612,8 +612,8 @@ void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
   dims.reserve(array.ndim());
   int64_t numel = 1;
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.emplace_back(static_cast<int>(array.shape()[i]));
-    numel *= static_cast<int>(array.shape()[i]);
+    dims.emplace_back(static_cast<int64_t>(array.shape()[i]));
+    numel *= static_cast<int64_t>(array.shape()[i]);
   }
   self_tensor->Resize(phi::make_ddim(dims));
 
