@@ -19,7 +19,7 @@ limitations under the License. */
 TEST(DataTypeTransform, GPUTransform) {
   auto cpu_place = paddle::platform::CPUPlace();
   auto gpu_place = paddle::platform::CUDAPlace(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());

@@ -19,7 +19,6 @@ limitations under the License. */
 #include <curand_kernel.h>
 #endif
 #include <vector>
-
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 
@@ -28,50 +27,35 @@ namespace framework {
 
 #if defined(PADDLE_WITH_CUDA)
 
-class Optimizer {
+template <typename GPUAccessor>
+class SparseAdagradOptimizer {
  public:
-  __host__ Optimizer(CommonFeatureValueAccessor feature_value_accessor) {
-    feature_value_accessor_ = feature_value_accessor;
-  }
-  __host__ ~Optimizer() {}
-
-  __device__ void update_value(const OptimizerConfig& optimizer_config,
-                               float& val,  // NOLINT
-                               const float& grad) {
-    printf(
-        "Warning: update_value will not used. Please use dy_mf_update_value\n");
-  }
-
-  __device__ void dy_mf_update_value(const OptimizerConfig& optimizer_config,
-                                     float* ptr,
-                                     const float* grad) {}
-
-  CommonFeatureValueAccessor feature_value_accessor_;
-
-  size_t _embedding_dim;
-  size_t _lr_embedding_dim;
-};
-
-class SparseAdagradOptimizer : public Optimizer {
- public:
-  __host__ SparseAdagradOptimizer(
-      CommonFeatureValueAccessor feature_value_accessor)
-      : Optimizer(feature_value_accessor) {
+  SparseAdagradOptimizer() {}
+  SparseAdagradOptimizer(GPUAccessor gpu_accessor) {
+    gpu_accessor_ = gpu_accessor;
     _lr_embedding_dim = 1;
-    _embedding_dim = feature_value_accessor_.common_feature_value.EmbedWDim();
+    _embedding_dim = gpu_accessor_.common_feature_value.EmbedWDim();
   }
+
+  ~SparseAdagradOptimizer() {}
 
   __device__ void update_value_work(const OptimizerConfig& optimizer_config,
                                     int n,
                                     float* w,
                                     float* sgd,  // NOLINT
                                     const float* g,
-                                    float scale) {
+                                    float scale,
+                                    float slot) {
     float& g2sum = sgd[G2SumIndex()];
     double add_g2sum = 0;
-    double ratio = optimizer_config.mf_learning_rate *
-                   sqrt(optimizer_config.mf_initial_g2sum /
-                        (optimizer_config.mf_initial_g2sum + g2sum));
+
+    float learning_rate = optimizer_config.mf_learning_rate;
+    if (slot != optimizer_config.nodeid_slot) {
+      learning_rate = optimizer_config.feature_learning_rate;
+    }
+    double ratio =
+        learning_rate * sqrt(optimizer_config.mf_initial_g2sum /
+                             (optimizer_config.mf_initial_g2sum + g2sum));
     for (int i = 0; i < n; ++i) {
       double scaled_grad = g[i] / scale;
 
@@ -96,47 +80,43 @@ class SparseAdagradOptimizer : public Optimizer {
   __device__ void dy_mf_update_value(const OptimizerConfig& optimizer_config,
                                      float* ptr,
                                      const float* grad) {
-    float g_show = grad[feature_value_accessor_.common_push_value.ShowIndex()];
-    float g_click =
-        grad[feature_value_accessor_.common_push_value.ClickIndex()];
+    float g_show = grad[gpu_accessor_.common_push_value.ShowIndex()];
+    float g_click = grad[gpu_accessor_.common_push_value.ClickIndex()];
 
-    ptr[feature_value_accessor_.common_feature_value.SlotIndex()] =
-        grad[feature_value_accessor_.common_push_value.SlotIndex()];
-    ptr[feature_value_accessor_.common_feature_value.ShowIndex()] += g_show;
-    ptr[feature_value_accessor_.common_feature_value.ClickIndex()] += g_click;
-    ptr[feature_value_accessor_.common_feature_value.DeltaScoreIndex()] +=
+    ptr[gpu_accessor_.common_feature_value.SlotIndex()] =
+        grad[gpu_accessor_.common_push_value.SlotIndex()];
+    ptr[gpu_accessor_.common_feature_value.ShowIndex()] += g_show;
+    ptr[gpu_accessor_.common_feature_value.ClickIndex()] += g_click;
+    ptr[gpu_accessor_.common_feature_value.DeltaScoreIndex()] +=
         optimizer_config.nonclk_coeff * (g_show - g_click) +
         optimizer_config.clk_coeff * g_click;
+    float slot = ptr[gpu_accessor_.common_feature_value.SlotIndex()];
 
     update_value_work(
         optimizer_config,
         1,
-        ptr + feature_value_accessor_.common_feature_value.EmbedWIndex(),
-        ptr + feature_value_accessor_.common_feature_value.EmbedG2SumIndex(),
-        grad + feature_value_accessor_.common_push_value.EmbedGIndex(),
-        g_show);
+        ptr + gpu_accessor_.common_feature_value.EmbedWIndex(),
+        ptr + gpu_accessor_.common_feature_value.EmbedG2SumIndex(),
+        grad + gpu_accessor_.common_push_value.EmbedGIndex(),
+        g_show,
+        slot);
 
-    int mf_dim =
-        int(ptr[feature_value_accessor_.common_feature_value.MfDimIndex()]);
-    if (ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] == 0) {
+    int mf_dim = int(ptr[gpu_accessor_.common_feature_value.MfDimIndex()]);
+    if (ptr[gpu_accessor_.common_feature_value.MfSizeIndex()] == 0) {
       if (optimizer_config.mf_create_thresholds <=
           optimizer_config.nonclk_coeff *
-                  (ptr[feature_value_accessor_.common_feature_value
-                           .ShowIndex()] -
-                   ptr[feature_value_accessor_.common_feature_value
-                           .ClickIndex()]) +
+                  (ptr[gpu_accessor_.common_feature_value.ShowIndex()] -
+                   ptr[gpu_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff *
-                  ptr[feature_value_accessor_.common_feature_value
-                          .ClickIndex()]) {
-        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] =
-            feature_value_accessor_.common_feature_value.MFSize(mf_dim) /
-            sizeof(float);
+                  ptr[gpu_accessor_.common_feature_value.ClickIndex()]) {
+        ptr[gpu_accessor_.common_feature_value.MfSizeIndex()] =
+            gpu_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
         curand_init(clock64(), tid_x, 0, &state);
         for (int i = 0; i < mf_dim; ++i) {
-          ptr[feature_value_accessor_.common_feature_value.EmbedxWIndex() + i] =
+          ptr[gpu_accessor_.common_feature_value.EmbedxWIndex() + i] =
               (curand_uniform(&state)) * optimizer_config.mf_initial_range;
         }
       }
@@ -144,10 +124,11 @@ class SparseAdagradOptimizer : public Optimizer {
       update_value_work(
           optimizer_config,
           mf_dim,
-          ptr + feature_value_accessor_.common_feature_value.EmbedxWIndex(),
-          ptr + feature_value_accessor_.common_feature_value.EmbedxG2SumIndex(),
-          grad + feature_value_accessor_.common_push_value.EmbedxGIndex(),
-          g_show);
+          ptr + gpu_accessor_.common_feature_value.EmbedxWIndex(),
+          ptr + gpu_accessor_.common_feature_value.EmbedxG2SumIndex(),
+          grad + gpu_accessor_.common_push_value.EmbedxGIndex(),
+          g_show,
+          slot);
     }
   }
 
@@ -156,16 +137,24 @@ class SparseAdagradOptimizer : public Optimizer {
   __host__ __device__ size_t EmbedxDim() { return _embedding_dim; }
   __host__ __device__ size_t G2SumIndex() { return 0; }
   __host__ __device__ size_t EmbedxG2SumIndex() { return 0; }
+
+ private:
+  GPUAccessor gpu_accessor_;
+  size_t _embedding_dim;
+  size_t _lr_embedding_dim;
 };
 
-class SparseAdamOptimizer : public Optimizer {
+template <typename GPUAccessor>
+class SparseAdamOptimizer {
  public:
-  __host__ SparseAdamOptimizer(
-      CommonFeatureValueAccessor feature_value_accessor)
-      : Optimizer(feature_value_accessor) {
+  SparseAdamOptimizer() {}
+  SparseAdamOptimizer(GPUAccessor gpu_accessor) {
+    gpu_accessor_ = gpu_accessor;
     _lr_embedding_dim = 1;
-    _embedding_dim = feature_value_accessor_.common_feature_value.EmbedWDim();
+    _embedding_dim = gpu_accessor_.common_feature_value.EmbedWDim();
   }
+
+  ~SparseAdamOptimizer() {}
 
   __device__ void update_lr(const OptimizerConfig& optimizer_config,
                             int n,
@@ -256,65 +245,57 @@ class SparseAdamOptimizer : public Optimizer {
   __device__ void dy_mf_update_value(const OptimizerConfig& optimizer_config,
                                      float* ptr,
                                      const float* grad) {
-    float g_show = grad[feature_value_accessor_.common_push_value.ShowIndex()];
-    float g_click =
-        grad[feature_value_accessor_.common_push_value.ClickIndex()];
+    float g_show = grad[gpu_accessor_.common_push_value.ShowIndex()];
+    float g_click = grad[gpu_accessor_.common_push_value.ClickIndex()];
 
-    ptr[feature_value_accessor_.common_feature_value.SlotIndex()] =
-        grad[feature_value_accessor_.common_push_value.SlotIndex()];
-    ptr[feature_value_accessor_.common_feature_value.ShowIndex()] += g_show;
-    ptr[feature_value_accessor_.common_feature_value.ClickIndex()] += g_click;
-    ptr[feature_value_accessor_.common_feature_value.DeltaScoreIndex()] +=
+    ptr[gpu_accessor_.common_feature_value.SlotIndex()] =
+        grad[gpu_accessor_.common_push_value.SlotIndex()];
+    ptr[gpu_accessor_.common_feature_value.ShowIndex()] += g_show;
+    ptr[gpu_accessor_.common_feature_value.ClickIndex()] += g_click;
+    ptr[gpu_accessor_.common_feature_value.DeltaScoreIndex()] +=
         optimizer_config.nonclk_coeff * (g_show - g_click) +
         optimizer_config.clk_coeff * g_click;
 
-    update_lr(
-        optimizer_config,
-        1,
-        ptr + feature_value_accessor_.common_feature_value.EmbedWIndex(),
-        ptr + feature_value_accessor_.common_feature_value.EmbedG2SumIndex(),
-        grad + feature_value_accessor_.common_push_value.EmbedGIndex(),
-        g_show);
-    int mf_dim =
-        int(ptr[feature_value_accessor_.common_feature_value.MfDimIndex()]);
-    if (ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] == 0) {
+    update_lr(optimizer_config,
+              1,
+              ptr + gpu_accessor_.common_feature_value.EmbedWIndex(),
+              ptr + gpu_accessor_.common_feature_value.EmbedG2SumIndex(),
+              grad + gpu_accessor_.common_push_value.EmbedGIndex(),
+              g_show);
+    int mf_dim = int(ptr[gpu_accessor_.common_feature_value.MfDimIndex()]);
+    if (ptr[gpu_accessor_.common_feature_value.MfSizeIndex()] == 0) {
       if (optimizer_config.mf_create_thresholds <=
           optimizer_config.nonclk_coeff *
-                  (ptr[feature_value_accessor_.common_feature_value
-                           .ShowIndex()] -
-                   ptr[feature_value_accessor_.common_feature_value
-                           .ClickIndex()]) +
+                  (ptr[gpu_accessor_.common_feature_value.ShowIndex()] -
+                   ptr[gpu_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff *
-                  ptr[feature_value_accessor_.common_feature_value
-                          .ClickIndex()]) {
-        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] =
-            feature_value_accessor_.common_feature_value.MFSize(mf_dim) /
-            sizeof(float);
+                  ptr[gpu_accessor_.common_feature_value.ClickIndex()]) {
+        ptr[gpu_accessor_.common_feature_value.MfSizeIndex()] =
+            gpu_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
         curand_init(clock64(), tid_x, 0, &state);
         for (int i = 0; i < mf_dim; ++i) {
-          ptr[feature_value_accessor_.common_feature_value.EmbedxWIndex() + i] =
+          ptr[gpu_accessor_.common_feature_value.EmbedxWIndex() + i] =
               (curand_uniform(&state)) * optimizer_config.mf_initial_range;
         }
-        ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() +
+        ptr[gpu_accessor_.common_feature_value.EmbedxG2SumIndex() +
             EmbedxBeta1PowIndex()] = optimizer_config.beta1_decay_rate;
-        ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() +
+        ptr[gpu_accessor_.common_feature_value.EmbedxG2SumIndex() +
             EmbedxBeta2PowIndex()] = optimizer_config.beta2_decay_rate;
       }
     } else {
-      update_mf(
-          optimizer_config,
-          mf_dim,
-          ptr + feature_value_accessor_.common_feature_value.EmbedxWIndex(),
-          ptr + feature_value_accessor_.common_feature_value.EmbedxG2SumIndex(),
-          grad + feature_value_accessor_.common_push_value.EmbedxGIndex(),
-          g_show);
+      update_mf(optimizer_config,
+                mf_dim,
+                ptr + gpu_accessor_.common_feature_value.EmbedxWIndex(),
+                ptr + gpu_accessor_.common_feature_value.EmbedxG2SumIndex(),
+                grad + gpu_accessor_.common_push_value.EmbedxGIndex(),
+                g_show);
     }
     // printf("EmbedxGIndex: %f, mf_gsum: %f, ",
-    // feature_value_accessor_.common_push_value.EmbedxGIndex(),
-    //          ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex()]);
+    // gpu_accessor_.common_push_value.EmbedxGIndex(),
+    //          ptr[gpu_accessor_.common_feature_value.EmbedxG2SumIndex()]);
   }
 
   __host__ __device__ size_t Dim() { return EmbedDim() + EmbedxDim(); }
@@ -338,16 +319,24 @@ class SparseAdamOptimizer : public Optimizer {
   __host__ __device__ size_t EmbedxBeta2PowIndex() {
     return EmbedxBeta1PowIndex() + 1;
   }
+
+ private:
+  GPUAccessor gpu_accessor_;
+  size_t _embedding_dim;
+  size_t _lr_embedding_dim;
 };
 
-class SparseAdamSharedOptimizer : public Optimizer {
+template <typename GPUAccessor>
+class SparseAdamSharedOptimizer {
  public:
-  __host__ SparseAdamSharedOptimizer(
-      CommonFeatureValueAccessor feature_value_accessor)
-      : Optimizer(feature_value_accessor) {
+  SparseAdamSharedOptimizer() {}
+  SparseAdamSharedOptimizer(GPUAccessor gpu_accessor) {
+    gpu_accessor_ = gpu_accessor;
     _lr_embedding_dim = 1;
-    _embedding_dim = feature_value_accessor_.common_feature_value.EmbedWDim();
+    _embedding_dim = gpu_accessor_.common_feature_value.EmbedWDim();
   }
+
+  ~SparseAdamSharedOptimizer() {}
 
   __device__ void update_value_work(const OptimizerConfig& optimizer_config,
                                     int n,
@@ -406,60 +395,54 @@ class SparseAdamSharedOptimizer : public Optimizer {
   __device__ void dy_mf_update_value(const OptimizerConfig& optimizer_config,
                                      float* ptr,
                                      const float* grad) {
-    float g_show = grad[feature_value_accessor_.common_push_value.ShowIndex()];
-    float g_click =
-        grad[feature_value_accessor_.common_push_value.ClickIndex()];
+    float g_show = grad[gpu_accessor_.common_push_value.ShowIndex()];
+    float g_click = grad[gpu_accessor_.common_push_value.ClickIndex()];
 
-    ptr[feature_value_accessor_.common_feature_value.SlotIndex()] =
-        grad[feature_value_accessor_.common_push_value.SlotIndex()];
-    ptr[feature_value_accessor_.common_feature_value.ShowIndex()] += g_show;
-    ptr[feature_value_accessor_.common_feature_value.ClickIndex()] += g_click;
-    ptr[feature_value_accessor_.common_feature_value.DeltaScoreIndex()] +=
+    ptr[gpu_accessor_.common_feature_value.SlotIndex()] =
+        grad[gpu_accessor_.common_push_value.SlotIndex()];
+    ptr[gpu_accessor_.common_feature_value.ShowIndex()] += g_show;
+    ptr[gpu_accessor_.common_feature_value.ClickIndex()] += g_click;
+    ptr[gpu_accessor_.common_feature_value.DeltaScoreIndex()] +=
         optimizer_config.nonclk_coeff * (g_show - g_click) +
         optimizer_config.clk_coeff * g_click;
 
     update_value_work(
         optimizer_config,
         1,
-        ptr + feature_value_accessor_.common_feature_value.EmbedWIndex(),
-        ptr + feature_value_accessor_.common_feature_value.EmbedG2SumIndex(),
-        grad + feature_value_accessor_.common_push_value.EmbedGIndex(),
+        ptr + gpu_accessor_.common_feature_value.EmbedWIndex(),
+        ptr + gpu_accessor_.common_feature_value.EmbedG2SumIndex(),
+        grad + gpu_accessor_.common_push_value.EmbedGIndex(),
         g_show);
-    int mf_dim =
-        int(ptr[feature_value_accessor_.common_feature_value.MfDimIndex()]);
-    if (ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] == 0) {
+    int mf_dim = int(ptr[gpu_accessor_.common_feature_value.MfDimIndex()]);
+    if (ptr[gpu_accessor_.common_feature_value.MfSizeIndex()] == 0) {
       if (optimizer_config.mf_create_thresholds <=
           optimizer_config.nonclk_coeff *
-                  (ptr[feature_value_accessor_.common_feature_value
-                           .ShowIndex()] -
-                   ptr[feature_value_accessor_.common_feature_value
-                           .ClickIndex()]) +
+                  (ptr[gpu_accessor_.common_feature_value.ShowIndex()] -
+                   ptr[gpu_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff *
-                  ptr[feature_value_accessor_.common_feature_value
-                          .ClickIndex()]) {
-        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] =
-            feature_value_accessor_.common_feature_value.MFSize(mf_dim) /
-            sizeof(float);
+                  ptr[gpu_accessor_.common_feature_value.ClickIndex()]) {
+        ptr[gpu_accessor_.common_feature_value.MfSizeIndex()] =
+            gpu_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
         curand_init(clock64(), tid_x, 0, &state);
         for (int i = 0; i < mf_dim; ++i) {
-          ptr[feature_value_accessor_.common_feature_value.EmbedxWIndex() + i] =
+          ptr[gpu_accessor_.common_feature_value.EmbedxWIndex() + i] =
               (curand_uniform(&state)) * optimizer_config.mf_initial_range;
         }
-        ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() +
+        ptr[gpu_accessor_.common_feature_value.EmbedxG2SumIndex() +
             EmbedxBeta1PowIndex()] = optimizer_config.beta1_decay_rate;
-        ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() +
+        ptr[gpu_accessor_.common_feature_value.EmbedxG2SumIndex() +
             EmbedxBeta2PowIndex()] = optimizer_config.beta2_decay_rate;
       }
     } else {
       update_value_work(
           optimizer_config,
           mf_dim,
-          ptr + feature_value_accessor_.common_feature_value.EmbedxWIndex(),
-          ptr + feature_value_accessor_.common_feature_value.EmbedxG2SumIndex(),
-          grad + feature_value_accessor_.common_push_value.EmbedxGIndex(),
+          ptr + gpu_accessor_.common_feature_value.EmbedxWIndex(),
+          ptr + gpu_accessor_.common_feature_value.EmbedxG2SumIndex(),
+          grad + gpu_accessor_.common_push_value.EmbedxGIndex(),
           g_show);
     }
   }
@@ -481,6 +464,11 @@ class SparseAdamSharedOptimizer : public Optimizer {
   __host__ __device__ size_t EmbedxBeta2PowIndex() {
     return EmbedxBeta1PowIndex() + 1;
   }
+
+ private:
+  GPUAccessor gpu_accessor_;
+  size_t _embedding_dim;
+  size_t _lr_embedding_dim;
 };
 
 #endif

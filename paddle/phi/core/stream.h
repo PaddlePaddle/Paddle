@@ -14,19 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstdint>
-#include <memory>
-
 namespace phi {
 
 using StreamId = uint64_t;
+
+// device-agnostic abstraction of any-stream
 class Stream final {
  public:
+  Stream() {}
   explicit Stream(StreamId id) : id_(id) {}
   StreamId id() const { return id_; }
 
  private:
-  StreamId id_;
+  StreamId id_{0};  // not onwed the stream
 };
 
 }  // namespace phi

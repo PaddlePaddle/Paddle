@@ -192,8 +192,9 @@ TEST(CustomKernel, custom_kernel_dot) {
               fake_dot_kernels.end());
 
   // 4.kernel select
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       op_name, phi::KernelKey(backend, layout, phi::DataType::UINT8));
+  const auto& kernel = kernel_result.kernel;
 
   // 5.prepare parameters for kernel
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(

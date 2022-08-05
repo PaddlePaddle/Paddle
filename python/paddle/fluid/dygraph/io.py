@@ -38,6 +38,7 @@ __all__ = ['TranslatedLayer']
 INFER_MODEL_SUFFIX = ".pdmodel"
 INFER_PARAMS_SUFFIX = ".pdiparams"
 INFER_PARAMS_INFO_SUFFIX = ".pdiparams.info"
+INFER_PROPERTY_SUFFIX = '.meta'
 
 LOADED_VAR_SUFFIX = "load"
 PARAMETER_NAME_PREFIX = "param"

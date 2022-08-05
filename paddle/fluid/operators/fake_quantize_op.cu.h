@@ -72,8 +72,8 @@ __global__ void FindAbsMaxKernel(const T *in, const int n, T *out) {
 }
 
 template <typename T>
-struct FindAbsMaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &ctx,
+struct FindAbsMaxFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &ctx,
                   const T *in,
                   const int num,
                   T *out) {
@@ -90,9 +90,8 @@ struct FindAbsMaxFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct FindAbsMaxFunctor<platform::CUDADeviceContext, float>;
-template struct FindAbsMaxFunctor<platform::CUDADeviceContext,
-                                  paddle::platform::float16>;
+template struct FindAbsMaxFunctor<phi::GPUContext, float>;
+template struct FindAbsMaxFunctor<phi::GPUContext, paddle::platform::float16>;
 
 template <typename T>
 __global__ void FindChannelAbsMaxKernelQuantAxis0(const T *in,
@@ -164,8 +163,8 @@ __global__ void FindChannelAbsMaxKernelQuantAxis1(
 }
 
 template <typename T>
-struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &ctx,
+struct FindChannelAbsMaxFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &ctx,
                   const framework::Tensor &in_tensor,
                   const int quant_axis,
                   T *out_abs_max) {
@@ -215,7 +214,7 @@ struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, float>;
+template struct FindChannelAbsMaxFunctor<phi::GPUContext, float>;
 
 template <typename T>
 __global__ void ClipAndQuantKernel(const T *in,
@@ -289,8 +288,8 @@ __global__ void ClipAndQuantDequantKernel(const T *in,
 }
 
 template <typename T>
-struct ClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &ctx,
+struct ClipAndFakeQuantFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &ctx,
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
@@ -309,11 +308,11 @@ struct ClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct ClipAndFakeQuantFunctor<platform::CUDADeviceContext, float>;
+template struct ClipAndFakeQuantFunctor<phi::GPUContext, float>;
 
 template <typename T>
-struct ClipAndFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &ctx,
+struct ClipAndFakeQuantDequantFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &ctx,
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
@@ -408,8 +407,8 @@ __global__ void ChannelClipAndQuantKernelQuantAxisN(const T *in,
 }
 
 template <typename T>
-struct ChannelClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &ctx,
+struct ChannelClipAndFakeQuantFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &ctx,
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
@@ -462,8 +461,7 @@ struct ChannelClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct ChannelClipAndFakeQuantFunctor<platform::CUDADeviceContext,
-                                               float>;
+template struct ChannelClipAndFakeQuantFunctor<phi::GPUContext, float>;
 
 template <typename T>
 __global__ void FindRangeAbsMaxAndFillArray(const T *cur_scale,
@@ -491,8 +489,8 @@ __global__ void FindRangeAbsMaxAndFillArray(const T *cur_scale,
 }
 
 template <typename T>
-struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &ctx,
+struct FindRangeAbsMaxFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &ctx,
                   const framework::Tensor &cur_scale,
                   const framework::Tensor &last_scale,
                   const framework::Tensor &iter,
@@ -535,7 +533,7 @@ struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, T> {
                    sizeof(int),
                    ctx.stream());
       ctx.Wait();
-      FindAbsMaxFunctor<platform::CUDADeviceContext, T>()(
+      FindAbsMaxFunctor<phi::GPUContext, T>()(
           ctx, scale_arr, len, out_scale_data);
     }
   }
@@ -556,11 +554,11 @@ __global__ void FindMovingAverageAbsMaxKernel(const T *in_state,
   *out_scale = accum / state;
 }
 
-template struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, float>;
+template struct FindRangeAbsMaxFunctor<phi::GPUContext, float>;
 
 template <typename T>
-struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &ctx,
+struct FindMovingAverageAbsMaxFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &ctx,
                   const framework::Tensor &in_accum,
                   const framework::Tensor &in_state,
                   const T *cur_scale,
@@ -660,8 +658,8 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis1(const T *in,
 }
 
 template <typename T>
-struct ChannelClipFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &ctx,
+struct ChannelClipFakeQuantDequantFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &ctx,
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
@@ -712,8 +710,7 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct ChannelClipFakeQuantDequantFunctor<platform::CUDADeviceContext,
-                                                   float>;
+template struct ChannelClipFakeQuantDequantFunctor<phi::GPUContext, float>;
 
 }  // namespace operators
 }  // namespace paddle

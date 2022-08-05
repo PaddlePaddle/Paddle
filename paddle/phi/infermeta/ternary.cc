@@ -743,6 +743,99 @@ void LinspaceInferMeta(const MetaTensor& start,
   LinspaceRawInferMeta(start, stop, number, out);
 }
 
+void MultiClassNMSInferMeta(const MetaTensor& bboxes,
+                            const MetaTensor& scores,
+                            const MetaTensor& rois_num,
+                            float score_threshold,
+                            int nms_top_k,
+                            int keep_top_k,
+                            float nms_threshold,
+                            bool normalized,
+                            float nms_eta,
+                            int background_label,
+                            MetaTensor* out,
+                            MetaTensor* index,
+                            MetaTensor* nms_rois_num,
+                            MetaConfig config) {
+  auto box_dims = bboxes.dims();
+  auto score_dims = scores.dims();
+  auto score_size = score_dims.size();
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        score_size == 2 || score_size == 3,
+        true,
+        errors::InvalidArgument("The rank of Input(Scores) must be 2 or 3"
+                                ". But received rank = %d",
+                                score_size));
+    PADDLE_ENFORCE_EQ(
+        box_dims.size(),
+        3,
+        errors::InvalidArgument("The rank of Input(BBoxes) must be 3"
+                                ". But received rank = %d",
+                                box_dims.size()));
+    if (score_size == 3) {
+      PADDLE_ENFORCE_EQ(box_dims[2] == 4 || box_dims[2] == 8 ||
+                            box_dims[2] == 16 || box_dims[2] == 24 ||
+                            box_dims[2] == 32,
+                        true,
+                        errors::InvalidArgument(
+                            "The last dimension of Input"
+                            "(BBoxes) must be 4 or 8, "
+                            "represents the layout of coordinate "
+                            "[xmin, ymin, xmax, ymax] or "
+                            "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
+                            "8 points: [xi, yi] i= 1,2,...,8 or "
+                            "12 points: [xi, yi] i= 1,2,...,12 or "
+                            "16 points: [xi, yi] i= 1,2,...,16"));
+      PADDLE_ENFORCE_EQ(
+          box_dims[1],
+          score_dims[2],
+          errors::InvalidArgument(
+              "The 2nd dimension of Input(BBoxes) must be equal to "
+              "last dimension of Input(Scores), which represents the "
+              "predicted bboxes."
+              "But received box_dims[1](%s) != socre_dims[2](%s)",
+              box_dims[1],
+              score_dims[2]));
+    } else {
+      PADDLE_ENFORCE_EQ(box_dims[2],
+                        4,
+                        errors::InvalidArgument(
+                            "The last dimension of Input"
+                            "(BBoxes) must be 4. But received dimension = %d",
+                            box_dims[2]));
+      PADDLE_ENFORCE_EQ(
+          box_dims[1],
+          score_dims[1],
+          errors::InvalidArgument(
+              "The 2nd dimension of Input"
+              "(BBoxes) must be equal to the 2nd dimension of Input(Scores). "
+              "But received box dimension = %d, score dimension = %d",
+              box_dims[1],
+              score_dims[1]));
+    }
+  }
+  PADDLE_ENFORCE_NE(out,
+                    nullptr,
+                    errors::InvalidArgument(
+                        "The out in MultiClassNMSInferMeta can't be nullptr."));
+  PADDLE_ENFORCE_NE(
+      index,
+      nullptr,
+      errors::InvalidArgument(
+          "The index in MultiClassNMSInferMeta can't be nullptr."));
+  // Here the box_dims[0] is not the real dimension of output.
+  // It will be rewritten in the computing kernel.
+
+  out->set_dims(phi::make_ddim({-1, box_dims[2] + 2}));
+  out->set_dtype(bboxes.dtype());
+  index->set_dims(phi::make_ddim({-1, box_dims[2] + 2}));
+  index->set_dtype(DataType::INT32);
+  nms_rois_num->set_dims(phi::make_ddim({-1}));
+  nms_rois_num->set_dtype(DataType::INT32);
+}
+
 void NllLossRawInferMeta(const MetaTensor& input,
                          const MetaTensor& label,
                          const MetaTensor& weight,
@@ -1086,6 +1179,83 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   out->set_dims(ref_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
+}
+
+void SpectralNormInferMeta(const MetaTensor& weight,
+                           const MetaTensor& u,
+                           const MetaTensor& v,
+                           int dim,
+                           int power_iters,
+                           float eps,
+                           MetaTensor* out,
+                           MetaConfig config) {
+  auto dim_weight = weight.dims();
+  auto rank_weight = dim_weight.size();
+  PADDLE_ENFORCE_GE(rank_weight,
+                    2,
+                    errors::InvalidArgument(
+                        "The rank of Input(Weights) should be greater equal "
+                        "than 2, but received Weight rank(%d)",
+                        rank_weight));
+  PADDLE_ENFORCE_LE(
+      rank_weight,
+      5,
+      errors::InvalidArgument("The rank of Input(Weights) should be less equal "
+                              "than 5, but received Weight rank(%d)",
+                              rank_weight));
+
+  auto dim_valid = dim == 0 || dim == 1;
+  PADDLE_ENFORCE_EQ(dim_valid,
+                    true,
+                    errors::InvalidArgument(
+                        "Attr(dim) can only be 0 or 1, but received %d", dim));
+  PADDLE_ENFORCE_GE(
+      power_iters,
+      0,
+      errors::InvalidArgument(
+          "Attr(power_iters) should be greater equal then 0, but received %d",
+          power_iters));
+
+  int h = dim_weight[dim];
+  int w = 1;
+  for (int i = 0; i < rank_weight; i++) {
+    if (i != dim) {
+      w *= dim_weight[i];
+    }
+  }
+  auto dim_u = u.dims();
+  auto dim_v = v.dims();
+
+  if (config.is_runtime || (dim_u[0] > 0 && h > 0)) {
+    PADDLE_ENFORCE_EQ(dim_u[0],
+                      h,
+                      errors::InvalidArgument(
+                          "Input(U) dimension[0] should be equal to "
+                          "Input(Weight) dimension[Attr(dim)], but received "
+                          "U dimension[0](%d) != Weight dimension[%d](%d)",
+                          dim_u[0],
+                          dim,
+                          h));
+  }
+
+  if (config.is_runtime || (dim_v[0] > 0 && w > 0)) {
+    PADDLE_ENFORCE_EQ(
+        dim_v[0],
+        w,
+        errors::InvalidArgument(
+            "Input(V) dimension[0] should be equal to the product of "
+            "Input(Weight) dimension except dimension[Attr(dim)], but "
+            "received V dimension[0](%d) != product of Input(Weight) "
+            "dimension(%d)",
+            dim_v[0],
+            w));
+  }
+
+  if (out) {
+    out->set_dims(dim_weight);
+    out->set_dtype(weight.dtype());
+    out->share_lod(weight);
+  }
 }
 
 void ViterbiDecodeInferMeta(const MetaTensor& input,

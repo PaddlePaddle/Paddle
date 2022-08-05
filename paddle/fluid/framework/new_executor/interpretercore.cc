@@ -18,8 +18,6 @@
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
-#include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
-#include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
@@ -41,7 +39,6 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
-DECLARE_bool(fast_eager_deletion_mode);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 constexpr const char* kTaskCompletion = "TaskCompletion";
@@ -51,12 +48,6 @@ namespace framework {
 // NOTE(Aurelius84): Need a better strategy to determine it.
 static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
-
-bool IsInterpretercoreFastGCEnabled() {
-  return memory::allocation::AllocatorFacade::Instance()
-             .IsStreamSafeCUDAAllocatorUsed() &&
-         FLAGS_fast_eager_deletion_mode;
-}
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
@@ -71,16 +62,6 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
           << " place ptr is: " << &place_;
 
   is_build_ = false;
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (IsInterpretercoreFastGCEnabled()) {
-    gc_ = std::make_unique<InterpreterCoreFastGarbageCollector>();
-  } else {
-    gc_ = std::make_unique<InterpreterCoreEventGarbageCollector>();
-  }
-#else
-  gc_ = std::make_unique<InterpreterCoreEventGarbageCollector>();
-#endif
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -371,7 +352,6 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
 }
 
 void InterpreterCore::BuildInplace() {
-  VLOG(2) << "BuildInplace";
   // NOTE(Ruibiao): coalesce_tensor_op outputs a FusedOutput Tensor and a list
   // of Output Tensors which are sliced from the FusedOutput. These outputs
   // sholud not be the outvar of the in-place var-pair since memory reuse
@@ -427,12 +407,12 @@ void InterpreterCore::BuildInplace() {
             auto outvar = local_scope_->FindVar(outvar_name);
 
             if (invar && outvar && invar->IsType<LoDTensor>() &&
-                outvar->IsType<LoDTensor>()) {
+                outvar->IsType<LoDTensor>() &&
+                skip_inplace_outvars.find(outvar_name) ==
+                    skip_inplace_outvars.end()) {
               instr.AddInplace(invar, outvar);
-              VLOG(3) << "inplace " << vec_instruction_[i].OpBase()->Type()
-                      << " " << var_scope_.GetNameById(iter->second[0])
-                      << " -> " << var_scope_.GetNameById(iterout->second[0])
-                      << std::endl;
+              VLOG(3) << "inplace " << op_base->Type() << " " << invar_name
+                      << " -> " << outvar_name;
             }
           }
         }
@@ -447,7 +427,7 @@ void InterpreterCore::BuildOperatorDependences() {
   auto op_nums = vec_instruction_.size();
   dependecy_count_.resize(op_nums);
   auto op2downstream = dependency_builder_.Build(vec_instruction_);
-  VLOG(2) << "op2downstream size is: " << op2downstream.size();
+
   for (size_t op = 0; op < vec_instruction_.size(); ++op) {
     auto op_list = op2downstream[op];
     std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
@@ -578,7 +558,7 @@ void InterpreterCore::Convert(
       bool not_before_any = true;
       // find the op that is not executed before any
       for (size_t other_item : last_live_ops_[i]) {
-        if (op_happens_before_[item][other_item]) {
+        if (dependency_builder_.OpHappensBefore(item, other_item)) {
           VLOG(8) << "happens_before: " << item << "->" << other_item
                   << ", so skip " << item;
           not_before_any = false;
@@ -602,16 +582,7 @@ void InterpreterCore::Convert(
   }
 
   BuildSkipShareLoDInfo();
-
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-#ifdef PADDLE_WITH_IPU
-    gc_event_.emplace_back(phi::CPUPlace(), 0);
-#else
-    gc_event_.emplace_back(vec_instruction_[i].DeviceContext().GetPlace(),
-                           platform::GenerateDeviceEventFlag());
-
-#endif
-  }
+  gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
   bool inplaced = false;
   for (auto inst : vec_instruction_) {
     if (inst.OpBase()->Type() == "share_buffer" ||
@@ -738,9 +709,9 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
         op_with_kernel->BuildPhiKernelContext(
             *instr_node.InnerRuntimeContext().get(),
             const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
-            &pt_kernel_context);
+            &phi_kernel_context);
 
-        (*instr_node.PhiKernel())(&pt_kernel_context);
+        (*instr_node.PhiKernel())(&phi_kernel_context);
 
       } else {
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
@@ -941,9 +912,6 @@ void InterpreterCore::RunInstructionAsync(
 
       RunInstruction(instr_node);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      RecordStreamForGC(instr_node);
-#endif
       CheckGC(instr_node, atomic_var_ref);
 
       interpreter::RecordEvent(instr_node, place_);
@@ -991,9 +959,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
   platform::RecordEvent record(
       "RecordStreamForGC", platform::TracerEventType::UserDefined, 10);
 
-  gpuStream_t stream = reinterpret_cast<const platform::CUDADeviceContext&>(
-                           instr.DeviceContext())
-                           .stream();
+  gpuStream_t stream =
+      reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext()).stream();
   auto TensorRecordStream = [&stream](Tensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {
@@ -1083,7 +1050,9 @@ void InterpreterCore::CheckGC(
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
   platform::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
-  size_t instr_id = instr.Id();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  RecordStreamForGC(instr);
+#endif
   auto& var_scope = var_scope_;
 
   for (auto var_id : instr.GCCheckVars()) {
@@ -1100,23 +1069,7 @@ void InterpreterCore::CheckGC(
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
               << var_scope.GetNameById(var_id);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (IsInterpretercoreFastGCEnabled()) {
-        static_cast<InterpreterCoreFastGarbageCollector*>(gc_.get())->Add(
-            var_scope_.VarRef(var_id));
-
-      } else {
-        static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
-            var_scope_.VarRef(var_id),
-            &gc_event_.at(instr_id),
-            &instr.DeviceContext());
-      }
-#else
-      static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
-          var_scope_.VarRef(var_id),
-          &gc_event_.at(instr_id),
-          &instr.DeviceContext());
-#endif
+      gc_->Add(var_scope_.VarRef(var_id), instr);
     }
   }
 }

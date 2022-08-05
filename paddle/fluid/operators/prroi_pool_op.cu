@@ -426,7 +426,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(prroi_pool,
                         ops::GPUPRROIPoolOpKernel<float>,
                         ops::GPUPRROIPoolOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(
-    prroi_pool_grad,
-    ops::GPUPRROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GPUPRROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(prroi_pool_grad,
+                        ops::GPUPRROIPoolGradOpKernel<phi::GPUContext, float>,
+                        ops::GPUPRROIPoolGradOpKernel<phi::GPUContext, double>);

@@ -39,7 +39,7 @@ struct Random<phi::CPUContext> {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-struct Random<platform::CUDADeviceContext> {
+struct Random<phi::GPUContext> {
   using Engine = thrust::minstd_rand;
 
   template <typename T>

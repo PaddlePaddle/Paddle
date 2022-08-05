@@ -687,7 +687,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("specify_input_name", &AnalysisConfig::specify_input_name)
       .def("enable_tensorrt_engine",
            &AnalysisConfig::EnableTensorRtEngine,
-           py::arg("workspace_size") = 1 << 20,
+           py::arg("workspace_size") = 1 << 30,
            py::arg("max_batch_size") = 1,
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,

@@ -724,7 +724,9 @@ OpKernelComputeFunc Instruction::KernelFunc() const {
   return op_func_node_.kernel_func_;
 }
 
-phi::Kernel* Instruction::PhiKernel() const { return op_func_node_.pt_kernel_; }
+phi::Kernel* Instruction::PhiKernel() const {
+  return op_func_node_.phi_kernel_;
+}
 
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
 

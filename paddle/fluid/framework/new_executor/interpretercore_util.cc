@@ -18,7 +18,6 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
-#include "paddle/fluid/framework/new_executor/interpreter/dependency_utils.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
@@ -28,16 +27,6 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-
-// The difference between "sequential_run" and "serial_run":
-// "sequential_run" dispatches OPs one by one according to the sequence in the
-// Program, while "serial_run" ensures that all Ops are scheduled in a singal
-// thread. In standalone executor, "sequential_run" is also "serial_run", while
-// "serial_run" is not necessarily "sequential_run".
-PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
-                            false,
-                            "Enable sequential execution for standalone "
-                            "executor, only applied to GPU OPs.");
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
@@ -546,25 +535,25 @@ void build_op_func_list(const platform::Place& place,
       auto run_phi_kernel = false;
       if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
               op_with_kernel->Type())) {
-        auto pt_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
-        auto pt_kernel_name = op_with_kernel->PhiKernelSignature()->name;
+        auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+        auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
 
         if (op_with_kernel->PhiKernel()->IsValid()) {
           run_phi_kernel = true;
         } else {
           if (!op_with_kernel->SupportsKernelType(expected_kernel_key)) {
-            auto pt_cpu_kernel_key = FallBackToCpu(
-                expected_kernel_key, pt_kernel_key, *op_with_kernel);
+            auto phi_cpu_kernel_key = FallBackToCpu(
+                expected_kernel_key, phi_kernel_key, *op_with_kernel);
             op_with_kernel->ResetPhiKernel(
                 new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-                    pt_kernel_name, pt_cpu_kernel_key)));
+                    phi_kernel_name, phi_cpu_kernel_key)));
             if (op_with_kernel->PhiKernel()->IsValid()) {
               VLOG(6) << "Static mode PrepareImpl - kernel name: "
-                      << pt_kernel_name
-                      << " | kernel key: " << pt_cpu_kernel_key
+                      << phi_kernel_name
+                      << " | kernel key: " << phi_cpu_kernel_key
                       << " | kernel: " << *(op_with_kernel->PhiKernel());
               op_with_kernel->ResetKernelType(new OpKernelType(
-                  TransPhiKernelKeyToOpKernelType(pt_cpu_kernel_key)));
+                  TransPhiKernelKeyToOpKernelType(phi_cpu_kernel_key)));
               run_phi_kernel = true;
             }
           }
@@ -575,7 +564,7 @@ void build_op_func_list(const platform::Place& place,
         op_with_kernel->ChooseKernel(exec_ctx);
         op_func_node.kernel_func_ = *op_with_kernel->kernel_func();
       } else {
-        op_func_node.pt_kernel_ = op_with_kernel->PhiKernel();
+        op_func_node.phi_kernel_ = op_with_kernel->PhiKernel();
       }
       auto kernel_type = *(op_with_kernel->kernel_type());
       if (kernel_type.place_ != dev_ctx->GetPlace()) {
@@ -617,12 +606,12 @@ void build_op_func_list(const platform::Place& place,
 
       // step 5. run kernel
       if (run_phi_kernel) {
-        VLOG(4) << "start run phi kernel. ";
+        VLOG(1) << "start run phi kernel. ";
         phi::KernelContext phi_kernel_context;
         op_with_kernel->BuildPhiKernelContext(
             runtime_context, dev_ctx, &phi_kernel_context);
         (*op_func_node.phi_kernel_)(&phi_kernel_context);
-        VLOG(4) << "end run phi kernel. ";
+        VLOG(1) << "end run phi kernel. ";
       } else {
         VLOG(4) << "start run kernel. ";
         // the place of exec_ctx maybe has changed.
@@ -736,451 +725,6 @@ std::vector<size_t> merge_vector(const std::vector<size_t>& first,
   out.resize(std::distance(out.begin(), it));
 
   return out;
-}
-
-void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
-                          std::map<int, std::list<int>>* var2min_rw_op,
-                          int cur_op,
-                          int rw_var) {
-  // rw_var is inputs or outputs of cur_op
-  // this function update the var2min_rw_op set .
-  if (var2min_rw_op->find(rw_var) == var2min_rw_op->end()) {
-    (*var2min_rw_op)[rw_var] = std::list<int>();
-  }
-  for (auto dep_op : op2dependences.at(cur_op)) {
-    var2min_rw_op->at(rw_var).remove(dep_op);
-  }
-  var2min_rw_op->at(rw_var).push_back(cur_op);
-}
-
-size_t CountDownstreamMap(const std::map<int, std::list<int>>& downstream_map) {
-  size_t count = 0;
-  for (auto pair : downstream_map) {
-    count += pair.second.size();
-  }
-  return count;
-}
-
-const std::string StringizeDownstreamMap(
-    const std::map<int, std::list<int>>& downstream_map) {
-  std::ostringstream oss;
-  for (auto pair : downstream_map) {
-    oss << pair.first << " -> ";
-    std::copy(pair.second.begin(),
-              pair.second.end(),
-              std::ostream_iterator<int>(oss, " "));
-    oss << std::endl;
-  }
-  return oss.str();
-}
-
-// convert op2dependences to downstream_map directly. op2dependences is op ->
-// it's dependences, we want to get op -> [next ops] map, where ops is the next
-// instruction of op.
-std::map<int, std::list<int>> GetDownstreamMap(
-    const std::map<int, std::set<int>>& op2dependences) {
-  std::map<int, std::list<int>> downstream_map;
-  for (auto& item : op2dependences) {
-    int op = item.first;
-    for (auto dep_op : item.second) {
-      AddDownstreamOp(dep_op, op, &downstream_map);
-    }
-  }
-
-  VLOG(6) << "downstream count: " << CountDownstreamMap(downstream_map);
-  VLOG(6) << "downstream_map: " << std::endl
-          << StringizeDownstreamMap(downstream_map);
-
-  return downstream_map;
-}
-
-void ShrinkDownstreamMap(std::map<int, std::list<int>>* downstream_map,
-                         std::vector<std::vector<bool>>* op_happens_before,
-                         size_t op_num) {
-  // remove unnecessary downstream ops
-  // for example, a->b->c
-  // a: b, c
-  // b: c
-  // =>
-  // a: b
-  // b: c
-
-  // happens_before[i][j] means i should be executed before j
-  op_happens_before->assign(op_num, std::vector<bool>(op_num, false));
-
-  // bfs to get all next ops
-  auto bfs = [&](size_t op_idx) {
-    std::queue<size_t> q;
-    std::vector<bool> visited(op_num, false);
-    q.push(op_idx);
-    while (!q.empty()) {
-      size_t op = q.front();
-      q.pop();
-      visited[op] = true;
-      if (!downstream_map->count(op)) {
-        continue;
-      }
-      for (auto next : downstream_map->at(op)) {
-        if (!visited[next]) {
-          PADDLE_ENFORCE_EQ((*op_happens_before)[next][op_idx],
-                            false,
-                            paddle::platform::errors::AlreadyExists(
-                                "There exists circle in graph, expected "
-                                "%d->%d, but already got %d->%d",
-                                op_idx,
-                                next,
-                                next,
-                                op_idx));
-          (*op_happens_before)[op_idx][next] = true;
-          VLOG(8) << "happens before: " << op_idx << " " << next;
-          q.push(next);
-        }
-      }
-    }
-  };
-
-  for (size_t i = 0; i < op_num; ++i) {
-    bfs(i);
-  }
-
-  // shrink, find the downstream op that has no other op in the
-  // downstream list happens before it
-  for (size_t i = 0; i < op_num; ++i) {
-    if (downstream_map->find(i) == downstream_map->end()) {
-      continue;
-    }
-
-    std::list<int> minumum_nexts;
-    for (size_t item : downstream_map->at(i)) {
-      bool not_after_any = true;
-      // find the op that is not executed after any
-      for (size_t other_item : downstream_map->at(i)) {
-        if ((*op_happens_before)[other_item][item]) {
-          VLOG(8) << "happens_before: " << other_item << "->" << item
-                  << ", so skip " << item;
-          not_after_any = false;
-          break;
-        }
-      }
-      if (not_after_any) {
-        VLOG(8) << "downstream op of " << i << ": " << item;
-        minumum_nexts.push_back(item);
-      }
-    }
-    downstream_map->at(i) = minumum_nexts;
-  }
-  VLOG(6) << "downstream count: " << CountDownstreamMap(*downstream_map);
-  VLOG(6) << "downstream_map: " << std::endl
-          << StringizeDownstreamMap(*downstream_map);
-}
-
-std::map<int, std::list<int>> build_op_downstream_map(
-    const std::vector<Instruction>& vec_instruction,
-    std::vector<std::vector<bool>>* op_happens_before) {
-  auto var2min_rw_op =
-      std::map<int, std::list<int>>();  // # map from variable id to read /
-                                        // write op id.
-  auto var2recent_write_op =
-      std::map<int, int>();  // # map from variable to recent write op.
-  auto op2dependences =
-      std::map<int, std::set<int>>();  //# map from op to the dependence list,
-                                       // op must run after the dependence.
-  std::set<int>
-      remove_duplicate;  // remove the duplicate between inputs and outputs
-
-  size_t op_num = vec_instruction.size();
-
-  // reserve
-  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
-    op2dependences[op_idx] = std::set<int>();
-  }
-
-  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
-    remove_duplicate.clear();
-    // step1: update the op2dependences structure
-    for (auto& item :
-         vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
-      for (auto var : item.second) {
-        if (var2recent_write_op.count(var))
-          op2dependences[op_idx].insert(var2recent_write_op[var]);
-      }
-    }
-
-    for (auto& item :
-         vec_instruction[op_idx].Outputs()) {  // for all write vars
-      for (auto var : item.second) {
-        if (var2min_rw_op.count(var)) {
-          for (auto dep_op : var2min_rw_op[var]) {
-            op2dependences[op_idx].insert(dep_op);
-          }
-        }
-      }
-    }
-    // the original output of inplace op is also change.
-    if (!vec_instruction[op_idx].InplaceBackMap().empty()) {
-      auto& m = vec_instruction[op_idx].InplaceBackMap();
-      for (auto& p : m) {
-        auto& var = p.second;
-        if (var2min_rw_op.count(var)) {
-          for (auto dep_op : var2min_rw_op[var]) {
-            op2dependences[op_idx].insert(dep_op);
-          }
-        }
-      }
-    }
-
-    // step2: update 2 var2xxxx data structure
-    for (auto& item :
-         vec_instruction[op_idx].Outputs()) {  // for all write vars
-      for (auto var : item.second) {
-        var2recent_write_op[var] = op_idx;
-        var2min_rw_op[var] = {static_cast<int>(op_idx)};
-        remove_duplicate.insert(var);
-      }
-    }
-
-    // NOTE(zhiqiu): The inplace op with `transfer` also changes
-    // original output after that so add original output as well
-    // original: a->op->a
-    // after: a->data_transfer->a'->op->a'->transfer_back->a
-    // which means op writes a and a'
-    if (!vec_instruction[op_idx].InplaceBackMap().empty()) {
-      auto& m = vec_instruction[op_idx].InplaceBackMap();
-      for (auto& p : m) {
-        auto var = p.second;
-        var2recent_write_op[var] = op_idx;
-        var2min_rw_op[var] = {static_cast<int>(op_idx)};
-        remove_duplicate.insert(var);
-      }
-    }
-
-    for (auto& item :
-         vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
-      for (auto var : item.second) {
-        if (remove_duplicate.count(var) ==
-            0) {  // var in input list and in output list, so remove it.
-          update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
-        }
-      }
-    }
-  }
-
-  // NOTE(zhiqiu): the size of downstream != size of op2dependences since there
-  // are some ops that have no downstream-op.
-  std::map<int, std::list<int>> op_downstream_map =
-      GetDownstreamMap(op2dependences);
-
-  ShrinkDownstreamMap(&op_downstream_map, op_happens_before, op_num);
-
-  // add dependences for random op, make sure that the random op is scheduled
-  // sequentially
-  const std::set<std::string> random_op_set = {
-      "bernoulli",
-      "poisson",
-      "multinomial",
-      "gaussian_random",
-      "truncated_gaussian_random",
-      "uniform_random",
-      "randint",
-      "randperm",
-      "exponential",
-      "sampling_id"
-      "dropout",
-      "class_center_sample",
-  };
-
-  int dependence_op_idx = -1;
-  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
-    if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
-      if (dependence_op_idx != -1) {
-        AddDownstreamOp(
-            dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
-      }
-      dependence_op_idx = op_idx;
-    }
-  }
-
-  // add dependency for communication op
-  auto is_comm_op = [](std::string op) -> bool {
-    const std::set<std::string> special_comm_op_set = {
-        "send",
-        "recv",
-        "send_v2",
-        "recv_v2",
-    };
-    const std::string communication_op_prefix = "c_";
-    if (op.find(communication_op_prefix) != std::string::npos ||
-        special_comm_op_set.count(op)) {
-      return true;
-    }
-    return false;
-  };
-
-  dependence_op_idx = -1;
-  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
-    if (is_comm_op(vec_instruction[op_idx].OpBase()->Type())) {
-      if (dependence_op_idx != -1) {
-        AddDownstreamOp(
-            dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
-        VLOG(4) << "Add depend from "
-                << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
-                << vec_instruction[op_idx].OpBase()->Type();
-      }
-      dependence_op_idx = op_idx;
-    }
-  }
-
-  // TODO(zhiqiu): there still some cases not handled
-  // add dependency for c_sync_comm_stream
-
-  // in program, we can add only one c_sync_comm_stream to sync all
-  // communication ops.
-  // c_allreduce_sum(a)
-  // c_allreduce_sum(b)
-  // c_allreduce_sum(c)
-  // c_sync_comm_stream(a)
-  const std::string kSyncComm = "c_sync_comm_stream";
-  dependence_op_idx = -1;
-  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
-    if (vec_instruction[op_idx].OpBase()->Type() == kSyncComm) {
-      dependence_op_idx = op_idx;
-    } else {
-      if (dependence_op_idx != -1) {
-        VLOG(4) << "Add depend from "
-                << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
-                << vec_instruction[op_idx].OpBase()->Type();
-        AddDownstreamOp(
-            dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
-      }
-    }
-  }
-
-  // add dependency for coalesce_tensor
-  const std::string kCoalesceTensor = "coalesce_tensor";
-  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
-    if (vec_instruction[op_idx].OpBase()->Type() == kCoalesceTensor) {
-      VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
-      auto fused_out = vec_instruction[op_idx].Outputs().at("FusedOutput")[0];
-      auto outputs = vec_instruction[op_idx].Outputs().at("Output");
-
-      auto is_read = [](const Instruction& inst, int var_id) -> bool {
-        for (auto pair : inst.Inputs()) {
-          for (auto item : pair.second) {
-            if (item == var_id) {
-              return true;
-            }
-          }
-        }
-        return false;
-      };
-
-      auto is_write = [](const Instruction& inst, int var_id) -> bool {
-        for (auto pair : inst.Outputs()) {
-          for (auto item : pair.second) {
-            if (item == var_id) {
-              return true;
-            }
-          }
-        }
-        return false;
-      };
-
-      // find first op that reads fused_out
-      auto first_read_fused_out_op = -1;
-      for (auto j = op_idx + 1; j < op_num; ++j) {
-        if (is_read(vec_instruction[j], fused_out)) {
-          first_read_fused_out_op = j;
-          break;
-        }
-      }
-
-      if (UNLIKELY(first_read_fused_out_op == -1)) {
-        VLOG(4) << "No op read FusedOutput";
-        continue;
-      }
-
-      // find ops that write 'outputs' between (op_index,
-      // first_read_fused_out_op)
-      // add depend: them->first_read_fused_out_op
-      for (auto j = op_idx + 1;
-           j < static_cast<size_t>(first_read_fused_out_op);
-           ++j) {
-        for (auto var_id : outputs) {
-          if (is_write(vec_instruction[j], var_id)) {
-            AddDownstreamOp(j,
-                            first_read_fused_out_op,
-                            &op_downstream_map,
-                            op_happens_before);
-            VLOG(4) << j << " -> " << first_read_fused_out_op;
-            VLOG(4)
-                << "Add depend from " << vec_instruction[j].OpBase()->Type()
-                << " to "
-                << vec_instruction[first_read_fused_out_op].OpBase()->Type();
-          }
-        }
-      }
-
-      // find first op read 'outputs' between (first_read_fused_out_op, end)
-      // add depned:  first_read_fused_out_op -> first op that reads 'outputs'
-
-      // special case for consecutive communication ops, for example,
-      // FusedOutput = c_sync_calc_stream(FusedOutput)
-      // FusedOutput= c_allreduce_sum(FusedOutput)
-      // FusedOutput = c_sync_comm_stream(FusedOutput)
-      // we should take the last one to add depned instead of
-      // 'first_read_fused_out_op'
-      size_t target = first_read_fused_out_op;
-      for (size_t j = first_read_fused_out_op + 1; j < op_num; ++j) {
-        if (j == target + 1 &&
-            is_comm_op(vec_instruction[target].OpBase()->Type()) &&
-            is_comm_op(vec_instruction[j].OpBase()->Type())) {
-          VLOG(4) << "Found consecutive communication ops, "
-                  << vec_instruction[target].OpBase()->Type() << " -> "
-                  << vec_instruction[j].OpBase()->Type();
-          target = j;
-          continue;
-        }
-
-        for (auto var_id : outputs) {
-          if (is_read(vec_instruction[j], var_id)) {
-            AddDownstreamOp(target, j, &op_downstream_map, op_happens_before);
-            VLOG(4) << target << " -> " << j;
-            VLOG(4) << "Add depend from "
-                    << vec_instruction[target].OpBase()->Type() << " to "
-                    << vec_instruction[j].OpBase()->Type();
-          }
-        }
-      }
-    }
-  }
-
-  if (FLAGS_new_executor_sequential_run) {
-    dependence_op_idx = -1;
-    for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
-      if (!IsCpuOp(vec_instruction[op_idx])) {
-        if (dependence_op_idx != -1) {
-          AddDownstreamOp(
-              dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
-          VLOG(4) << "Add depend from "
-                  << vec_instruction[dependence_op_idx].OpBase()->Type() << "("
-                  << dependence_op_idx << ") to "
-                  << vec_instruction[op_idx].OpBase()->Type() << "(" << op_idx
-                  << ")";
-        }
-        dependence_op_idx = op_idx;
-      }
-    }
-  }
-
-  AddDependencyForReadOp(
-      vec_instruction, &op_downstream_map, op_happens_before);
-
-  VLOG(8) << "build_op_downstream_map finished";
-  VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map);
-  VLOG(8) << "downstream_map: " << std::endl
-          << StringizeDownstreamMap(op_downstream_map);
-
-  return op_downstream_map;
 }
 
 }  // namespace interpreter
