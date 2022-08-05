@@ -880,7 +880,6 @@ class MatMulV2MKLDNNHandler
                         bool trans_x,
                         const std::vector<int64_t>& y_org_dims,
                         bool trans_y,
-                        bool is_output_fused,
                         const std::vector<int64_t>& x_strides_override,
                         const std::vector<int64_t>& y_strides_override)
       : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
@@ -944,7 +943,7 @@ class MatMulV2MKLDNNHandler
       out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
     }
 
-    if (!IsInt8<OT>() && !IsBfloat16<OT>() && is_output_fused) {
+    if (!IsInt8<OT>() && !IsBfloat16<OT>() && ctx.HasAttr("is_output_fused")) {
       out_strides = FakeTransposeStrides(out_ddims);
     }
 

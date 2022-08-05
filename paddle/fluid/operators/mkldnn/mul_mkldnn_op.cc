@@ -423,7 +423,6 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
                                               trans_x,
                                               y_dims,
                                               trans_y,
-                                              false,
                                               vec_placeholder,
                                               vec_placeholder);
 

@@ -207,12 +207,7 @@ class MatMulMKLDNNHandler
       src_memory_p->set_data_handle(x_ptr);
       weights_memory_p->set_data_handle(y_ptr);
       dst_memory_p->set_data_handle(out_ptr);
-      matmul_p->execute(astream,
-                        {
-                            {DNNL_ARG_SRC, *src_memory_p},
-                            {DNNL_ARG_WEIGHTS, *weights_memory_p},
-                            {DNNL_ARG_DST, *dst_memory_p},
-                        });
+      matmul_p->execute(astream, matmul_args);
       x_ptr = static_cast<char *>(x_ptr) + std::get<0>(offsets);
       y_ptr = static_cast<char *>(y_ptr) + std::get<1>(offsets);
       out_ptr = static_cast<char *>(out_ptr) + std::get<2>(offsets);
@@ -475,7 +470,7 @@ static void ExecuteMatMul(const ExecutionContext &ctx) {
   constexpr bool is_int8 = IsInt8<XT>();
   constexpr bool is_bfloat16 = IsBfloat16<XT>();
   const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-  constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
+  const bool fuse_relu = ctx.Attr<std::string>("fuse_activation") == "relu";
   auto *x = ctx.Input<Tensor>("X");
   auto *y = ctx.Input<Tensor>("Y");
   auto *out = ctx.Output<Tensor>("Out");
@@ -623,7 +618,6 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
                                              trans_x,
                                              y_dims,
                                              trans_y,
-                                             ctx.HasAttr("is_output_fused"),
                                              x_strides_override,
                                              y_strides_override);
 
