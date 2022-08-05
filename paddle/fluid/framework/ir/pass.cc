@@ -22,6 +22,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+class Scope;
 namespace ir {
 class Graph;
 }  // namespace ir
@@ -34,6 +35,14 @@ class Graph;
 namespace paddle {
 namespace framework {
 namespace ir {
+
+static const char kParamScopeAttr[] = "__param_scope__";
+
+static const std::vector<std::string> support_subgraph_passes = {
+    "fused_multi_transformer_decoder_pass",
+    "fused_multi_transformer_decoder_fuse_qkv_pass",
+    "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",
+};
 
 Graph *Pass::Apply(Graph *graph) const {
   VLOG(10) << "start to apply pass " << Type() << " to graph";
@@ -65,11 +74,41 @@ Graph *Pass::Apply(Graph *graph) const {
       true,
       platform::errors::InvalidArgument(
           "The VarDescs of persistable variable are not consistency."));
-  applied_ = true;
   if (!graph->Has(kPassRecorder)) {
     graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
+
+  if (graph->IsMainGraph() && std::count(support_subgraph_passes.begin(),
+                                         support_subgraph_passes.end(),
+                                         Type())) {
+    for (size_t i = 1; i < graph->SubGraphsSize(); i++) {
+      auto *sub_graph = graph->GetSubGraph(i);
+      if (!sub_graph->Has(framework::ir::kParamScopeAttr)) {
+        sub_graph->SetNotOwned<Scope>(
+            framework::ir::kParamScopeAttr,
+            &graph->Get<Scope>(framework::ir::kParamScopeAttr));
+      }
+
+      ApplyImpl(sub_graph);
+      PADDLE_ENFORCE_EQ(
+          HasCircle(*sub_graph),
+          false,
+          platform::errors::InvalidArgument(
+              "Illegal pass %s. Generated graph shouldn't contain cycle.",
+              Type()));
+      PADDLE_ENFORCE_EQ(
+          VarDescIsConsistency(*sub_graph),
+          true,
+          platform::errors::InvalidArgument(
+              "The VarDescs of persistable variable are not consistency."));
+      if (!sub_graph->Has(kPassRecorder)) {
+        sub_graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
+      }
+      sub_graph->Get<PassRecorder>(kPassRecorder).insert(Type());
+    }
+  }
+  applied_ = true;
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // Passes can change params, tensors, so caching need to be discarded
