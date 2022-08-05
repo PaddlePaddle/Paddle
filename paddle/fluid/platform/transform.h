@@ -69,30 +69,6 @@ struct Transform {
 };
 
 // NOTE: After the phi kernel is migrated, it needs to be deleted.
-template <>
-struct Transform<platform::CPUDeviceContext> {
-  template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const platform::CPUDeviceContext& context,
-                  InputIter first,
-                  InputIter last,
-                  OutputIter result,
-                  UnaryOperation op) {
-    std::transform(first, last, result, op);
-  }
-
-  template <typename InputIter1,
-            typename InputIter2,
-            typename OutputIter,
-            typename BinaryOperation>
-  void operator()(const platform::CPUDeviceContext& context,
-                  InputIter1 first1,
-                  InputIter1 last1,
-                  InputIter2 first2,
-                  OutputIter result,
-                  BinaryOperation op) {
-    std::transform(first1, last1, first2, result, op);
-  }
-};
 
 template <>
 struct Transform<phi::CPUContext> {
@@ -120,66 +96,6 @@ struct Transform<phi::CPUContext> {
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-template <>
-struct Transform<platform::CUDADeviceContext> {
-  template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const platform::CUDADeviceContext& context,
-                  InputIter first,
-                  InputIter last,
-                  OutputIter result,
-                  UnaryOperation op) {
-    auto place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(is_gpu_place(place),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "The CUDA Transform must be used in GPU place."));
-#ifdef __HIPCC__
-    thrust::transform(thrust::hip::par.on(context.stream()),
-                      details::CastToCUDATransformIterator(first),
-                      details::CastToCUDATransformIterator(last),
-                      details::CastToCUDATransformIterator(result),
-                      op);
-#else
-    thrust::transform(thrust::cuda::par.on(context.stream()),
-                      details::CastToCUDATransformIterator(first),
-                      details::CastToCUDATransformIterator(last),
-                      details::CastToCUDATransformIterator(result),
-                      op);
-#endif
-  }
-
-  template <typename InputIter1,
-            typename InputIter2,
-            typename OutputIter,
-            typename BinaryOperation>
-  void operator()(const platform::CUDADeviceContext& context,
-                  InputIter1 first1,
-                  InputIter1 last1,
-                  InputIter2 first2,
-                  OutputIter result,
-                  BinaryOperation op) {
-    auto place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(is_gpu_place(place),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "The CUDA Transform must be used in GPU place."));
-#ifdef __HIPCC__
-    thrust::transform(thrust::hip::par.on(context.stream()),
-                      details::CastToCUDATransformIterator(first1),
-                      details::CastToCUDATransformIterator(last1),
-                      details::CastToCUDATransformIterator(first2),
-                      details::CastToCUDATransformIterator(result),
-                      op);
-#else
-    thrust::transform(thrust::cuda::par.on(context.stream()),
-                      details::CastToCUDATransformIterator(first1),
-                      details::CastToCUDATransformIterator(last1),
-                      details::CastToCUDATransformIterator(first2),
-                      details::CastToCUDATransformIterator(result),
-                      op);
-#endif
-  }
-};
 
 template <>
 struct Transform<phi::GPUContext> {

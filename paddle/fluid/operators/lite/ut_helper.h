@@ -58,9 +58,9 @@ void serialize_params(std::string* str,
   std::ostringstream os;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
 #else
-  platform::CPUDeviceContext ctx;
+  phi::CPUContext ctx;
 #endif
   for (const auto& param : params) {
     PADDLE_ENFORCE_NOT_NULL(

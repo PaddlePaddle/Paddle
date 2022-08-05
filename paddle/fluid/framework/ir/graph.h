@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/utils/any.h"
 
 DECLARE_bool(convert_all_blocks);
@@ -45,6 +45,8 @@ namespace details {
 // This attr is not recommended, because the graph should not dependence
 // the program once it is built.
 constexpr char kStaleProgramOpDescs[] = "stale_program_op_descs";
+constexpr char kRemovedVars[] = "removed_vars";
+typedef std::unordered_set<std::shared_ptr<ir::Node>> RemovedVars;
 }  //  namespace details
 
 namespace ir {

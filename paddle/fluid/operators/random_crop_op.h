@@ -30,7 +30,7 @@ template <typename DeviceContext>
 struct Random;
 
 template <>
-struct Random<platform::CPUDeviceContext> {
+struct Random<phi::CPUContext> {
   using Engine = std::minstd_rand;
 
   template <typename T>
@@ -39,7 +39,7 @@ struct Random<platform::CPUDeviceContext> {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-struct Random<platform::CUDADeviceContext> {
+struct Random<phi::GPUContext> {
   using Engine = thrust::minstd_rand;
 
   template <typename T>
@@ -218,7 +218,7 @@ class RandomCropKernel : public framework::OpKernel<T> {
 
     for_range(functor);
 
-    Random<platform::CPUDeviceContext>::Engine engine(seed);
+    Random<phi::CPUContext>::Engine engine(seed);
     engine.discard(functor.prod_batchsize_dims_ *
                    (functor.rank_ - functor.num_batchsize_dims_));
     *ctx.Output<framework::LoDTensor>("SeedOut")->mutable_data<int64_t>(

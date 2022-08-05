@@ -18,9 +18,9 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-class CopyMatrixRowsFunctor<paddle::platform::CPUDeviceContext, T> {
+class CopyMatrixRowsFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const paddle::platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const paddle::framework::Tensor& src,
                   paddle::framework::Vector<size_t> index_lod,
                   paddle::framework::Tensor* dst,
@@ -68,18 +68,13 @@ class CopyMatrixRowsFunctor<paddle::platform::CPUDeviceContext, T> {
   }
 };
 
-template class CopyMatrixRowsFunctor<paddle::platform::CPUDeviceContext, float>;
-template class CopyMatrixRowsFunctor<paddle::platform::CPUDeviceContext,
-                                     double>;
+template class CopyMatrixRowsFunctor<phi::CPUContext, float>;
+template class CopyMatrixRowsFunctor<phi::CPUContext, double>;
 
-template class LoDTensor2BatchFunctor<paddle::platform::CPUDeviceContext,
-                                      float>;
-template class LoDTensor2BatchFunctor<paddle::platform::CPUDeviceContext,
-                                      double>;
-template class Batch2LoDTensorFunctor<paddle::platform::CPUDeviceContext,
-                                      float>;
-template class Batch2LoDTensorFunctor<paddle::platform::CPUDeviceContext,
-                                      double>;
+template class LoDTensor2BatchFunctor<phi::CPUContext, float>;
+template class LoDTensor2BatchFunctor<phi::CPUContext, double>;
+template class Batch2LoDTensorFunctor<phi::CPUContext, float>;
+template class Batch2LoDTensorFunctor<phi::CPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

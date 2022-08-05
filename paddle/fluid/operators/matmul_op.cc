@@ -1041,37 +1041,31 @@ REGISTER_OPERATOR(matmul_grad,
                   ops::MatMulOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulOpDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(matmul_grad_grad, ops::MatMulOpDoubleGrad);
-REGISTER_OP_CPU_KERNEL(
-    matmul,
-    ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    matmul_grad,
-    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(matmul,
+                       ops::MatMulKernel<phi::CPUContext, float>,
+                       ops::MatMulKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(matmul_grad,
+                       ops::MatMulGradKernel<phi::CPUContext, float>,
+                       ops::MatMulGradKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    matmul_grad_grad,
-    ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(matmul_grad_grad,
+                       ops::MatMulDoubleGradKernel<phi::CPUContext, float>,
+                       ops::MatMulDoubleGradKernel<phi::CPUContext, double>);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     matmul,
-    ops::MatMulKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MatMulKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MatMulKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::float16>);
+    ops::MatMulKernel<phi::GPUContext, float>,
+    ops::MatMulKernel<phi::GPUContext, double>,
+    ops::MatMulKernel<phi::GPUContext, paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
     matmul_grad,
-    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    matmul_grad_grad,
-    ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::MatMulGradKernel<phi::GPUContext, float>,
+    ops::MatMulGradKernel<phi::GPUContext, double>,
+    ops::MatMulGradKernel<phi::GPUContext, paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(matmul_grad_grad,
+                        ops::MatMulDoubleGradKernel<phi::GPUContext, float>,
+                        ops::MatMulDoubleGradKernel<phi::GPUContext, double>);
 #endif
 
 REGISTER_OP_VERSION(matmul).AddCheckpoint(

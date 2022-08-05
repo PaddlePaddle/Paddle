@@ -152,6 +152,9 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("ring_id",
                               "The ring id of the NCCL communicator.")
         .SetDefault({0});
+    AddAttr<bool>("use_hierarchical_allreduce",
+                  "Whether to use hierarchical allreduce")
+        .SetDefault(false);
     AddComment("The DistributedFusedLamb optimizer.");
   }
 };
@@ -167,4 +170,4 @@ REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb,
 
 REGISTER_OP_CPU_KERNEL(
     distributed_fused_lamb,
-    ops::DistributedFusedLambOpKernel<plat::CPUDeviceContext, float>);
+    ops::DistributedFusedLambOpKernel<phi::CPUContext, float>);

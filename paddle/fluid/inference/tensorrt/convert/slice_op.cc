@@ -31,18 +31,18 @@ class SliceOpConverter : public OpConverter {
 
     float out_scale = 1;
     if (op_desc.HasAttr("out_threshold")) {
-      out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+      out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
       engine_->SetTensorDynamicRange(input, out_scale);
     }
 
     std::vector<int> axes =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
     std::vector<int> starts =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
     std::vector<int> ends =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
     std::vector<int> decrease_axises =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
 
     auto input_dims = input->getDimensions();
     if (!engine_->with_dynamic_shape()) {
@@ -166,6 +166,29 @@ class SliceOpConverter : public OpConverter {
       }
       layer = TRT_ENGINE_ADD_LAYER(
           engine_, Slice, *input, trt_start_dims, trt_size_dims, trt_step_dims);
+      nvinfer1::Dims real_trt_size_dims;
+      real_trt_size_dims.nbDims = 0;
+
+      if (decrease_axises.size() > 0) {
+        for (size_t i = 0; i < decrease_axises.size(); i++) {
+          decrease_axises[i]--;
+        }
+        for (int i = 0; i < trt_size_dims.nbDims; i++) {
+          if (decrease_axises.end() !=
+              std::find(decrease_axises.begin(), decrease_axises.end(), i))
+            continue;
+          real_trt_size_dims.d[real_trt_size_dims.nbDims] = trt_size_dims.d[i];
+          real_trt_size_dims.nbDims++;
+        }
+        if (real_trt_size_dims.nbDims == 0) {
+          real_trt_size_dims.nbDims = 1;
+          real_trt_size_dims.d[0] = 1;
+        }
+        auto reshape_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
+        reshape_layer->setReshapeDimensions(real_trt_size_dims);
+        layer = static_cast<nvinfer1::ILayer*>(reshape_layer);
+      }
 #else
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();

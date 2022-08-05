@@ -270,7 +270,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   auto iter = attrs.find(
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
-    callstack_ptr = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
     callstack = *callstack_ptr;
   }
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
@@ -301,12 +301,18 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   auto iter = attrs.find(
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
-    callstack_ptr = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
     callstack = *callstack_ptr;
   }
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
       PosixInNsec(), type, input_shapes, dtypes, callstack);
 }
+
+std::map<const char *, std::map<uint64_t, std::vector<uint64_t>>>
+    RecordMemEvent::size_cache;
+
+std::map<const char *, std::map<uint64_t, bool>>
+    RecordMemEvent::has_initialized;
 
 RecordMemEvent::RecordMemEvent(const void *ptr,
                                const phi::Place &place,
@@ -323,17 +329,75 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
     if (platform::is_cpu_place(place) ||
         platform::is_cuda_pinned_place(place)) {
-      current_allocated =
-          HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
-      peak_allocated =
-          HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
-    } else {
-      current_allocated =
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
-      peak_allocated =
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
-    }
+      if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] = true;
+      } else {
+        current_allocated =
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+        peak_allocated =
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0] =
+            current_allocated;
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2] =
+            peak_allocated;
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+      }
 
+    } else {
+      if (RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
+      } else {
+        current_allocated =
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+        peak_allocated =
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0] =
+            current_allocated;
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2] =
+            peak_allocated;
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+      }
+    }
     platform::MemEvenRecorder::Instance().PushMemRecord(ptr,
                                                         place,
                                                         size,
@@ -349,17 +413,74 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
     if (platform::is_cpu_place(place) ||
         platform::is_cuda_pinned_place(place)) {
-      current_reserved =
-          HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
-      peak_reserved =
-          HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+      if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] = true;
+      } else {
+        current_reserved =
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+        peak_reserved =
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1] =
+            current_reserved;
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3] =
+            peak_reserved;
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+      }
     } else {
-      current_reserved =
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
-      peak_reserved =
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+      if (RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
+      } else {
+        current_reserved =
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+        peak_reserved =
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1] =
+            current_reserved;
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3] =
+            peak_reserved;
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+      }
     }
-
     platform::MemEvenRecorder::Instance().PushMemRecord(ptr,
                                                         place,
                                                         size,
@@ -375,17 +496,74 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
     if (platform::is_cpu_place(place) ||
         platform::is_cuda_pinned_place(place)) {
-      current_allocated =
-          HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
-      peak_allocated =
-          HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+      if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] = true;
+      } else {
+        current_allocated =
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+        peak_allocated =
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0] =
+            current_allocated;
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2] =
+            peak_allocated;
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+      }
     } else {
-      current_allocated =
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
-      peak_allocated =
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+      if (RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
+      } else {
+        current_allocated =
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+        peak_allocated =
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0] =
+            current_allocated;
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2] =
+            peak_allocated;
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+      }
     }
-
     platform::MemEvenRecorder::Instance().PopMemRecord(ptr,
                                                        place,
                                                        size,
@@ -401,17 +579,74 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
     if (platform::is_cpu_place(place) ||
         platform::is_cuda_pinned_place(place)) {
-      current_reserved =
-          HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
-      peak_reserved =
-          HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+      if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] = true;
+      } else {
+        current_reserved =
+            HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+        peak_reserved =
+            HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][1] =
+            current_reserved;
+        RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][3] =
+            peak_reserved;
+        current_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][0];
+        peak_allocated =
+            RecordMemEvent::size_cache["cpu"][place.GetDeviceId()][2];
+      }
     } else {
-      current_reserved =
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
-      peak_reserved =
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+      if (RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] ==
+          false) {
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId()));
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()].push_back(
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId()));
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        current_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+        peak_reserved =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
+        RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
+      } else {
+        current_reserved =
+            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+        peak_reserved =
+            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1] =
+            current_reserved;
+        RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3] =
+            peak_reserved;
+        current_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0];
+        peak_allocated =
+            RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2];
+      }
     }
-
     platform::MemEvenRecorder::Instance().PopMemRecord(ptr,
                                                        place,
                                                        size,

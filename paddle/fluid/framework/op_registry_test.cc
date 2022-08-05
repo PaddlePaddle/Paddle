@@ -232,14 +232,11 @@ class OpKernelTest : public paddle::framework::OpKernel<T> {
 REGISTER_OP_WITHOUT_GRADIENT(op_with_kernel,
                              paddle::framework::OpWithKernelTest,
                              paddle::framework::OpKernelTestMaker);
-REGISTER_OP_CPU_KERNEL(
-    op_with_kernel,
-    paddle::framework::OpKernelTest<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(op_with_kernel,
+                       paddle::framework::OpKernelTest<phi::CPUContext, float>);
 
 REGISTER_OP_CUDA_KERNEL(
-    op_with_kernel,
-    paddle::framework::OpKernelTest<paddle::platform::CUDADeviceContext,
-                                    float>);
+    op_with_kernel, paddle::framework::OpKernelTest<phi::GPUContext, float>);
 
 TEST(OperatorRegistrar, CPU) {
   paddle::framework::proto::OpDesc op_desc;
@@ -264,10 +261,9 @@ TEST(OperatorRegistrar, CUDA) {
 }
 
 static int op_test_value = 0;
-
-using paddle::platform::CPUDeviceContext;
-using paddle::platform::CUDADeviceContext;
 using paddle::platform::DeviceContext;
+using phi::CPUContext;
+using phi::GPUContext;
 
 namespace paddle {
 namespace framework {
@@ -295,8 +291,7 @@ class OpMultiKernelTest : public paddle::framework::OpKernel<T> {
 };
 
 template <typename T>
-class OpMultiKernelTest<CPUDeviceContext, T>
-    : public paddle::framework::OpKernel<T> {
+class OpMultiKernelTest<CPUContext, T> : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const {
     ++op_test_value;
@@ -304,7 +299,7 @@ class OpMultiKernelTest<CPUDeviceContext, T>
 };
 
 template <typename T>
-class OpMultiKernelTest<CUDADeviceContext, T>
+class OpMultiKernelTest<phi::GPUContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const {
@@ -319,7 +314,7 @@ class OpMultiKernelTest2 : public paddle::framework::OpKernel<T> {
 };
 
 template <typename T>
-class OpMultiKernelTest2<CPUDeviceContext, T>
+class OpMultiKernelTest2<CPUContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const {
@@ -328,7 +323,7 @@ class OpMultiKernelTest2<CPUDeviceContext, T>
 };
 
 template <typename T>
-class OpMultiKernelTest2<CUDADeviceContext, T>
+class OpMultiKernelTest2<phi::GPUContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const {
@@ -342,26 +337,24 @@ class OpMultiKernelTest2<CUDADeviceContext, T>
 REGISTER_OP_WITHOUT_GRADIENT(op_with_multi_kernel,
                              paddle::framework::OpWithMultiKernelTest,
                              paddle::framework::OpKernelTestMaker);
-REGISTER_OP_KERNEL(
-    op_with_multi_kernel,
-    CPU,
-    paddle::platform::CPUPlace,
-    paddle::framework::OpMultiKernelTest<CPUDeviceContext, float>);
-REGISTER_OP_KERNEL(
-    op_with_multi_kernel,
-    MKLDNN,
-    paddle::platform::CPUPlace,
-    paddle::framework::OpMultiKernelTest2<CPUDeviceContext, float>);
+REGISTER_OP_KERNEL(op_with_multi_kernel,
+                   CPU,
+                   paddle::platform::CPUPlace,
+                   paddle::framework::OpMultiKernelTest<CPUContext, float>);
+REGISTER_OP_KERNEL(op_with_multi_kernel,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
+                   paddle::framework::OpMultiKernelTest2<CPUContext, float>);
 REGISTER_OP_KERNEL(
     op_with_multi_kernel,
     CUDA,
     paddle::platform::CUDAPlace,
-    paddle::framework::OpMultiKernelTest<CUDADeviceContext, float>);
+    paddle::framework::OpMultiKernelTest<phi::GPUContext, float>);
 REGISTER_OP_KERNEL(
     op_with_multi_kernel,
     CUDNN,
     paddle::platform::CUDAPlace,
-    paddle::framework::OpMultiKernelTest2<CUDADeviceContext, float>);
+    paddle::framework::OpMultiKernelTest2<phi::GPUContext, float>);
 
 TEST(OperatorRegistrar, OpWithMultiKernel) {
   paddle::framework::proto::OpDesc op_desc;

@@ -67,7 +67,7 @@ class AttnDropoutParam {
 template <typename T>
 class FMHARef {
  public:
-  FMHARef(const platform::CUDADeviceContext& dev_ctx,
+  FMHARef(const phi::GPUContext& dev_ctx,
           int64_t batch_size,
           int64_t seq_len,
           int64_t num_head,
@@ -97,10 +97,9 @@ class FMHARef {
     // input shape: [bs, seq_len, 3, num_head, head_dim]
     // transpose with perm [2, 0, 3, 1, 4],
     // output_shape: [3, bs, num_head, seq_len, head_dim]
-    int ndims = 5;
     std::vector<int> perm_1 = {2, 0, 3, 1, 4};
     TransposeGPUKernelDriver<T>(
-        dev_ctx_, ndims, qkv_input_tensor, perm_1, transpose_2_out_tensor);
+        dev_ctx_, qkv_input_tensor, perm_1, transpose_2_out_tensor);
     T* qkv_data = transpose_2_out_tensor->data<T>();
     T* qk_out_data = qk_out_tensor->data<T>();
     T* qktv_out_data = qktv_out_tensor->data<T>();
@@ -147,7 +146,7 @@ class FMHARef {
     // q*k^t, batched_gemm
     CBLAS_TRANSPOSE transA = CblasNoTrans;
     CBLAS_TRANSPOSE transB = CblasTrans;
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     int gemm_batch_size = batch_size_ * num_head_;
     int gemm_m = seq_len_;
     int gemm_n = out_seq_len;
@@ -255,9 +254,8 @@ class FMHARef {
     // transpose: [0, 2, 1, 3]
     // output shape: [batch_size, seq_len, num_heads, head_dim]
     std::vector<int> perm_3 = {0, 2, 1, 3};
-    ndims = 4;
     TransposeGPUKernelDriver<T>(
-        dev_ctx_, ndims, *qktv_out_tensor, perm_3, fmha_out_tensor);
+        dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
   }
 
   void ComputeBackward(const Tensor& transpose_2_out_tensor,
@@ -276,7 +274,7 @@ class FMHARef {
                        Tensor* transpose_2_out_grad_tensor,
                        Tensor* src_mask_grad_tensor,
                        Tensor* qkv_input_grad_tensor) {
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     int q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
     int k_size = q_size;
     int softmax_axis = -1;
@@ -297,10 +295,9 @@ class FMHARef {
     T* qktv_out_grad_data = qktv_out_grad_tensor->data<T>();
 
     // transpose bw
-    int ndims = 4;
     std::vector<int> perm_3 = {0, 2, 1, 3};
     TransposeGPUKernelDriver<T>(
-        dev_ctx_, ndims, fmha_out_grad_tensor, perm_3, qktv_out_grad_tensor);
+        dev_ctx_, fmha_out_grad_tensor, perm_3, qktv_out_grad_tensor);
 
     // recall batchedgemm(nn) fw: softmax_out_data(x) * v_ptr(y) =
     // qktv_out_data(out)
@@ -476,17 +473,13 @@ class FMHARef {
                      stride_b);
 
     // transpose bw
-    ndims = 5;
     std::vector<int> perm_1 = {1, 3, 0, 2, 4};
-    TransposeGPUKernelDriver<T>(dev_ctx_,
-                                ndims,
-                                *transpose_2_out_grad_tensor,
-                                perm_1,
-                                qkv_input_grad_tensor);
+    TransposeGPUKernelDriver<T>(
+        dev_ctx_, *transpose_2_out_grad_tensor, perm_1, qkv_input_grad_tensor);
   }
 
  private:
-  const platform::CUDADeviceContext& dev_ctx_;
+  const phi::GPUContext& dev_ctx_;
 
   int64_t batch_size_;
   int64_t seq_len_;

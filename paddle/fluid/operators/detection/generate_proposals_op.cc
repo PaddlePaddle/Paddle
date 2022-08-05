@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
-#include "paddle/fluid/operators/detection/nms_util.h"
+#include "paddle/phi/kernels/funcs/detection/nms_util.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -98,8 +98,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     float min_size = context.Attr<float>("min_size");
     float eta = context.Attr<float>("eta");
 
-    auto &dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
+    auto &dev_ctx = context.template device_context<phi::CPUContext>();
 
     auto &scores_dim = scores->dims();
     int64_t num = scores_dim[0];
@@ -122,7 +121,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     scores_swap.mutable_data<T>({num, h_score, w_score, c_score},
                                 dev_ctx.GetPlace());
 
-    phi::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans;
+    phi::funcs::Transpose<phi::CPUContext, T, 4> trans;
     std::vector<int> axis = {0, 2, 3, 1};
     trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
     trans(dev_ctx, *scores, &scores_swap, axis);
@@ -181,7 +180,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
   }
 
   std::pair<Tensor, Tensor> ProposalForOneImage(
-      const platform::CPUDeviceContext &ctx,
+      const phi::CPUContext &ctx,
       const Tensor &im_info_slice,
       const Tensor &anchors,
       const Tensor &variances,
@@ -234,7 +233,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, true, &keep);
     // Handle the case when there is no keep index left
     if (keep.numel() == 0) {
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
       bbox_sel.mutable_data<T>({1, 4}, ctx.GetPlace());
       set_zero(ctx, &bbox_sel, static_cast<T>(0));
       Tensor scores_filter;
@@ -252,7 +251,8 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       return std::make_pair(bbox_sel, scores_filter);
     }
 
-    Tensor keep_nms = NMS<T>(ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
+    Tensor keep_nms =
+        phi::funcs::NMS<T>(ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
 
     if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
       keep_nms.Resize({post_nms_top_n});

@@ -644,7 +644,7 @@ class AdaptiveAvgPool1D(Layer):
 
     Examples:
         .. code-block:: python
-            :name: AdaptiveAvgPool1D-example
+
             # average adaptive pool1d
             # suppose input data in shape of [N, C, L], `output_size` is m or [m],
             # output shape is [N, C, m], adaptive pool divide L dimension

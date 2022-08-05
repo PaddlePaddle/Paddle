@@ -549,6 +549,15 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
+    } else if (platform::is_ipu_place(place)) {
+#if defined(PADDLE_WITH_IPU)
+      gc.reset(new IPUGarbageCollector(place, max_memory_size));
+      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use IPU device since it's not compiled with IPU,"
+          "Please recompile or reinstall Paddle with IPU support."));
+#endif
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (IsFastEagerDeletionModeEnabled()) {
@@ -854,12 +863,12 @@ void ParallelExecutor::BCastParamsToDevices(
         nccl_ctxs->WaitAll();
       } else {
         auto src_place = member_->places_[0];
-        auto src_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+        auto src_dev_ctx = static_cast<phi::GPUContext *>(
             platform::DeviceContextPool::Instance().Get(src_place));
         auto sizeof_dtype = framework::SizeOfType(dtype) * numel;
         for (size_t i = 1; i < member_->places_.size(); ++i) {
           auto dst_place = member_->places_[i];
-          auto dst_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+          auto dst_dev_ctx = static_cast<phi::GPUContext *>(
               platform::DeviceContextPool::Instance().Get(dst_place));
           src_dev_ctx->Wait();
           dst_dev_ctx->Wait();
@@ -972,37 +981,9 @@ void ParallelExecutor::BCastParamsToDevices(
   }
 }
 
-FetchResultType ParallelExecutor::Run(
-    const std::vector<std::string> &fetch_tensors, bool return_merged) {
-  platform::RecordEvent record_run(
-      "ParallelExecutor::Run", platform::TracerEventType::UserDefined, 1);
-  VLOG(3) << "enter ParallelExecutor Run";
-#ifdef PADDLE_WITH_CUDA
-  if (platform::IsCUDAGraphCapturing()) {
-    PADDLE_ENFORCE_EQ(fetch_tensors.empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Cannot fetch data when using CUDA Graph."));
-    PADDLE_ENFORCE_EQ(
-        member_->build_strategy_.allow_cuda_graph_capture_,
-        true,
-        platform::errors::InvalidArgument(
-            "You must turn on build_strategy.allow_cuda_graph_capture = True "
-            "to enable CUDA Graph capturing."));
-    PADDLE_ENFORCE_EQ(
-        member_->places_[0],
-        platform::CUDAGraphCapturingPlace(),
-        platform::errors::InvalidArgument("The place to capture CUDAGraph is "
-                                          "not the same as the place to run."));
-  }
-#endif
-
-#ifdef WITH_GPERFTOOLS
-  if (gProfileStarted) {
-    ProfilerFlush();
-  }
-#endif
-
+FetchUnmergedList ParallelExecutor::Run(
+    const std::vector<std::string> &fetch_tensors) {
+  PreludeToRun(fetch_tensors);
   platform::RecordBlock b(0);
 
   ResetHasFeedGuard reset_has_feed_guard(member_);
@@ -1012,8 +993,26 @@ FetchResultType ParallelExecutor::Run(
                                 member_->HasGarbageCollectors());
 
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
-  auto fetch_data = member_->executor_->Run(fetch_tensors, return_merged);
-  return fetch_data;
+  auto fetch_data =
+      member_->executor_->Run(fetch_tensors, /*return_merged=*/false);
+  return PADDLE_GET(FetchUnmergedList, fetch_data);
+}
+
+FetchList ParallelExecutor::RunAndMerge(
+    const std::vector<std::string> &fetch_tensors) {
+  PreludeToRun(fetch_tensors);
+  platform::RecordBlock b(0);
+
+  ResetHasFeedGuard reset_has_feed_guard(member_);
+
+  ir::SkipMemOptVarsGuard guard(&(member_->mem_opt_var_infos_),
+                                fetch_tensors,
+                                member_->HasGarbageCollectors());
+
+  VLOG(3) << "ParallelExecutor begin to run member_->executor_->RunAndMerge";
+  auto fetch_data =
+      member_->executor_->Run(fetch_tensors, /*return_merged=*/true);
+  return PADDLE_GET(FetchList, fetch_data);
 }
 
 void ParallelExecutor::RunWithoutFetch(
@@ -1440,6 +1439,38 @@ std::vector<ir::Graph *> ParallelExecutor::CloneGraphToMultiDevices(
   return graphs;
 }
 
+void ParallelExecutor::PreludeToRun(
+    const std::vector<std::string> &fetch_tensors) {
+  platform::RecordEvent record_run(
+      "ParallelExecutor::Run", platform::TracerEventType::UserDefined, 1);
+  VLOG(3) << "enter ParallelExecutor Run";
+#ifdef PADDLE_WITH_CUDA
+  if (platform::IsCUDAGraphCapturing()) {
+    PADDLE_ENFORCE_EQ(fetch_tensors.empty(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Cannot fetch data when using CUDA Graph."));
+    PADDLE_ENFORCE_EQ(
+        member_->build_strategy_.allow_cuda_graph_capture_,
+        true,
+        platform::errors::InvalidArgument(
+            "You must turn on build_strategy.allow_cuda_graph_capture = True "
+            "to enable CUDA Graph capturing."));
+    PADDLE_ENFORCE_EQ(
+        member_->places_[0],
+        platform::CUDAGraphCapturingPlace(),
+        platform::errors::InvalidArgument("The place to capture CUDAGraph is "
+                                          "not the same as the place to run."));
+  }
+#endif
+
+#ifdef WITH_GPERFTOOLS
+  if (gProfileStarted) {
+    ProfilerFlush();
+  }
+#endif
+}
+
 void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
   if (member_->build_strategy_.reduce_ ==
       BuildStrategy::ReduceStrategy::kNoReduce) {
@@ -1461,8 +1492,8 @@ void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
         global_scope, member_->places_);
     auto &pool = platform::DeviceContextPool::Instance();
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-          pool.Get(member_->places_[dev_id]));
+      auto *dev_ctx =
+          static_cast<phi::GPUContext *>(pool.Get(member_->places_[dev_id]));
       auto &nccl_ctx = nccl_ctxs->at(member_->places_[dev_id]);
       dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }

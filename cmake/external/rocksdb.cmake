@@ -44,7 +44,8 @@ ExternalProject_Add(
     ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/librocksdb.a ${ROCKSDB_LIBRARIES}
     && cp -r ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/include
     ${ROCKSDB_INSTALL_DIR}/
-  BUILD_IN_SOURCE 1)
+  BUILD_IN_SOURCE 1
+  BYPRODUCTS ${ROCKSDB_LIBRARIES})
 
 add_dependencies(extern_rocksdb snappy)
 

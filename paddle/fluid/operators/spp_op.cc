@@ -109,11 +109,9 @@ REGISTER_OPERATOR(
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(spp_grad, ops::SppOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    spp,
-    ops::SppKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SppKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    spp_grad,
-    ops::SppGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SppGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(spp,
+                       ops::SppKernel<phi::CPUContext, float>,
+                       ops::SppKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(spp_grad,
+                       ops::SppGradKernel<phi::CPUContext, float>,
+                       ops::SppGradKernel<phi::CPUContext, double>);

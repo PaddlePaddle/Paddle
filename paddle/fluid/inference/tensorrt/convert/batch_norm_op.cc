@@ -45,7 +45,7 @@ class BatchNormOpConverter : public OpConverter {
     auto* Mean_v = scope.FindVar(op_desc.Input("Mean").front());
     auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());
     auto* Variance_v = scope.FindVar(op_desc.Input("Variance").front());
-    const float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+    const float eps = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
     auto output_name = op_desc.Output("Y").front();
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
@@ -169,7 +169,7 @@ class BatchNormOpConverter : public OpConverter {
     engine_->SetWeights(op_desc.Input("Scale").front(),
                         std::move(combile_scale_tensor));
     if (x_dim.nbDims < 3 + dynamic_shape_offset) {
-      layer->getOutput(0)->setName("batch_norm_out");
+      layer->getOutput(0)->setName(("BN: ScaleNd: " + output_name).c_str());
       layer->setName(("BN: ScaleNd: (Output: " + output_name + ")").c_str());
       nvinfer1::Dims squeeze_shape;
       squeeze_shape.nbDims = x_dim.nbDims;

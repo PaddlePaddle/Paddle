@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
+#include "paddle/phi/common/data_type.h"
 
 USE_NO_KERNEL_OP(tensorrt_engine);
 namespace paddle {
@@ -39,7 +40,7 @@ void CreateCUDATensor(framework::Scope* scope,
   auto dims = phi::make_ddim(shape);
   tensor->Resize(dims);
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())
                        .get());
@@ -106,7 +107,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
 
   engine_op_desc.SetBlockAttr("sub_block", &block_desc);
   engine_op_desc.SetAttr("max_batch_size", static_cast<int>(2));
-  engine_op_desc.SetAttr("workspace_size", static_cast<int>(1 << 20));
+  engine_op_desc.SetAttr("workspace_size", static_cast<int64_t>(1 << 20));
   engine_op_desc.SetAttr("parameters", std::vector<std::string>({}));
   engine_op_desc.SetAttr("engine_key", std::string("a_engine"));
   engine_op_desc.SetAttr("calibration_engine_key",
@@ -132,6 +133,8 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetAttr("min_input_shape", std::vector<int>{1, 4, 1, 1});
   engine_op_desc.SetAttr("max_input_shape", std::vector<int>{2, 4, 1, 1});
   engine_op_desc.SetAttr("opt_input_shape", std::vector<int>{2, 4, 1, 1});
+  engine_op_desc.SetAttr("model_precision",
+                         static_cast<int>(phi::DataType::FLOAT32));
 
   LOG(INFO) << "create engine op";
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
@@ -139,7 +142,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
 
   framework::Scope scope;
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())
                        .get());
@@ -150,7 +153,6 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   else
     CreateCUDATensor(&scope, "x", std::vector<int64_t>({2, 4, 1, 1}));
   CreateCUDATensor(&scope, "y", std::vector<int64_t>({4, 6}));
-  CreateCUDATensor(&scope, "z", std::vector<int64_t>({2, 6}));
 
   CreateCUDATensor(&scope, "y0", std::vector<int64_t>({6, 8}));
   CreateCUDATensor(&scope, "z0", std::vector<int64_t>({2, 8}));
@@ -169,7 +171,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())
                        .get());
@@ -257,7 +259,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
 
   engine_op_desc.SetBlockAttr("sub_block", &block_desc);
   engine_op_desc.SetAttr("max_batch_size", static_cast<int>(batch_size));
-  engine_op_desc.SetAttr("workspace_size", static_cast<int>(1 << 20));
+  engine_op_desc.SetAttr("workspace_size", static_cast<int64_t>(1 << 20));
   engine_op_desc.SetAttr("parameters",
                          std::vector<std::string>({"y0", "y1", "y2", "y3"}));
   engine_op_desc.SetAttr("engine_key", std::string("b_engine"));

@@ -222,7 +222,7 @@ class SequenceConvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
 
     if (op->HasAttr("paddingTrainable") &&
-        BOOST_GET_CONST(bool, op->GetAttr("paddingTrainable")) &&
+        PADDLE_GET_CONST(bool, op->GetAttr("paddingTrainable")) &&
         this->HasInput("PaddingData")) {
       op->SetInput("PaddingData", this->Input("PaddingData"));
       op->SetOutput(framework::GradVarName("PaddingData"),
@@ -246,7 +246,7 @@ class SequenceConvGradNoNeedBufferVarsInference
   const std::unordered_set<std::string> &operator()(
       const framework::InferNoNeedBufferVarsContext &ctx) const final {
     static const std::unordered_set<std::string> kPaddingData({"PaddingData"});
-    if (!BOOST_GET_CONST(bool, ctx.GetAttr("paddingTrainable"))) {
+    if (!PADDLE_GET_CONST(bool, ctx.GetAttr("paddingTrainable"))) {
       return kPaddingData;
     } else {
       return Empty();
@@ -268,11 +268,9 @@ REGISTER_OPERATOR(sequence_conv_grad,
                   ops::SequenceConvGradOp,
                   ops::SequenceConvGradNoNeedBufferVarsInference);
 
-REGISTER_OP_CPU_KERNEL(
-    sequence_conv,
-    ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_conv_grad,
-    ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_conv,
+                       ops::SequenceConvKernel<phi::CPUContext, float>,
+                       ops::SequenceConvKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_conv_grad,
+                       ops::SequenceConvGradKernel<phi::CPUContext, float>,
+                       ops::SequenceConvGradKernel<phi::CPUContext, double>);

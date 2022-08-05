@@ -91,7 +91,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   int64_t tmp_dim_0 = -1;
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
-        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+        PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
     const auto& x_lod = x_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(x_lod.empty(),
                       false,
@@ -116,7 +116,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
                           x_dims[0]));
 
     framework::Variable* y_var =
-        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
+        PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
     const auto& y_lod = y_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(y_lod.empty(),
                       false,
@@ -162,7 +162,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   } else {
     // compile time
     framework::VarDesc* x_desc =
-        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("X")[0]);
+        PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("X")[0]);
     PADDLE_ENFORCE_GE(
         x_desc->GetLoDLevel(),
         1,
@@ -170,7 +170,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
                                           "greater than 1, but reviced %d.",
                                           x_desc->GetLoDLevel()));
     framework::VarDesc* y_desc =
-        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Y")[0]);
+        PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Y")[0]);
     PADDLE_ENFORCE_GE(
         y_desc->GetLoDLevel(),
         1,
@@ -273,7 +273,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     memset(
         bottom_l_trans_data, 0.0, tmp->dims()[0] * tmp->dims()[1] * sizeof(T));
 
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
 
     call_gemm(blas,
               CblasNoTrans,
@@ -295,7 +295,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
         const auto* l_t_data =
             bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
         const auto* r_data = bottom_r_data + offset_r[b] * dim_in;
-        auto blas_2 = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
+        auto blas_2 = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
         call_gemm_with_lda(blas_2,
                            CblasNoTrans,
                            CblasTrans,
@@ -388,7 +388,7 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
 
     auto* t_data = w->data<T>();
     auto* d_w = ctx.Output<Tensor>(framework::GradVarName("W"));
@@ -456,10 +456,8 @@ REGISTER_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     match_matrix_tensor,
-    ops::CPUMatchMatrixTensorOPKernel<paddle::platform::CPUDeviceContext,
-                                      float>);
+    ops::CPUMatchMatrixTensorOPKernel<phi::CPUContext, float>);
 
 REGISTER_OP_CPU_KERNEL(
     match_matrix_tensor_grad,
-    ops::CPUMatchMatrixTensorOPGradKernel<paddle::platform::CPUDeviceContext,
-                                          float>);
+    ops::CPUMatchMatrixTensorOPGradKernel<phi::CPUContext, float>);

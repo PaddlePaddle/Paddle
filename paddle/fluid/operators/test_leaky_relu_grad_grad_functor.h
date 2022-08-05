@@ -96,17 +96,15 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
   if (platform::is_gpu_place(place)) {
-    auto &cuda_dev_ctx = dynamic_cast<platform::CUDADeviceContext &>(dev_ctx);
+    auto &cuda_dev_ctx = dynamic_cast<phi::GPUContext &>(dev_ctx);
     functor(cuda_dev_ctx, &x, out, &ddx, &ddout, dout, dx);
-    platform::ForRange<platform::CUDADeviceContext> for_range(cuda_dev_ctx,
-                                                              limit);
+    platform::ForRange<phi::GPUContext> for_range(cuda_dev_ctx, limit);
     for_range(actual_functor);
   } else {
 #endif
-    auto &cpu_dev_ctx = dynamic_cast<platform::CPUDeviceContext &>(dev_ctx);
+    auto &cpu_dev_ctx = dynamic_cast<phi::CPUContext &>(dev_ctx);
     functor(cpu_dev_ctx, &x, out, &ddx, &ddout, dout, dx);
-    platform::ForRange<platform::CPUDeviceContext> for_range(cpu_dev_ctx,
-                                                             limit);
+    platform::ForRange<phi::CPUContext> for_range(cpu_dev_ctx, limit);
     for_range(actual_functor);
 #if defined(__NVCC__) || defined(__HIPCC__)
   }

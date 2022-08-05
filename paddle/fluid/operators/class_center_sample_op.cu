@@ -221,6 +221,12 @@ class NotEqualToPreviousAdjacentIterator {
   }
 
   template <typename Distance>
+  __host__ __device__ __forceinline__ self_type operator-(Distance n) const {
+    self_type ret(arr_, offset_ - n);
+    return ret;
+  }
+
+  template <typename Distance>
   __host__ __device__ __forceinline__ reference operator[](Distance n) const {
     return *(*this + n);
   }
@@ -369,7 +375,7 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
             platform::NCCLCommContext::Instance().Get(rid, ctx.GetPlace());
         // use global calculate stream
         const auto calcu_stream =
-            static_cast<platform::CUDADeviceContext*>(
+            static_cast<phi::GPUContext*>(
                 platform::DeviceContextPool::Instance().Get(ctx.GetPlace()))
                 ->stream();
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
@@ -601,6 +607,5 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     class_center_sample,
-    ops::ClassCenterSampleCUDAKernel<paddle::platform::CUDADeviceContext,
-                                     int64_t>,
-    ops::ClassCenterSampleCUDAKernel<paddle::platform::CUDADeviceContext, int>);
+    ops::ClassCenterSampleCUDAKernel<phi::GPUContext, int64_t>,
+    ops::ClassCenterSampleCUDAKernel<phi::GPUContext, int>);

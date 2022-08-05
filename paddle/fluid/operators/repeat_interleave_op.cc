@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/repeat_interleave_op.h"
-
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/index_select_op.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -164,24 +166,13 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(RepeatInterleaveGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
 REGISTER_OPERATOR(repeat_interleave,
                   ops::RepeatInterleaveOp,
                   ops::RepeatInterleaveOpMaker,
                   ops::RepeatInterleaveGradMaker<paddle::framework::OpDesc>,
                   ops::RepeatInterleaveGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(repeat_interleave_grad,
                   ops::RepeatInterleaveGradOp,
                   ops::RepeatInterleaveGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    repeat_interleave,
-    ops::RepeatInterleaveKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RepeatInterleaveKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::RepeatInterleaveKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RepeatInterleaveKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    repeat_interleave_grad,
-    ops::RepeatInterleaveGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RepeatInterleaveGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::RepeatInterleaveGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RepeatInterleaveGradKernel<paddle::platform::CPUDeviceContext,
-                                    int64_t>);

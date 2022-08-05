@@ -62,13 +62,13 @@ void IOConverterTester(const platform::DeviceContext& ctx) {
 
 TEST(EngineIOConverterTester, DefaultCPU) {
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
   IOConverterTester(ctx);
 }
 
 TEST(EngineIOConverterTester, DefaultGPU) {
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   IOConverterTester(ctx);
 }
 

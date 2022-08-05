@@ -179,67 +179,69 @@ TEST(tensorrt_tester_LeViT, multi_thread4_trt_fp32_bz2) {
 }
 
 #ifdef PADDLE_WITH_GPU
-// TEST(tensorrt_tester_LeViT, multi_stream_thread4_trt_fp32_bz2) {
-//   int thread_num = 4;
+TEST(tensorrt_tester_LeViT, multi_stream_thread4_trt_fp32_bz2) {
+  int thread_num = 4;
 
-//   // init stream
-//   std::vector<cudaStream_t> streams(thread_num);
-//   for (size_t i = 0; i < thread_num; ++i) {
-//     cudaStreamCreate(&streams[i]);
-//   }
+  // init stream
+  std::vector<cudaStream_t> streams(thread_num);
+  for (size_t i = 0; i < thread_num; ++i) {
+    cudaStreamCreate(&streams[i]);
+  }
 
-//   // init input data
-//   std::map<std::string, paddle::test::Record> my_input_data_map;
-//   my_input_data_map["x"] = PrepareInput(2);
-//   // init output data
-//   std::map<std::string, paddle::test::Record> infer_output_data,
-//       truth_output_data;
-//   // prepare groudtruth config
-//   paddle_infer::Config config, config_no_ir;
-//   config_no_ir.SetModel(FLAGS_modeldir + "/inference.pdmodel",
-//                         FLAGS_modeldir + "/inference.pdiparams");
-//   config_no_ir.SwitchIrOptim(false);
-//   // prepare inference config
-//   config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
-//                   FLAGS_modeldir + "/inference.pdiparams");
-//   config.EnableUseGpu(100, 0);
-//   config.EnableTensorRtEngine(
-//       1 << 20, 2, 50, paddle_infer::PrecisionType::kFloat32, false, false);
-//   // get groudtruth by disbale ir
+  // init input data
+  std::map<std::string, paddle::test::Record> my_input_data_map;
+  my_input_data_map["x"] = PrepareInput(2);
+  // init output data
+  std::map<std::string, paddle::test::Record> infer_output_data,
+      truth_output_data;
+  // prepare groudtruth config
+  paddle_infer::Config config, config_no_ir;
+  config_no_ir.SetModel(FLAGS_modeldir + "/inference.pdmodel",
+                        FLAGS_modeldir + "/inference.pdiparams");
+  config_no_ir.SwitchIrOptim(false);
+  // prepare inference config
+  config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
+                  FLAGS_modeldir + "/inference.pdiparams");
+  config.EnableUseGpu(100, 0);
+  config.EnableTensorRtEngine(
+      1 << 20, 2, 50, paddle_infer::PrecisionType::kFloat32, false, false);
+  // get groudtruth by disbale ir
 
-//   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
-//   SingleThreadPrediction(pred_pool_no_ir.Retrive(0), &my_input_data_map,
-//                          &truth_output_data, 1);
+  paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
+  SingleThreadPrediction(
+      pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
 
-//   // get infer results from multi threads
-//   std::vector<std::thread> threads;
-//   config.SetExecStream(streams[0]);
-//   config.pass_builder()->DeletePass("add_support_int8_pass");
-//   auto main_predictor = CreatePredictor(config);
-//   std::vector<decltype(main_predictor)> predictors;
-//   for (size_t i = 0; i < thread_num - 1; ++i) {
-//     predictors.push_back(std::move(main_predictor->Clone(streams[i + 1])));
-//     LOG(INFO) << "predictors[" << i << "] stream is "
-//               << predictors[i]->GetExecStream();
-//   }
-//   predictors.push_back(std::move(main_predictor));
-//   LOG(INFO) << "predictors[" << thread_num - 1 << "] stream is "
-//             << predictors[thread_num - 1]->GetExecStream();
-//   for (int i = 0; i < thread_num; ++i) {
-//     threads.emplace_back(paddle::test::SingleThreadPrediction,
-//                          predictors[i].get(), &my_input_data_map,
-//                          &infer_output_data, 10);
-//   }
+  // get infer results from multi threads
+  std::vector<std::thread> threads;
+  config.SetExecStream(streams[0]);
+  config.pass_builder()->DeletePass("add_support_int8_pass");
+  auto main_predictor = CreatePredictor(config);
+  std::vector<decltype(main_predictor)> predictors;
+  for (size_t i = 0; i < thread_num - 1; ++i) {
+    predictors.push_back(std::move(main_predictor->Clone(streams[i + 1])));
+    LOG(INFO) << "predictors[" << i << "] stream is "
+              << predictors[i]->GetExecStream();
+  }
+  predictors.push_back(std::move(main_predictor));
+  LOG(INFO) << "predictors[" << thread_num - 1 << "] stream is "
+            << predictors[thread_num - 1]->GetExecStream();
+  for (int i = 0; i < thread_num; ++i) {
+    threads.emplace_back(paddle::test::SingleThreadPrediction,
+                         predictors[i].get(),
+                         &my_input_data_map,
+                         &infer_output_data,
+                         10);
+  }
 
-//   // thread join & check outputs
-//   for (int i = 0; i < thread_num; ++i) {
-//     LOG(INFO) << "join tid : " << i;
-//     threads[i].join();
-//     CompareRecord(&truth_output_data, &infer_output_data);
-//   }
+  // thread join & check outputs
+  for (int i = 0; i < thread_num; ++i) {
+    LOG(INFO) << "join tid : " << i;
+    threads[i].join();
+    CompareRecord(&truth_output_data, &infer_output_data);
+  }
 
-//   std::cout << "finish multi-thread test" << std::endl;
-// }
+  std::cout << "finish multi-thread test" << std::endl;
+}
 #endif
 
 }  // namespace paddle_infer

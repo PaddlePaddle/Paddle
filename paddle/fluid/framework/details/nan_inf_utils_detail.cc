@@ -316,7 +316,7 @@ template <>
 
 template <>
 template <typename T>
-void TensorCheckerVisitor<platform::CPUDeviceContext>::apply(
+void TensorCheckerVisitor<phi::CPUContext>::apply(
     typename std::enable_if<
         std::is_floating_point<T>::value ||
         std::is_same<T, ::paddle::platform::complex<float>>::value ||
@@ -329,11 +329,11 @@ void TensorCheckerVisitor<platform::CPUDeviceContext>::apply(
 }
 
 template <>
-void tensor_check<platform::CPUDeviceContext>(const std::string& op_type,
-                                              const std::string& var_name,
-                                              const framework::Tensor& tensor,
-                                              const platform::Place& place) {
-  TensorCheckerVisitor<platform::CPUDeviceContext> vistor(
+void tensor_check<phi::CPUContext>(const std::string& op_type,
+                                   const std::string& var_name,
+                                   const framework::Tensor& tensor,
+                                   const platform::Place& place) {
+  TensorCheckerVisitor<phi::CPUContext> vistor(
       op_type, var_name, tensor, place);
   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
@@ -367,8 +367,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 
   if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    tensor_check<platform::CUDADeviceContext>(
-        op_type, var_name, *tensor, place);
+    tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
@@ -439,7 +438,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 #endif
     return;
   }
-  tensor_check<platform::CPUDeviceContext>(op_type, var_name, *tensor, place);
+  tensor_check<phi::CPUContext>(op_type, var_name, *tensor, place);
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,

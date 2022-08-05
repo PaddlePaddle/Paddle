@@ -160,7 +160,7 @@ class TestCRFModel(unittest.TestCase):
                     input=feature_out,
                     label=target,
                     param_attr=fluid.ParamAttr(name='crfw', learning_rate=1e-1))
-                avg_cost = fluid.layers.mean(crf_cost)
+                avg_cost = paddle.mean(crf_cost)
 
                 sgd_optimizer = fluid.optimizer.SGD(
                     learning_rate=fluid.layers.exponential_decay(

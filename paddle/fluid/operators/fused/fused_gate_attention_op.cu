@@ -350,7 +350,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     const bool merge_qkv = ctx.Attr<bool>("merge_qkv");
     const bool has_gating = ctx.Attr<bool>("has_gating");
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
     AllocWithDebugInfo<T>(dev_ctx, "fmha_out", fmha_out);
     if (has_gating) {
@@ -363,13 +363,14 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
         dev_ctx, query, key, query_weight, qkv_weight, merge_qkv, has_gating);
 
     if (merge_qkv) {
-      PADDLE_ENFORCE_EQ(!key || query == key,
-                        true,
-                        platform::errors::InvalidArgument(
-                            "key is expected to be nullptr or the same as "
-                            "query, but recieved key=%p, query=%p.",
-                            key,
-                            query));
+      PADDLE_ENFORCE_EQ(
+          !key || query == key || query->data<T>() == key->data<T>(),
+          true,
+          platform::errors::InvalidArgument(
+              "key is expected to be nullptr or the same as "
+              "query, but recieved key=%p, query=%p.",
+              key,
+              query));
 
       // 1. Merged QKV Matmul: einsum(nbhqk,nbkhc -> nbqhc)
       Tensor *qkv_out = config.GetQKVOut();
@@ -440,7 +441,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     bool has_gating = ctx.Attr<bool>("has_gating");
     bool merge_qkv = ctx.Attr<bool>("merge_qkv");
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     AllocWithDebugInfo<T>(dev_ctx, "query_grad", query_grad);
 
     GateAttentionGradConfig<T> config(

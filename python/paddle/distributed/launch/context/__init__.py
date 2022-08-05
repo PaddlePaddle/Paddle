@@ -57,8 +57,6 @@ class Context(object):
             return True
 
         legacy_env_list = [
-            'DISTRIBUTED_TRAINER_ENDPOINTS',
-            'PADDLE_ELASTIC_JOB_ID',
             'FLAGS_START_PORT',
         ]
 
@@ -75,6 +73,10 @@ class Context(object):
 
     def get_envs(self):
         return self.envs.copy()
+
+    def set_envs(self, env={}):
+        env = {k: v for k, v in env.items() if isinstance(v, str)}
+        self.envs.update(env)
 
     def _enable_plugin(self):
         for pl in plugins.enabled_plugins:

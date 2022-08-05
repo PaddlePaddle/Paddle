@@ -208,11 +208,291 @@ class LogMLUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class ExpMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+    cnnlComputationPreference_t prefer = CNNL_COMPUTATION_HIGH_PRECISION;
+
+    MLUCnnl::Exp(ctx,
+                 prefer,
+                 input_desc.get(),
+                 GetBasePtr(input),
+                 output_desc.get(),
+                 GetBasePtr(output));
+  }
+};
+
+template <typename T>
+class ExpGradMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
+    MLUCnnlTensorDesc dout_desc(*dout);
+    MLUCnnlTensorDesc dx_desc(*dx);
+    MLUCnnlTensorDesc out_desc(*out);
+
+    MLUCnnlOpTensorDesc op_tensor_desc(
+        CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+
+    MLUCnnl::OpTensor(ctx,
+                      op_tensor_desc.get(),
+                      dout_desc.get(),
+                      GetBasePtr(dout),
+                      out_desc.get(),
+                      GetBasePtr(out),
+                      dx_desc.get(),
+                      GetBasePtr(dx),
+                      ToCnnlDataType<T>());
+  }
+};
+
+template <typename T>
+class HardSwishMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->mutable_data<T>(ctx.GetPlace());
+    float threshold = ctx.Attr<float>("threshold");
+    float scale = ctx.Attr<float>("scale");
+    float offset = ctx.Attr<float>("offset");
+    PADDLE_ENFORCE_EQ(threshold,
+                      6.0f,
+                      platform::errors::External(
+                          "Not support threshold [%f] in MLU", threshold));
+    PADDLE_ENFORCE_EQ(
+        scale,
+        6.0f,
+        platform::errors::External("Not support scale [%f] in MLU", scale));
+    PADDLE_ENFORCE_EQ(
+        offset,
+        3.0f,
+        platform::errors::External("Not support offset [%f] in MLU", offset));
+
+    MLUCnnlActivationDesc act_desc(CNNL_ACTIVATION_HARDSWISH,
+                                   1.0f /*ceof useless*/);
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+
+    MLUCnnl::Active(ctx,
+                    act_desc.get(),
+                    input_desc.get(),
+                    GetBasePtr(input),
+                    output_desc.get(),
+                    GetBasePtr(output));
+  }
+};
+
+template <typename T>
+class HardSwishGradMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    float threshold = ctx.Attr<float>("threshold");
+    float scale = ctx.Attr<float>("scale");
+    float offset = ctx.Attr<float>("offset");
+    PADDLE_ENFORCE_EQ(threshold,
+                      6.0f,
+                      platform::errors::External(
+                          "Not support threshold [%f] in MLU", threshold));
+    PADDLE_ENFORCE_EQ(
+        scale,
+        6.0f,
+        platform::errors::External("Not support scale [%f] in MLU", scale));
+    PADDLE_ENFORCE_EQ(
+        offset,
+        3.0f,
+        platform::errors::External("Not support offset [%f] in MLU", offset));
+    auto* out = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    dx->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlTensorDesc out_desc(*out);
+    MLUCnnlTensorDesc dout_desc(*dout);
+    MLUCnnlTensorDesc dx_desc(*dx);
+    MLUCnnlActivationDesc act_desc(CNNL_ACTIVATION_HARDSWISH,
+                                   1.0f /*ceof useless*/);
+    MLUCnnl::ActiveGrad(ctx,
+                        act_desc.get(),
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        dout_desc.get(),
+                        GetBasePtr(dout),
+                        out_desc.get(),
+                        GetBasePtr(out),
+                        dx_desc.get(),
+                        GetBasePtr(dx));
+  }
+};
+
+template <typename T>
+class HardSigmoidMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    float slope = ctx.Attr<float>("slope");
+    float offset = ctx.Attr<float>("offset");
+    output->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlActivationDesc act_desc(CNNL_ACTIVATION_HARDSIGMOID,
+                                   1.0f /*ceof useless*/,
+                                   1.0f /*sliced_dim useless*/,
+                                   slope,
+                                   offset);
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+
+    MLUCnnl::Active(ctx,
+                    act_desc.get(),
+                    input_desc.get(),
+                    GetBasePtr(input),
+                    output_desc.get(),
+                    GetBasePtr(output));
+  }
+};
+
+template <typename T>
+class HardSigmoidGradMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    float slope = ctx.Attr<float>("slope");
+    float offset = ctx.Attr<float>("offset");
+    dx->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlActivationDesc act_desc(CNNL_ACTIVATION_HARDSIGMOID,
+                                   1.0f /*ceof useless*/,
+                                   1.0f /*sliced_dim useless*/,
+                                   slope,
+                                   offset);
+    MLUCnnlTensorDesc out_desc(*out);
+    MLUCnnlTensorDesc dout_desc(*dout);
+    MLUCnnlTensorDesc dx_desc(*dx);
+    MLUCnnl::ActiveGrad(ctx,
+                        act_desc.get(),
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        dout_desc.get(),
+                        GetBasePtr(dout),
+                        out_desc.get(),
+                        GetBasePtr(out),
+                        dx_desc.get(),
+                        GetBasePtr(dx));
+  }
+};
+
+template <typename T>
+class FloorMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+
+    MLUCnnl::Floor(ctx,
+                   input_desc.get(),
+                   GetBasePtr(input),
+                   output_desc.get(),
+                   GetBasePtr(output));
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ReciprocalMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+    auto place = ctx.GetPlace();
+    out->mutable_data<T>(place);
+    MLUCnnlTensorDesc x_desc(*x);
+    MLUCnnlTensorDesc out_desc(*out);
+    MLUCnnl::Reciprocal(
+        ctx, x_desc.get(), GetBasePtr(x), out_desc.get(), GetBasePtr(out));
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ReciprocalGradMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto place = ctx.GetPlace();
+    dx->mutable_data<T>(place);
+    Tensor square_out;
+    square_out.Resize(out->dims());
+    square_out.mutable_data<T>(place);
+    MLUCnnlTensorDesc out_desc(*out);
+    MLUCnnlTensorDesc dout_desc(*dout);
+    MLUCnnlTensorDesc dx_desc(*dx);
+    MLUCnnlTensorDesc square_out_desc(square_out);
+    MLUCnnl::Square(ctx,
+                    out_desc.get(),
+                    GetBasePtr(out),
+                    square_out_desc.get(),
+                    GetBasePtr(&square_out));
+    cnnlOpTensorDesc_t op_tensor_op = CNNL_OP_TENSOR_MUL;
+    cnnlDataType_t op_tensor_comp_type = CNNL_DTYPE_FLOAT;
+    cnnlNanPropagation_t op_tensor_nan_opt = CNNL_NOT_PROPAGATE_NAN;
+    MLUCnnlOpTensorDesc op_tensor_desc(
+        op_tensor_op, op_tensor_comp_type, op_tensor_nan_opt);
+    float alpha1_float = -1;
+    float alpha2_float = 1;
+    float beta_float = 0;
+    MLUCnnl::OpTensor(ctx,
+                      op_tensor_desc.get(),
+                      dout_desc.get(),
+                      GetBasePtr(dout),
+                      square_out_desc.get(),
+                      GetBasePtr(&square_out),
+                      dx_desc.get(),
+                      GetBasePtr(dx),
+                      op_tensor_comp_type,
+                      alpha1_float,
+                      alpha2_float,
+                      beta_float);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
+// reciprocal
+REGISTER_OP_MLU_KERNEL(
+    reciprocal,
+    ops::ReciprocalMLUKernel<paddle::platform::MLUDeviceContext, float>,
+    ops::ReciprocalMLUKernel<paddle::platform::MLUDeviceContext,
+                             paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(
+    reciprocal_grad,
+    ops::ReciprocalGradMLUKernel<paddle::platform::MLUDeviceContext, float>,
+    ops::ReciprocalGradMLUKernel<paddle::platform::MLUDeviceContext,
+                                 paddle::platform::float16>);
 // relu
 REGISTER_OP_MLU_KERNEL(
     relu,
@@ -303,3 +583,32 @@ REGISTER_OP_MLU_KERNEL(
     log10,
     ops::LogMLUKernel<CNNL_LOG_10, float>,
     ops::LogMLUKernel<CNNL_LOG_10, paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(exp,
+                       ops::ExpMLUKernel<float>,
+                       ops::ExpMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(exp_grad,
+                       ops::ExpGradMLUKernel<float>,
+                       ops::ExpGradMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(hard_swish,
+                       ops::HardSwishMLUKernel<float>,
+                       ops::HardSwishMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(hard_swish_grad,
+                       ops::HardSwishGradMLUKernel<float>,
+                       ops::HardSwishGradMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(hard_sigmoid,
+                       ops::HardSigmoidMLUKernel<float>,
+                       ops::HardSigmoidMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(
+    hard_sigmoid_grad,
+    ops::HardSigmoidGradMLUKernel<float>,
+    ops::HardSigmoidGradMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(floor,
+                       ops::FloorMLUKernel<float>,
+                       ops::FloorMLUKernel<paddle::platform::float16>);

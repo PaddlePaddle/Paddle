@@ -92,7 +92,7 @@ template <typename T>
 class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto& place = *dev_ctx.eigen_device();
     // get input and output tensor
     auto* predictions = ctx.Input<Tensor>("Predictions");

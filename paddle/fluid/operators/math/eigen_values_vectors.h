@@ -66,7 +66,7 @@ struct MatrixEighFunctor {
 // symmetric matrices, and uses the variable has_vectors to
 // control whether to return the eigenvectors.
 template <typename T>
-struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
+struct MatrixEighFunctor<phi::CPUContext, T> {
  public:
   void operator()(const framework::ExecutionContext &ctx,
                   const Tensor &input,
@@ -78,8 +78,7 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
     auto dito =
-        math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(
-            ctx);
+        math::DeviceIndependenceTensorOperations<phi::CPUContext, T>(ctx);
 
     Tensor input_trans;
     // lapack is a column-major storge, transpose make the input to
@@ -177,7 +176,7 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
 // symmetric matrices on GPU, and uses the variable has_vectors
 // to control whether to return the eigenvectors.
 template <typename T>
-struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
+struct MatrixEighFunctor<phi::GPUContext, T> {
  public:
   void operator()(const framework::ExecutionContext &ctx,
                   const Tensor &input,
@@ -188,10 +187,9 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
     using ValueType = phi::dtype::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto dito =
-        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
-                                                 T>(ctx);
+        math::DeviceIndependenceTensorOperations<phi::GPUContext, T>(ctx);
     Tensor input_trans;
     input_trans = dito.Transpose(input);
     auto *input_vector = input_trans.data<T>();
@@ -325,34 +323,34 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
       m(paddle::platform::complex<float>, Che, cuComplex) \
           m(paddle::platform::complex<double>, Zhe, cuDoubleComplex)
 
-#define EVDBUFFER_INSTANCE(T, C, CastType)                                  \
-  template <>                                                               \
-  inline void MatrixEighFunctor<platform::CUDADeviceContext, T>::EvdBuffer( \
-      cusolverDnHandle_t handle,                                            \
-      cusolverEigMode_t jobz,                                               \
-      cublasFillMode_t uplo,                                                \
-      int n,                                                                \
-      const T *A,                                                           \
-      int lda,                                                              \
-      const ValueType *W,                                                   \
-      int *lwork) const {                                                   \
-    PADDLE_ENFORCE_GPU_SUCCESS(                                             \
-        platform::dynload::cusolverDn##C##evd_bufferSize(                   \
-            handle,                                                         \
-            jobz,                                                           \
-            uplo,                                                           \
-            n,                                                              \
-            reinterpret_cast<const CastType *>(A),                          \
-            lda,                                                            \
-            W,                                                              \
-            lwork));                                                        \
+#define EVDBUFFER_INSTANCE(T, C, CastType)                      \
+  template <>                                                   \
+  inline void MatrixEighFunctor<phi::GPUContext, T>::EvdBuffer( \
+      cusolverDnHandle_t handle,                                \
+      cusolverEigMode_t jobz,                                   \
+      cublasFillMode_t uplo,                                    \
+      int n,                                                    \
+      const T *A,                                               \
+      int lda,                                                  \
+      const ValueType *W,                                       \
+      int *lwork) const {                                       \
+    PADDLE_ENFORCE_GPU_SUCCESS(                                 \
+        platform::dynload::cusolverDn##C##evd_bufferSize(       \
+            handle,                                             \
+            jobz,                                               \
+            uplo,                                               \
+            n,                                                  \
+            reinterpret_cast<const CastType *>(A),              \
+            lda,                                                \
+            W,                                                  \
+            lwork));                                            \
   }
 
 FUNC_WITH_TYPES(EVDBUFFER_INSTANCE);
 
 #define EVD_INSTANCE(T, C, CastType)                                  \
   template <>                                                         \
-  inline void MatrixEighFunctor<platform::CUDADeviceContext, T>::Evd( \
+  inline void MatrixEighFunctor<phi::GPUContext, T>::Evd(             \
       cusolverDnHandle_t handle,                                      \
       cusolverEigMode_t jobz,                                         \
       cublasFillMode_t uplo,                                          \

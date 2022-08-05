@@ -143,8 +143,7 @@ struct gpu_gather_scatter_functor {
     int block = 512;
     int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
     int64_t grid = (n + block - 1) / block;
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     GatherScatterGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
         <<<grid, block, 0, stream>>>(self_data,
                                      dim,
@@ -257,8 +256,7 @@ void gpu_scatter_input_grad_kernel(Tensor self,
   int block = 512;
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
-  auto stream =
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
 
   ScatterInputGradGPUKernel<tensor_t, index_t>
       <<<grid, block, 0, stream>>>(grad_data,

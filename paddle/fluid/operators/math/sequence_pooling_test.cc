@@ -117,34 +117,30 @@ void TestSequencePoolingSum(const DeviceContext &context,
 
 TEST(SequencePoolingGrad, CPU_SUM) {
   auto place = paddle::platform::CPUPlace();
-  auto *context = static_cast<paddle::platform::CPUDeviceContext *>(
+  auto *context = static_cast<phi::CPUContext *>(
       paddle::platform::DeviceContextPool::Instance().Get(place));
 
   paddle::framework::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
-  TestSequencePoolingSum<paddle::platform::CPUDeviceContext, float>(
-      *context, lod1, 128);
+  TestSequencePoolingSum<phi::CPUContext, float>(*context, lod1, 128);
 
   paddle::framework::LoD lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
-  TestSequencePoolingSum<paddle::platform::CPUDeviceContext, float>(
-      *context, lod2, 128);
+  TestSequencePoolingSum<phi::CPUContext, float>(*context, lod2, 128);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(SequencePoolingGrad, CUDA_SUM) {
   auto place = paddle::platform::CUDAPlace(0);
-  auto *context = static_cast<paddle::platform::CUDADeviceContext *>(
+  auto *context = static_cast<phi::GPUContext *>(
       paddle::platform::DeviceContextPool::Instance().Get(place));
 
   paddle::framework::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
-  TestSequencePoolingSum<paddle::platform::CUDADeviceContext, float>(
-      *context, lod1, 128);
+  TestSequencePoolingSum<phi::GPUContext, float>(*context, lod1, 128);
 
   paddle::framework::LoD lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
-  TestSequencePoolingSum<paddle::platform::CUDADeviceContext, float>(
-      *context, lod2, 128);
+  TestSequencePoolingSum<phi::GPUContext, float>(*context, lod2, 128);
 }
 #endif

@@ -24,7 +24,7 @@ namespace framework {
 TEST(TensorCopy, Tensor) {
   Tensor src_tensor;
   Tensor dst_tensor;
-  platform::CPUDeviceContext cpu_ctx((platform::CPUPlace()));
+  phi::CPUContext cpu_ctx((platform::CPUPlace()));
 
   int* src_ptr = src_tensor.mutable_data<int>(phi::make_ddim({3, 3}),
                                               platform::CPUPlace());
@@ -73,7 +73,7 @@ TEST(TensorCopy, Tensor) {
 
     // CPU Tensor to GPU Tensor
     auto gpu_place = new platform::CUDAPlace(0);
-    platform::CUDADeviceContext gpu_ctx(*gpu_place);
+    phi::GPUContext gpu_ctx(*gpu_place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(*gpu_place, gpu_ctx.stream())
                              .get());
@@ -164,13 +164,13 @@ TEST(TensorFromVector, Tensor) {
     // Copy to CPU Tensor
     cpu_tensor.Resize(phi::make_ddim({3, 3}));
     auto cpu_place = new paddle::platform::CPUPlace();
-    paddle::platform::CPUDeviceContext cpu_ctx(*cpu_place);
+    phi::CPUContext cpu_ctx(*cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
 
     // Copy to GPUTensor
     gpu_tensor.Resize(phi::make_ddim({3, 3}));
     auto gpu_place = new paddle::platform::CUDAPlace();
-    paddle::platform::CUDADeviceContext gpu_ctx(*gpu_place);
+    phi::GPUContext gpu_ctx(*gpu_place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(*gpu_place, gpu_ctx.stream())
                              .get());
@@ -238,7 +238,7 @@ TEST(TensorToVector, Tensor) {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     paddle::framework::Tensor gpu_tensor;
     paddle::platform::CUDAPlace place;
-    paddle::platform::CUDADeviceContext gpu_ctx(place);
+    phi::GPUContext gpu_ctx(place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(place, gpu_ctx.stream())
                              .get());
@@ -269,6 +269,7 @@ for (int i = 0; i < 3 * 3; ++i) {
   EXPECT_EQ(src_ptr[i], dst[i]);
 }
 }  // namespace framework
+
 #ifdef PADDLE_WITH_CUDA
 {
   std::vector<bool> src_vec = {
@@ -284,7 +285,7 @@ for (int i = 0; i < 3 * 3; ++i) {
   };
   paddle::framework::Tensor gpu_tensor;
   paddle::platform::CUDAPlace place;
-  paddle::platform::CUDADeviceContext gpu_ctx(place);
+  phi::GPUContext gpu_ctx(place);
   gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(place, gpu_ctx.stream())
                            .get());
@@ -334,7 +335,7 @@ TEST(TensorFromDLPack, Tensor) {
 
     cpu_tensor.Resize(phi::make_ddim({3, 3}));
     paddle::platform::CPUPlace cpu_place;
-    paddle::platform::CPUDeviceContext cpu_ctx(cpu_place);
+    phi::CPUContext cpu_ctx(cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
     paddle::framework::DLPackTensor dlpack_tensor(cpu_tensor, 1);
 
@@ -360,7 +361,7 @@ TEST(TensorFromDLPack, Tensor) {
     // Copy to CPU Tensor
     cpu_tensor.Resize(phi::make_ddim({3, 3}));
     paddle::platform::CPUPlace cpu_place;
-    paddle::platform::CPUDeviceContext cpu_ctx(cpu_place);
+    phi::CPUContext cpu_ctx(cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
 
     // Copy to GPUTensor
@@ -502,7 +503,7 @@ TEST(Tensor, FromAndToStream) {
   {
     framework::Tensor dst_tensor;
     auto place = new platform::CPUPlace();
-    platform::CPUDeviceContext cpu_ctx(*place);
+    phi::CPUContext cpu_ctx(*place);
     std::ostringstream oss;
     TensorToStream(oss, src_tensor, cpu_ctx);
 
@@ -522,7 +523,7 @@ TEST(Tensor, FromAndToStream) {
     Tensor dst_tensor;
 
     auto gpu_place = new platform::CUDAPlace();
-    platform::CUDADeviceContext gpu_ctx(*gpu_place);
+    phi::GPUContext gpu_ctx(*gpu_place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(*gpu_place, gpu_ctx.stream())
                              .get());

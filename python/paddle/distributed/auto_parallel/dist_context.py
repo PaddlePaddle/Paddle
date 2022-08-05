@@ -125,6 +125,9 @@ class DistributedContext:
         # A flag indicates whether the used parallelism is data parallel
         self._data_parallel = False
 
+        # flag whether using `to_static`
+        self._dygraph_mode = True
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -828,8 +831,10 @@ class DistributedContext:
                 if (dist_tensor
                         is not None) and (not dist_tensor.validate_dist_attr()):
                     assert False, "Tensor {} (id: {}, original_id: {}) has a wrong distributed attributes {}.".format(
-                        dist_tensor.serial_tensor.name, dist_tensor.desc.id(),
-                        dist_tensor.desc.original_id(), dist_tensor.dist_attr)
+                        dist_tensor.serial_tensor.name,
+                        dist_tensor.serial_tensor.desc.id(),
+                        dist_tensor.serial_tensor.desc.original_id(),
+                        dist_tensor.dist_attr)
             for op in block.ops:
                 dist_op = self.get_dist_op_for_program(op)
                 assert dist_op is not None, \

@@ -75,7 +75,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode') == '1')
+_in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode', '1') == '1')
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
@@ -84,6 +84,8 @@ _already_patch_eager_tensor = False
 _already_patch_varbase = False
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
+_enable_standalone_executor_ = (os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR',
+                                               None))
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -257,6 +259,17 @@ global_ipu_index = -1
 global_ipu_stage = -1
 ipu_index_attr_name = 'ipu_index'
 ipu_stage_attr_name = 'ipu_stage'
+
+
+@signature_safe_contextmanager
+def _enable_standalone_executor(enable=True):
+    global _enable_standalone_executor_
+    original_ = _enable_standalone_executor_
+    _enable_standalone_executor_ = enable
+    try:
+        yield
+    finally:
+        _enable_standalone_executor_ = original_
 
 
 @signature_safe_contextmanager
@@ -7065,9 +7078,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'npu', '', None]:
+    if device not in ['cpu', 'gpu', 'npu', 'xpu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' 'npu' 'xpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
     if index:
         device = ":".join([device, index])
