@@ -18,9 +18,11 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/detection/poly_util.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 template <class T>
 bool SortScorePairDescend(const std::pair<float, T>& pair1,
@@ -94,9 +96,10 @@ T PolyIoU(const T* box1,
           const T* box2,
           const size_t box_size,
           const bool normalized) {
-  T bbox1_area = PolyArea<T>(box1, box_size, normalized);
-  T bbox2_area = PolyArea<T>(box2, box_size, normalized);
-  T inter_area = PolyOverlapArea<T>(box1, box2, box_size, normalized);
+  T bbox1_area = paddle::operators::PolyArea<T>(box1, box_size, normalized);
+  T bbox2_area = paddle::operators::PolyArea<T>(box2, box_size, normalized);
+  T inter_area =
+      paddle::operators::PolyOverlapArea<T>(box1, box2, box_size, normalized);
   if (bbox1_area == 0 || bbox2_area == 0 || inter_area == 0) {
     // If coordinate values are invalid
     // if area size <= 0,  return 0.
@@ -124,11 +127,12 @@ static inline std::vector<std::pair<T, int>> GetSortedScoreIndex(
 }
 
 template <typename T>
-static inline framework::Tensor VectorToTensor(
-    const std::vector<T>& selected_indices, int selected_num) {
-  framework::Tensor keep_nms;
+static inline DenseTensor VectorToTensor(const DeviceContext& ctx,
+                                         const std::vector<T>& selected_indices,
+                                         int selected_num) {
+  DenseTensor keep_nms;
   keep_nms.Resize({selected_num});
-  auto* keep_data = keep_nms.mutable_data<T>(platform::CPUPlace());
+  auto* keep_data = ctx.template Alloc<T>(&keep_nms);
   for (int i = 0; i < selected_num; ++i) {
     keep_data[i] = selected_indices[i];
   }
@@ -136,12 +140,12 @@ static inline framework::Tensor VectorToTensor(
 }
 
 template <class T>
-framework::Tensor NMS(const platform::DeviceContext& ctx,
-                      framework::Tensor* bbox,
-                      framework::Tensor* scores,
-                      T nms_threshold,
-                      float eta,
-                      bool pixel_offset = true) {
+DenseTensor NMS(const DeviceContext& ctx,
+                DenseTensor* bbox,
+                DenseTensor* scores,
+                T nms_threshold,
+                float eta,
+                bool pixel_offset = true) {
   int64_t num_boxes = bbox->dims()[0];
   // 4: [xmin ymin xmax ymax]
   int64_t box_size = bbox->dims()[1];
@@ -178,8 +182,8 @@ framework::Tensor NMS(const platform::DeviceContext& ctx,
       adaptive_threshold *= eta;
     }
   }
-  return VectorToTensor(selected_indices, selected_num);
+  return VectorToTensor(ctx, selected_indices, selected_num);
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

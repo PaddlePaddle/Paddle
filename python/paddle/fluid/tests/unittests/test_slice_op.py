@@ -635,7 +635,7 @@ class TestSliceApiEager(unittest.TestCase):
                                    axes=axes,
                                    starts=paddle.to_tensor(starts),
                                    ends=paddle.to_tensor(ends))
-
+                self.assertTrue(np.array_equal(a_1.numpy(), a_2.numpy()))
                 a_1.backward()
                 grad_truth = paddle.zeros_like(a)
                 grad_truth[-3:3, 0:2, 2:4] = 1
