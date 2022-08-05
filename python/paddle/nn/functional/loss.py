@@ -532,6 +532,10 @@ def edit_distance(input,
                          attrs={"tokens": ignored_tokens})
         label = erased_label
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_edit_distance(input, label, input_length,
+                                                label_length, normalized)
+
     this_inputs = {"Hyps": [input], "Refs": [label]}
     if input_length is not None and label_length is not None:
         this_inputs['HypsLength'] = [input_length]
@@ -920,7 +924,11 @@ def hsigmoid_loss(input,
             #  [2.11009121]
             #  [1.92374969]]
     """
-
+    if in_dygraph_mode():
+        out, _, _ = _C_ops.final_state_hierarchical_sigmoid(
+            input, weight, label, path_table, path_code, bias, num_classes,
+            is_sparse, 0, [], [], [], is_sparse)
+        return out
     if _non_static_mode():
         out, _, _ = _C_ops.hierarchical_sigmoid(input, weight, label,
                                                 path_table, path_code, bias,
@@ -2102,7 +2110,7 @@ def cross_entropy(input,
 
                    Return the average value of the previous results
 
-             .. math::
+            .. math::
                 \\loss=\sum_{j}loss_j/N
 
                   where, N is the number of samples and C is the number of categories.
@@ -2111,21 +2119,21 @@ def cross_entropy(input,
 
             1. Hard labels (soft_label = False)
 
-             .. math::
+            .. math::
                 \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j] 
 
             2. Soft labels (soft_label = True)
 
-             .. math::
+            .. math::
                 \\loss=\sum_{j}loss_j/\sum_{j}\left(\sum_{i}weight[label_i]\right)
- 
- 
+
+
     Parameters:
 
         - **input** (Tensor)
 
             Input tensor, the data type is float32, float64. Shape is
-	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
+        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
 
             Note: 
 
@@ -2133,7 +2141,7 @@ def cross_entropy(input,
                 output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
- 
+
         - **label** (Tensor)
 
             1. If soft_label=False, the shape is
@@ -2201,10 +2209,11 @@ def cross_entropy(input,
         2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
 
-     Example1(hard labels):
+    Examples:
 
         .. code-block:: python
-            
+
+            # hard labels
             import paddle
             paddle.seed(99999)
             N=100
@@ -2221,11 +2230,9 @@ def cross_entropy(input,
                                        label)
             print(dy_ret.numpy()) #[5.41993642]
 
-
-    Example2(soft labels):
-
         .. code-block:: python
-            
+
+            # soft labels
             import paddle
             paddle.seed(99999)
             axis = -1
@@ -2892,7 +2899,6 @@ def cosine_embedding_loss(input1,
 
     Examples:
         .. code-block:: python
-          :name: code-example1
 
             import paddle
 

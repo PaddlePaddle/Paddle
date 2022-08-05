@@ -18,11 +18,12 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/scope_guard.h"
-#include "paddle/fluid/jit/executor_function.h"
-#include "paddle/fluid/jit/pe_function.h"
+#include "paddle/fluid/jit/function/executor_function.h"
+#include "paddle/fluid/jit/function/pe_function.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/utils.h"
@@ -1253,6 +1254,54 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   return paddle::experimental::Scalar(1.0);
 }
 
+std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
+                                               const std::string& op_type,
+                                               ssize_t arg_pos) {
+  if (obj == Py_None) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "a list of int, float, or bool, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  PyTypeObject* type = obj->ob_type;
+  auto type_name = std::string(type->tp_name);
+  VLOG(1) << "type_name: " << type_name;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    item = PyList_GetItem(obj, 0);
+    if (PyObject_CheckFloatOrToFloat(&item)) {
+      std::vector<phi::Scalar> value;
+      for (Py_ssize_t i = 0; i < len; i++) {
+        item = PyList_GetItem(obj, i);
+        value.emplace_back(phi::Scalar{PyFloat_AsDouble(item)});
+      }
+      return value;
+    } else if (PyObject_CheckLongOrToLong(&item)) {
+      std::vector<phi::Scalar> value;
+      for (Py_ssize_t i = 0; i < len; i++) {
+        item = PyList_GetItem(obj, i);
+        value.emplace_back(
+            phi::Scalar{static_cast<int64_t>(PyLong_AsLong(item))});
+      }
+      return value;
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "a list of int, float, or bool, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  // Fake a ScalarArray
+  return std::vector<phi::Scalar>({phi::Scalar(1.0)});
+}
+
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos) {
@@ -1379,5 +1428,54 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
   return framework::TransToPhiDataType(type);
 }
+
+paddle::experimental::Tensor PyTensorHook::operator()(
+    const paddle::experimental::Tensor& var) {
+  py::gil_scoped_acquire gil;
+  VLOG(3) << "Call PyTensorHook for var " << var.name();
+
+  PyObject* res = nullptr;
+  try {
+    PyObject* p_tmp_var = ToPyObject(var);
+    res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
+    Py_DECREF(p_tmp_var);
+  } catch (platform::EnforceNotMet& e) {
+    throw std::move(e);
+  } catch (std::exception& e) {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Hook function of Tensor raises an exception: %s.", e.what()));
+  } catch (...) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Hook function of Tensor raises an unknown exception."));
+  }
+
+  PADDLE_ENFORCE_NOT_NULL(res,
+                          platform::errors::Unavailable(
+                              "Hook function of Tensor return a nullptr."));
+  if (res == Py_None) {
+    return var;
+  }
+  auto res_tensor = reinterpret_cast<TensorObject*>(res)->tensor;
+  Py_DECREF(res);
+  return res_tensor;
+}
+
+void PyVoidHook::operator()() {
+  py::gil_scoped_acquire gil;
+  VLOG(3) << "Call PyVoidHook";
+
+  try {
+    PyObject_CallFunctionObjArgs(py_func_, nullptr);
+  } catch (platform::EnforceNotMet& e) {
+    throw std::move(e);
+  } catch (std::exception& e) {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Hook function of Tensor raises an exception: %s.", e.what()));
+  } catch (...) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Hook function of Tensor raises an unknown exception."));
+  }
+}
+
 }  // namespace pybind
 }  // namespace paddle

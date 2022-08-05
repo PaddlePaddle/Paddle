@@ -100,7 +100,7 @@ struct ScaleBiasAddReluArgs {
 template <typename T>
 class CudnnScaleBiasAddRelu {
  public:
-  CudnnScaleBiasAddRelu(const platform::CUDADeviceContext &ctx,
+  CudnnScaleBiasAddRelu(const phi::GPUContext &ctx,
                         const std::string &act_type,
                         bool fuse_add,
                         bool has_shortcut,
@@ -116,7 +116,7 @@ class CudnnScaleBiasAddRelu {
 
   ~CudnnScaleBiasAddRelu() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx,
+  void Forward(const phi::GPUContext &ctx,
                const Tensor &x,
                const Tensor &x_scale,
                const Tensor &x_bias,
@@ -171,7 +171,7 @@ class CudnnScaleBiasAddRelu {
         fwd_workspace_byte_);
   }
 
-  void Backward(const platform::CUDADeviceContext &ctx,
+  void Backward(const phi::GPUContext &ctx,
                 const Tensor &dy,
                 const Tensor &x,
                 const Tensor &scale,
@@ -237,7 +237,7 @@ class CudnnScaleBiasAddRelu {
   }
 
  private:
-  void ForwardInit(const platform::CUDADeviceContext &ctx) {
+  void ForwardInit(const phi::GPUContext &ctx) {
     // Set constant_param
     fwd_op_.SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
                                  CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
@@ -285,7 +285,7 @@ class CudnnScaleBiasAddRelu {
                                 CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
   }
 
-  void BackwardInit(const platform::CUDADeviceContext &ctx) {
+  void BackwardInit(const phi::GPUContext &ctx) {
     // Set constant_param
     bwd_op_.SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
                                  CUDNN_PARAM_DYDATA_PLACEHOLDER,

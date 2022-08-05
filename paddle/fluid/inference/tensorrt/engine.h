@@ -278,6 +278,7 @@ class TensorRTEngine {
   void DeclareOutput(const std::string& name);
   void ClearTensorMap() { itensor_map_.clear(); }
 
+  void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);

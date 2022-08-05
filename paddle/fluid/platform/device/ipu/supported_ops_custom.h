@@ -16,7 +16,6 @@
 
 #pragma once
 
-OP_DECL(popart_nllloss_v2, aiGraphcoreOpset.nllloss, SIG_ARG(INT32,popart::ReductionType,reduction) OPT_ARG(INT32,ignoreIndex) ARG(BOOL,inputIsLogProbability) ) // NOLINT
 OP_DECL(popart_identity_loss, aiGraphcoreOpset.identityloss, SIG_ARG(INT32,popart::ReductionType,reduction) ) // NOLINT
 
 // clang-format on

@@ -52,7 +52,7 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
                     out_tensor_type_list=None,
                     code_indent='',
                     inplace_flag=False):
-        kernel_output = ""
+        kernel_output = []
         output_names = []
         output_create = ""
         output_type_map = {
@@ -62,7 +62,7 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
         }
 
         if len(out_dtype_list) == 1:
-            kernel_output = 'kernel_out'
+            kernel_output.append('kernel_out')
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[self.outputs['names'][
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
@@ -74,7 +74,7 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
             output_create = ""
 
             for i, out_type_item in enumerate(out_dtype_list):
-                kernel_output = kernel_output + f'kernel_out_{i}, '
+                kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
                 if inplace_flag and self.inplace_map is not None and self.outputs[
                         'names'][i] in self.inplace_map:
@@ -84,7 +84,6 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
                 output_create = output_create + f"""
     auto kernel_out_{i} = SetSparseKernelOutput({self.outputs['names'][i]}, {output_type_map[out_dtype_list[i]]});"""
 
-            kernel_output = kernel_output[:-2]
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(

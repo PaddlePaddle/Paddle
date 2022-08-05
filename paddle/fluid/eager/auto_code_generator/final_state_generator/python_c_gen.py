@@ -45,6 +45,7 @@ atype_to_parsing_function = {
     "std::vector<double>": "CastPyArg2Float64s",
     "std::vector<std::string>": "CastPyArg2Strings",
     "paddle::experimental::Scalar": "CastPyArg2Scalar",
+    "std::vector<phi::Scalar>": "CastPyArg2ScalarArray",
     "paddle::experimental::IntArray": "CastPyArg2IntArray",
     "paddle::Place": "CastPyArg2Place",
     "paddle::experimental::DataType": "CastPyArg2DataType",
@@ -57,6 +58,8 @@ no_amp_list = [
     'adam',
     'adamw_',
     'adamw',
+    'average_accumulates',
+    'average_accumulates_',
     'decayed_adagrad_',
     'decayed_adagrad',
     'dgc_momentum_',
@@ -85,6 +88,7 @@ no_amp_list = [
     'rmsprop',
     'sgd_',
     'sgd',
+    'assign_value_',
     'sparse_momentum_',
     'sparse_momentum',
 ]
@@ -111,7 +115,7 @@ PARSE_PYTHON_C_ARGS_TEMPLATE = \
 
 
 RECORD_EVENT_TEMPLATE = \
-"paddle::platform::RecordEvent {}(\"{} {}\", paddle::platform::TracerEventType::Operator, 1);"
+"paddle::platform::RecordEvent {}(\"{} {}\", paddle::platform::TracerEventType::UserDefined, 1);"
 
 
 RETURN_INPLACE_PYOBJECT_TEMPLATE = \

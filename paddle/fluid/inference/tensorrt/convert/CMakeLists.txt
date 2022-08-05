@@ -70,6 +70,8 @@ list(
   top_k_op.cc
   squeeze2_op.cc
   unsqueeze2_op.cc
+  rnn_op.cc
+  fill_constant_batch_size_like_op.cc
   sum_op.cc
   shape_op.cc
   fill_constant_op.cc

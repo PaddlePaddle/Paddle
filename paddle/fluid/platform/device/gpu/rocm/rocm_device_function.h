@@ -134,7 +134,11 @@ __device__ T reduceSum(T val, int tid, int len) {
   // I use Warp-Level Parallelism and assume the Warp size
   // is 32 which may be different for different GPU,
   // but most card's warp size is 32.
+#ifdef PADDLE_WITH_HIP
+  const int warpSize = 64;
+#else
   const int warpSize = 32;
+#endif
   __shared__ T shm[warpSize];
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, tid < len);

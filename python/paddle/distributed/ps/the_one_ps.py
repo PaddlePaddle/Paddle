@@ -29,6 +29,7 @@ from paddle.distributed.fleet.base.private_helper_function import wait_server_re
 from paddle.distributed.fleet.proto import the_one_ps_pb2
 from paddle.fluid.communicator import Communicator, HeterClient
 from google.protobuf import text_format
+from paddle.distributed.ps.coordinator import Coordinator
 
 __all__ = [
     'Table', 'SparseTable', 'GeoSparseTable', 'BarrierTable', 'TensorTable',
@@ -153,6 +154,12 @@ class Accessor:
                 accessor_proto.embedx_dim = embedding_dim - 3
         if not accessor_proto.HasField("embedx_threshold"):
             accessor_proto.embedx_threshold = 0
+
+        graph_sgd_param = accessor_proto.graph_sgd_param
+        if not graph_sgd_param.HasField("nodeid_slot"):
+            graph_sgd_param.nodeid_slot = 9008
+        if not graph_sgd_param.HasField("feature_learning_rate"):
+            graph_sgd_param.feature_learning_rate = 0.05
 
         ctr_accessor_param = accessor_proto.ctr_accessor_param
         if not ctr_accessor_param.HasField("nonclk_coeff"):
@@ -774,6 +781,7 @@ class PsDescBuilder(object):
         self.fs_client = self._get_fs_client()
 
         self.ps_desc = the_one_ps_pb2.PSParameter()
+        self.fl_desc = the_one_ps_pb2.FLParameter()
 
     def _get_tensor_tables(self):
         program_idx = 0
@@ -811,6 +819,9 @@ class PsDescBuilder(object):
 
     def _get_fs_client(self):
         return fsClient(self.context["user_defined_strategy"].fs_client_param)
+
+    def build_fl_client_desc(self, client_info):
+        pass
 
     def build_worker_desc(self):
         for table in self.tables:
@@ -850,6 +861,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator = None
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
+        self._coordinator = None
         self._server_sub_program = []
         self._heter_client = None
         self._send_ctx = None
@@ -857,6 +869,8 @@ class TheOnePSRuntime(RuntimeBase):
     def _set_basic_info(self, context):
         self.context = context
         self.role_maker = context["role_maker"]
+        self.role_id = get_role_id(self.role_maker)
+        self.debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
         self.origin_main_program = context["origin_main_program"]
         self.origin_main_programs = context.get("origin_main_programs",
@@ -878,12 +892,24 @@ class TheOnePSRuntime(RuntimeBase):
         self.context['tensor_table'] = {}
         build_var_distributed(self.context)
 
+        self.trainer_endpoints = get_trainer_endpoints(self.role_maker)
+
         self.endpoints = get_ps_endpoints(self.role_maker)
         self.string_hosts = []
         for idx, ep in enumerate(self.endpoints):
             host, port = ep.split(":")
             pshost = fluid.core.PSHost(host, int(port), idx)
             self.string_hosts.append(pshost.serialize_to_string())
+
+        self.with_coordinator = self.role_maker._with_coordinator
+        self.coordinator_hosts = []
+        if self.with_coordinator:
+            print("fl-ps > all ps addrs: {}".format(self.string_hosts))
+            coordinator_endpoints = self.role_maker._get_coordinator_endpoints()
+            for idx, ep in enumerate(coordinator_endpoints):
+                ip, port = ep.split(":")
+                pshost = fluid.core.PSHost(ip, int(port), idx)
+                self.coordinator_hosts.append(pshost.serialize_to_string())
 
         self.ps_desc_builder = PsDescBuilder(self.context)
 
@@ -933,8 +959,6 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_worker(self, scopes=None):
         worker_desc = self.ps_desc_builder.build_worker_desc()
-        #with open("test_fl_ps_worker_desc", "w") as f:
-        #    f.write(worker_desc)
         if self.context['use_ps_gpu']:
             main_program = self.context['loss'].block.program
             if not main_program._fleet_opt:
@@ -963,10 +987,8 @@ class TheOnePSRuntime(RuntimeBase):
         self._send_ctx = send_ctx
         trainer_config = self.context['trainer']
 
-        proto_txt = worker_desc
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("worker: \n{}".format(proto_txt))
+        if self.debug:
+            print("worker_desc: \n{}".format(worker_desc))
             print("communicator send_ctx:")
             for key in send_ctx:
                 print("{}: {}".format(key, send_ctx[key]))
@@ -986,15 +1008,21 @@ class TheOnePSRuntime(RuntimeBase):
 
         print("communicator config:", trainer_config.get_communicator_flags())
 
-        role_id = get_role_id(self.role_maker)
-        self._worker.init_worker(proto_txt, self.string_hosts, role_id)
+        self._worker.init_worker(worker_desc, self.string_hosts, self.role_id)
+        self.trainer_endpoint = get_trainer_endpoint(self.role_maker)
+        print("fl-ps > trainer_endpoint: {}".format(self.trainer_endpoint))
+        print("fl-ps > with_coordinator? {}".format(self.with_coordinator))
+        print("fl-ps > coordinator addr: {}".format(self.coordinator_hosts))
+        if self.with_coordinator:
+            self._worker.init_fl_worker(self.coordinator_hosts, self.role_id,
+                                        self.trainer_endpoint)
 
         if self.context[
                 'ps_mode'] == DistributedMode.GEO or self.is_heter_ps_mode:
             self._communicator = Communicator(
                 trainer_config.mode, kwargs,
                 trainer_config.get_communicator_flags())
-            self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
+            self._communicator.init_with_ctx(send_ctx, dense_map, worker_desc,
                                              self.string_hosts,
                                              fluid.global_scope())
         fleet.util.barrier()
@@ -1002,7 +1030,8 @@ class TheOnePSRuntime(RuntimeBase):
         # info = self._communicator.get_client_info()
         info = self._worker.get_client_info()
         if isinstance(info, list) and len(info) > 0:
-            all_info = self.role_maker._all_gather(info[0])
+            all_info = self.role_maker._all_gather(
+                info[0])  # 收集其他 client 的 service 地址
             # for unittest
             if not isinstance(all_info, list):
                 warnings.warn("gloo may not initialize correctly")
@@ -1045,7 +1074,7 @@ class TheOnePSRuntime(RuntimeBase):
                 self._communicator.init_params(init_params)
             else:
                 if not self.context['use_ps_gpu']:
-                    if role_id == 0:
+                    if self.role_id == 0:
                         print("entering self._init_all_params()")
                         self._init_all_params(scopes, send_ctx, dense_map)
 
@@ -1080,21 +1109,32 @@ class TheOnePSRuntime(RuntimeBase):
                     next_trainers, previous_trainers,
                     self.role_maker._role_id())  # --> HeterClient::GetInstance
 
+    def _init_coordinator(self, scopes=None):
+        if self._coordinator == None:
+            self._coordinator = Coordinator(self.string_hosts)
+
+        print(">>> curr node ip: {}".format(self.coordinator_hosts[0]))
+        print(">>> all trainer endpoints: {}".format(self.trainer_endpoints))
+        self._coordinator.start_coordinator(self.coordinator_hosts[0],
+                                            self.trainer_endpoints)
+
+    def _make_fl_strategy(self):
+        if self._coordinator == None:
+            assert ("Coordinator py object is null!")
+        else:
+            self._coordinator.make_fl_strategy()
+
     def _init_server(self, dirname=None, var_names=None, **kwargs):
         server_desc = self.ps_desc_builder.build_server_desc()
-        #with open("test_fl_ps_server_desc", "w") as f:
-        #    f.write(server_desc)
-        role_id = get_role_id(self.role_maker)
         trainers = get_trainers(self.role_maker)
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
 
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("server: \n{}".format(server_desc))
+        if self.debug:
+            print("server_desc: \n{}".format(server_desc))
 
         self._server = fluid.core.DistFleetWrapper()
-        self._server.init_server(server_desc, self.string_hosts, role_id,
+        self._server.init_server(server_desc, self.string_hosts, self.role_id,
                                  trainers, self._server_sub_program)
 
         dist_varnames = get_sparse_tablenames(self.origin_main_programs, True)
