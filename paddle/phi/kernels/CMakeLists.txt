@@ -65,7 +65,8 @@ set(COMMON_KERNEL_DEPS
     matrix_solve
     phi_dynload_warpctc
     sequence_padding
-    sequence_scale)
+    sequence_scale
+    fft)
 
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
