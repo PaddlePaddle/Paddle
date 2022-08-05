@@ -4299,6 +4299,7 @@ def _index_add_params_check(x, index, add_value, axis):
     if not isinstance(x, Variable):
         raise TypeError("The input x should be a Tensor.")
     dims = len(x.shape)
+    add_value_dims = len(add_value.shape)
 
     if not isinstance(axis, (int)):
         raise TypeError("The axis should be int ")
@@ -4325,8 +4326,17 @@ def _index_add_params_check(x, index, add_value, axis):
             raise TypeError("The index dtype should be int32 or int64.")
         if len(index.shape) != 1:
             raise ValueError("The index should be a 1-D Tensor.")
-    #TODO: add_value can be in any shape
-    # as long as it can be broadcast to the shape of sliced x
+
+    if dims != add_value_dims:
+        raise TypeError(
+            "The add_value does not support broadcast now. It must have the same dimension as x."
+        )
+
+    for i in range(dims):
+        if i != axis and x.shape[i] != add_value.shape[i]:
+            raise TypeError(
+                "The add_value.shape[i] should be equal to x.shape[i] when i != axis."
+            )
 
 
 def index_add(x, index, add_value, axis=0, name=None):
@@ -4361,14 +4371,13 @@ def index_add(x, index, add_value, axis=0, name=None):
             #  [2, 1, 2]
             #  [2, 1, 2]]
     """
-    # limin-todo:
     _index_add_params_check(x, index, add_value, axis)
 
+    # todo(@limin29): add final_state_index_add support.
     # if in_dygraph_mode():
     #     return _C_ops.final_state_index_add(x, index, add_value, axis)
-
     # if _in_legacy_dygraph():
-    #     return _C_ops.index_select(x, index, add_value, axis)
+    #     return _C_ops.index_select(x, index, add_value, "axis", axis)
     return _C_ops.index_add(x, index, add_value, "axis", axis)
 
     helper = LayerHelper("index_add", **locals())
