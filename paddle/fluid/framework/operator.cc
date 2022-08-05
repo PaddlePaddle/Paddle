@@ -2663,7 +2663,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
     // Note: here cannot deal with vector<LoDTensorArray> input
     phi_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
-  VLOG(4) << "Done inputs";
+  VLOG(5) << "Done inputs";
 
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto it = ctx.outputs.find(output_names[i]);
@@ -2718,7 +2718,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
     phi_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx),
                                           i);
   }
-  VLOG(4) << "Done outputs";
+  VLOG(5) << "Done outputs";
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
     VLOG(6) << "BuildPhiKernelContext: " << attr_names[i] << ": "
@@ -2932,7 +2932,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
       }
     }
   }
-  VLOG(4) << "Done attributes";
+  VLOG(5) << "Done attributes";
 }
 
 }  // namespace framework
