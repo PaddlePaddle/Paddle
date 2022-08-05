@@ -36,7 +36,7 @@ Layer Deserializer::operator()(const std::string& path,
   const auto& pdmodel_paths = utils::PdmodelFilePaths(path);
   // set is ordered
   std::set<std::string> param_names_set;
-  std::vector<std::shared_ptr<FunctionInfo>> infos;
+  std::vector<std::shared_ptr<EngineInfo>> infos;
   for (auto& it : pdmodel_paths) {
     auto& func_name = it.first;
     auto program_desc = LoadProgram(it.second);
@@ -51,7 +51,7 @@ Layer Deserializer::operator()(const std::string& path,
     }
 
     param_names_set.insert(persist_var_names.begin(), persist_var_names.end());
-    infos.emplace_back(std::make_shared<FunctionInfo>(
+    infos.emplace_back(std::make_shared<EngineInfo>(
         func_name, persist_var_names, program_desc));
   }
 
@@ -70,17 +70,16 @@ Layer Deserializer::operator()(const std::string& path,
     if (FLAGS_jit_engine_type == "Executor") {
       VLOG(3) << "Add function type: ExecutorEngine. Function name: "
               << info->FunctionName();
-      layer.SetFunction(
+      layer.SetEngine(
           info->FunctionName(),
-          utils::MakeFunction<ExecutorEngine>(info, params_dict, place));
+          utils::MakeEngine<ExecutorEngine>(info, params_dict, place));
     } else if (FLAGS_jit_engine_type == "PE") {
       VLOG(3) << "Add function type: PEEngine. Function name: "
               << info->FunctionName();
-      layer.SetFunction(
-          info->FunctionName(),
-          utils::MakeFunction<PEEngine>(info, params_dict, place));
+      layer.SetEngine(info->FunctionName(),
+                      utils::MakeEngine<PEEngine>(info, params_dict, place));
     } else {
-      PD_THROW("Invalid JitLayer funciton type.");
+      PD_THROW("Invalid JitLayer engine type.");
     }
   }
 

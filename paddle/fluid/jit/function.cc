@@ -12,40 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/jit/function.h"
 
+#include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/scope.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/fluid/jit/engine/base_engine.h"
-#include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/function_utils.h"
 
 namespace paddle {
 namespace jit {
 
-class ExecutorEngine : public BaseEngine {
- public:
-  ExecutorEngine(const std::shared_ptr<EngineInfo> &info,
-                 const Name2VariableMap &params_dict,
-                 const phi::Place &place);
+Function::Function(BaseEngine* engine) : engine_(engine) {}
 
-  ~ExecutorEngine() noexcept {}
+std::vector<Tensor> Function::operator()(
+    const std::vector<Tensor>& inputs) const {
+  auto dense_tensors = utils::ToDenseTensors(inputs);
+  return utils::ToTensors(this->operator()(dense_tensors));
+}
 
-  std::vector<Tensor> operator()(const std::vector<Tensor> &inputs);
-
-  std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs);
-
-  const std::shared_ptr<EngineInfo> &Info() const;
-
- private:
-  std::shared_ptr<EngineInfo> info_;
-  framework::Scope scope_;
-  phi::Place place_;
-  framework::Executor inner_exe_;
-};
+std::vector<DenseTensor> Function::operator()(
+    const std::vector<DenseTensor>& inputs) const {
+  return (*engine_)(inputs);
+}
 
 }  // namespace jit
 }  // namespace paddle

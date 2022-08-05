@@ -57,7 +57,7 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
   return execution_strategy;
 }
 
-PEEngine::PEEngine(const std::shared_ptr<FunctionInfo> &info,
+PEEngine::PEEngine(const std::shared_ptr<EngineInfo> &info,
                    const Name2VariableMap &params_dict,
                    const phi::Place &place)
     : info_(info), place_(place) {
@@ -112,7 +112,7 @@ std::vector<DenseTensor> PEEngine::operator()(
   return outputs;
 }
 
-const std::shared_ptr<FunctionInfo> &PEEngine::Info() const { return info_; }
+const std::shared_ptr<EngineInfo> &PEEngine::Info() const { return info_; }
 
 }  // namespace jit
 }  // namespace paddle

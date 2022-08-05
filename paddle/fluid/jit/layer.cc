@@ -15,12 +15,13 @@
 #include "paddle/fluid/jit/layer.h"
 
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
 
 #include "paddle/fluid/jit/compilation_unit.h"
 #include "paddle/fluid/jit/engine/base_engine.h"
+#include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/jit/function_schema.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace jit {
@@ -32,35 +33,29 @@ Layer::Layer(const Name2VariableMap& params_dict,
   unit_.reset(new CompilationUnit());
 }
 
-std::shared_ptr<BaseEngine> Layer::Function(const std::string& name) const {
-  return unit_->Function(name);
+jit::Function Layer::Function(const std::string& name) const {
+  return jit::Function(unit_->GetEngine(name).get());
 }
 
 std::vector<Tensor> Layer::forward(const std::vector<Tensor>& inputs) {
-  auto func = Function("forward");
-  return (*func)(inputs);
+  auto func = this->Function("forward");
+  return func(inputs);
 }
 
 std::vector<DenseTensor> Layer::forward(
     const std::vector<DenseTensor>& inputs) {
-  auto func = Function("forward");
-  return (*func)(inputs);
+  auto func = this->Function("forward");
+  return func(inputs);
 }
 
 void Layer::to(const phi::Place& place) {}
 
-void Layer::SetFunction(const std::string& name,
-                        const std::shared_ptr<BaseEngine>& function) {
-  unit_->SetFunction(name, function);
+void Layer::SetEngine(const std::string& name,
+                      const std::shared_ptr<BaseEngine>& engine) {
+  unit_->SetEngine(name, engine);
 }
 
-std::vector<std::string> Layer::FunctionNames() const {
-  return unit_->FunctionNames();
-}
-
-const Name2FunctionMap& Layer::FunctionMap() const {
-  return unit_->FunctionMap();
-}
+const Name2EngineMap& Layer::EngineMap() const { return unit_->EngineMap(); }
 
 #define PD_SPECIALZE_ATTRIBUTE_TYPE(T)                                \
   template <>                                                         \

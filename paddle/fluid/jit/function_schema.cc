@@ -50,9 +50,9 @@ void FunctionSchema::AddOutputArg(const std::string& name) {
   output_args.emplace_back(name, true);
 }
 
-FunctionInfo::FunctionInfo(const std::string& func_name,
-                           const std::vector<std::string>& param_names,
-                           const framework::ProgramDesc& program_desc)
+EngineInfo::EngineInfo(const std::string& func_name,
+                       const std::vector<std::string>& param_names,
+                       const framework::ProgramDesc& program_desc)
     : func_name_(func_name), param_names_(param_names) {
   program_desc_.reset(new framework::ProgramDesc(program_desc));
   // Parse FunctionSchema
@@ -64,25 +64,25 @@ FunctionInfo::FunctionInfo(const std::string& func_name,
   }
 }
 
-const std::string& FunctionInfo::FunctionName() const { return func_name_; }
+const std::string& EngineInfo::FunctionName() const { return func_name_; }
 
-const framework::ProgramDesc& FunctionInfo::ProgramDesc() const {
+const framework::ProgramDesc& EngineInfo::ProgramDesc() const {
   return *program_desc_.get();
 }
 
-const std::vector<std::string>& FunctionInfo::ParamNames() const {
+const std::vector<std::string>& EngineInfo::ParamNames() const {
   return param_names_;
 }
 
-const std::vector<std::string> FunctionInfo::InputArgNames() const {
+const std::vector<std::string> EngineInfo::InputArgNames() const {
   return schema_.InputArgNames();
 }
 
-const std::vector<std::string> FunctionInfo::OutputArgNames() const {
+const std::vector<std::string> EngineInfo::OutputArgNames() const {
   return schema_.OutputArgNames();
 }
 
-void FunctionInfo::RemoveDescFeedFetch() {
+void EngineInfo::RemoveDescFeedFetch() {
   utils::RemoveFeedFetch(program_desc_.get());
 }
 

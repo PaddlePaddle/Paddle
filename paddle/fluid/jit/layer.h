@@ -21,7 +21,7 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 
-#include "engine/base_engine.h"  //NOLINT
+#include "function.h"  //NOLINT
 
 namespace paddle {
 
@@ -31,13 +31,14 @@ class Variable;
 
 namespace jit {
 class CompilationUnit;
+class Function;
 
 using DenseTensor = phi::DenseTensor;
 using Tensor = paddle::experimental::Tensor;
 using Variable = paddle::framework::Variable;
 using Name2VariableMap =
     std::unordered_map<std::string, std::shared_ptr<Variable>>;
-using Name2FunctionMap =
+using Name2EngineMap =
     std::unordered_map<std::string, std::shared_ptr<BaseEngine>>;
 
 class Layer {
@@ -46,7 +47,7 @@ class Layer {
         const Name2VariableMap& attrs_dict_,
         const phi::Place& place);
 
-  std::shared_ptr<BaseEngine> Function(const std::string& name) const;
+  jit::Function Function(const std::string& name) const;
 
   template <typename T>
   T Attribute(const std::string& name) const;
@@ -57,12 +58,10 @@ class Layer {
 
   void to(const phi::Place& place);
 
-  void SetFunction(const std::string& name,
-                   const std::shared_ptr<BaseEngine>& function);
+  void SetEngine(const std::string& name,
+                 const std::shared_ptr<BaseEngine>& engine);
 
-  std::vector<std::string> FunctionNames() const;
-
-  const Name2FunctionMap& FunctionMap() const;
+  const Name2EngineMap& EngineMap() const;
 
  private:
   Name2VariableMap params_dict_;

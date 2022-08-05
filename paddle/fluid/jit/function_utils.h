@@ -58,9 +58,9 @@ void ShareParamsIntoScope(const std::vector<std::string> &param_names,
 void RemoveFeedFetch(framework::ProgramDesc *program_desc);
 
 template <typename T>
-std::shared_ptr<T> MakeFunction(const std::shared_ptr<FunctionInfo> &info,
-                                const Name2VariableMap &params_dict,
-                                const phi::Place &place) {
+std::shared_ptr<T> MakeEngine(const std::shared_ptr<EngineInfo> &info,
+                              const Name2VariableMap &params_dict,
+                              const phi::Place &place) {
   return std::make_shared<T>(info, params_dict, place);
 }
 

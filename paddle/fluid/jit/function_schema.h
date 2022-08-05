@@ -56,11 +56,11 @@ class FunctionSchema {
   std::vector<Argument> output_args;
 };
 
-class FunctionInfo {
+class EngineInfo {
  public:
-  FunctionInfo(const std::string& func_name,
-               const std::vector<std::string>& param_names,
-               const framework::ProgramDesc& program_desc);
+  EngineInfo(const std::string& func_name,
+             const std::vector<std::string>& param_names,
+             const framework::ProgramDesc& program_desc);
 
   const std::string& FunctionName() const;
 

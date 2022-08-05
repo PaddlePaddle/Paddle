@@ -23,6 +23,7 @@
 #include "paddle/fluid/jit/function_utils.h"
 
 namespace paddle {
+
 namespace framework {
 class ParallelExecutor;
 namespace details {
@@ -40,7 +41,7 @@ using Graph = framework::ir::Graph;
 
 class PEEngine : public BaseEngine {
  public:
-  PEEngine(const std::shared_ptr<FunctionInfo> &info,
+  PEEngine(const std::shared_ptr<EngineInfo> &info,
            const Name2VariableMap &params_dict,
            const phi::Place &place);
 
@@ -52,10 +53,10 @@ class PEEngine : public BaseEngine {
 
   std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs);
 
-  const std::shared_ptr<FunctionInfo> &Info() const;
+  const std::shared_ptr<EngineInfo> &Info() const;
 
  private:
-  std::shared_ptr<FunctionInfo> info_;
+  std::shared_ptr<EngineInfo> info_;
   framework::Scope scope_;
   phi::Place place_;
   std::shared_ptr<ParallelExecutor> inner_pe_;

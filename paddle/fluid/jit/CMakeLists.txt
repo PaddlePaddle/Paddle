@@ -32,6 +32,11 @@ cc_library(
   DEPS jit_function_utils)
 
 cc_library(
+  jit_function
+  SRCS function.cc
+  DEPS jit_function_utils jit_executor_engine jit_pe_engine)
+
+cc_library(
   jit_layer
   SRCS layer.cc
   DEPS jit_serializer
@@ -40,7 +45,8 @@ cc_library(
        jit_compilation_unit
        jit_function_schema
        jit_executor_engine
-       jit_pe_engine)
+       jit_pe_engine
+       jit_function)
 
 if(WITH_TESTING AND NOT WIN32)
   add_custom_target(
