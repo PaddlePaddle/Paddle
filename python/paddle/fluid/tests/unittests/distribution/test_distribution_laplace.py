@@ -28,8 +28,8 @@ SEED = 2022
     (parameterize.TEST_CASE_NAME, 'loc', 'scale'), [
     ('one-dim', parameterize.xrand((2, )),\
              parameterize.xrand((2, ))),
-    ('multi-dim', parameterize.xrand((10, 10)),\
-             parameterize.xrand((10, 10))),
+    ('multi-dim', parameterize.xrand((5, 5)),\
+             parameterize.xrand((5, 5))),
     ])
 class TestLaplace(unittest.TestCase):
 
