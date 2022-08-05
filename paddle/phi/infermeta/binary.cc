@@ -1433,6 +1433,7 @@ void IndexAddInferMeta(const MetaTensor& x,
                        MetaTensor* output) {
   auto input_dim = x.dims();
   auto index_dim = index.dims();
+  auto add_value_dim = add_value.dims();
 
   PADDLE_ENFORCE_EQ(
       axis < input_dim.size() && axis >= (0 - input_dim.size()),
@@ -1459,6 +1460,27 @@ void IndexAddInferMeta(const MetaTensor& x,
       index_dim[0] != 0,
       true,
       phi::errors::InvalidArgument("The length of Input(Index) can't be 0."));
+
+  PADDLE_ENFORCE_EQ(add_value_dim[axis] <= input_dim[axis],
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The add_value_dim[axis] must less than x_dim[axis]."));
+
+  // Note, add_value does not support broadcast now.
+  PADDLE_ENFORCE_EQ(input_dim.size() == add_value_dim.size(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The add_value must be the same dimension as x."));
+  for (int i = 0; i < input_dim.size(); i++) {
+    if (i != axis) {
+      PADDLE_ENFORCE_EQ(input_dim[i] == add_value_dim[i],
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The add_value parameter does not supported "
+                            "broadcast, so input_dim[i] must be equal to "
+                            "add_value_dim[i] when i != axis."));
+    }
+  }
 
   output->set_dims(x.dims());
   output->set_dtype(x.dtype());
