@@ -125,3 +125,25 @@ class TestCase5(TestGraphSendUVOp):
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.compute_type = 'MUL'
+
+
+class TestCase6(TestGraphSendUVOp):
+
+    def set_config(self):
+        self.x = np.random.random((10, 10, 1)).astype("float64")
+        self.y = np.random.random((10, 10, 10))
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+
+class TestCase7(TestGraphSendUVOp):
+
+    def set_config(self):
+        self.x = np.random.random((10, 10, 1)).astype("float64")
+        self.y = np.random.random((10, 10, 10))
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'

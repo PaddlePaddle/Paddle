@@ -27,7 +27,7 @@
 
 namespace phi {
 
-/*template <typename Context, typename T, typename IndexT>
+template <typename Context, typename T, typename IndexT>
 __global__ void GraphSendUVCUDAKernel(const T* out_grad,
                                       const IndexT* src_indices,
                                       const IndexT* dst_indices,
@@ -45,10 +45,9 @@ __global__ void GraphSendUVCUDAKernel(const T* out_grad,
     const T* e_off = e_data + ty * slice_size;
     T* x_grad_off = x_grad + dst * slice_size;
     while (tx < slice_size) {
-
     }
   }
-}*/
+}
 
 template <typename Context, typename T, typename IndexT>
 void CalculateGrad(const Context& ctx,
@@ -87,7 +86,6 @@ void CalculateGrad(const Context& ctx,
                                              slice_size,
                                              functor);
     } else {
-      // TODO(daisiming): 反向很多bug
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, x_grad_dims);
       auto out_grad_dims_1 = phi::vectorize<int>(out_grad_dims);
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
@@ -97,7 +95,7 @@ void CalculateGrad(const Context& ctx,
       phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
       GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
-          <<<grid, block, 0, ctx.stream()>>>(out_grad,  // 觉得有点怪
+          <<<grid, block, 0, ctx.stream()>>>(out_grad,
                                              d_index,
                                              s_index,
                                              x_grad,
