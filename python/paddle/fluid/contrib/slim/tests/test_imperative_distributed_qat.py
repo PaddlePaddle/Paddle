@@ -39,8 +39,6 @@ inner_size = 8
 output_size = 10
 seq_length = 2
 batch_size = 4
-paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-init_parallel_env()
 
 def get_attr(layer, name):
     if getattr(layer, name, None) is not None:
@@ -186,6 +184,7 @@ class TestDistMPTraning(unittest.TestCase):
         self.check_export_model_accuracy = True
         self.diff_threshold = 0.01
         self.fuse_conv_bn = False
+        init_parallel_env()
 
     def train_batch(self, batch, model, optimizer, is_mp):
         output = model(batch)
