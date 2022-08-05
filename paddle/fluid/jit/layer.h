@@ -73,8 +73,8 @@ class Layer {
  private:
   Name2VariableMap params_map_;
   Name2VariableMap attrs_map_;
-  std::shared_ptr<CompilationUnit> unit_;
   Name2FunctionInfoMap info_map_;
+  std::shared_ptr<CompilationUnit> unit_;
 };
 
 }  // namespace jit
