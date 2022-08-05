@@ -98,6 +98,15 @@
     func : erf
   backward : erf_grad
 
+- api : lgamma
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : lgamma
+  backward : lgamma_grad 
+
 - api : mv
   args : (Tensor x, Tensor vec)
   output : Tensor

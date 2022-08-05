@@ -223,10 +223,10 @@ class AfsManager {
     delete read_stream;
   }
   int PopenBidirectionalInternal(const char* command,
-                                 FILE*& fp_read,  // NOLINT
-                                 FILE*& fp_write,
-                                 pid_t& pid,  // NOLINT
-                                 bool read,   // NOLINT
+                                 FILE*& fp_read,   // NOLINT
+                                 FILE*& fp_write,  // NOLINT
+                                 pid_t& pid,       // NOLINT
+                                 bool read,        // NOLINT
                                  bool write) {
     std::lock_guard<std::mutex> g(g_flock);
     int fd_read[2];
@@ -440,10 +440,9 @@ class BoxWrapper {
       std::vector<gpuStream_t*> stream_list;
       for (int i = 0; i < platform::GetGPUDeviceCount(); ++i) {
         VLOG(3) << "before get context i[" << i << "]";
-        platform::CUDADeviceContext* context =
-            dynamic_cast<platform::CUDADeviceContext*>(
-                platform::DeviceContextPool::Instance().Get(
-                    platform::CUDAPlace(i)));
+        phi::GPUContext* context = dynamic_cast<phi::GPUContext*>(
+            platform::DeviceContextPool::Instance().Get(
+                platform::CUDAPlace(i)));
         stream_list_[i] = context->stream();
         stream_list.push_back(&stream_list_[i]);
       }

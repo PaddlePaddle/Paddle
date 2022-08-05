@@ -355,6 +355,18 @@ void DeviceInterface::CCLRecv(void* recvbuf,
   INTERFACE_UNIMPLEMENT;
 }
 
+// blas
+void DeviceInterface::BlasAXPBY(size_t dev_id,
+                                const stream::Stream& stream,
+                                paddle::experimental::DataType dtype,
+                                size_t numel,
+                                float alpha,
+                                void* x,
+                                float beta,
+                                void* y) {
+  INTERFACE_UNIMPLEMENT;
+}
+
 #undef INTERFACE_UNIMPLEMENT
 
 }  // namespace phi

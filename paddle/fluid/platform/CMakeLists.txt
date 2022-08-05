@@ -113,7 +113,6 @@ endif()
 
 add_subdirectory(device)
 add_subdirectory(dynload)
-add_subdirectory(stream)
 
 cc_library(
   cpu_helper
@@ -130,7 +129,7 @@ if(WITH_DGC)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  set(GPU_CTX_DEPS dynload_cuda dynamic_loader cuda_stream)
+  set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
 endif()
 
 if(WITH_IPU)

@@ -532,6 +532,10 @@ def edit_distance(input,
                          attrs={"tokens": ignored_tokens})
         label = erased_label
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_edit_distance(input, label, input_length,
+                                                label_length, normalized)
+
     this_inputs = {"Hyps": [input], "Refs": [label]}
     if input_length is not None and label_length is not None:
         this_inputs['HypsLength'] = [input_length]
@@ -920,7 +924,11 @@ def hsigmoid_loss(input,
             #  [2.11009121]
             #  [1.92374969]]
     """
-
+    if in_dygraph_mode():
+        out, _, _ = _C_ops.final_state_hierarchical_sigmoid(
+            input, weight, label, path_table, path_code, bias, num_classes,
+            is_sparse, 0, [], [], [], is_sparse)
+        return out
     if _non_static_mode():
         out, _, _ = _C_ops.hierarchical_sigmoid(input, weight, label,
                                                 path_table, path_code, bias,

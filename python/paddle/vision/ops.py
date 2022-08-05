@@ -24,21 +24,10 @@ from paddle.common_ops_import import *
 from paddle import _C_ops
 
 __all__ = [  #noqa
-    'yolo_loss',
-    'yolo_box',
-    'deform_conv2d',
-    'DeformConv2D',
-    'distribute_fpn_proposals',
-    'generate_proposals',
-    'read_file',
-    'decode_jpeg',
-    'roi_pool',
-    'RoIPool',
-    'psroi_pool',
-    'PSRoIPool',
-    'roi_align',
-    'RoIAlign',
-    'nms',
+    'yolo_loss', 'yolo_box', 'deform_conv2d', 'DeformConv2D',
+    'distribute_fpn_proposals', 'generate_proposals', 'read_file',
+    'decode_jpeg', 'roi_pool', 'RoIPool', 'psroi_pool', 'PSRoIPool',
+    'roi_align', 'RoIAlign', 'nms', 'matrix_nms'
 ]
 
 
@@ -196,6 +185,12 @@ def yolo_loss(x,
                                              use_label_smooth=True,
                                              scale_x_y=1.)
     """
+
+    if in_dygraph_mode():
+        loss, _, _ = _C_ops.final_state_yolov3_loss(
+            x, gt_box, gt_label, gt_score, anchors, anchor_mask, class_num,
+            ignore_thresh, downsample_ratio, use_label_smooth, scale_x_y)
+        return loss
 
     if _non_static_mode():
         loss, _, _ = _C_ops.yolov3_loss(
@@ -1035,7 +1030,6 @@ def decode_jpeg(x, mode='unchanged', name=None):
 
             print(img.shape)
     """
-
     if _non_static_mode():
         return _C_ops.decode_jpeg(x, "mode", mode)
 
@@ -1590,6 +1584,9 @@ def nms(boxes,
     """
 
     def _nms(boxes, iou_threshold):
+        if in_dygraph_mode():
+            return _C_ops.final_state_nms(boxes, iou_threshold)
+
         if _non_static_mode():
             return _C_ops.nms(boxes, 'iou_threshold', iou_threshold)
 
@@ -1802,3 +1799,147 @@ def generate_proposals(scores,
         rpn_rois_num = None
 
     return rpn_rois, rpn_roi_probs, rpn_rois_num
+
+
+def matrix_nms(bboxes,
+               scores,
+               score_threshold,
+               post_threshold,
+               nms_top_k,
+               keep_top_k,
+               use_gaussian=False,
+               gaussian_sigma=2.,
+               background_label=0,
+               normalized=True,
+               return_index=False,
+               return_rois_num=True,
+               name=None):
+    """
+    This operator does matrix non maximum suppression (NMS).
+    First selects a subset of candidate bounding boxes that have higher scores
+    than score_threshold (if provided), then the top k candidate is selected if
+    nms_top_k is larger than -1. Score of the remaining candidate are then
+    decayed according to the Matrix NMS scheme.
+    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    per image if keep_top_k is larger than -1.
+    Args:
+        bboxes (Tensor): A 3-D Tensor with shape [N, M, 4] represents the
+                           predicted locations of M bounding bboxes,
+                           N is the batch size. Each bounding box has four
+                           coordinate values and the layout is
+                           [xmin, ymin, xmax, ymax], when box size equals to 4.
+                           The data type is float32 or float64.
+        scores (Tensor): A 3-D Tensor with shape [N, C, M]
+                           represents the predicted confidence predictions.
+                           N is the batch size, C is the class number, M is
+                           number of bounding boxes. For each category there
+                           are total M scores which corresponding M bounding
+                           boxes. Please note, M is equal to the 2nd dimension
+                           of BBoxes. The data type is float32 or float64.
+        score_threshold (float): Threshold to filter out bounding boxes with
+                                 low confidence score.
+        post_threshold (float): Threshold to filter out bounding boxes with
+                                low confidence score AFTER decaying.
+        nms_top_k (int): Maximum number of detections to be kept according to
+                         the confidences after the filtering detections based
+                         on score_threshold.
+        keep_top_k (int): Number of total bboxes to be kept per image after NMS
+                          step. -1 means keeping all bboxes after NMS step.
+        use_gaussian (bool): Use Gaussian as the decay function. Default: False
+        gaussian_sigma (float): Sigma for Gaussian decay function. Default: 2.0
+        background_label (int): The index of background label, the background
+                                label will be ignored. If set to -1, then all
+                                categories will be considered. Default: 0
+        normalized (bool): Whether detections are normalized. Default: True
+        return_index(bool): Whether return selected index. Default: False
+        return_rois_num(bool): whether return rois_num. Default: True
+        name(str): Name of the matrix nms op. Default: None.
+    Returns:
+        A tuple with three Tensor: (Out, Index, RoisNum) if return_index is True,
+        otherwise, a tuple with two Tensor (Out, RoisNum) is returned.
+        Out (Tensor): A 2-D Tensor with shape [No, 6] containing the
+             detection results.
+             Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
+        Index (Tensor): A 2-D Tensor with shape [No, 1] containing the
+            selected indices, which are absolute values cross batches.
+        rois_num (Tensor): A 1-D Tensor with shape [N] containing
+            the number of detected boxes in each image.
+    Examples:
+        .. code-block:: python
+            import paddle
+            from paddle.vision.ops import matrix_nms
+            boxes = paddle.rand([4, 1, 4])
+            boxes[..., 2] = boxes[..., 0] + boxes[..., 2]
+            boxes[..., 3] = boxes[..., 1] + boxes[..., 3]
+            scores = paddle.rand([4, 80, 1])
+            out = matrix_nms(bboxes=boxes, scores=scores, background_label=0,
+                                 score_threshold=0.5, post_threshold=0.1,
+                                 nms_top_k=400, keep_top_k=200, normalized=False)
+    """
+    check_variable_and_dtype(bboxes, 'BBoxes', ['float32', 'float64'],
+                             'matrix_nms')
+    check_variable_and_dtype(scores, 'Scores', ['float32', 'float64'],
+                             'matrix_nms')
+    check_type(score_threshold, 'score_threshold', float, 'matrix_nms')
+    check_type(post_threshold, 'post_threshold', float, 'matrix_nms')
+    check_type(nms_top_k, 'nums_top_k', int, 'matrix_nms')
+    check_type(keep_top_k, 'keep_top_k', int, 'matrix_nms')
+    check_type(normalized, 'normalized', bool, 'matrix_nms')
+    check_type(use_gaussian, 'use_gaussian', bool, 'matrix_nms')
+    check_type(gaussian_sigma, 'gaussian_sigma', float, 'matrix_nms')
+    check_type(background_label, 'background_label', int, 'matrix_nms')
+
+    if in_dygraph_mode():
+        out, index, rois_num = _C_ops.final_state_matrix_nms(
+            bboxes, scores, score_threshold, nms_top_k, keep_top_k,
+            post_threshold, use_gaussian, gaussian_sigma, background_label,
+            normalized)
+        if not return_index:
+            index = None
+        if not return_rois_num:
+            rois_num = None
+        return out, rois_num, index
+    elif _in_legacy_dygraph():
+        attrs = ('background_label', background_label, 'score_threshold',
+                 score_threshold, 'post_threshold', post_threshold, 'nms_top_k',
+                 nms_top_k, 'gaussian_sigma', gaussian_sigma, 'use_gaussian',
+                 use_gaussian, 'keep_top_k', keep_top_k, 'normalized',
+                 normalized)
+        out, index, rois_num = _C_ops.matrix_nms(bboxes, scores, *attrs)
+        if not return_index:
+            index = None
+        if not return_rois_num:
+            rois_num = None
+        return out, rois_num, index
+    else:
+        helper = LayerHelper('matrix_nms', **locals())
+        output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+        index = helper.create_variable_for_type_inference(dtype='int32')
+        outputs = {'Out': output, 'Index': index}
+        if return_rois_num:
+            rois_num = helper.create_variable_for_type_inference(dtype='int32')
+            outputs['RoisNum'] = rois_num
+
+        helper.append_op(type="matrix_nms",
+                         inputs={
+                             'BBoxes': bboxes,
+                             'Scores': scores
+                         },
+                         attrs={
+                             'background_label': background_label,
+                             'score_threshold': score_threshold,
+                             'post_threshold': post_threshold,
+                             'nms_top_k': nms_top_k,
+                             'gaussian_sigma': gaussian_sigma,
+                             'use_gaussian': use_gaussian,
+                             'keep_top_k': keep_top_k,
+                             'normalized': normalized
+                         },
+                         outputs=outputs)
+        output.stop_gradient = True
+
+        if not return_index:
+            index = None
+        if not return_rois_num:
+            rois_num = None
+        return output, rois_num, index

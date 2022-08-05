@@ -2095,12 +2095,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         VLOG(3) << "unsupport data type conversion";
         return false;
       }
-      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2 ||
-             in_dtype == 0) &&
+      if (in_dtype == 0) {
+        VLOG(3) << "do not support input data type as bool now";
+        return false;
+      }
+      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2) &&
             (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
-        VLOG(3)
-            << "only valid conversions are: "
-               "(kFLOAT | kHALF | kINT32 | kBOOL) -> (kFLOAT | kHALF | kINT32)";
+        VLOG(3) << "only valid conversions are: "
+                   "(kFLOAT | kHALF | kINT32) -> (kFLOAT | kHALF | kINT32)";
         return false;
       }
     }

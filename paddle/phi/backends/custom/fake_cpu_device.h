@@ -210,6 +210,17 @@ C_Status XcclRecv(void *recv_buf,
   return C_SUCCESS;
 }
 
+C_Status BlasAXPBY(const C_Device device,
+                   C_Stream stream,
+                   C_DataType dtype,
+                   size_t numel,
+                   float alpha,
+                   void *x,
+                   float beta,
+                   void *y) {
+  return C_SUCCESS;
+}
+
 #define DEVICE_TYPE "FakeCPU"
 #define SUB_DEVICE_TYPE "V100"
 
@@ -278,4 +289,6 @@ void InitFakeCPUDevice(CustomRuntimeParams *params) {
   params->interface->xccl_reduce_scatter = XcclReduceScatter;
   params->interface->xccl_send = XcclSend;
   params->interface->xccl_recv = XcclRecv;
+
+  params->interface->blas_axpby = BlasAXPBY;
 }
