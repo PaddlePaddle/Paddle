@@ -64,9 +64,9 @@ class TestNewGroupAPI(object):
             paddle.add(paddle.add(self.tensor1, self.tensor1), self.tensor1))
         print("test all_reduce api ok")
 
-        paddle.distributed.wait(result, gp, use_calc_stream=True)
-        paddle.distributed.wait(result, gp, use_calc_stream=False)
-        print("test wait api ok")
+        #paddle.distributed.wait(result, gp, use_calc_stream=True)
+        #paddle.distributed.wait(result, gp, use_calc_stream=False)
+        #print("test wait api ok")
 
         result = []
         paddle.distributed.all_gather(result,
