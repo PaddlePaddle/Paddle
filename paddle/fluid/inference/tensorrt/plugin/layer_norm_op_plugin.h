@@ -112,6 +112,9 @@ class LayerNormPlugin : public PluginTensorRT {
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "layernorm_plugin";
   }
+  bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
+      const TRT_NOEXCEPT override;
+
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
   nvinfer1::Dims getOutputDimensions(int index,
                                      const nvinfer1::Dims* inputs,

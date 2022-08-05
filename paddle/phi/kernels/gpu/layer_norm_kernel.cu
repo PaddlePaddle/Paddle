@@ -50,6 +50,7 @@ void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
 }
 
 template class LayerNormDirectCUDAFunctor<float>;
+template class LayerNormDirectCUDAFunctor<half>;
 
 template <typename T, typename Context>
 void LayerNormKernel(const Context &dev_ctx,

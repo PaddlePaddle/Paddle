@@ -37,6 +37,18 @@ nvinfer1::Dims LayerNormPlugin::getOutputDimensions(
   return output_dims;
 }
 
+bool LayerNormPlugin::supportsFormat(
+    nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
+  if (with_fp16_) {
+    return ((type == nvinfer1::DataType::kFLOAT ||
+             type == nvinfer1::DataType::kHALF) &&
+            (format == nvinfer1::PluginFormat::kLINEAR));
+  } else {
+    return ((type == nvinfer1::DataType::kFLOAT) &&
+            (format == nvinfer1::PluginFormat::kLINEAR));
+  }
+}
+
 int LayerNormPlugin::enqueue(int batch_size,
                              const void *const *inputs,
 #if IS_TRT_VERSION_LT(8000)
@@ -204,6 +216,11 @@ nvinfer1::DataType LayerNormPluginDynamic::getOutputDataType(
                         "The LayerNormPlugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
+  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
+                     input_types[0] == nvinfer1::DataType::kHALF),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The input type should be half or float"));
   return input_types[0];
 }
 
@@ -246,6 +263,12 @@ int LayerNormPluginDynamic::enqueue(
   variance_t.Resize(phi::make_ddim(variance_shape_));
   int device_id;
   cudaGetDevice(&device_id);
+  // float *scale_d =
+  //       scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  // float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  // float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  // float *variance_d =
+  //     variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";

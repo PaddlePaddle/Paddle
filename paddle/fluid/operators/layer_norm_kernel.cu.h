@@ -371,9 +371,10 @@ __global__ void LayerNormForward(
 
   if (threadIdx.x == 0) {
     auto scale = static_cast<float>(1.) / static_cast<float>(feature_size);
-    auto tmp = mean_val * scale;
+    const U g(scale);
+    auto tmp = mean_val * g;
     mean[blockIdx.x] = mean_share = static_cast<U>(tmp);
-    var_share = static_cast<U>(var_val * scale - mean_share * mean_share);
+    var_share = static_cast<U>(var_val * g - mean_share * mean_share);
     var_share = var_share > U(0) ? var_share : U(0);
     var[blockIdx.x] = var_share;
   }
