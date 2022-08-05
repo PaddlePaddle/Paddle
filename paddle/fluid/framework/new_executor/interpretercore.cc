@@ -94,18 +94,6 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   }
   var_scope_.SetLocalScope(local_scope_);
 
-  // 执行器执行
-  VLOG(2) << "construct interpertercore scope var is: ";
-  for (size_t i = 0; i < scope->LocalVarNames().size(); i++) {
-    std::cout << scope->LocalVarNames()[i] << std::endl;
-  }
-
-  VLOG(2) << "construct scope ptr is: " << scope;
-  VLOG(2) << "varscope's var size is: " << var_scope_.VarSize();
-  for (size_t i = 0; i < var_scope_.VarSize(); i++) {
-    std::cout << var_scope_.GetNameById(i) << std::endl;
-  }
-
   // prune
 
   // optmize graph pass
@@ -652,9 +640,9 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
-  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
   Scope* local_scope = create_local_scope_ ? var_scope_.GetMutableLocalScope()
                                            : var_scope_.GetMutableScope();
+  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
@@ -704,6 +692,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
           paddle::framework::details::GetMutableTensorFromVar(pair.second);
       if (in.dims() == out->dims()) {
         out->ShareBufferWith(in);
+        VLOG(1) << "set inplace: " << pair.second << " -> " << pair.first;
       }
     }
   }
@@ -724,6 +713,20 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
         VLOG(4) << "Run phi kernel: " << op->Type();
         VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
                 << &instr_node.DeviceContext();
+        VLOG(1) << "----------inner run time ctx:";
+        auto ctx_inputs = (instr_node.InnerRuntimeContext().get())->inputs;
+        for (auto iter = ctx_inputs.begin(); iter != ctx_inputs.end(); iter++) {
+          for (size_t j = 0; j < iter->second.size(); j++) {
+            VLOG(1) << "input ptr is: " << iter->second[j];
+          }
+        }
+        auto ctx_outputs = (instr_node.InnerRuntimeContext().get())->outputs;
+        for (auto iter = ctx_outputs.begin(); iter != ctx_outputs.end();
+             iter++) {
+          for (size_t j = 0; j < iter->second.size(); j++) {
+            VLOG(1) << "output ptr is: " << iter->second[j];
+          }
+        }
         phi::KernelContext pt_kernel_context;
         op_with_kernel->BuildPhiKernelContext(
             *instr_node.InnerRuntimeContext().get(),

@@ -176,36 +176,6 @@ class PartialProgramLayer:
     def _double_grads(self):
         return self._get_double_grads(self._origin_main_program)
 
-    # # ==================== create program for infer/train =================== #
-    # # 有3类program：self.whole_program/self.forward_program/self.backward_program
-    # # 每类分为：infer/train模式，每个模式分为：fp32/amp/pure_fp16
-    # @switch_to_static_graph
-    # def get_backward_program_from(self, forward_program, whole_program):
-    #     backward_program = whole_program
-    #     # 只删除block0中所有的反向op
-    #     if (len(forward_program.block(0).ops) + 2 * len(self._outputs.var_ids)) < len(whole_program.block(0).ops):
-    #         # delete forward op(only del block0)：
-    #         for i in range(
-    #                 len(forward_program.block(0).ops) +
-    #                 2 * len(self._outputs.var_ids)):
-    #             backward_program.block(0)._remove_op(0)
-    #     else:
-    #         for i in range(len(forward_program.block(0).ops)):
-    #             backward_program.block(0)._remove_op(0)
-    #     # del unused forward var (only del block0)：遍历所有反向op，得到所有有用的var的set, 遍历所有前向的var，如果不在上面这个set中，则删除
-    #     # 因为只删除block0中所有的反向op，子block中不动，子block中op可能用到block0中的var，所以，所有block0中反向op和子block中所有op用的的var，block0均不能删除
-    #     retain_var_set = set()
-    #     for block in backward_program.blocks:
-    #         for op in block.ops:
-    #             for name in op.input_arg_names:
-    #                 retain_var_set.add(name)
-    #             for name in op.output_arg_names:
-    #                 retain_var_set.add(name)
-    #     for var_key in forward_program.block(0).vars.keys():
-    #         if var_key not in retain_var_set:
-    #             backward_program.block(0)._remove_var(var_key)
-    #     return backward_program
-
     # whole
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
@@ -616,7 +586,7 @@ class PartialProgramLayer:
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
-        # -------ci 监测program转换是否成功 -----
+        # -------监测program转换是否成功 -----
         self.whole_program
         self.forward_program
         self.backward_program
@@ -632,8 +602,9 @@ class PartialProgramLayer:
                 ('cuda_graph_capture_mode', self._cuda_graph_capture_mode,
                  'cuda_graph_pool_id', self._cuda_graph_pool_id))
 
-        print("_is_enable_standalone_executor",
-              _is_enable_standalone_executor())
+        print(
+            "=========================>partial_program: _is_enable_standalone_executor",
+            _is_enable_standalone_executor())
         # print(self.forward_program)
         use_interpretorcore = _is_enable_standalone_executor()
         attrs.extend(('use_interpretorcore', True))
@@ -672,33 +643,9 @@ class PartialProgramLayer:
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name
 
-    # @property
-    # def program(self):
-    #     if self.training:
-    #         return self.train_program
-    #     else:
-    #         return self.infer_program
-
     @property
     def program(self):
         return self.whole_program
-
-    # @property
-    # def program_id(self):
-    #     if self.training:
-    #         if _in_amp_guard():
-    #             return self._train_amp_program_id
-    #         elif _in_pure_fp16_guard():
-    #             return self._train_pure_fp16_program_id
-    #         else:
-    #             return self._train_program_id
-    #     else:
-    #         if _in_amp_guard():
-    #             return self._infer_amp_program_id
-    #         elif _in_pure_fp16_guard():
-    #             return self._infer_pure_fp16_program_id
-    #         else:
-    #             return self._infer_program_id
 
     @property
     def program_id(self):

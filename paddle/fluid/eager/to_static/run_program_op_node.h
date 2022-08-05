@@ -357,23 +357,6 @@ inline void RunProgramAPI(
           interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false);
       auto &interpreter_core = cached_value.core_;
       // (2) 更新scope
-      // auto old_scope =
-      // interpreter_core->GetVariableScope()->GetMutableScope(); auto old_vars
-      // = old_scope->LocalVars(); auto old_var_names =
-      // old_scope->LocalVarNames(); for (size_t i = 0; i <
-      // old_var_names.size(); i++) {
-      //   // 向新的scope中创建与老scope相同名字的var，并初始化
-      //   auto var_name = old_var_names[i];
-      //   VLOG(1) << "old scope, var name is: " << var_name;
-      //   VLOG(1) << "var is initialized? "
-      //           << old_vars[i]->Get<phi::DenseTensor>().initialized();
-      //   auto *ptr = scope.Var(var_name);
-      //   InitializeVariable(ptr,
-      //                      static_cast<paddle::framework::proto::VarType::Type>(
-      //                          old_vars[i]->Type()));
-      //   VLOG(1) << "var is initialized? "
-      //           << old_vars[i]->Get<phi::DenseTensor>().initialized();
-      // }
       details::BuildScopeByBlock(*forward_global_block, &scope);
       // share input_vars & parameters into scope
       details::ShareTensorsIntoScope(x, &scope);
@@ -569,19 +552,6 @@ inline void RunProgramGradAPI(
         interpreter_core->Run({});
         VLOG(2) << "interpreter_core->Run done.";
       }
-      {
-        auto local_scope =
-            interpreter_core->GetVariableScope()->GetMutableScope();
-        auto local_scope_vars = local_scope->LocalVars();
-        auto local_scope_var_names = local_scope->LocalVarNames();
-        for (size_t i = 0; i < local_scope_var_names.size(); i++) {
-          auto var_name = local_scope_var_names[i];
-          auto *dst_tensor =
-              local_scope->Var(var_name)->GetMutable<phi::DenseTensor>();
-          VLOG(1) << "0.1 var name is: " << var_name
-                  << ". Initialized: " << dst_tensor->initialized();
-        }
-      }
     } else {
       // 有cahce
       VLOG(1) << "Get a interpretercore from cache by: <program_id: "
@@ -591,32 +561,9 @@ inline void RunProgramGradAPI(
           interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/true);
       auto &interpreter_core = cached_value.core_;
       // (2) 更新scope
-      // auto old_scope =
-      // interpreter_core->GetVariableScope()->GetMutableScope(); auto old_vars
-      // = old_scope->LocalVars(); auto old_var_names =
-      // old_scope->LocalVarNames(); for (size_t i = 0; i <
-      // old_var_names.size(); i++) {
-      //   auto var_name = old_var_names[i];
-      //   auto ptr = scope.Var(var_name);
-      //   InitializeVariable(ptr,
-      //                      static_cast<paddle::framework::proto::VarType::Type>(
-      //                          old_vars[i]->Type()));
-      // }
       details::BuildScopeByBlock(*backward_global_block, &scope);
       details::ShareTensorsIntoScope(out_grad, &scope);
       interpreter_core->reset_scope(&scope);
-
-      auto local_scope =
-          interpreter_core->GetVariableScope()->GetMutableScope();
-      auto local_scope_vars = local_scope->LocalVars();
-      auto local_scope_var_names = local_scope->LocalVarNames();
-      for (size_t i = 0; i < local_scope_var_names.size(); i++) {
-        auto var_name = local_scope_var_names[i];
-        auto *dst_tensor =
-            local_scope->Var(var_name)->GetMutable<phi::DenseTensor>();
-        VLOG(1) << "1 var name is: " << var_name
-                << ". Initialized: " << dst_tensor->initialized();
-      }
 
       if (backward_global_block->OpSize() > 0) {
         // Debug info: scope info when run end
@@ -633,19 +580,6 @@ inline void RunProgramGradAPI(
         x_grad, *forward_global_block, *backward_global_block, &scope);
     details::ShareTensorsFromScopeWithPartialBlock(
         params_grad, *forward_global_block, *backward_global_block, &scope);
-
-    {
-      auto local_scope = &scope;
-      auto local_scope_vars = local_scope->LocalVars();
-      auto local_scope_var_names = local_scope->LocalVarNames();
-      for (size_t i = 0; i < local_scope_var_names.size(); i++) {
-        auto var_name = local_scope_var_names[i];
-        auto *dst_tensor =
-            local_scope->Var(var_name)->GetMutable<phi::DenseTensor>();
-        VLOG(1) << "2 var name is: " << var_name
-                << ". Initialized: " << dst_tensor->initialized();
-      }
-    }
 
     // Step5. drop current scope
     global_inner_scope->DeleteScope(&scope);

@@ -30,6 +30,7 @@ from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.executor import _is_enable_standalone_executor
 from paddle import _C_ops
 
 __all__ = ['TranslatedLayer']
@@ -301,6 +302,20 @@ def _change_is_test_status(program_desc, is_test):
                 op._set_attr('is_test', is_test)
 
 
+class LazyInitialized(object):
+    """
+    Descriptor to implement lazy initialization of property.
+    """
+
+    def __init__(self, function):
+        self.function = function
+
+    def __get__(self, instance, cls):
+        val = self.function(instance)
+        setattr(instance, self.function.__name__, val)
+        return val
+
+
 class _ProgramHolder(object):
     """
     Holds the execution information of a Program.
@@ -332,6 +347,53 @@ class _ProgramHolder(object):
         self._train_program_desc = self._append_backward_desc(
             self._infer_program_desc)
 
+    @switch_to_static_graph
+    def _add_build_strategy_for(self, input_program, start_op_index,
+                                end_op_index):
+        compiled_program = paddle.static.CompiledProgram(
+            input_program,
+            build_strategy=paddle.static.BuildStrategy(),
+            start_op_index=start_op_index,
+            end_op_index=end_op_index)
+        compiled_program._compile(core.Scope(),
+                                  framework._current_expected_place())
+        ir_graph = framework.IrGraph(compiled_program._graph)
+        builded_program = ir_graph.to_program()
+        return builded_program
+
+    # forward:
+    @switch_to_static_graph
+    def _create_forward_train_program(self):
+        whole_program = paddle.static.Program()
+        whole_program._rebuild_from_desc(self._train_program_desc)
+        end_op_index = self._infer_program_desc.block(0).op_size()
+        if end_op_index > 0:
+            return self._add_build_strategy_for(whole_program, 0, end_op_index)
+        else:
+            return paddle.static.Program()
+
+    @LazyInitialized
+    def _forward_program_desc(self):
+        return self._create_forward_train_program().desc
+
+    # backward
+    @switch_to_static_graph
+    def _create_backward_train_program(self):
+        whole_program = paddle.static.Program()
+        whole_program._rebuild_from_desc(self._train_program_desc)
+        start_op_index = self._infer_program_desc.block(0).op_size() + 2 * len(
+            self._output_descs)
+        end_op_index = whole_program.desc.block(0).op_size()
+        if (start_op_index < end_op_index):
+            return self._add_build_strategy_for(whole_program, start_op_index,
+                                                end_op_index)
+        else:
+            return paddle.static.Program()
+
+    @LazyInitialized
+    def _backward_program_desc(self):
+        return self._create_backward_train_program().desc
+
     @property
     def infer_program(self):
         return self._infer_program_desc
@@ -339,6 +401,14 @@ class _ProgramHolder(object):
     @property
     def train_program(self):
         return self._train_program_desc
+
+    @property
+    def forward_program(self):
+        return self._forward_program_desc
+
+    @property
+    def backward_program(self):
+        return self._backward_program_desc
 
     @property
     def input_descs(self):
@@ -861,9 +931,26 @@ def _run_dygraph(instance, input, program_holder):
     # 2. run program by op
     trace_program = program_holder.infer_program if instance._is_test else program_holder.train_program
     end_op_index = program_holder.infer_program.block(0).op_size()
-    attrs = ('global_block', trace_program.block(0), 'start_op_index', 0,
-             'end_op_index', end_op_index, 'is_test', instance._is_test,
-             'program_id', _hash_with_id(trace_program, instance))
+    attrs = [
+        'global_block',
+        trace_program.block(0), 'start_op_index', 0, 'end_op_index',
+        end_op_index, 'is_test', instance._is_test, 'program_id',
+        _hash_with_id(trace_program, instance)
+    ]
+    print("=========================>io: _is_enable_standalone_executor",
+          _is_enable_standalone_executor())
+    # print(self.forward_program)
+    use_interpretorcore = _is_enable_standalone_executor()
+    attrs.extend(('use_interpretorcore', True))
+    if use_interpretorcore:
+        attrs.extend(
+            ('forward_global_block',
+             program_holder.forward_program.block(0), 'backward_global_block',
+             program_holder.backward_program.block(0), 'forward_program_id',
+             _hash_with_id(program_holder.forward_program,
+                           instance), 'backward_program_id',
+             _hash_with_id(program_holder.backward_program, instance)))
+
     _C_ops.run_program(_valid_vars(input_vars), _valid_vars(persistable_vars),
                        _valid_vars(output_vars), tmp_scope_vec,
                        _valid_vars(double_grad_vars), None, *attrs)

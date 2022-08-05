@@ -253,11 +253,6 @@ void build_variable_scope(const framework::BlockDesc& block,
     var_scope->AddVar(var_name, var_desc);
   }
   VLOG(4) << "end build_variable_scope: =========";
-  VLOG(3) << "inner scope size is: " << inner_scope << ", "
-          << inner_scope->Size();
-  for (size_t i = 0; i < inner_scope->Size(); i++) {
-    std::cout << inner_scope->LocalVarNames()[i] << std::endl;
-  }
   VLOG(2) << "local scope size is: " << local_scope << ", "
           << local_scope->Size();
   for (size_t i = 0; i < local_scope->Size(); i++) {
@@ -506,15 +501,6 @@ void build_op_func_list(const platform::Place& place,
       framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
     }
 #endif
-
-    for (auto iter = ins_map.begin(); iter != ins_map.end(); iter++) {
-      VLOG(1) << "input name is: " << iter->first;
-      for (size_t i = 0; i < iter->second.size(); i++) {
-        auto* tensor =
-            GetMutableLoDTensorOrSelectedRowsValueFromVar(iter->second[i]);
-        VLOG(1) << "tensor is initialized? :" << tensor->initialized();
-      }
-    }
 
     if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
