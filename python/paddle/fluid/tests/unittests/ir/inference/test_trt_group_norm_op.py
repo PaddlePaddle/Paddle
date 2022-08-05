@@ -69,7 +69,7 @@ class TRTGroupNormTest(InferencePassTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu)
+            self.check_output_with_option(use_gpu, atol=3e-5)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 

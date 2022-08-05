@@ -14,14 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
 
-#include "paddle/phi/kernels/group_norm_kernel.h"
-#include "paddle/phi/kernels/gpu/group_norm_utils.h"
-#include "paddle/phi/kernels/gpu/group_norm_kernel.cu"
-
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "stdio.h"
 
 namespace paddle {
 namespace inference {
@@ -33,8 +28,8 @@ int GroupNormPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::Dims GroupNormPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
-        return inputDims[0];
-    }
+  return inputDims[0];
+}
 
 int GroupNormPlugin::enqueue(int batch_size,
                              const void *const *inputs,
@@ -46,336 +41,299 @@ int GroupNormPlugin::enqueue(int batch_size,
                              void *workspace,
 #endif
                              cudaStream_t stream) TRT_NOEXCEPT {
-    const auto &input_dims=this->getInputDims(0);
-    int groups=groups_;
-    float eps=eps_;
-    // printf("groups: %d, eps: %f, batch: %d\r\n",groups,eps,batch_size);
-    std::vector<int> input_shape;
-    input_shape.push_back(batch_size);
-    // printf("static input_dims.nbDims: %d\r\n",input_dims.nbDims);
-    for (int i=0;i<input_dims.nbDims;i++){
-        input_shape.push_back(input_dims.d[i]);
-        // printf(" %d",input_dims.d[i]);
-    }
-    // printf("\r\n");
-    const auto input_ddim = phi::make_ddim(input_shape);
+  const auto &input_dims = this->getInputDims(0);
+  int groups = groups_;
+  float eps = eps_;
+  std::vector<int> input_shape;
+  input_shape.push_back(batch_size);
+  for (int i = 0; i < input_dims.nbDims; i++) {
+    input_shape.push_back(input_dims.d[i]);
+  }
+  const auto input_ddim = phi::make_ddim(input_shape);
 
-    int C = input_shape[1];
-    
-    PADDLE_ENFORCE_EQ(C,
-                        scale_.size(),
-                        platform::errors::InvalidArgument(
-                            "scale's size should be equal to the channel number in groupnorm,"
-                            "but got channel number:%d, scale's size:%d.",
-                            C,
-                            scale_.size()));
-    PADDLE_ENFORCE_EQ(C,
-                        bias_.size(),
-                        platform::errors::InvalidArgument(
-                            "bias's size should be equal to the channel number in groupnorm,"
-                            "but got channel number:%d, bias's size:%d.",
-                            C,
-                            bias_.size()));
+  int C = input_shape[1];
 
+  PADDLE_ENFORCE_EQ(
+      C,
+      scale_.size(),
+      platform::errors::InvalidArgument(
+          "scale's size should be equal to the channel number in groupnorm,"
+          "but got channel number:%d, scale's size:%d.",
+          C,
+          scale_.size()));
+  PADDLE_ENFORCE_EQ(
+      C,
+      bias_.size(),
+      platform::errors::InvalidArgument(
+          "bias's size should be equal to the channel number in groupnorm,"
+          "but got channel number:%d, bias's size:%d.",
+          C,
+          bias_.size()));
 
-    int device_id;
-    cudaGetDevice(&device_id);
-        const float *input = reinterpret_cast<const float *>(inputs[0]);
-        float *output = static_cast<float *>(outputs[0]);
+  int device_id;
+  cudaGetDevice(&device_id);
+  const float *input = reinterpret_cast<const float *>(inputs[0]);
+  float *output = static_cast<float *>(outputs[0]);
 
-        scale_t.Resize(phi::make_ddim({C}));
-        bias_t.Resize(phi::make_ddim({C}));
-        
-        mean_t.Resize(phi::make_ddim(mean_shape_));
-        variance_t.Resize(phi::make_ddim(variance_shape_));
-        float *scale_d =
-            scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
-        float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
-        float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
-        float *variance_d = variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  scale_t.Resize(phi::make_ddim({C}));
+  bias_t.Resize(phi::make_ddim({C}));
 
-        framework::Tensor temp_variance_t;
-        temp_variance_t.Resize(phi::make_ddim(variance_shape_));
-        float * temp_variance_d=temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-        cudaMemcpyAsync(scale_d,
-                        scale_.data(),
-                        sizeof(float) * C,
-                        cudaMemcpyHostToDevice,
-                        stream);
-        cudaMemcpyAsync(bias_d,
-                        bias_.data(),
-                        sizeof(float) * C,
-                        cudaMemcpyHostToDevice,
-                        stream);
-        const int group_size = C/groups_;
-        // printf("static group_size: %d\r\n", group_size);
-        const int W=input_ddim[input_ddim.size()-1];
-        int image_size=1;
-        for (int i=2;i<input_ddim.size();++i){
-            image_size*=input_ddim[i];
-        }
-        int block_size=std::min(1024,image_size);
-        dim3 grid(group_size,groups_,input_ddim[0]);
-        dim3 threads(block_size,1,1);
-        
-        using AccT = typename phi::kps::details::MPTypeTrait<float>::Type;
-        constexpr int vec_size=sizeof(float4)/sizeof(float);
-        int size=group_size*image_size; // group element size
-        const int max_num_threads=1024;
-        int max_block_size = std::min(size/vec_size,max_num_threads);
-        int block_size_nchw=1;
-        while(block_size_nchw<max_block_size){
-            block_size_nchw*=2;
-        }
+  mean_t.Resize(phi::make_ddim(mean_shape_));
+  variance_t.Resize(phi::make_ddim(variance_shape_));
+  float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *variance_d =
+      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
-        block_size_nchw=std::max(block_size_nchw,phi::kps::details::kWarpSize);
-        dim3 grids(input_ddim[0]*groups_);
-        dim3 blocks(block_size_nchw);
+  framework::Tensor temp_variance_t;
+  temp_variance_t.Resize(phi::make_ddim(variance_shape_));
+  float *temp_variance_d =
+      temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  cudaMemcpyAsync(scale_d,
+                  scale_.data(),
+                  sizeof(float) * C,
+                  cudaMemcpyHostToDevice,
+                  stream);
+  cudaMemcpyAsync(
+      bias_d, bias_.data(), sizeof(float) * C, cudaMemcpyHostToDevice, stream);
+  const int group_size = C / groups_;
+  // printf("static group_size: %d\r\n", group_size);
+  const int W = input_ddim[input_ddim.size() - 1];
+  int image_size = 1;
+  for (int i = 2; i < input_ddim.size(); ++i) {
+    image_size *= input_ddim[i];
+  }
+  int block_size = std::min(1024, image_size);
+  dim3 grid(group_size, groups_, input_ddim[0]);
+  dim3 threads(block_size, 1, 1);
 
-        if (size<vec_size*block_size_nchw){
-            phi::ScalarGetMeanAndVarNCHW<float><<<grids, blocks, 0,stream>>>(
-                input, mean_d, temp_variance_d, size);
-        } else {
-            phi::VectorizedGetMeanAndVarNCHW<float, AccT, vec_size>
-            <<<grids,blocks,0,stream>>>(
-                input,mean_d,temp_variance_d,size);
-        }
-        // for test
-        // int mean_size=1;
-        // for(int i=0;i<mean_shape_.size();i++){
-        //     mean_size*=mean_shape_[i];
-        // }
-        // printf("static mean_size: %d\r\n",mean_size);
-        // for test end 
-        // printf("static forward input param: batch number:%d, C:%d, W:%d, imagesize: %d, groups: %d, group_size: %d\r\n",
-        //        input_ddim[0],C,W,image_size,groups_,
-        //        group_size);
-        // printf("static forward input param: gridx:%d, gridy:%d, gridz:%d\r\n",grid.x,grid.y,grid.z);
-        // printf("static forward input param: threads:%d \r\n",threads.x);
-        // printf("@@@ pin before group norm forward \r\n");
-        phi::GroupNormForward<float,3><<<grid,threads,0,stream>>>(
-            input,
-            mean_d,
-            temp_variance_d,
-            scale_d,
-            bias_d,
-            input_ddim[0],
-            C,
-            W,
-            image_size,
-            groups_,
-            group_size,
-            eps_,
-            output,
-            variance_d,
-            DataLayout::kNCHW // for now, we only support nchw for group norm
-            );
-    // printf("@@@ static plugin enqueue finished\r\n");
-    return cudaGetLastError() != cudaSuccess;
+  using AccT = typename phi::kps::details::MPTypeTrait<float>::Type;
+  constexpr int vec_size = sizeof(float4) / sizeof(float);
+  int size = group_size * image_size;  // group element size
+  const int max_num_threads = 1024;
+  int max_block_size = std::min(size / vec_size, max_num_threads);
+  int block_size_nchw = 1;
+  while (block_size_nchw < max_block_size) {
+    block_size_nchw *= 2;
+  }
+
+  block_size_nchw = std::max(block_size_nchw, phi::kps::details::kWarpSize);
+  dim3 grids(input_ddim[0] * groups_);
+  dim3 blocks(block_size_nchw);
+
+  if (size < vec_size * block_size_nchw) {
+    phi::ScalarGetMeanAndVarNCHW<float>
+        <<<grids, blocks, 0, stream>>>(input, mean_d, temp_variance_d, size);
+  } else {
+    phi::VectorizedGetMeanAndVarNCHW<float, AccT, vec_size>
+        <<<grids, blocks, 0, stream>>>(input, mean_d, temp_variance_d, size);
+  }
+  phi::GroupNormForward<float, 3><<<grid, threads, 0, stream>>>(
+      input,
+      mean_d,
+      temp_variance_d,
+      scale_d,
+      bias_d,
+      input_ddim[0],
+      C,
+      W,
+      image_size,
+      groups_,
+      group_size,
+      eps_,
+      output,
+      variance_d,
+      DataLayout::kNCHW  // for now, we only support nchw for group norm
+  );
+  return cudaGetLastError() != cudaSuccess;
 }
 nvinfer1::DimsExprs GroupNormPluginDynamic::getOutputDimensions(
-        int output_index,
-        const nvinfer1::DimsExprs *inputDims,
-        int nb_inputs,
-        nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
+    int output_index,
+    const nvinfer1::DimsExprs *inputDims,
+    int nb_inputs,
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   return inputDims[0];
 }
 
 bool GroupNormPluginDynamic::supportsFormatCombination(
-        int pos,
-        const nvinfer1::PluginTensorDesc *in_out,
-        int nb_inputs,
-        int nb_outputs) TRT_NOEXCEPT {
-    PADDLE_ENFORCE_NOT_NULL(
-        in_out,
-        platform::errors::InvalidArgument(
-            "The input of groupnorm plugin shoule not be nullptr."));
-    PADDLE_ENFORCE_LT(
-        pos,
-        nb_inputs + nb_outputs,
-        platform::errors::InvalidArgument("The pos(%d) should be less than the "
-                                            "num(%d) of the input and the output.",
-                                            pos,
-                                            nb_inputs + nb_outputs));
-    const nvinfer1::PluginTensorDesc &in = in_out[pos];
-    if (pos == 0) {
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-    }
-    const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
-    // output
-    return in.type == prev.type && in.format == prev.format;
+    int pos,
+    const nvinfer1::PluginTensorDesc *in_out,
+    int nb_inputs,
+    int nb_outputs) TRT_NOEXCEPT {
+  PADDLE_ENFORCE_NOT_NULL(
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of groupnorm plugin shoule not be nullptr."));
+  PADDLE_ENFORCE_LT(
+      pos,
+      nb_inputs + nb_outputs,
+      platform::errors::InvalidArgument("The pos(%d) should be less than the "
+                                        "num(%d) of the input and the output.",
+                                        pos,
+                                        nb_inputs + nb_outputs));
+  const nvinfer1::PluginTensorDesc &in = in_out[pos];
+  if (pos == 0) {
+    return (in.type == nvinfer1::DataType::kFLOAT) &&
+           (in.format == nvinfer1::TensorFormat::kLINEAR);
+  }
+  const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
+  // output
+  return in.type == prev.type && in.format == prev.format;
 }
 
 nvinfer1::DataType GroupNormPluginDynamic::getOutputDataType(
-        int index,
-        const nvinfer1::DataType * input_types,
-        int nb_inputs) const TRT_NOEXCEPT{
-    PADDLE_ENFORCE_EQ(index,
-        0,
-        platform::errors::InvalidArgument(
-            "The groupnorm Plugin only has one input, so the "
-            "index value should be 0, but get %d.",
-            index));
-    return input_types[0];
-
+    int index,
+    const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
+  PADDLE_ENFORCE_EQ(index,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The groupnorm Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
+  return input_types[0];
 }
 
 int GroupNormPluginDynamic::enqueue(
-    const nvinfer1::PluginTensorDesc* input_desc,
-    const nvinfer1::PluginTensorDesc* output_desc,
-    const void* const* inputs,
-    void * const * outputs,
+    const nvinfer1::PluginTensorDesc *input_desc,
+    const nvinfer1::PluginTensorDesc *output_desc,
+    const void *const *inputs,
+    void *const *outputs,
     void *workspace,
     cudaStream_t stream) TRT_NOEXCEPT {
-        const auto &input_dims=input_desc[0].dims;
-        int groups=groups_;
-        float eps=eps_;
+  const auto &input_dims = input_desc[0].dims;
+  int groups = groups_;
+  float eps = eps_;
 
-        std::vector<int> input_shape;
-        // printf("dynamic input_dims.nbDims: %d\r\n",input_dims.nbDims);
-        for (int i=0;i<input_dims.nbDims;i++){
-            input_shape.push_back(input_dims.d[i]);
-            // printf(" %d",input_dims.d[i]);
-        }
-        // printf("\r\n");
+  std::vector<int> input_shape;
+  for (int i = 0; i < input_dims.nbDims; i++) {
+    input_shape.push_back(input_dims.d[i]);
+  }
 
-        const auto input_ddim = phi::make_ddim(input_shape);
+  const auto input_ddim = phi::make_ddim(input_shape);
 
-        int C = input_shape[1];
-        int batchSize=input_shape[0];
-        std::vector<int64_t> batched_mean_shape={batchSize};
-        batched_mean_shape.insert(batched_mean_shape.end(),mean_shape_.begin(),mean_shape_.end());
-        std::vector<int64_t> batched_variance_shape={batchSize};
-        batched_variance_shape.insert(batched_variance_shape.end(),variance_shape_.begin(),variance_shape_.end());
-        PADDLE_ENFORCE_EQ(C,
-                          scale_.size(),
-                          platform::errors::InvalidArgument(
-                              "scale's size should be equal to the channel number in groupnorm,"
-                              "but got feature_size:%d, scale's size:%d.",
-                              C,
-                              scale_.size()));
-        PADDLE_ENFORCE_EQ(C,
-                          bias_.size(),
-                          platform::errors::InvalidArgument(
-                              "bias's size should be equal to the channel number in groupnorm,"
-                              "but got feature_size:%d, bias's size:%d.",
-                              C,
-                              bias_.size()));
+  int C = input_shape[1];
+  int batchSize = input_shape[0];
+  std::vector<int64_t> batched_mean_shape = {batchSize};
+  batched_mean_shape.insert(
+      batched_mean_shape.end(), mean_shape_.begin(), mean_shape_.end());
+  std::vector<int64_t> batched_variance_shape = {batchSize};
+  batched_variance_shape.insert(batched_variance_shape.end(),
+                                variance_shape_.begin(),
+                                variance_shape_.end());
+  PADDLE_ENFORCE_EQ(
+      C,
+      scale_.size(),
+      platform::errors::InvalidArgument(
+          "scale's size should be equal to the channel number in groupnorm,"
+          "but got feature_size:%d, scale's size:%d.",
+          C,
+          scale_.size()));
+  PADDLE_ENFORCE_EQ(
+      C,
+      bias_.size(),
+      platform::errors::InvalidArgument(
+          "bias's size should be equal to the channel number in groupnorm,"
+          "but got feature_size:%d, bias's size:%d.",
+          C,
+          bias_.size()));
 
+  int device_id;
+  cudaGetDevice(&device_id);
+  auto input_type = input_desc[0].type;
+  if (input_type == nvinfer1::DataType::kFLOAT) {
+    const float *input = reinterpret_cast<const float *>(inputs[0]);
+    float *output = static_cast<float *>(outputs[0]);
+    scale_t.Resize(phi::make_ddim({C}));
+    bias_t.Resize(phi::make_ddim({C}));
 
-        int device_id;
-        cudaGetDevice(&device_id);
-        // printf("@pin1 \r\n");
-        auto input_type = input_desc[0].type;
-        if (input_type == nvinfer1::DataType::kFLOAT) {
-            // printf("@dynamic kfloat32\r\n");
-            const float *input = reinterpret_cast<const float *>(inputs[0]);
-            float *output = static_cast<float *>(outputs[0]);
+    mean_t.Resize(phi::make_ddim(batched_mean_shape));
+    variance_t.Resize(phi::make_ddim(batched_variance_shape));
+    float *scale_d =
+        scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *variance_d =
+        variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
-            // printf("variance shape:");
-            // for (int i =0;i<batched_variance_shape.size();++i){
-            //     printf(" %d",batched_variance_shape[i]);
-            // }
-            // printf("\r\n");
+    framework::Tensor temp_mean_t;
+    framework::Tensor temp_variance_t;
+    temp_mean_t.Resize(phi::make_ddim(batched_mean_shape));
+    temp_variance_t.Resize(phi::make_ddim(batched_variance_shape));
+    float *temp_mean_d =
+        temp_mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *temp_variance_d =
+        temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    cudaMemcpyAsync(scale_d,
+                    scale_.data(),
+                    sizeof(float) * C,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_d,
+                    bias_.data(),
+                    sizeof(float) * C,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    const int group_size = C / groups_;
+    const int W = input_ddim[input_ddim.size() - 1];
+    int image_size = 1;
+    for (int i = 2; i < input_ddim.size(); ++i) {
+      image_size *= input_ddim[i];
+    }
+    int block_size = std::min(1024, image_size);
+    dim3 grid(group_size, groups_, input_ddim[0]);
+    dim3 threads(block_size, 1, 1);
 
-            scale_t.Resize(phi::make_ddim({C}));
-            bias_t.Resize(phi::make_ddim({C}));
-            
-            mean_t.Resize(phi::make_ddim(batched_mean_shape));
-            variance_t.Resize(phi::make_ddim(batched_variance_shape));
-            float *scale_d =
-                scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
-            float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
-            float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
-            float *variance_d = variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-
-            framework::Tensor temp_mean_t;
-            framework::Tensor temp_variance_t;
-            temp_mean_t.Resize(phi::make_ddim(batched_mean_shape));
-            temp_variance_t.Resize(phi::make_ddim(batched_variance_shape));
-            float * temp_mean_d=temp_mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
-            float * temp_variance_d=temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-            cudaMemcpyAsync(scale_d,
-                            scale_.data(),
-                            sizeof(float) * C,
-                            cudaMemcpyHostToDevice,
-                            stream);
-            cudaMemcpyAsync(bias_d,
-                            bias_.data(),
-                            sizeof(float) * C,
-                            cudaMemcpyHostToDevice,
-                            stream);
-            const int group_size = C/groups_;
-            const int W=input_ddim[input_ddim.size()-1];
-            int image_size=1;
-            for (int i=2;i<input_ddim.size();++i){
-                image_size*=input_ddim[i];
-            }
-            int block_size=std::min(1024,image_size);
-            dim3 grid(group_size,groups_,input_ddim[0]);
-            dim3 threads(block_size,1,1);
-            
-            using AccT = typename phi::kps::details::MPTypeTrait<float>::Type;
-            constexpr int vec_size=sizeof(float4)/sizeof(float);
-            int size=group_size*image_size; // group element size
-            const int max_num_threads=1024;
-            int max_block_size = std::min(size/vec_size,max_num_threads);
-            int block_size_nchw=1;
-            while(block_size_nchw<max_block_size){
-                block_size_nchw*=2;
-            }
-
-            block_size_nchw=std::max(block_size_nchw,phi::kps::details::kWarpSize);
-            dim3 grids(input_ddim[0]*groups_);
-            dim3 blocks(block_size_nchw);
-
-            if (size<vec_size*block_size_nchw){
-                phi::ScalarGetMeanAndVarNCHW<float><<<grids, blocks, 0,stream>>>(
-                    input, temp_mean_d, temp_variance_d, size);
-            } else {
-                phi::VectorizedGetMeanAndVarNCHW<float, AccT, vec_size>
-                <<<grids,blocks,0,stream>>>(
-                    input,temp_mean_d,temp_variance_d,size);
-            }
-
-            // for test
-            // int mean_size=1;
-            // for(int i=0;i<batched_mean_shape.size();i++){
-            //     mean_size*=batched_mean_shape[i];
-            // }
-
-            // for test end 
-
-            phi::GroupNormForward<float,3><<<grid,threads,0,stream>>>(
-                input,
-                temp_mean_d,
-                temp_variance_d,
-                scale_d,
-                bias_d,
-                input_ddim[0],
-                C,
-                W,
-                image_size,
-                groups_,
-                group_size,
-                eps_,
-                output,
-                variance_d,
-                DataLayout::kNCHW // for now, we only support nchw for group norm
-                );
-            
-        } else {
-            // input not float
-            PADDLE_THROW(platform::errors::Fatal(
-                "The Groupnorm TRT Plugin's only support fp32 input"));        
-        }
-        return cudaGetLastError() != cudaSuccess;
+    using AccT = typename phi::kps::details::MPTypeTrait<float>::Type;
+    constexpr int vec_size = sizeof(float4) / sizeof(float);
+    int size = group_size * image_size;  // group element size
+    const int max_num_threads = 1024;
+    int max_block_size = std::min(size / vec_size, max_num_threads);
+    int block_size_nchw = 1;
+    while (block_size_nchw < max_block_size) {
+      block_size_nchw *= 2;
     }
 
+    block_size_nchw = std::max(block_size_nchw, phi::kps::details::kWarpSize);
+    dim3 grids(input_ddim[0] * groups_);
+    dim3 blocks(block_size_nchw);
 
+    if (size < vec_size * block_size_nchw) {
+      phi::ScalarGetMeanAndVarNCHW<float><<<grids, blocks, 0, stream>>>(
+          input, temp_mean_d, temp_variance_d, size);
+    } else {
+      phi::VectorizedGetMeanAndVarNCHW<float, AccT, vec_size>
+          <<<grids, blocks, 0, stream>>>(
+              input, temp_mean_d, temp_variance_d, size);
+    }
+    phi::GroupNormForward<float, 3><<<grid, threads, 0, stream>>>(
+        input,
+        temp_mean_d,
+        temp_variance_d,
+        scale_d,
+        bias_d,
+        input_ddim[0],
+        C,
+        W,
+        image_size,
+        groups_,
+        group_size,
+        eps_,
+        output,
+        variance_d,
+        DataLayout::kNCHW  // for now, we only support nchw for group norm
+    );
 
-} // plugin
-} // tenssort
-} // inference
-} // paddle
+  } else {
+    // input not float
+    PADDLE_THROW(platform::errors::Fatal(
+        "The Groupnorm TRT Plugin's only support fp32 input"));
+  }
+  return cudaGetLastError() != cudaSuccess;
+}
+
+}  // namespace plugin
+}  // namespace tensorrt
+}  // namespace inference
+}  // namespace paddle

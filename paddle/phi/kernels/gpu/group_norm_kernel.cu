@@ -68,35 +68,8 @@ __global__ void GroupNormForward(const T* x,
                                  int group_size,
                                  T epsilon,
                                  T* y,
-                                 T* real_var, 
+                                 T* real_var,
                                  const DataLayout data_layout) {
-  // if(blockIdx.y==1 && blockIdx.x == 0 && blockIdx.z==0 && threadIdx.x ==0 ){
-  //   printf("kernel input x:\r\n");
-  //   for(int i=0;i<N*C*imsize;i++){
-  //     printf("%f ",x[i]);
-  //     if(i%10==0){
-  //       printf("\r\n");
-  //     }
-  //   }
-  //   printf("\r\n");
-  //   printf("mean:\r\n");
-  //   for(int i=0;i<N*groups;i++){
-  //     printf("%f ",mean[i]);
-  //     if(i%10==0){
-  //       printf("\r\n");
-  //     }
-  //   }
-  //   printf("\r\n");
-  //   printf("variance:\r\n");
-  //   for(int i=0;i<N*groups;i++){
-  //     printf("%f ",var[i]);
-  //     if(i%10==0){
-  //       printf("\r\n");
-  //     }
-  //   }
-  //   printf("\r\n");
-  // }
-
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
@@ -135,13 +108,7 @@ __global__ void GroupNormForward(const T* x,
     } else {
       y[(bid * H + hid) * W * C + wid * C + ccid] = val;
     }
-    // if(blockIdx.y==1 && blockIdx.x == 0 && blockIdx.z==0 && threadIdx.x ==0 ){
-    //   printf("@@@ x:%f,val:%f,xmean:%f,xvariance_inv:%f\r\n",x[index],val,x_mean,var_inv);
-    // }
   }
-    // if(blockIdx.y==0 && blockIdx.x == 0 && blockIdx.z==0 && threadIdx.x ==0 ){
-    //     printf("@@@ group norm kernel finished\r\n");
-    // }
 }
 
 template <typename T, typename Context>
