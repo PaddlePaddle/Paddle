@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 from op_test import OpTest
+import paddle
 
 
 class TestDygraphBilinearTensorProductAPIError(unittest.TestCase):
@@ -41,6 +42,7 @@ class TestBilinearTensorProductOp(OpTest):
 
     def setUp(self):
         self.op_type = "bilinear_tensor_product"
+        self.python_api = paddle.nn.functional.bilinear
         batch_size = 6
         size0 = 5
         size1 = 4
@@ -63,10 +65,10 @@ class TestBilinearTensorProductOp(OpTest):
         self.outputs = {'Out': output + bias}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y', 'Weight', 'Bias'], 'Out')
+        self.check_grad(['X', 'Y', 'Weight', 'Bias'], 'Out', check_eager=True)
 
 
 if __name__ == "__main__":

@@ -50,22 +50,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
  private:
   dnnl::post_ops get_post_ops(const framework::ExecutionContext& ctx) const {
     dnnl::post_ops post_operations;
-    if (ctx.HasAttr("activation_type")) {
-      const float scale = ctx.HasAttr("activation_scale")
-                              ? ctx.Attr<float>("activation_scale")
-                              : 1.0f;
-      const float alpha = ctx.HasAttr("activation_alpha")
-                              ? ctx.Attr<float>("activation_alpha")
-                              : 0.0f;
-      const float beta = ctx.HasAttr("activation_beta")
-                             ? ctx.Attr<float>("activation_beta")
-                             : 0.0f;
-
-      const auto activation_algorithm = platform::AcquireActivationAlgorithm(
-          ctx.Attr<std::string>("activation_type"));
-
-      post_operations.append_eltwise(scale, activation_algorithm, alpha, beta);
-    }
+    platform::AppendActivation(ctx, post_operations);
     return post_operations;
   }
 
@@ -75,8 +60,8 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* y = ctx.Input<Tensor>("Y");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
 
     float scale_x = ctx.Attr<float>("Scale_x");
@@ -95,6 +80,12 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
                                              scale_y,
                                              scale_o,
                                              get_post_ops(ctx));
+
+    // oneDNN's binary is optimized for broadcasting y into x, so in other case
+    // we have to swap tensors to achieve optimal performance
+    if (x->numel() < y->numel()) {
+      std::swap(x, y);
+    }
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
@@ -158,6 +149,13 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+
+    // oneDNN's binary is optimized for broadcasting y into x, so in other case
+    // we have to swap tensors to achieve optimal performance
+    if (x->numel() < y->numel()) {
+      std::swap(x, y);
+      std::swap(dx, dy);
+    }
 
     int axis = ctx.Attr<int>("axis");
 

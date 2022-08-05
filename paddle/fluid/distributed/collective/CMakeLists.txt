@@ -18,24 +18,12 @@ if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     processgroup_nccl
     SRCS ProcessGroupNCCL.cc NCCLTools.cc Common.cc
-    DEPS place
-         cuda_stream
-         enforce
-         collective_helper
-         device_context
-         phi_api
-         eager_api)
+    DEPS place enforce collective_helper device_context phi_api eager_api)
   if(WITH_DISTRIBUTE AND WITH_PSCORE)
     cc_library(
       processgroup_heter
       SRCS ProcessGroupHeter.cc NCCLTools.cc Common.cc
-      DEPS place
-           cuda_stream
-           enforce
-           collective_helper
-           device_context
-           phi_api
-           eager_api)
+      DEPS place enforce collective_helper device_context phi_api eager_api)
   endif()
 endif()
 
@@ -62,4 +50,17 @@ if(WITH_ASCEND_CL)
            phi_api
            eager_api)
   endif()
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  cc_library(
+    processgroup_custom
+    SRCS ProcessGroupCustom.cc CustomCCLTools.cc Common.cc
+    DEPS phi_backends
+         place
+         enforce
+         collective_helper
+         device_context
+         phi_api
+         eager_api)
 endif()

@@ -21,7 +21,6 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import slice_is_num
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
-from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 
@@ -47,7 +46,6 @@ class ListTransformer(BaseTransformer):
         self.scope_var_type_dict = var_env.get_scope_var_type()
 
     def transform(self):
-        SplitAssignTransformer(self.root).transform()
         self.visit(self.root)
         self.replace_list_with_tensor_array(self.root)
 

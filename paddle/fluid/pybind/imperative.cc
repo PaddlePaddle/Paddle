@@ -52,9 +52,10 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/pybind/uva_utils.h"
@@ -64,6 +65,7 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+std::atomic<int> VarBaseUniqueNameID{0};
 PyTypeObject *g_varbase_pytype = nullptr;
 
 namespace py = ::pybind11;
@@ -142,6 +144,8 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::CUDAPinnedPlace>();
   } else if (py::isinstance<platform::NPUPlace>(place_obj)) {
     return place_obj.cast<platform::NPUPlace>();
+  } else if (py::isinstance<platform::IPUPlace>(place_obj)) {
+    return place_obj.cast<platform::IPUPlace>();
   } else if (py::isinstance<platform::Place>(place_obj)) {
     return place_obj.cast<platform::Place>();
   } else if (py::isinstance<platform::MLUPlace>(place_obj)) {
@@ -151,8 +155,8 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/MLUPlace/"
-        "CustomPlace"));
+        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
+        "MLUPlace/CustomPlace"));
   }
 }
 
@@ -198,6 +202,8 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
         tensor, array, place, zero_copy);
   } else if (platform::is_npu_place(place)) {
     SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
+  } else if (platform::is_ipu_place(place)) {
+    SetTensorFromPyArray<platform::IPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_mlu_place(place)) {
     SetTensorFromPyArray<platform::MLUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
@@ -206,7 +212,8 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/MLUPlace"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
+        "MLUPlace"));
   }
   self->SetDataType(framework::TransToProtoVarType(tensor->dtype()));
 }
@@ -492,7 +499,14 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
-  BindOpFunctions(&m);
+  BindOpFunctions1(&m);
+  BindOpFunctions2(&m);
+  BindOpFunctions3(&m);
+  BindOpFunctions4(&m);
+  BindOpFunctions5(&m);
+  BindOpFunctions6(&m);
+  BindOpFunctions7(&m);
+  BindOpFunctions8(&m);
 
 #ifndef _WIN32
   // Dygraph DataLoader signal handler
@@ -1859,6 +1873,18 @@ void BindImperative(py::module *m_ptr) {
       .def(
           "_copy_to",
           [](const std::shared_ptr<imperative::VarBase> &self,
+             const platform::IPUPlace &place,
+             bool blocking) {
+            auto new_var = self->NewVarBase(place, blocking);
+            if (!blocking) {
+              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+            }
+            return new_var;
+          },
+          py::return_value_policy::copy)
+      .def(
+          "_copy_to",
+          [](const std::shared_ptr<imperative::VarBase> &self,
              const platform::MLUPlace &place,
              bool blocking) {
             auto new_var = self->NewVarBase(place, blocking);
@@ -2140,6 +2166,11 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
+            } else if (py::isinstance<platform::IPUPlace>(obj)) {
+              auto p = obj.cast<platform::IPUPlace *>();
+              self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else if (py::isinstance<platform::MLUPlace>(obj)) {
               auto p = obj.cast<platform::MLUPlace *>();
               self.SetExpectedPlace(*p);
@@ -2158,7 +2189,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, NPUPlace, MLUPlace"
+                  "CPUPlace, NPUPlace, IPUPlace, MLUPlace"
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }
@@ -2298,6 +2329,28 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs,
               const platform::NPUPlace &place,
+              bool trace_backward,
+              const std::map<std::string, std::string> &inplace_map = {}) {
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               py::gil_scoped_release release;
+               self.TraceOp<imperative::VarBase>(type,
+                                                 std::move(ins_map),
+                                                 std::move(outs_map),
+                                                 std::move(attrs),
+                                                 place,
+                                                 trace_backward,
+                                                 inplace_map);
+             }
+           })
+      .def("trace",
+           [](imperative::Tracer &self,
+              const std::string &type,
+              const PyNameVarBaseMap &ins,
+              const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs,
+              const platform::IPUPlace &place,
               bool trace_backward,
               const std::map<std::string, std::string> &inplace_map = {}) {
              auto ins_map = ConvertToNameVarBaseMap(ins);
@@ -2744,8 +2797,8 @@ void BindImperative(py::module *m_ptr) {
                   "except for the first dimension."));
         }
 
-        auto stream = paddle::platform::stream::get_current_stream(deviceId)
-                          ->raw_stream();
+        auto stream =
+            paddle::platform::get_current_stream(deviceId)->raw_stream();
 
         int64_t size = src_tensor.numel() / src_tensor.dims()[0];
         auto *src_data = src_tensor.data<float>();
@@ -2908,8 +2961,8 @@ void BindImperative(py::module *m_ptr) {
                           platform::errors::InvalidArgument(
                               "`index` tensor should be one-dimensional."));
 
-        auto stream = paddle::platform::stream::get_current_stream(deviceId)
-                          ->raw_stream();
+        auto stream =
+            paddle::platform::get_current_stream(deviceId)->raw_stream();
 
         int64_t numel = 0;  // total copy length
         int64_t copy_flag = offset_tensor.dims()[0];

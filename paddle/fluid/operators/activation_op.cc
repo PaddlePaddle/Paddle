@@ -79,7 +79,7 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
          static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
         FLAGS_use_mkldnn ||
         (op->HasAttr("use_mkldnn") &&
-         BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
+         PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
       op->SetInput("X", this->Input("X"));  // x
     }
 
@@ -1513,6 +1513,10 @@ REGISTER_ACTIVATION_OP(tanh_shrink,
                        TanhShrinkFunctor,
                        TanhShrinkGradFunctor);
 REGISTER_ACTIVATION_OP(silu, Silu, SiluFunctor, SiluGradFunctor);
+REGISTER_ACTIVATION_OP(softsign,
+                       Softsign,
+                       SoftsignFunctor,
+                       SoftsignGradFunctor);
 REGISTER_ACTIVATION_OP(hard_sigmoid,
                        HardSigmoid,
                        HardSigmoidFunctor,

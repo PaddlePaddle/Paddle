@@ -101,12 +101,12 @@ class GraphSendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Dst_index", this->Input("Dst_index"));
     op->SetInput("X", this->Input("X"));
 
-    if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
       op->SetInput("Dst_count", this->Output("Dst_count"));
     }
 
-    if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
-        BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
+        PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
       op->SetInput("Out", this->Output("Out"));
     }
 

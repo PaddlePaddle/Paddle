@@ -17,11 +17,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/matmul_v2_op.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -34,19 +36,33 @@ using Tensor = framework::Tensor;
 template <typename T>
 static void AllReduce(framework::Tensor& tensor,  // NOLINT
                       const int ring_id,
-                      const platform::CUDADeviceContext& ctx) {
+                      const phi::GPUContext& ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto dtype =
-      platform::ToNCCLDataType(framework::TransToProtoVarType(tensor.dtype()));
-  int64_t numel = tensor.numel();
-  const void* sendbuff = tensor.data<T>();
-  auto place = ctx.GetPlace();
-  void* recvbuff = tensor.mutable_data<T>(place);
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-  auto stream = ctx.stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-      sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
+  auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
+
+  if (map->has(ring_id)) {
+    paddle::distributed::ProcessGroup* pg = map->get(ring_id);
+    std::vector<phi::DenseTensor> in_tensor;
+    std::vector<phi::DenseTensor> out_tensor;
+    in_tensor.push_back(tensor);
+    out_tensor.push_back(tensor);
+    paddle::distributed::AllreduceOptions opts;
+    opts.reduce_op = distributed::ReduceOp::SUM;
+    auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+    task->Wait();
+  } else {
+    auto dtype = platform::ToNCCLDataType(
+        framework::TransToProtoVarType(tensor.dtype()));
+    int64_t numel = tensor.numel();
+    const void* sendbuff = tensor.data<T>();
+    auto place = ctx.GetPlace();
+    void* recvbuff = tensor.mutable_data<T>(place);
+    auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+    auto stream = ctx.stream();
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
+  }
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
@@ -57,7 +73,7 @@ static void AllReduce(framework::Tensor& tensor,  // NOLINT
 template <typename DeviceContext, typename T>
 class FusedFeedForwardKernel : public framework::OpKernel<T> {
  public:
-  void MatMul(const platform::CUDADeviceContext& ctx,
+  void MatMul(const phi::GPUContext& ctx,
               const framework::Tensor& a,
               const framework::Tensor& b,
               framework::Tensor* c) const {
@@ -70,7 +86,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     blas.MatMul(a, mat_dim_a, b, mat_dim_b, alpha, c, T(0));
   }
 
-  void FFN(const platform::CUDADeviceContext& ctx,
+  void FFN(const phi::GPUContext& ctx,
            const framework::Tensor& x,
            const framework::Tensor& linear1_weight,
            const framework::Tensor* linear1_bias,
@@ -293,7 +309,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
  public:
-  void MatMulGrad(const platform::CUDADeviceContext& ctx,
+  void MatMulGrad(const phi::GPUContext& ctx,
                   const framework::Tensor& d_out,
                   const framework::Tensor& a,
                   const framework::Tensor& b,
@@ -311,7 +327,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     blas.MatMul(a, mat_dim_a, d_out, mat_dim_dout, alpha, d_b, T(0));
   }
 
-  void FFNGrad(const platform::CUDADeviceContext& ctx,
+  void FFNGrad(const phi::GPUContext& ctx,
                const framework::Tensor& d_out,
                const framework::Tensor& x,
                const framework::Tensor& dropout1_mask,
@@ -614,14 +630,12 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     fused_feedforward,
-    ops::FusedFeedForwardKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FusedFeedForwardKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FusedFeedForwardKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::float16>);
+    ops::FusedFeedForwardKernel<phi::GPUContext, float>,
+    ops::FusedFeedForwardKernel<phi::GPUContext, double>,
+    ops::FusedFeedForwardKernel<phi::GPUContext, paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
     fused_feedforward_grad,
-    ops::FusedFeedForwardGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FusedFeedForwardGradKernel<paddle::platform::CUDADeviceContext,
-                                    double>,
-    ops::FusedFeedForwardGradKernel<paddle::platform::CUDADeviceContext,
+    ops::FusedFeedForwardGradKernel<phi::GPUContext, float>,
+    ops::FusedFeedForwardGradKernel<phi::GPUContext, double>,
+    ops::FusedFeedForwardGradKernel<phi::GPUContext,
                                     paddle::platform::float16>);

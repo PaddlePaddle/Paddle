@@ -42,7 +42,7 @@ def simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
     y = fluid.layers.matmul(x, w)
-    z = fluid.layers.mean(y)
+    z = paddle.mean(y)
     return z
 
 
@@ -51,7 +51,7 @@ def decorated_simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
     y = fluid.layers.matmul(x, w)
-    z = fluid.layers.mean(y)
+    z = paddle.mean(y)
     return z
 
 
@@ -66,11 +66,10 @@ def get_source_code(func):
 class StaticCode1():
 
     def dyfunc_with_if_else(x_v, label=None):
-        __return_value_init_0 = paddle.full(shape=[1],
-                                            dtype='float64',
-                                            fill_value=0.0,
-                                            name='__return_value_init_0')
-        __return_value_0 = __return_value_init_0
+        loss = _jst.UndefinedVar('loss')
+        __return_1 = _jst.UndefinedVar('__return_1')
+        __return_0 = _jst.UndefinedVar('__return_0')
+        __return_value_0 = None
 
         def get_args_0():
             nonlocal x_v
@@ -83,51 +82,51 @@ class StaticCode1():
         def true_fn_0():
             nonlocal x_v
             x_v = x_v - 1
-            return x_v
+            return
 
         def false_fn_0():
             nonlocal x_v
             x_v = x_v + 1
-            return x_v
+            return
 
         _jst.IfElse(
-            fluid.layers.mean(x_v)[0] > 5, true_fn_0, false_fn_0, get_args_0,
+            paddle.mean(x_v)[0] > 5, true_fn_0, false_fn_0, get_args_0,
             set_args_0, ('x_v', ))
 
         def get_args_1():
-            nonlocal __return_value_0, label, x_v
-            return __return_value_0, label, x_v,
+            nonlocal __return_0, __return_1, __return_value_0, loss
+            return __return_0, __return_1, __return_value_0, loss
 
         def set_args_1(__args):
-            nonlocal __return_value_0, label, x_v
-            __return_value_0, label, x_v, = __args
+            nonlocal __return_0, __return_1, __return_value_0, loss
+            __return_0, __return_1, __return_value_0, loss = __args
 
         def true_fn_1():
-            nonlocal __return_value_0, label, x_v
+            nonlocal __return_0, __return_1, __return_value_0, loss
             loss = fluid.layers.cross_entropy(x_v, label)
             __return_0 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = loss
-            return __return_value_0
+            return
 
         def false_fn_1():
-            nonlocal __return_value_0, label, x_v
+            nonlocal __return_0, __return_1, __return_value_0, loss
             __return_1 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = x_v
-            return __return_value_0
+            return
 
         _jst.IfElse(label is not None, true_fn_1, false_fn_1, get_args_1,
-                    set_args_1, ('__return_value_0', ))
+                    set_args_1,
+                    ('__return_0', '__return_1', '__return_value_0', 'loss'))
         return __return_value_0
 
 
 class StaticCode2():
     # TODO: Transform return statement
     def dyfunc_with_if_else(x_v, label=None):
-        __return_value_init_1 = paddle.full(shape=[1],
-                                            dtype='float64',
-                                            fill_value=0.0,
-                                            name='__return_value_init_1')
-        __return_value_1 = __return_value_init_1
+        loss = _jst.UndefinedVar('loss')
+        __return_3 = _jst.UndefinedVar('__return_3')
+        __return_2 = _jst.UndefinedVar('__return_2')
+        __return_value_1 = None
 
         def get_args_2():
             nonlocal x_v
@@ -140,40 +139,41 @@ class StaticCode2():
         def true_fn_2():
             nonlocal x_v
             x_v = x_v - 1
-            return x_v
+            return
 
         def false_fn_2():
             nonlocal x_v
             x_v = x_v + 1
-            return x_v
+            return
 
         _jst.IfElse(
-            fluid.layers.mean(x_v)[0] > 5, true_fn_2, false_fn_2, get_args_2,
+            paddle.mean(x_v)[0] > 5, true_fn_2, false_fn_2, get_args_2,
             set_args_2, ('x_v', ))
 
         def get_args_3():
-            nonlocal __return_value_1, label, x_v
-            return __return_value_1, label, x_v,
+            nonlocal __return_2, __return_3, __return_value_1, loss
+            return __return_2, __return_3, __return_value_1, loss
 
         def set_args_3(__args):
-            nonlocal __return_value_1, label, x_v
-            __return_value_1, label, x_v, = __args
+            nonlocal __return_2, __return_3, __return_value_1, loss
+            __return_2, __return_3, __return_value_1, loss = __args
 
         def true_fn_3():
-            nonlocal __return_value_1, label, x_v
+            nonlocal __return_2, __return_3, __return_value_1, loss
             loss = fluid.layers.cross_entropy(x_v, label)
             __return_2 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = loss
-            return __return_value_1
+            return
 
         def false_fn_3():
-            nonlocal __return_value_1, label, x_v
+            nonlocal __return_2, __return_3, __return_value_1, loss
             __return_3 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = x_v
-            return __return_value_1
+            return
 
         _jst.IfElse(label is not None, true_fn_3, false_fn_3, get_args_3,
-                    set_args_3, ('__return_value_1', ))
+                    set_args_3,
+                    ('__return_2', '__return_3', '__return_value_1', 'loss'))
         return __return_value_1
 
 
@@ -195,6 +195,7 @@ class TestDygraphToStaticCode(unittest.TestCase):
     def test_decorator(self):
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
+        #print(code)
         answer = get_source_code(StaticCode1.dyfunc_with_if_else)
         self.assertEqual(
             answer.replace('\n', '').replace(' ', ''),
@@ -380,13 +381,13 @@ class TestIfElseEarlyReturn(unittest.TestCase):
         answer = np.zeros([2, 2]) + 1
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
         out = static_func()
-        self.assertTrue(np.allclose(answer, out.numpy()))
+        self.assertTrue(np.allclose(answer, out[0].numpy()))
 
     def test_ifelse_early_return2(self):
         answer = np.zeros([2, 2]) + 3
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return2)
         out = static_func()
-        self.assertTrue(np.allclose(answer, out.numpy()))
+        self.assertTrue(np.allclose(answer, out[0].numpy()))
 
 
 class TestRemoveCommentInDy2St(unittest.TestCase):

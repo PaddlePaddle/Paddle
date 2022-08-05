@@ -56,7 +56,7 @@ class TestPlannerReLaunch(unittest.TestCase):
             coverage_args = []
 
         cmd = [sys.executable, "-u"] + coverage_args + [
-            "-m", "launch", "--log_dir", self.temp_dir.name,
+            "-m", "paddle.distributed.launch", "--log_dir", self.temp_dir.name,
             "--cluster_topo_path", cluster_json_path, "--rank_mapping_path",
             mapping_json_path, "--enable_auto_mapping", "True",
             launch_model_path

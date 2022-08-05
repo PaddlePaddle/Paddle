@@ -39,6 +39,18 @@
     func : cross_grad
     data_type : out_grad
 
+- backward_api : diag_grad
+  forward : diag (Tensor x, int offset, float padding_value) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int offset)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : diag_grad
+    data_type : out_grad
+  no_need_buffer : x
+
 - backward_api : diagonal_grad
   forward : diagonal (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int offset = 0, int axis1 = 0, int axis2 = 1)
@@ -93,6 +105,48 @@
     func : erf_grad
     data_type : out_grad
 
+- backward_api : fft_c2c_grad
+  forward: fft_c2c(Tensor x, int64_t[] axes, str normalization, bool forward) -> Tensor(out)
+  args : (Tensor out_grad, int64_t[] axes, str normalization, bool forward)
+  output: Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : fft_c2c_grad
+
+- backward_api : fft_c2r_grad
+  forward: fft_c2r(Tensor x, int64_t[] axes, str normalization, bool forward, int64_t last_dim_size) -> Tensor(out)
+  args : (Tensor out_grad, int64_t[] axes, str normalization, bool forward, int64_t last_dim_size)
+  output: Tensor(x_grad)
+  infer_meta :
+    func : FFTC2RGradInferMeta
+  kernel :
+    func : fft_c2r_grad
+    data_type: out_grad
+
+- backward_api : fft_r2c_grad
+  forward: fft_r2c(Tensor x, int64_t[] axes, str normalization, bool forward, bool onesided) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int64_t[] axes, str normalization, bool forward, bool onesided)
+  output: Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fft_r2c_grad
+    data_type: out_grad
+  no_need_buffer: x
+
+- backward_api : lgamma_grad
+  forward : lgamma(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : lgamma_grad
+
 - backward_api : mv_grad
   forward : mv (Tensor x, Tensor vec) -> Tensor(out)
   args : (Tensor x, Tensor vec, Tensor out_grad)
@@ -112,6 +166,16 @@
     param : [out_grad]
   kernel :
     func : poisson_grad
+
+- backward_api : solve_grad
+  forward : solve (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : solve_grad
 
 - backward_api : trace_grad
   forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)

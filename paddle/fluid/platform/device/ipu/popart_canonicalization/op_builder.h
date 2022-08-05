@@ -67,6 +67,12 @@ Node *CreateCast(Graph *graph,
                  const std::vector<Node *> &outputs,
                  const VarType::Type otype);
 
+Node *CreateIdentityLossOp(Graph *graph,
+                           Node *node,
+                           const std::vector<Node *> &inputs,
+                           const std::vector<Node *> &outputs,
+                           int reduction);
+
 Node *CreateGemm(Graph *graph,
                  Node *node,
                  const std::vector<Node *> &inputs,
@@ -97,6 +103,22 @@ Node *CreateSoftmaxOpset11(Graph *graph,
                            const std::vector<Node *> &inputs,
                            const std::vector<Node *> &outputs,
                            int64_t axis);
+
+Node *CreateSlice(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
+                  const std::vector<Node *> &outputs,
+                  const std::vector<int> &starts,
+                  const std::vector<int> &ends,
+                  const std::vector<int> &axes,
+                  const std::vector<int> &strides);
+
+Node *CreateSplit(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
+                  const std::vector<Node *> &outputs,
+                  const std::vector<int64_t> &split,
+                  const int64_t axis);
 
 }  // namespace ipu
 }  // namespace platform

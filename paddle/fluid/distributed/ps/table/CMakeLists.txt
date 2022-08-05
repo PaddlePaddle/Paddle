@@ -18,7 +18,7 @@ set_source_files_properties(
 cc_library(
   graph_node
   SRCS ${graphDir}/graph_node.cc
-  DEPS WeightedSampler)
+  DEPS WeightedSampler enforce)
 set_source_files_properties(
   memory_dense_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(
@@ -119,7 +119,6 @@ cc_library(
        string_helper
        device_context
        gflags
-       glog
-       boost)
+       glog)
 
 target_link_libraries(table -fopenmp)

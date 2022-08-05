@@ -79,16 +79,16 @@ def to_sr_output_type(s):
 # -------------- transform argument names from yaml to opmaker ------------
 def to_opmaker_name(s):
     if s.endswith("_grad"):
-        return 'GradVarName("{}")'.format(to_pascal_case(s[:-5]))
+        return 'GradVarName("{}")'.format(s[:-5])
     else:
-        return '"{}"'.format(to_pascal_case(s))
+        return '"{}"'.format(s)
 
 
 def to_opmaker_name_cstr(s):
     if s.endswith("_grad"):
-        return '"{}@GRAD"'.format(to_pascal_case(s[:-5]))
+        return '"{}@GRAD"'.format(s[:-5])
     else:
-        return '"{}"'.format(to_pascal_case(s))
+        return '"{}"'.format(s)
 
 
 def to_pascal_case(s):
