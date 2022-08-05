@@ -16,13 +16,14 @@
 
 #include <sstream>
 
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 template <typename T>
 static const std::vector<T> &ToVector(const std::vector<T> &vec) {
@@ -30,22 +31,20 @@ static const std::vector<T> &ToVector(const std::vector<T> &vec) {
 }
 
 template <typename T>
-static std::vector<T> ToVector(const T *x,
-                               size_t n,
-                               const platform::Place &place) {
+static std::vector<T> ToVector(const T *x, size_t n, const phi::Place &place) {
 #ifdef __NVCC__
-  if (platform::is_gpu_place(place)) {
+  if (paddle::platform::is_gpu_place(place)) {
     using CopyT = typename std::
         conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
     std::vector<CopyT> cpu_x(n);
     auto *dev_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
-    memory::Copy(platform::CPUPlace(),
-                 cpu_x.data(),
-                 place,
-                 x,
-                 n * sizeof(T),
-                 dev_ctx->stream());
+        phi::DeviceContextPool::Instance().Get(place));
+    paddle::memory::Copy(phi::CPUPlace(),
+                         cpu_x.data(),
+                         place,
+                         x,
+                         n * sizeof(T),
+                         dev_ctx->stream());
     dev_ctx->Wait();
     return std::vector<T>(cpu_x.data(), cpu_x.data() + n);
   }
@@ -54,7 +53,7 @@ static std::vector<T> ToVector(const T *x,
 }
 
 template <typename T>
-static std::vector<T> ToVector(const framework::Tensor &src) {
+static std::vector<T> ToVector(const DenseTensor &src) {
   if (!src.IsInitialized()) {
     return {};
   }
@@ -64,8 +63,8 @@ static std::vector<T> ToVector(const framework::Tensor &src) {
 template <typename... Args>
 static std::string FlattenToString(Args &&...args) {
   const auto &vec = ToVector(std::forward<Args>(args)...);
-  return "[" + string::join_strings(vec, ',') + "]";
+  return "[" + paddle::string::join_strings(vec, ',') + "]";
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
