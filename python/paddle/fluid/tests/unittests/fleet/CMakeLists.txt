@@ -38,7 +38,7 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=20191;http_proxy=;https_proxy=;CUDA_VISIBLE_DEVICES=0")
   set_tests_properties(test_fleet_base_single PROPERTIES TIMEOUT "120")
 endif()
-if((WITH_GPT OR WITH_ROCM) AND (LINUX))
+if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint ENVS
                   "PADDLE_DIST_UT_PORT=20193;http_proxy=;https_proxy=")
   set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT "200")
@@ -473,4 +473,487 @@ if((WITH_GPU
     ENVS
     "PADDLE_DIST_UT_PORT=20297;http_proxy=;https_proxy=")
   set_tests_properties(test_dist_fleet_ps_gpu_ctr PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_dygraph_apis
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20299;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_a_sync_optimizer_async
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20301;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_a_sync_optimizer_async PROPERTIES TIMEOUT
+                                                                         "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_a_sync_optimizer_auto
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20303;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_a_sync_optimizer_auto PROPERTIES TIMEOUT
+                                                                        "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_a_sync_optimizer_auto_async
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20305;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_a_sync_optimizer_auto_async
+                       PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_a_sync_optimizer_auto_geo
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20307;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_a_sync_optimizer_auto_geo
+                       PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_a_sync_optimizer_geo
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20309;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_a_sync_optimizer_geo PROPERTIES TIMEOUT
+                                                                       "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_a_sync_optimizer_sync
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20311;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_a_sync_optimizer_sync PROPERTIES TIMEOUT
+                                                                        "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ctr
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20313;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ctr PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ctr2
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20315;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_decay
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20317;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_decay PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_geo
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20319;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_geo PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_heter_base
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20321;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_heter_base PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_heter_program
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20323;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_heter_program PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_infer
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20325;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20327;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps10
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20329;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps10 PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps13
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20331;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps13 PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps2
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20333;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps2 PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps3
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20335;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps3 PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps4
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20337;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps4 PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps5
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20339;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps5 PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps6
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20341;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps6 PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps7
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20343;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps7 PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps8
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20345;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps8 PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps9
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20347;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps9 PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_ps_gpu_ctr
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20349;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_ps_gpu_ctr PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_raw_program_optimizer
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20351;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_raw_program_optimizer PROPERTIES TIMEOUT
+                                                                        "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_raw_program_optimizer_fuse_allreduce
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20353;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
+                       PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_simnet
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20355;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_simnet PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_sparse_embedding_ctr
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20357;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT
+                                                                       "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_fleet_trainer_desc_config
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20359;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_fleet_trainer_desc_config PROPERTIES TIMEOUT
+                                                                      "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_mnist_backward_deps
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20361;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_mnist_backward_deps PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_mnist_batch_merge
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20363;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_mnist_batch_merge PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_mnist_dgc_nccl
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20365;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_mnist_dgc_nccl PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_mnist_fleet_save
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20367;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_mnist_fleet_save PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_mnist_fleetapi
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20369;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_mnist_fleetapi PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_mnist_fp16_allreduce
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20371;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_mnist_fp16_allreduce PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_mnist_gradient_merge
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20373;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_mnist_gradient_merge PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_mnist_multi_comm
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20375;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_mnist_multi_comm PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_mnist_pg
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20377;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_mnist_pg PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_mnist_ring_allreduce
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20379;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_mnist_ring_allreduce PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_mnist_with_program
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20381;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_mnist_with_program PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_dist_sharding_save
+    START_BASH
+    dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20383;http_proxy=;https_proxy=")
+  set_tests_properties(test_dist_sharding_save PROPERTIES TIMEOUT "350")
 endif()
