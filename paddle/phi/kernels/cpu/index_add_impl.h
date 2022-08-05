@@ -44,12 +44,13 @@ void IndexAddInner(const Context& ctx,
   const IndexT* index_data = index.data<IndexT>();
 
   ctx.template Alloc<T>(output);
+  // copy x to output.
+  phi::Copy(ctx, *input, ctx.GetPlace(), false, output);
 
   auto slice_size = 1;
   for (auto i = axis + 1; i < input_dim_size; i++) {
     slice_size *= input_dim[i];
   }
-
   auto outer_nums = 1;
   for (auto i = 0; i < axis; i++) {
     outer_nums *= input_dim[i];
@@ -79,23 +80,17 @@ void IndexAddInner(const Context& ctx,
   VLOG(3) << "Index_Add_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
-  // limin-todo:
-  // input->Resize(phi::make_ddim({outer_nums, input_dim[axis], slice_size}));
   output->Resize(phi::make_ddim({outer_nums, input_dim[axis], slice_size}));
   add_value->Resize(phi::make_ddim({outer_nums, index_size, slice_size}));
+  VLOG(3) << "output.dims: " << output->dims()
+          << ", add_value.dims: " << add_value->dims();
 
-  // copy x to output.
-  phi::Copy(ctx, *input, ctx.GetPlace(), false, output);
-
-  // auto input_tensor = EigenTensor<T, 3>::From(*input);
   auto add_value_tensor = EigenTensor<T, 3>::From(*add_value);
   auto output_tensor = EigenTensor<T, 3>::From(*output);
 
   auto& place = *ctx.eigen_device();
-
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
-    // limin-todo:
     auto output_t = output_tensor.chip(index_value, 1);
     output_t.device(place) = output_t + add_value_tensor.chip(j, 1);
   }
@@ -111,6 +106,7 @@ void IndexAddBaseKernel(const Context& dev_ctx,
                         int axis,
                         const DenseTensor& add_value,
                         DenseTensor* output) {
+  std::cout << "limin: " << std::endl;
   const auto& index_type = index.dtype();
   if (axis < 0) {
     axis += x.dims().size();

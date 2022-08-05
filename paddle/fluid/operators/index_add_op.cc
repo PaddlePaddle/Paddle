@@ -88,10 +88,11 @@ class IndexAddGradOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(IndexAddInplaceInferer, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(IndexAddGradInplaceInferer,
-                           {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});
+// limin-todo:
+// DECLARE_INPLACE_OP_INFERER(IndexAddInplaceInferer, {"X", "Out"});
+// DECLARE_INPLACE_OP_INFERER(IndexAddGradInplaceInferer,
+//                            {framework::GradVarName("Out"),
+//                             framework::GradVarName("X")});
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexAddGradNoNeedBufferVarsInferer, "X");
 
@@ -103,12 +104,12 @@ DECLARE_INFER_SHAPE_FUNCTOR(index_add,
                             IndexAddInferShapeFunctor,
                             PD_INFER_META(phi::IndexAddInferMeta));
 
+//  ops::IndexAddInplaceInferer,
 REGISTER_OPERATOR(index_add,
                   ops::IndexAddOp,
                   ops::IndexAddOpMaker,
                   ops::IndexAddGradMaker<paddle::framework::OpDesc>,
                   ops::IndexAddGradMaker<paddle::imperative::OpBase>,
-                  ops::IndexAddInplaceInferer,
                   IndexAddInferShapeFunctor);
 
 // DECLARE_INFER_SHAPE_FUNCTOR(index_add_grad, IndexAddGradInferShapeFunctor,

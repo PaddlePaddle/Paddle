@@ -1460,8 +1460,6 @@ void IndexAddInferMeta(const MetaTensor& x,
       true,
       phi::errors::InvalidArgument("The length of Input(Index) can't be 0."));
 
-  // limin-todo: check add_value's shape!
-
   output->set_dims(x.dims());
   output->set_dtype(x.dtype());
   output->set_layout(x.layout());

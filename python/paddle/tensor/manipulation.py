@@ -4329,7 +4329,7 @@ def _index_add_params_check(x, index, add_value, axis):
     # as long as it can be broadcast to the shape of sliced x
 
 
-def index_add(x, index, axis, add_value):
+def index_add(x, index, add_value, axis):
     """
     Adds the elements of the input tensor with add_value by selecting the indices in the order given in index.
     Args:
