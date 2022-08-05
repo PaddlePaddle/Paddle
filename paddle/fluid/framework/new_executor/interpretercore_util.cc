@@ -618,10 +618,10 @@ void build_op_func_list(const platform::Place& place,
       // step 5. run kernel
       if (run_phi_kernel) {
         VLOG(4) << "start run phi kernel. ";
-        phi::KernelContext pt_kernel_context;
+        phi::KernelContext phi_kernel_context;
         op_with_kernel->BuildPhiKernelContext(
-            runtime_context, dev_ctx, &pt_kernel_context);
-        (*op_func_node.pt_kernel_)(&pt_kernel_context);
+            runtime_context, dev_ctx, &phi_kernel_context);
+        (*op_func_node.phi_kernel_)(&phi_kernel_context);
         VLOG(4) << "end run phi kernel. ";
       } else {
         VLOG(4) << "start run kernel. ";

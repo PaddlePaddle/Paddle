@@ -372,6 +372,28 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
 
 void InterpreterCore::BuildInplace() {
   VLOG(2) << "BuildInplace";
+  // NOTE(Ruibiao): coalesce_tensor_op outputs a FusedOutput Tensor and a list
+  // of Output Tensors which are sliced from the FusedOutput. These outputs
+  // sholud not be the outvar of the in-place var-pair since memory reuse
+  // between FusedOutput and Output Tensors is assumed. For the following
+  // example:
+  // fused_var, var1, var2, var3 = coalesce_tensor(var1, var2, var3)
+  // var1 = sum(var4, var5)
+  // ...
+  //
+  // After running coalesce_tensor_op, var1 is assumed to share the buffer
+  // slices from fused_var. However, if sum_op is in-place, then var1 would
+  // re-share the buffer with var4 instead of fused_var.
+  std::set<std::string> skip_inplace_outvars;
+  for (Instruction& instr : vec_instruction_) {
+    OperatorBase* op = instr.OpBase();
+    if (op->Type() == "coalesce_tensor") {
+      const std::vector<std::string>& outputs =
+          op->OutputVars(/*has_intermediate=*/false);
+      skip_inplace_outvars.insert(outputs.begin(), outputs.end());
+    }
+  }
+
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     auto& instr = vec_instruction_[i];
     auto* op_base = instr.OpBase();
@@ -397,13 +419,13 @@ void InterpreterCore::BuildInplace() {
         if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
           auto iterout = outputs.find(pair.second);
           if (iterout != outputs.end() && !iterout->second.empty()) {
-            Scope* inner_scope = create_local_scope_
-                                     ? local_scope_
-                                     : var_scope_.GetMutableScope();
-            auto invar =
-                inner_scope->FindVar(var_scope_.GetNameById(iter->second[0]));
-            auto outvar = inner_scope->FindVar(
-                var_scope_.GetNameById(iterout->second[0]));
+            const std::string& invar_name =
+                var_scope_.GetNameById(iter->second[0]);
+            const std::string& outvar_name =
+                var_scope_.GetNameById(iterout->second[0]);
+            auto invar = local_scope_->FindVar(invar_name);
+            auto outvar = local_scope_->FindVar(outvar_name);
+
             if (invar && outvar && invar->IsType<LoDTensor>() &&
                 outvar->IsType<LoDTensor>()) {
               instr.AddInplace(invar, outvar);
@@ -424,8 +446,7 @@ void InterpreterCore::BuildOperatorDependences() {
   // Schedule
   auto op_nums = vec_instruction_.size();
   dependecy_count_.resize(op_nums);
-  auto op2downstream = interpreter::build_op_downstream_map(
-      vec_instruction_, &op_happens_before_);
+  auto op2downstream = dependency_builder_.Build(vec_instruction_);
   VLOG(2) << "op2downstream size is: " << op2downstream.size();
   for (size_t op = 0; op < vec_instruction_.size(); ++op) {
     auto op_list = op2downstream[op];
@@ -713,21 +734,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
         VLOG(4) << "Run phi kernel: " << op->Type();
         VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
                 << &instr_node.DeviceContext();
-        VLOG(1) << "----------inner run time ctx:";
-        auto ctx_inputs = (instr_node.InnerRuntimeContext().get())->inputs;
-        for (auto iter = ctx_inputs.begin(); iter != ctx_inputs.end(); iter++) {
-          for (size_t j = 0; j < iter->second.size(); j++) {
-            VLOG(1) << "input ptr is: " << iter->second[j];
-          }
-        }
-        auto ctx_outputs = (instr_node.InnerRuntimeContext().get())->outputs;
-        for (auto iter = ctx_outputs.begin(); iter != ctx_outputs.end();
-             iter++) {
-          for (size_t j = 0; j < iter->second.size(); j++) {
-            VLOG(1) << "output ptr is: " << iter->second[j];
-          }
-        }
-        phi::KernelContext pt_kernel_context;
+        phi::KernelContext phi_kernel_context;
         op_with_kernel->BuildPhiKernelContext(
             *instr_node.InnerRuntimeContext().get(),
             const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
