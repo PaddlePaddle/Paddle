@@ -173,6 +173,7 @@ class OperatorBase {
   virtual bool SupportGPU() const { return false; }
   virtual bool SupportNPU() const { return false; }
   virtual bool SupportMLU() const { return false; }
+  virtual bool SupportXPU() const { return false; }
 
   const std::string& Type() const { return type_; }
 
@@ -428,13 +429,12 @@ class ExecutionContext {
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  const inline platform::CUDADeviceContext& cuda_device_context() const {
+  const inline phi::GPUContext& cuda_device_context() const {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()),
                       true,
                       platform::errors::PreconditionNotMet(
                           "Current device context place is not GPUPlace."));
-    return *reinterpret_cast<const platform::CUDADeviceContext*>(
-        &device_context_);
+    return *reinterpret_cast<const phi::GPUContext*>(&device_context_);
   }
 #endif
 
@@ -609,6 +609,9 @@ class OperatorWithKernel : public OperatorBase {
                          return platform::is_mlu_place(kern_pair.first.place_);
                        });
   }
+
+  bool SupportXPU() const override;
+
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
   bool SupportsKernelType(const OpKernelType& kernel_type) const;
@@ -662,16 +665,16 @@ class OperatorWithKernel : public OperatorBase {
 
   void BuildPhiKernelContext(const RuntimeContext& ctx,
                              platform::DeviceContext* dev_ctx,
-                             phi::KernelContext* pt_kernel_context) const;
+                             phi::KernelContext* phi_kernel_context) const;
 
   phi::KernelSignature* PhiKernelSignature() const {
     return kernel_signature_.get();
   }
 
-  phi::Kernel* PhiKernel() const { return pt_kernel_.get(); }
+  phi::Kernel* PhiKernel() const { return phi_kernel_.get(); }
 
   void ResetPhiKernel(phi::Kernel* kernel) const {
-    return pt_kernel_.reset(kernel);
+    return phi_kernel_.reset(kernel);
   }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
@@ -740,7 +743,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool run_phi_kernel_ = false;
   mutable bool run_kp_kernel = false;
   mutable std::unique_ptr<phi::KernelSignature> kernel_signature_;
-  mutable std::unique_ptr<phi::Kernel> pt_kernel_;
+  mutable std::unique_ptr<phi::Kernel> phi_kernel_;
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 
   struct CacheImpl;

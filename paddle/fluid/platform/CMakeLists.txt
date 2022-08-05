@@ -113,7 +113,6 @@ endif()
 
 add_subdirectory(device)
 add_subdirectory(dynload)
-add_subdirectory(stream)
 
 cc_library(
   cpu_helper
@@ -130,7 +129,7 @@ if(WITH_DGC)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  set(GPU_CTX_DEPS dynload_cuda dynamic_loader cuda_stream)
+  set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
 endif()
 
 if(WITH_IPU)
@@ -220,16 +219,9 @@ cc_library(
        ${XPU_CTX_DEPS}
        ${MLU_CTX_DEPS}
        eigen3
+       phi_backends
+       phi_device_context
        generator)
-if(WITH_XPU)
-  target_link_libraries(device_context xpu_context xpu_resource_pool)
-endif()
-
-if(WITH_MKLDNN)
-  target_link_libraries(device_context onednn_context)
-endif()
-
-target_link_libraries(device_context cpu_context)
 
 cc_library(
   collective_helper
@@ -244,22 +236,19 @@ if(WITH_CNCL)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  target_link_libraries(device_context gpu_info gpu_context phi_gpu_info)
   target_link_libraries(device_context gpu_resource_pool)
 endif()
-if(WITH_CUSTOM_DEVICE)
-  target_link_libraries(device_context custom_context)
-endif()
+
 if(WITH_ASCEND_CL)
   target_link_libraries(device_context npu_resource_pool)
 endif()
 
-if(WITH_MLU)
-  target_link_libraries(device_context mlu_resource_pool)
+if(WITH_XPU)
+  target_link_libraries(device_context xpu_resource_pool)
 endif()
 
-if(WITH_CUSTOM_DEVICE)
-  target_link_libraries(device_context custom_context)
+if(WITH_MLU)
+  target_link_libraries(device_context mlu_resource_pool)
 endif()
 
 cc_test(
@@ -276,15 +265,6 @@ cc_library(
 set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
-if(WITH_XPU)
-  cc_library(
-    device_event_xpu
-    SRCS device_event_xpu.cc
-    DEPS device_event_base xpu_info)
-  set(DEVICE_EVENT_LIBS
-      device_event_xpu
-      CACHE INTERNAL "device event libs")
-endif()
 
 if(WITH_ASCEND_CL)
   cc_library(

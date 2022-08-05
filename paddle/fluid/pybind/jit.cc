@@ -18,7 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/fluid/jit/executor_function.h"
+#include "paddle/fluid/jit/function/executor_function.h"
+#include "paddle/fluid/jit/function/pe_function.h"
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
@@ -29,6 +30,7 @@ namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_executor_function_pytype = nullptr;
+PyTypeObject *g_pe_function_pytype = nullptr;
 using Variable = paddle::framework::Variable;
 
 void BindJit(pybind11::module *m) {
@@ -43,6 +45,11 @@ void BindJit(pybind11::module *m) {
   g_executor_function_pytype =
       reinterpret_cast<PyTypeObject *>(executor_function.ptr());
   executor_function.def("info", &jit::ExecutorFunction::Info);
+
+  py::class_<jit::PEFunction, std::shared_ptr<jit::PEFunction>> pe_function(
+      *m, "PEFunction", R"DOC(PEFunction Class.)DOC");
+  g_pe_function_pytype = reinterpret_cast<PyTypeObject *>(pe_function.ptr());
+  pe_function.def("info", &jit::PEFunction::Info);
 
   py::class_<jit::FunctionInfo, std::shared_ptr<jit::FunctionInfo>>(
       *m, "FunctionInfo", R"DOC(FunctionInfo Class.)DOC")

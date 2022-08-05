@@ -121,6 +121,7 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
             out_grad->dims().size()));
     // get output tensor that the name is not kEmptyVarName
     std::vector<void*> outputs_vec;
+    std::vector<Tensor> tmp_outputs_vec;
     std::vector<MLUCnnlTensorDesc> output_descs;
     std::vector<cnnlTensorDescriptor_t> descs_vec;
     for (size_t j = 0; j < outs.size(); ++j) {
@@ -128,11 +129,15 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
           outs[j]->numel() != 0UL) {
         outs[j]->mutable_data<T>(ctx.GetPlace());
         output_descs.emplace_back(MLUCnnlTensorDesc(*outs[j]));
-        descs_vec.push_back(output_descs.back().get());
         outputs_vec.push_back(GetBasePtr(outs[j]));
       } else {
-        outputs_vec.push_back(nullptr);
+        Tensor tmp_tensor;
+        tmp_tensor.mutable_data<T>(ins[j]->dims(), ctx.GetPlace());
+        tmp_outputs_vec.push_back(tmp_tensor);
+        output_descs.emplace_back(MLUCnnlTensorDesc(*ins[j]));
+        outputs_vec.push_back(GetBasePtr(&(tmp_outputs_vec.back())));
       }
+      descs_vec.push_back(output_descs.back().get());
     }
 
     MLUCnnlTensorDesc out_grad_desc(*out_grad);

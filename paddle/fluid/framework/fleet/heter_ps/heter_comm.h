@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/timer.h"
 #include "thrust/pair.h"
 #elif defined(PADDLE_WITH_XPU_KP)
-// #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include <xpu/runtime.h>
 
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
@@ -46,14 +45,49 @@ namespace framework {
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
-template <typename KeyType, typename ValType, typename GradType>
+template <typename KeyType,
+          typename ValType,
+          typename GradType,
+          typename GPUAccessor>
 class HeterComm {
  public:
   HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
+  HeterComm(size_t capacity,
+            std::shared_ptr<HeterPsResource> resource,
+            GPUAccessor& gpu_accessor);
   virtual ~HeterComm();
   HeterComm(const HeterComm&) = delete;
   HeterComm& operator=(const HeterComm&) = delete;
 
+  void merge_keys(int gpu_num,
+                  const KeyType* d_keys,
+                  size_t len,
+                  KeyType* d_sorted_keys,
+                  KeyType* d_merged_keys,
+                  uint32_t* d_restore_idx,
+                  size_t& uniq_len);
+  void dynamic_merge_grad(int gpu_num,
+                          KeyType* d_keys,
+                          float* d_grads,
+                          size_t len,
+                          int& uniq_len,
+                          size_t& segment_len,
+                          bool enable_segment_merge_grad);
+  void segment_merge_grad(int gpu_num,
+                          KeyType* d_keys,
+                          float* d_grads,
+                          const uint32_t* d_index,
+                          size_t len,
+                          const uint32_t* d_fea_num_info,
+                          size_t uniq_len,
+                          size_t& segment_len);
+  void build_ps(int num,
+                KeyType* h_keys,
+                ValType* h_vals,
+                size_t len,
+                size_t chunk_size,
+                int stream_num,
+                int offset = -1);
   void split_input_to_shard(KeyType* d_keys,
                             int* d_idx_ptr,
                             size_t len,
@@ -65,18 +99,9 @@ class HeterComm {
                   GradType* d_grads,
                   size_t len,
                   int& uniq_len);  // NOLINT
-  void dynamic_merge_grad(int gpu_num,
-                          KeyType* d_keys,
-                          GradType* d_grads,
-                          size_t len,
-                          int& uniq_len);
-  void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
-  void build_ps(int num,
-                KeyType* h_keys,
-                ValType* h_vals,
-                size_t len,
-                size_t chunk_size,
-                int stream_num);
+  void dynamic_merge_grad(
+      int gpu_num, KeyType* d_keys, float* d_grads, size_t len, int& uniq_len);
+  void pull_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
   void build_ps(int num,
                 KeyType* h_keys,
                 char* pool,
@@ -86,13 +111,14 @@ class HeterComm {
                 int stream_num);
   void dump();
   void show_one_table(int gpu_num);
+  void show_table_collisions();
   int get_index_by_devid(int devid);
 
 #if defined(PADDLE_WITH_CUDA)
   template <typename Sgd>
   void push_sparse(int num,
                    KeyType* d_keys,
-                   GradType* d_grads,
+                   float* d_grads,
                    size_t len,
                    Sgd& sgd);  // NOLINT
 #elif defined(PADDLE_WITH_XPU_KP)
@@ -149,6 +175,7 @@ class HeterComm {
     multi_mf_dim_ = multi_mf_dim;
     max_mf_dim_ = max_mf_dim;
   }
+
 #endif
 
   bool need_transfer(int send_id, int receive_id) {
@@ -160,6 +187,19 @@ class HeterComm {
   int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
 
   void end_pass();
+#if defined(PADDLE_WITH_CUDA)
+  // dedup
+  int dedup_keys_and_fillidx(const int gpu_id,
+                             const int total_fea_num,
+                             const KeyType* d_keys,   // input
+                             KeyType* d_merged_keys,  // output
+                             KeyType* d_sorted_keys,
+                             uint32_t* d_restore_idx,
+                             uint32_t* d_sorted_idx,
+                             uint32_t* d_offset,
+                             uint32_t* d_merged_cnts,
+                             bool filter_zero);
+#endif
 
   struct Node {
     ppStream in_stream;
@@ -255,7 +295,10 @@ class HeterComm {
 #endif
   }
 
-  void create_storage(int start_index, int end_index, int keylen, int vallen);
+  void create_storage(int start_index,
+                      int end_index,
+                      size_t keylen,
+                      size_t vallen);
   void destroy_storage(int start_index, int end_index);
   void walk_to_dest(int start_index,
                     int gpu_num,
@@ -283,8 +326,11 @@ class HeterComm {
                    size_t val_size);
 
  protected:
+  void pull_merge_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
+  void pull_normal_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
+
   using Table = HashTable<KeyType, ValType>;
-  using PtrTable = HashTable<KeyType, ValType*>;
+  using PtrTable = HashTable<KeyType, float*>;
   std::vector<Table*> tables_;
   std::vector<PtrTable*> ptr_tables_;
   std::shared_ptr<HeterPsResource> resource_;
@@ -292,6 +338,8 @@ class HeterComm {
   float load_factor_{0.75};
   int block_size_{256};
   std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
+
+  GPUAccessor gpu_accessor_;
 
  private:
   int topo_aware_{0};

@@ -129,7 +129,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     Tensor sub_lod_list;
     sub_lod_list.Resize({num_level, lod_size});
     int* sub_lod_list_data = sub_lod_list.mutable_data<int>(dev_ctx.GetPlace());
-    phi::funcs::SetConstant<platform::CUDADeviceContext, int> set_zero;
+    phi::funcs::SetConstant<phi::GPUContext, int> set_zero;
     set_zero(dev_ctx, &sub_lod_list, static_cast<int>(0));
 
     Tensor target_lvls;
@@ -155,7 +155,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     Tensor index_in_t;
     int* idx_in = index_in_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());
-    platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx, roi_num);
+    platform::ForRange<phi::GPUContext> for_range(dev_ctx, roi_num);
     for_range(RangeInitFunctor{0, 1, idx_in});
 
     Tensor keys_out_t;
@@ -258,7 +258,5 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     distribute_fpn_proposals,
-    ops::GPUDistributeFpnProposalsOpKernel<paddle::platform::CUDADeviceContext,
-                                           float>,
-    ops::GPUDistributeFpnProposalsOpKernel<paddle::platform::CUDADeviceContext,
-                                           double>);
+    ops::GPUDistributeFpnProposalsOpKernel<phi::GPUContext, float>,
+    ops::GPUDistributeFpnProposalsOpKernel<phi::GPUContext, double>);

@@ -197,10 +197,9 @@ def slice(input, axes, starts, ends):
                 if isinstance(item, tmp_tensor_type) else item
                 for item in starts
             ]
-            attrs += ('starts', starts)
         elif isinstance(starts, tmp_tensor_type):
-            starts_tensor = starts
-            starts.stop_gradient = True
+            tensor_t = starts.numpy()
+            starts = [ele for ele in tensor_t]
             infer_flags = list(-1 for i in range(len(axes)))
 
         if isinstance(ends, (list, tuple)):
@@ -208,13 +207,13 @@ def slice(input, axes, starts, ends):
                 item.numpy().item(0)
                 if isinstance(item, tmp_tensor_type) else item for item in ends
             ]
-            attrs += ('ends', ends)
         elif isinstance(ends, tmp_tensor_type):
-            ends_tensor = ends
-            ends_tensor.stop_gradient = True
+            tensor_t = ends.numpy()
+            ends = [ele for ele in tensor_t]
             infer_flags = list(-1 for i in range(len(axes)))
-        return _C_ops.slice(input, starts_tensor, ends_tensor, None, None,
-                            'axes', axes, 'infer_flags', infer_flags, *attrs)
+
+        return _C_ops.final_state_slice(input, axes, starts, ends, infer_flags,
+                                        [])
     else:
         if _in_legacy_dygraph():
             attrs = ()
@@ -454,6 +453,13 @@ def unstack(x, axis=0, num=None):
             y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
+    if in_dygraph_mode():
+        if num == None:
+            num = x.shape[axis]
+        if num == 0:
+            return []
+        return _C_ops.final_state_unstack(x, axis, num)
+
     if _non_static_mode():
         if num == None:
             num = x.shape[axis]
@@ -613,7 +619,6 @@ def crop(x, shape=None, offsets=None, name=None):
     Examples:
 
         .. code-block:: python
-          :name: code-example1
 
             import paddle
             x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
@@ -640,6 +645,7 @@ def crop(x, shape=None, offsets=None, name=None):
             # if offsets = [1, 1], out = [[5,6], [8,9]]
 
     """
+
     helper = LayerHelper('crop_tensor', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'crop_tensor')
@@ -649,6 +655,9 @@ def crop(x, shape=None, offsets=None, name=None):
 
     if offsets is None:
         offsets = [0] * len(x.shape)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_crop_tensor(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
@@ -825,6 +834,7 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
             x.fill_diagonal_(1.0)
             print(x.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
     """
+
     helper = LayerHelper("fill_diagonal_", **locals())
     check_type(x, 'X', (Variable), 'fill_diagonal_')
     dtype = helper.input_dtype('x')
@@ -841,6 +851,11 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
         assert len(inshapeset) == 1, (
             'Tensor dims should be equal while input dims > 2 in fill_diagonal_ API'
         )
+    if in_dygraph_mode():
+        if len(inshape) == 2:
+            return _C_ops.final_state_fill_diagonal_(x, value, offset, wrap)
+        return _C_ops.final_state_fill_diagonal_(x, value, offset, True)
+
     if len(inshape) == 2:
         return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset,
                                      'wrap', wrap)
@@ -872,10 +887,17 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
         y = y.reshape([1, -1])
 
     if inplace:
-        return _C_ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
-                                            'offset', offset)
-    return _C_ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
-                                       'offset', offset)
+        if in_dygraph_mode():
+            return _C_ops.final_state_fill_diagonal_tensor_(
+                x, y, offset, dim1, dim2)
+        else:
+            return _C_ops.fill_diagonal_tensor_(x, y, 'offset', offset, 'dim1',
+                                                dim1, 'dim2', dim2)
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_diagonal_tensor(x, y, offset, dim1, dim2)
+    else:
+        return _C_ops.fill_diagonal_tensor(x, y, 'offset', offset, 'dim1', dim1,
+                                           'dim2', dim2)
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
@@ -1128,7 +1150,9 @@ def broadcast_tensors(input, name=None):
     """
 
     num_inputs = len(input)
-    if paddle.in_dynamic_mode():
+    if paddle.framework.in_dygraph_mode():
+        return _C_ops.final_state_broadcast_tensors(input)
+    if paddle.framework._non_static_mode():
         return _C_ops.broadcast_tensors(input, num_inputs)
 
     check_type(input, 'input', (list, tuple), 'broadcast_tensors')
@@ -1253,7 +1277,7 @@ def flip(x, axis, name=None):
 
 def rot90(x, k=1, axes=[0, 1], name=None):
     """
-    Rotate a n-D tensor by 90 degrees. The rotation direction and times are specified by axes. Rotation direction is from axes[0] towards axes[1] if k > 0, and from axes[1] towards axes[0] for k < 0.
+    Rotate a n-D tensor by 90 degrees. The rotation direction and times are specified by axes and the absolute value of k. Rotation direction is from axes[0] towards axes[1] if k > 0, and from axes[1] towards axes[0] for k < 0.
 
     Args:
         x (Tensor): The input Tensor(or LoDTensor). The data type of the input Tensor x
@@ -1731,7 +1755,7 @@ def split(x, num_or_sections, axis=0, name=None):
     Split the input tensor into multiple sub-Tensors.
     
     Args:
-        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, uint8, int8, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections`` 
             indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
@@ -1804,13 +1828,19 @@ def split(x, num_or_sections, axis=0, name=None):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
-        out = [_varbase_creator() for n in range(num)]
-        _C_ops.split(input, out, *attrs)
-        return out
+        if in_dygraph_mode():
+            return _C_ops.final_state_split(
+                input, [num_or_sections]
+                if isinstance(num_or_sections, int) else num_or_sections, dim)
+        elif _in_legacy_dygraph():
+            out = [_varbase_creator() for n in range(num)]
+            _C_ops.split(input, out, *attrs)
+            return out
 
-    check_variable_and_dtype(
-        input, 'input',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'split')
+    check_variable_and_dtype(input, 'input', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8',
+        'int8'
+    ], 'split')
     check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
     check_type(dim, 'dim', (int, Variable), 'split')
     if isinstance(dim, Variable):
@@ -1944,7 +1974,7 @@ def squeeze(x, axis=None, name=None):
 
     Examples:
         .. code-block:: python
-	  :name: code-example1
+
             import paddle
             
             x = paddle.rand([5, 1, 10])
@@ -2156,7 +2186,7 @@ def unique(x,
 
     Examples:
         .. code-block:: python
-	  :name: code-example1
+
             import paddle
 
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
@@ -2705,8 +2735,7 @@ def scatter_nd_add(x, index, updates, name=None):
             # [3, 5, 9, 10]
     """
     if in_dygraph_mode():
-        op = getattr(_C_ops, 'scatter_nd_add')
-        return op(x, index, updates)
+        return _C_ops.final_state_scatter_nd_add(x, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')
@@ -3001,7 +3030,9 @@ def broadcast_to(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_expand(x, shape)
+    if _in_legacy_dygraph():
         return _C_ops.expand_v2(x, 'shape', shape)
 
     if isinstance(shape, Variable):
@@ -3067,7 +3098,7 @@ def expand(x, shape, name=None):
 
     Expand the input tensor to a given shape.
 
-    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. The dimension to expand must have a value 1.
+    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 1.
 
 
     Args:
@@ -3187,7 +3218,6 @@ def reshape(x, shape, name=None):
 
     Examples:
         .. code-block:: python
-           :name: code-example1
 
             import paddle
 
@@ -3877,8 +3907,10 @@ def as_complex(x, name=None):
             # [[ 0. +1.j  2. +3.j  4. +5.j]
             #  [ 6. +7.j  8. +9.j 10.+11.j]]
     """
-    if paddle.in_dynamic_mode():
-        return paddle._C_ops.as_complex(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_as_complex(x)
+    if _in_legacy_dygraph():
+        return _C_ops.as_complex(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
     op_type = "as_complex"
@@ -3926,8 +3958,10 @@ def as_real(x, name=None):
             #   [ 8.  9.]
             #   [10. 11.]]]
     """
-    if paddle.in_dynamic_mode():
-        return paddle._C_ops.as_real(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_as_real(x)
+    if _in_legacy_dygraph():
+        return _C_ops.as_real(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
     op_type = "as_real"
@@ -3980,12 +4014,11 @@ def repeat_interleave(x, repeats, axis=None, name=None):
         x = paddle.flatten(x)
         axis = 0
 
-    if paddle.in_dynamic_mode():
-        if isinstance(repeats, int):
-            return _C_ops.repeat_interleave(x, None, 'Repeats', repeats, 'dim',
-                                            axis)
-        elif isinstance(repeats, Variable):
-            return _C_ops.repeat_interleave(x, repeats, 'dim', axis)
+    if in_dygraph_mode():
+        if isinstance(repeats, Variable):
+            return _C_ops.final_state_repeat_interleave_with_tensor_index(
+                x, repeats, axis)
+        return _C_ops.final_state_repeat_interleave(x, repeats, axis)
 
     helper = LayerHelper("repeat_interleave", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
@@ -4034,7 +4067,7 @@ def moveaxis(x, source, destination, name=None):
             # [4, 3, 2]
 
             x = paddle.ones([2, 3])
-            paddle.moveaxis(x, 0, 1) # equivalent to paddle.t(x)
+            paddle.moveaxis(x, 0, 1).shape # equivalent to paddle.t(x)
             # [3, 2]  
     """
     src = [source] if isinstance(source, int) else source
@@ -4150,7 +4183,6 @@ def take_along_axis(arr, indices, axis):
     
     Examples:
         .. code-block:: python
-           :name: code-example1
 
             import paddle
 
@@ -4216,7 +4248,6 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
     
     Examples:
         .. code-block:: python
-            :name: code-example1
 
             import paddle
 

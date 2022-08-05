@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
-#include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
+#include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
 
 namespace phi {
 namespace sparse {
@@ -55,7 +55,8 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
                          const std::vector<int>& dilations,
                          const std::vector<int>& strides,
                          SparseCooTensor* out,
-                         DenseTensor* rulebook) {
+                         DenseTensor* rulebook,
+                         DenseTensor* counter) {
   const auto& x_dims = x.dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   const std::vector<int>& real_kernel_sizes =
@@ -65,7 +66,7 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
       x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
   const int in_channels = real_kernel_sizes[3];
 
-  std::vector<int> offsets(kernel_size + 1), counter(kernel_size);
+  std::vector<int> offsets(kernel_size + 1), h_counter(kernel_size);
   DenseTensorMeta counter_meta(
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
   DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
@@ -89,13 +90,16 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
                                                           &out_index,
                                                           &unique_value,
                                                           out,
-                                                          &counter,
-                                                          &offsets);
+                                                          h_counter.data(),
+                                                          offsets.data());
 
   const IntT* rulebook_ptr = rulebook->data<IntT>();
 
   T* out_features_ptr = out->mutable_non_zero_elements()->data<T>();
   const T* in_features_ptr = x.non_zero_elements().data<T>();
+  counter->Resize({kernel_size});
+  int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
+  memcpy(counter_ptr, h_counter.data(), h_counter.size() * sizeof(int));
 // 2. max pool
 #ifdef PADDLE_WITH_HIP
   thrust::fill(thrust::hip::par.on(dev_ctx.stream()),
@@ -107,22 +111,21 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
                static_cast<T>(0));
   // TODO(zhangkaihuo) Replacing multiple calls with one kernel may be faster
   for (int i = 0; i < kernel_size; i++) {
-    if (counter[i] <= 0) {
+    if (h_counter[i] <= 0) {
       continue;
     }
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, counter[i] * in_channels, 1);
-    MaxPoolCudaKernel<T, IntT>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(in_features_ptr,
-                               rulebook_ptr + offsets[i] + rulebook_len,
-                               counter[i],
-                               rulebook_len,
-                               in_channels,
-                               out_features_ptr);
+        dev_ctx, h_counter[i] * in_channels, 1);
+    MaxPoolCudaKernel<T, IntT><<<config.block_per_grid.x,
+                                 config.thread_per_block.x,
+                                 0,
+                                 dev_ctx.stream()>>>(in_features_ptr,
+                                                     rulebook_ptr + offsets[i],
+                                                     h_counter[i],
+                                                     rulebook_len,
+                                                     in_channels,
+                                                     out_features_ptr);
   }
 }
 
@@ -134,7 +137,8 @@ void MaxPoolCooKernel(const Context& dev_ctx,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
                       SparseCooTensor* out,
-                      DenseTensor* rulebook) {
+                      DenseTensor* rulebook,
+                      DenseTensor* counter) {
   PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "MaxPoolCooGPUKernel", ([&] {
         MaxPoolCooGPUKernel<T, data_t>(dev_ctx,
@@ -144,7 +148,8 @@ void MaxPoolCooKernel(const Context& dev_ctx,
                                        dilations,
                                        strides,
                                        out,
-                                       rulebook);
+                                       rulebook,
+                                       counter);
       }));
 }
 

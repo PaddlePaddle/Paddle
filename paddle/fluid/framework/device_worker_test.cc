@@ -29,7 +29,7 @@ TEST(LodTensor, PrintLodTensor) {
   std::string res = PrintLodTensor(&tensor1, -1, 2);
   ASSERT_EQ(res, "access violation");
   res = PrintLodTensor(&tensor1, 0, 2);
-  ASSERT_EQ(res, ":0.2:0.5");
+  ASSERT_EQ(res, "0.2,0.5");
 
   LoDTensor tensor2;
   tensor2.Resize({2});
@@ -39,7 +39,7 @@ TEST(LodTensor, PrintLodTensor) {
   res = PrintLodTensor(&tensor2, -1, 2);
   ASSERT_EQ(res, "access violation");
   res = PrintLodTensor(&tensor2, 0, 2);
-  ASSERT_EQ(res, ":1:2");
+  ASSERT_EQ(res, "1,2");
 
   LoDTensor tensor3;
   tensor3.Resize({2});
@@ -47,7 +47,40 @@ TEST(LodTensor, PrintLodTensor) {
   tensor3.data<double>()[0] = 0.1;
   tensor3.data<double>()[1] = 0.2;
   res = PrintLodTensor(&tensor3, 0, 2);
-  ASSERT_EQ(res, ":0.1:0.2");
+  ASSERT_EQ(res, "0.1,0.2");
+
+  LoDTensor tensor4;
+  tensor4.Resize({2});
+  tensor4.mutable_data<double>(platform::CPUPlace());
+  tensor4.data<double>()[0] = 0.1;
+  tensor4.data<double>()[1] = 0.2;
+  res = "";
+  PrintLodTensor(&tensor4, 0, 2, res);
+  // ASSERT_EQ(res, "0.1,0.2");
+
+  LoDTensor tensor5;
+  tensor5.Resize({2});
+  tensor5.mutable_data<int64_t>(platform::CPUPlace());
+  tensor5.data<int64_t>()[0] = 1;
+  tensor5.data<int64_t>()[1] = 2;
+  res = "";
+  PrintLodTensor(&tensor5, -1, 2, res);
+  ASSERT_EQ(res, "access violation");
+  res = "";
+  PrintLodTensor(&tensor5, 0, 2, res);
+  ASSERT_EQ(res, "1,2");
+
+  LoDTensor tensor6;
+  tensor6.Resize({2});
+  tensor6.mutable_data<float>(platform::CPUPlace());
+  tensor6.data<float>()[0] = 0.2;
+  tensor6.data<float>()[1] = 0.5;
+  res = "";
+  PrintLodTensor(&tensor6, -1, 2, res);
+  // ASSERT_EQ(res, "access violation");
+  res = "";
+  PrintLodTensor(&tensor6, 0, 2, res);
+  // ASSERT_EQ(res, "0.2,0.5");
 }
 
 TEST(LodTensor, GetTensorBound) {

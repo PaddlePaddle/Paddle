@@ -51,6 +51,7 @@ class TestCropTensorOp(OpTest):
         self.offset_by_input = False
         self.unk_dim_idx = -1
         self.attrs = {}
+        self.python_api = paddle.crop
         self.initTestCase()
 
         if self.shape_by_input:
@@ -146,6 +147,7 @@ class TestCropTensorOpTensorAttr(OpTest):
         self.OffsetsTensor = False
         self.ShapeTensor = True
         self.attrs = {}
+        self.python_api = paddle.crop
         self.initTestCase()
 
         if self.ShapeTensor:
