@@ -35,8 +35,7 @@ int CopyData(const T *x, T **y, int len) {
     return xpu::Error_t::INVALID_PARAM;
 
   *y = reinterpret_cast<T *>(malloc(sizeof(T) * len));
-  int r =
-      xpu_memcpy(*y, const_cast<T *>(x), len * sizeof(T), XPU_DEVICE_TO_HOST);
+  int r = xpu_memcpy(*y, x, len * sizeof(T), XPU_DEVICE_TO_HOST);
   PADDLE_ENFORCE_EQ(
       r, 0, platform::errors::External("copy data from xpu to host failed"));
 
