@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/beam_search.h"
 
 namespace phi {
@@ -35,10 +36,11 @@ int CopyData(const T *x, T **y, int len) {
     return xpu::Error_t::INVALID_PARAM;
 
   *y = reinterpret_cast<T *>(malloc(sizeof(T) * len));
-  int r = Copy(CPUPlace, *y, XPUPlace, x, len * sizeof(T));
-  PADDLE_ENFORCE_EQ(
-      r, 0, platform::errors::External("copy data from xpu to host failed"));
-
+  paddle::memory::Copy(paddle::platform::CPUPlace(),
+                       *y,
+                       paddle::platform::XPUPlace(),
+                       x,
+                       len * sizeof(T));
   return xpu::Error_t::SUCCESS;
 }
 
