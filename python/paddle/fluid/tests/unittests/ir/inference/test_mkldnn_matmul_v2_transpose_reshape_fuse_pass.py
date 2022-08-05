@@ -142,8 +142,8 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
         yield config, [fused_op], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            passes=["matmul_v2_transpose_reshape_fuse_pass"])
+        self.run_and_statis(
+            quant=False, passes=["matmul_transpose_reshape_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":

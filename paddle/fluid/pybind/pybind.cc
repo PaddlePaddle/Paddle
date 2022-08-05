@@ -331,8 +331,9 @@ bool SupportsVNNI() {
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
-#endif
+#else
   return true;
+#endif
 }
 
 bool IsCompiledWithDIST() {

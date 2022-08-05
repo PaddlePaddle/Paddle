@@ -299,14 +299,12 @@ void CpuPassStrategy::EnableMKLDNN() {
              // "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_concat_relu_mkldnn_fuse_pass",
-             "conv_activation_mkldnn_fuse_pass",              //
-             "scale_matmul_fuse_pass",                        //
-             "reshape_transpose_matmul_mkldnn_fuse_pass",     //
-             "reshape_transpose_matmul_v2_mkldnn_fuse_pass",  //
-             "matmul_transpose_reshape_fuse_pass",            //
-             "matmul_v2_transpose_reshape_fuse_pass",         //
-             "matmul_elementwise_add_mkldnn_fuse_pass",       //
-             "matmul_activation_mkldnn_fuse_pass",            //
+             "conv_activation_mkldnn_fuse_pass",           //
+             "scale_matmul_fuse_pass",                     //
+             "reshape_transpose_matmul_mkldnn_fuse_pass",  //
+             "matmul_transpose_reshape_mkldnn_fuse_pass",  //
+             "matmul_elementwise_add_mkldnn_fuse_pass",    //
+             "matmul_activation_mkldnn_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
              //  "fc_mkldnn_pass",
              //  "fc_act_mkldnn_fuse_pass",
@@ -399,14 +397,12 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("repeated_fc_relu_fuse_pass");
     passes_.push_back("fc_mkldnn_pass");
     passes_.push_back("fc_act_mkldnn_fuse_pass");
-    passes_.push_back("matmul_transpose_reshape_fuse_pass");
-    passes_.push_back("matmul_v2_transpose_reshape_fuse_pass");
+    passes_.push_back("matmul_transpose_reshape_mkldnn_fuse_pass");
     passes_.push_back("batch_norm_act_fuse_pass");
     passes_.push_back("softplus_activation_mkldnn_fuse_pass");
     passes_.push_back("compute_propagate_scales_mkldnn_pass");
     passes_.push_back("scale_matmul_fuse_pass");
     passes_.push_back("reshape_transpose_matmul_mkldnn_fuse_pass");
-    passes_.push_back("reshape_transpose_matmul_v2_mkldnn_fuse_pass");
     passes_.push_back("cpu_quantize_placement_pass");
     passes_.push_back("cpu_quantize_pass");
     passes_.push_back("cpu_quantize_squash_pass");
