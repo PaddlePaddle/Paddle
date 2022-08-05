@@ -57,6 +57,7 @@ option(WITH_ONNXRUNTIME         "Compile PaddlePaddle with ONNXRUNTIME"         
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic)            # simplify cmake module
+include(experimental)       # experimental build options
 
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
