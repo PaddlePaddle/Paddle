@@ -485,7 +485,7 @@ void InterpreterCore::Convert(
     if (inst.OpBase()->Type() == "share_buffer" ||
         inst.OpBase()->Type() == "share_data") {
       VLOG(4) << "Already inplaced, skip inplace now.";
-      inplaced = true;
+      // inplaced = true;
     }
   }
 
