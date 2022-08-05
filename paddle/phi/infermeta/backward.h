@@ -245,6 +245,21 @@ void LUUnpackGradInferMeta(const MetaTensor& x,
                            bool unpack_pivots,
                            MetaTensor* x_grad);
 
+void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
+                                     const MetaTensor& label,
+                                     const MetaTensor& softmax,
+                                     const MetaTensor& loss_grad,
+                                     bool return_softmax,
+                                     int ring_id,
+                                     int rank,
+                                     int nranks,
+                                     float margin1,
+                                     float margin2,
+                                     float margin3,
+                                     float scale,
+                                     MetaTensor* logits_grad,
+                                     MetaConfig config);
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,

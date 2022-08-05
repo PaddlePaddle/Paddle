@@ -560,6 +560,53 @@ void LUUnpackGradInferMeta(const MetaTensor& x,
   }
 }
 
+void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
+                                     const MetaTensor& label,
+                                     const MetaTensor& softmax,
+                                     const MetaTensor& loss_grad,
+                                     bool return_softmax,
+                                     int ring_id,
+                                     int rank,
+                                     int nranks,
+                                     float margin1,
+                                     float margin2,
+                                     float margin3,
+                                     float scale,
+                                     MetaTensor* logits_grad,
+                                     MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      loss_grad,
+      errors::InvalidArgument("Input(Loss@Grad) should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      softmax, errors::InvalidArgument("Input(Softmax) should be not null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      label, errors::InvalidArgument("Input(Label) should be not null."));
+
+  PADDLE_ENFORCE_NOT_NULL(
+      logits_grad,
+      errors::InvalidArgument("Output(Logits@Grad) should be not null."));
+  auto logits_dims = logits.dims();
+  auto softmax_dims = softmax.dims();
+  auto labels_dims = label.dims();
+  auto logits_rank = logits_dims.size();
+  auto axis = logits_rank - 1;
+  for (int i = 0; i < logits_rank; i++) {
+    if (i != axis) {
+      if (config.is_runtime || (softmax_dims[i] > 0 && labels_dims[i] > 0)) {
+        PADDLE_ENFORCE_EQ(
+            softmax_dims[i],
+            labels_dims[i],
+            phi::errors::InvalidArgument(
+                "Input(Logits) and Input(Label) should in same shape in "
+                "dimensions except axis."));
+      }
+    }
+  }
+
+  logits_grad->set_dims(softmax_dims);
+  logits_grad->set_dtype(softmax.dtype());
+}
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
