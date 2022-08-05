@@ -24,7 +24,7 @@ import paddle.distributed.fleet as fleet
 from paddle.io import DataLoader, Dataset
 import unittest
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-
+from paddle.distributed import init_parallel_env
 
 def set_random_seed(seed, dp_id, rank_id):
     """Set random seed for reproducability."""
@@ -39,7 +39,8 @@ inner_size = 8
 output_size = 10
 seq_length = 2
 batch_size = 4
-
+paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+init_parallel_env()
 
 def get_attr(layer, name):
     if getattr(layer, name, None) is not None:
