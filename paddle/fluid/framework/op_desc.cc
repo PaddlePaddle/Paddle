@@ -425,6 +425,9 @@ OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
   CopyFrom(other);
   block_ = block;
   need_update_ = true;
+  for (auto &iter : attrs_) {
+    UpdateVarAttr(iter.first, iter.second);
+  }
 }
 
 void OpDesc::CopyFrom(const OpDesc &op_desc) {
@@ -973,9 +976,39 @@ void OpDesc::InferVarType(BlockDesc *block) const {
   }
 }
 
+void OpDesc::UpdateVarAttr(const std::string &name, const Attribute &attr) {
+  auto attr_type = static_cast<proto::AttrType>(attr.index() - 1);
+  auto type = GetAttrType(name, true);
+  if (type == proto::AttrType::VAR) {
+    PADDLE_ENFORCE_EQ(
+        attr_type,
+        type,
+        platform::errors::InvalidArgument(
+            "Required attr.type == proto::AttrType::VAR, but received %s",
+            attr_type));
+    auto *var_desc = PADDLE_GET_CONST(VarDesc *, attr);
+    VLOG(3) << "Update AttrVar " << name << " with " << var_desc->Name();
+    attrs_[name] = FindVarRecursive(var_desc->Name());
+  } else if (type == proto::AttrType::VARS) {
+    PADDLE_ENFORCE_EQ(
+        attr_type,
+        type,
+        platform::errors::InvalidArgument(
+            "Required attr.type == proto::AttrType::VARS, but received %s",
+            attr_type));
+    auto vars_desc = PADDLE_GET_CONST(std::vector<VarDesc *>, attr);
+    std::vector<VarDesc *> new_val;
+    for (auto &var_desc : vars_desc) {
+      VLOG(3) << "Update AttrVars " << name << " with " << var_desc->Name();
+      new_val.emplace_back(FindVarRecursive(var_desc->Name()));
+    }
+    attrs_[name] = std::move(new_val);
+  }
+}
+
 VarDesc *OpDesc::FindVarRecursive(const std::string &name) {
   auto *cur_block = block_;
-  while (cur_block->ID() >= 0) {
+  while (cur_block != nullptr && cur_block->ID() >= 0) {
     auto *var = block_->FindVar(name);
     if (var != nullptr) {
       return var;
@@ -985,7 +1018,7 @@ VarDesc *OpDesc::FindVarRecursive(const std::string &name) {
   PADDLE_THROW(platform::errors::NotFound(
       "Not found Var(%s) from Block(%d) back into global Block.",
       name,
-      cur_block->ID()));
+      block_->ID()));
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(
@@ -1132,9 +1165,9 @@ proto::VarType::Type CompileTimeInferShapeContext::GetVarType(
 
 std::vector<std::string> AttrVarNames(const Attribute &attr) {
   std::vector<std::string> vars_name;
-  if (IsAttVar(attr)) {
+  if (IsAttrVar(attr)) {
     vars_name.emplace_back(PADDLE_GET_CONST(VarDesc *, attr)->Name());
-  } else if (IsAttVars(attr)) {
+  } else if (IsAttrVars(attr)) {
     for (auto &iter : PADDLE_GET_CONST(std::vector<VarDesc *>, attr)) {
       vars_name.emplace_back(iter->Name());
     }

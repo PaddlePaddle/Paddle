@@ -167,6 +167,8 @@ class OpDesc {
 
   const BlockDesc *Block() const { return this->block_; }
 
+  void UpdateVarAttr(const std::string &name, const Attribute &attr);
+
   // The Id() and OrignalId() are only used for auto parallel.
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }

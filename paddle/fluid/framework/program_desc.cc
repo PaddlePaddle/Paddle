@@ -149,7 +149,18 @@ void ProgramDesc::InitFromProto() {
       for (const auto &attr : op->Proto()->attrs()) {
         if (attr.type() == proto::AttrType::VAR) {
           std::string var_name = attr.var_name();
+          VLOG(3) << "InitFromProto: SetVarAttr " << attr.name() << " from "
+                  << var_name;
           op->SetVarAttr(attr.name(), op->FindVarRecursive(var_name));
+        } else if (attr.type() == proto::AttrType::VARS) {
+          auto vars_name = attr.vars_name();
+          std::vector<VarDesc *> vars_desc;
+          for (auto &var_name : vars_name) {
+            VLOG(3) << "InitFromProto: SetVarsAttr " << attr.name() << " from "
+                    << var_name;
+            vars_desc.emplace_back(op->FindVarRecursive(var_name));
+          }
+          op->SetVarsAttr(attr.name(), vars_desc);
         } else if (attr.type() == proto::AttrType::BLOCK) {
           size_t blk_idx = attr.block_idx();
           op->SetBlockAttr(attr.name(), this->MutableBlock(blk_idx));

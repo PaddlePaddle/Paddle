@@ -221,16 +221,16 @@ inline proto::AttrType AttrTypeID(const Attribute& attr) {
   return static_cast<proto::AttrType>(attr.index() - 1);
 }
 
-inline bool IsAttVar(const Attribute& attr) {
+inline bool IsAttrVar(const Attribute& attr) {
   return AttrTypeID(attr) == proto::AttrType::VAR;
 }
 
-inline bool IsAttVars(const Attribute& attr) {
+inline bool IsAttrVars(const Attribute& attr) {
   return AttrTypeID(attr) == proto::AttrType::VARS;
 }
 
 inline bool HasAttrVar(const Attribute& attr) {
-  return IsAttVar(attr) || IsAttVars(attr);
+  return IsAttrVar(attr) || IsAttrVars(attr);
 }
 
 inline AttributeMap FilterAttrVar(const AttributeMap& attrs) {
@@ -428,7 +428,6 @@ class TypedAttrChecker {
   }
 
   void operator()(AttributeMap* attr_map,
-                  // AttributeMap* attrs_var = nullptr,
                   bool get_default_value_only = false,
                   bool only_check_exist_value = false) const {
     if (get_default_value_only) {
