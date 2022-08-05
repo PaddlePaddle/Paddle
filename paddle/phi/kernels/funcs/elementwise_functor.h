@@ -21,7 +21,7 @@ limitations under the License. */
 #if defined(__xpu__)
 #include <xpu/runtime.h>
 
-#include "xpu/kernel/math_xpu2.h"  //pow()
+#include "xpu/kernel/math_xpu2.h"  // pow()
 #endif
 
 namespace phi {
@@ -250,7 +250,7 @@ struct FMaxFunctor<int64_t> {
 template <typename T>
 struct FMaxGradDx {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>((x >= y) || isnan(y));
+    return dout * static_cast<T>((x >= y) || std::isnan(y));
   }
 };
 
@@ -284,7 +284,7 @@ struct FMaxGradDx<int64_t> {
 template <typename T>
 struct FMaxGradDy {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>(!((x >= y) || isnan(y)));
+    return dout * static_cast<T>(!((x >= y) || std::isnan(y)));
   }
 };
 
@@ -318,7 +318,7 @@ struct FMaxGradDy<int> {
 template <typename T>
 struct FMinGradDx {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>((x <= y) || isnan(y));
+    return dout * static_cast<T>((x <= y) || std::isnan(y));
   }
 };
 
@@ -352,7 +352,7 @@ struct FMinGradDx<int64_t> {
 template <typename T>
 struct FMinGradDy {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * static_cast<T>(!((x <= y) || isnan(y)));
+    return dout * static_cast<T>(!((x <= y) || std::isnan(y)));
   }
 };
 

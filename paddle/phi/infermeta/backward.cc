@@ -828,14 +828,17 @@ void RnnGradInferMeta(const MetaTensor& x,
       pre_state.size(),
       0UL,
       phi::errors::InvalidArgument(
-          "The inputp pre_state in RnnGradInferMeta can't be empty."));
+          "The input pre_state in RnnGradInferMeta can't be empty."));
   if (x_grad) {
     UnchangedInferMeta(x, x_grad);
   }
   if (pre_state_grad.size()) {
+    std::cout << "============infer meta for pre states============"
+              << std::endl;
     UnchangedMultiInferMeta(pre_state, pre_state_grad);
   }
   if (weight_grad_list.size()) {
+    std::cout << "============infer meta for weights============" << std::endl;
     UnchangedMultiInferMeta(weight_list, weight_grad_list);
   }
 }

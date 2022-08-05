@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <functional>
 #include <string>
 #include <tuple>
 #include <vector>
