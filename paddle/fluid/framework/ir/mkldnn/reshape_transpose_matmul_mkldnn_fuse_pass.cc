@@ -112,20 +112,19 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
                      " was implemented for 2, 3 or 4 dimensions.";
       return;
     }
-
     if (reshape_shape.size() != transpose_axis.size()) {
       VLOG(3) << "Ranks of shape_" + matmul_input_name + " and axis_" +
                      matmul_input_name + "attributes of " + matmul_type +
                      " must be equal.";
       return;
     }
-
     if (std::count(reshape_shape.begin(), reshape_shape.end(), -1) > 1) {
       VLOG(3) << "Only one dim can be undefined / marked as '-1'";
       return;
     }
 
     matmul_desc->SetInput(matmul_input_name, {(reshape_in)->Name()});
+    matmul_desc->SetAttr("is_input_" + matmul_input_name + "_fused", true);
     matmul_desc->SetAttr("fused_reshape_" + matmul_input_name, reshape_shape);
     matmul_desc->SetAttr("fused_transpose_" + matmul_input_name,
                          transpose_axis);

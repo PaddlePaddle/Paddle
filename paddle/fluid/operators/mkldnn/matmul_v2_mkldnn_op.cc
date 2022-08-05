@@ -104,10 +104,10 @@ static paddle::framework::DDim ColumnMatrixDimsFromVector(
 }
 
 phi::DDim GetDimForInput(const ExecutionContext &ctx, std::string input_name) {
-  auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
   auto input_dims = ctx.Input<Tensor>(input_name)->dims();
-  if (!shape.empty() && !axis.empty()) {
+  if (ctx.HasAttr("is_input_" + input_name + "_fused")) {
+    auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
+    auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
     return input_dims.reshape(shape).transpose(axis);
   }
   return input_dims;
@@ -246,7 +246,7 @@ class MatMulMKLDNNHandler
     auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
     auto input_dims = ctx.Input<Tensor>(input_name)->dims();
     auto new_dims = input_dims;
-    if (!shape.empty() && !axis.empty()) {
+    if (ctx.HasAttr("is_input_" + input_name + "_fused")) {
       new_dims = input_dims.reshape(shape).transpose(axis);
     }
 
@@ -284,11 +284,6 @@ class MatMulMKLDNNHandler
     return alpha * scale_out / (scale_x * scale_y);
   }
 
-  bool IsInputFused(const ExecutionContext &ctx) const {
-    return !(ctx.Attr<std::vector<int>>("fused_reshape_X").empty() &&
-             ctx.Attr<std::vector<int>>("fused_reshape_Y").empty());
-  }
-
   MatMulDims GetMatmulDims(const ExecutionContext &ctx) {
     phi::funcs::MatDescriptor mat_dim_x;
     memory::dims strides_x;
@@ -310,8 +305,12 @@ class MatMulMKLDNNHandler
     const memory::dim N = mat_dim_y.width_;
     const memory::dim K = mat_dim_x.width_;
 
+    bool matmul_dims_fused =
+        ctx.HasAttr("is_output_fused") ||
+        (ctx.HasAttr("is_input_X_fused") && ctx.HasAttr("is_input_Y_fused"));
+
     batch_size_ = 1;
-    if (out_bs > 1 && (ctx.HasAttr("is_output_fused") || IsInputFused(ctx))) {
+    if (out_bs > 1 && matmul_dims_fused) {
       auto x_dims = GetDimForInput(ctx, "X");
       auto y_dims = GetDimForInput(ctx, "Y");
       batch_size_ = x_bs > y_bs ? x_dims[0] : y_dims[0];
@@ -554,7 +553,7 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext &ctx,
   auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
   auto input_dims = ctx.Input<Tensor>(input_name)->dims();
   auto new_dims = input_dims;
-  if (!shape.empty() && !axis.empty()) {
+  if (ctx.HasAttr("is_input_" + input_name + "_fused")) {
     new_dims = input_dims.reshape(shape).transpose(axis);
   }
 
@@ -569,7 +568,7 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext &ctx,
           : ctx.Attr<bool>(std::string("transpose_") + input_name[0]));
 
   std::vector<int64_t> strides;
-  if (!shape.empty()) {
+  if (ctx.HasAttr("is_input_" + input_name + "_fused")) {
     auto shape2 = input_dims.reshape(shape);
     strides.push_back(1);
     for (auto i = shape2.size() - 1; i > 0; --i) {

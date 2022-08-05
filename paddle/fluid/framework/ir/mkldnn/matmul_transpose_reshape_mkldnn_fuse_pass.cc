@@ -72,14 +72,12 @@ void MatmulTransposeReshapeMKLDNNPass::Fuse(
               << "supported transpose axis for the fuse are {0, 2, 1, 3}";
       return;
     }
-
     if (reshape_shape.size() != 3) {
       VLOG(3) << "do not perform " + matmul_type + "_transpose_reshape fuse: "
               << "reshape_out supported rank is 3, received "
               << reshape_shape.size();
       return;
     }
-
     if (std::count(reshape_shape.begin(), reshape_shape.end(), -1) > 1) {
       VLOG(3) << "Only one dim can be undefined / marked as '-1'";
       return;
