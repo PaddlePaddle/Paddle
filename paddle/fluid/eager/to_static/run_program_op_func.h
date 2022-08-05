@@ -104,9 +104,8 @@ inline void run_program_dygraph_function(
 
     bool use_interpretorcore =
         PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
+    VLOG(2) << "clear_no_grad_edges.";
     if (use_interpretorcore) {
-      VLOG(2) << "clear_no_grad_edges_with_partial_block.";
-      // 前向+反向block
       auto* forward_global_block = PADDLE_GET_CONST(
           paddle::framework::BlockDesc*, attrs.at("forward_global_block"));
       auto* backward_global_block = PADDLE_GET_CONST(
@@ -118,7 +117,6 @@ inline void run_program_dygraph_function(
                                              /*slot id*/ 1);
 
     } else {
-      VLOG(2) << "clear_no_grad_edges.";
       auto* global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc*,
                                             attrs.at("global_block"));
       clear_no_grad_edges(params, global_block, grad_node.get(), /*slot id*/ 1);
