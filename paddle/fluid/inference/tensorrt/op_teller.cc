@@ -534,7 +534,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     if (op_type == "matmul_v2") {
       auto* block = desc.Block();
       if (block) {
-        std::cout << "The block desc is nullptr" << std::endl;
+        //std::cout << "The block desc is nullptr" << std::endl;
       }
       return true;
     }

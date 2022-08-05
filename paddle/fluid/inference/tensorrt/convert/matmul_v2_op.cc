@@ -41,12 +41,6 @@ class MatMulV2OpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
 
-    auto* block = op_desc.Block();
-    if (block) {
-      std::cout << "The block desc is nullptr " << std::endl;
-    }
-    std::cout << "The block desc is nullptr " << std::endl;
-
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
