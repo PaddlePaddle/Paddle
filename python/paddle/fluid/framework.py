@@ -5815,12 +5815,17 @@ class Program(object):
                     "activation_bits", "bit_length", "quantize_weight_bits",
                     "weight_quant_scale"
                 ]
+                extra_attrs_map = core.get_op_extra_attrs(op.type())
                 for name in op.attr_names():
                     if quant:
                         if name in quant_attrs:
                             continue
                         if name.endswith("_threshold"):
                             continue
+                    if name in extra_attrs_map:
+                        remove_attr_list.append(name)
+                        continue
+
                     find = False
                     for attr_proto in proto.attrs:
                         if attr_proto.name != name:
