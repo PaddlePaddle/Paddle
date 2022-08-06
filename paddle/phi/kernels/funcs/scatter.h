@@ -27,7 +27,7 @@ namespace phi {
 namespace funcs {
 
 /**
-  * Return the updated array pointer, use blas or eigen lib to optimize time
+ * Return the updated array pointer, use blas or eigen lib to optimize time
  * cost
  */
 template <typename T, typename IndexT = int>

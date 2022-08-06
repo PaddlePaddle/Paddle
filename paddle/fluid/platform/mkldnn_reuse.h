@@ -20,12 +20,12 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "boost/optional.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/kernels/funcs/onednn/mkldnn_reuse.h"
 
 namespace paddle {
 namespace platform {
@@ -35,219 +35,23 @@ using framework::Tensor;
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;
 
-template <typename T, typename TForward,
+template <typename T,
+          typename TForward,
           typename TBackward = mkldnn_dummy_primitive,
           typename TBackward_params = mkldnn_dummy_primitive>
-class MKLDNNHandlerNoCachingT {
- public:
-  MKLDNNHandlerNoCachingT(dnnl::engine engine, platform::Place cpu_place)
-      : engine_(engine), place_(cpu_place), fwd_pd_(nullptr), bwd_pd_(nullptr) {
-    platform::MKLDNNDeviceContext::tls().log_lib_version();
-  }
+using MKLDNNHandlerNoCachingT = phi::funcs::
+    MKLDNNHandlerNoCachingT<T, TForward, TBackward, TBackward_params>;
 
-  std::shared_ptr<TForward> AcquireForwardPrimitive() {
-    return std::make_shared<TForward>(*fwd_pd_);
-  }
-
-  std::shared_ptr<TBackward> AcquireBackwardPrimitive() {
-    return std::make_shared<TBackward>(*bwd_pd_);
-  }
-
-  std::shared_ptr<TBackward_params> AcquireBackwardWeightsPrimitive() {
-    PADDLE_ENFORCE_NOT_NULL(
-        bwd_w_pd_, platform::errors::Unavailable("BWD_PD should be set when "
-                                                 "getting BWD prim ."));
-    return std::make_shared<TBackward_params>(*bwd_w_pd_);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(
-      const framework::Tensor* input) {
-    const T* input_data = input->data<T>();
-    return this->AcquireMemoryFromPrimitive(fwd_pd_->src_desc(),
-                                            to_void_cast<T>(input_data));
-  }
-
-  template <typename T_out = T>
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output) {
-    T_out* ptr =
-        output->mutable_data<T_out>(place_, fwd_pd_->dst_desc().get_size());
-    return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), ptr);
-  }
-
-  template <typename T_out = T>
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(void) {
-    return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc());
-  }
-
-  template <typename T_out = T>
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      const framework::Tensor* output) {
-    const T_out* output_data = output->data<T_out>();
-    return this->AcquireMemoryFromPrimitive(bwd_pd_->dst_desc(),
-                                            to_void_cast<T_out>(output_data));
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDiffDstMemory(
-      const framework::Tensor* diffdst) {
-    const T* ptr = diffdst->data<T>();
-    return this->AcquireMemoryFromPrimitive(bwd_pd_->diff_dst_desc(),
-                                            to_void_cast<T>(ptr));
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDiffSrcMemory(
-      framework::Tensor* diffsrc) {
-    T* ptr =
-        diffsrc->mutable_data<T>(place_, bwd_pd_->diff_src_desc().get_size());
-    return this->AcquireMemoryFromPrimitive(bwd_pd_->diff_src_desc(), ptr);
-  }
-
-  // Buffer of given Tensor is used for oneDNN computation
-  std::shared_ptr<dnnl::memory> AcquireDiffWeightsMemory(
-      framework::Tensor* diff_weights) {
-    PADDLE_ENFORCE_NOT_NULL(
-        bwd_w_pd_,
-        platform::errors::Unavailable(
-            "BWD_W_PD should be set when getting BWD grad of weights."));
-    T* ptr = diff_weights->mutable_data<T>(
-        place_, bwd_w_pd_->diff_weights_desc().get_size());
-    return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(),
-                                            ptr);
-  }
-
-  // Buffer is allocated by oneDNN to store computation results
-  std::shared_ptr<dnnl::memory> AcquireDiffWeightsMemory(void) {
-    PADDLE_ENFORCE_NOT_NULL(
-        bwd_w_pd_,
-        platform::errors::Unavailable(
-            "BWD_W_PD should be set when getting BWD grad of weights."));
-    return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc());
-  }
-
- protected:
-  // If your primitive descriptor requires attributes, pass them as a
-  // first argument and paramters to descriptor constructor in the following
-  // arguments. Otherwise, all arguments will be forwarded to descriptor
-  // constructor, including the first one.
-  template <typename Arg, typename... Args>
-  void AcquireForwardPrimitiveDescriptor(Arg&& first_arg, Args&&... args) {
-    CreateForwardPrimitiveDescriptor(first_arg, std::forward<Args>(args)...);
-  }
-
-  // Using sfinae to specialise variadic function. Workaround for not having
-  // if constexpr in C++ 11.
-  template <class First, class... Args>
-  typename std::enable_if<std::is_same<typename std::decay<First>::type,
-                                       dnnl::primitive_attr>::value>::type
-  CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
-    auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
-    fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
-        fwd_desc, first, engine_);
-  }
-
-  template <class First, class... Args>
-  typename std::enable_if<!std::is_same<typename std::decay<First>::type,
-                                        dnnl::primitive_attr>::value>::type
-  CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
-    auto fwd_desc = typename TForward::desc(std::forward<First>(first),
-                                            std::forward<Args>(args)...);
-    fwd_pd_ =
-        std::make_shared<typename TForward::primitive_desc>(fwd_desc, engine_);
-  }
-
-  template <typename... Args>
-  void AcquireBackwardPrimitiveDescriptor(Args&&... args) {
-    // fwd_pd_ is set during grad by calling
-    // AcquireForwardPrimitiveDescriptor
-    PADDLE_ENFORCE_NOT_NULL(fwd_pd_,
-                            platform::errors::Unavailable(
-                                "Get MKLDNN Forward primitive %s failed."));
-    auto bwd_desc = typename TBackward::desc(std::forward<Args>(args)...);
-    bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
-        bwd_desc, engine_, *fwd_pd_);
-  }
-
-  template <typename... Args>
-  void AcquireBackwardWeightsPrimitiveDescriptor(Args&&... args) {
-    // fwd_pd_ is set during grad by calling
-    // AcquireForwardPrimitiveDescriptor
-    PADDLE_ENFORCE_NOT_NULL(fwd_pd_,
-                            platform::errors::Unavailable(
-                                "Get MKLDNN Forward primitive %s failed."));
-    auto bwd_desc =
-        typename TBackward_params::desc(std::forward<Args>(args)...);
-    bwd_w_pd_ = std::make_shared<typename TBackward_params::primitive_desc>(
-        bwd_desc, engine_, *fwd_pd_);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireMemoryFromPrimitive(
-      dnnl::memory::desc md, void* ptr) {
-    return std::make_shared<dnnl::memory>(md, engine_, ptr);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireMemoryFromPrimitive(
-      dnnl::memory::desc md) {
-    return std::make_shared<dnnl::memory>(md, engine_);
-  }
-
-  void AcquireReorder(const std::shared_ptr<dnnl::memory>& user_memory_p,
-                      const std::shared_ptr<dnnl::memory>& target_memory_p) {
-    auto reorder_p =
-        std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
-
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-
-    platform::RecordEvent record_reorder("int_reorder",
-                                         platform::TracerEventType::UserDefined,
-                                         2, platform::EventRole::kUniqueOp);
-    reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
-                                 {DNNL_ARG_TO, *target_memory_p}});
-    astream.wait();
-  }
-
-  template <typename F = T>
-  std::shared_ptr<dnnl::memory> AcquireMemoryWithReorder(
-      const dnnl::memory::desc& user_md, const dnnl::memory::desc& target_md,
-      void* ptr, bool is_persistent = false,
-      std::function<std::shared_ptr<F>(const F*)> custom_reorder_func = {}) {
-    std::shared_ptr<dnnl::memory> target_memory_p;
-    if (custom_reorder_func) {
-      auto reordered_data =
-          custom_reorder_func(reinterpret_cast<const F*>(ptr));
-      ptr = reinterpret_cast<void*>(reordered_data.get());
-    }
-    auto user_memory_p = std::make_shared<dnnl::memory>(user_md, engine_, ptr);
-    if (user_md != target_md) {
-      target_memory_p = std::make_shared<dnnl::memory>(target_md, engine_);
-      auto reorder_p =
-          std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
-
-      auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-      platform::RecordEvent record_reorder(
-          "int_reorder", platform::TracerEventType::UserDefined, 2,
-          platform::EventRole::kUniqueOp);
-      reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
-                                   {DNNL_ARG_TO, *target_memory_p}});
-      astream.wait();
-    } else {
-      target_memory_p = user_memory_p;
-    }
-    return target_memory_p;
-  }
-
-  dnnl::engine engine_;
-  platform::Place place_;
-  std::shared_ptr<typename TForward::primitive_desc> fwd_pd_;
-  std::shared_ptr<typename TBackward::primitive_desc> bwd_pd_;
-  std::shared_ptr<typename TBackward_params::primitive_desc> bwd_w_pd_;
-};
-
-template <typename T, typename TForward,
+template <typename T,
+          typename TForward,
           typename TBackward = mkldnn_dummy_primitive,
           typename TBackward_params = mkldnn_dummy_primitive>
 class MKLDNNHandlerT {
  public:
-  MKLDNNHandlerT(const MKLDNNDeviceContext& dev_ctx, dnnl::engine engine,
-                 platform::Place cpu_place, const std::string& base_key)
+  MKLDNNHandlerT(const MKLDNNDeviceContext& dev_ctx,
+                 dnnl::engine engine,
+                 platform::Place cpu_place,
+                 const std::string& base_key)
       : dev_ctx_(dev_ctx),
         engine_(engine),
         place_(cpu_place),
@@ -285,10 +89,11 @@ class MKLDNNHandlerT {
     auto backward_p =
         std::static_pointer_cast<TBackward_params>(dev_ctx_.GetBlob(key_p));
     if (backward_p == nullptr) {
-      PADDLE_ENFORCE_NOT_NULL(bwd_w_pd_, platform::errors::Unavailable(
-                                             "BWD_PD should be set when "
-                                             "getting BWD prim witk key: %s .",
-                                             key_p));
+      PADDLE_ENFORCE_NOT_NULL(
+          bwd_w_pd_,
+          platform::errors::Unavailable("BWD_PD should be set when "
+                                        "getting BWD prim witk key: %s .",
+                                        key_p));
       backward_p = std::make_shared<TBackward_params>(*bwd_w_pd_);
       dev_ctx_.SetBlob(key_p, backward_p);
     }
@@ -306,8 +111,8 @@ class MKLDNNHandlerT {
   std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output) {
     T_out* ptr =
         output->mutable_data<T_out>(place_, fwd_pd_->dst_desc().get_size());
-    return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), ptr,
-                                            "@dst_mem_p");
+    return this->AcquireMemoryFromPrimitive(
+        fwd_pd_->dst_desc(), ptr, "@dst_mem_p");
   }
 
   template <typename T_out = T>
@@ -335,8 +140,8 @@ class MKLDNNHandlerT {
       framework::Tensor* diffsrc) {
     T* ptr =
         diffsrc->mutable_data<T>(place_, bwd_pd_->diff_src_desc().get_size());
-    return this->AcquireMemoryFromPrimitive(bwd_pd_->diff_src_desc(), ptr,
-                                            "@diff_src_mem_p");
+    return this->AcquireMemoryFromPrimitive(
+        bwd_pd_->diff_src_desc(), ptr, "@diff_src_mem_p");
   }
 
   // Buffer of given Tensor is used for oneDNN computation
@@ -348,8 +153,8 @@ class MKLDNNHandlerT {
             "BWD_W_PD should be set when getting BWD grad of weights."));
     T* ptr = diff_weights->mutable_data<T>(
         place_, bwd_w_pd_->diff_weights_desc().get_size());
-    return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(), ptr,
-                                            "@diff_wei_mem_p");
+    return this->AcquireMemoryFromPrimitive(
+        bwd_w_pd_->diff_weights_desc(), ptr, "@diff_wei_mem_p");
   }
 
   // Buffer is allocated by oneDNN to store computation results
@@ -392,8 +197,9 @@ class MKLDNNHandlerT {
       fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
           dev_ctx_.GetBlob(key_fpd));
       PADDLE_ENFORCE_NOT_NULL(
-          fwd_pd_, platform::errors::Unavailable(
-                       "Error: FWD PD should be set when BWD PD is cached."));
+          fwd_pd_,
+          platform::errors::Unavailable(
+              "Error: FWD PD should be set when BWD PD is cached."));
       return true;
     }
   }
@@ -517,18 +323,24 @@ class MKLDNNHandlerT {
 
     platform::RecordEvent record_reorder("int_reorder",
                                          platform::TracerEventType::UserDefined,
-                                         2, platform::EventRole::kUniqueOp);
-    reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
-                                 {DNNL_ARG_TO, *target_memory_p}});
+                                         2,
+                                         platform::EventRole::kUniqueOp);
+    reorder_p->execute(
+        astream,
+        {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
     astream.wait();
   }
 
   template <typename F = T>
   std::shared_ptr<dnnl::memory> AcquireMemoryWithReorder(
-      const dnnl::memory::desc& user_md, const dnnl::memory::desc& target_md,
-      void* ptr, const std::string& suffix, bool is_persistent = false,
+      const dnnl::memory::desc& user_md,
+      const dnnl::memory::desc& target_md,
+      void* ptr,
+      const std::string& suffix,
+      bool is_persistent = false,
       std::function<std::shared_ptr<F>(const F*)> custom_reorder_func = {},
-      const std::vector<float>& scale_data = {1.0f}, int mask = 0) {
+      const std::vector<float>& scale_data = {1.0f},
+      int mask = 0) {
     const auto target_key = key_ + suffix + "_target";
     const auto key_reorder_p = key_ + suffix + "reorder_p";
     const auto user_key = key_ + suffix + "_user";
@@ -551,8 +363,8 @@ class MKLDNNHandlerT {
         if (is_int8<T>()) {
           dnnl::primitive_attr attr;
           attr.set_output_scales(mask, scale_data);
-          reorder_pdesc = dnnl::reorder::primitive_desc(*user_memory_p,
-                                                        *target_memory_p, attr);
+          reorder_pdesc = dnnl::reorder::primitive_desc(
+              *user_memory_p, *target_memory_p, attr);
         } else {
           reorder_pdesc =
               dnnl::reorder::primitive_desc(*user_memory_p, *target_memory_p);
@@ -562,10 +374,13 @@ class MKLDNNHandlerT {
 
         auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
         platform::RecordEvent record_reorder(
-            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            "int_reorder",
+            platform::TracerEventType::UserDefined,
+            2,
             platform::EventRole::kUniqueOp);
-        reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
-                                     {DNNL_ARG_TO, *target_memory_p}});
+        reorder_p->execute(
+            astream,
+            {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
         astream.wait();
       } else {
         target_memory_p = user_memory_p;
@@ -585,10 +400,13 @@ class MKLDNNHandlerT {
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
         platform::RecordEvent record_reorder(
-            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            "int_reorder",
+            platform::TracerEventType::UserDefined,
+            2,
             platform::EventRole::kUniqueOp);
-        reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
-                                     {DNNL_ARG_TO, *target_memory_p}});
+        reorder_p->execute(
+            astream,
+            {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
         astream.wait();
       }
     }
@@ -614,38 +432,33 @@ template <typename T>
 class BinaryMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
-  BinaryMKLDNNHandler(const dnnl::algorithm algo, const int axis,
-                      const dnnl::engine engine, platform::Place cpu_place,
-                      const Tensor* x, const Tensor* y, Tensor* z,
-                      float scale_x, float scale_y, float scale_z,
+  BinaryMKLDNNHandler(const dnnl::algorithm algo,
+                      const int axis,
+                      const dnnl::engine engine,
+                      platform::Place cpu_place,
+                      const Tensor* x,
+                      const Tensor* y,
+                      Tensor* out,
+                      float scale_x,
+                      float scale_y,
+                      float scale_out,
                       const dnnl::post_ops& post_ops = dnnl::post_ops{})
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument(
-            "Wrong layout set for X tensor. Expected: %d (kMKLDNN), Actual: %d",
-            DataLayout::kMKLDNN, x->layout()));
-
-    PADDLE_ENFORCE_EQ(
-        y->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument(
-            "Wrong layout set for Y tensor. Expected: %d (kMKLDNN), Actual: %d",
-            DataLayout::kMKLDNN, y->layout()));
-
     const auto src_x_tz = phi::vectorize(x->dims());
     const auto src_y_tz = phi::vectorize(y->dims());
     // if output tensor(z) is nullptr then we are computing into oneDNN
     // managed buffer
     auto rankdiff = x->dims().size() - y->dims().size();
-    const auto dst_tz = (z == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
-                                       : phi::vectorize(z->dims());
+    const auto dst_tz = (out == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
+                                         : phi::vectorize(out->dims());
 
     auto src0_md = x->mem_desc();
     auto src1_md = y->mem_desc();
     if (rankdiff > 0) {  // Second input is of smaller rank than first
       std::vector<int64_t> dims1_ex(rankdiff, 1);
       dims1_ex.insert(next(dims1_ex.begin(), (axis == -1 ? rankdiff : axis)),
-                      src_y_tz.begin(), src_y_tz.end());
+                      src_y_tz.begin(),
+                      src_y_tz.end());
       // For broadcasting for NHWC we need rotate extended shape
       if (MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
           framework::DataLayout::kNHWC) {
@@ -655,7 +468,8 @@ class BinaryMKLDNNHandler
     } else if (rankdiff < 0) {  // First input is of smaller than second
       std::vector<int64_t> dims0_ex(-rankdiff, 1);
       dims0_ex.insert(next(dims0_ex.begin(), (axis == -1 ? -rankdiff : axis)),
-                      src_x_tz.begin(), src_x_tz.end());
+                      src_x_tz.begin(),
+                      src_x_tz.end());
       // For broadcasting for NHWC we need rotate extended shape
       if (MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
           framework::DataLayout::kNHWC) {
@@ -663,14 +477,19 @@ class BinaryMKLDNNHandler
       }
       src0_md = src0_md.reshape(dims0_ex);
     }
-    const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
-                                     MKLDNNMemoryFormat::any);
+    const auto dst_md = memory::desc(
+        dst_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
 
     auto attributes =
-        CreateAttributes(algo, scale_x, scale_y, scale_z, post_ops);
+        CreateAttributes(algo, scale_x, scale_y, scale_out, post_ops);
 
-    this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
-                                            dst_md);
+    if (x->numel() < y->numel()) {
+      this->AcquireForwardPrimitiveDescriptor(
+          attributes, algo, src1_md, src0_md, dst_md);
+    } else {
+      this->AcquireForwardPrimitiveDescriptor(
+          attributes, algo, src0_md, src1_md, dst_md);
+    }
   }
   std::shared_ptr<dnnl::memory> AcquireSecondSrcMemory(
       const framework::Tensor* input) {
@@ -681,7 +500,10 @@ class BinaryMKLDNNHandler
 
  private:
   static inline dnnl::primitive_attr CreateAttributes(
-      dnnl::algorithm op, float scale_x, float scale_y, float scale_z,
+      dnnl::algorithm op,
+      float scale_x,
+      float scale_y,
+      float scale_out,
       dnnl::post_ops post_ops = dnnl::post_ops{}) {
     // Scales set in attributes for inputs contibute to the output equation
     // in the following way (assuming no broadcasting takes place):
@@ -699,14 +521,14 @@ class BinaryMKLDNNHandler
     // For mul operation on the other hand
     // output = (scale_out / scale_x) * x * (1.0 / scale_y) * y
     //                <scale_0>                 <scale_1>
-    float scale_0 = scale_z / scale_x;
+    float scale_0 = scale_out / scale_x;
     float scale_1 =
-        op == dnnl::algorithm::binary_add ? scale_z / scale_y : 1.0 / scale_y;
+        op == dnnl::algorithm::binary_add ? scale_out / scale_y : 1.0 / scale_y;
     dnnl::primitive_attr attributes;
-    attributes.set_scales(/* input_x_id = */ DNNL_ARG_SRC_0, /* mask = */ 0,
-                          {scale_0});
-    attributes.set_scales(/* input_y_id = */ DNNL_ARG_SRC_1, /* mask = */ 0,
-                          {scale_1});
+    attributes.set_scales(
+        /* input_x_id = */ DNNL_ARG_SRC_0, /* mask = */ 0, {scale_0});
+    attributes.set_scales(
+        /* input_y_id = */ DNNL_ARG_SRC_1, /* mask = */ 0, {scale_1});
     if (post_ops.len() > 0) attributes.set_post_ops(post_ops);
     return attributes;
   }
@@ -718,79 +540,144 @@ class BroadcastDataMKLDNNHandler
  public:
   BroadcastDataMKLDNNHandler(const dnnl::algorithm algo,
                              const dnnl::engine engine,
-                             platform::Place cpu_place, const Tensor* out,
-                             const Tensor* x, float scale_x, float scale_y,
-                             const dnnl::memory::desc& x_mem_desc)
+                             platform::Place cpu_place,
+                             const Tensor* x,
+                             Tensor* out,
+                             float scale_x,
+                             float scale_y,
+                             const std::vector<int64_t>& extended_x_dims)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-
     const auto src0_tz = phi::vectorize(out->dims());
-
     const auto src0_md =
-        dnnl::memory::desc(src0_tz, platform::MKLDNNGetDataType<T>(),
+        dnnl::memory::desc(src0_tz,
+                           platform::MKLDNNGetDataType<T>(),
                            platform::GetPlainMKLDNNFormat(src0_tz.size()));
-
-    const auto src1_md = x_mem_desc;
+    const auto src1_md = x->mem_desc().reshape(extended_x_dims);
 
     dnnl::primitive_attr attributes;
     attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
     attributes.set_scales(DNNL_ARG_SRC_1, 0, {scale_y});
 
-    this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
-                                            src0_md);
+    this->AcquireForwardPrimitiveDescriptor(
+        attributes, algo, src0_md, src1_md, src0_md);
   }
 
   template <typename T_out = T>
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output) {
-    T_out* ptr = output->mutable_data<T_out>(
-        this->place_, this->fwd_pd_->dst_desc().get_size());
+  std::shared_ptr<dnnl::memory> AcquireZeroedDstMemory(framework::Tensor* out) {
+    T_out* ptr = out->mutable_data<T_out>(this->place_,
+                                          this->fwd_pd_->dst_desc().get_size());
     memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
 
+static void AppendActivation(const framework::ExecutionContext& ctx,
+                             dnnl::post_ops& post_ops,
+                             float activation_scale = 1.0f) {
+  const auto invalid_attribute =
+      ctx.HasAttr("fuse_activation")
+          ? ctx.Attr<std::string>("fuse_activation").empty()
+          : true;
+  if (invalid_attribute) return;
+
+  const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
+  const auto fuse_alpha =
+      ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
+  const auto fuse_beta =
+      ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
+
+  if (fuse_activation == "hard_sigmoid") {
+    post_ops.append_eltwise(activation_scale,
+                            dnnl::algorithm::eltwise_linear,
+                            fuse_alpha,
+                            fuse_beta);
+    post_ops.append_eltwise(
+        activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+  } else {
+    const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
+        {"abs", dnnl::algorithm::eltwise_abs},
+        {"clip", dnnl::algorithm::eltwise_clip},
+        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
+        {"leaky_relu", dnnl::algorithm::eltwise_relu},
+        {"mish", dnnl::algorithm::eltwise_mish},
+        {"relu", dnnl::algorithm::eltwise_relu},
+        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+        {"sigmoid", dnnl::algorithm::eltwise_logistic},
+        {"sqrt", dnnl::algorithm::eltwise_sqrt},
+        {"swish", dnnl::algorithm::eltwise_swish},
+        {"tanh", dnnl::algorithm::eltwise_tanh}};
+
+    const auto& activation_type = activation_map.find(fuse_activation);
+
+    PADDLE_ENFORCE_NE(
+        activation_type,
+        activation_map.end(),
+        platform::errors::InvalidArgument(
+            "Activation '%s' not found in oneDNN algorithms mapper",
+            fuse_activation));
+
+    post_ops.append_eltwise(
+        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
+  }
+}
+
 template <typename T>
 class ReductionMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction> {
  public:
-  ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
-                         const float eps, const dnnl::engine engine,
-                         platform::Place cpu_place, const Tensor* x,
-                         const Tensor* y, std::vector<int64_t> y_tz,
-                         const dnnl::primitive_attr& attr = NULL)
+  ReductionMKLDNNHandler(const dnnl::algorithm algo,
+                         const float p,
+                         const float eps,
+                         const dnnl::engine engine,
+                         platform::Place cpu_place,
+                         const Tensor* x,
+                         const Tensor* out,
+                         std::vector<int64_t> out_tz,
+                         const dnnl::primitive_attr& attrs = NULL)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction>(engine,
                                                               cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+    const auto out_md = memory::desc(out_tz,
+                                     platform::MKLDNNGetDataType<T>(),
+                                     dnnl::memory::format_tag::any);
 
-    const auto y_md = memory::desc(y_tz, platform::MKLDNNGetDataType<T>(),
-                                   dnnl::memory::format_tag::any);
-
-    if (attr)
-      this->AcquireForwardPrimitiveDescriptor(attr, algo, x->mem_desc(), y_md,
-                                              p, eps);
+    if (attrs)
+      this->AcquireForwardPrimitiveDescriptor(
+          attrs, algo, x->mem_desc(), out_md, p, eps);
     else
-      this->AcquireForwardPrimitiveDescriptor(algo, x->mem_desc(), y_md, p,
-                                              eps);
+      this->AcquireForwardPrimitiveDescriptor(
+          algo, x->mem_desc(), out_md, p, eps);
   }
 };
 
 template <typename T>
+constexpr bool IsInt8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
+
+template <typename T>
+constexpr bool IsBfloat16() {
+  return std::is_same<T, paddle::platform::bfloat16>::value;
+}
+
+template <typename XT, typename YT, typename OT>
 class MatMulV2MKLDNNHandler
-    : public paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul> {
+    : public paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
-  MatMulV2MKLDNNHandler(const dnnl::engine engine,
+  MatMulV2MKLDNNHandler(const framework::ExecutionContext& ctx,
+                        const dnnl::engine engine,
                         paddle::platform::Place cpu_place,
-                        const std::vector<int64_t>& x_org_dims, bool trans_x,
-                        const std::vector<int64_t>& y_org_dims, bool trans_y,
+                        const std::vector<int64_t>& x_org_dims,
+                        bool trans_x,
+                        const std::vector<int64_t>& y_org_dims,
+                        bool trans_y,
                         bool is_output_fused,
                         const std::vector<int64_t>& x_strides_override,
                         const std::vector<int64_t>& y_strides_override)
-      : paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul>(engine,
-                                                                   cpu_place) {
+      : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
+                                                                    cpu_place) {
     // M X K * K X N
     std::vector<int64_t> x_dims(x_org_dims);
     std::vector<int64_t> y_dims(y_org_dims);
@@ -850,15 +737,58 @@ class MatMulV2MKLDNNHandler
       out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
     }
 
-    if (is_output_fused) {
+    if (!IsInt8<OT>() && !IsBfloat16<OT>() && is_output_fused) {
       out_strides = FakeTransposeStrides(out_ddims);
     }
 
-    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
-    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
-    auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<T>(), out_strides);
+    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<XT>(), x_strides);
+    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<YT>(), y_strides);
+    auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<OT>(), out_strides);
 
-    this->AcquireForwardPrimitiveDescriptor(x_md, y_md, out_md);
+    const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
+
+    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
+  }
+
+  float ComputeOutputScale(const framework::ExecutionContext& ctx) {
+    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
+    if (ctx.HasAttr("Scale_x") && ctx.HasAttr("Scale_y") &&
+        ctx.HasAttr("Scale_out")) {
+      float scale_x = ctx.Attr<float>("Scale_x");
+      float scale_y = ctx.Attr<float>("Scale_y");
+      bool force_fp32_out = ctx.HasAttr("force_fp32_output")
+                                ? ctx.Attr<bool>("force_fp32_output")
+                                : false;
+      float scale_out = force_fp32_out ? 1.f : ctx.Attr<float>("Scale_out");
+      alpha *= scale_out / (scale_x * scale_y);
+    }
+    return alpha;
+  }
+
+  dnnl::primitive_attr CreateMatmulAttrs(
+      const framework::ExecutionContext& ctx) {
+    dnnl::primitive_attr matmul_attrs;
+    dnnl::post_ops post_operations;
+
+    float scale_out = ComputeOutputScale(ctx);
+    if (scale_out != 1.0f) {
+      matmul_attrs.set_output_scales(0, {scale_out});
+    }
+
+    if (ctx.HasInput("ResidualData")) {
+      auto* residual_data = ctx.Input<Tensor>("ResidualData");
+      auto residual_data_tz = phi::vectorize(residual_data->dims());
+      auto residual_data_md = memory::desc(residual_data_tz,
+                                           dnnl::memory::data_type::f32,
+                                           dnnl::memory::format_tag::abcd);
+      post_operations.append_binary(dnnl::algorithm::binary_add,
+                                    residual_data_md);
+    }
+
+    AppendActivation(ctx, post_operations);
+
+    matmul_attrs.set_post_ops(post_operations);
+    return matmul_attrs;
   }
 
   std::vector<int64_t> FakeTransposeStrides(
@@ -880,22 +810,39 @@ class MatMulV2MKLDNNHandler
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
-    const T* input_data = input->data<T>();
+    const YT* input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                            to_void_cast<T>(input_data));
+                                            to_void_cast<YT>(input_data));
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(
+      paddle::framework::Tensor* output) {
+    // We cannot use base AcquireDstMemory as it makes an allocation request
+    // base on DST memory primitive size. This is fine in general, but in MatMul
+    // we have primitive that covers only one batch of Data and then shift
+    // pointer for every new batch. Hence Tensor size is bigger that dst memory
+    // primitive size. So would we request less memory that is there and it
+    // triggers an
+    // assertion.  So as there is no 'any' format here we can leave default size
+    // of Tensor as computed in ComputeInferShape
+    OT* ptr = output->mutable_data<OT>(this->place_);
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
 
 template <typename T>
 class ActivationMKLDNNHandler
-    : public MKLDNNHandlerNoCachingT<T, dnnl::eltwise_forward,
+    : public MKLDNNHandlerNoCachingT<T,
+                                     dnnl::eltwise_forward,
                                      dnnl::eltwise_backward> {
  public:
   ActivationMKLDNNHandler(dnnl::algorithm algorithm,
                           const framework::ExecutionContext& ctx,
-                          const dnnl::engine engine, Place cpu_place,
+                          const dnnl::engine engine,
+                          Place cpu_place,
                           const framework::Tensor* x)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::eltwise_forward,
+      : platform::MKLDNNHandlerNoCachingT<T,
+                                          dnnl::eltwise_forward,
                                           dnnl::eltwise_backward>(engine,
                                                                   cpu_place) {
     float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
@@ -930,15 +877,20 @@ class ActivationMKLDNNHandler
     }
 
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            algorithm, x->mem_desc(), alpha,
+                                            algorithm,
+                                            x->mem_desc(),
+                                            alpha,
                                             beta);
   }
 
   ActivationMKLDNNHandler(dnnl::algorithm algorithm,
                           const framework::ExecutionContext& ctx,
-                          const dnnl::engine engine, Place cpu_place,
-                          const framework::Tensor* x, const Tensor* dout)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::eltwise_forward,
+                          const dnnl::engine engine,
+                          Place cpu_place,
+                          const framework::Tensor* x,
+                          const Tensor* dout)
+      : platform::MKLDNNHandlerNoCachingT<T,
+                                          dnnl::eltwise_forward,
                                           dnnl::eltwise_backward>(engine,
                                                                   cpu_place) {
     float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
@@ -959,10 +911,12 @@ class ActivationMKLDNNHandler
     }
 
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            algorithm, x->mem_desc(), alpha,
+                                            algorithm,
+                                            x->mem_desc(),
+                                            alpha,
                                             beta);
-    this->AcquireBackwardPrimitiveDescriptor(algorithm, dout->mem_desc(),
-                                             x->mem_desc(), alpha, beta);
+    this->AcquireBackwardPrimitiveDescriptor(
+        algorithm, dout->mem_desc(), x->mem_desc(), alpha, beta);
   }
 
   std::shared_ptr<dnnl::memory> AcquireBackwardSrcMemory(
@@ -973,11 +927,48 @@ class ActivationMKLDNNHandler
   }
 };
 
+static std::unordered_map<std::string, std::string> GetAttributeMap(
+    std::string act_type) {
+  std::unordered_map<std::string, std::string> attr_map;
+  if (act_type == "swish") {
+    attr_map.emplace("beta", "fuse_alpha");
+  } else if (act_type == "relu6") {
+    attr_map.emplace("threshold", "fuse_alpha");
+  } else if (act_type == "hard_sigmoid") {
+    attr_map.emplace("slope", "fuse_alpha");
+    attr_map.emplace("offset", "fuse_beta");
+  } else if (act_type == "clip") {
+    attr_map.emplace("min", "fuse_alpha");
+    attr_map.emplace("max", "fuse_beta");
+  } else {
+    attr_map.emplace("alpha", "fuse_alpha");
+    attr_map.emplace("beta", "fuse_beta");
+  }
+  return attr_map;
+}
+
+static std::vector<std::string> GetSupportedActivations() {
+  return std::vector<std::string>{"abs",
+                                  "clip",
+                                  "gelu",
+                                  "hard_sigmoid",
+                                  "hard_swish",
+                                  "leaky_relu",
+                                  "mish",
+                                  "relu",
+                                  "relu6",
+                                  "sigmoid",
+                                  "sqrt",
+                                  "swish",
+                                  "tanh"};
+}
+
 class ReorderMKLDNNHandler {
  public:
   ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
                        framework::proto::VarType::Type vtype,
-                       dnnl::memory::data_type dtype, dnnl::engine engine)
+                       dnnl::memory::data_type dtype,
+                       dnnl::engine engine)
       : dims_(dims),
         vtype_(vtype),
         vtype_dst_(vtype),
@@ -989,7 +980,8 @@ class ReorderMKLDNNHandler {
                        framework::proto::VarType::Type vtype,
                        dnnl::memory::data_type dtype,
                        framework::proto::VarType::Type vtype_dst,
-                       dnnl::memory::data_type dtype_dst, dnnl::engine engine)
+                       dnnl::memory::data_type dtype_dst,
+                       dnnl::engine engine)
       : dims_(dims),
         vtype_(vtype),
         vtype_dst_(vtype_dst),
@@ -1009,11 +1001,12 @@ class ReorderMKLDNNHandler {
   }
 
   std::shared_ptr<dnnl::memory> AcquireSubmemory(
-      const std::vector<int64_t>& dims, const std::vector<int64_t>& offset,
+      const std::vector<int64_t>& dims,
+      const std::vector<int64_t>& offset,
       const std::shared_ptr<dnnl::memory>& mem_p) {
     auto sub_md = mem_p->get_desc().submemory_desc(dims, {offset});
-    auto sub_mem_p = std::make_shared<dnnl::memory>(sub_md, engine_,
-                                                    mem_p->get_data_handle());
+    auto sub_mem_p = std::make_shared<dnnl::memory>(
+        sub_md, engine_, mem_p->get_data_handle());
     return sub_mem_p;
   }
 
@@ -1027,7 +1020,8 @@ class ReorderMKLDNNHandler {
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      framework::Tensor* output, const dnnl::memory::desc& src_md,
+      framework::Tensor* output,
+      const dnnl::memory::desc& src_md,
       platform::Place place) {
     if (vtype_dst_ == vtype_) {
       auto dst_data = output->mutable_data(
@@ -1043,8 +1037,10 @@ class ReorderMKLDNNHandler {
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      framework::Tensor* output, const std::vector<int64_t>& dims,
-      const MKLDNNMemoryFormat& fmt, platform::Place place) {
+      framework::Tensor* output,
+      const std::vector<int64_t>& dims,
+      const MKLDNNMemoryFormat& fmt,
+      platform::Place place) {
     auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
     auto dst_data = output->mutable_data(
         place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
@@ -1061,8 +1057,8 @@ class ReorderMKLDNNHandler {
       std::shared_ptr<dnnl::memory> dst_memory_p,
       std::shared_ptr<dnnl::memory> src_memory_p,
       const dnnl::primitive_attr& attrs) {
-    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p),
-                                           attrs);
+    return std::make_shared<dnnl::reorder>(
+        *(src_memory_p), *(dst_memory_p), attrs);
   }
 
  private:
@@ -1074,8 +1070,10 @@ class ReorderMKLDNNHandler {
 
 template <typename T>
 static void SetDstMemoryQuantized(
-    const framework::ExecutionContext& ctx, framework::Tensor* output,
-    std::vector<int64_t> dst_tz, const dnnl::engine& engine,
+    const framework::ExecutionContext& ctx,
+    framework::Tensor* output,
+    std::vector<int64_t> dst_tz,
+    const dnnl::engine& engine,
     std::shared_ptr<dnnl::memory::desc>& dst_md,  // NOLINT
     std::shared_ptr<dnnl::memory>& dst_memory,    // NOLINT
     MKLDNNMemoryFormat output_format) {
@@ -1083,16 +1081,19 @@ static void SetDstMemoryQuantized(
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
 
-  PADDLE_ENFORCE_LE(dst_dims, 5, platform::errors::InvalidArgument(
-                                     "Dst memory for quantization can not have "
-                                     "dims > 5. But received dst_dims is %d.",
-                                     dst_dims));
+  PADDLE_ENFORCE_LE(dst_dims,
+                    5,
+                    platform::errors::InvalidArgument(
+                        "Dst memory for quantization can not have "
+                        "dims > 5. But received dst_dims is %d.",
+                        dst_dims));
   dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
-  auto tmp_dst_md = platform::MKLDNNMemDesc(
-      {dst_tz}, paddle::framework::ToMKLDNNDataType(
-                    framework::DataTypeTrait<T>::DataType()),
-      dst_fmt);
+  auto tmp_dst_md =
+      platform::MKLDNNMemDesc({dst_tz},
+                              paddle::framework::ToMKLDNNDataType(
+                                  framework::DataTypeTrait<T>::DataType()),
+                              dst_fmt);
   dst_md.reset(new dnnl::memory::desc(tmp_dst_md));
   dst_memory.reset(
       new dnnl::memory(*dst_md, engine, to_void_cast<T>(output_data)));

@@ -14,14 +14,12 @@
 
 #include "paddle/phi/kernels/rnn_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/gpu/rnn_functor.h"
-
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/gpu/rnn_functor.h"
 
 namespace phi {
 
@@ -134,7 +132,7 @@ void RnnKernel(const Context &dev_ctx,
                const DenseTensor &x,
                const std::vector<const DenseTensor *> &pre_state,
                const std::vector<const DenseTensor *> &weight_list,
-               paddle::optional<const DenseTensor &> sequence_length,
+               const paddle::optional<DenseTensor> &sequence_length,
                float dropout_prob,
                bool is_bidirec,
                int input_size,
@@ -175,17 +173,13 @@ void RnnKernel(const Context &dev_ctx,
         mode));
 
   if (!is_test) {
-    int device_id = dev_ctx.GetPlace().GetDeviceId();
-    auto gen_cuda = paddle::framework::GetDefaultCUDAGenerator(device_id);
-    if (gen_cuda->GetIsInitPy() && seed == 0) {
-      // If perform `manual_seed` in python and inner seed is not specified
-      // (equals 0), use global generator generated seed.
+    if (seed == 0) {
+      // If not specify seed, use global Generator to generate seed.
+      int device_id = dev_ctx.GetPlace().GetDeviceId();
+      auto gen_cuda = paddle::framework::DefaultCUDAGenerator(device_id);
       seed = static_cast<int>(gen_cuda->Random64());
-    } else if (seed == 0) {
-      // use random generated seed
-      std::random_device rd;
-      seed = rd();
-    }  // else use `ctx.Attr<int>("seed")` specified seed
+    }
+    // else use `ctx.Attr<int>("seed")` specified seed
   }
 
   const T *x_data = x.data<T>();

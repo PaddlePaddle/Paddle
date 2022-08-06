@@ -104,11 +104,11 @@ class AmpScaler(object):
             raise ValueError(
                 "current_tracer is None, maybe it is not in imperative mode.")
 
-        if enable and not (tracer._expected_place.is_gpu_place() or
-                           tracer._expected_place.is_xpu_place() or
-                           tracer._expected_place.is_mlu_place() or
-                           tracer._expected_place.is_npu_place() or
-                           tracer._expected_place.is_custom_place()):
+        if enable and not (tracer._expected_place.is_gpu_place()
+                           or tracer._expected_place.is_xpu_place()
+                           or tracer._expected_place.is_mlu_place()
+                           or tracer._expected_place.is_npu_place()
+                           or tracer._expected_place.is_custom_place()):
             warnings.warn(
                 'AmpScaler can only be enabled on CUDAPlace, XPUPlace, MLUPlace, NPUPlace and CustomPlace, current place is %s, so it makes no effect.'
                 % tracer._expected_place)
@@ -129,11 +129,11 @@ class AmpScaler(object):
             self._decr_count = 0
             self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
 
-            self._found_inf = to_variable(np.array([0]).astype(np.bool))
+            self._found_inf = to_variable(np.array([0]).astype(np.bool_))
             self._temp_found_inf_fp16 = to_variable(
-                np.array([0]).astype(np.bool))
+                np.array([0]).astype(np.bool_))
             self._temp_found_inf_fp32 = to_variable(
-                np.array([0]).astype(np.bool))
+                np.array([0]).astype(np.bool_))
             self._scale = to_variable(
                 np.array([self._init_loss_scaling]).astype(np.float32))
             self._cache_founf_inf = None
@@ -279,15 +279,13 @@ class AmpScaler(object):
             ]
             param_grads_fp16 = [
                 param._grad_ivar() for param in optimizer._parameter_list
-                if (param._grad_ivar() is not None
-                    ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP16
-                           )
+                if (param._grad_ivar() is not None) and (
+                    param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
             ]
             param_grads_fp32 = [
                 param._grad_ivar() for param in optimizer._parameter_list
-                if (param._grad_ivar() is not None
-                    ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP32
-                           )
+                if (param._grad_ivar() is not None) and (
+                    param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
             ]
         if core.is_compiled_with_npu():
             float_status = _C_ops.alloc_float_status()
@@ -332,10 +330,9 @@ class AmpScaler(object):
             self._decr_count = self._decr_count + 1
             if self._decr_count == self._decr_every_n_nan_or_inf:
                 print(
-                    'Found inf or nan, current scale is: {}, decrease to: {}*{}'.
-                    format(
-                        float(self._scale),
-                        float(self._scale), float(self._decr_ratio)))
+                    'Found inf or nan, current scale is: {}, decrease to: {}*{}'
+                    .format(float(self._scale), float(self._scale),
+                            float(self._decr_ratio)))
                 self._scale = self._scale * self._decr_ratio
                 self._decr_count = 0
         else:

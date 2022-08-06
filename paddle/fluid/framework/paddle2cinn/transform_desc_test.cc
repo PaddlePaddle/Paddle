@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
+
 #include <unordered_map>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 
 namespace paddle {
 namespace framework {

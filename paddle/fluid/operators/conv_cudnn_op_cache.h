@@ -17,6 +17,7 @@ limitations under the License. */
 #include <functional>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 

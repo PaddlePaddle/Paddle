@@ -22,9 +22,9 @@ template <typename T, typename Context>
 void BilinearInterpGradKernel(
     const Context& ctx,
     const DenseTensor& x,
-    paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
-    paddle::optional<const DenseTensor&> scale_tensor,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,

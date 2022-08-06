@@ -500,8 +500,8 @@ func (config *Config) DisableTensorRtOPs(ops []string) {
 /// may be more high-performance. Libnvinfer_plugin.so greater than
 /// V7.2.1 is needed.
 ///
-func (config *Config) EnableTensorRtOSS() {
-	C.PD_ConfigEnableTensorRtOSS(config.c)
+func (config *Config) EnableVarseqlen() {
+	C.PD_ConfigEnableVarseqlen(config.c)
 }
 
 ///

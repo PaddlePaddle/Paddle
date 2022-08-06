@@ -41,6 +41,7 @@ paddle.enable_static()
 
 
 class TestColumnParallelLinearAPI(TestCollectiveAPIRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 
@@ -50,8 +51,9 @@ class TestColumnParallelLinearAPI(TestCollectiveAPIRunnerBase):
             np.random.seed(2020)
             np_array = np.random.rand(1000, 16)
 
-            data = paddle.static.data(
-                name='tindata', shape=[10, 1000], dtype="float32")
+            data = paddle.static.data(name='tindata',
+                                      shape=[10, 1000],
+                                      dtype="float32")
             paddle.distributed.broadcast(data, src=0)
             if rank == 0:
                 param_attr = paddle.fluid.ParamAttr(
@@ -69,7 +71,8 @@ class TestColumnParallelLinearAPI(TestCollectiveAPIRunnerBase):
                 axis=1,
                 num_partitions=2,
                 weight_attr=param_attr,
-                bias_attr=True, )
+                bias_attr=True,
+            )
 
             return [linear_out]
 

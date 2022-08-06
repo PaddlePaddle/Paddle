@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -43,7 +44,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
     if (use_cudnn) {
       library_ = framework::LibraryType::kCUDNN;
@@ -62,7 +63,8 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 }
 
 framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
-    const std::string& var_name, const framework::Tensor& tensor,
+    const std::string& var_name,
+    const framework::Tensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
@@ -78,13 +80,14 @@ framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     // op. Treat this as NCHW (default data_format value)
     if (dl != framework::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(),
+          expected_kernel_type.data_type_,
+          tensor.place(),
           framework::StringToDataLayout(data_format));
     }
   }
 #endif
-  return framework::OpKernelType(expected_kernel_type.data_type_,
-                                 tensor.place(), tensor.layout());
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 void Conv2DTransposeOpMaker::Make() {
@@ -345,7 +348,7 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
   }
 #endif
@@ -358,8 +361,10 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
 
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_);
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      layout_,
+      library_);
 }
 
 template <typename T>
@@ -412,10 +417,12 @@ class ConvTransposeDoubleGradMaker : public framework::SingleGradOpMaker<T> {
                   ddx.empty()
                       ? this->EmptyInputGrad()
                       : this->InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
-                                         : this->InputGrad("Filter"));
-    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
-                                        : this->InputGrad("Input"));
+    op->SetOutput(
+        "DFilter",
+        ddx.empty() ? this->EmptyInputGrad() : this->InputGrad("Filter"));
+    op->SetOutput(
+        "DInput",
+        ddw.empty() ? this->EmptyInputGrad() : this->InputGrad("Input"));
 
     op->SetAttrMap(this->Attrs());
   }
@@ -428,7 +435,7 @@ framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
   }
 #endif
@@ -441,8 +448,10 @@ framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
 
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_);
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      layout_,
+      library_);
 }
 
 }  // namespace operators
@@ -451,40 +460,48 @@ framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
 namespace ops = paddle::operators;
 
 // conv2d_transpose
-DECLARE_INFER_SHAPE_FUNCTOR(conv2d_transpose, Conv2dTranposeInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(conv2d_transpose,
+                            Conv2dTranposeInferShapeFunctor,
                             PD_INFER_META(phi::ConvTransposeInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(conv2d_transpose_grad,
                             Conv2dTranposeGradInferShapeFunctor,
                             PD_INFER_META(phi::ConvTransposeGradInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(
-    conv2d_transpose_grad_grad, Conv2dTranposeDoubleGradInferShapeFunctor,
+    conv2d_transpose_grad_grad,
+    Conv2dTranposeDoubleGradInferShapeFunctor,
     PD_INFER_META(phi::Conv2dTransposeDoubleGradInferMeta));
 
-REGISTER_OPERATOR(conv2d_transpose, ops::ConvTransposeOp,
+REGISTER_OPERATOR(conv2d_transpose,
+                  ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
                   ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>,
                   Conv2dTranposeInferShapeFunctor);
-REGISTER_OPERATOR(conv2d_transpose_grad, ops::ConvTransposeOpGrad,
+REGISTER_OPERATOR(conv2d_transpose_grad,
+                  ops::ConvTransposeOpGrad,
                   ops::ConvTransposeDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::ConvTransposeDoubleGradMaker<paddle::imperative::OpBase>,
                   Conv2dTranposeGradInferShapeFunctor);
-REGISTER_OPERATOR(conv2d_transpose_grad_grad, ops::ConvTransposeOpDoubleGrad,
+REGISTER_OPERATOR(conv2d_transpose_grad_grad,
+                  ops::ConvTransposeOpDoubleGrad,
                   Conv2dTranposeDoubleGradInferShapeFunctor);
 
 // conv3d_transpose
-DECLARE_INFER_SHAPE_FUNCTOR(conv3d_transpose, Conv3dTranposeInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(conv3d_transpose,
+                            Conv3dTranposeInferShapeFunctor,
                             PD_INFER_META(phi::ConvTransposeInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(conv3d_transpose_grad,
                             Conv3dTranposeGradInferShapeFunctor,
                             PD_INFER_META(phi::ConvTransposeGradInferMeta));
 
-REGISTER_OPERATOR(conv3d_transpose, ops::ConvTransposeOp,
+REGISTER_OPERATOR(conv3d_transpose,
+                  ops::ConvTransposeOp,
                   ops::Conv3DTransposeOpMaker,
                   ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>,
                   Conv3dTranposeInferShapeFunctor);
-REGISTER_OPERATOR(conv3d_transpose_grad, ops::ConvTransposeOpGrad,
+REGISTER_OPERATOR(conv3d_transpose_grad,
+                  ops::ConvTransposeOpGrad,
                   Conv3dTranposeGradInferShapeFunctor);
 
 // depthwise conv2d_transpose
@@ -495,12 +512,14 @@ DECLARE_INFER_SHAPE_FUNCTOR(depthwise_conv2d_transpose_grad,
                             DepthWiseConv2dTranposeGradInferShapeFunctor,
                             PD_INFER_META(phi::ConvTransposeGradInferMeta));
 
-REGISTER_OPERATOR(depthwise_conv2d_transpose, ops::ConvTransposeOp,
+REGISTER_OPERATOR(depthwise_conv2d_transpose,
+                  ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
                   ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>,
                   DepthWiseConv2dTranposeInferShapeFunctor);
-REGISTER_OPERATOR(depthwise_conv2d_transpose_grad, ops::ConvTransposeOpGrad,
+REGISTER_OPERATOR(depthwise_conv2d_transpose_grad,
+                  ops::ConvTransposeOpGrad,
                   DepthWiseConv2dTranposeGradInferShapeFunctor);
 
 REGISTER_OP_VERSION(conv_transpose)
@@ -532,7 +551,8 @@ REGISTER_OP_VERSION(conv2d_transpose)
             .NewAttr("force_fp32_output",
                      "Force BF16 kernel output FP32, only used in MKL-DNN BF16",
                      false)
-            .NewAttr("mkldnn_data_type", "Data type of mkldnn kernel",
+            .NewAttr("mkldnn_data_type",
+                     "Data type of mkldnn kernel",
                      "float32"));
 
 REGISTER_OP_VERSION(conv3d_transpose)

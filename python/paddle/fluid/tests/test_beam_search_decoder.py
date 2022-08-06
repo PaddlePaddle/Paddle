@@ -47,13 +47,14 @@ beam_size = 2
 
 def encoder():
     # encoder
-    src_word = layers.data(
-        name="src_word", shape=[1], dtype='int64', lod_level=1)
-    src_embedding = layers.embedding(
-        input=src_word,
-        size=[dict_size, word_dim],
-        dtype='float32',
-        is_sparse=IS_SPARSE)
+    src_word = layers.data(name="src_word",
+                           shape=[1],
+                           dtype='int64',
+                           lod_level=1)
+    src_embedding = layers.embedding(input=src_word,
+                                     size=[dict_size, word_dim],
+                                     dtype='float32',
+                                     is_sparse=IS_SPARSE)
 
     fc1 = layers.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
     lstm_hidden0, lstm_0 = layers.dynamic_lstm(input=fc1, size=hidden_dim * 4)
@@ -80,13 +81,14 @@ def decoder_state_cell(context):
 
 def decoder_train(state_cell):
     # decoder
-    trg_language_word = layers.data(
-        name="target_word", shape=[1], dtype='int64', lod_level=1)
-    trg_embedding = layers.embedding(
-        input=trg_language_word,
-        size=[dict_size, word_dim],
-        dtype='float32',
-        is_sparse=IS_SPARSE)
+    trg_language_word = layers.data(name="target_word",
+                                    shape=[1],
+                                    dtype='int64',
+                                    lod_level=1)
+    trg_embedding = layers.embedding(input=trg_language_word,
+                                     size=[dict_size, word_dim],
+                                     dtype='float32',
+                                     is_sparse=IS_SPARSE)
 
     decoder = TrainingDecoder(state_cell)
 
@@ -103,24 +105,27 @@ def decoder_train(state_cell):
 
 
 def decoder_decode(state_cell):
-    init_ids = layers.data(
-        name="init_ids", shape=[1], dtype="int64", lod_level=2)
-    init_scores = layers.data(
-        name="init_scores", shape=[1], dtype="float32", lod_level=2)
+    init_ids = layers.data(name="init_ids",
+                           shape=[1],
+                           dtype="int64",
+                           lod_level=2)
+    init_scores = layers.data(name="init_scores",
+                              shape=[1],
+                              dtype="float32",
+                              lod_level=2)
 
-    decoder = BeamSearchDecoder(
-        state_cell=state_cell,
-        init_ids=init_ids,
-        init_scores=init_scores,
-        target_dict_dim=target_dict_dim,
-        word_dim=word_dim,
-        input_var_dict={},
-        topk_size=topk_size,
-        sparse_emb=IS_SPARSE,
-        max_len=max_length,
-        beam_size=beam_size,
-        end_id=1,
-        name=None)
+    decoder = BeamSearchDecoder(state_cell=state_cell,
+                                init_ids=init_ids,
+                                init_scores=init_scores,
+                                target_dict_dim=target_dict_dim,
+                                word_dim=word_dim,
+                                input_var_dict={},
+                                topk_size=topk_size,
+                                sparse_emb=IS_SPARSE,
+                                max_len=max_length,
+                                beam_size=beam_size,
+                                end_id=1,
+                                name=None)
     decoder.decode()
     translation_ids, translation_scores = decoder()
 
@@ -135,18 +140,19 @@ def train_main(use_cuda):
     context = encoder()
     state_cell = decoder_state_cell(context)
     rnn_out = decoder_train(state_cell)
-    label = layers.data(
-        name="target_next_word", shape=[1], dtype='int64', lod_level=1)
+    label = layers.data(name="target_next_word",
+                        shape=[1],
+                        dtype='int64',
+                        lod_level=1)
     cost = layers.cross_entropy(input=rnn_out, label=label)
-    avg_cost = layers.mean(x=cost)
+    avg_cost = paddle.mean(x=cost)
 
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-3)
     optimizer.minimize(avg_cost)
 
-    train_reader = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.wmt14.train(dict_size), buf_size=1000),
-        batch_size=batch_size)
+    train_reader = paddle.batch(paddle.reader.shuffle(
+        paddle.dataset.wmt14.train(dict_size), buf_size=1000),
+                                batch_size=batch_size)
     feed_order = ['src_word', 'target_word', 'target_next_word']
 
     exe = Executor(place)
@@ -186,8 +192,8 @@ def decode_main(use_cuda):
     exe.run(framework.default_startup_program())
 
     init_ids_data = np.array([0 for _ in range(batch_size)], dtype='int64')
-    init_scores_data = np.array(
-        [1. for _ in range(batch_size)], dtype='float32')
+    init_scores_data = np.array([1. for _ in range(batch_size)],
+                                dtype='float32')
     init_ids_data = init_ids_data.reshape((batch_size, 1))
     init_scores_data = init_scores_data.reshape((batch_size, 1))
     init_lod = [1] * batch_size
@@ -196,10 +202,9 @@ def decode_main(use_cuda):
     init_ids = fluid.create_lod_tensor(init_ids_data, init_lod, place)
     init_scores = fluid.create_lod_tensor(init_scores_data, init_lod, place)
 
-    train_reader = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.wmt14.train(dict_size), buf_size=1000),
-        batch_size=batch_size)
+    train_reader = paddle.batch(paddle.reader.shuffle(
+        paddle.dataset.wmt14.train(dict_size), buf_size=1000),
+                                batch_size=batch_size)
 
     feed_order = ['src_word']
     feed_list = [

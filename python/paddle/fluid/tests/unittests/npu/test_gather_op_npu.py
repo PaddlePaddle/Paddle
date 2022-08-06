@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -35,6 +36,7 @@ def gather_numpy(x, index, axis):
 
 
 class TestGatherOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -58,7 +60,8 @@ class TestGatherOp(OpTest):
             self.place,
             ['X'],
             'Out',
-            max_relative_error=0.006, )
+            max_relative_error=0.006,
+        )
 
     def config(self):
         """
@@ -71,6 +74,7 @@ class TestGatherOp(OpTest):
 
 
 class TestCase1(TestGatherOp):
+
     def config(self):
         """
         For one dimension input
@@ -82,6 +86,7 @@ class TestCase1(TestGatherOp):
 
 
 class API_TestGather(unittest.TestCase):
+
     def test_out1(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float32')
@@ -91,8 +96,10 @@ class API_TestGather(unittest.TestCase):
             exe = fluid.Executor(place)
             input = np.array([[1, 2], [3, 4], [5, 6]])
             index_1 = np.array([1, 2])
-            result, = exe.run(feed={"data1": input,
-                                    "index": index_1},
+            result, = exe.run(feed={
+                "data1": input,
+                "index": index_1
+            },
                               fetch_list=[out])
             expected_output = np.array([[3, 4], [5, 6]])
         self.assertTrue(np.allclose(result, expected_output))
@@ -107,14 +114,17 @@ class API_TestGather(unittest.TestCase):
             exe = paddle.static.Executor(place)
             x_np = np.array([[1, 2], [3, 4], [5, 6]]).astype('float32')
             index_np = np.array([1, 1]).astype('int32')
-            result, = exe.run(feed={"x": x_np,
-                                    "index": index_np},
+            result, = exe.run(feed={
+                "x": x_np,
+                "index": index_np
+            },
                               fetch_list=[out])
             expected_output = gather_numpy(x_np, index_np, axis=0)
         self.assertTrue(np.allclose(result, expected_output))
 
 
 class TestGatherGrad(unittest.TestCase):
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -127,8 +137,9 @@ class TestGatherGrad(unittest.TestCase):
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[8192, 768], dtype='float32')
-            index = paddle.static.data(
-                name="index", shape=[1232, 1], dtype='int32')
+            index = paddle.static.data(name="index",
+                                       shape=[1232, 1],
+                                       dtype='int32')
             a.stop_gradient = False
             b = paddle.gather(a, index)
 
@@ -148,8 +159,10 @@ class TestGatherGrad(unittest.TestCase):
         for epoch in range(100):
 
             pred_res, loss_res = exe.run(main_prog,
-                                         feed={"a": a_np,
-                                               "index": index_np},
+                                         feed={
+                                             "a": a_np,
+                                             "index": index_np
+                                         },
                                          fetch_list=[b, loss])
             if epoch % 10 == 0:
                 print("Epoch {} | Prediction[0]: {}, Loss: {}".format(

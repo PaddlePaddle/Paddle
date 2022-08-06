@@ -21,6 +21,7 @@ import hypothesis.strategies as st
 
 
 class TestIdentityScaleCleanPass(PassAutoScanTest):
+
     def sample_predictor_configs(self, program_config):
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
@@ -39,15 +40,15 @@ class TestIdentityScaleCleanPass(PassAutoScanTest):
         h = draw(st.integers(min_value=1, max_value=20))
         w = draw(st.integers(min_value=1, max_value=20))
 
-        relu_op = OpConfig(
-            "relu", inputs={"X": ["relu_x"]}, outputs={"Out": ["relu_out"]})
-        scale_op = OpConfig(
-            "scale",
-            inputs={"X": ["relu_out"]},
-            outputs={"Out": ["scale_out"]},
-            bias=0.,
-            scale=1.,
-            bias_after_scale=True)
+        relu_op = OpConfig("relu",
+                           inputs={"X": ["relu_x"]},
+                           outputs={"Out": ["relu_out"]})
+        scale_op = OpConfig("scale",
+                            inputs={"X": ["relu_out"]},
+                            outputs={"Out": ["scale_out"]},
+                            bias=0.,
+                            scale=1.,
+                            bias_after_scale=True)
         program_config = ProgramConfig(
             ops=[relu_op, scale_op],
             weights={},
@@ -56,8 +57,8 @@ class TestIdentityScaleCleanPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
-            max_examples=25, passes=["identity_scale_op_clean_pass"])
+        self.run_and_statis(max_examples=25,
+                            passes=["identity_scale_op_clean_pass"])
 
 
 if __name__ == "__main__":

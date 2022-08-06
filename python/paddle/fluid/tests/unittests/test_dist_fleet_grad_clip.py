@@ -20,6 +20,7 @@ from test_dist_fleet_base import TestFleetBase
 
 
 class TestDistGeoClipByGlobalNorm(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "geo"
         self._reader = "dataset"
@@ -43,8 +44,9 @@ class TestDistGeoClipByGlobalNorm(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=True)
 
     def _setup_config1(self):
         self._sync_mode = False
@@ -52,6 +54,7 @@ class TestDistGeoClipByGlobalNorm(TestFleetBase):
 
 
 class TestDistASyncClipByValue(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "async"
         self._reader = "dataset"
@@ -74,11 +77,13 @@ class TestDistASyncClipByValue(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=True)
 
 
 class TestDistASyncClipByNorm(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "async"
         self._reader = "dataset"
@@ -101,11 +106,13 @@ class TestDistASyncClipByNorm(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=True)
 
 
 class TestDistASyncClipByGlobalNorm(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "async"
         self._reader = "dataset"
@@ -128,8 +135,9 @@ class TestDistASyncClipByGlobalNorm(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=True)
 
 
 if __name__ == "__main__":

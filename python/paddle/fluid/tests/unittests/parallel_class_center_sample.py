@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,8 +44,8 @@ def class_center_sample_numpy(label, classes_list, num_samples):
     for i in range(nranks):
         index = np.logical_and(unique_label >= class_interval[i],
                                unique_label < class_interval[i + 1])
-        pos_class_center_per_device.append(unique_label[index] - class_interval[
-            i])
+        pos_class_center_per_device.append(unique_label[index] -
+                                           class_interval[i])
         unique_label_per_device.append(unique_label[index])
 
     num_samples_per_device = []
@@ -67,6 +67,7 @@ def class_center_sample_numpy(label, classes_list, num_samples):
 
 
 class TestParallelClassCenterSampleOp(unittest.TestCase):
+
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         fleet.init(is_collective=True, strategy=strategy)
@@ -90,8 +91,9 @@ class TestParallelClassCenterSampleOp(unittest.TestCase):
                 classes_list = np.random.randint(10, 15, (nranks, ))
                 num_class = np.sum(classes_list)
 
-                np_label = np.random.randint(
-                    0, num_class, (batch_size, ), dtype=dtype)
+                np_label = np.random.randint(0,
+                                             num_class, (batch_size, ),
+                                             dtype=dtype)
                 label = paddle.to_tensor(np_label, dtype=dtype)
                 np_remapped_label, np_sampled_class_center_per_device = class_center_sample_numpy(
                     np_label, classes_list, num_samples)

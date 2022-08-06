@@ -114,7 +114,9 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_scale =
-          NpuOpRunner("Cast", {*scale}, {cast_scale},
+          NpuOpRunner("Cast",
+                      {*scale},
+                      {cast_scale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_scale.Run(stream);
     } else {
@@ -132,7 +134,9 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_bias =
-          NpuOpRunner("Cast", {*bias}, {cast_bias},
+          NpuOpRunner("Cast",
+                      {*bias},
+                      {cast_bias},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_bias.Run(stream);
     } else {
@@ -175,7 +179,8 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       variance->mutable_data<T>(ctx.GetPlace());
     }
 
-    const auto& runner = NpuOpRunner("LayerNorm", {*x, cast_scale, cast_bias},
+    const auto& runner = NpuOpRunner("LayerNorm",
+                                     {*x, cast_scale, cast_bias},
                                      {*y, *tmp_mean, *tmp_variance},
                                      {{"begin_norm_axis", begin_norm_axis},
                                       {"begin_params_axis", begin_norm_axis},
@@ -190,7 +195,9 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(mean->type()));
       const auto& runner_cast_mean =
-          NpuOpRunner("Cast", {*tmp_mean}, {*mean},
+          NpuOpRunner("Cast",
+                      {*tmp_mean},
+                      {*mean},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_mean.Run(stream);
     }
@@ -202,7 +209,9 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(variance->type()));
       const auto& runner_cast_variance =
-          NpuOpRunner("Cast", {*tmp_variance}, {*variance},
+          NpuOpRunner("Cast",
+                      {*tmp_variance},
+                      {*variance},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_variance.Run(stream);
     }
@@ -287,7 +296,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_scale =
-          NpuOpRunner("Cast", {*scale}, {cast_scale},
+          NpuOpRunner("Cast",
+                      {*scale},
+                      {cast_scale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_scale.Run(stream);
     } else {
@@ -305,7 +316,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_mean =
-          NpuOpRunner("Cast", {*mean}, {cast_mean},
+          NpuOpRunner("Cast",
+                      {*mean},
+                      {cast_mean},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_mean.Run(stream);
     } else {
@@ -323,7 +336,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_variance =
-          NpuOpRunner("Cast", {*variance}, {cast_variance},
+          NpuOpRunner("Cast",
+                      {*variance},
+                      {cast_variance},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_variance.Run(stream);
     } else {
@@ -376,9 +391,11 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       dbias->mutable_data<T>(ctx.GetPlace());
     }
 
-    const auto& runner = NpuOpRunner(
-        "LayerNormGrad", {*dy, *x, cast_variance, cast_mean, cast_scale},
-        {*dx, *tmp_dscale, *tmp_dbias}, {});
+    const auto& runner =
+        NpuOpRunner("LayerNormGrad",
+                    {*dy, *x, cast_variance, cast_mean, cast_scale},
+                    {*dx, *tmp_dscale, *tmp_dbias},
+                    {});
     runner.Run(stream);
 
     // cast back from FP16 to FP32
@@ -389,7 +406,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(dscale->type()));
       const auto& runner_cast_dscale =
-          NpuOpRunner("Cast", {*tmp_dscale}, {*dscale},
+          NpuOpRunner("Cast",
+                      {*tmp_dscale},
+                      {*dscale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_dscale.Run(stream);
     }
@@ -401,7 +420,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(dbias->type()));
       const auto& runner_cast_dbias =
-          NpuOpRunner("Cast", {*tmp_dbias}, {*dbias},
+          NpuOpRunner("Cast",
+                      {*tmp_dbias},
+                      {*dbias},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_dbias.Run(stream);
     }
@@ -420,7 +441,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(layer_norm, ops::LayerNormNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(layer_norm,
+                       ops::LayerNormNPUKernel<float>,
                        ops::LayerNormNPUKernel<plat::float16>);
-REGISTER_OP_NPU_KERNEL(layer_norm_grad, ops::LayerNormGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(layer_norm_grad,
+                       ops::LayerNormGradNPUKernel<float>,
                        ops::LayerNormGradNPUKernel<plat::float16>);

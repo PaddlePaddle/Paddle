@@ -13,60 +13,89 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/stats.h"
+
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
 #include "gtest/gtest.h"
 
 namespace paddle {
 namespace memory {
 
-TEST(stats_test, MultiThreadReadWriteTest) {
-  std::string stat_type = "Allocated";
-  size_t thread_num = 3;
-  size_t data_num = 10;
+class StatsTest : public ::testing::Test {
+ protected:
+  void SetStatType(const std::string& stat_type) { stat_type_ = stat_type; }
 
-  std::condition_variable cv;
-  std::mutex mutex;
-  std::vector<std::thread> threads;
-  size_t ready_thread_num = 0;
-
-  for (size_t i = 0; i < thread_num; ++i) {
-    threads.emplace_back(
-        [&stat_type, data_num, &cv, &mutex, &ready_thread_num]() {
-          for (size_t data = 0; data < data_num; ++data) {
-            StatUpdate(stat_type, 0, data);
-          }
-          /* lock guard*/ {
-            std::lock_guard<std::mutex> lock_guard{mutex};
-            ++ready_thread_num;
-            cv.notify_one();
-          }
-          // Sleep here to not exit before the main thread checking stat
-          // results, because the thread-local stat data will be destroyed when
-          // the thread exit
-          std::this_thread::sleep_for(std::chrono::seconds(1));
-        });
+  void SetFunc(
+      std::function<void(const std::string, int, int64_t)> update_func,
+      std::function<int64_t(const std::string, int)> current_value_func,
+      std::function<int64_t(const std::string, int)> peak_value_func) {
+    update_func_ = update_func;
+    current_value_func_ = current_value_func;
+    peak_value_func_ = peak_value_func;
   }
 
-  std::unique_lock<std::mutex> unique_lock(mutex);
-  cv.wait(unique_lock, [&ready_thread_num, thread_num]() {
-    return ready_thread_num == thread_num;
-  });
-
-  EXPECT_EQ(StatGetCurrentValue(stat_type, 0),
-            int64_t((thread_num * data_num * (data_num - 1)) >> 1));
-
-  for (size_t i = 0; i < thread_num; ++i) {
-    threads[i].join();
+  void RunTests() {
+    MultiThreadReadWriteTest();
+    PeakValueTest();
   }
-}
 
-TEST(stats_test, PeakValueTest) {
-  std::string stat_type = "Allocated";
-  std::vector<int64_t> datas = {
+ private:
+  void MultiThreadReadWriteTest() {
+    size_t thread_num = 3;
+    size_t data_num = 10;
+
+    std::condition_variable cv;
+    std::mutex mutex;
+    std::vector<std::thread> threads;
+    size_t ready_thread_num = 0;
+
+    for (size_t i = 0; i < thread_num; ++i) {
+      threads.emplace_back([&]() {
+        for (size_t data = 0; data < data_num; ++data) {
+          update_func_(stat_type_, 0, data);
+        }
+        /* lock guard*/ {
+          std::lock_guard<std::mutex> lock_guard{mutex};
+          ++ready_thread_num;
+          cv.notify_one();
+        }
+        // Sleep here to not exit before the main thread checking stat
+        // results, because the thread-local stat data will be destroyed when
+        // the thread exit
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+      });
+    }
+
+    std::unique_lock<std::mutex> unique_lock(mutex);
+    cv.wait(unique_lock, [&ready_thread_num, thread_num]() {
+      return ready_thread_num == thread_num;
+    });
+
+    EXPECT_EQ(current_value_func_(stat_type_, 0),
+              int64_t((thread_num * data_num * (data_num - 1)) >> 1));
+
+    for (size_t i = 0; i < thread_num; ++i) {
+      threads[i].join();
+    }
+  }
+
+  void PeakValueTest() {
+    int64_t peak_value = ((int64_t)1) << 63;
+    int64_t sum = 0;
+    for (int64_t data : datas_) {
+      update_func_(stat_type_, 0, data);
+      sum += data;
+      peak_value = std::max(peak_value, sum);
+    }
+    EXPECT_EQ(peak_value_func_(stat_type_, 0), peak_value);
+  }
+
+  std::string stat_type_;
+  std::vector<int64_t> datas_{
       543149808935355, 634698327471328, 706215795436611, 577939367795333,
       419479490054362, 21975227714595,  812939817942250, 984428837942082,
       537304104446806, 685008544452453, 563352858161268, 690143831596330,
@@ -93,14 +122,55 @@ TEST(stats_test, PeakValueTest) {
       746465732805300, -74049761897414, -65640372433924, 852009039806484,
       305079802044257, -48409757869238, 266031781660228, 327287322379820};
 
-  int64_t peak_value = ((int64_t)1) << 63;
-  int64_t sum = 0;
-  for (int64_t data : datas) {
-    StatUpdate(stat_type, 0, data);
-    sum += data;
-    peak_value = std::max(peak_value, sum);
-  }
-  EXPECT_EQ(StatGetPeakValue(stat_type, 0), peak_value);
+  std::function<void(const std::string, int, int64_t)> update_func_;
+  std::function<int64_t(const std::string, int)> current_value_func_;
+  std::function<int64_t(const std::string, int)> peak_value_func_;
+};
+
+TEST_F(StatsTest, DeviceAllocatedTest) {
+  SetStatType("Allocated");
+  SetFunc(DeviceMemoryStatUpdate,
+          DeviceMemoryStatCurrentValue,
+          DeviceMemoryStatPeakValue);
+  RunTests();
+}
+
+TEST_F(StatsTest, DeviceReservedMacroTest) {
+  SetStatType("Reserved");
+  SetFunc(
+      [](const std::string stat_type, int id, int64_t increment) {
+        return DEVICE_MEMORY_STAT_UPDATE(Reserved, id, increment);
+      },
+      [](const std::string stat_type, int id) {
+        return DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, id);
+      },
+      [](const std::string stat_type, int id) {
+        return DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, id);
+      });
+  RunTests();
+}
+
+TEST_F(StatsTest, HostAllocatedMacroTest) {
+  SetStatType("Allocated");
+  SetFunc(
+      [](const std::string stat_type, int id, int64_t increment) {
+        return HOST_MEMORY_STAT_UPDATE(Allocated, id, increment);
+      },
+      [](const std::string stat_type, int id) {
+        return HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, id);
+      },
+      [](const std::string stat_type, int id) {
+        return HOST_MEMORY_STAT_PEAK_VALUE(Allocated, id);
+      });
+  RunTests();
+}
+
+TEST_F(StatsTest, HostReservedTest) {
+  SetStatType("Reserved");
+  SetFunc(HostMemoryStatUpdate,
+          HostMemoryStatCurrentValue,
+          HostMemoryStatPeakValue);
+  RunTests();
 }
 
 }  // namespace memory

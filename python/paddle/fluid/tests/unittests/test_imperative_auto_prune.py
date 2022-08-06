@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import numpy as np
 from paddle.fluid.framework import _test_eager_guard
 
 
 class AutoPruneLayer0(fluid.Layer):
+
     def __init__(self, input_size):
         super(AutoPruneLayer0, self).__init__()
         self.linear1 = fluid.dygraph.Linear(
@@ -41,6 +43,7 @@ class AutoPruneLayer0(fluid.Layer):
 
 
 class AutoPruneLayer1(fluid.Layer):
+
     def __init__(self, input_size):
         super(AutoPruneLayer1, self).__init__()
         self.linear1 = fluid.dygraph.Linear(
@@ -64,6 +67,7 @@ class AutoPruneLayer1(fluid.Layer):
 
 
 class AutoPruneLayer2(fluid.Layer):
+
     def __init__(self, input_size):
         super(AutoPruneLayer2, self).__init__()
         self.linear = fluid.dygraph.Linear(input_size, 10, act=None)
@@ -76,22 +80,24 @@ class AutoPruneLayer2(fluid.Layer):
         label = fluid.layers.cast(label, dtype='int64')
         # Note that the label is not persistable in fluid.layers.cross_entropy.
         loss = fluid.layers.cross_entropy(input=feature, label=label)
-        loss = fluid.layers.mean(loss)
+        loss = paddle.mean(loss)
         return loss
 
 
 class AutoPruneLayer3(fluid.Layer):
+
     def __init__(self, input_size):
         super(AutoPruneLayer3, self).__init__()
         self.linear = fluid.dygraph.Linear(input_size, 20, act=None)
 
     def forward(self, x, label, test_num):
         feature = self.linear(x)
-        part1, part2 = fluid.layers.split(
-            feature, num_or_sections=[10, 10], dim=1)
+        part1, part2 = fluid.layers.split(feature,
+                                          num_or_sections=[10, 10],
+                                          dim=1)
         # Note that: part2 is not used.
         loss = fluid.layers.cross_entropy(input=part1, label=label)
-        loss = fluid.layers.mean(loss)
+        loss = paddle.mean(loss)
         if test_num == 1:
             return loss, part2
         else:
@@ -99,6 +105,7 @@ class AutoPruneLayer3(fluid.Layer):
 
 
 class MyLayer(fluid.Layer):
+
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
         super(MyLayer, self).__init__(dtype=dtype)
         self.embed0 = fluid.Embedding(size=(vocab_size, size))
@@ -121,6 +128,7 @@ class MyLayer(fluid.Layer):
 
 
 class MyLayer2(fluid.Layer):
+
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
         super(MyLayer2, self).__init__(dtype=dtype)
         self.embed0 = fluid.Embedding(size=(vocab_size, size))
@@ -132,8 +140,8 @@ class MyLayer2(fluid.Layer):
         # mind the difference with MyLayer
         # In this example, the forward method involes all params
         loss = fluid.layers.reduce_mean(
-            self.linear_0(self.embed0(indices)) + self.linear_1(
-                self.embed1(indices)))
+            self.linear_0(self.embed0(indices)) +
+            self.linear_1(self.embed1(indices)))
         return loss
 
     def linear0(self, x):
@@ -146,6 +154,7 @@ class MyLayer2(fluid.Layer):
 
 
 class TestImperativeAutoPrune(unittest.TestCase):
+
     def func_auto_prune(self):
         with fluid.dygraph.guard():
             case1 = AutoPruneLayer0(input_size=5)
@@ -195,9 +204,11 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune3(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_auto_prune3()
         self.func_auto_prune3()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_auto_prune4(self):
         with fluid.dygraph.guard():
@@ -212,9 +223,11 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue((part2.gradient() == 1).all())
 
     def test_auto_prune4(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_auto_prune4()
         self.func_auto_prune4()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_auto_prune5(self):
         with fluid.dygraph.guard():
@@ -229,9 +242,11 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune5(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_auto_prune5()
         self.func_auto_prune5()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_auto_prune6(self):
         with fluid.dygraph.guard():
@@ -331,8 +346,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             optimizer.minimize(out2)
             self.assertTrue(
                 np.array_equal(linear2_origin, linear2.weight.numpy()))
-            self.assertTrue(
-                np.array_equal(linear_origin, linear.weight.numpy()))
+            self.assertTrue(np.array_equal(linear_origin,
+                                           linear.weight.numpy()))
             try:
                 linear2.weight.gradient()
             except ValueError as e:
@@ -373,8 +388,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
         size = 20
         batch_size = 16
 
-        indices = np.random.randint(
-            low=0, high=100, size=(batch_size, 1)).astype("int64")
+        indices = np.random.randint(low=0, high=100,
+                                    size=(batch_size, 1)).astype("int64")
         embed = np.random.randn(batch_size, size).astype("float32")
 
         place = fluid.CPUPlace()
@@ -446,7 +461,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             label = fluid.layers.cast(label, dtype="float32")
             label = fluid.layers.cast(label, dtype='int64')
             out = fluid.layers.one_hot(input=label, depth=100)
-            loss = fluid.layers.mean(out)
+            loss = paddle.mean(out)
             loss.backward()
             self.assertTrue(linear.weight._grad_ivar() is None)
 
@@ -458,7 +473,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
     def func_case4_with_no_grad_op_maker(self):
         with fluid.dygraph.guard():
             out = fluid.layers.gaussian_random(shape=[20, 30])
-            loss = fluid.layers.mean(out)
+            loss = paddle.mean(out)
             loss.backward()
             self.assertTrue(out._grad_ivar() is None)
 

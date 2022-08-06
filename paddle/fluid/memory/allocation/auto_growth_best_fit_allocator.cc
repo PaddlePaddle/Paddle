@@ -16,19 +16,22 @@
 
 #include <algorithm>
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
-    free_idle_chunk, false,
+    free_idle_chunk,
+    false,
     "Whether to free idle chunk when each allocation is freed. "
     "If false, all freed allocation would be cached to speed up next "
     "allocation request. If true, no allocation would be cached. This "
     "flag only works when FLAGS_allocator_strategy=auto_growth.");
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
-    free_when_no_cache_hit, false,
+    free_when_no_cache_hit,
+    false,
     "Whether to free idle chunks when no cache hit. If true, idle "
     "chunk would be freed when no cache hit; if false, idle "
     "chunk would be freed when out of memory occurs. This flag "
@@ -39,8 +42,10 @@ namespace memory {
 namespace allocation {
 
 AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
-    const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
-    size_t chunk_size, bool allow_free_idle_chunk)
+    const std::shared_ptr<Allocator> &underlying_allocator,
+    size_t alignment,
+    size_t chunk_size,
+    bool allow_free_idle_chunk)
     : underlying_allocator_(underlying_allocator),
       alignment_(alignment),
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),

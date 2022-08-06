@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -27,7 +28,7 @@ void SegmentPoolGradKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& segment_ids,
                            const DenseTensor& out,
-                           paddle::optional<const DenseTensor&> summed_ids,
+                           const paddle::optional<DenseTensor>& summed_ids,
                            const DenseTensor& out_grad,
                            const std::string& pooltype,
                            DenseTensor* x_grad) {

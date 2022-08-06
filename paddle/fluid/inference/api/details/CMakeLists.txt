@@ -13,13 +13,34 @@
 # limitations under the License.
 #
 
-cc_library(reset_tensor_array SRCS reset_tensor_array.cc DEPS lod_tensor scope)
-if (WITH_ONNXRUNTIME)
-    cc_library(zero_copy_tensor SRCS zero_copy_tensor.cc DEPS scope lod_tensor enforce onnxruntime)
-    cc_library(zero_copy_tensor_dummy SRCS zero_copy_tensor_dummy.cc DEPS onnxruntime)
-else (WITH_ONNXRUNTIME)
-    cc_library(zero_copy_tensor SRCS zero_copy_tensor.cc DEPS scope lod_tensor enforce)
-    cc_library(zero_copy_tensor_dummy SRCS zero_copy_tensor_dummy.cc)
-endif (WITH_ONNXRUNTIME)
+cc_library(
+  reset_tensor_array
+  SRCS reset_tensor_array.cc
+  DEPS lod_tensor scope)
+if(WITH_ONNXRUNTIME)
+  cc_library(
+    zero_copy_tensor
+    SRCS zero_copy_tensor.cc
+    DEPS scope lod_tensor enforce onnxruntime)
+  cc_library(
+    zero_copy_tensor_dummy
+    SRCS zero_copy_tensor_dummy.cc
+    DEPS onnxruntime)
+else()
+  cc_library(
+    zero_copy_tensor
+    SRCS zero_copy_tensor.cc
+    DEPS scope lod_tensor enforce)
+  cc_library(zero_copy_tensor_dummy SRCS zero_copy_tensor_dummy.cc)
+endif()
 
-cc_test(zero_copy_tensor_test SRCS zero_copy_tensor_test.cc DEPS paddle_inference_api)
+cc_test(
+  zero_copy_tensor_test
+  SRCS zero_copy_tensor_test.cc
+  DEPS paddle_inference_api)
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(zero_copy_tensor_test)
+endif()

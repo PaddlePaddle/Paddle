@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/tests/ops/test_op_signature.h"
 
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <unordered_set>
 

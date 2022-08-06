@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -36,8 +37,8 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
-T bilinear_interp(const T* data, const T x, const T y, const int width,
-                  const int height) {
+T bilinear_interp(
+    const T* data, const T x, const T y, const int width, const int height) {
   int x1 = floor(x);
   int x2 = ceil(x);
   int y1 = floor(y);
@@ -55,16 +56,31 @@ T bilinear_interp(const T* data, const T x, const T y, const int width,
 }
 
 template <typename T>
-void DeformablePSROIPoolForwardCPUKernel(
-    const int count, const T* bottom_data, const T spatial_scale,
-    const int channels, const int height, const int width,
-    const int pooled_height, const int pooled_width, const T* bottom_rois,
-    const T* bottom_trans, const bool no_trans, const float trans_std,
-    const int sample_per_part, const int output_dim, const int group_height,
-    const int group_width, const int part_height, const int part_width,
-    const int num_classes, const int channels_each_class, T* top_data,
-    T* top_count, const int batch_size, int* roi_batch_id_data,
-    const LoDTensor* rois) {
+void DeformablePSROIPoolForwardCPUKernel(const int count,
+                                         const T* bottom_data,
+                                         const T spatial_scale,
+                                         const int channels,
+                                         const int height,
+                                         const int width,
+                                         const int pooled_height,
+                                         const int pooled_width,
+                                         const T* bottom_rois,
+                                         const T* bottom_trans,
+                                         const bool no_trans,
+                                         const float trans_std,
+                                         const int sample_per_part,
+                                         const int output_dim,
+                                         const int group_height,
+                                         const int group_width,
+                                         const int part_height,
+                                         const int part_width,
+                                         const int num_classes,
+                                         const int channels_each_class,
+                                         T* top_data,
+                                         T* top_count,
+                                         const int batch_size,
+                                         int* roi_batch_id_data,
+                                         const LoDTensor* rois) {
   for (int ix = 0; ix < count; ix++) {
     int pw = ix % pooled_width;
     int ph = (ix / pooled_width) % pooled_height;
@@ -142,8 +158,8 @@ void DeformablePSROIPoolForwardCPUKernel(
         h = std::min(std::max(h, T(0.)), height - T(1.));
         int c = (ctop * group_height + gh) * group_width + gw;
         // bilinear interpolation to get value
-        T val = bilinear_interp(offset_bottom_data + c * height * width, w, h,
-                                width, height);
+        T val = bilinear_interp(
+            offset_bottom_data + c * height * width, w, h, width, height);
         sum += val;
         num_sample++;
       }
@@ -172,12 +188,14 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
 
     const int num_rois = rois->dims()[0];
     PADDLE_ENFORCE_EQ(
-        num_rois, out->dims()[0],
+        num_rois,
+        out->dims()[0],
         platform::errors::InvalidArgument(
             "The number of Input(ROIs) should be same with the number of "
             "Output(Output), but received ROIs number is:%d, Output number "
             "is:%d.",
-            num_rois, out->dims()[0]));
+            num_rois,
+            out->dims()[0]));
     framework::Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
     int* roi_batch_id_data =
@@ -204,7 +222,8 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
     auto count = num_rois * output_dim * pooled_height * pooled_width;
     auto num_classes = no_trans ? 1 : channels_trans / 2;
     auto channels_each_class = no_trans ? output_dim : output_dim / num_classes;
-    PADDLE_ENFORCE_GE(channels_each_class, 1,
+    PADDLE_ENFORCE_GE(channels_each_class,
+                      1,
                       platform::errors::InvalidArgument(
                           "channels_each_class should not be lower than 1, but "
                           "channels_each_class is:%d.",
@@ -220,43 +239,84 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
     auto rois_lod = rois->lod().back();
     int rois_batch_size = rois_lod.size() - 1;
     PADDLE_ENFORCE_EQ(
-        rois_batch_size, batch,
+        rois_batch_size,
+        batch,
         platform::errors::InvalidArgument(
             "rois_batch_size should be equal to the batch_size, but "
             "rois_batch_size is:%d, batch_size is:%d.",
-            rois_batch_size, batch));
+            rois_batch_size,
+            batch));
     int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(num_rois, rois_num_with_lod,
+    PADDLE_ENFORCE_EQ(num_rois,
+                      rois_num_with_lod,
                       platform::errors::InvalidArgument(
                           "The rois_num from input and lod must be same, but"
                           "rois_num from input is:%d, rois_num from lod is:%d.",
-                          num_rois, rois_num_with_lod));
+                          num_rois,
+                          rois_num_with_lod));
     for (int n = 0; n < rois_batch_size; ++n) {
       for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
         roi_batch_id_data[i] = n;
       }
     }
 
-    DeformablePSROIPoolForwardCPUKernel(
-        count, bottom_data, (T)spatial_scale, channels, height, width,
-        pooled_height, pooled_width, bottom_rois, bottom_trans, no_trans,
-        trans_std, sample_per_part, output_dim, group_height, group_width,
-        part_height, part_width, num_classes, channels_each_class, top_data,
-        top_count_data, batch, roi_batch_id_data, rois);
+    DeformablePSROIPoolForwardCPUKernel(count,
+                                        bottom_data,
+                                        (T)spatial_scale,
+                                        channels,
+                                        height,
+                                        width,
+                                        pooled_height,
+                                        pooled_width,
+                                        bottom_rois,
+                                        bottom_trans,
+                                        no_trans,
+                                        trans_std,
+                                        sample_per_part,
+                                        output_dim,
+                                        group_height,
+                                        group_width,
+                                        part_height,
+                                        part_width,
+                                        num_classes,
+                                        channels_each_class,
+                                        top_data,
+                                        top_count_data,
+                                        batch,
+                                        roi_batch_id_data,
+                                        rois);
   }
 };
 
 template <typename T>
-void DeformablePSROIPoolBackwardAccCPUKernel(
-    const int count, const T* top_diff, const T* top_count, const int num_rois,
-    const T spatial_scale, const int channels, const int height,
-    const int width, const int pooled_height, const int pooled_width,
-    const int output_dim, T* bottom_data_diff, T* bottom_trans_diff,
-    const T* bottom_data, const T* bottom_rois, const T* bottom_trans,
-    const bool no_trans, const float trans_std, const int sample_per_part,
-    const int group_height, const int group_width, const int part_height,
-    const int part_width, const int num_classes, const int channels_each_class,
-    const int batch_size, int* roi_batch_id_data, const LoDTensor* rois) {
+void DeformablePSROIPoolBackwardAccCPUKernel(const int count,
+                                             const T* top_diff,
+                                             const T* top_count,
+                                             const int num_rois,
+                                             const T spatial_scale,
+                                             const int channels,
+                                             const int height,
+                                             const int width,
+                                             const int pooled_height,
+                                             const int pooled_width,
+                                             const int output_dim,
+                                             T* bottom_data_diff,
+                                             T* bottom_trans_diff,
+                                             const T* bottom_data,
+                                             const T* bottom_rois,
+                                             const T* bottom_trans,
+                                             const bool no_trans,
+                                             const float trans_std,
+                                             const int sample_per_part,
+                                             const int group_height,
+                                             const int group_width,
+                                             const int part_height,
+                                             const int part_width,
+                                             const int num_classes,
+                                             const int channels_each_class,
+                                             const int batch_size,
+                                             int* roi_batch_id_data,
+                                             const LoDTensor* rois) {
   for (int index = 0; index < count; index++) {
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
@@ -480,24 +540,47 @@ class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T> {
     auto rois_lod = rois->lod().back();
     int rois_batch_size = rois_lod.size() - 1;
     int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(num_rois, rois_num_with_lod,
+    PADDLE_ENFORCE_EQ(num_rois,
+                      rois_num_with_lod,
                       platform::errors::InvalidArgument(
                           "The rois_num from input and lod must be same, but"
                           "rois_num from input is:%d, rois_num from lod is:%d.",
-                          num_rois, rois_num_with_lod));
+                          num_rois,
+                          rois_num_with_lod));
     for (int n = 0; n < rois_batch_size; ++n) {
       for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
         roi_batch_id_data[i] = n;
       }
     }
 
-    DeformablePSROIPoolBackwardAccCPUKernel(
-        count, top_diff, top_count_data, num_rois, (T)spatial_scale, channels,
-        height, width, pooled_height, pooled_width, output_dim,
-        bottom_data_diff, bottom_trans_diff, bottom_data, bottom_rois,
-        bottom_trans, no_trans, (T)trans_std, sample_per_part, group_height,
-        group_width, part_height, part_width, num_classes, channels_each_class,
-        batch, roi_batch_id_data, rois);
+    DeformablePSROIPoolBackwardAccCPUKernel(count,
+                                            top_diff,
+                                            top_count_data,
+                                            num_rois,
+                                            (T)spatial_scale,
+                                            channels,
+                                            height,
+                                            width,
+                                            pooled_height,
+                                            pooled_width,
+                                            output_dim,
+                                            bottom_data_diff,
+                                            bottom_trans_diff,
+                                            bottom_data,
+                                            bottom_rois,
+                                            bottom_trans,
+                                            no_trans,
+                                            (T)trans_std,
+                                            sample_per_part,
+                                            group_height,
+                                            group_width,
+                                            part_height,
+                                            part_width,
+                                            num_classes,
+                                            channels_each_class,
+                                            batch,
+                                            roi_batch_id_data,
+                                            rois);
   }
 };
 

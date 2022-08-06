@@ -24,6 +24,7 @@ import numpy as np
 
 
 class ConvBNLayer(fluid.Layer):
+
     def __init__(self,
                  num_channels,
                  num_filters,
@@ -33,18 +34,17 @@ class ConvBNLayer(fluid.Layer):
                  data_format="NCHW"):
         super(ConvBNLayer, self).__init__()
 
-        self._conv = paddle.nn.Conv2D(
-            in_channels=num_channels,
-            out_channels=num_filters,
-            kernel_size=filter_size,
-            stride=stride,
-            padding=(filter_size - 1) // 2,
-            groups=groups,
-            bias_attr=False,
-            data_format=data_format)
+        self._conv = paddle.nn.Conv2D(in_channels=num_channels,
+                                      out_channels=num_filters,
+                                      kernel_size=filter_size,
+                                      stride=stride,
+                                      padding=(filter_size - 1) // 2,
+                                      groups=groups,
+                                      bias_attr=False,
+                                      data_format=data_format)
 
-        self._batch_norm = paddle.nn.BatchNorm(
-            num_filters, data_layout=data_format)
+        self._batch_norm = paddle.nn.BatchNorm(num_filters,
+                                               data_layout=data_format)
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -61,11 +61,10 @@ def create_program(data_format="NCHW"):
         if data_format == "NHWC":
             x = paddle.transpose(x, [0, 2, 3, 1])
         x = fluid.layers.prelu(x, mode="channel")
-        conv = ConvBNLayer(
-            num_channels=3,
-            num_filters=3,
-            filter_size=1,
-            data_format=data_format)
+        conv = ConvBNLayer(num_channels=3,
+                           num_filters=3,
+                           filter_size=1,
+                           data_format=data_format)
         y = conv(x) + x
 
         loss = fluid.layers.reduce_sum(y)
@@ -77,7 +76,9 @@ def create_program(data_format="NCHW"):
 
 
 class TestInplaceAddto(unittest.TestCase):
+
     def check_result(self, data_format="NCHW"):
+
         def run_program(enable_addto):
             np.random.seed(10)
             paddle.seed(10)
@@ -86,8 +87,8 @@ class TestInplaceAddto(unittest.TestCase):
                 fluid.set_flags({"FLAGS_cudnn_deterministic": True})
             fluid.set_flags({"FLAGS_max_inplace_grad_add": 2})
             loss, main, startup, w = create_program(data_format=data_format)
-            place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
+            place = fluid.CUDAPlace(
+                0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
             exe = fluid.Executor(place)
 
             strategy = fluid.BuildStrategy()

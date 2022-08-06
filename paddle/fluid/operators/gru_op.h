@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
@@ -31,7 +32,8 @@ template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
                              framework::Vector<size_t> index_lod,
-                             framework::Tensor* dst, bool indexed_src) {
+                             framework::Tensor* dst,
+                             bool indexed_src) {
   phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
   row_shuffle(ctx, src, index_lod, dst, indexed_src);
@@ -80,12 +82,13 @@ class GRUGradKernel : public framework::OpKernel<T> {
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (h0) {
-      ReorderInitState<DeviceContext, T>(dev_ctx, *h0, order, &ordered_h0,
-                                         true);
+      ReorderInitState<DeviceContext, T>(
+          dev_ctx, *h0, order, &ordered_h0, true);
     }
     if (h0_grad) {
       ordered_h0_grad.mutable_data<T>(h0_grad->dims(), context.GetPlace());
-      zero(context.template device_context<DeviceContext>(), &ordered_h0_grad,
+      zero(context.template device_context<DeviceContext>(),
+           &ordered_h0_grad,
            static_cast<T>(0.0));
     }
 
@@ -145,9 +148,14 @@ class GRUGradKernel : public framework::OpKernel<T> {
         gru_grad.prev_out_grad = hidden_prev_grad_t.data<T>();
       }
       gru_value.output_value = nullptr;
-      phi::funcs::GRUUnitGradFunctor<DeviceContext, T>::compute(
-          dev_ctx, gru_value, gru_grad, frame_size, cur_batch_size, active_node,
-          active_gate, origin_mode);
+      phi::funcs::GRUUnitGradFunctor<DeviceContext, T>::compute(dev_ctx,
+                                                                gru_value,
+                                                                gru_grad,
+                                                                frame_size,
+                                                                cur_batch_size,
+                                                                active_node,
+                                                                active_gate,
+                                                                origin_mode);
     }
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
@@ -161,8 +169,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
       col_sum(dev_ctx, batch_gate_grad, bias_grad);
     }
     if (h0 && h0_grad) {
-      ReorderInitState<DeviceContext, T>(dev_ctx, ordered_h0_grad, order,
-                                         h0_grad, false);
+      ReorderInitState<DeviceContext, T>(
+          dev_ctx, ordered_h0_grad, order, h0_grad, false);
     }
   }
 

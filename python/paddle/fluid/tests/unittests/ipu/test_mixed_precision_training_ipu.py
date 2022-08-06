@@ -21,9 +21,8 @@ import paddle.nn.functional as F
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -32,17 +31,18 @@ class TestBase(IPUOpTest):
         self.set_attrs()
 
     def set_atol(self):
-        self.atol = 2e-6
-        self.rtol = 1e-5
+        super().set_atol()
+        self.atol = 1e-6
+        self.rtol = 1e-3
         self.atol_fp16 = 1e-2
-        self.rtol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-1
 
     def set_training(self):
         self.is_training = True
         self.epoch = 20
 
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 28, 28])
+        data = np.random.uniform(size=[1, 3, 10, 10])
         self.feed_fp32 = {"in_0": data.astype(np.float32)}
 
     def set_feed_attr(self):
@@ -63,8 +63,9 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
 
         # using fp32
         x = paddle.static.nn.conv2d(input=x, num_filters=3, filter_size=3)
@@ -73,7 +74,7 @@ class TestBase(IPUOpTest):
 
         # using fp16
         with paddle.static.amp.fp16_guard():
-            x = paddle.static.nn.conv2d(input=x, num_filters=6, filter_size=3)
+            x = paddle.static.nn.conv2d(input=x, num_filters=3, filter_size=3)
             x = paddle.static.nn.batch_norm(x, act='relu')
             x = F.max_pool2d(x, kernel_size=2, stride=2)
 
@@ -82,9 +83,9 @@ class TestBase(IPUOpTest):
         loss = paddle.mean(x)
 
         # optimizer
-        optimizer = paddle.optimizer.Adam(learning_rate=1e-2)
+        optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
         optimizer.minimize(loss, self.startup_prog)
-        self.fetch_list = [loss.name]
+        self.fetch_list = [x.name]
 
     def run_model(self, exec_mode):
         # cast model to fp16
@@ -119,8 +120,9 @@ class TestBase(IPUOpTest):
                 enable_pipelining=self.enable_pipelining,
                 batches_per_step=self.batches_per_step)
             program = paddle.static.IpuCompiledProgram(
-                self.main_prog, ipu_strategy=ipu_strategy).compile(
-                    self.feed_list, self.fetch_list)
+                self.main_prog,
+                ipu_strategy=ipu_strategy).compile(self.feed_list,
+                                                   self.fetch_list)
         else:
             program = self.main_prog
 
@@ -140,13 +142,15 @@ class TestBase(IPUOpTest):
 
 
 class TestPipline(TestBase):
+
     @IPUOpTest.static_graph
     def build_model(self, exec_mode):
         feed_shape = list(self.feed_shape[0])
         if self.is_ipu_mode(exec_mode):
             feed_shape[0] = 1
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=feed_shape, dtype='float32')
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=feed_shape,
+                               dtype='float32')
 
         with paddle.static.ipu_shard_guard(index=0, stage=0):
             # using fp32
@@ -157,8 +161,9 @@ class TestPipline(TestBase):
         with paddle.static.ipu_shard_guard(index=1, stage=1):
             # using fp16
             with paddle.static.amp.fp16_guard():
-                x = paddle.static.nn.conv2d(
-                    input=x, num_filters=6, filter_size=3)
+                x = paddle.static.nn.conv2d(input=x,
+                                            num_filters=6,
+                                            filter_size=3)
                 x = paddle.static.nn.batch_norm(x, act='relu')
                 x = F.max_pool2d(x, kernel_size=2, stride=2)
 

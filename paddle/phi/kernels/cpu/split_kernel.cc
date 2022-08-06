@@ -17,7 +17,6 @@
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 namespace phi {
@@ -73,5 +72,7 @@ PD_REGISTER_KERNEL(split,
                    int64_t,
                    int,
                    bool,
+                   uint8_t,
+                   int8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

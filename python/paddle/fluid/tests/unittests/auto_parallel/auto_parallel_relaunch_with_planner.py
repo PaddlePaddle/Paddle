@@ -29,12 +29,11 @@ def train():
     loss, train_program, start_program, loader = mlp_pretrain_forward(
         train_program, start_program)
 
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(
-        learning_rate=0.00001,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=1e-08,
-        grad_clip=None)
+    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
+                                                     beta1=0.9,
+                                                     beta2=0.999,
+                                                     epsilon=1e-08,
+                                                     grad_clip=None)
 
     optimizer = fleet.distributed_optimizer(optimizer)
     _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(

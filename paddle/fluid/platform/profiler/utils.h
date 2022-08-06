@@ -14,10 +14,15 @@ limitations under the License. */
 #pragma once
 
 #include <ctime>
+#include <map>
+#include <ostream>
 #include <string>
+#include <vector>
+
 #include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
+#include "paddle/fluid/platform/profiler/trace_event.h"
 
 namespace paddle {
 namespace platform {
@@ -26,12 +31,72 @@ template <typename... Args>
 std::string string_format(const std::string& format, Args... args) {
   int size_s = std::snprintf(nullptr, 0, format.c_str(), args...) +
                1;  // Extra space for '\0'
-  PADDLE_ENFORCE_GE(size_s, 0, platform::errors::Fatal(
-                                   "Error during profiler data formatting."));
+  PADDLE_ENFORCE_GE(
+      size_s,
+      0,
+      platform::errors::Fatal("Error during profiler data formatting."));
   auto size = static_cast<size_t>(size_s);
   auto buf = std::make_unique<char[]>(size);
   std::snprintf(buf.get(), size, format.c_str(), args...);
   return std::string(buf.get(), size - 1);  // exclude the '\0'
+}
+
+template <typename basic_type>
+std::string json_vector(const std::vector<basic_type> type_vector) {
+  std::ostringstream res_stream;
+  auto count = type_vector.size();
+  res_stream << "[";
+  for (auto it = type_vector.begin(); it != type_vector.end(); it++) {
+    if (count > 1) {
+      res_stream << (*it) << ",";
+    } else {
+      res_stream << (*it);
+    }
+    count--;
+  }
+  res_stream << "]";
+  return res_stream.str();
+}
+
+template <typename basic_type>
+std::string json_vector(
+    const std::vector<std::vector<basic_type>> shape_vector) {
+  std::ostringstream res_stream;
+  auto count = shape_vector.size();
+  res_stream << "[";
+  for (auto it = shape_vector.begin(); it != shape_vector.end(); it++) {
+    if (count > 1) {
+      res_stream << json_vector(*it) << ",";
+    } else {
+      res_stream << json_vector(*it);
+    }
+    count--;
+  }
+  res_stream << "]";
+  return res_stream.str();
+}
+
+template <>
+std::string json_vector<std::string>(
+    const std::vector<std::string> type_vector);
+
+template <typename type>
+std::string json_dict(const std::map<std::string, std::vector<type>> data_map) {
+  std::ostringstream res_stream;
+  auto count = data_map.size();
+  res_stream << "{";
+  for (auto it = data_map.begin(); it != data_map.end(); it++) {
+    if (count > 1) {
+      res_stream << "\"" << it->first << "\""
+                 << ":" << json_vector(it->second) << ",";
+    } else {
+      res_stream << "\"" << it->first << "\""
+                 << ":" << json_vector(it->second);
+    }
+    count--;
+  }
+  res_stream << "}";
+  return res_stream.str();
 }
 
 static std::string GetStringFormatLocalTime() {
@@ -48,6 +113,10 @@ static int64_t nsToUs(uint64_t end_ns, uint64_t start_ns = 0) {
   return (end_ns - start_ns) / 1000;
 }
 
+const char* StringTracerMemEventType(TracerMemEventType type);
+
+const char* StringTracerEventType(TracerEventType type);
+
 static float nsToUsFloat(uint64_t end_ns, uint64_t start_ns = 0) {
   return static_cast<float>(end_ns - start_ns) / 1000;
 }
@@ -56,10 +125,25 @@ static float nsToMsFloat(uint64_t end_ns, uint64_t start_ns = 0) {
 }
 
 #ifdef PADDLE_WITH_CUPTI
-float CalculateEstOccupancy(uint32_t deviceId, uint16_t registersPerThread,
+#ifdef PADDLE_WITH_HIP
+float CalculateEstOccupancy(uint32_t DeviceId,
+                            int32_t DynamicSharedMemory,
+                            int32_t BlockX,
+                            int32_t BlockY,
+                            int32_t BlockZ,
+                            void* kernelFunc,
+                            uint8_t launchType);
+#else
+float CalculateEstOccupancy(uint32_t deviceId,
+                            uint16_t registersPerThread,
                             int32_t staticSharedMemory,
-                            int32_t dynamicSharedMemory, int32_t blockX,
-                            int32_t blockY, int32_t blockZ, float blocksPerSm);
-#endif
+                            int32_t dynamicSharedMemory,
+                            int32_t blockX,
+                            int32_t blockY,
+                            int32_t blockZ,
+                            float blocksPerSm);
+#endif  // PADDLE_WITH_HIP
+#endif  // PADDLE_WITH_CUPTI
+
 }  // namespace platform
 }  // namespace paddle

@@ -16,9 +16,9 @@
 
 #include <cmath>
 #include <string>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -272,10 +272,10 @@ void GpuCpuMapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
     bool flag = true;
 
     bool transpose_X =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
     bool transpose_Y =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
-    float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
+    float alpha = PADDLE_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     flag = flag && !transpose_X && !transpose_Y && std::abs(alpha - 1.0) < 1e-5;
 
     std::vector<int64_t> x_shape = matmul_in_x->Var()->GetShape();
@@ -335,20 +335,20 @@ void GpuCpuMapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(3) << "gpu_cpu map matmul_v2 to mul";
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_x, matmul_v2_in_x,
-                              matmul_v2_weight_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_y, matmul_v2_in_y,
-                              matmul_v2_weight_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_op, matmul_v2_op,
-                              matmul_v2_weight_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_out, matmul_v2_out,
-                              matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_x, matmul_v2_in_x, matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_y, matmul_v2_in_y, matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_op, matmul_v2_op, matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_out, matmul_v2_out, matmul_v2_weight_pattern);
 
     bool flag = true;
     bool trans_x =
-        BOOST_GET_CONST(bool, matmul_v2_op->Op()->GetAttr("trans_x"));
+        PADDLE_GET_CONST(bool, matmul_v2_op->Op()->GetAttr("trans_x"));
     bool trans_y =
-        BOOST_GET_CONST(bool, matmul_v2_op->Op()->GetAttr("trans_y"));
+        PADDLE_GET_CONST(bool, matmul_v2_op->Op()->GetAttr("trans_y"));
     flag = flag && !trans_x && !trans_y;
 
     std::vector<int64_t> x_shape = matmul_v2_in_x->Var()->GetShape();
@@ -408,10 +408,10 @@ void GpuCpuMapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "gpu_cpu map matmul_v2 to matmul";
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_x, matmul_v2_in_x,
-                              matmul_v2_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_y, matmul_v2_in_y,
-                              matmul_v2_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_x, matmul_v2_in_x, matmul_v2_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_y, matmul_v2_in_y, matmul_v2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_op, matmul_v2_op, matmul_v2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_out, matmul_v2_out, matmul_v2_pattern);
     if (!IsCompat(subgraph, g)) {
@@ -494,16 +494,16 @@ void GpuCpuSqueeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
 
     size_t squeeze2_in_x_rank = (squeeze2_in_x->Var()->GetShape()).size();
     std::vector<int> squeeze2_op_axes =
-        BOOST_GET_CONST(std::vector<int>, squeeze2_op->Op()->GetAttr("axes"));
+        PADDLE_GET_CONST(std::vector<int>, squeeze2_op->Op()->GetAttr("axes"));
     flag = flag && squeeze2_in_x_rank == 4 &&
            squeeze2_op_axes == std::vector<int>{2, 3} &&
            (matmul_in_x->outputs).size() == 1;
 
     bool transpose_X =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
     bool transpose_Y =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
-    float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
+    float alpha = PADDLE_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     size_t matmul_in_x_rank = (matmul_in_x->Var()->GetShape()).size();
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
     flag = flag && !transpose_X && !transpose_Y &&
@@ -638,16 +638,16 @@ void GpuCpuReshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     auto reshape2_in_x_shape = reshape2_in_x->Var()->GetShape();
     size_t reshape2_in_x_rank = reshape2_in_x_shape.size();
     std::vector<int> reshape2_op_shape =
-        BOOST_GET_CONST(std::vector<int>, reshape2_op->Op()->GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int>, reshape2_op->Op()->GetAttr("shape"));
     flag = flag && reshape2_in_nums == 1 && reshape2_in_x_rank == 4 &&
            reshape2_in_x_shape[2] == 1 && reshape2_in_x_shape[3] == 1 &&
            reshape2_op_shape.size() == 2 && (matmul_in_x->outputs).size() == 1;
 
     bool transpose_X =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
     bool transpose_Y =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
-    float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
+    float alpha = PADDLE_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     size_t matmul_in_x_rank = (matmul_in_x->Var()->GetShape()).size();
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
     flag = flag && !transpose_X && !transpose_Y &&
@@ -720,7 +720,7 @@ void GpuCpuFlatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     auto flatten2_in_x_shape = flatten2_in_x->Var()->GetShape();
     size_t flatten2_in_x_rank = flatten2_in_x_shape.size();
     int flatten2_axis =
-        BOOST_GET_CONST(int, flatten2_op->Op()->GetAttr("axis"));
+        PADDLE_GET_CONST(int, flatten2_op->Op()->GetAttr("axis"));
     // only convert matmul to mul when the flatten2 has a single input
     // and the rank of input is 4 and the size of the output of matmul
     // is 1.
@@ -729,10 +729,10 @@ void GpuCpuFlatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
                     (matmul_in_x->outputs).size() == 1;
 
     bool transpose_X =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
     bool transpose_Y =
-        BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
-    float alpha = BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+        PADDLE_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_Y"));
+    float alpha = PADDLE_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     size_t matmul_in_x_rank = (matmul_in_x->Var()->GetShape()).size();
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
     pattern_found = pattern_found && !transpose_X && !transpose_Y &&

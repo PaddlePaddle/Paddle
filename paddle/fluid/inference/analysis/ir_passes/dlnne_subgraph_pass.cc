@@ -11,19 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <algorithm>
-#include <map>
-#include <set>
+#include "paddle/fluid/inference/analysis/ir_passes/dlnne_subgraph_pass.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <set>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/ir_passes/dlnne_reg_py.h"
-#include "paddle/fluid/inference/analysis/ir_passes/dlnne_subgraph_pass.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -52,18 +52,39 @@ using framework::ir::Node;
 
 void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
   static std::unordered_set<std::string> teller_set{
-      "mul", "matmul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
-      "hard_swish", "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
-      "elementwise_add", "elementwise_mul", "dropout", "prelu",
-      "conv2d_transpose", "leaky_relu",
+      "mul",
+      "matmul",
+      "conv2d",
+      "pool2d",
+      "relu",
+      "softmax",
+      "sigmoid",
+      "hard_swish",
+      "depthwise_conv2d",
+      "batch_norm",
+      "concat",
+      "tanh",
+      "pad",
+      "elementwise_add",
+      "elementwise_mul",
+      "dropout",
+      "prelu",
+      "conv2d_transpose",
+      "leaky_relu",
       // "fc",
-      "shuffle_channel", "swish", "split",
+      "shuffle_channel",
+      "swish",
+      "split",
       // "instance_norm",
       "gelu",
       // "layer_norm",
       // "scale",
       // "stack",
-      "relu6", "reshape2", "transpose2", "concat", "slice",
+      "relu6",
+      "reshape2",
+      "transpose2",
+      "concat",
+      "slice",
   };
 
   framework::ir::FusePassBase::Init("dlnne_subgraph_pass", graph);
@@ -74,7 +95,9 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
   };
 
   framework::ir::SubGraphFuser fuser(
-      graph, teller, Get<int>("min_subgraph_size") /*min subgraph size*/,
+      graph,
+      teller,
+      Get<int>("min_subgraph_size") /*min subgraph size*/,
       "dlnne_engine");
   fuser();
 
@@ -118,7 +141,8 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
   return engine_key;
 }
-std::string replace_name(std::string name, const char *raw,
+std::string replace_name(std::string name,
+                         const char *raw,
                          const char *new_char) {
   std::string r_name = name;
   int pos = r_name.find(raw);
@@ -130,12 +154,14 @@ std::string replace_name(std::string name, const char *raw,
 }
 
 void DlnneSubgraphPass::CreateDlnneOp(
-    framework::ir::Node *node, framework::ir::Graph *graph,
+    framework::ir::Node *node,
+    framework::ir::Graph *graph,
     const std::vector<std::string> &graph_params,
     std::vector<std::string> *repetitive_params) const {
   auto *op_desc = node->Op();
   auto &subgraph = *framework::ir::Agent(node).subgraph();
-  PADDLE_ENFORCE_EQ(subgraph.empty(), false,
+  PADDLE_ENFORCE_EQ(subgraph.empty(),
+                    false,
                     platform::errors::PreconditionNotMet(
                         "The subgraph should not be empty."));
 
@@ -167,14 +193,14 @@ void DlnneSubgraphPass::CreateDlnneOp(
       op_desc.CopyFrom(*node->Op());
 
       for (auto argument_name : op_desc.InputArgumentNames()) {
-        if (std::count(graph_params.begin(), graph_params.end(),
-                       argument_name) > 0) {
+        if (std::count(
+                graph_params.begin(), graph_params.end(), argument_name) > 0) {
           op_desc.Rename(argument_name, replace_name(argument_name, "/", "."));
         }
       }
       for (auto argument_name : op_desc.OutputArgumentNames()) {
-        if (std::count(graph_params.begin(), graph_params.end(),
-                       argument_name) > 0) {
+        if (std::count(
+                graph_params.begin(), graph_params.end(), argument_name) > 0) {
           op_desc.Rename(argument_name, replace_name(argument_name, "/", "."));
         }
       }
@@ -252,15 +278,17 @@ void DlnneSubgraphPass::CreateDlnneOp(
 
   // Set attrs
   op_desc->SetType("dlnne_engine");
-  op_desc->SetInput("Xs", std::vector<std::string>(valid_input_names.begin(),
-                                                   valid_input_names.end()));
+  op_desc->SetInput("Xs",
+                    std::vector<std::string>(valid_input_names.begin(),
+                                             valid_input_names.end()));
 
-  op_desc->SetOutput("Ys", std::vector<std::string>(valid_output_names.begin(),
-                                                    valid_output_names.end()));
+  op_desc->SetOutput("Ys",
+                     std::vector<std::string>(valid_output_names.begin(),
+                                              valid_output_names.end()));
 
   op_desc->SetAttr("parameters", params);
-  auto engine_key = GenerateEngineKey(input_names_with_id, output_names_with_id,
-                                      std::to_string(0));
+  auto engine_key = GenerateEngineKey(
+      input_names_with_id, output_names_with_id, std::to_string(0));
   op_desc->SetAttr("engine_key", engine_key);
   auto *scope = param_scope();
 

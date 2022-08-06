@@ -58,8 +58,8 @@ class TestBackward(unittest.TestCase):
     """
 
     def _check_all(self, net):
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
 
         main = fluid.Program()
@@ -113,8 +113,8 @@ class TestBackward(unittest.TestCase):
             block_no_grad_set = None
         else:
             block_no_grad_set = set(
-                map(fluid.backward._strip_grad_suffix_, no_grad_dict[
-                    self.global_block_idx]))
+                map(fluid.backward._strip_grad_suffix_,
+                    no_grad_dict[self.global_block_idx]))
         op_path = fluid.backward._find_op_path_(root_block, outputs, inputs,
                                                 block_no_grad_set)
         op_types = [op.type for op in op_path]
@@ -131,8 +131,8 @@ class TestBackward(unittest.TestCase):
         return no_grad_vars
 
     def _check_error_param_list(self, net, parameter_list):
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
 
         main = fluid.Program()
@@ -146,8 +146,8 @@ class TestBackward(unittest.TestCase):
             exe.run(feed=net.init_data())
 
     def _check_error_no_grad_set(self, net, no_grad_set):
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
 
         main = fluid.Program()
@@ -162,6 +162,7 @@ class TestBackward(unittest.TestCase):
 
 
 class SimpleNet(BackwardNet):
+
     def __init__(self):
         super(SimpleNet, self).__init__()
         self.stop_gradient_grad_vars = set([
@@ -179,7 +180,7 @@ class SimpleNet(BackwardNet):
             u'softmax',  # fc
             u'elementwise_sub',
             u'square',
-            u'mean'
+            u'reduce_mean'
         ]  # loss
         self.shape = [16, 50]
 
@@ -201,20 +202,25 @@ class SimpleNet(BackwardNet):
         x = fluid.data(name='x_no_grad', shape=self.shape, dtype='int64')
         x2 = fluid.data(name='x2_no_grad', shape=self.shape, dtype='int64')
         x3 = fluid.data(name='x3_no_grad', shape=self.shape, dtype='int64')
-        label = fluid.data(
-            name='label_no_grad', shape=[self.shape[0], 1], dtype='float32')
+        label = fluid.data(name='label_no_grad',
+                           shape=[self.shape[0], 1],
+                           dtype='float32')
         # shared layer, the grad of 'w2v' will be summed and renamed.
         # To test  _addup_repetitive_outputs_
-        x_emb = fluid.embedding(
-            x, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v'))
-        x2_emb = fluid.embedding(
-            x2, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v'))
-        x3_emb = fluid.embedding(
-            x3, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v'))
+        x_emb = fluid.embedding(x,
+                                size=[100, 64],
+                                param_attr=fluid.ParamAttr(name='w2v'))
+        x2_emb = fluid.embedding(x2,
+                                 size=[100, 64],
+                                 param_attr=fluid.ParamAttr(name='w2v'))
+        x3_emb = fluid.embedding(x3,
+                                 size=[100, 64],
+                                 param_attr=fluid.ParamAttr(name='w2v'))
         # merge layers
         x_merge = fluid.layers.elementwise_add(x_emb, x2_emb, name='x_add_x2')
-        x2_merge = fluid.layers.elementwise_add(
-            x2_emb, x3_emb, name='x2_add_x3')
+        x2_merge = fluid.layers.elementwise_add(x2_emb,
+                                                x3_emb,
+                                                name='x2_add_x3')
         # shared fc_w
         predict = fluid.layers.fc(input=x_merge,
                                   size=1,
@@ -229,12 +235,13 @@ class SimpleNet(BackwardNet):
                                     name='fc_no_use')
         # loss
         cost = fluid.layers.square_error_cost(input=predict, label=label)
-        loss = fluid.layers.mean(cost, name='mean_loss')
+        loss = paddle.mean(cost, name='mean_loss')
 
         return loss
 
 
 class TestSimpleNet(TestBackward):
+
     def test_backward(self):
         """
         Instantiate each NetClass to test backward.
@@ -245,6 +252,7 @@ class TestSimpleNet(TestBackward):
 
 
 class TestGradientsError(unittest.TestCase):
+
     def test_error(self):
         x = fluid.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
         x.stop_gradient = False
@@ -265,6 +273,7 @@ class TestGradientsError(unittest.TestCase):
 
 
 class TestSimpleNetWithErrorParamList(TestBackward):
+
     def test_parameter_list_type_error(self):
         self.global_block_idx = 0
         self.net = SimpleNet()
@@ -278,6 +287,7 @@ class TestSimpleNetWithErrorParamList(TestBackward):
 
 
 class TestSimpleNetWithErrorNoGradSet(TestBackward):
+
     def test_no_grad_set_type_error(self):
         self.global_block_idx = 0
         self.net = SimpleNet()
@@ -291,13 +301,14 @@ class TestSimpleNetWithErrorNoGradSet(TestBackward):
 
 
 class TestAppendBackwardWithError(unittest.TestCase):
+
     def build_net(self):
         x = fluid.data(name='x', shape=[None, 13], dtype='int64')
         y = fluid.data(name='y', shape=[None, 1], dtype='float32')
         x_emb = fluid.embedding(x, size=[100, 256])
         y_predict = fluid.layers.fc(input=x_emb, size=1, name='my_fc')
         loss = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         param_names = [
             param.name
             for param in fluid.default_main_program().block(0).all_parameters()
@@ -317,8 +328,8 @@ class TestAppendBackwardWithError(unittest.TestCase):
     def test_parameter_list_type_error(self):
         with self.assertRaises(TypeError):
             self.param_names[0] = np.random.random([10])
-            fluid.backward.append_backward(
-                loss=self.avg_loss, parameter_list=self.param_names)
+            fluid.backward.append_backward(loss=self.avg_loss,
+                                           parameter_list=self.param_names)
 
     def test_callback_type_error(self):
         with self.assertRaises(TypeError):
@@ -326,11 +337,12 @@ class TestAppendBackwardWithError(unittest.TestCase):
             def callback(block, context):
                 return
 
-            fluid.backward.append_backward(
-                loss=self.avg_loss, callbacks=callback)
+            fluid.backward.append_backward(loss=self.avg_loss,
+                                           callbacks=callback)
 
 
 class TestGradientsWithOptimizer(unittest.TestCase):
+
     def _check_grad_op_name(self, forward_list, optimiezed_list):
         backward_list = [op + "_grad" for op in reversed(forward_list)]
         idx = optimiezed_list.index(backward_list[0], len(backward_list))
@@ -361,6 +373,7 @@ class TestGradientsWithOptimizer(unittest.TestCase):
 
 # TODO(Aurelius84): add conditional network test
 class ConditionalNet(BackwardNet):
+
     def __init__(self):
         super(ConditionalNet, self).__init__()
 

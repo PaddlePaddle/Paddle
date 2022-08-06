@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import sys
+
 sys.path.append("..")
 
 from test_softmax_op import stable_softmax
@@ -47,6 +48,7 @@ def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
 
 
 class XPUTestSoftmaxWithCrossEntropyOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'softmax_with_cross_entropy'
         self.use_dynamic_create_class = True
@@ -60,16 +62,21 @@ class XPUTestSoftmaxWithCrossEntropyOp(XPUOpTestWrapper):
             for numeric_stable_mode in [True, False]:
                 for shape in shapes:
                     for logits_type in [0, 1, 2]:
-                        class_name = 'XPUTestSoftmaxWithCrossEntropy_' + \
-                               str(soft_label) + "_" + \
-                               str(numeric_stable_mode) + "_" + \
-                               str(shape) + "_" + \
-                               str(logits_type)
-                        attr_dict = {'soft_label': soft_label, \
-                                     'numeric_stable_mode': numeric_stable_mode, \
-                                     'shape': shape, \
-                                     'logits_type': logits_type}
-                        classes.append([class_name, attr_dict])
+                        for axis in range(len(shape)):
+                            if (not numeric_stable_mode):
+                                axis = -1
+                            class_name = 'XPUTestSoftmaxWithCrossEntropy_' + \
+                                   str(soft_label) + "_" + \
+                                   str(numeric_stable_mode) + "_" + \
+                                   str(shape) + "_" + \
+                                   str(logits_type) + "_" + \
+                                   str(axis)
+                            attr_dict = {'soft_label': soft_label, \
+                                         'numeric_stable_mode': numeric_stable_mode, \
+                                         'shape': shape, \
+                                         'logits_type': logits_type,
+                                         'axis': axis}
+                            classes.append([class_name, attr_dict])
         return base_class, classes
 
     class TestSoftmaxWithCrossEntropyOp(XPUOpTest):
@@ -81,7 +88,6 @@ class XPUTestSoftmaxWithCrossEntropyOp(XPUOpTestWrapper):
             self.op_type = "softmax_with_cross_entropy"
             self.use_xpu = True
             self.dtype = np.float32
-            self.axis = -1
             self.ignore_index = -1
 
             if not hasattr(self, 'shape'):
@@ -89,6 +95,7 @@ class XPUTestSoftmaxWithCrossEntropyOp(XPUOpTestWrapper):
                 self.numeric_stable_mode = True
                 self.logits_type = 0
                 self.soft_label = True
+                self.axis = -1
             logits = getattr(
                 self, "logits",
                 np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype))
@@ -106,8 +113,10 @@ class XPUTestSoftmaxWithCrossEntropyOp(XPUOpTestWrapper):
             else:
                 axis_dim = self.shape[self.axis]
                 self.shape[self.axis] = 1
-                labels = np.random.randint(
-                    0, axis_dim, self.shape, dtype="int64")
+                labels = np.random.randint(0,
+                                           axis_dim,
+                                           self.shape,
+                                           dtype="int64")
 
             loss = cross_entropy(softmax, labels, self.soft_label, self.axis,
                                  self.ignore_index)
@@ -136,8 +145,9 @@ class XPUTestSoftmaxWithCrossEntropyOp(XPUOpTestWrapper):
             if paddle.is_compiled_with_xpu():
                 paddle.enable_static()
                 place = paddle.XPUPlace(0)
-                self.check_grad_with_place(
-                    place, ["Logits"], "Loss", max_relative_error=0.2)
+                self.check_grad_with_place(place, ["Logits"],
+                                           "Loss",
+                                           max_relative_error=0.2)
 
 
 support_types = get_xpu_op_support_types('softmax_with_cross_entropy')

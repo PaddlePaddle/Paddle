@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 
 import paddle
@@ -28,10 +29,12 @@ paddle.enable_static()
 
 
 class XPUTestReduceMaxOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'reduce_max'
 
     class XPUTestReduceMaxBase(XPUOpTest):
+
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_case()
@@ -49,8 +52,9 @@ class XPUTestReduceMaxOp(XPUOpTestWrapper):
                 self.outputs = {'Out': self.inputs['X'].max()}
             else:
                 self.outputs = {
-                    'Out': self.inputs['X'].max(axis=self.axis,
-                                                keepdims=self.attrs['keep_dim'])
+                    'Out':
+                    self.inputs['X'].max(axis=self.axis,
+                                         keepdims=self.attrs['keep_dim'])
                 }
 
         def init_case(self):
@@ -66,6 +70,7 @@ class XPUTestReduceMaxOp(XPUOpTestWrapper):
             pass
 
     class XPUTestReduceMaxCase1(XPUTestReduceMaxBase):
+
         def init_case(self):
             self.shape = (5, 6, 10)
             self.axis = (0, )

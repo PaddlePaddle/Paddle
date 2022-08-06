@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "boost/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -194,7 +193,8 @@ struct BuildStrategy {
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  ir::Graph *Apply(ir::Graph *graph, const std::vector<platform::Place> &places,
+  ir::Graph *Apply(ir::Graph *graph,
+                   const std::vector<platform::Place> &places,
                    const std::string &loss_var_name,
                    const std::vector<Scope *> &local_scopes,
                    const size_t &nranks,

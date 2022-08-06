@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/mlu/cnpapi_data_process.h"
+
 #include <cstdio>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
 
@@ -32,7 +34,8 @@ inline uint64_t GetTimeGap() {
   return time_gap;
 }
 
-void AddKernelRecord(const cnpapiActivityKernel* kernel, uint64_t start_ns,
+void AddKernelRecord(const cnpapiActivityKernel* kernel,
+                     uint64_t start_ns,
                      TraceEventCollector* collector) {
   static uint64_t time_gap = GetTimeGap();
   if (kernel->start + time_gap < start_ns) {
@@ -77,7 +80,8 @@ const char* MemcpyKind(cnpapiActivityMemcpyType kind) {
   return "MEMCPY";
 }
 
-void AddMemcpyRecord(const cnpapiActivityMemcpy* memcpy, uint64_t start_ns,
+void AddMemcpyRecord(const cnpapiActivityMemcpy* memcpy,
+                     uint64_t start_ns,
                      TraceEventCollector* collector) {
   static uint64_t time_gap = GetTimeGap();
   if (memcpy->start + time_gap < start_ns) {
@@ -93,13 +97,16 @@ void AddMemcpyRecord(const cnpapiActivityMemcpy* memcpy, uint64_t start_ns,
   event.stream_id = memcpy->queue_id;
   event.correlation_id = memcpy->correlation_id;
   event.memcpy_info.num_bytes = memcpy->bytes;
-  snprintf(event.memcpy_info.copy_kind, kMemKindMaxLen, "%s",
+  snprintf(event.memcpy_info.copy_kind,
+           kMemKindMaxLen,
+           "%s",
            MemcpyKind(memcpy->copy_type));
   collector->AddDeviceEvent(std::move(event));
 }
 
 void AddMemcpy2Record(const cnpapiActivityMemcpyPtoP* memcpy2,
-                      uint64_t start_ns, TraceEventCollector* collector) {
+                      uint64_t start_ns,
+                      TraceEventCollector* collector) {
   static uint64_t time_gap = GetTimeGap();
   if (memcpy2->start + time_gap < start_ns) {
     return;
@@ -114,12 +121,15 @@ void AddMemcpy2Record(const cnpapiActivityMemcpyPtoP* memcpy2,
   event.stream_id = memcpy2->queue_id;
   event.correlation_id = memcpy2->correlation_id;
   event.memcpy_info.num_bytes = memcpy2->bytes;
-  snprintf(event.memcpy_info.copy_kind, kMemKindMaxLen, "%s",
+  snprintf(event.memcpy_info.copy_kind,
+           kMemKindMaxLen,
+           "%s",
            MemcpyKind(memcpy2->copy_type));
   collector->AddDeviceEvent(std::move(event));
 }
 
-void AddMemsetRecord(const cnpapiActivityMemset* memset, uint64_t start_ns,
+void AddMemsetRecord(const cnpapiActivityMemset* memset,
+                     uint64_t start_ns,
                      TraceEventCollector* collector) {
   static uint64_t time_gap = GetTimeGap();
   if (memset->start + time_gap < start_ns) {
@@ -206,7 +216,8 @@ CnpapiRuntimeCbidStr::CnpapiRuntimeCbidStr() {
 #undef REGISTER_RUNTIME_CBID_STR
 }
 
-void AddApiRecord(const cnpapiActivityAPI* api, uint64_t start_ns,
+void AddApiRecord(const cnpapiActivityAPI* api,
+                  uint64_t start_ns,
                   TraceEventCollector* collector) {
   static uint64_t time_gap = GetTimeGap();
   if (api->start + time_gap < start_ns) {
@@ -234,23 +245,28 @@ void ProcessCnpapiActivityRecord(const cnpapiActivity* record,
   switch (record->type) {
     case CNPAPI_ACTIVITY_TYPE_KERNEL:
       AddKernelRecord(reinterpret_cast<const cnpapiActivityKernel*>(record),
-                      start_ns, collector);
+                      start_ns,
+                      collector);
       break;
     case CNPAPI_ACTIVITY_TYPE_MEMCPY:
       AddMemcpyRecord(reinterpret_cast<const cnpapiActivityMemcpy*>(record),
-                      start_ns, collector);
+                      start_ns,
+                      collector);
       break;
     case CNPAPI_ACTIVITY_TYPE_MEMCPY_PTOP:
       AddMemcpy2Record(
-          reinterpret_cast<const cnpapiActivityMemcpyPtoP*>(record), start_ns,
+          reinterpret_cast<const cnpapiActivityMemcpyPtoP*>(record),
+          start_ns,
           collector);
       break;
     case CNPAPI_ACTIVITY_TYPE_MEMSET:
       AddMemsetRecord(reinterpret_cast<const cnpapiActivityMemset*>(record),
-                      start_ns, collector);
+                      start_ns,
+                      collector);
       break;
     case CNPAPI_ACTIVITY_TYPE_CNDRV_API:
-      AddApiRecord(reinterpret_cast<const cnpapiActivityAPI*>(record), start_ns,
+      AddApiRecord(reinterpret_cast<const cnpapiActivityAPI*>(record),
+                   start_ns,
                    collector);
       break;
     default:

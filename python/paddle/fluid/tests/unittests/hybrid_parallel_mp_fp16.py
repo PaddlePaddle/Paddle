@@ -23,19 +23,20 @@ import unittest
 
 
 class TestMPFP16(TestDistMPTraning):
+
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(1.0)
-        scheduler = paddle.optimizer.lr.ExponentialDecay(
-            learning_rate=0.001, gamma=0.999, verbose=True)
+        scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=0.001,
+                                                         gamma=0.999,
+                                                         verbose=True)
         optimizer = paddle.optimizer.SGD(scheduler,
                                          grad_clip=grad_clip,
                                          parameters=model.parameters())
 
-        model, optimizer = paddle.amp.decorate(
-            models=model,
-            optimizers=optimizer,
-            level='O2',
-            save_dtype='float32')
+        model, optimizer = paddle.amp.decorate(models=model,
+                                               optimizers=optimizer,
+                                               level='O2',
+                                               save_dtype='float32')
 
         return optimizer
 

@@ -24,6 +24,7 @@
 #endif
 
 #include <string>
+
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -34,11 +35,12 @@ namespace allocation {
 bool CUDAAllocator::IsAllocThreadSafe() const { return true; }
 void CUDAAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
-      allocation->place(), place_,
+      allocation->place(),
+      place_,
       platform::errors::PermissionDenied(
           "GPU memory is freed in incorrect device. This may be a bug"));
-  platform::RecordedGpuFree(allocation->ptr(), allocation->size(),
-                            place_.device);
+  platform::RecordedGpuFree(
+      allocation->ptr(), allocation->size(), place_.device);
   delete allocation;
 }
 
@@ -64,7 +66,8 @@ phi::Allocation* CUDAAllocator::AllocateImpl(size_t size) {
         "value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the maximum "
         "GPU memory usage is limited to %d MB.\n"
         "   The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
-        limit_size, limit_size);
+        limit_size,
+        limit_size);
   }
 
   std::string managed_memory_msg;
@@ -82,9 +85,14 @@ phi::Allocation* CUDAAllocator::AllocateImpl(size_t size) {
       "Please check whether there is any other process using GPU %d.\n"
       "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
       "2. If no, please decrease the batch size of your model. %s\n%s\n",
-      place_.device, string::HumanReadableSize(size), place_.device,
-      string::HumanReadableSize(allocated), string::HumanReadableSize(avail),
-      place_.device, err_msg, managed_memory_msg));
+      place_.device,
+      string::HumanReadableSize(size),
+      place_.device,
+      string::HumanReadableSize(allocated),
+      string::HumanReadableSize(avail),
+      place_.device,
+      err_msg,
+      managed_memory_msg));
 }
 
 }  // namespace allocation

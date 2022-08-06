@@ -42,7 +42,9 @@ static void InitRandom(framework::Tensor *tensor,
 
 template <typename T>
 struct LeakyReluGradGradEachElementFunctor {
-  LeakyReluGradGradEachElementFunctor(const T *ddx, const T *x, T alpha,
+  LeakyReluGradGradEachElementFunctor(const T *ddx,
+                                      const T *x,
+                                      T alpha,
                                       T *ddout)
       : ddx_(ddx), x_(x), alpha_(alpha), ddout_(ddout) {}
 
@@ -85,25 +87,24 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
 
   framework::Tensor ddout_actual;
   ddout_actual.mutable_data<T>(dim, place);
-  LeakyReluGradGradEachElementFunctor<T> actual_functor(
-      ddx.data<T>(), x.data<T>(), static_cast<T>(alpha),
-      ddout_actual.data<T>());
+  LeakyReluGradGradEachElementFunctor<T> actual_functor(ddx.data<T>(),
+                                                        x.data<T>(),
+                                                        static_cast<T>(alpha),
+                                                        ddout_actual.data<T>());
 
   int64_t limit = x.numel();
 
 #if defined(__NVCC__) || defined(__HIPCC__)
   if (platform::is_gpu_place(place)) {
-    auto &cuda_dev_ctx = dynamic_cast<platform::CUDADeviceContext &>(dev_ctx);
+    auto &cuda_dev_ctx = dynamic_cast<phi::GPUContext &>(dev_ctx);
     functor(cuda_dev_ctx, &x, out, &ddx, &ddout, dout, dx);
-    platform::ForRange<platform::CUDADeviceContext> for_range(cuda_dev_ctx,
-                                                              limit);
+    platform::ForRange<phi::GPUContext> for_range(cuda_dev_ctx, limit);
     for_range(actual_functor);
   } else {
 #endif
-    auto &cpu_dev_ctx = dynamic_cast<platform::CPUDeviceContext &>(dev_ctx);
+    auto &cpu_dev_ctx = dynamic_cast<phi::CPUContext &>(dev_ctx);
     functor(cpu_dev_ctx, &x, out, &ddx, &ddout, dout, dx);
-    platform::ForRange<platform::CPUDeviceContext> for_range(cpu_dev_ctx,
-                                                             limit);
+    platform::ForRange<phi::CPUContext> for_range(cpu_dev_ctx, limit);
     for_range(actual_functor);
 #if defined(__NVCC__) || defined(__HIPCC__)
   }
@@ -113,10 +114,11 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
 
   framework::Tensor ddout_cpu, ddout_actual_cpu;
   framework::TensorCopySync(ddout, platform::CPUPlace(), &ddout_cpu);
-  framework::TensorCopySync(ddout_actual, platform::CPUPlace(),
-                            &ddout_actual_cpu);
+  framework::TensorCopySync(
+      ddout_actual, platform::CPUPlace(), &ddout_actual_cpu);
 
-  bool is_equal = std::equal(ddout_cpu.data<T>(), ddout_cpu.data<T>() + limit,
+  bool is_equal = std::equal(ddout_cpu.data<T>(),
+                             ddout_cpu.data<T>() + limit,
                              ddout_actual_cpu.data<T>());
   return is_equal;
 }

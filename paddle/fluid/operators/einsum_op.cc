@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -33,6 +34,17 @@ class EinsumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Operands", "(TensorList), The input tensor of einsum op.")
         .AsDuplicable();
     AddOutput("Out", "(Tensor), The output tensor of einsum op.");
+    AddOutput(
+        "InnerCache",
+        "(Tensor), The cache of the forward transpose tensors: tA and tB.")
+        .AsDuplicable()
+        .AsExtra()
+        .AsIntermediate();
+
+    AddOutput("XShape", "(Tensor), The cache of the x_shape of: A and B.")
+        .AsDuplicable()
+        .AsExtra()
+        .AsIntermediate();
     AddAttr<std::string>("equation",
                          "(string) A einsum equation. such as `ij,jk->ik`"
                          "There must have `->` and the number of operands in "
@@ -51,8 +63,8 @@ class EinsumGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto x_name = "Operands";
     auto x_grad_name = framework::GradVarName(x_name);
-    ctx->SetOutputsDim(x_grad_name, ctx->GetInputsDim(x_name));
-    ctx->ShareAllLoD(x_name, x_grad_name);
+    ctx->SetOutputsDim(x_grad_name, ctx->GetInputsDim("Operands"));
+    ctx->ShareAllLoD("Operands", x_grad_name);
   }
 
  protected:
@@ -71,7 +83,15 @@ class EinsumGradMaker : public framework::SingleGradOpMaker<T> {
 
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("einsum_grad");
-    retv->SetInput("Operands", this->Input("Operands"));
+    if (this->HasOutput("InnerCache")) {
+      retv->SetInput("InnerCache", this->Output("InnerCache"));
+    }
+    if (this->HasOutput("XShape")) {
+      // add if for compatibility.
+      retv->SetInput("Operands", this->Output("XShape"));  // for memory save.
+    } else {
+      retv->SetInput("Operands", this->Input("Operands"));
+    }
     retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     retv->SetAttrMap(this->Attrs());
     retv->SetOutput(framework::GradVarName("Operands"),
@@ -84,10 +104,13 @@ class EinsumGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(einsum, EinsumInferShapeFunctor,
-                            PD_INFER_META(phi::EinsumInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(einsum,
+                            EinsumInferShapeFunctor,
+                            PD_INFER_META(phi::EinsumRawInferMeta));
 
-REGISTER_OPERATOR(einsum, ops::EinsumOp, ops::EinsumOpMaker,
+REGISTER_OPERATOR(einsum,
+                  ops::EinsumOp,
+                  ops::EinsumOpMaker,
                   EinsumInferShapeFunctor,
                   ops::EinsumGradMaker<paddle::framework::OpDesc>,
                   ops::EinsumGradMaker<paddle::imperative::OpBase>);

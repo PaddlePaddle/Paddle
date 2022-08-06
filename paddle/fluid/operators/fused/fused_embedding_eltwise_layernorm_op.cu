@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include <paddle/fluid/platform/device_context.h>
+
 #include <algorithm>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
@@ -57,15 +59,27 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
       in2s.push_back(reinterpret_cast<uintptr_t>(embs[i]->data<T>()));
     }
 #ifdef PADDLE_WITH_HIP
-    hipMemcpyAsync(in_ids_d, in1s.data(), sizeof(int64_t) * input_num,
-                   hipMemcpyHostToDevice, device_ctx.stream());
-    hipMemcpyAsync(in_embs_d, in2s.data(), sizeof(int64_t) * input_num,
-                   hipMemcpyHostToDevice, device_ctx.stream());
+    hipMemcpyAsync(in_ids_d,
+                   in1s.data(),
+                   sizeof(int64_t) * input_num,
+                   hipMemcpyHostToDevice,
+                   device_ctx.stream());
+    hipMemcpyAsync(in_embs_d,
+                   in2s.data(),
+                   sizeof(int64_t) * input_num,
+                   hipMemcpyHostToDevice,
+                   device_ctx.stream());
 #else
-    cudaMemcpyAsync(in_ids_d, in1s.data(), sizeof(int64_t) * input_num,
-                    cudaMemcpyHostToDevice, device_ctx.stream());
-    cudaMemcpyAsync(in_embs_d, in2s.data(), sizeof(int64_t) * input_num,
-                    cudaMemcpyHostToDevice, device_ctx.stream());
+    cudaMemcpyAsync(in_ids_d,
+                    in1s.data(),
+                    sizeof(int64_t) * input_num,
+                    cudaMemcpyHostToDevice,
+                    device_ctx.stream());
+    cudaMemcpyAsync(in_embs_d,
+                    in2s.data(),
+                    sizeof(int64_t) * input_num,
+                    cudaMemcpyHostToDevice,
+                    device_ctx.stream());
 #endif
 
     auto *bias = context.Input<framework::Tensor>("Bias");
@@ -87,8 +101,16 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
 
     int shared_bytes = input_num * sizeof(int64_t);
     math::EmbEltwiseLayerNormFunctor<T> emb_eltwise_layernorm_func;
-    emb_eltwise_layernorm_func(batch, seq_len, hidden, in_ids_d, scale_d,
-                               bias_d, in_embs_d, output_d, eps, input_num,
+    emb_eltwise_layernorm_func(batch,
+                               seq_len,
+                               hidden,
+                               in_ids_d,
+                               scale_d,
+                               bias_d,
+                               in_embs_d,
+                               output_d,
+                               eps,
+                               input_num,
                                device_ctx.stream());
   }
 };
@@ -97,6 +119,6 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(fused_embedding_eltwise_layernorm,
-                        ops::EmbeddingEltWiseLayerNormKernel<
-                            paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    fused_embedding_eltwise_layernorm,
+    ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext, float>);

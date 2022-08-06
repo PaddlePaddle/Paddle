@@ -1,11 +1,11 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -470,7 +470,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'cipher_utils_test',
     'test_program_code',
     'test_save_model_without_var',
-    'program_processing_test',
+    'program_utils_test',
     'test_fleet_distributed_strategy',
     'test_hybrid_parallel_topology',
     'test_ascend_trigger',
@@ -824,7 +824,7 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_mean_op', 'test_is_tensor', 'test_run_program_op',
     'test_cuda_random_seed', 'test_linear_interp_op',
     'test_fuse_all_reduce_pass', 'tensor_util_test', 'test_median',
-    'test_linear', 'test_imperative_qat_amp',
+    'test_nanmedian', 'test_linear', 'test_imperative_qat_amp',
     'test_truncated_gaussian_random_op', 'test_lstm_cudnn_op',
     'copy_same_tensor_test', 'test_squeeze2_op',
     'naive_best_fit_allocator_test', 'test_model', 'test_py_reader_combination',
@@ -844,10 +844,11 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_sigmoid_cross_entropy_with_logits_op', 'copy_cross_scope_test',
     'test_normalization_wrapper', 'test_flip', 'test_cosine_similarity_api',
     'test_cumsum_op', 'test_range', 'test_log_loss_op', 'test_where_index',
-    'test_tril_triu_op', 'test_lod_reset_op', 'test_lod_tensor', 'test_addmm_op',
-    'test_index_select_op', 'test_nvprof', 'test_index_sample_op',
-    'test_unstack_op', 'test_increment', 'strided_memcpy_test',
-    'test_target_assign_op', 'test_trt_dynamic_shape_transformer_prune',
+    'test_tril_triu_op', 'test_lod_reset_op', 'test_lod_tensor',
+    'test_addmm_op', 'test_index_select_op', 'test_nvprof',
+    'test_index_sample_op', 'test_unstack_op', 'test_increment',
+    'strided_memcpy_test', 'test_target_assign_op',
+    'test_trt_dynamic_shape_transformer_prune',
     'test_box_decoder_and_assign_op', 'test_trt_dynamic_shape', 'test_mnist',
     'test_convert_operators', 'test_fill_any_like_op', 'test_fill_constant_op',
     'test_callback_reduce_lr_on_plateau', 'test_tile_op', 'test_logical',
@@ -985,15 +986,16 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_pool_max_op', 'test_log_softmax',
     'test_imperative_container_parameterlist', 'test_multiplex_op',
     'test_trt_transpose_flatten_concat_fuse_pass',
-    'test_seqconv_eltadd_relu_fuse_pass', 'test_assert_op', 'test_scatter_nd_op',
-    'test_sequence_expand', 'test_arange', 'test_translated_layer',
-    'test_decoupled_py_reader_data_check', 'test_analyzer_ernie_large',
-    'test_tensor_array_to_tensor', 'test_functional_conv2d_transpose',
-    'test_error', 'test_callbacks', 'test_imperative_recurrent_usage',
-    'test_deform_conv2d', 'test_coalesce_tensor_op', 'test_tsm',
-    'test_fused_multihead_matmul_op', 'test_softmax_mask_fuse_op',
-    'test_optimizer_grad', 'test_complex_abs', 'test_gradient_accmulator',
-    'test_instance_norm_op_v2', 'test_random_crop_op', 'test_mobile_net',
+    'test_seqconv_eltadd_relu_fuse_pass', 'test_assert_op',
+    'test_scatter_nd_op', 'test_sequence_expand', 'test_arange',
+    'test_translated_layer', 'test_decoupled_py_reader_data_check',
+    'test_analyzer_ernie_large', 'test_tensor_array_to_tensor',
+    'test_functional_conv2d_transpose', 'test_error', 'test_callbacks',
+    'test_imperative_recurrent_usage', 'test_deform_conv2d',
+    'test_coalesce_tensor_op', 'test_tsm', 'test_fused_multihead_matmul_op',
+    'test_softmax_mask_fuse_op', 'test_optimizer_grad', 'test_complex_abs',
+    'test_gradient_accmulator', 'test_instance_norm_op_v2',
+    'test_random_crop_op', 'test_mobile_net',
     'test_parallel_executor_transformer',
     'test_tensor_scalar_type_promotion_dynamic',
     'test_eager_deletion_delete_vars', 'test_asp_pruning_1d',
@@ -1021,11 +1023,12 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_embedding_id_stop_gradient', 'test_mkldnn_fc_act_fuse_pass',
     'sequence_pooling_test', 'test_get_tensor_from_selected_rows_op',
     'test_imperative_ptb_rnn_sorted_gradient', 'test_hapi_hub',
-    'test_reverse_op', 'test_compiled_program', 'test_lambda', 'test_adadelta_op',
-    'test_nn_sigmoid_op', 'test_nearest_interp_v2_op', 'test_sequence_slice_op',
-    'test_program_translator', 'test_eager_deletion_lstm_net', 'malloc_test',
-    'test_size_op', 'test_analysis_predictor', 'test_recognize_digits',
-    'test_parameter', 'test_transpose_flatten_concat_fuse_pass',
+    'test_reverse_op', 'test_compiled_program', 'test_lambda',
+    'test_adadelta_op', 'test_nn_sigmoid_op', 'test_nearest_interp_v2_op',
+    'test_sequence_slice_op', 'test_program_translator',
+    'test_eager_deletion_lstm_net', 'malloc_test', 'test_size_op',
+    'test_analysis_predictor', 'test_recognize_digits', 'test_parameter',
+    'test_transpose_flatten_concat_fuse_pass',
     'test_imperative_trace_non_persistable_inputs', 'test_pass_builder',
     'thread_local_allocator_test', 'test_variable', 'test_fsp_op',
     'test_elementwise_gradient_op', 'test_multinomial_op',
@@ -1183,7 +1186,7 @@ LOWEST_PARALLEL_JOB_NEW = [
 ]
 
 # *=======These unittest doesn't occupy GPU memory, just run as CPU unittest=======* #
-# It run 16 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, 
+# It run 16 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED,
 # just remove it from this list.
 CPU_PARALLEL_JOB = [
     'test_static_save_load_large',
@@ -1716,7 +1719,7 @@ CPU_PARALLEL_JOB = [
     'test_sum_api',
     'test_op_compat_sensible_pass',
     'test_generate_pass_cc',
-    'program_processing_test',
+    'program_utils_test',
     'build_strategy_test',
     'test_fc_rnn_mkldnn_fuse_pass',
     'scope_guard_test',
@@ -2047,6 +2050,8 @@ TETRAD_PARALLEL_JOB = [
     'test_lambda',
     'test_prod_op',
     'test_fused_attention_op_api',
+    'test_fused_bias_dropout_residual_layer_norm_op',
+    'test_fused_bias_dropout_residual_layer_norm_op_api',
     'test_complex_grad_accumulated',
     'test_deg2rad',
     'test_lgamma_op',

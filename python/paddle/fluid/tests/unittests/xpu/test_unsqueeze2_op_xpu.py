@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 import sys
+
 sys.path.append("..")
 
 import numpy as np
@@ -29,13 +30,16 @@ paddle.enable_static()
 
 
 class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = "unsqueeze2"
         self.use_dynamic_create_class = False
 
     class TestUnsqueeze2Op(XPUOpTest):
+
         def setUp(self):
             self.op_type = "unsqueeze2"
+            self.__class__.op_type = "unsqueeze2"
             self.use_mkldnn = False
             self.init_dtype()
             self.init_test_case()
@@ -65,20 +69,14 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            if self.dtype in [np.float32, np.float64]:
-                self.check_grad_with_place(place, ['X'], 'Out')
-            elif self.dtype == np.bool_:
+            if self.dtype == np.bool_:
                 return
             else:
-                user_defined_grad_outputs = np.random.random(
-                    self.new_shape).astype(self.dtype)
-                self.check_grad_with_place(
-                    place, ['X'],
-                    'Out',
-                    user_defined_grad_outputs=user_defined_grad_outputs)
+                self.check_grad_with_place(place, ['X'], 'Out')
 
     # Correct: Single input index.
     class TestUnsqueeze2Op1(TestUnsqueeze2Op):
+
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (-1, )
@@ -86,6 +84,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
     # Correct: Mixed input axis.
     class TestUnsqueeze2Op2(TestUnsqueeze2Op):
+
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (0, -1)
@@ -93,6 +92,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
     # Correct: There is duplicated axis.
     class TestUnsqueeze2Op3(TestUnsqueeze2Op):
+
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (0, 3, 3)
@@ -100,6 +100,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
     # Correct: Reversed axes.
     class TestUnsqueeze2Op4(TestUnsqueeze2Op):
+
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (3, 1, 1)
@@ -107,8 +108,10 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
     # axes is a list(with tensor)
     class TestUnsqueeze2Op_AxesTensorList(XPUOpTest):
+
         def setUp(self):
             self.op_type = "unsqueeze2"
+            self.__class__.op_type = "unsqueeze2"
             self.use_mkldnn = False
             self.init_dtype()
             self.init_test_case()
@@ -137,7 +140,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            if self.dtype in [np.float32, np.float64]:
+            if self.dtype in [np.float32, np.float64, np.float16]:
                 self.check_grad_with_place(place, ['X'], 'Out')
             else:
                 return
@@ -151,24 +154,28 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
             self.attrs = {}
 
     class TestUnsqueeze2Op1_AxesTensorList(TestUnsqueeze2Op_AxesTensorList):
+
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (-1, )
             self.new_shape = (20, 5, 1)
 
     class TestUnsqueeze2Op2_AxesTensorList(TestUnsqueeze2Op_AxesTensorList):
+
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (0, -1)
             self.new_shape = (1, 20, 5, 1)
 
     class TestUnsqueeze2Op3_AxesTensorList(TestUnsqueeze2Op_AxesTensorList):
+
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (0, 3, 3)
             self.new_shape = (1, 10, 2, 1, 1, 5)
 
     class TestUnsqueeze2Op4_AxesTensorList(TestUnsqueeze2Op_AxesTensorList):
+
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (3, 1, 1)
@@ -176,8 +183,10 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
     # axes is a Tensor
     class TestUnsqueeze2Op_AxesTensor(XPUOpTest):
+
         def setUp(self):
             self.op_type = "unsqueeze2"
+            self.__class__.op_type = "unsqueeze2"
             self.use_mkldnn = False
             self.init_test_case()
             self.init_dtype()
@@ -201,7 +210,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            if self.dtype in [np.float32, np.float64]:
+            if self.dtype in [np.float32, np.float64, np.float16]:
                 self.check_grad_with_place(place, ['X'], 'Out')
             else:
                 return
@@ -215,24 +224,28 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
             self.attrs = {}
 
     class TestUnsqueeze2Op1_AxesTensor(TestUnsqueeze2Op_AxesTensor):
+
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (-1, )
             self.new_shape = (20, 5, 1)
 
     class TestUnsqueeze2Op2_AxesTensor(TestUnsqueeze2Op_AxesTensor):
+
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (0, -1)
             self.new_shape = (1, 20, 5, 1)
 
     class TestUnsqueeze2Op3_AxesTensor(TestUnsqueeze2Op_AxesTensor):
+
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (0, 3, 3)
             self.new_shape = (1, 10, 2, 1, 1, 5)
 
     class TestUnsqueeze2Op4_AxesTensor(TestUnsqueeze2Op_AxesTensor):
+
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (3, 1, 1)

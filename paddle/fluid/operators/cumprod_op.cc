@@ -63,10 +63,14 @@ class CumprodGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CumprodGrad");
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "CumprodGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "framework::GradVarName(\"Out\")", "CumprodGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "framework::GradVarName(\"X\")", "CumprodGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "framework::GradVarName(\"Out\")",
+                   "CumprodGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "framework::GradVarName(\"X\")",
+                   "CumprodGrad");
     ctx->ShareDim(framework::GradVarName("Out"), framework::GradVarName("X"));
     ctx->ShareLoD(framework::GradVarName("Out"), framework::GradVarName("X"));
   }
@@ -76,10 +80,13 @@ class CumprodGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(cumprod, CumprodInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(cumprod,
+                            CumprodInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
-REGISTER_OPERATOR(cumprod, ops::CumprodOp, ops::CumprodOpMaker,
+REGISTER_OPERATOR(cumprod,
+                  ops::CumprodOp,
+                  ops::CumprodOpMaker,
                   ops::CumprodGradOpMaker<paddle::framework::OpDesc>,
                   ops::CumprodGradOpMaker<paddle::imperative::OpBase>,
                   CumprodInferShapeFunctor);

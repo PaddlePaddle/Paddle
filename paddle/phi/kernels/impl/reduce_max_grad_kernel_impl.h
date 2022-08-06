@@ -14,10 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/reduce_max_grad_kernel.h"
-
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/reduce_grad.h"
+#include "paddle/phi/kernels/reduce_max_grad_kernel.h"
 
 namespace phi {
 

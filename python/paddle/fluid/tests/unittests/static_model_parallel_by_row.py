@@ -60,14 +60,13 @@ def create_model(data, rank):
         np_weight_part = np_weight[start_row:start_row + IN_SIZE // 2, :]
 
         weight_attr, bias_attr = get_param_attr(np_weight_part, np_bias)
-        result = paddle.distributed.split(
-            data,
-            size=(IN_SIZE, OUT_SIZE),
-            operation='linear',
-            axis=0,
-            num_partitions=MODEL_PARALLEL_SIZE,
-            weight_attr=weight_attr,
-            bias_attr=bias_attr)
+        result = paddle.distributed.split(data,
+                                          size=(IN_SIZE, OUT_SIZE),
+                                          operation='linear',
+                                          axis=0,
+                                          num_partitions=MODEL_PARALLEL_SIZE,
+                                          weight_attr=weight_attr,
+                                          bias_attr=bias_attr)
     else:
         weight_attr, bias_attr = get_param_attr(np_weight, np_bias)
         result = fluid.layers.fc(
@@ -82,10 +81,12 @@ def create_model(data, rank):
 
 
 class TestModelParallel(TestDistRunnerBase):
+
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
-        data_in = fluid.data(
-            name='data_in', shape=[batch_size, IN_SIZE], dtype=DTYPE)
+        data_in = fluid.data(name='data_in',
+                             shape=[batch_size, IN_SIZE],
+                             dtype=DTYPE)
 
         if dist_strategy:
             data_loader = fluid.io.DataLoader.from_generator(
@@ -105,8 +106,8 @@ class TestModelParallel(TestDistRunnerBase):
         opt = fluid.optimizer.SGD(0.1)
 
         if dist_strategy:
-            dist_opt = fleet.distributed_optimizer(
-                optimizer=opt, strategy=strategy)
+            dist_opt = fleet.distributed_optimizer(optimizer=opt,
+                                                   strategy=strategy)
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)

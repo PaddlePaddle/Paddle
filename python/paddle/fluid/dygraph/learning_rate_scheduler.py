@@ -67,7 +67,7 @@ class LearningRateDecay(object):
             persistable=False)
         return lr
 
-    # Note: If you want to change what optimizer.state_dict stores, just overwrite this functions, 
+    # Note: If you want to change what optimizer.state_dict stores, just overwrite this functions,
     # "self.step_num" will be stored by default.
     def state_dict(self):
         """
@@ -107,8 +107,8 @@ class LearningRateDecay(object):
                 self.__dict__[key] = state_dict[key]
             else:
                 raise RuntimeError(
-                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict".
-                    format(key))
+                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict"
+                    .format(key))
         if len(state_dict) > len(self.keys):
             warnings.warn(
                 "There are some unused values in state_dict. Maybe the optimizer have different 'LearningRateDecay' when invoking state_dict and set_dict"
@@ -259,8 +259,8 @@ class NaturalExpDecay(LearningRateDecay):
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
             div_res = layers.floor(div_res)
-        decayed_lr = self.learning_rate * layers.exp(-1 * self.decay_rate *
-                                                     div_res)
+        decayed_lr = self.learning_rate * layers.exp(
+            -1 * self.decay_rate * div_res)
 
         return decayed_lr
 
@@ -510,9 +510,9 @@ class PolynomialDecay(LearningRateDecay):
                 div_res = self.create_lr_var(1.0)
             tmp_decay_steps = self.decay_steps * div_res
         else:
-            tmp_step_num = self.create_lr_var(tmp_step_num
-                                              if tmp_step_num < self.decay_steps
-                                              else self.decay_steps)
+            tmp_step_num = self.create_lr_var(
+                tmp_step_num if tmp_step_num < self.decay_steps else self.
+                decay_steps)
 
         decayed_lr = (self.learning_rate - self.end_learning_rate) * \
             ((1 - tmp_step_num / tmp_decay_steps) ** self.power) + self.end_learning_rate
@@ -639,8 +639,8 @@ class NoamDecay(LearningRateDecay):
         from .. import layers
         a = self.create_lr_var(self.step_num**-0.5)
         b = self.create_lr_var((self.warmup_steps**-1.5) * self.step_num)
-        lr_value = self.learning_rate * (self.d_model
-                                         **-0.5) * layers.elementwise_min(a, b)
+        lr_value = self.learning_rate * (self.d_model**
+                                         -0.5) * layers.elementwise_min(a, b)
         return lr_value
 
 
@@ -713,15 +713,15 @@ class LinearLrWarmup(LearningRateDecay):
             learning_rate, int) or isinstance(learning_rate, LearningRateDecay)
         if not type_check:
             raise TypeError(
-                "the type of learning_rate should be [int, float or LearningRateDecay], the current type is {}".
-                format(learning_rate))
+                "the type of learning_rate should be [int, float or LearningRateDecay], the current type is {}"
+                .format(learning_rate))
         self.learning_rate = learning_rate
         self.warmup_steps = warmup_steps
         self.start_lr = start_lr
         assert end_lr > start_lr, "end_lr {} must be greater than start_lr {}".format(
             end_lr, start_lr)
-        self.lr_ratio_before_warmup = (
-            float(end_lr) - float(start_lr)) / float(warmup_steps)
+        self.lr_ratio_before_warmup = (float(end_lr) -
+                                       float(start_lr)) / float(warmup_steps)
 
     def step(self):
         base_lr = self.learning_rate
@@ -897,7 +897,7 @@ class ReduceLROnPlateau(LearningRateDecay):
         check_type(loss, 'loss', Variable, 'ReduceLROnPlateau.step')
         assert len(loss.shape) == 1 and loss.shape[0] == 1, "the loss.shape " \
             "should be (1L,), but the current loss.shape is {}. Maybe that "  \
-            "you should call fluid.layers.mean to process it first.".format(loss.shape)
+            "you should call paddle.mean to process it first.".format(loss.shape)
 
         self.epoch_num += 1
         if self.cooldown_counter > 0:
@@ -913,15 +913,16 @@ class ReduceLROnPlateau(LearningRateDecay):
                 from .. import layers
                 self.cooldown_counter = self.cooldown
                 self.num_bad_epochs = 0
-                new_lr = layers.elementwise_max(self.learning_rate *
-                                                self.decay_rate, self.min_lr)
+                new_lr = layers.elementwise_max(
+                    self.learning_rate * self.decay_rate, self.min_lr)
                 if self.learning_rate - new_lr > self.eps:
                     if self.verbose:
                         old_lr = self.learning_rate.numpy()[0] if isinstance(
                             self.learning_rate,
                             Variable) else self.learning_rate
                         print('Epoch {}: reducing learning rate from {} to {}.'.
-                              format(self.epoch_num, old_lr, new_lr.numpy()[0]))
+                              format(self.epoch_num, old_lr,
+                                     new_lr.numpy()[0]))
                     self.learning_rate = new_lr
 
     def _is_better(self, current, best):

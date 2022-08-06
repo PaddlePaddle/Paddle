@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -70,8 +70,10 @@ def overlap_add(x, hop_length, axis=-1):
 
 
 class TestOverlapAddOp(OpTest):
+
     def setUp(self):
         self.op_type = "overlap_add"
+        self.python_api = paddle.signal.overlap_add
         self.shape, self.type, self.attrs = self.initTestCase()
         self.inputs = {
             'X': np.random.random(size=self.shape).astype(self.type),
@@ -89,16 +91,17 @@ class TestOverlapAddOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_eager=True)
         paddle.disable_static()
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
         paddle.disable_static()
 
 
 class TestCase1(TestOverlapAddOp):
+
     def initTestCase(self):
         input_shape = (3, 50)
         input_type = 'float64'
@@ -110,6 +113,7 @@ class TestCase1(TestOverlapAddOp):
 
 
 class TestCase2(TestOverlapAddOp):
+
     def initTestCase(self):
         input_shape = (2, 40, 5)
         input_type = 'float64'
@@ -121,6 +125,7 @@ class TestCase2(TestOverlapAddOp):
 
 
 class TestCase3(TestOverlapAddOp):
+
     def initTestCase(self):
         input_shape = (5, 40, 2)
         input_type = 'float64'
@@ -132,6 +137,7 @@ class TestCase3(TestOverlapAddOp):
 
 
 class TestCase4(TestOverlapAddOp):
+
     def initTestCase(self):
         input_shape = (3, 5, 12, 8)
         input_type = 'float64'
@@ -143,6 +149,7 @@ class TestCase4(TestOverlapAddOp):
 
 
 class TestCase5(TestOverlapAddOp):
+
     def initTestCase(self):
         input_shape = (8, 12, 5, 3)
         input_type = 'float64'

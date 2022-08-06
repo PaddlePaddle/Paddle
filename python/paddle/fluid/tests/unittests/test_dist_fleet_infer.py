@@ -24,6 +24,7 @@ from paddle.dataset.common import download, DATA_HOME
 
 
 class TestDistCtrInfer(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
@@ -57,22 +58,25 @@ class TestDistCtrInfer(TestFleetBase):
     def test_dist_infer(self):
         model_dirname = tempfile.mkdtemp()
 
-        self.check_with_place(
-            "dist_fleet_ctr.py",
-            delta=1e-5,
-            check_error_log=False,
-            need_envs={"SAVE_DIRNAME": model_dirname, })
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False,
+                              need_envs={
+                                  "SAVE_DIRNAME": model_dirname,
+                              })
 
         self._need_test = 1
         self._model_dir = model_dirname
 
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False)
 
         shutil.rmtree(model_dirname)
 
 
 class TestDistCtrTrainInfer(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
@@ -106,8 +110,9 @@ class TestDistCtrTrainInfer(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train_infer(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False)
 
 
 if __name__ == "__main__":

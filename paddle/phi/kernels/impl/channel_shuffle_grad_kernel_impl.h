@@ -32,8 +32,8 @@ void ChannelShuffleGradKernel(const Context& dev_ctx,
   auto* dx = x_grad;
   dev_ctx.template Alloc<T>(dx);
   bool channel_last = (data_format == "NHWC");
-  auto do_dims = dout->dims();
-  auto dx_dims = dx->dims();
+  const auto& do_dims = dout->dims();
+  const auto& dx_dims = dx->dims();
 
   DenseTensor t(*dout);
   if (!channel_last) {

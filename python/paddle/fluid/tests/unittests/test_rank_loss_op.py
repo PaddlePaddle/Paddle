@@ -22,6 +22,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestRankLossOp(OpTest):
+
     def setUp(self):
         self.op_type = "rank_loss"
         shape = (100, 1)
@@ -57,36 +58,42 @@ class TestRankLossOp(OpTest):
 
 
 class TestRankLossOp1(TestRankLossOp):
+
     def set_shape(self):
         batch_size = 100
         return (batch_size), (batch_size, 1), (batch_size, 1)
 
 
 class TestRankLossOp2(TestRankLossOp):
+
     def set_shape(self):
         batch_size = 100
         return (batch_size, 1), (batch_size), (batch_size, 1)
 
 
 class TestRankLossOp3(TestRankLossOp):
+
     def set_shape(self):
         batch_size = 100
         return (batch_size, 1), (batch_size, 1), (batch_size)
 
 
 class TestRankLossOp4(TestRankLossOp):
+
     def set_shape(self):
         batch_size = 100
         return (batch_size), (batch_size), (batch_size, 1)
 
 
 class TestRankLossOp5(TestRankLossOp):
+
     def set_shape(self):
         batch_size = 100
         return (batch_size), (batch_size), (batch_size)
 
 
 class TestRankLossOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             label = fluid.data(name="label", shape=[16, 1], dtype="float32")

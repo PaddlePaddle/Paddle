@@ -16,6 +16,7 @@
 #include <map>
 #include <set>
 #include <vector>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -36,26 +37,30 @@ class ClassCenterSampleCPUKernel : public framework::OpKernel<T> {
 
     int seed = ctx.Attr<int>("seed");
     bool fix_seed = ctx.Attr<bool>("fix_seed");
-    PADDLE_ENFORCE_GT(num_classes, 0,
+    PADDLE_ENFORCE_GT(num_classes,
+                      0,
                       platform::errors::InvalidArgument(
                           "The value 'num_classes' for Op(class_center_sample) "
                           "must be greater than 0, "
                           "but the value given is %d.",
                           num_classes));
 
-    PADDLE_ENFORCE_GT(num_samples, 0,
+    PADDLE_ENFORCE_GT(num_samples,
+                      0,
                       platform::errors::InvalidArgument(
                           "The value 'num_samples' for Op(class_center_sample) "
                           "must be greater than 0, "
                           "but the value given is %d.",
                           num_samples));
 
-    PADDLE_ENFORCE_LE(num_samples, num_classes,
+    PADDLE_ENFORCE_LE(num_samples,
+                      num_classes,
                       platform::errors::InvalidArgument(
                           "The value 'num_samples' for Op(class_center_sample) "
                           "must be less than or equal to %d, "
                           "but the value given is %d.",
-                          num_classes, num_samples));
+                          num_classes,
+                          num_samples));
 
     int64_t numel = label->numel();
     auto* label_ptr = label->data<T>();

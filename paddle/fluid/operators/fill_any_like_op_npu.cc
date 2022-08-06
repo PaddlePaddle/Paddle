@@ -24,7 +24,8 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
   using CommonType = typename std::common_type<
       float,
       typename std::conditional<std::is_same<T, platform::float16>::value,
-                                float, T>::type>::type;
+                                float,
+                                T>::type>::type;
 
   void Compute(const framework::ExecutionContext& context) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
@@ -48,10 +49,12 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
             "and %f, but now value is %f.",
             typeid(T).name(),
             static_cast<CommonType>(std::numeric_limits<T>::lowest()),
-            static_cast<CommonType>(std::numeric_limits<T>::max()), value));
+            static_cast<CommonType>(std::numeric_limits<T>::max()),
+            value));
 
     PADDLE_ENFORCE_EQ(
-        std::isnan(value), false,
+        std::isnan(value),
+        false,
         platform::errors::InvalidArgument("The filled value is NaN."));
 
     Tensor tensor_tmp(framework::TransToPhiDataType(data_type));
@@ -77,7 +80,8 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(fill_any_like, ops::FillAnyLikeNPUKernel<int>,
+REGISTER_OP_NPU_KERNEL(fill_any_like,
+                       ops::FillAnyLikeNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
                        ops::FillAnyLikeNPUKernel<int64_t>,
 #endif

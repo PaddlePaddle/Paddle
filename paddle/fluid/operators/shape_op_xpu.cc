@@ -11,6 +11,7 @@
 
 #ifdef PADDLE_WITH_XPU
 #include <algorithm>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -43,8 +44,11 @@ class ShapeXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(shape, ops::ShapeXPUKernel<bool>,
-                       ops::ShapeXPUKernel<int>, ops::ShapeXPUKernel<int64_t>,
-                       ops::ShapeXPUKernel<float>, ops::ShapeXPUKernel<double>);
+REGISTER_OP_XPU_KERNEL(shape,
+                       ops::ShapeXPUKernel<bool>,
+                       ops::ShapeXPUKernel<int>,
+                       ops::ShapeXPUKernel<int64_t>,
+                       ops::ShapeXPUKernel<float>,
+                       ops::ShapeXPUKernel<double>);
 
 #endif

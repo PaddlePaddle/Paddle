@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <paddle/fluid/framework/operator.h>
+
 #include <string>
 #include <vector>
 
@@ -28,8 +29,8 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
     auto* data = x->data<int>();
     framework::Tensor cpu_attr_tensor;
     if (!platform::is_cpu_place(x->place())) {
-      paddle::framework::TensorCopySync(*x, platform::CPUPlace(),
-                                        &cpu_attr_tensor);
+      paddle::framework::TensorCopySync(
+          *x, platform::CPUPlace(), &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
@@ -38,8 +39,8 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
     auto* data = x->data<int64_t>();
     framework::Tensor cpu_attr_tensor;
     if (!platform::is_cpu_place(x->place())) {
-      paddle::framework::TensorCopySync(*x, platform::CPUPlace(),
-                                        &cpu_attr_tensor);
+      paddle::framework::TensorCopySync(
+          *x, platform::CPUPlace(), &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int64_t>();
     }
     // NOTE: Converting int64 to int32 may cause data overflow.
@@ -58,7 +59,8 @@ inline std::vector<T> GetDataFromTensorList(
   std::vector<T> vec_new_data;
   for (size_t i = 0; i < list_tensor.size(); ++i) {
     auto tensor = list_tensor[i];
-    PADDLE_ENFORCE_EQ(tensor->dims(), phi::make_ddim({1}),
+    PADDLE_ENFORCE_EQ(tensor->dims(),
+                      phi::make_ddim({1}),
                       platform::errors::InvalidArgument(
                           "The shape of Tensor in list must be [1]. "
                           "But received its shape "
@@ -120,7 +122,7 @@ inline T GetValue(const framework::Tensor* x) {
   if (!platform::is_cpu_place(x->place())) {
     framework::Tensor cpu_x;
     framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     const platform::DeviceContext* dev_ctx = pool.Get(x->place());
     dev_ctx->Wait();

@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -38,13 +39,14 @@ framework::OpKernelType innerGetKernelTypeForVar(
                                    framework::DataLayout::kNHWC);
   }
 #endif
-  return framework::OpKernelType(expected_kernel_type.data_type_,
-                                 tensor.place(), tensor.layout());
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 class PReluOp : public framework::OperatorWithKernel {
  public:
-  PReluOp(const std::string &type, const framework::VariableNameMap &inputs,
+  PReluOp(const std::string &type,
+          const framework::VariableNameMap &inputs,
           const framework::VariableNameMap &outputs,
           const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -57,7 +59,8 @@ class PReluOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -66,7 +69,8 @@ class PReluOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     return innerGetKernelTypeForVar(tensor, expected_kernel_type);
   }
@@ -125,8 +129,10 @@ class PReluGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "prelu");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "prelu");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "prelu");
 
     auto x_grad_name = framework::GradVarName("X");
     auto alpha_grad_name = framework::GradVarName("Alpha");
@@ -147,7 +153,8 @@ class PReluGradOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -156,7 +163,8 @@ class PReluGradOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     return innerGetKernelTypeForVar(tensor, expected_kernel_type);
   }
@@ -184,9 +192,12 @@ class PReluGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(prelu, PReluInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(prelu,
+                            PReluInferShapeFunctor,
                             PD_INFER_META(phi::PReluInferMeta));
-REGISTER_OPERATOR(prelu, ops::PReluOp, ops::PReluOpMaker,
+REGISTER_OPERATOR(prelu,
+                  ops::PReluOp,
+                  ops::PReluOpMaker,
                   ops::PReluGradOpMaker<paddle::framework::OpDesc>,
                   ops::PReluGradOpMaker<paddle::imperative::OpBase>,
                   PReluInferShapeFunctor);

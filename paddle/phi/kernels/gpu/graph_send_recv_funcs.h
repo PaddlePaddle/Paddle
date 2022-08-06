@@ -13,16 +13,16 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/kernels/graph_send_recv_kernel.h"
-
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
+
 #include <algorithm>
 #include <vector>
 
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/graph_send_recv_kernel.h"
 
 namespace phi {
 

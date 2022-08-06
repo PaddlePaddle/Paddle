@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -62,16 +63,19 @@ struct DataRecord {
       split_to_float(data[1], ' ', &slot_data);
       std::string name = data[0];
       PADDLE_ENFORCE_EQ(
-          slot_data.size() % 11, 0UL,
-          paddle::platform::errors::Fatal("line %d, %s should be divisible",
-                                          num_lines, name));
+          slot_data.size() % 11,
+          0UL,
+          paddle::platform::errors::Fatal(
+              "line %d, %s should be divisible", num_lines, name));
       datasets[name].emplace_back(std::move(slot_data));
     }
     num_samples = num_lines / num_slots;
     PADDLE_ENFORCE_EQ(
-        num_samples * num_slots, static_cast<size_t>(num_lines),
+        num_samples * num_slots,
+        static_cast<size_t>(num_lines),
         paddle::platform::errors::Fatal("num samples should be divisible"));
-    PADDLE_ENFORCE_GT(num_samples, 0UL,
+    PADDLE_ENFORCE_GT(num_samples,
+                      0UL,
                       paddle::platform::errors::Fatal(
                           "The num of samples should be greater than 0."));
   }
@@ -79,7 +83,8 @@ struct DataRecord {
   void Prepare(int bs) {
     for (auto it = datasets.begin(); it != datasets.end(); ++it) {
       PADDLE_ENFORCE_EQ(
-          it->second.size(), num_samples,
+          it->second.size(),
+          num_samples,
           paddle::platform::errors::Fatal("size of each slot should be equal"));
     }
     size_t num_batches = num_samples / bs;
@@ -98,13 +103,15 @@ struct DataRecord {
         auto &datas = it->second;
         for (int k = 0; k < bs; ++k) {
           size_t id = k + batch_iter * bs;
-          std::copy(datas[id].begin(), datas[id].end(),
+          std::copy(datas[id].begin(),
+                    datas[id].end(),
                     std::back_inserter(slot.data[k]));
           size_t len = datas[id].size() / 11;
           PADDLE_ENFORCE_EQ(
-              len * 11, datas[id].size(),
-              paddle::platform::errors::Fatal("%s %d size should be divisible",
-                                              slot.name, id));
+              len * 11,
+              datas[id].size(),
+              paddle::platform::errors::Fatal(
+                  "%s %d size should be divisible", slot.name, id));
           lod[k + 1] = lod[k] + len;
         }
         slot.shape.assign({static_cast<int>(lod[bs]), 11});

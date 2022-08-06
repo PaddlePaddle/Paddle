@@ -13,7 +13,9 @@
  limitations under the License. */
 
 #include "paddle/fluid/operators/tdm_sampler_op.h"
+
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -77,13 +79,16 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Inputs(Input) of TdmSampler should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Travel"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Travel"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Inputs(Travel) of TdmSampler should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Layer"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Layer"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Inputs(Layer) of TdmSampler should not be null."));
     auto neg_samples_num_vec =
@@ -126,11 +131,14 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    tdm_sampler, ops::TDMSamplerOp, ops::TDMSamplerOpMaker,
+    tdm_sampler,
+    ops::TDMSamplerOp,
+    ops::TDMSamplerOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    tdm_sampler, ops::TDMSamplerKernel<paddle::platform::CPUPlace, float>,
+    tdm_sampler,
+    ops::TDMSamplerKernel<paddle::platform::CPUPlace, float>,
     ops::TDMSamplerKernel<paddle::platform::CPUPlace, double>,
     ops::TDMSamplerKernel<paddle::platform::CPUPlace, int>,
     ops::TDMSamplerKernel<paddle::platform::CPUPlace, int64_t>);

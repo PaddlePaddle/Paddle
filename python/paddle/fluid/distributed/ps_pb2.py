@@ -16,6 +16,7 @@
 # source: ps.proto
 
 import sys
+
 _b = sys.version_info[0] < 3 and (lambda x: x) or (lambda x: x.encode('latin1'))
 from google.protobuf.internal import enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
@@ -42,15 +43,22 @@ _TABLETYPE = _descriptor.EnumDescriptor(
     filename=None,
     file=DESCRIPTOR,
     values=[
-        _descriptor.EnumValueDescriptor(
-            name='PS_SPARSE_TABLE', index=0, number=0, options=None, type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_DENSE_TABLE', index=1, number=1, options=None, type=None),
+        _descriptor.EnumValueDescriptor(name='PS_SPARSE_TABLE',
+                                        index=0,
+                                        number=0,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_DENSE_TABLE',
+                                        index=1,
+                                        number=1,
+                                        options=None,
+                                        type=None),
     ],
     containing_type=None,
     options=None,
     serialized_start=3489,
-    serialized_end=3541, )
+    serialized_end=3541,
+)
 _sym_db.RegisterEnumDescriptor(_TABLETYPE)
 
 TableType = enum_type_wrapper.EnumTypeWrapper(_TABLETYPE)
@@ -60,82 +68,77 @@ _PSCMDID = _descriptor.EnumDescriptor(
     filename=None,
     file=DESCRIPTOR,
     values=[
-        _descriptor.EnumValueDescriptor(
-            name='PS_PULL_DENSE_TABLE',
-            index=0,
-            number=0,
-            options=None,
-            type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_PUSH_DENSE_TABLE',
-            index=1,
-            number=1,
-            options=None,
-            type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_PULL_SPARSE_TABLE',
-            index=2,
-            number=2,
-            options=None,
-            type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_PUSH_SPARSE_TABLE',
-            index=3,
-            number=3,
-            options=None,
-            type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_SHRINK_TABLE', index=4, number=4, options=None, type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_SAVE_ONE_TABLE',
-            index=5,
-            number=5,
-            options=None,
-            type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_SAVE_ALL_TABLE',
-            index=6,
-            number=6,
-            options=None,
-            type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_LOAD_ONE_TABLE',
-            index=7,
-            number=7,
-            options=None,
-            type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_LOAD_ALL_TABLE',
-            index=8,
-            number=8,
-            options=None,
-            type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_CLEAR_ONE_TABLE',
-            index=9,
-            number=9,
-            options=None,
-            type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_CLEAR_ALL_TABLE',
-            index=10,
-            number=10,
-            options=None,
-            type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_PUSH_DENSE_PARAM',
-            index=11,
-            number=11,
-            options=None,
-            type=None),
-        _descriptor.EnumValueDescriptor(
-            name='PS_STOP_SERVER', index=12, number=12, options=None,
-            type=None),
+        _descriptor.EnumValueDescriptor(name='PS_PULL_DENSE_TABLE',
+                                        index=0,
+                                        number=0,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_PUSH_DENSE_TABLE',
+                                        index=1,
+                                        number=1,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_PULL_SPARSE_TABLE',
+                                        index=2,
+                                        number=2,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_PUSH_SPARSE_TABLE',
+                                        index=3,
+                                        number=3,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_SHRINK_TABLE',
+                                        index=4,
+                                        number=4,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_SAVE_ONE_TABLE',
+                                        index=5,
+                                        number=5,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_SAVE_ALL_TABLE',
+                                        index=6,
+                                        number=6,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_LOAD_ONE_TABLE',
+                                        index=7,
+                                        number=7,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_LOAD_ALL_TABLE',
+                                        index=8,
+                                        number=8,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_CLEAR_ONE_TABLE',
+                                        index=9,
+                                        number=9,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_CLEAR_ALL_TABLE',
+                                        index=10,
+                                        number=10,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_PUSH_DENSE_PARAM',
+                                        index=11,
+                                        number=11,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='PS_STOP_SERVER',
+                                        index=12,
+                                        number=12,
+                                        options=None,
+                                        type=None),
     ],
     containing_type=None,
     options=None,
     serialized_start=3544,
-    serialized_end=3861, )
+    serialized_end=3861,
+)
 _sym_db.RegisterEnumDescriptor(_PSCMDID)
 
 PsCmdID = enum_type_wrapper.EnumTypeWrapper(_PSCMDID)
@@ -161,15 +164,22 @@ _FSCLIENTPARAMETER_FSAPITYPE = _descriptor.EnumDescriptor(
     filename=None,
     file=DESCRIPTOR,
     values=[
-        _descriptor.EnumValueDescriptor(
-            name='HDFS', index=0, number=0, options=None, type=None),
-        _descriptor.EnumValueDescriptor(
-            name='AFS', index=1, number=1, options=None, type=None),
+        _descriptor.EnumValueDescriptor(name='HDFS',
+                                        index=0,
+                                        number=0,
+                                        options=None,
+                                        type=None),
+        _descriptor.EnumValueDescriptor(name='AFS',
+                                        index=1,
+                                        number=1,
+                                        options=None,
+                                        type=None),
     ],
     containing_type=None,
     options=None,
     serialized_start=3457,
-    serialized_end=3487, )
+    serialized_end=3487,
+)
 _sym_db.RegisterEnumDescriptor(_FSCLIENTPARAMETER_FSAPITYPE)
 
 _PSPARAMETER = _descriptor.Descriptor(
@@ -179,38 +189,36 @@ _PSPARAMETER = _descriptor.Descriptor(
     file=DESCRIPTOR,
     containing_type=None,
     fields=[
-        _descriptor.FieldDescriptor(
-            name='worker_class',
-            full_name='paddle.PSParameter.worker_class',
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=_b("").decode('utf-8'),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
-        _descriptor.FieldDescriptor(
-            name='server_class',
-            full_name='paddle.PSParameter.server_class',
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=_b("").decode('utf-8'),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
+        _descriptor.FieldDescriptor(name='worker_class',
+                                    full_name='paddle.PSParameter.worker_class',
+                                    index=0,
+                                    number=1,
+                                    type=9,
+                                    cpp_type=9,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=_b("").decode('utf-8'),
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
+        _descriptor.FieldDescriptor(name='server_class',
+                                    full_name='paddle.PSParameter.server_class',
+                                    index=1,
+                                    number=2,
+                                    type=9,
+                                    cpp_type=9,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=_b("").decode('utf-8'),
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
         _descriptor.FieldDescriptor(
             name='instance_class',
             full_name='paddle.PSParameter.instance_class',
@@ -227,38 +235,36 @@ _PSPARAMETER = _descriptor.Descriptor(
             is_extension=False,
             extension_scope=None,
             options=None),
-        _descriptor.FieldDescriptor(
-            name='worker_param',
-            full_name='paddle.PSParameter.worker_param',
-            index=3,
-            number=101,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
-        _descriptor.FieldDescriptor(
-            name='server_param',
-            full_name='paddle.PSParameter.server_param',
-            index=4,
-            number=102,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
+        _descriptor.FieldDescriptor(name='worker_param',
+                                    full_name='paddle.PSParameter.worker_param',
+                                    index=3,
+                                    number=101,
+                                    type=11,
+                                    cpp_type=10,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=None,
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
+        _descriptor.FieldDescriptor(name='server_param',
+                                    full_name='paddle.PSParameter.server_param',
+                                    index=4,
+                                    number=102,
+                                    type=11,
+                                    cpp_type=10,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=None,
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
         _descriptor.FieldDescriptor(
             name='trainer_param',
             full_name='paddle.PSParameter.trainer_param',
@@ -301,7 +307,8 @@ _PSPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=21,
-    serialized_end=307, )
+    serialized_end=307,
+)
 
 _WORKERPARAMETER = _descriptor.Descriptor(
     name='WorkerParameter',
@@ -336,7 +343,8 @@ _WORKERPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=309,
-    serialized_end=390, )
+    serialized_end=390,
+)
 
 _SERVERPARAMETER = _descriptor.Descriptor(
     name='ServerParameter',
@@ -371,7 +379,8 @@ _SERVERPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=392,
-    serialized_end=473, )
+    serialized_end=473,
+)
 
 _DOWNPOURWORKERPARAMETER = _descriptor.Descriptor(
     name='DownpourWorkerParameter',
@@ -406,7 +415,8 @@ _DOWNPOURWORKERPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=475,
-    serialized_end=554, )
+    serialized_end=554,
+)
 
 _DOWNPOURTRAINERPARAMETER = _descriptor.Descriptor(
     name='DownpourTrainerParameter',
@@ -521,7 +531,8 @@ _DOWNPOURTRAINERPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=557,
-    serialized_end=810, )
+    serialized_end=810,
+)
 
 _PROGRAMCONFIG = _descriptor.Descriptor(
     name='ProgramConfig',
@@ -530,22 +541,21 @@ _PROGRAMCONFIG = _descriptor.Descriptor(
     file=DESCRIPTOR,
     containing_type=None,
     fields=[
-        _descriptor.FieldDescriptor(
-            name='program_id',
-            full_name='paddle.ProgramConfig.program_id',
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=2,
-            has_default_value=False,
-            default_value=_b("").decode('utf-8'),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
+        _descriptor.FieldDescriptor(name='program_id',
+                                    full_name='paddle.ProgramConfig.program_id',
+                                    index=0,
+                                    number=1,
+                                    type=9,
+                                    cpp_type=9,
+                                    label=2,
+                                    has_default_value=False,
+                                    default_value=_b("").decode('utf-8'),
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
         _descriptor.FieldDescriptor(
             name='push_sparse_table_id',
             full_name='paddle.ProgramConfig.push_sparse_table_id',
@@ -620,7 +630,8 @@ _PROGRAMCONFIG = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=813,
-    serialized_end=966, )
+    serialized_end=966,
+)
 
 _DENSETABLEPARAMETER = _descriptor.Descriptor(
     name='DenseTableParameter',
@@ -703,7 +714,8 @@ _DENSETABLEPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=968,
-    serialized_end=1091, )
+    serialized_end=1091,
+)
 
 _SPARSETABLEPARAMETER = _descriptor.Descriptor(
     name='SparseTableParameter',
@@ -802,7 +814,8 @@ _SPARSETABLEPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=1093,
-    serialized_end=1215, )
+    serialized_end=1215,
+)
 
 _DOWNPOURSERVERPARAMETER = _descriptor.Descriptor(
     name='DownpourServerParameter',
@@ -853,7 +866,8 @@ _DOWNPOURSERVERPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=1218,
-    serialized_end=1352, )
+    serialized_end=1352,
+)
 
 _SERVERSERVICEPARAMETER = _descriptor.Descriptor(
     name='ServerServiceParameter',
@@ -952,7 +966,8 @@ _SERVERSERVICEPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=1355,
-    serialized_end=1570, )
+    serialized_end=1570,
+)
 
 _TABLEPARAMETER = _descriptor.Descriptor(
     name='TableParameter',
@@ -961,22 +976,21 @@ _TABLEPARAMETER = _descriptor.Descriptor(
     file=DESCRIPTOR,
     containing_type=None,
     fields=[
-        _descriptor.FieldDescriptor(
-            name='table_id',
-            full_name='paddle.TableParameter.table_id',
-            index=0,
-            number=1,
-            type=4,
-            cpp_type=4,
-            label=1,
-            has_default_value=False,
-            default_value=0,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
+        _descriptor.FieldDescriptor(name='table_id',
+                                    full_name='paddle.TableParameter.table_id',
+                                    index=0,
+                                    number=1,
+                                    type=4,
+                                    cpp_type=4,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=0,
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
         _descriptor.FieldDescriptor(
             name='table_class',
             full_name='paddle.TableParameter.table_class',
@@ -1009,38 +1023,36 @@ _TABLEPARAMETER = _descriptor.Descriptor(
             is_extension=False,
             extension_scope=None,
             options=None),
-        _descriptor.FieldDescriptor(
-            name='accessor',
-            full_name='paddle.TableParameter.accessor',
-            index=3,
-            number=4,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
-        _descriptor.FieldDescriptor(
-            name='type',
-            full_name='paddle.TableParameter.type',
-            index=4,
-            number=5,
-            type=14,
-            cpp_type=8,
-            label=1,
-            has_default_value=False,
-            default_value=0,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
+        _descriptor.FieldDescriptor(name='accessor',
+                                    full_name='paddle.TableParameter.accessor',
+                                    index=3,
+                                    number=4,
+                                    type=11,
+                                    cpp_type=10,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=None,
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
+        _descriptor.FieldDescriptor(name='type',
+                                    full_name='paddle.TableParameter.type',
+                                    index=4,
+                                    number=5,
+                                    type=14,
+                                    cpp_type=8,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=0,
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
         _descriptor.FieldDescriptor(
             name='compress_in_save',
             full_name='paddle.TableParameter.compress_in_save',
@@ -1067,7 +1079,8 @@ _TABLEPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=1573,
-    serialized_end=1764, )
+    serialized_end=1764,
+)
 
 _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
     name='TableAccessorParameter',
@@ -1214,7 +1227,8 @@ _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=1767,
-    serialized_end=2136, )
+    serialized_end=2136,
+)
 
 _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
     name='DownpourTableAccessorParameter',
@@ -1305,7 +1319,8 @@ _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
             options=None),
         _descriptor.FieldDescriptor(
             name='show_click_decay_rate',
-            full_name='paddle.DownpourTableAccessorParameter.show_click_decay_rate',
+            full_name=
+            'paddle.DownpourTableAccessorParameter.show_click_decay_rate',
             index=5,
             number=6,
             type=2,
@@ -1345,7 +1360,8 @@ _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=2139,
-    serialized_end=2345, )
+    serialized_end=2345,
+)
 
 _TABLEACCESSORSAVEPARAMETER = _descriptor.Descriptor(
     name='TableAccessorSaveParameter',
@@ -1412,7 +1428,8 @@ _TABLEACCESSORSAVEPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=2347,
-    serialized_end=2430, )
+    serialized_end=2430,
+)
 
 _PSREQUESTMESSAGE = _descriptor.Descriptor(
     name='PsRequestMessage',
@@ -1421,22 +1438,21 @@ _PSREQUESTMESSAGE = _descriptor.Descriptor(
     file=DESCRIPTOR,
     containing_type=None,
     fields=[
-        _descriptor.FieldDescriptor(
-            name='cmd_id',
-            full_name='paddle.PsRequestMessage.cmd_id',
-            index=0,
-            number=1,
-            type=13,
-            cpp_type=3,
-            label=2,
-            has_default_value=False,
-            default_value=0,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
+        _descriptor.FieldDescriptor(name='cmd_id',
+                                    full_name='paddle.PsRequestMessage.cmd_id',
+                                    index=0,
+                                    number=1,
+                                    type=13,
+                                    cpp_type=3,
+                                    label=2,
+                                    has_default_value=False,
+                                    default_value=0,
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
         _descriptor.FieldDescriptor(
             name='table_id',
             full_name='paddle.PsRequestMessage.table_id',
@@ -1453,22 +1469,21 @@ _PSREQUESTMESSAGE = _descriptor.Descriptor(
             is_extension=False,
             extension_scope=None,
             options=None),
-        _descriptor.FieldDescriptor(
-            name='params',
-            full_name='paddle.PsRequestMessage.params',
-            index=2,
-            number=3,
-            type=12,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
+        _descriptor.FieldDescriptor(name='params',
+                                    full_name='paddle.PsRequestMessage.params',
+                                    index=2,
+                                    number=3,
+                                    type=12,
+                                    cpp_type=9,
+                                    label=3,
+                                    has_default_value=False,
+                                    default_value=[],
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
         _descriptor.FieldDescriptor(
             name='client_id',
             full_name='paddle.PsRequestMessage.client_id',
@@ -1485,22 +1500,21 @@ _PSREQUESTMESSAGE = _descriptor.Descriptor(
             is_extension=False,
             extension_scope=None,
             options=None),
-        _descriptor.FieldDescriptor(
-            name='data',
-            full_name='paddle.PsRequestMessage.data',
-            index=4,
-            number=5,
-            type=12,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=_b(""),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
+        _descriptor.FieldDescriptor(name='data',
+                                    full_name='paddle.PsRequestMessage.data',
+                                    index=4,
+                                    number=5,
+                                    type=12,
+                                    cpp_type=9,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=_b(""),
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
     ],
     extensions=[],
     nested_types=[],
@@ -1511,7 +1525,8 @@ _PSREQUESTMESSAGE = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=2432,
-    serialized_end=2533, )
+    serialized_end=2533,
+)
 
 _SPARSESGDRULEPARAMETER = _descriptor.Descriptor(
     name='SparseSGDRuleParameter',
@@ -1594,7 +1609,8 @@ _SPARSESGDRULEPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=2535,
-    serialized_end=2654, )
+    serialized_end=2654,
+)
 
 _DENSESGDRULEPARAMETER = _descriptor.Descriptor(
     name='DenseSGDRuleParameter',
@@ -1693,7 +1709,8 @@ _DENSESGDRULEPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=2657,
-    serialized_end=2882, )
+    serialized_end=2882,
+)
 
 _ADAMSGDPARAMETER = _descriptor.Descriptor(
     name='AdamSGDParameter',
@@ -1792,7 +1809,8 @@ _ADAMSGDPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=2885,
-    serialized_end=3019, )
+    serialized_end=3019,
+)
 
 _NAIVESGDPARAMETER = _descriptor.Descriptor(
     name='NaiveSGDParameter',
@@ -1843,7 +1861,8 @@ _NAIVESGDPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=3021,
-    serialized_end=3087, )
+    serialized_end=3087,
+)
 
 _SUMMARYSGDPARAMETER = _descriptor.Descriptor(
     name='SummarySGDParameter',
@@ -1878,7 +1897,8 @@ _SUMMARYSGDPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=3089,
-    serialized_end=3148, )
+    serialized_end=3148,
+)
 
 _MOVINGAVERAGERULEPARAMETER = _descriptor.Descriptor(
     name='MovingAverageRuleParameter',
@@ -1913,7 +1933,8 @@ _MOVINGAVERAGERULEPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=3150,
-    serialized_end=3196, )
+    serialized_end=3196,
+)
 
 _PSRESPONSEMESSAGE = _descriptor.Descriptor(
     name='PsResponseMessage',
@@ -1954,22 +1975,21 @@ _PSRESPONSEMESSAGE = _descriptor.Descriptor(
             is_extension=False,
             extension_scope=None,
             options=None),
-        _descriptor.FieldDescriptor(
-            name='data',
-            full_name='paddle.PsResponseMessage.data',
-            index=2,
-            number=3,
-            type=12,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=_b(""),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
+        _descriptor.FieldDescriptor(name='data',
+                                    full_name='paddle.PsResponseMessage.data',
+                                    index=2,
+                                    number=3,
+                                    type=12,
+                                    cpp_type=9,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=_b(""),
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
     ],
     extensions=[],
     nested_types=[],
@@ -1980,7 +2000,8 @@ _PSRESPONSEMESSAGE = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=3198,
-    serialized_end=3271, )
+    serialized_end=3271,
+)
 
 _FSCLIENTPARAMETER = _descriptor.Descriptor(
     name='FsClientParameter',
@@ -2005,54 +2026,51 @@ _FSCLIENTPARAMETER = _descriptor.Descriptor(
             is_extension=False,
             extension_scope=None,
             options=None),
-        _descriptor.FieldDescriptor(
-            name='uri',
-            full_name='paddle.FsClientParameter.uri',
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=_b("").decode('utf-8'),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
-        _descriptor.FieldDescriptor(
-            name='user',
-            full_name='paddle.FsClientParameter.user',
-            index=2,
-            number=3,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=_b("").decode('utf-8'),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
-        _descriptor.FieldDescriptor(
-            name='passwd',
-            full_name='paddle.FsClientParameter.passwd',
-            index=3,
-            number=4,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=_b("").decode('utf-8'),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            options=None),
+        _descriptor.FieldDescriptor(name='uri',
+                                    full_name='paddle.FsClientParameter.uri',
+                                    index=1,
+                                    number=2,
+                                    type=9,
+                                    cpp_type=9,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=_b("").decode('utf-8'),
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
+        _descriptor.FieldDescriptor(name='user',
+                                    full_name='paddle.FsClientParameter.user',
+                                    index=2,
+                                    number=3,
+                                    type=9,
+                                    cpp_type=9,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=_b("").decode('utf-8'),
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
+        _descriptor.FieldDescriptor(name='passwd',
+                                    full_name='paddle.FsClientParameter.passwd',
+                                    index=3,
+                                    number=4,
+                                    type=9,
+                                    cpp_type=9,
+                                    label=1,
+                                    has_default_value=False,
+                                    default_value=_b("").decode('utf-8'),
+                                    message_type=None,
+                                    enum_type=None,
+                                    containing_type=None,
+                                    is_extension=False,
+                                    extension_scope=None,
+                                    options=None),
         _descriptor.FieldDescriptor(
             name='buffer_size',
             full_name='paddle.FsClientParameter.buffer_size',
@@ -2104,14 +2122,17 @@ _FSCLIENTPARAMETER = _descriptor.Descriptor(
     ],
     extensions=[],
     nested_types=[],
-    enum_types=[_FSCLIENTPARAMETER_FSAPITYPE, ],
+    enum_types=[
+        _FSCLIENTPARAMETER_FSAPITYPE,
+    ],
     options=None,
     is_extendable=False,
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
     serialized_start=3274,
-    serialized_end=3487, )
+    serialized_end=3487,
+)
 
 _PSPARAMETER.fields_by_name['worker_param'].message_type = _WORKERPARAMETER
 _PSPARAMETER.fields_by_name['server_param'].message_type = _SERVERPARAMETER
@@ -2193,121 +2214,109 @@ DESCRIPTOR.enum_types_by_name['PsCmdID'] = _PSCMDID
 PSParameter = _reflection.GeneratedProtocolMessageType(
     'PSParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_PSPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.PSParameter)
-    ))
+    dict(DESCRIPTOR=_PSPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.PSParameter)
+         ))
 _sym_db.RegisterMessage(PSParameter)
 
 WorkerParameter = _reflection.GeneratedProtocolMessageType(
     'WorkerParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_WORKERPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.WorkerParameter)
-    ))
+    dict(DESCRIPTOR=_WORKERPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.WorkerParameter)
+         ))
 _sym_db.RegisterMessage(WorkerParameter)
 
 ServerParameter = _reflection.GeneratedProtocolMessageType(
     'ServerParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_SERVERPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.ServerParameter)
-    ))
+    dict(DESCRIPTOR=_SERVERPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.ServerParameter)
+         ))
 _sym_db.RegisterMessage(ServerParameter)
 
 DownpourWorkerParameter = _reflection.GeneratedProtocolMessageType(
     'DownpourWorkerParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_DOWNPOURWORKERPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.DownpourWorkerParameter)
-    ))
+    dict(DESCRIPTOR=_DOWNPOURWORKERPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.DownpourWorkerParameter)
+         ))
 _sym_db.RegisterMessage(DownpourWorkerParameter)
 
 DownpourTrainerParameter = _reflection.GeneratedProtocolMessageType(
     'DownpourTrainerParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_DOWNPOURTRAINERPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.DownpourTrainerParameter)
-    ))
+    dict(DESCRIPTOR=_DOWNPOURTRAINERPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.DownpourTrainerParameter)
+         ))
 _sym_db.RegisterMessage(DownpourTrainerParameter)
 
 ProgramConfig = _reflection.GeneratedProtocolMessageType(
     'ProgramConfig',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_PROGRAMCONFIG,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.ProgramConfig)
-    ))
+    dict(DESCRIPTOR=_PROGRAMCONFIG,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.ProgramConfig)
+         ))
 _sym_db.RegisterMessage(ProgramConfig)
 
 DenseTableParameter = _reflection.GeneratedProtocolMessageType(
     'DenseTableParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_DENSETABLEPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.DenseTableParameter)
-    ))
+    dict(DESCRIPTOR=_DENSETABLEPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.DenseTableParameter)
+         ))
 _sym_db.RegisterMessage(DenseTableParameter)
 
 SparseTableParameter = _reflection.GeneratedProtocolMessageType(
     'SparseTableParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_SPARSETABLEPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.SparseTableParameter)
-    ))
+    dict(DESCRIPTOR=_SPARSETABLEPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.SparseTableParameter)
+         ))
 _sym_db.RegisterMessage(SparseTableParameter)
 
 DownpourServerParameter = _reflection.GeneratedProtocolMessageType(
     'DownpourServerParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_DOWNPOURSERVERPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.DownpourServerParameter)
-    ))
+    dict(DESCRIPTOR=_DOWNPOURSERVERPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.DownpourServerParameter)
+         ))
 _sym_db.RegisterMessage(DownpourServerParameter)
 
 ServerServiceParameter = _reflection.GeneratedProtocolMessageType(
     'ServerServiceParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_SERVERSERVICEPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.ServerServiceParameter)
-    ))
+    dict(DESCRIPTOR=_SERVERSERVICEPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.ServerServiceParameter)
+         ))
 _sym_db.RegisterMessage(ServerServiceParameter)
 
 TableParameter = _reflection.GeneratedProtocolMessageType(
     'TableParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_TABLEPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.TableParameter)
-    ))
+    dict(DESCRIPTOR=_TABLEPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.TableParameter)
+         ))
 _sym_db.RegisterMessage(TableParameter)
 
 TableAccessorParameter = _reflection.GeneratedProtocolMessageType(
     'TableAccessorParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_TABLEACCESSORPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.TableAccessorParameter)
-    ))
+    dict(DESCRIPTOR=_TABLEACCESSORPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.TableAccessorParameter)
+         ))
 _sym_db.RegisterMessage(TableAccessorParameter)
 
 DownpourTableAccessorParameter = _reflection.GeneratedProtocolMessageType(
@@ -2333,61 +2342,55 @@ _sym_db.RegisterMessage(TableAccessorSaveParameter)
 PsRequestMessage = _reflection.GeneratedProtocolMessageType(
     'PsRequestMessage',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_PSREQUESTMESSAGE,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.PsRequestMessage)
-    ))
+    dict(DESCRIPTOR=_PSREQUESTMESSAGE,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.PsRequestMessage)
+         ))
 _sym_db.RegisterMessage(PsRequestMessage)
 
 SparseSGDRuleParameter = _reflection.GeneratedProtocolMessageType(
     'SparseSGDRuleParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_SPARSESGDRULEPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.SparseSGDRuleParameter)
-    ))
+    dict(DESCRIPTOR=_SPARSESGDRULEPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.SparseSGDRuleParameter)
+         ))
 _sym_db.RegisterMessage(SparseSGDRuleParameter)
 
 DenseSGDRuleParameter = _reflection.GeneratedProtocolMessageType(
     'DenseSGDRuleParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_DENSESGDRULEPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.DenseSGDRuleParameter)
-    ))
+    dict(DESCRIPTOR=_DENSESGDRULEPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.DenseSGDRuleParameter)
+         ))
 _sym_db.RegisterMessage(DenseSGDRuleParameter)
 
 AdamSGDParameter = _reflection.GeneratedProtocolMessageType(
     'AdamSGDParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_ADAMSGDPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.AdamSGDParameter)
-    ))
+    dict(DESCRIPTOR=_ADAMSGDPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.AdamSGDParameter)
+         ))
 _sym_db.RegisterMessage(AdamSGDParameter)
 
 NaiveSGDParameter = _reflection.GeneratedProtocolMessageType(
     'NaiveSGDParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_NAIVESGDPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.NaiveSGDParameter)
-    ))
+    dict(DESCRIPTOR=_NAIVESGDPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.NaiveSGDParameter)
+         ))
 _sym_db.RegisterMessage(NaiveSGDParameter)
 
 SummarySGDParameter = _reflection.GeneratedProtocolMessageType(
     'SummarySGDParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_SUMMARYSGDPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.SummarySGDParameter)
-    ))
+    dict(DESCRIPTOR=_SUMMARYSGDPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.SummarySGDParameter)
+         ))
 _sym_db.RegisterMessage(SummarySGDParameter)
 
 MovingAverageRuleParameter = _reflection.GeneratedProtocolMessageType(
@@ -2403,21 +2406,19 @@ _sym_db.RegisterMessage(MovingAverageRuleParameter)
 PsResponseMessage = _reflection.GeneratedProtocolMessageType(
     'PsResponseMessage',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_PSRESPONSEMESSAGE,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.PsResponseMessage)
-    ))
+    dict(DESCRIPTOR=_PSRESPONSEMESSAGE,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.PsResponseMessage)
+         ))
 _sym_db.RegisterMessage(PsResponseMessage)
 
 FsClientParameter = _reflection.GeneratedProtocolMessageType(
     'FsClientParameter',
     (_message.Message, ),
-    dict(
-        DESCRIPTOR=_FSCLIENTPARAMETER,
-        __module__='ps_pb2'
-        # @@protoc_insertion_point(class_scope:paddle.FsClientParameter)
-    ))
+    dict(DESCRIPTOR=_FSCLIENTPARAMETER,
+         __module__='ps_pb2'
+         # @@protoc_insertion_point(class_scope:paddle.FsClientParameter)
+         ))
 _sym_db.RegisterMessage(FsClientParameter)
 
 DESCRIPTOR.has_options = True

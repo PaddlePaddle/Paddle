@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestParallelEmbeddingAPI(TestDistBase):
+
     def _setup_config(self):
         pass
 

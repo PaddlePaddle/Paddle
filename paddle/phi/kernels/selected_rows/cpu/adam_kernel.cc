@@ -19,7 +19,7 @@
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 
 namespace phi {
@@ -35,8 +35,8 @@ void AdamDenseParamSparseGradKernel(
     const DenseTensor& moment2,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
-    paddle::optional<const DenseTensor&> master_param,
-    paddle::optional<const DenseTensor&> skip_update,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,

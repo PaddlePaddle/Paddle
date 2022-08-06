@@ -15,14 +15,14 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include <cmath>
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
@@ -986,9 +986,9 @@ struct BReluGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout *
-                   ((x > static_cast<T>(t_min)) * (x < static_cast<T>(t_max)))
-                       .template cast<T>();
+    dx.device(d) =
+        dout * ((x > static_cast<T>(t_min)) * (x < static_cast<T>(t_max)))
+                   .template cast<T>();
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -1054,11 +1054,10 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
           GET_DATA_SAFELY(X, "Input", "X", "LeakyReluGradGrad"));
       auto ddout = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DOut", "LeakyReluGradGrad"));
-      ddout.device(*d) =
-          ddx *
-          ((x > static_cast<T>(0)).template cast<T>() +
-           static_cast<T>(alpha) * (x <= static_cast<T>(0)).template cast<T>())
-              .template cast<T>();
+      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+                                static_cast<T>(alpha) *
+                                    (x <= static_cast<T>(0)).template cast<T>())
+                                   .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -1096,6 +1095,44 @@ struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+// relu6(x) = min(max(0, x), 6)
+template <typename T>
+struct Relu6Functor : public BaseActivationFunctor<T> {
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) =
+        x.cwiseMax(static_cast<T>(0)).cwiseMin(static_cast<T>(threshold));
+  }
+};
+
+template <typename T>
+struct Relu6GradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
+                   .template cast<T>();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 // tanhshrink(x) = x - tanh(x)
@@ -1290,11 +1327,10 @@ struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
     if (ddOut) {
       auto ddout = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "ELUGradGrad"));
-      ddout.device(*d) = ddx *
-                         ((x > static_cast<T>(0)).template cast<T>() +
-                          static_cast<T>(alpha) * x.exp() *
-                              (x <= static_cast<T>(0)).template cast<T>())
-                             .template cast<T>();
+      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+                                static_cast<T>(alpha) * x.exp() *
+                                    (x <= static_cast<T>(0)).template cast<T>())
+                                   .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -1323,6 +1359,32 @@ struct SiluGradFunctor : public BaseActivationFunctor<T> {
     auto temp2 = x * (-x).exp();                  // x*e^(-x)
     dx.device(d) = dout * ((static_cast<T>(1) / temp1) *
                            (static_cast<T>(1) + (temp2 / temp1)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct SoftsignFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x / (static_cast<T>(1) + x.abs());
+  }
+};
+
+// d(softsign(x))/dx = 1 / (1 + |x|)^2
+// Taken from https://en.wikipedia.org/wiki/Activation_function
+
+template <typename T>
+struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * (static_cast<T>(1) / (static_cast<T>(1) + x.abs()).square());
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -1817,6 +1879,14 @@ struct CeilFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct NegativeFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = -x;
+  }
+};
+
+template <typename T>
 struct ZeroGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device,
             typename X,
@@ -1980,11 +2050,10 @@ struct CELUGradGradFunctor : public BaseActivationFunctor<T> {
     if (ddOut) {
       auto ddout = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "CELUGradGrad"));
-      ddout.device(*d) = ddx *
-                         ((x > static_cast<T>(0)).template cast<T>() +
-                          (x / static_cast<T>(alpha)).exp() *
-                              (x <= static_cast<T>(0)).template cast<T>())
-                             .template cast<T>();
+      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+                                (x / static_cast<T>(alpha)).exp() *
+                                    (x <= static_cast<T>(0)).template cast<T>())
+                                   .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -2087,6 +2156,50 @@ struct CudaExpFunctor<double> : public BaseActivationFunctor<double> {
   __device__ __forceinline__ double operator()(const double x) const {
     return exp(x);
   }
+};
+
+template <typename T>
+struct CudaSeluFunctor : public BaseActivationFunctor<T> {
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"scale", &scale}, {"alpha", &alpha}};
+  }
+
+  __device__ __forceinline__ T operator()(const T x) const {
+    T res = x;
+    if (res <= zero) {
+      res = alpha * expf(res) - alpha;
+    }
+    res *= scale;
+    return res;
+  }
+
+ private:
+  float scale;
+  float alpha;
+  T zero = static_cast<T>(0.0f);
+};
+
+template <>
+struct CudaSeluFunctor<double> : public BaseActivationFunctor<double> {
+  typename BaseActivationFunctor<double>::AttrPair GetAttrs() {
+    return {{"scale", &scale}, {"alpha", &alpha}};
+  }
+
+  __device__ __forceinline__ double operator()(const double x) const {
+    double res = x;
+    double alpha_cast = static_cast<double>(alpha);
+    double scale_cast = static_cast<double>(scale);
+    if (res <= zero) {
+      res = alpha_cast * exp(res) - alpha_cast;
+    }
+    res *= scale_cast;
+    return res;
+  }
+
+ private:
+  float scale;
+  float alpha;
+  double zero = static_cast<double>(0.0f);
 };
 
 template <typename T>
@@ -2708,6 +2821,41 @@ struct CudaThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaRelu6Functor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // relu6(x) = min(max(0, x), 6)
+  __device__ __forceinline__ T operator()(const T x) const {
+    T t = static_cast<T>(threshold);
+    return x <= zero ? zero : (x < t ? x : t);
+  }
+};
+
+template <typename T>
+struct CudaRelu6GradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // dx = (out > 0 && out < t) ? dout : 0
+  __device__ __forceinline__ T operator()(const T dout, const T out) const {
+    T t = static_cast<T>(threshold);
+    return (out > zero && out < t) ? dout : zero;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+template <typename T>
 struct CudaLeakyReluFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);
   float alpha;
@@ -2936,6 +3084,31 @@ struct CudaSiluGradFunctor : public BaseActivationFunctor<T> {
     MPType x = static_cast<MPType>(arg_x);
     MPType temp = one / (one + exp(-x));
     return static_cast<T>(dout * (temp * (one + x * (one - temp))));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaSoftsignFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // softsign(x) = x / (1 + abs(x))
+  __device__ __forceinline__ T operator()(const T x) const {
+    // Using abs directly will cause namespace conflict
+    return x / (one + (x > -x ? x : -x));
+  }
+};
+
+template <typename T>
+struct CudaSoftsignGradFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // dx = dout / (1 + abs(x))^2
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    // Using abs directly will cause namespace conflict
+    T temp = one + (x > -x ? x : -x);
+    return dout / (temp * temp);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

@@ -30,17 +30,11 @@ from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
 
-__all__ = [ #noqa
-      "CommunicateTopology",
-      "UtilBase",
-      "HybridCommunicateGroup",
-      "MultiSlotStringDataGenerator",
-      "UserDefinedRoleMaker",
-      "DistributedStrategy",
-      "Role",
-      "MultiSlotDataGenerator",
-      "PaddleCloudRoleMaker",
-      "Fleet"
+__all__ = [  #noqa
+    "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
+    "MultiSlotStringDataGenerator", "UserDefinedRoleMaker",
+    "DistributedStrategy", "Role", "MultiSlotDataGenerator",
+    "PaddleCloudRoleMaker", "Fleet"
 ]
 
 fleet = Fleet()
@@ -63,6 +57,10 @@ world_device_ids = fleet.world_device_ids
 local_rank = fleet.local_rank
 rank_in_node = local_rank
 is_worker = fleet.is_worker
+is_coordinator = fleet.is_coordinator
+init_coordinator = fleet.init_coordinator
+make_fl_strategy = fleet.make_fl_strategy
+get_fl_client = fleet.get_fl_client
 worker_endpoints = fleet.worker_endpoints
 server_num = fleet.server_num
 server_index = fleet.server_index

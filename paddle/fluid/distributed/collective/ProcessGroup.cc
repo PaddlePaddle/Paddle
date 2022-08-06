@@ -35,7 +35,9 @@ bool ProcessGroup::Task::Wait(std::chrono::milliseconds timeout) {
 
 void ProcessGroup::Task::Synchronize() {}
 
-ProcessGroup::ProcessGroup(int rank, int size, const platform::Place& place,
+ProcessGroup::ProcessGroup(int rank,
+                           int size,
+                           const platform::Place& place,
                            int gid)
     : rank_(rank), size_(size), place_(place), gid_(gid) {
   if (gid != IGNORE_ID) {

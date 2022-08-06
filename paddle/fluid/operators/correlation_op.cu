@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 #ifdef __HIPCC__
@@ -74,8 +75,11 @@ __global__ void set_zero(T *x, int num) {
 }
 
 template <typename T>
-__global__ void channel_first(const T *input, T *rinput, const int channel,
-                              const int height, const int width,
+__global__ void channel_first(const T *input,
+                              T *rinput,
+                              const int channel,
+                              const int height,
+                              const int width,
                               const int pad_size) {
   int n = blockIdx.x;
   int h = blockIdx.y;
@@ -99,12 +103,20 @@ __global__ void channel_first(const T *input, T *rinput, const int channel,
 }
 
 template <typename T>
-__global__ void correlation_forward(
-    T *output, const int output_channel, const int output_height,
-    const int output_width, const T *rinput1, const int input_channel,
-    const int input_height, const int input_width, const T *rinput2,
-    const int pad_size, const int kernel_size, const int max_displacement,
-    const int stride1, const int stride2) {
+__global__ void correlation_forward(T *output,
+                                    const int output_channel,
+                                    const int output_height,
+                                    const int output_width,
+                                    const T *rinput1,
+                                    const int input_channel,
+                                    const int input_height,
+                                    const int input_width,
+                                    const T *rinput2,
+                                    const int pad_size,
+                                    const int kernel_size,
+                                    const int max_displacement,
+                                    const int stride1,
+                                    const int stride2) {
   int p_input_width = input_width + 2 * pad_size;
   int p_input_height = input_height + 2 * pad_size;
 
@@ -164,12 +176,13 @@ __global__ void correlation_forward(
   }
 }
 
-// class CorrelationKernel<platform::CUDADeviceContext, T>
+// class CorrelationKernel<phi::GPUContext, T>
 template <typename T>
 class CorrelationCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+                      true,
                       platform::errors::InvalidArgument(
                           "Correlation only supports GPU now."));
 
@@ -184,7 +197,7 @@ class CorrelationCUDAKernel : public framework::OpKernel<T> {
 
     auto *output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     // base on input1, NCHW
     auto in_dims = input1->dims();
@@ -196,11 +209,11 @@ class CorrelationCUDAKernel : public framework::OpKernel<T> {
     int padded_input_height = H + 2 * pad_size;
     int padded_input_width = W + 2 * pad_size;
 
-    Tensor rinput1 = ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>(
+    Tensor rinput1 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput1.mutable_data<T>(ctx.GetPlace());
 
-    Tensor rinput2 = ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>(
+    Tensor rinput2 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput2.mutable_data<T>(ctx.GetPlace());
 
@@ -227,21 +240,41 @@ class CorrelationCUDAKernel : public framework::OpKernel<T> {
     dim3 threadsPerBlock(THREADS_PER_BLOCK);
     dim3 totalBlocksCorr(N, OH, OW);
 
-    correlation_forward<
-        T><<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
-        output->data<T>(), OC, OH, OW, rinput1.data<T>(), C, H, W,
-        rinput2.data<T>(), pad_size, kernel_size, max_displacement, stride1,
-        stride2);
+    correlation_forward<T>
+        <<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
+            output->data<T>(),
+            OC,
+            OH,
+            OW,
+            rinput1.data<T>(),
+            C,
+            H,
+            W,
+            rinput2.data<T>(),
+            pad_size,
+            kernel_size,
+            max_displacement,
+            stride1,
+            stride2);
   }
 };
 
 template <typename T>
-__global__ void correlation_backward_input1(
-    int item, T *grad_input1, const int input_channel, const int input_height,
-    const int input_width, const T *grad_output, const int output_channel,
-    const int output_height, const int output_width, const T *rinput2,
-    const int pad_size, const int kernel_size, const int max_displacement,
-    const int stride1, const int stride2) {
+__global__ void correlation_backward_input1(int item,
+                                            T *grad_input1,
+                                            const int input_channel,
+                                            const int input_height,
+                                            const int input_width,
+                                            const T *grad_output,
+                                            const int output_channel,
+                                            const int output_height,
+                                            const int output_width,
+                                            const T *rinput2,
+                                            const int pad_size,
+                                            const int kernel_size,
+                                            const int max_displacement,
+                                            const int stride1,
+                                            const int stride2) {
   int n = item;
   int h = blockIdx.x * stride1 + pad_size;
   int w = blockIdx.y * stride1 + pad_size;
@@ -320,12 +353,21 @@ __global__ void correlation_backward_input1(
 }
 
 template <typename T>
-__global__ void correlation_backward_input2(
-    int item, T *grad_input2, const int input_channel, const int input_height,
-    const int input_width, const T *grad_output, const int output_channel,
-    const int output_height, const int output_width, const T *rinput1,
-    const int pad_size, const int kernel_size, const int max_displacement,
-    const int stride1, const int stride2) {
+__global__ void correlation_backward_input2(int item,
+                                            T *grad_input2,
+                                            const int input_channel,
+                                            const int input_height,
+                                            const int input_width,
+                                            const T *grad_output,
+                                            const int output_channel,
+                                            const int output_height,
+                                            const int output_width,
+                                            const T *rinput1,
+                                            const int pad_size,
+                                            const int kernel_size,
+                                            const int max_displacement,
+                                            const int stride1,
+                                            const int stride2) {
   int n = item;
   int h = blockIdx.x * stride1 + pad_size;
   int w = blockIdx.y * stride1 + pad_size;
@@ -407,7 +449,8 @@ template <typename T>
 class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+                      true,
                       platform::errors::InvalidArgument(
                           "Correlation only supports GPU now."));
     const auto *input1 = ctx.Input<Tensor>("Input1");
@@ -425,7 +468,7 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
     grad_input1->mutable_data<T>(ctx.GetPlace());
     auto *grad_input2 = ctx.Output<Tensor>(framework::GradVarName("Input2"));
     grad_input2->mutable_data<T>(ctx.GetPlace());
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     auto in_dims = input1->dims();
     int N = in_dims[0];
@@ -436,11 +479,11 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
     int padded_input_height = H + 2 * pad_size;
     int padded_input_width = W + 2 * pad_size;
 
-    Tensor rinput1 = ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>(
+    Tensor rinput1 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput1.mutable_data<T>(ctx.GetPlace());
 
-    Tensor rinput2 = ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>(
+    Tensor rinput2 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput2.mutable_data<T>(ctx.GetPlace());
 
@@ -448,10 +491,14 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
         rinput1.data<T>(), rinput1.numel());
     set_zero<<<(rinput2.numel() + 512 - 1) / 512, 512, 0, dev_ctx.stream()>>>(
         rinput2.data<T>(), rinput2.numel());
-    set_zero<<<(grad_input1->numel() + 512 - 1) / 512, 512, 0,
+    set_zero<<<(grad_input1->numel() + 512 - 1) / 512,
+               512,
+               0,
                dev_ctx.stream()>>>(grad_input1->data<T>(),
                                    grad_input1->numel());
-    set_zero<<<(grad_input2->numel() + 512 - 1) / 512, 512, 0,
+    set_zero<<<(grad_input2->numel() + 512 - 1) / 512,
+               512,
+               0,
                dev_ctx.stream()>>>(grad_input2->data<T>(),
                                    grad_input2->numel());
 
@@ -472,19 +519,43 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
     dim3 totalBlocksCorr(H, W, C);
 
     for (int n = 0; n < N; n++) {
-      correlation_backward_input1<
-          T><<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
-          n, grad_input1->data<T>(), C, H, W, grad_output->data<T>(), GOC, GOH,
-          GOW, rinput2.data<T>(), pad_size, kernel_size, max_displacement,
-          stride1, stride2);
+      correlation_backward_input1<T>
+          <<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
+              n,
+              grad_input1->data<T>(),
+              C,
+              H,
+              W,
+              grad_output->data<T>(),
+              GOC,
+              GOH,
+              GOW,
+              rinput2.data<T>(),
+              pad_size,
+              kernel_size,
+              max_displacement,
+              stride1,
+              stride2);
     }
 
     for (int n = 0; n < N; n++) {
-      correlation_backward_input2<
-          T><<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
-          n, grad_input2->data<T>(), C, H, W, grad_output->data<T>(), GOC, GOH,
-          GOW, rinput1.data<T>(), pad_size, kernel_size, max_displacement,
-          stride1, stride2);
+      correlation_backward_input2<T>
+          <<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
+              n,
+              grad_input2->data<T>(),
+              C,
+              H,
+              W,
+              grad_output->data<T>(),
+              GOC,
+              GOH,
+              GOW,
+              rinput1.data<T>(),
+              pad_size,
+              kernel_size,
+              max_displacement,
+              stride1,
+              stride2);
     }
   }
 };
@@ -493,7 +564,9 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(correlation, ops::CorrelationCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(correlation,
+                        ops::CorrelationCUDAKernel<float>,
                         ops::CorrelationCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(correlation_grad, ops::CorrelationCUDAGradKernel<float>,
+REGISTER_OP_CUDA_KERNEL(correlation_grad,
+                        ops::CorrelationCUDAGradKernel<float>,
                         ops::CorrelationCUDAGradKernel<double>);

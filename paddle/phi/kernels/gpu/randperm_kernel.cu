@@ -16,10 +16,12 @@
 
 #ifdef __NVCC__
 #include <curand_kernel.h>
+
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
 #include <hiprand_kernel.h>
+
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif

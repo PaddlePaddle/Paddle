@@ -33,24 +33,24 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops
 
-__all__ = [     #noqa
-           'get_host_name_ip',
-           'Trainer',
-           'get_cluster',
-           'start_local_trainers',
-           'watch_local_trainers',
-           'find_free_ports',
-           'JobServer',
-           'Cluster',
-           'Pod',
-           'Hdfs',
-           'add_arguments',
-           'terminate_local_procs',
-           'TrainerProc',
-           'get_logger',
-           'pull_worker_log',
-           'global_scatter',
-           'global_gather',
+__all__ = [  #noqa
+    'get_host_name_ip',
+    'Trainer',
+    'get_cluster',
+    'start_local_trainers',
+    'watch_local_trainers',
+    'find_free_ports',
+    'JobServer',
+    'Cluster',
+    'Pod',
+    'Hdfs',
+    'add_arguments',
+    'terminate_local_procs',
+    'TrainerProc',
+    'get_logger',
+    'pull_worker_log',
+    'global_scatter',
+    'global_gather',
 ]
 
 
@@ -163,16 +163,17 @@ def global_scatter(x,
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-        helper.append_op(
-            type=op_type,
-            inputs={
-                'X': [x],
-                'local_count': [local_count],
-                'global_count': [global_count],
-            },
-            outputs={'Out': [out]},
-            attrs={'ring_id': ring_id,
-                   'use_calc_stream': use_calc_stream})
+        helper.append_op(type=op_type,
+                         inputs={
+                             'X': [x],
+                             'local_count': [local_count],
+                             'global_count': [global_count],
+                         },
+                         outputs={'Out': [out]},
+                         attrs={
+                             'ring_id': ring_id,
+                             'use_calc_stream': use_calc_stream
+                         })
         return out
 
 
@@ -276,18 +277,17 @@ def global_gather(x,
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-        helper.append_op(
-            type=op_type,
-            inputs={
-                'X': [x],
-                'local_count': [local_count],
-                'global_count': [global_count]
-            },
-            outputs={'Out': [out]},
-            attrs={
-                'ring_id': group,
-                'use_calc_stream': use_calc_stream,
-            })
+        helper.append_op(type=op_type,
+                         inputs={
+                             'X': [x],
+                             'local_count': [local_count],
+                             'global_count': [global_count]
+                         },
+                         outputs={'Out': [out]},
+                         attrs={
+                             'ring_id': group,
+                             'use_calc_stream': use_calc_stream,
+                         })
         return out
 
 
@@ -362,6 +362,7 @@ def _print_arguments(args):
 
 
 class Hdfs(object):
+
     def __init__(self):
         self.hdfs_ugi = None
         self.hdfs_name = None
@@ -386,6 +387,7 @@ class Hdfs(object):
 
 
 class Cluster(object):
+
     def __init__(self, hdfs):
         self.job_server = None
         self.pods = []
@@ -448,6 +450,7 @@ class Cluster(object):
 
 
 class JobServer(object):
+
     def __init__(self):
         self.endpoint = None
 
@@ -462,6 +465,7 @@ class JobServer(object):
 
 
 class Trainer(object):
+
     def __init__(self):
         self.gpus = []
         self.endpoint = None
@@ -493,6 +497,7 @@ class Trainer(object):
 
 
 class Pod(object):
+
     def __init__(self):
         self.rank = None
         self.id = None
@@ -631,15 +636,15 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
         args = parser.parse_args()
     """
     type = strtobool if type == bool else type
-    argparser.add_argument(
-        "--" + argname,
-        default=default,
-        type=type,
-        help=help + ' Default: %(default)s.',
-        **kwargs)
+    argparser.add_argument("--" + argname,
+                           default=default,
+                           type=type,
+                           help=help + ' Default: %(default)s.',
+                           **kwargs)
 
 
 def find_free_ports(num):
+
     def __free_port():
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
             s.bind(('', 0))
@@ -712,6 +717,7 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
 
 
 class TrainerProc(object):
+
     def __init__(self):
         self.proc = None
         self.log_fn = None
@@ -808,14 +814,14 @@ def watch_local_trainers(procs, nranks):
         raise
     except SystemExit:
         logger.error(
-            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
-            format(nranks, error_rank))
+            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
+            .format(nranks, error_rank))
         terminate_local_procs(procs)
         raise
     except:
         logger.error(
-            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
-            format(nranks, error_rank))
+            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
+            .format(nranks, error_rank))
         terminate_local_procs(procs)
         raise
 

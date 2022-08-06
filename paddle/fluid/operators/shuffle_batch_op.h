@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -113,7 +114,8 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
     auto *x_data = x->data<T>();
     auto *out_data = out->mutable_data<T>(context.GetPlace());
     for (auto i = 0; i < elem_size; i++) {
-      memcpy(out_data + idx_vec[i] * x_embed_size, x_data + i * x_embed_size,
+      memcpy(out_data + idx_vec[i] * x_embed_size,
+             x_data + i * x_embed_size,
              x_embed_size * sizeof(T));
     }
     // set new seed
@@ -146,7 +148,8 @@ class ShuffleBatchGradKernel : public framework::OpKernel<T> {
     auto *x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
     for (auto i = 0; i < elem_size; i++) {
       memcpy(x_grad_data + idx_vec_grad[i] * embed_size,
-             out_grad_data + i * embed_size, embed_size * sizeof(T));
+             out_grad_data + i * embed_size,
+             embed_size * sizeof(T));
     }
   }
 };

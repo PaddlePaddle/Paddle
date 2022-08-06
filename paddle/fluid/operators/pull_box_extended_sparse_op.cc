@@ -22,14 +22,17 @@ class PullBoxExtendedSparseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(
-        ctx->Inputs("Ids").size(), 1UL,
+        ctx->Inputs("Ids").size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Inputs(Ids) of PullBoxExtendedSparseOp should not be empty."));
     PADDLE_ENFORCE_GE(
-        ctx->Outputs("Out").size(), 1UL,
+        ctx->Outputs("Out").size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Outputs(Out) of PullBoxExtendedSparseOp should not be empty."));
-    PADDLE_ENFORCE_GE(ctx->Outputs("OutExtend").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Outputs("OutExtend").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "Outputs(OutExtend) of PullBoxExtendedSparseOp "
                           "should not be empty."));
@@ -45,7 +48,8 @@ class PullBoxExtendedSparseOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < n_ids; ++i) {
       const auto ids_dims = all_ids_dim[i];
       int ids_rank = ids_dims.size();
-      PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
+      PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
+                        1,
                         platform::errors::InvalidArgument(
                             "Shape error in %lu id, the last dimension of the "
                             "'Ids' tensor must be 1.",
@@ -140,7 +144,8 @@ class PushBoxExtendedSparseOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    pull_box_extended_sparse, ops::PullBoxExtendedSparseOp,
+    pull_box_extended_sparse,
+    ops::PullBoxExtendedSparseOp,
     ops::PullBoxExtendedSparseOpMaker,
     ops::PushBoxExtendedSparseOpMaker<paddle::framework::OpDesc>,
     ops::PushBoxExtendedSparseOpMaker<paddle::imperative::OpBase>);

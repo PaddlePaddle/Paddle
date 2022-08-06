@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/multi_gru_seq_fuse_pass.h"
+
 #include <limits>
 #include <sstream>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/platform/errors.h"
@@ -32,7 +34,8 @@ using string::PrettyLogDetail;
 
 namespace {
 
-std::vector<std::string> JoinInputs(Node* op1, Node* op2,
+std::vector<std::string> JoinInputs(Node* op1,
+                                    Node* op2,
                                     std::string input_name) {
   auto in1 = op1->Op()->Input(input_name);
   auto& in2 = op2->Op()->Input(input_name);
@@ -48,8 +51,9 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument cannot be NULL."));
   FusePassBase::Init(name_scope_, graph);
-  PADDLE_ENFORCE_NOT_NULL(param_scope(), platform::errors::InvalidArgument(
-                                             "Scope cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      param_scope(),
+      platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   patterns::MultiGruSeq pattern{gpd.mutable_pattern(), name_scope_};
@@ -99,8 +103,8 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
       multi_gru_desc.SetAttr(attr.first, attr.second);
     }
 
-    auto layers = BOOST_GET_CONST(int, gru1->Op()->GetAttr("layers")) +
-                  BOOST_GET_CONST(int, gru2->Op()->GetAttr("layers"));
+    auto layers = PADDLE_GET_CONST(int, gru1->Op()->GetAttr("layers")) +
+                  PADDLE_GET_CONST(int, gru2->Op()->GetAttr("layers"));
     multi_gru_desc.SetAttr("layers", layers);
 
     auto multi_gru =

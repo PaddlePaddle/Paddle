@@ -34,9 +34,9 @@ class TensorConfig:
     '''
 
     def __init__(self,
-                 lod: Optional[List[List[int]]]=None,
-                 data_gen: Optional[Callable[..., np.array]]=None,
-                 shape: Optional[List[List[int]]]=None):
+                 lod: Optional[List[List[int]]] = None,
+                 data_gen: Optional[Callable[..., np.array]] = None,
+                 shape: Optional[List[List[int]]] = None):
         '''
         shape: The shape of the tensor.
         dtype: The data type of the tensor.
@@ -71,9 +71,9 @@ class OpConfig:
                  type: str,
                  inputs: Dict[str, List[str]],
                  outputs: Dict[str, List[str]],
-                 attrs: Dict[str, Any]=None,
-                 outputs_var_type: Dict[str, VarType]=None,
-                 outputs_dtype: Dict[str, np.dtype]=None,
+                 attrs: Dict[str, Any] = None,
+                 outputs_var_type: Dict[str, VarType] = None,
+                 outputs_dtype: Dict[str, np.dtype] = None,
                  **kwargs):
         self.type = type
         self.inputs = inputs
@@ -109,9 +109,9 @@ class BlockConfig:
     def __init__(self,
                  ops: List[OpConfig],
                  vars: List[str],
-                 vars_dtype: Dict[str, np.dtype]=None,
-                 vars_var_type: Dict[str, VarType]=None,
-                 vars_lod_level: Dict[str, int]=None):
+                 vars_dtype: Dict[str, np.dtype] = None,
+                 vars_var_type: Dict[str, VarType] = None,
+                 vars_lod_level: Dict[str, int] = None):
         self.ops = ops
         self.vars = vars
         self.vars_dtype = vars_dtype
@@ -165,8 +165,8 @@ class BlockConfig:
                     if op_config.outputs_dtype is not None and v in op_config.outputs_dtype.keys(
                     ):
                         var_desc.set_dtype(
-                            convert_np_dtype_to_dtype_(op_config.outputs_dtype[
-                                v]))
+                            convert_np_dtype_to_dtype_(
+                                op_config.outputs_dtype[v]))
             if op_config.type not in _OP_WITHOUT_KERNEL_SET:
                 op_desc.infer_var_type(block_desc)
                 op_desc.infer_shape(block_desc)
@@ -176,11 +176,8 @@ class BlockConfig:
 class ProgramConfig:
     '''  A config builder for generating a Program.  '''
 
-    def __init__(self,
-                 ops: List[OpConfig],
-                 weights: Dict[str, TensorConfig],
-                 inputs: Dict[str, TensorConfig],
-                 outputs: List[str]):
+    def __init__(self, ops: List[OpConfig], weights: Dict[str, TensorConfig],
+                 inputs: Dict[str, TensorConfig], outputs: List[str]):
         self.ops = ops
         # if no weight need to save, we create a place_holder to help seriazlie params.
         if not weights:
@@ -229,6 +226,7 @@ def create_fake_model(program_config):
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
         var_desc.set_shape(tensor_config.shape)
+        print(f"name: {name}; shape: {tensor_config.shape}")
         var_desc.set_need_check_feed(True)
         if tensor_config.lod is not None:
             var_desc.set_lod_level(len(tensor_config.lod))
@@ -260,12 +258,13 @@ def create_fake_model(program_config):
     out_var = util_program.global_block().create_var(
         type=core.VarDesc.VarType.RAW, name="out_var_0")
     out_var.desc.set_persistable(True)
-    util_program.global_block().append_op(
-        type='save_combine',
-        inputs={'X': in_vars},
-        outputs={'Y': out_var},
-        attrs={'file_path': '',
-               'save_to_memory': True})
+    util_program.global_block().append_op(type='save_combine',
+                                          inputs={'X': in_vars},
+                                          outputs={'Y': out_var},
+                                          attrs={
+                                              'file_path': '',
+                                              'save_to_memory': True
+                                          })
     for op_config in program_config.ops:
         op_desc = main_block_desc.append_op()
         op_desc.set_type(op_config.type)
@@ -325,6 +324,7 @@ def create_fake_model(program_config):
     with fluid.scope_guard(scope):
         executor.run(util_program)
         params = scope.find_var("out_var_0").get_bytes()
+
     return model, params
 
 
@@ -337,11 +337,10 @@ def create_quant_model(model,
     scope = global_scope()
     exe = paddle.static.Executor(place)
     [inference_program, feed_target_names,
-     fetch_targets] = paddle.static.load_inference_model(
-         path_prefix=None,
-         executor=exe,
-         model_filename=model,
-         params_filename=params)
+     fetch_targets] = paddle.static.load_inference_model(path_prefix=None,
+                                                         executor=exe,
+                                                         model_filename=model,
+                                                         params_filename=params)
     graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
 
     out_scale_op_list = [
@@ -489,18 +488,18 @@ def create_quant_model(model,
             tensor.set(np.ones(tensor.shape(), dtype=np.float32), place)
 
     if save:
-        fluid.io.save_inference_model(
-            'test_inference_model',
-            feed_target_names,
-            fetch_targets,
-            exe,
-            main_program=main_program)
+        fluid.io.save_inference_model('test_inference_model',
+                                      feed_target_names,
+                                      fetch_targets,
+                                      exe,
+                                      main_program=main_program)
 
     feed_vars = [
         main_program.global_block().var(name) for name in feed_target_names
     ]
-    serialized_program = paddle.static.serialize_program(
-        feed_vars, fetch_targets, program=main_program)
+    serialized_program = paddle.static.serialize_program(feed_vars,
+                                                         fetch_targets,
+                                                         program=main_program)
     serialized_params = paddle.static.serialize_persistables(
         feed_vars, fetch_targets, executor=exe, program=main_program)
     return serialized_program, serialized_params

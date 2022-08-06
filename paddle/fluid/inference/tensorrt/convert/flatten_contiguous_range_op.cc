@@ -29,15 +29,16 @@ namespace tensorrt {
 class FlattenContiguousRangeOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid flatten_contiguous_range op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     const auto input_dim = input->getDimensions();
     const int dims = input_dim.nbDims;
-    int start_axis = BOOST_GET_CONST(int, op_desc.GetAttr("start_axis"));
-    int stop_axis = BOOST_GET_CONST(int, op_desc.GetAttr("stop_axis"));
+    int start_axis = PADDLE_GET_CONST(int, op_desc.GetAttr("start_axis"));
+    int stop_axis = PADDLE_GET_CONST(int, op_desc.GetAttr("stop_axis"));
 
     nvinfer1::IShuffleLayer* layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
@@ -50,10 +51,12 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
       for (int i = 0, j = 0; i < dims; ++i) {
         if (start_axis <= i + 1 && i + 1 <= stop_axis) {
           int dim_i = input_dim.d[i];
-          PADDLE_ENFORCE_GT(dim_i, 0, platform::errors::InvalidArgument(
-                                          "flatten_contiguous_range input dim "
-                                          "should be > 0, but got %d.",
-                                          dim_i));
+          PADDLE_ENFORCE_GT(dim_i,
+                            0,
+                            platform::errors::InvalidArgument(
+                                "flatten_contiguous_range input dim "
+                                "should be > 0, but got %d.",
+                                dim_i));
           dim_prod *= dim_i;
           if (i + 1 == stop_axis) {
             flatten_dim.d[j++] = dim_prod;
@@ -105,13 +108,20 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
         start_dim.d[0] = start_axis;
         size_dim.d[0] = stop_axis - start_axis + 1;
         stride_dim.d[0] = 1;
-        auto* slice_layer =
-            TRT_ENGINE_ADD_LAYER(engine_, Slice, *shape_layer_itensor,
-                                 start_dim, size_dim, stride_dim);
+        auto* slice_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                                 Slice,
+                                                 *shape_layer_itensor,
+                                                 start_dim,
+                                                 size_dim,
+                                                 stride_dim);
         uint32_t reduce_dim = 1;
-        auto* reduce_prod_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Reduce, *(slice_layer->getOutput(0)),
-            nvinfer1::ReduceOperation::kPROD, reduce_dim, true);
+        auto* reduce_prod_layer =
+            TRT_ENGINE_ADD_LAYER(engine_,
+                                 Reduce,
+                                 *(slice_layer->getOutput(0)),
+                                 nvinfer1::ReduceOperation::kPROD,
+                                 reduce_dim,
+                                 true);
 
         nvinfer1::ITensor* input_shape = nullptr;
         if (start_axis == 0 && stop_axis == dims - 1) {
@@ -126,9 +136,12 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
             left_start_dim.d[0] = 0;
             left_size_dim.d[0] = start_axis;
             left_stride_dim.d[0] = 1;
-            auto* slice_layer_left = TRT_ENGINE_ADD_LAYER(
-                engine_, Slice, *shape_layer_itensor, left_start_dim,
-                left_size_dim, left_stride_dim);
+            auto* slice_layer_left = TRT_ENGINE_ADD_LAYER(engine_,
+                                                          Slice,
+                                                          *shape_layer_itensor,
+                                                          left_start_dim,
+                                                          left_size_dim,
+                                                          left_stride_dim);
             itensors.push_back(slice_layer_left->getOutput(0));
           }
           itensors.push_back(reduce_prod_layer->getOutput(0));
@@ -140,9 +153,12 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
             right_start_dim.d[0] = stop_axis + 1;
             right_size_dim.d[0] = dims - stop_axis - 1;
             right_stride_dim.d[0] = 1;
-            auto* slice_layer_right = TRT_ENGINE_ADD_LAYER(
-                engine_, Slice, *shape_layer_itensor, right_start_dim,
-                right_size_dim, right_stride_dim);
+            auto* slice_layer_right = TRT_ENGINE_ADD_LAYER(engine_,
+                                                           Slice,
+                                                           *shape_layer_itensor,
+                                                           right_start_dim,
+                                                           right_size_dim,
+                                                           right_stride_dim);
             itensors.push_back(slice_layer_right->getOutput(0));
           }
           auto* concat_layer = TRT_ENGINE_ADD_LAYER(
@@ -157,8 +173,8 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "flatten_contiguous_range", {output_name},
-                             test_mode);
+    RreplenishLayerAndOutput(
+        layer, "flatten_contiguous_range", {output_name}, test_mode);
   }
 };
 

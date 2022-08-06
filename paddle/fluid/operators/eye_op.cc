@@ -37,7 +37,7 @@ class EyeOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
+        PADDLE_GET_CONST(int, ctx->GetAttr("dtype")));
     ctx->SetOutputDataType("Out", data_type);
   }
 };
@@ -67,11 +67,15 @@ Return an identity tensor whose shape is [num_rows, num_columns].
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(eye, EyeInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(eye,
+                            EyeInferShapeFunctor,
                             PD_INFER_META(phi::EyeInferMeta));
 
 REGISTER_OPERATOR(
-    eye, ops::EyeOp, ops::EyeOpMaker, ops::EyeOpVarTypeInference,
+    eye,
+    ops::EyeOp,
+    ops::EyeOpMaker,
+    ops::EyeOpVarTypeInference,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     EyeInferShapeFunctor);

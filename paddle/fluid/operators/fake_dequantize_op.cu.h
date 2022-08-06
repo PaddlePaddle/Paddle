@@ -22,8 +22,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void KeDequantize(const T* in, const T* scale, T max_range,
-                             int64_t num, T* out) {
+__global__ void KeDequantize(
+    const T* in, const T* scale, T max_range, int64_t num, T* out) {
   int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     out[i] = in[i] * scale[0] / max_range;
@@ -31,10 +31,12 @@ __global__ void KeDequantize(const T* in, const T* scale, T max_range,
 }
 
 template <typename T>
-struct DequantizeFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor* scale,
-                  T max_range, framework::Tensor* out) {
+struct DequantizeFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor* scale,
+                  T max_range,
+                  framework::Tensor* out) {
     const T* in_data = in->data<T>();
     const T* scale_factor = scale->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
@@ -54,9 +56,8 @@ struct DequantizeFunctor<platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-__global__ void DequantizeOneScaleQuantAxis0(const T* in, const T* scale,
-                                             T max_range, int num, int channel,
-                                             T* out) {
+__global__ void DequantizeOneScaleQuantAxis0(
+    const T* in, const T* scale, T max_range, int num, int channel, T* out) {
   int tid = threadIdx.x;
   int channel_size = num / channel;
   const T* in_c = in + blockIdx.x * channel_size;
@@ -67,11 +68,13 @@ __global__ void DequantizeOneScaleQuantAxis0(const T* in, const T* scale,
 }
 
 template <typename T>
-__global__ void DequantizeOneScaleQuantAxisN(const T* in, const T* scale,
+__global__ void DequantizeOneScaleQuantAxisN(const T* in,
+                                             const T* scale,
                                              const T max_range,
                                              const int64_t num,
                                              const int n_scales,
-                                             const int quant_stride, T* out) {
+                                             const int quant_stride,
+                                             T* out) {
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     T s = scale[(i / quant_stride) % n_scales];
@@ -80,9 +83,14 @@ __global__ void DequantizeOneScaleQuantAxisN(const T* in, const T* scale,
 }
 
 template <typename T>
-__global__ void DequantizeTwoScale(const T* in, const T* scale_one,
-                                   const T* scale_two, T max_range, int num,
-                                   int iter_size, int channel, T* out) {
+__global__ void DequantizeTwoScale(const T* in,
+                                   const T* scale_one,
+                                   const T* scale_two,
+                                   T max_range,
+                                   int num,
+                                   int iter_size,
+                                   int channel,
+                                   T* out) {
   int tid = threadIdx.x;
   int channel_size = num / (iter_size * channel);
   int scale_index = blockIdx.x % channel;
@@ -94,11 +102,15 @@ __global__ void DequantizeTwoScale(const T* in, const T* scale_one,
 }
 
 template <typename T>
-struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor** scales,
-                  const int scale_num, T max_range, const int quant_axis,
-                  const int x_num_col_dims, framework::Tensor* out) {
+struct ChannelDequantizeFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor** scales,
+                  const int scale_num,
+                  T max_range,
+                  const int quant_axis,
+                  const int x_num_col_dims,
+                  framework::Tensor* out) {
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
@@ -119,10 +131,14 @@ struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
         quant_stride *= in_dims[i];
       }
 
-      DequantizeOneScaleQuantAxisN<
-          T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-          in_data, scale_factor, max_range, num, in_dims[quant_axis],
-          quant_stride, out_data);
+      DequantizeOneScaleQuantAxisN<T>
+          <<<grid_size, block_size, 0, dev_ctx.stream()>>>(in_data,
+                                                           scale_factor,
+                                                           max_range,
+                                                           num,
+                                                           in_dims[quant_axis],
+                                                           quant_stride,
+                                                           out_data);
     } else if (scale_num == 2) {
       // Not need to consider quant_axis
       int num = in->numel();
@@ -135,17 +151,22 @@ struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
       const T* scale_two = scales[1]->data<T>();
       int block = 1024;
       int grid = iter_size * channel;
-      DequantizeTwoScale<T><<<grid, block, 0, dev_ctx.stream()>>>(
-          in_data, scale_one, scale_two, max_range, num, iter_size, channel,
-          out_data);
+      DequantizeTwoScale<T><<<grid, block, 0, dev_ctx.stream()>>>(in_data,
+                                                                  scale_one,
+                                                                  scale_two,
+                                                                  max_range,
+                                                                  num,
+                                                                  iter_size,
+                                                                  channel,
+                                                                  out_data);
     }
   }
 };
 
-template struct DequantizeFunctor<platform::CUDADeviceContext, float>;
-template struct DequantizeFunctor<platform::CUDADeviceContext, double>;
-template struct ChannelDequantizeFunctor<platform::CUDADeviceContext, float>;
-template struct ChannelDequantizeFunctor<platform::CUDADeviceContext, double>;
+template struct DequantizeFunctor<phi::GPUContext, float>;
+template struct DequantizeFunctor<phi::GPUContext, double>;
+template struct ChannelDequantizeFunctor<phi::GPUContext, float>;
+template struct ChannelDequantizeFunctor<phi::GPUContext, double>;
 
 }  // namespace operators
 }  // namespace paddle

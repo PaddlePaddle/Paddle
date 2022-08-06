@@ -905,28 +905,30 @@ class DetectionMAP(object):
             label = layers.concat([gt_label, gt_box], axis=1)
 
         # calculate mean average precision (mAP) of current mini-batch
-        map = detection.detection_map(
-            input,
-            label,
-            class_num,
-            background_label,
-            overlap_threshold=overlap_threshold,
-            evaluate_difficult=evaluate_difficult,
-            ap_version=ap_version)
+        map = detection.detection_map(input,
+                                      label,
+                                      class_num,
+                                      background_label,
+                                      overlap_threshold=overlap_threshold,
+                                      evaluate_difficult=evaluate_difficult,
+                                      ap_version=ap_version)
 
         states = []
         states.append(
-            self._create_state(
-                dtype='int32', shape=None, suffix='accum_pos_count'))
+            self._create_state(dtype='int32',
+                               shape=None,
+                               suffix='accum_pos_count'))
         states.append(
-            self._create_state(
-                dtype='float32', shape=None, suffix='accum_true_pos'))
+            self._create_state(dtype='float32',
+                               shape=None,
+                               suffix='accum_true_pos'))
         states.append(
-            self._create_state(
-                dtype='float32', shape=None, suffix='accum_false_pos'))
+            self._create_state(dtype='float32',
+                               shape=None,
+                               suffix='accum_false_pos'))
         var = self._create_state(dtype='int32', shape=[1], suffix='has_state')
-        self.helper.set_variable_initializer(
-            var, initializer=Constant(value=int(0)))
+        self.helper.set_variable_initializer(var,
+                                             initializer=Constant(value=int(0)))
         self.has_state = var
 
         # calculate accumulative mAP
@@ -942,11 +944,10 @@ class DetectionMAP(object):
             out_states=states,
             ap_version=ap_version)
 
-        layers.fill_constant(
-            shape=self.has_state.shape,
-            value=1,
-            dtype=self.has_state.dtype,
-            out=self.has_state)
+        layers.fill_constant(shape=self.has_state.shape,
+                             value=1,
+                             dtype=self.has_state.dtype,
+                             out=self.has_state)
 
         self.cur_map = map
         self.accum_map = accum_map
@@ -960,11 +961,11 @@ class DetectionMAP(object):
             shape(tuple|list): the shape of state
         Returns: State variable
         """
-        state = self.helper.create_variable(
-            name="_".join([unique_name.generate(self.helper.name), suffix]),
-            persistable=True,
-            dtype=dtype,
-            shape=shape)
+        state = self.helper.create_variable(name="_".join(
+            [unique_name.generate(self.helper.name), suffix]),
+                                            persistable=True,
+                                            dtype=dtype,
+                                            shape=shape)
         return state
 
     def get_map_var(self):
@@ -986,18 +987,19 @@ class DetectionMAP(object):
 
         def _clone_var_(block, var):
             assert isinstance(var, Variable)
-            return block.create_var(
-                name=var.name,
-                shape=var.shape,
-                dtype=var.dtype,
-                type=var.type,
-                lod_level=var.lod_level,
-                persistable=var.persistable)
+            return block.create_var(name=var.name,
+                                    shape=var.shape,
+                                    dtype=var.dtype,
+                                    type=var.type,
+                                    lod_level=var.lod_level,
+                                    persistable=var.persistable)
 
         if reset_program is None:
             reset_program = Program()
         with program_guard(main_program=reset_program):
             var = _clone_var_(reset_program.current_block(), self.has_state)
-            layers.fill_constant(
-                shape=var.shape, value=0, dtype=var.dtype, out=var)
+            layers.fill_constant(shape=var.shape,
+                                 value=0,
+                                 dtype=var.dtype,
+                                 out=var)
         executor.run(reset_program)

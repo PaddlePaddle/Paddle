@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -53,18 +53,19 @@ def check_initial_inverse_hessian_estimate(H0):
     else:
 
         def create_tmp_var(program, name, dtype, shape):
-            return program.current_block().create_var(
-                name=name, dtype=dtype, shape=shape)
+            return program.current_block().create_var(name=name,
+                                                      dtype=dtype,
+                                                      shape=shape)
 
-        out_var = create_tmp_var(
-            paddle.static.default_main_program(),
-            name='output',
-            dtype='float32',
-            shape=[-1])
+        out_var = create_tmp_var(paddle.static.default_main_program(),
+                                 name='output',
+                                 dtype='float32',
+                                 shape=[-1])
 
         def false_fn():
-            paddle.static.nn.py_func(
-                func=raise_func, x=is_symmetric, out=out_var)
+            paddle.static.nn.py_func(func=raise_func,
+                                     x=is_symmetric,
+                                     out=out_var)
 
         paddle.static.nn.cond(is_symmetric, None, false_fn)
         # eigvals only support cpu
