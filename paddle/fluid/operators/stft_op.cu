@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/stft_op.h"
-#include "paddle/fluid/operators/spectral_op.cu.h"
 
 namespace ops = paddle::operators;
 

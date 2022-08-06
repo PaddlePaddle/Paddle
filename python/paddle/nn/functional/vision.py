@@ -367,7 +367,6 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
 
     Examples:
         .. code-block:: python
-            :name: pixel_unshuffle-example
 
             import paddle
             import paddle.nn.functional as F
@@ -424,7 +423,6 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
 
     Examples:
         .. code-block:: python
-            :name: channel_shuffle-example
 
             import paddle
             import paddle.nn.functional as F

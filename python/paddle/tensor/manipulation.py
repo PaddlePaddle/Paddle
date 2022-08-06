@@ -619,7 +619,6 @@ def crop(x, shape=None, offsets=None, name=None):
     Examples:
 
         .. code-block:: python
-          :name: code-example1
 
             import paddle
             x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
@@ -1975,7 +1974,7 @@ def squeeze(x, axis=None, name=None):
 
     Examples:
         .. code-block:: python
-	  :name: code-example1
+
             import paddle
             
             x = paddle.rand([5, 1, 10])
@@ -2187,7 +2186,7 @@ def unique(x,
 
     Examples:
         .. code-block:: python
-	  :name: code-example1
+
             import paddle
 
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
@@ -3219,7 +3218,6 @@ def reshape(x, shape, name=None):
 
     Examples:
         .. code-block:: python
-           :name: code-example1
 
             import paddle
 
@@ -4185,7 +4183,6 @@ def take_along_axis(arr, indices, axis):
     
     Examples:
         .. code-block:: python
-           :name: code-example1
 
             import paddle
 
@@ -4251,7 +4248,6 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
     
     Examples:
         .. code-block:: python
-            :name: code-example1
 
             import paddle
 
