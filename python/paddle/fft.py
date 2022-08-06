@@ -716,7 +716,13 @@ def irfftn(x, s=None, axes=None, norm="backward", name=None):
             `len(s)` axes are used, or all axes if `s` is also not specified.      
         norm (str): Indicates which direction to scale the `forward` or `backward` transform
             pair and what normalization factor to use. The parameter value must be one 
-            of "forward" or "backward" or "ortho". Default is "backward".
+            of "forward" or "backward" or "ortho". Default is "backward". The details of 
+            three operations are shown below:
+                "backward": The factor of forward direction and backward direction are ``1`` 
+                and ``1/n`` respectively;
+                "forward": The factor of forward direction and backward direction are ``1/n`` 
+                and ``1`` respectively;
+                "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
         name (str, optional): The default value is None.  Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name`. 
     
