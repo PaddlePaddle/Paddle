@@ -25,8 +25,6 @@ class TestParallelMarginSoftmaxWithCrossEntropy(TestMultipleGpus):
 
     def test_parallel_margin_cross_entropy(self):
         self.run_mnist_2gpu('parallel_margin_cross_entropy.py')
-        self.run_mnist_2gpu('parallel_margin_cross_entropy.py',
-                            eager_mode=False)
 
 
 if __name__ == "__main__":

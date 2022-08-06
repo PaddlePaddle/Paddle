@@ -572,36 +572,8 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
                                      float margin2,
                                      float margin3,
                                      float scale,
-                                     MetaTensor* logits_grad,
-                                     MetaConfig config) {
-  PADDLE_ENFORCE_NOT_NULL(
-      loss_grad,
-      errors::InvalidArgument("Input(Loss@Grad) should not be null."));
-  PADDLE_ENFORCE_NOT_NULL(
-      softmax, errors::InvalidArgument("Input(Softmax) should be not null."));
-  PADDLE_ENFORCE_NOT_NULL(
-      label, errors::InvalidArgument("Input(Label) should be not null."));
-
-  PADDLE_ENFORCE_NOT_NULL(
-      logits_grad,
-      errors::InvalidArgument("Output(Logits@Grad) should be not null."));
-  auto logits_dims = logits.dims();
+                                     MetaTensor* logits_grad) {
   auto softmax_dims = softmax.dims();
-  auto labels_dims = label.dims();
-  auto logits_rank = logits_dims.size();
-  auto axis = logits_rank - 1;
-  for (int i = 0; i < logits_rank; i++) {
-    if (i != axis) {
-      if (config.is_runtime || (softmax_dims[i] > 0 && labels_dims[i] > 0)) {
-        PADDLE_ENFORCE_EQ(
-            softmax_dims[i],
-            labels_dims[i],
-            phi::errors::InvalidArgument(
-                "Input(Logits) and Input(Label) should in same shape in "
-                "dimensions except axis."));
-      }
-    }
-  }
 
   logits_grad->set_dims(softmax_dims);
   logits_grad->set_dtype(softmax.dtype());

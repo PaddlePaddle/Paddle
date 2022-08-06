@@ -1325,6 +1325,17 @@
   kernel :
     func : lu_unpack_grad
 
+- backward_api : margin_cross_entropy_grad
+  forward : margin_cross_entropy (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale) -> Tensor(softmax), Tensor(loss)
+  args : (Tensor logits, Tensor label, Tensor softmax, Tensor loss_grad, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
+  output : Tensor(logits_grad)
+  infer_meta :
+    func : MarginCrossEntropyGradInferMeta
+  kernel :
+    func : margin_cross_entropy_grad
+    data_type : softmax
+  inplace : (softmax -> logits_grad)
+
 - backward_api : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
   args : (Tensor x, Tensor mask, Tensor out_grad)

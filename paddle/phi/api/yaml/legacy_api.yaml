@@ -1541,6 +1541,16 @@
     data_type : x
   backward : lu_unpack_grad
 
+- api : margin_cross_entropy
+  args : (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
+  output : Tensor(softmax), Tensor(loss)
+  infer_meta :
+    func : MarginCrossEntropyInferMeta
+  kernel :
+    func : margin_cross_entropy
+    data_type : logits
+  backward : margin_cross_entropy_grad
+
 # masked_select
 - api : masked_select
   args : (Tensor x, Tensor mask)

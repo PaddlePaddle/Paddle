@@ -257,8 +257,7 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
                                      float margin2,
                                      float margin3,
                                      float scale,
-                                     MetaTensor* logits_grad,
-                                     MetaConfig config);
+                                     MetaTensor* logits_grad);
 
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
