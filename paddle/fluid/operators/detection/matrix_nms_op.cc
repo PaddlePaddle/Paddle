@@ -85,7 +85,7 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<float>("gaussian_sigma",
                    "(float) "
-                   "Sigma for Gaussian decreasing function, only takes effect ",
+                   "Sigma for Gaussian decreasing function, only takes effect "
                    "when 'use_gaussian' is enabled.")
         .SetDefault(2.);
     AddOutput("Out",
