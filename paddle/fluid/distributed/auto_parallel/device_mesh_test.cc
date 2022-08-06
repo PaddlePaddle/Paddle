@@ -70,6 +70,10 @@ TEST(DeviceMesh, Ctor) {
     }
   }
   std::cout << device_mesh << std::endl;
+  auto proto = device_mesh.to_proto();
+  DeviceMesh new_device_mesh = DeviceMesh::from_proto(proto);
+  std::cout << new_device_mesh << std::endl;
+  EXPECT_EQ(device_mesh, new_device_mesh);
 }
 
 }  // namespace auto_parallel

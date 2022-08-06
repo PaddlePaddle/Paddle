@@ -31,6 +31,25 @@ std::string DeviceCapability::to_string() const {
   return str;
 }
 
+DeviceCapability DeviceCapability::from_proto(
+    const DeviceCapabilityProto &proto) {
+  DeviceCapability capability;
+  capability.single_precision_flops = proto.single_precision_flops();
+  capability.double_precision_flops = proto.double_precision_flops();
+  capability.memory_size_in_bytes = proto.memory_size_in_bytes();
+  capability.clock_rate_in_ghz = proto.clock_rate_in_ghz();
+  return capability;
+}
+
+DeviceCapabilityProto DeviceCapability::to_proto() const {
+  DeviceCapabilityProto proto;
+  proto.set_single_precision_flops(single_precision_flops);
+  proto.set_double_precision_flops(double_precision_flops);
+  proto.set_memory_size_in_bytes(memory_size_in_bytes);
+  proto.set_clock_rate_in_ghz(clock_rate_in_ghz);
+  return proto;
+}
+
 std::string Device::to_string() const {
   std::string str = "{global_id: " + std::to_string(global_id_) + ", ";
   str += "local_id: " + std::to_string(local_id_) + ", ";
@@ -38,6 +57,26 @@ std::string Device::to_string() const {
   str += "type: " + type_ + ", ";
   str += "capability: " + capability_.to_string() + "}";
   return str;
+}
+
+Device Device::from_proto(const DeviceProto &proto) {
+  Device device;
+  device.global_id_ = proto.global_id();
+  device.local_id_ = proto.local_id();
+  device.machine_id_ = proto.machine_id();
+  device.type_ = proto.type();
+  device.capability_ = DeviceCapability::from_proto(proto.capability());
+  return device;
+}
+
+DeviceProto Device::to_proto() const {
+  DeviceProto proto;
+  proto.set_global_id(global_id_);
+  proto.set_local_id(local_id_);
+  proto.set_machine_id(machine_id_);
+  proto.set_type(type_);
+  proto.mutable_capability()->CopyFrom(capability_.to_proto());
+  return proto;
 }
 
 bool operator==(const Device &lhs, const Device &rhs) {
@@ -63,12 +102,44 @@ std::string LinkCapability::to_string() const {
   return str;
 }
 
+LinkCapability LinkCapability::from_proto(const LinkCapabilityProto &proto) {
+  LinkCapability capability;
+  capability.bandwidth = proto.bandwidth();
+  capability.latency = proto.latency();
+  return capability;
+}
+
+LinkCapabilityProto LinkCapability::to_proto() const {
+  LinkCapabilityProto proto;
+  proto.set_bandwidth(bandwidth);
+  proto.set_latency(latency);
+  return proto;
+}
+
 std::string Link::to_string() const {
   std::string str = "{source_id:" + std::to_string(source_id_) + ",";
   str += "target_id:" + std::to_string(target_id_) + ",";
   str += "type:" + type_ + ",";
   str += "capability:" + capability_.to_string() + "}";
   return str;
+}
+
+Link Link::from_proto(const LinkProto &proto) {
+  Link link;
+  link.source_id_ = proto.source_id();
+  link.target_id_ = proto.target_id();
+  link.type_ = proto.type();
+  link.capability_ = LinkCapability::from_proto(proto.capability());
+  return link;
+}
+
+LinkProto Link::to_proto() const {
+  LinkProto proto;
+  proto.set_source_id(source_id_);
+  proto.set_target_id(target_id_);
+  proto.set_type(type_);
+  proto.mutable_capability()->CopyFrom(capability_.to_proto());
+  return proto;
 }
 
 bool operator==(const Link &lhs, const Link &rhs) {
@@ -238,28 +309,45 @@ DeviceMesh DeviceMesh::from_proto(const DeviceMeshProto &proto) {
     mesh.dim_names_[i] = proto.dim_names(i);
   }
 
-  mesh.shape_.resize(proto.shape_size());
-  for (int64_t i = 0; i < proto.shape_size(); ++i) {
-    mesh.shape_[i] = proto.shape(i);
+  mesh.shape_.resize(proto.devices_size());
+  for (int64_t i = 0; i < proto.devices_size(); ++i) {
+    mesh.add_device(Device::from_proto(proto.devices(i)));
   }
+
+  mesh.shape_.resize(proto.links_size());
+  for (int64_t i = 0; i < proto.links_size(); ++i) {
+    mesh.add_link(Link::from_proto(proto.links(i)));
+  }
+
+  return mesh;
 }
 
 DeviceMeshProto DeviceMesh::to_proto() const {
-  DeviceMeshProto mesh_proto;
+  DeviceMeshProto proto;
 
   for (const auto &i : shape_) {
-    mesh_proto.add_shape(i);
+    proto.add_shape(i);
   }
 
   for (const auto &i : device_ids_) {
-    mesh_proto.add_device_ids(i);
+    proto.add_device_ids(i);
   }
 
   for (const auto &i : dim_names_) {
-    mesh_proto.add_dim_names(i);
+    proto.add_dim_names(i);
   }
 
-  return mesh_proto;
+  for (const auto &device : devices_) {
+    proto.mutable_devices()->Add()->CopyFrom(device.second.to_proto());
+  }
+
+  for (const auto &neighbors : links_) {
+    for (const auto &link : neighbors.second) {
+      proto.mutable_links()->Add()->CopyFrom(link.second.to_proto());
+    }
+  }
+
+  return proto;
 }
 
 bool operator==(const DeviceMesh &lhs, const DeviceMesh &rhs) {

@@ -76,6 +76,15 @@ void TensorDistAttr::set_default_dims_mapping() {
   dims_mapping_ = std::vector<int64_t>(tensor_shape.size(), -1);
 }
 
+void TensorDistAttr::annotate(const std::string& name) {
+  std::vector<std::string> field_names{
+      "process_mesh", "dims_mapping", "batch_dim", "dynamic_dims"};
+  auto result = std::find(std::begin(field_names), std::end(field_names), name);
+  if (result != std::end(field_names)) {
+    annotated_[name] = true;
+  }
+}
+
 bool TensorDistAttr::verify_process_mesh(
     const ProcessMesh& process_mesh) const {
   if (!process_mesh_.empty()) {
@@ -133,6 +142,34 @@ std::string TensorDistAttr::to_string() const {
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
   dist_str += "dynamic_dims: [" + str_join(dynamic_dims_) + "]}";
   return dist_str;
+}
+
+TensorDistAttr TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
+  TensorDistAttr dist_attr;
+  dist_attr.process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
+  dist_attr.dims_mapping_.resize(proto.dims_mapping_size());
+  for (int64_t i = 0; i < proto.dims_mapping_size(); ++i) {
+    dist_attr.dims_mapping_[i] = proto.dims_mapping(i);
+  }
+  dist_attr.batch_dim_ = proto.batch_dim();
+  dist_attr.dynamic_dims_.resize(proto.dynamic_dims_size());
+  for (int64_t i = 0; i < proto.dynamic_dims_size(); ++i) {
+    dist_attr.dynamic_dims_[i] = proto.dynamic_dims(i);
+  }
+  return dist_attr;
+}
+
+TensorDistAttrProto TensorDistAttr::to_proto() const {
+  TensorDistAttrProto proto;
+  proto.mutable_process_mesh()->CopyFrom(process_mesh_.to_proto());
+  for (const auto& i : dims_mapping_) {
+    proto.add_dims_mapping(i);
+  }
+  proto.set_batch_dim(batch_dim_);
+  for (const auto& i : dynamic_dims_) {
+    proto.add_dynamic_dims(i);
+  }
+  return proto;
 }
 
 bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
@@ -209,6 +246,14 @@ void OperatorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
   process_mesh_ = process_mesh;
 }
 
+void OperatorDistAttr::annotate(const std::string& name) {
+  std::vector<std::string> field_names{"process_mesh", "impl_type", "impl_idx"};
+  auto result = std::find(std::begin(field_names), std::end(field_names), name);
+  if (result != std::end(field_names)) {
+    annotated_[name] = true;
+  }
+}
+
 bool OperatorDistAttr::verify() const {
   for (auto const& item : input_dist_attrs_) {
     auto input_names = op_->InputArgumentNames();
@@ -255,6 +300,43 @@ std::string OperatorDistAttr::to_string() const {
   }
   str.replace(str.size() - 2, 2, "]}");
   return str;
+}
+
+OperatorDistAttr OperatorDistAttr::from_proto(
+    const OperatorDistAttrProto& proto) {
+  OperatorDistAttr dist_attr;
+  for (int64_t i = 0; i < proto.input_dist_attrs_size(); ++i) {
+    dist_attr.input_dist_attrs_[proto.input_dist_attrs(i).name()] =
+        TensorDistAttr::from_proto(
+            proto.input_dist_attrs(i).tensor_dist_attr());
+  }
+  for (int64_t i = 0; i < proto.output_dist_attrs_size(); ++i) {
+    dist_attr.output_dist_attrs_[proto.output_dist_attrs(i).name()] =
+        TensorDistAttr::from_proto(
+            proto.output_dist_attrs(i).tensor_dist_attr());
+  }
+  dist_attr.process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
+  dist_attr.impl_type_ = proto.impl_type();
+  dist_attr.impl_idx_ = proto.impl_idx();
+  return dist_attr;
+}
+
+OperatorDistAttrProto OperatorDistAttr::to_proto() const {
+  OperatorDistAttrProto proto;
+  for (const auto& item : input_dist_attrs_) {
+    auto proto_item = proto.mutable_input_dist_attrs()->Add();
+    proto_item->set_name(item.first);
+    proto_item->mutable_tensor_dist_attr()->CopyFrom(item.second.to_proto());
+  }
+  for (const auto& item : output_dist_attrs_) {
+    auto proto_item = proto.mutable_output_dist_attrs()->Add();
+    proto_item->set_name(item.first);
+    proto_item->mutable_tensor_dist_attr()->CopyFrom(item.second.to_proto());
+  }
+  proto.mutable_process_mesh()->CopyFrom(process_mesh_.to_proto());
+  proto.set_impl_type(impl_type_);
+  proto.set_impl_idx(impl_idx_);
+  return proto;
 }
 
 bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {

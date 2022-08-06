@@ -39,8 +39,8 @@ struct DeviceCapability {
   // DeviceCapability from_string(const std::string& str);
   std::string to_string() const;
 
-  // DeviceCapability from_proto(const DeviceCapabilityProto& proto);
-  // DeviceCapabilityProto to_proto() const;
+  static DeviceCapability from_proto(const DeviceCapabilityProto& proto);
+  DeviceCapabilityProto to_proto() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DeviceCapability& obj) {
@@ -73,8 +73,8 @@ class Device {
   // Device from_string(const std::string& mesh_str);
   std::string to_string() const;
 
-  // Device from_proto(const DeviceProto& proto);
-  // DeviceProto to_proto() const;
+  static Device from_proto(const DeviceProto& proto);
+  DeviceProto to_proto() const;
 
  private:
   int64_t global_id_;
@@ -102,8 +102,8 @@ struct LinkCapability {
   // LinkCapability from_string(const std::string& str);
   std::string to_string() const;
 
-  // LinkCapability from_proto(const LinkCapabilityProto& proto);
-  // LinkCapabilityProto to_proto() const;
+  static LinkCapability from_proto(const LinkCapabilityProto& proto);
+  LinkCapabilityProto to_proto() const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LinkCapability& obj) {
@@ -130,8 +130,8 @@ class Link {
   // Link from_string(const std::string& str);
   std::string to_string() const;
 
-  // Link from_proto(const LinkProto& proto);
-  // LinkProto to_proto() const;
+  static Link from_proto(const LinkProto& proto);
+  LinkProto to_proto() const;
 
  private:
   int64_t source_id_;
@@ -244,8 +244,8 @@ class DeviceMesh {
   // DeviceMesh from_string(const std::string& mesh_str);
   std::string to_string() const;
 
-  // DeviceMesh from_proto(const DeviceMeshProto& proto);
-  // DeviceMeshProto to_proto() const;
+  static DeviceMesh from_proto(const DeviceMeshProto& proto);
+  DeviceMeshProto to_proto() const;
 
  private:
   std::string name_;

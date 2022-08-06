@@ -97,24 +97,26 @@ ProcessMesh ProcessMesh::from_proto(const ProcessMeshProto &proto) {
   for (int64_t i = 0; i < proto.dim_names_size(); ++i) {
     mesh.dim_names_[i] = proto.dim_names(i);
   }
+
+  return mesh;
 }
 
 ProcessMeshProto ProcessMesh::to_proto() const {
-  ProcessMeshProto mesh_proto;
+  ProcessMeshProto proto;
 
   for (const auto &i : shape_) {
-    mesh_proto.add_shape(i);
+    proto.add_shape(i);
   }
 
   for (const auto &i : process_ids_) {
-    mesh_proto.add_process_ids(i);
+    proto.add_process_ids(i);
   }
 
   for (const auto &i : dim_names_) {
-    mesh_proto.add_dim_names(i);
+    proto.add_dim_names(i);
   }
 
-  return mesh_proto;
+  return proto;
 }
 
 bool operator==(const ProcessMesh &lhs, const ProcessMesh &rhs) {

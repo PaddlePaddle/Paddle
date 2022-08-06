@@ -56,7 +56,8 @@ TEST(DistributedMapper, Ctor) {
   process_id_to_device_ids[5] = {"device_mesh", {0}};
   dist_mapper.set_process_id_to_device_ids(process_id_to_device_ids);
 
-  EXPECT_EQ(*dist_mapper.device_meshes()["device_mesh"], device_mesh);
+  EXPECT_EQ(dist_mapper.device_meshes().at("device_mesh"), device_mesh);
+  EXPECT_EQ(dist_mapper.device_mesh("device_mesh"), device_mesh);
   EXPECT_EQ(dist_mapper.process_id_to_device_ids(), process_id_to_device_ids);
   std::cout << dist_mapper << std::endl;
 }

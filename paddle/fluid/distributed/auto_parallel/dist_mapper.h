@@ -27,12 +27,16 @@ class DistributedMapper {
  public:
   DistributedMapper() = default;
 
-  std::map<std::string, const DeviceMesh*> device_meshes() const {
+  const std::map<std::string, DeviceMesh>& device_meshes() const {
     return device_meshes_;
   }
 
+  const DeviceMesh& device_mesh(const std::string& name) const {
+    return device_meshes_.at(name);
+  }
+
   void add_device_mesh(const DeviceMesh& device_mesh) {
-    device_meshes_[device_mesh.name()] = &device_mesh;
+    device_meshes_[device_mesh.name()] = device_mesh;
   }
 
   const std::map<int64_t, std::pair<std::string, std::vector<int64_t>>>&
@@ -47,11 +51,11 @@ class DistributedMapper {
   // DistributedMapper from_string(const std::string& mapper_str);
   std::string to_string() const;
 
-  // DistributedMapper from_proto(const DistributedMapperProto& proto);
-  // DistributedMapperProto to_proto() const;
+  static DistributedMapper from_proto(const DistributedMapperProto& proto);
+  DistributedMapperProto to_proto() const;
 
  private:
-  std::map<std::string, const DeviceMesh*> device_meshes_;
+  std::map<std::string, DeviceMesh> device_meshes_;
   std::map<int64_t, std::pair<std::string, std::vector<int64_t>>>
       process_id_to_device_ids_;
 };

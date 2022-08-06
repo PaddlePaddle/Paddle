@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
-#include <iostream>
+#include <sstream>
 #include "gtest/gtest.h"
 
 namespace paddle {
@@ -36,7 +36,15 @@ TEST(ProcessMesh, Ctor) {
   EXPECT_EQ(process_mesh.dim_size(-1), shape[1]);
   EXPECT_EQ(process_mesh.dim_size("x"), shape[0]);
   EXPECT_EQ(process_mesh.dim_size("y"), shape[1]);
-  std::cout << process_mesh << std::endl;
+  EXPECT_EQ(process_mesh.empty(), false);
+  EXPECT_EQ(process_mesh.contains(0), true);
+  EXPECT_EQ(process_mesh.contains(6), false);
+  std::stringstream sstream;
+  sstream << process_mesh;
+  EXPECT_EQ(sstream.str(), process_mesh.to_string());
+  auto proto = process_mesh.to_proto();
+  ProcessMesh new_process_mesh = ProcessMesh::from_proto(proto);
+  EXPECT_EQ(process_mesh, new_process_mesh);
 }
 
 }  // namespace auto_parallel

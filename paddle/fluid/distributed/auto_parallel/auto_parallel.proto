@@ -56,7 +56,7 @@ message TensorDistAttrProto {
 message OperatorDistAttrProto {
   message TensorDistAttrMappingEntryProto {
     optional string name = 1;
-    optional string TensorDistAttrProto = 2;
+    optional TensorDistAttrProto tensor_dist_attr = 2;
   } 
   // The key of this map is the input tensor name and the value is the distributed attribute
   // of the input tensor required by this corresponding operator.   
@@ -85,11 +85,11 @@ message OperatorDistAttrProto {
 
 // This proto describes the capability of one device such as the computation and memory.
 message DeviceCapabilityProto {
-  optional int64 single_precision_flops = 1;
+  optional double single_precision_flops = 1;
 
-  optional int64 double_precision_flops = 2;
+  optional double double_precision_flops = 2;
 
-  optional int64 memory_size_in_bytes = 3;
+  optional double memory_size_in_bytes = 3;
 
   optional double clock_rate_in_ghz = 4;
 }
@@ -150,13 +150,8 @@ message DeviceMeshProto {
   // The devices of this mesh.
   repeated DeviceProto devices = 5;
 
-  message LinkEntryProto {
-    optional int64 source_id = 1;
-    repeated LinkProto neighbors = 2;
-  }
-
-  // Some links are between devices. 
-  repeated LinkEntryProto links = 6;
+  // The links are between devices. 
+  repeated LinkProto links = 6;
 }
 
 // Record the mapping between the logical processes and the physical devices.

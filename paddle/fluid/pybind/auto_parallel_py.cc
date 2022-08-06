@@ -164,6 +164,8 @@ void BindAutoParallel(py::module *m) {
       .def_property("dynamic_dims",
                     &TensorDistAttr::dynamic_dims,
                     &TensorDistAttr::set_dynamic_dims)
+      .def("is_annotated", &TensorDistAttr::is_annotated)
+      .def("annotate", &TensorDistAttr::annotate)
       .def("verify", &TensorDistAttr::verify)
       .def(py::self == py::self)
       .def(py::self != py::self)
@@ -201,6 +203,8 @@ void BindAutoParallel(py::module *m) {
            py::return_value_policy::reference)
       .def("set_input_dist_attr", &OperatorDistAttr::set_input_dist_attr)
       .def("set_output_dist_attr", &OperatorDistAttr::set_output_dist_attr)
+      .def("is_annotated", &OperatorDistAttr::is_annotated)
+      .def("annotate", &OperatorDistAttr::annotate)
       .def("verify", &OperatorDistAttr::verify)
       .def(py::self == py::self)
       .def(py::self != py::self)

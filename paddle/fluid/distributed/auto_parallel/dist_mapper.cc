@@ -51,7 +51,7 @@ void DistributedMapper::set_process_id_to_device_ids(
             "The mapped device ids [%s] of process_mesh %d must be unique.",
             str_join(device_ids),
             item.first));
-    const DeviceMesh& device_mesh = *device_meshes_[device_mesh_name];
+    const DeviceMesh& device_mesh = device_meshes_[device_mesh_name];
     const std::vector<int64_t> cur_device_ids = device_mesh.device_ids();
     for (int64_t device_id : device_ids) {
       bool found =
@@ -69,25 +69,64 @@ void DistributedMapper::set_process_id_to_device_ids(
   process_id_to_device_ids_ = process_id_to_device_ids;
 }
 
-std::string DistributedMapper::to_string() const {
-  std::string mapper_str = "{device_meshes:[";
-  for (const auto& item : device_meshes_) {
-    mapper_str += item.second->to_string() + ",";
+DistributedMapper DistributedMapper::from_proto(
+    const DistributedMapperProto& proto) {
+  DistributedMapper dist_mapper;
+  for (int64_t i = 0; i < proto.device_meshes_size(); ++i) {
+    dist_mapper.device_meshes_[proto.device_meshes(i).name()] =
+        DeviceMesh::from_proto(proto.device_meshes(i));
   }
-  mapper_str.replace(mapper_str.size() - 1, 1, "]");
+  for (int64_t i = 0; i < proto.process_id_to_device_ids_size(); ++i) {
+    int64_t process_id = proto.process_id_to_device_ids(i).process_id();
+    std::string device_mesh_name =
+        proto.process_id_to_device_ids(i).device_mesh_name();
+    std::vector<int64_t> device_ids;
+    int64_t num_devices = proto.process_id_to_device_ids(i).device_ids_size();
+    for (int64_t j = 0; j < num_devices; ++j) {
+      device_ids.push_back(proto.process_id_to_device_ids(i).device_ids(j));
+    }
+    dist_mapper.process_id_to_device_ids_[process_id].first = device_mesh_name;
+    dist_mapper.process_id_to_device_ids_[process_id].second = device_ids;
+  }
+  return dist_mapper;
+}
 
-  mapper_str += "process_id_to_device_ids:[";
+DistributedMapperProto DistributedMapper::to_proto() const {
+  DistributedMapperProto proto;
+  for (const auto& item : device_meshes_) {
+    proto.mutable_device_meshes()->Add()->CopyFrom(item.second.to_proto());
+  }
+  for (const auto& outer : process_id_to_device_ids_) {
+    auto proto_item = proto.mutable_process_id_to_device_ids()->Add();
+    proto_item->set_process_id(outer.first);
+    proto_item->set_device_mesh_name(outer.second.first);
+    for (const auto& inner : outer.second.second) {
+      proto_item->add_device_ids(inner);
+    }
+  }
+  return proto;
+}
+
+std::string DistributedMapper::to_string() const {
+  std::string mapper_str = "{device_meshes: [";
+  for (const auto& item : device_meshes_) {
+    mapper_str += item.second.to_string() + ", ";
+  }
+  mapper_str.replace(mapper_str.size() - 2, 2, "]");
+
+  mapper_str += "process_id_to_device_ids: [";
   for (const auto& item : process_id_to_device_ids_) {
     mapper_str += "{";
-    mapper_str += "process_id:" + std::to_string(item.first) + ", device_ids:[";
+    mapper_str +=
+        "process_id: " + std::to_string(item.first) + ", device_ids: [";
     for (const auto& device_id : item.second.second) {
       mapper_str +=
-          "{" + item.second.first + "," + std::to_string(device_id) + "},";
+          "{" + item.second.first + ", " + std::to_string(device_id) + "}, ";
     }
-    mapper_str.replace(mapper_str.size() - 1, 1, "]");
-    mapper_str += "},";
+    mapper_str.replace(mapper_str.size() - 2, 2, "]");
+    mapper_str += "}, ";
   }
-  mapper_str.replace(mapper_str.size() - 1, 1, "]");
+  mapper_str.replace(mapper_str.size() - 2, 2, "]");
   mapper_str += "}";
   return mapper_str;
 }

@@ -71,6 +71,12 @@ class TensorDistAttr {
 
   void set_default_dims_mapping();
 
+  bool is_annotated(const std::string& name) const {
+    return annotated_.count(name) == 1;
+  }
+
+  void annotate(const std::string& name);
+
   bool verify_process_mesh(const ProcessMesh& process_mesh) const;
 
   bool verify_dims_mapping(const std::vector<int64_t>& dims_mapping) const;
@@ -80,9 +86,9 @@ class TensorDistAttr {
   // TensorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
 
-  // TensorDistAttr from_proto(
-  //     const TensorDistAttrProto& proto);
-  // TensorDistAttrProto to_proto() const;
+  static TensorDistAttr from_proto(const TensorDistAttrProto& proto);
+
+  TensorDistAttrProto to_proto() const;
 
  private:
   const VarDesc* tensor_;
@@ -162,14 +168,20 @@ class OperatorDistAttr {
 
   void set_impl_idx(const int64_t& impl_idx) { impl_idx_ = impl_idx; }
 
+  bool is_annotated(const std::string& name) const {
+    return annotated_.count(name) == 1;
+  }
+
+  void annotate(const std::string& name);
+
   bool verify() const;
 
   // OperatorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
 
-  // OperatorDistAttr from_proto(
-  //     const OperatorDistAttrProto& proto);
-  // OperatorDistAttrProto to_proto() const;
+  static OperatorDistAttr from_proto(const OperatorDistAttrProto& proto);
+
+  OperatorDistAttrProto to_proto() const;
 
  private:
   const OpDesc* op_;
@@ -180,6 +192,7 @@ class OperatorDistAttr {
   ProcessMesh process_mesh_;
   std::string impl_type_;
   int64_t impl_idx_ = -1;
+  std::map<std::string, bool> annotated_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OperatorDistAttr& obj) {
