@@ -53,9 +53,9 @@ class TestSparseConv(unittest.TestCase):
         with _test_eager_guard():
             config = {
                 'batch_size': 8,
-                'x': 41,
-                'y': 1600,
-                'z': 1408,
+                'x': 100,
+                'y': 100,
+                'z': 100,
                 'kernel_size': (3, 3, 3),
                 'in_channels': 4,
                 'out_channels': 16,
@@ -63,7 +63,7 @@ class TestSparseConv(unittest.TestCase):
                 'strides': (1, 1, 1),
                 'dilations': (1, 1, 1),
                 'diff': 1e-3,
-                'sparsity':0.9997
+                'sparsity': 0.99
             }
 
             values, indices = generate_data(config)
@@ -74,6 +74,7 @@ class TestSparseConv(unittest.TestCase):
             p_indices = paddle.transpose(p_indices, perm=[1, 0])
             p_values = paddle.to_tensor(values, dtype='float32')
             p_input = pi.sparse.sparse_coo_tensor(p_indices, p_values, p_shape, False)
+            p_input = paddle.incubate.sparse.coalesce(p_input)
             p_conv = pi.sparse.nn.Conv3D(in_channels=config['in_channels'], out_channels=config['out_channels'], kernel_size=config['kernel_size'],
                                            stride=config['strides'], padding=config['paddings'], dilation=config['dilations'])
 
@@ -101,12 +102,10 @@ class TestSparseConv(unittest.TestCase):
             paddle.device.cuda.synchronize()
             t3 = time.time()
 
-            assert np.array_equal(
-                s_out.indices.cpu().detach().numpy().transpose(1, 0), p_out.indices().numpy())
+            p_dense = p_out.to_dense()
+            s_dense = s_out.dense()
 
-            s_out_features_nd = s_out.features.cpu().detach().numpy().flatten()
-            p_out_features_nd = p_out.values().numpy().flatten()
+            assert np.allclose(s_dense.cpu().detach().numpy().transpose(0,2,3,4,1).flatten(), p_dense.numpy().flatten(), atol=1e-3, rtol=1e-3)
 
-            assert np.allclose(s_out_features_nd, p_out_features_nd, atol=1e-3, rtol=1e-3)
             print("spconv time:", t1-t0)
             print("paddle time:", t3-t2)
