@@ -303,15 +303,17 @@ def rfft(x, n=None, axis=-1, norm="backward", name=None):
             the forward/backward  pair of transforms is scaled and with what 
             normalization factor. Include {"backward", "ortho", "forward"}, 
             default value is "backward".
+                "backward": The factor of forward direction and backward direction are ``1`` 
+                and ``1/n`` respectively;
+                "forward": The factor of forward direction and backward direction are ``1/n`` 
+                and ``1`` respectively;
+                "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
         name(str, optional): The default value is None.  Normally there is no 
             need for user to set this property. For more information, please 
             refer to :ref:`api_guide_Name` . 
 
     Returns:
         out(Tensor) : complex tensor
-
-    Raises:
-
 
     Examples:
     .. code-block:: python
@@ -1049,16 +1051,16 @@ def irfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
         norm (str): Indicates which direction to scale the `forward` or `backward` transform
             pair and what normalization factor to use. The parameter value must be one 
             of "forward" or "backward" or "ortho". Default is "backward".
+                "backward": The factor of forward direction and backward direction are ``1`` 
+                and ``1/n`` respectively;
+                "forward": The factor of forward direction and backward direction are ``1/n`` 
+                and ``1`` respectively;
+                "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
         name (str, optional): The default value is None.  Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name` . 
     
     Returns:
         Real tensor. The result of the inverse real 2-D FFT.
-
-    Raises:
-        ValueError: if `s` not be a sequence of 2 integers or None.
-        ValueError: if `axes` not be a sequence of 2 integers or None.
-        ValueError: If the input dimension is smaller than 2.
     
     Examples:
 
