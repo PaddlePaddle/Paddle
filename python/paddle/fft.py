@@ -308,6 +308,7 @@ def rfft(x, n=None, axis=-1, norm="backward", name=None):
                 "forward": The factor of forward direction and backward direction are ``1/n`` 
                 and ``1`` respectively;
                 "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+            Where ``n`` is the multiplication of each element in  ``s`` .
         name(str, optional): The default value is None.  Normally there is no 
             need for user to set this property. For more information, please 
             refer to :ref:`api_guide_Name` . 
@@ -652,6 +653,7 @@ def rfftn(x, s=None, axes=None, norm="backward", name=None):
                 "forward": The factor of forward direction and backward direction are ``1/n`` 
                 and ``1`` respectively;
                 "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+            Where ``n`` is the multiplication of each element in  ``s`` .
         name(str, optional): The default value is None.  Normally there is no 
             need for user to set this property. For more information, please 
             refer to :ref:`api_guide_Name` . 
@@ -727,6 +729,7 @@ def irfftn(x, s=None, axes=None, norm="backward", name=None):
                 "forward": The factor of forward direction and backward direction are ``1/n`` 
                 and ``1`` respectively;
                 "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+            Where ``n`` is the multiplication of each element in  ``s`` .
         name (str, optional): The default value is None.  Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name`. 
     
@@ -1008,6 +1011,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
                 "forward": The factor of forward direction and backward direction are ``1/n`` 
                 and ``1`` respectively;
                 "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+            Where ``n`` is the multiplication of each element in  ``s`` .
         name(str, optional): The default value is None.  Normally there is no 
             need for user to set this property. For more information, please 
             refer to :ref:`api_guide_Name` . 
@@ -1062,6 +1066,7 @@ def irfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
                 "forward": The factor of forward direction and backward direction are ``1/n`` 
                 and ``1`` respectively;
                 "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+            Where ``n`` is the multiplication of each element in  ``s`` .
         name (str, optional): The default value is None.  Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name` . 
     
