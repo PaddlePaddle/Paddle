@@ -280,6 +280,62 @@ class API_SegmentOpsTest(unittest.TestCase):
                 {}\n{}, check diff!".format(np_res, ret_res))
 
 
+class API_GeometricSegmentOpsTest(unittest.TestCase):
+
+    def test_static(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[3], dtype='int32')
+
+            res_sum = paddle.geometric.segment_sum(x, y)
+            res_mean = paddle.geometric.segment_mean(x, y)
+            res_max = paddle.geometric.segment_max(x, y)
+            res_min = paddle.geometric.segment_min(x, y)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            data1 = np.array([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            data2 = np.array([0, 0, 1], dtype="int32")
+
+            np_sum = np.array([[4, 4, 4], [4, 5, 6]], dtype="float32")
+            np_mean = np.array([[2, 2, 2], [4, 5, 6]], dtype="float32")
+            np_max = np.array([[3, 2, 3], [4, 5, 6]], dtype="float32")
+            np_min = np.array([[1, 2, 1], [4, 5, 6]], dtype="float32")
+
+            ret = exe.run(feed={
+                'x': data1,
+                'y': data2
+            },
+                          fetch_list=[res_sum, res_mean, res_max, res_min])
+
+        for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
+            self.assertTrue(
+                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
+                {}\n{}, check diff!".format(np_res, ret_res))
+
+    def test_dygraph(self):
+        device = paddle.CPUPlace()
+        with paddle.fluid.dygraph.guard(device):
+            x = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]],
+                                 dtype='float32')
+            y = paddle.to_tensor([0, 0, 1], dtype="int32")
+            res_sum = paddle.geometric.segment_sum(x, y)
+            res_mean = paddle.geometric.segment_mean(x, y)
+            res_max = paddle.geometric.segment_max(x, y)
+            res_min = paddle.geometric.segment_min(x, y)
+
+            np_sum = np.array([[4, 4, 4], [4, 5, 6]], dtype="float32")
+            np_mean = np.array([[2, 2, 2], [4, 5, 6]], dtype="float32")
+            np_max = np.array([[3, 2, 3], [4, 5, 6]], dtype="float32")
+            np_min = np.array([[1, 2, 1], [4, 5, 6]], dtype="float32")
+
+            ret = [res_sum, res_mean, res_max, res_min]
+
+        for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
+            self.assertTrue(
+                np.allclose(np_res, ret_res.numpy(), atol=1e-6), "two value is\
+                {}\n{}, check diff!".format(np_res, ret_res))
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

@@ -18,21 +18,15 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 from paddle import _C_ops
-import paddle.utils.deprecated as deprecated
 
 
-@deprecated(
-    since="2.4.0",
-    update_to="paddle.geometric.khop_sampler",
-    level=1,
-    reason="paddle.incubate.graph_khop_sampler will be removed in future")
-def graph_khop_sampler(row,
-                       colptr,
-                       input_nodes,
-                       sample_sizes,
-                       sorted_eids=None,
-                       return_eids=False,
-                       name=None):
+def khop_sampler(row,
+                 colptr,
+                 input_nodes,
+                 sample_sizes,
+                 sorted_eids=None,
+                 return_eids=False,
+                 name=None):
     """
     Graph Khop Sampler API.
 
@@ -87,7 +81,7 @@ def graph_khop_sampler(row,
         nodes = paddle.to_tensor(nodes, dtype="int64")
         
         edge_src, edge_dst, sample_index, reindex_nodes = \
-            paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
+            paddle.geometric.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
 
     """
 
@@ -125,7 +119,7 @@ def graph_khop_sampler(row,
     check_variable_and_dtype(input_nodes, "X", ("int32", "int64"),
                              "graph_khop_sampler")
 
-    helper = LayerHelper("graph_khop_sampler", **locals())
+    helper = LayerHelper("khop_sampler", **locals())
     edge_src = helper.create_variable_for_type_inference(dtype=row.dtype)
     edge_dst = helper.create_variable_for_type_inference(dtype=row.dtype)
     sample_index = helper.create_variable_for_type_inference(dtype=row.dtype)

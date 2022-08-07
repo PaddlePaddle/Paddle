@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,15 +16,10 @@ from paddle.fluid.layer_helper import LayerHelper, _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-import paddle.utils.deprecated as deprecated
 
 __all__ = []
 
 
-@deprecated(since="2.4.0",
-            update_to="paddle.geometric.segment_sum",
-            level=1,
-            reason="paddle.incubate.segment_sum will be removed in future")
 def segment_sum(data, segment_ids, name=None):
     r"""
     Segment Sum Operator.
@@ -52,7 +47,7 @@ def segment_sum(data, segment_ids, name=None):
             import paddle
             data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
             segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.incubate.segment_sum(data, segment_ids)
+            out = paddle.geometric.segment_sum(data, segment_ids)
             #Outputs: [[4., 4., 4.], [4., 5., 6.]]
 
     """
@@ -84,10 +79,6 @@ def segment_sum(data, segment_ids, name=None):
     return out
 
 
-@deprecated(since="2.4.0",
-            update_to="paddle.geometric.segment_mean",
-            level=1,
-            reason="paddle.incubate.segment_mean will be removed in future")
 def segment_mean(data, segment_ids, name=None):
     r"""
     Segment mean Operator.
@@ -116,7 +107,7 @@ def segment_mean(data, segment_ids, name=None):
             import paddle
             data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
             segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.incubate.segment_mean(data, segment_ids)
+            out = paddle.geometric.segment_mean(data, segment_ids)
             #Outputs: [[2., 2., 2.], [4., 5., 6.]]
 
     """
@@ -149,10 +140,6 @@ def segment_mean(data, segment_ids, name=None):
     return out
 
 
-@deprecated(since="2.4.0",
-            update_to="paddle.geometric.segment_min",
-            level=1,
-            reason="paddle.incubate.segment_min will be removed in future")
 def segment_min(data, segment_ids, name=None):
     r"""
     Segment min operator.
@@ -180,7 +167,7 @@ def segment_min(data, segment_ids, name=None):
             import paddle
             data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
             segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.incubate.segment_min(data, segment_ids)
+            out = paddle.geometric.segment_min(data, segment_ids)
             #Outputs:  [[1., 2., 1.], [4., 5., 6.]]
 
     """
@@ -214,10 +201,6 @@ def segment_min(data, segment_ids, name=None):
     return out
 
 
-@deprecated(since="2.4.0",
-            update_to="paddle.geometric.segment_max",
-            level=1,
-            reason="paddle.incubate.segment_max will be removed in future")
 def segment_max(data, segment_ids, name=None):
     r"""
     Segment max operator.
@@ -245,7 +228,7 @@ def segment_max(data, segment_ids, name=None):
             import paddle
             data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
             segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.incubate.segment_max(data, segment_ids)
+            out = paddle.geometric.segment_max(data, segment_ids)
             #Outputs: [[3., 2., 3.], [4., 5., 6.]]
 
     """

@@ -18,23 +18,17 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 from paddle import _C_ops
-import paddle.utils.deprecated as deprecated
 
 
-@deprecated(
-    since="2.4.0",
-    update_to="paddle.geometric.sample_neighbors",
-    level=1,
-    reason="paddle.incubate.graph_sample_neighbors will be removed in future")
-def graph_sample_neighbors(row,
-                           colptr,
-                           input_nodes,
-                           eids=None,
-                           perm_buffer=None,
-                           sample_size=-1,
-                           return_eids=False,
-                           flag_perm_buffer=False,
-                           name=None):
+def sample_neighbors(row,
+                     colptr,
+                     input_nodes,
+                     eids=None,
+                     perm_buffer=None,
+                     sample_size=-1,
+                     return_eids=False,
+                     flag_perm_buffer=False,
+                     name=None):
     """
     Graph Sample Neighbors API.
 
@@ -90,8 +84,8 @@ def graph_sample_neighbors(row,
         colptr = paddle.to_tensor(colptr, dtype="int64")
         nodes = paddle.to_tensor(nodes, dtype="int64")
         out_neighbors, out_count = \
-            paddle.incubate.graph_sample_neighbors(row, colptr, nodes, 
-                                                   sample_size=sample_size)
+            paddle.geometric.sample_neighbors(row, colptr, nodes, 
+                                              sample_size=sample_size)
 
     """
 
@@ -128,7 +122,7 @@ def graph_sample_neighbors(row,
         check_variable_and_dtype(perm_buffer, "Perm_Buffer", ("int32", "int64"),
                                  "graph_sample_neighbors")
 
-    helper = LayerHelper("graph_sample_neighbors", **locals())
+    helper = LayerHelper("sample_neighbors", **locals())
     out_neighbors = helper.create_variable_for_type_inference(dtype=row.dtype)
     out_count = helper.create_variable_for_type_inference(dtype=row.dtype)
     out_eids = helper.create_variable_for_type_inference(dtype=row.dtype)
