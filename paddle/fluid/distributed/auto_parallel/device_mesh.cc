@@ -155,6 +155,40 @@ bool operator==(const Link &lhs, const Link &rhs) {
   return true;
 }
 
+bool Machine::contains(int64_t device_id) const {
+  if (devices_.count(device_id) == 1) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void Machine::add_device(const Device &device) {
+  if (id() == -1) {
+    set_id(device.machine_id());
+  } else {
+    PADDLE_ENFORCE_EQ(device.machine_id(),
+                      id(),
+                      platform::errors::InvalidArgument(
+                          "The machine id [%d] of the device should be equal "
+                          "to this machine id [%d].",
+                          device.machine_id(),
+                          id_));
+  }
+  devices_[device.global_id()] = &device;
+}
+
+void Machine::add_link(const Link &link) {
+  PADDLE_ENFORCE_EQ(contains(link.source_id()),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The source device id of the added link [%s] "
+                        "cannot be found in the device_ids. Please add the "
+                        "source device before adding this link",
+                        std::to_string(link.source_id())));
+  links_[link.source_id()][link.target_id()] = &link;
+}
+
 std::string Machine::to_string() const {
   std::string str = "{devices: [";
   for (const auto &device : devices_) {
@@ -241,7 +275,7 @@ void DeviceMesh::add_device(const Device &device) {
   // So we add the default constructor for Device and Machine
   // to make sure the new object can be created.
   devices_[device.global_id()] = device;
-  machines_[device.machine_id()].add_device(device);
+  machines_[device.machine_id()].add_device(devices_[device.global_id()]);
 }
 
 void DeviceMesh::add_link(const Link &link) {
@@ -261,8 +295,9 @@ void DeviceMesh::add_link(const Link &link) {
   // So we add the default constructor for Device and Machine
   // to make sure the new object can be created.
   links_[link.source_id()][link.target_id()] = link;
-  const Device &source_device = devices_[link.target_id()];
-  machines_[source_device.machine_id()].add_link(link);
+  const Device &source_device = devices_[link.source_id()];
+  machines_[source_device.machine_id()].add_link(
+      links_[link.source_id()][link.target_id()]);
 }
 
 std::string DeviceMesh::to_string() const {

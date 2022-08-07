@@ -159,19 +159,19 @@ class Machine {
 
   int64_t id() const { return id_; }
 
-  void add_device(const Device& device) {
-    devices_[device.global_id()] = &device;
-  }
+  void set_id(int64_t id) { id_ = id; }
 
-  void add_link(const Link& link) {
-    links_[link.source_id()][link.target_id()] = &link;
-  }
+  bool contains(int64_t device_id) const;
+
+  void add_device(const Device& device);
+
+  void add_link(const Link& link);
 
   // Machine from_string(const std::string& str);
   std::string to_string() const;
 
  private:
-  int64_t id_;
+  int64_t id_ = -1;
   std::unordered_map<int64_t, const Device*> devices_;
   std::unordered_map<int64_t, std::unordered_map<int64_t, const Link*>> links_;
 };
