@@ -322,6 +322,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
     auto *trt_engine = GetEngine(scope, dev_place);
     if (calibration_mode_ == true) {
       RunCalibration(scope, dev_place, trt_engine);
+      paddle::inference::Singleton<
+          inference::tensorrt::TRTEngineManager>::Global()
+          .DeleteKey(engine_key_ + std::to_string(predictor_id_));
       return;
     }
     if (use_inspector_) {

@@ -105,14 +105,13 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
     engine_hash_key += "#";
   }
   engine_hash_key += predictor_id;
-  if (!for_calibration) {
-    engine_hash_key += "#";
-    engine_hash_key += max_batch_size;
-  }
   engine_hash_key += "#";
   engine_hash_key += precision;
 
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
+  if (!for_calibration) {
+    engine_key += max_batch_size;
+  }
   VLOG(2) << "TRT engine hash key: " << engine_hash_key;
   VLOG(2) << "TRT engine key: " << engine_key;
   return engine_key;
