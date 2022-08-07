@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
+#include <iostream>
 #include <sstream>
 #include "gtest/gtest.h"
 
@@ -45,6 +46,7 @@ TEST(ProcessMesh, Ctor) {
   auto proto = process_mesh.to_proto();
   ProcessMesh new_process_mesh = ProcessMesh::from_proto(proto);
   EXPECT_EQ(process_mesh, new_process_mesh);
+  std::cout << new_process_mesh << std::endl;
 }
 
 }  // namespace auto_parallel

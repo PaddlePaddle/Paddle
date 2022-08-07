@@ -114,7 +114,7 @@ std::string DistributedMapper::to_string() const {
   }
   mapper_str.replace(mapper_str.size() - 2, 2, "]");
 
-  mapper_str += "process_id_to_device_ids: [";
+  mapper_str += "\nprocess_id_to_device_ids: [";
   for (const auto& item : process_id_to_device_ids_) {
     mapper_str += "{";
     mapper_str +=
@@ -129,6 +129,16 @@ std::string DistributedMapper::to_string() const {
   mapper_str.replace(mapper_str.size() - 2, 2, "]");
   mapper_str += "}";
   return mapper_str;
+}
+
+bool operator==(const DistributedMapper& lhs, const DistributedMapper& rhs) {
+  if (lhs.device_meshes() != rhs.device_meshes()) {
+    return false;
+  }
+  if (lhs.process_id_to_device_ids() != rhs.process_id_to_device_ids()) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace auto_parallel

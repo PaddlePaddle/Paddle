@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/auto_parallel/dist_mapper.h"
-#include <iostream>
 #include <map>
+#include <sstream>
 #include "gtest/gtest.h"
 
 namespace paddle {
@@ -59,7 +59,12 @@ TEST(DistributedMapper, Ctor) {
   EXPECT_EQ(dist_mapper.device_meshes().at("device_mesh"), device_mesh);
   EXPECT_EQ(dist_mapper.device_mesh("device_mesh"), device_mesh);
   EXPECT_EQ(dist_mapper.process_id_to_device_ids(), process_id_to_device_ids);
-  std::cout << dist_mapper << std::endl;
+  std::stringstream sstream;
+  sstream << dist_mapper;
+  EXPECT_EQ(sstream.str(), dist_mapper.to_string());
+  auto proto = dist_mapper.to_proto();
+  DistributedMapper new_dist_mapper = DistributedMapper::from_proto(proto);
+  EXPECT_EQ(dist_mapper, new_dist_mapper);
 }
 
 }  // namespace auto_parallel

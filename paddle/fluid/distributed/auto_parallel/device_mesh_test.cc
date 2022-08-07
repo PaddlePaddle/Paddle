@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/auto_parallel/device_mesh.h"
 #include <iostream>
+#include <sstream>
 #include "gtest/gtest.h"
 
 namespace paddle {
@@ -55,6 +56,16 @@ TEST(DeviceMesh, Ctor) {
   EXPECT_EQ(device_mesh.dim_size(-1), shape[1]);
   EXPECT_EQ(device_mesh.dim_size("x"), shape[0]);
   EXPECT_EQ(device_mesh.dim_size("y"), shape[1]);
+  EXPECT_EQ(device_mesh.empty(), false);
+  EXPECT_EQ(device_mesh.contains(0), true);
+  EXPECT_EQ(device_mesh.contains(6), false);
+  EXPECT_EQ(device_mesh.device(3).global_id(), 3);
+  EXPECT_EQ(device_mesh.device(3).local_id(), 0);
+  EXPECT_EQ(device_mesh.device(3).machine_id(), 1);
+  EXPECT_EQ(device_mesh.device(3).type(), "GPU");
+  EXPECT_EQ(device_mesh.link(3, 4).source_id(), 3);
+  EXPECT_EQ(device_mesh.link(3, 4).target_id(), 4);
+  EXPECT_EQ(device_mesh.link(3, 4).type(), "NVL");
   for (int64_t i = 0; i < shape[0]; ++i) {
     for (int64_t j = 0; j < shape[1]; ++j) {
       int64_t global_id = i * shape[1] + j;
@@ -69,10 +80,11 @@ TEST(DeviceMesh, Ctor) {
       EXPECT_EQ(device_mesh.links().at(i).at(j), Link(i, j, "NVL"));
     }
   }
-  std::cout << device_mesh << std::endl;
+  std::stringstream sstream;
+  sstream << device_mesh;
+  EXPECT_EQ(sstream.str(), device_mesh.to_string());
   auto proto = device_mesh.to_proto();
   DeviceMesh new_device_mesh = DeviceMesh::from_proto(proto);
-  std::cout << new_device_mesh << std::endl;
   EXPECT_EQ(device_mesh, new_device_mesh);
 }
 
