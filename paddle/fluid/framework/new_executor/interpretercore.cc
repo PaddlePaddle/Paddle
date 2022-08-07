@@ -374,6 +374,9 @@ void InterpreterCore::BuildInplace() {
     }
   }
 
+  Scope* local_scope = create_local_scope_ ? var_scope_.GetMutableLocalScope()
+                                           : var_scope_.GetMutableScope();
+
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     auto& instr = vec_instruction_[i];
     auto* op_base = instr.OpBase();
@@ -403,8 +406,8 @@ void InterpreterCore::BuildInplace() {
                 var_scope_.GetNameById(iter->second[0]);
             const std::string& outvar_name =
                 var_scope_.GetNameById(iterout->second[0]);
-            auto invar = local_scope_->FindVar(invar_name);
-            auto outvar = local_scope_->FindVar(outvar_name);
+            auto invar = local_scope->FindVar(invar_name);
+            auto outvar = local_scope->FindVar(outvar_name);
 
             if (invar && outvar && invar->IsType<LoDTensor>() &&
                 outvar->IsType<LoDTensor>() &&
