@@ -589,8 +589,8 @@ struct ElementwisePowFunctor {
 #ifdef PADDLE_WITH_XPU_KP
     return static_cast<T>(pow(a, b));
 #endif
-	using MPType = typename ::paddle::operators::details::MPTypeTrait<T>::Type;
-	return static_cast<T>(std::pow(static_cast<MPType>(a), static_cast<MPType>(b)));
+    using MPType = typename ::paddle::operators::details::MPTypeTrait<T>::Type;
+    return static_cast<T>(std::pow(static_cast<MPType>(a), static_cast<MPType>(b)));
   }
 };
 }  // namespace funcs
