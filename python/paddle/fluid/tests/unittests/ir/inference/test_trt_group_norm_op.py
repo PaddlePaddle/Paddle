@@ -62,14 +62,14 @@ class TRTGroupNormTest(InferencePassTest):
             initializer=fluid.initializer.Constant(value=0.005))
         return fluid.layers.group_norm(data,
                                        groups=32,
-                                       epsilon=0.000009999999747378752,
+                                       epsilon=1e-6,
                                        param_attr=param_attr,
                                        bias_attr=bias_attr)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu, atol=3e-5)
+            self.check_output_with_option(use_gpu, atol=5e-4)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 

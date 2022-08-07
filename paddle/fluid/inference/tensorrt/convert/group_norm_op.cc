@@ -9,11 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <vector>
+#include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
-#include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
+
+#include <vector>
 
 namespace paddle {
 namespace framework {

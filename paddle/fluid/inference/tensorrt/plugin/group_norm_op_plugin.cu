@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
+#include "paddle/phi/kernels/group_norm_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
@@ -60,7 +61,7 @@ int GroupNormPlugin::enqueue(int batch_size,
           "scale's size should be equal to the channel number in groupnorm,"
           "but got channel number:%d, scale's size:%d.",
           C,
-          scale_.size()));
+          scale_.size())); 
   PADDLE_ENFORCE_EQ(
       C,
       bias_.size(),
@@ -85,6 +86,10 @@ int GroupNormPlugin::enqueue(int batch_size,
   float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
   float *variance_d =
       variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  framework::Tensor temp_mean_t;
+  temp_mean_t.Resize(phi::make_ddim(mean_shape_));
+  float *temp_mean_d =
+      temp_mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
   framework::Tensor temp_variance_t;
   temp_variance_t.Resize(phi::make_ddim(variance_shape_));
@@ -95,57 +100,21 @@ int GroupNormPlugin::enqueue(int batch_size,
                   sizeof(float) * C,
                   cudaMemcpyHostToDevice,
                   stream);
-  cudaMemcpyAsync(
-      bias_d, bias_.data(), sizeof(float) * C, cudaMemcpyHostToDevice, stream);
-  const int group_size = C / groups_;
-  // printf("static group_size: %d\r\n", group_size);
-  const int W = input_ddim[input_ddim.size() - 1];
-  int image_size = 1;
-  for (int i = 2; i < input_ddim.size(); ++i) {
-    image_size *= input_ddim[i];
-  }
-  int block_size = std::min(1024, image_size);
-  dim3 grid(group_size, groups_, input_ddim[0]);
-  dim3 threads(block_size, 1, 1);
-
-  using AccT = typename phi::kps::details::MPTypeTrait<float>::Type;
-  constexpr int vec_size = sizeof(float4) / sizeof(float);
-  int size = group_size * image_size;  // group element size
-  const int max_num_threads = 1024;
-  int max_block_size = std::min(size / vec_size, max_num_threads);
-  int block_size_nchw = 1;
-  while (block_size_nchw < max_block_size) {
-    block_size_nchw *= 2;
-  }
-
-  block_size_nchw = std::max(block_size_nchw, phi::kps::details::kWarpSize);
-  dim3 grids(input_ddim[0] * groups_);
-  dim3 blocks(block_size_nchw);
-
-  if (size < vec_size * block_size_nchw) {
-    phi::ScalarGetMeanAndVarNCHW<float>
-        <<<grids, blocks, 0, stream>>>(input, mean_d, temp_variance_d, size);
-  } else {
-    phi::VectorizedGetMeanAndVarNCHW<float, AccT, vec_size>
-        <<<grids, blocks, 0, stream>>>(input, mean_d, temp_variance_d, size);
-  }
-  phi::GroupNormForward<float, 3><<<grid, threads, 0, stream>>>(
-      input,
-      mean_d,
-      temp_variance_d,
-      scale_d,
-      bias_d,
-      input_ddim[0],
-      C,
-      W,
-      image_size,
-      groups_,
-      group_size,
-      eps_,
-      output,
-      variance_d,
-      DataLayout::kNCHW  // for now, we only support nchw for group norm
-  );
+  cudaMemcpyAsync(bias_d, bias_.data(), sizeof(float) * C, cudaMemcpyHostToDevice, stream);
+    phi::GroupNormDirectCUDAFunctor<float> group_norm;
+    group_norm(stream,
+               input,
+               input_shape,
+               bias_d,
+               scale_d,
+               temp_mean_d,
+               temp_variance_d,
+               groups_,
+               eps_,
+               output,
+               mean_d,
+               variance_d,
+               DataLayout::kNCHW);
   return cudaGetLastError() != cudaSuccess;
 }
 nvinfer1::DimsExprs GroupNormPluginDynamic::getOutputDimensions(
@@ -275,56 +244,21 @@ int GroupNormPluginDynamic::enqueue(
                     sizeof(float) * C,
                     cudaMemcpyHostToDevice,
                     stream);
-    const int group_size = C / groups_;
-    const int W = input_ddim[input_ddim.size() - 1];
-    int image_size = 1;
-    for (int i = 2; i < input_ddim.size(); ++i) {
-      image_size *= input_ddim[i];
-    }
-    int block_size = std::min(1024, image_size);
-    dim3 grid(group_size, groups_, input_ddim[0]);
-    dim3 threads(block_size, 1, 1);
 
-    using AccT = typename phi::kps::details::MPTypeTrait<float>::Type;
-    constexpr int vec_size = sizeof(float4) / sizeof(float);
-    int size = group_size * image_size;  // group element size
-    const int max_num_threads = 1024;
-    int max_block_size = std::min(size / vec_size, max_num_threads);
-    int block_size_nchw = 1;
-    while (block_size_nchw < max_block_size) {
-      block_size_nchw *= 2;
-    }
-
-    block_size_nchw = std::max(block_size_nchw, phi::kps::details::kWarpSize);
-    dim3 grids(input_ddim[0] * groups_);
-    dim3 blocks(block_size_nchw);
-
-    if (size < vec_size * block_size_nchw) {
-      phi::ScalarGetMeanAndVarNCHW<float><<<grids, blocks, 0, stream>>>(
-          input, temp_mean_d, temp_variance_d, size);
-    } else {
-      phi::VectorizedGetMeanAndVarNCHW<float, AccT, vec_size>
-          <<<grids, blocks, 0, stream>>>(
-              input, temp_mean_d, temp_variance_d, size);
-    }
-    phi::GroupNormForward<float, 3><<<grid, threads, 0, stream>>>(
-        input,
-        temp_mean_d,
-        temp_variance_d,
-        scale_d,
-        bias_d,
-        input_ddim[0],
-        C,
-        W,
-        image_size,
-        groups_,
-        group_size,
-        eps_,
-        output,
-        variance_d,
-        DataLayout::kNCHW  // for now, we only support nchw for group norm
-    );
-
+    phi::GroupNormDirectCUDAFunctor<float> group_norm;
+    group_norm(stream,
+               input,
+               input_shape,
+               bias_d,
+               scale_d,
+               temp_mean_d,
+               temp_variance_d,
+               groups_,
+               eps_,
+               output,
+               mean_d,
+               variance_d,
+               DataLayout::kNCHW);
   } else {
     // input not float
     PADDLE_THROW(platform::errors::Fatal(

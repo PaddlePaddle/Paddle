@@ -51,10 +51,10 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
                             dics = [{
                                 "epsilon": epsilon,
                                 "groups": group,
-                                # "data_layout": data_layout
+                                "data_layout": data_layout
                             }, {
                                 "groups": group,
-                                # "data_layout": data_layout
+                                "data_layout": data_layout
                             }]
                             ops_config = [{
                                 "op_type": "group_norm",
@@ -95,11 +95,11 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 16, 32, 32]}
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 16, 16, 16]}
             self.dynamic_shape.max_input_shape = {
                 "input_data": [4, 64, 128, 128]
             }
-            self.dynamic_shape.opt_input_shape = {"input_data": [2, 32, 64, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 32, 64, 64]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -107,13 +107,14 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if len(attrs[0]) == 3:
-                if dynamic_shape:
-                    return 1, 2
-                else:
-                    return 0, 3
-            else:
-                return 0, 3
+            return 1, 2
+            # if len(attrs[0]) == 3:
+            #     if dynamic_shape:
+            #         return 1, 2
+            #     else:
+            #         return 0, 3
+            # else:
+            #     return 0, 3
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))

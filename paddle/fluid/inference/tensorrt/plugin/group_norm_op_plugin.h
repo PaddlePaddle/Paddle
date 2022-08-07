@@ -18,9 +18,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/phi/kernels/gpu/group_norm_utils.h"
-#include "paddle/phi/kernels/group_norm_kernel.h"
-
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
@@ -190,7 +187,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, mean_shape_);
     SerializeValue(&buffer, variance_shape_);
   }
-  
+
   nvinfer1::DimsExprs getOutputDimensions(int output_index,
                                           const nvinfer1::DimsExprs* inputs,
                                           int nb_inputs,
