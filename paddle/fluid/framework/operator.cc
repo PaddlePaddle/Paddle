@@ -1200,7 +1200,7 @@ struct OperatorWithKernel::CacheImpl {
     return infer_shape_ctx_.get();
   }
 
- bool updateInputsShapesDimCache() {
+  bool updateInputsShapesDimCache() {
     bool flag = false;
     size_t inputs_size =
         std::min(kernel_ctx_->InputsSize(), infer_shape_ctx_->InputsSize());
@@ -1214,6 +1214,7 @@ struct OperatorWithKernel::CacheImpl {
         flag = true;
       }
     }
+
 #if defined(PADDLE_WITH_CUDA)
     if (flag) discardCudaGraphCache();
 #endif
