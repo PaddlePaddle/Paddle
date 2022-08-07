@@ -61,7 +61,7 @@ int GroupNormPlugin::enqueue(int batch_size,
           "scale's size should be equal to the channel number in groupnorm,"
           "but got channel number:%d, scale's size:%d.",
           C,
-          scale_.size())); 
+          scale_.size()));
   PADDLE_ENFORCE_EQ(
       C,
       bias_.size(),
@@ -73,7 +73,7 @@ int GroupNormPlugin::enqueue(int batch_size,
 
   int device_id;
   cudaGetDevice(&device_id);
-  const float *input = reinterpret_cast<const float *>(inputs[0]);
+  const float *input = static_cast<const float *>(inputs[0]);
   float *output = static_cast<float *>(outputs[0]);
 
   scale_t.Resize(phi::make_ddim({C}));
@@ -100,21 +100,22 @@ int GroupNormPlugin::enqueue(int batch_size,
                   sizeof(float) * C,
                   cudaMemcpyHostToDevice,
                   stream);
-  cudaMemcpyAsync(bias_d, bias_.data(), sizeof(float) * C, cudaMemcpyHostToDevice, stream);
-    phi::GroupNormDirectCUDAFunctor<float> group_norm;
-    group_norm(stream,
-               input,
-               input_shape,
-               bias_d,
-               scale_d,
-               temp_mean_d,
-               temp_variance_d,
-               groups_,
-               eps_,
-               output,
-               mean_d,
-               variance_d,
-               DataLayout::kNCHW);
+  cudaMemcpyAsync(
+      bias_d, bias_.data(), sizeof(float) * C, cudaMemcpyHostToDevice, stream);
+  phi::GroupNormDirectCUDAFunctor<float> group_norm;
+  group_norm(stream,
+             input,
+             input_shape,
+             bias_d,
+             scale_d,
+             temp_mean_d,
+             temp_variance_d,
+             groups_,
+             eps_,
+             output,
+             mean_d,
+             variance_d,
+             DataLayout::kNCHW);
   return cudaGetLastError() != cudaSuccess;
 }
 nvinfer1::DimsExprs GroupNormPluginDynamic::getOutputDimensions(
@@ -212,7 +213,7 @@ int GroupNormPluginDynamic::enqueue(
   cudaGetDevice(&device_id);
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
-    const float *input = reinterpret_cast<const float *>(inputs[0]);
+    const float *input = static_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
     scale_t.Resize(phi::make_ddim({C}));
     bias_t.Resize(phi::make_ddim({C}));

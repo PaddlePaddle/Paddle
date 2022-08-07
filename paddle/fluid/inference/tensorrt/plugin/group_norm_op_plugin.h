@@ -187,7 +187,6 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, mean_shape_);
     SerializeValue(&buffer, variance_shape_);
   }
-
   nvinfer1::DimsExprs getOutputDimensions(int output_index,
                                           const nvinfer1::DimsExprs* inputs,
                                           int nb_inputs,

@@ -30,17 +30,18 @@ class TRTGroupNormTest(InferencePassTest):
             data = fluid.data(name="data",
                               shape=[-1, 512, 12, 12],
                               dtype="float32")
-            relu_out = fluid.layers.relu(data)
-            relu6_out = fluid.layers.relu6(relu_out)
-            tanh_out = fluid.layers.tanh(relu6_out)
-            conv_out = fluid.layers.conv2d(input=tanh_out,
-                                           num_filters=512,
-                                           filter_size=3,
-                                           groups=1,
-                                           padding=[1, 1],
-                                           bias_attr=False,
-                                           act=None)
-            out = self.append_group_norm(conv_out)
+            # relu_out = fluid.layers.relu(data)
+            # relu6_out = fluid.layers.relu6(relu_out)
+            # tanh_out = fluid.layers.tanh(relu6_out)
+            # conv_out = fluid.layers.conv2d(input=tanh_out,
+            #                                num_filters=512,
+            #                                filter_size=3,
+            #                                groups=1,
+            #                                padding=[1, 1],
+            #                                bias_attr=False,
+            #                                act=None)
+            # group_norm_out=fluid.layers.group_norm(data,groups=32)
+            out = self.append_group_norm(data)
 
         self.feeds = {
             "data": np.random.random([1, 512, 12, 12]).astype("float32"),
@@ -49,8 +50,8 @@ class TRTGroupNormTest(InferencePassTest):
         self.trt_parameters = TRTGroupNormTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
         self.dynamic_shape_params = TRTGroupNormTest.DynamicShapeParam(
-            {'data': [1, 512, 12, 12]}, {'data': [2, 512, 12, 12]},
-            {'data': [1, 512, 12, 12]}, False)
+            {'data': [1, 512, 12, 12]}, {'data': [1, 512, 12, 12]},
+            {'data': [1, 512, 12, 12]}, True)
         self.fetch_list = [out]
 
     def append_group_norm(self, data):
@@ -69,7 +70,7 @@ class TRTGroupNormTest(InferencePassTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu, atol=5e-4)
+            self.check_output_with_option(use_gpu)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 

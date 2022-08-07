@@ -29,12 +29,10 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
 
         def generate_input(attrs: List[Dict[str, Any]], batch):
-            return np.random.random([batch, 32, 64, 64]).astype(np.float32)
-
-            # if attrs[0]['data_layout'] == 'NCHW':
-            #     return np.random.random([batch, 32, 64, 64]).astype(np.float32)
-            # else:
-            #     return np.random.random([batch, 64, 64, 32]).astype(np.float32)
+            if attrs[0]['data_layout'] == 'NCHW':
+                return np.random.random([batch, 32, 64, 64]).astype(np.float32)
+            else:
+                return np.random.random([batch, 64, 64, 32]).astype(np.float32)
 
         def generate_scale():
             return np.random.randn(32).astype(np.float32)
@@ -45,7 +43,6 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         for batch in [1, 2, 4]:
             for group in [1, 4, 32]:
                 for epsilon in [0.0001, 0.0007]:
-                    # for data_layout in ['NCHW', 'NHWC']:
                     for data_layout in ['NCHW']:
                         for i in [0, 1]:
                             dics = [{
@@ -108,13 +105,6 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             return 1, 2
-            # if len(attrs[0]) == 3:
-            #     if dynamic_shape:
-            #         return 1, 2
-            #     else:
-            #         return 0, 3
-            # else:
-            #     return 0, 3
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -138,20 +128,7 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         # yield self.create_inference_config(), generate_trt_nodes_num(
         #     attrs, True), (1e-5, 1e-5)
 
-    def add_skip_trt_case(self):
-
-        def teller1(program_config, predictor_config):
-            if len(self.dynamic_shape.min_input_shape) != 0:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The goup_norm plugin will check dim not -1 failed when dynamic fp16 mode."
-        )
-
     def test(self):
-        #self.add_skip_trt_case()
         self.run_test()
 
 
