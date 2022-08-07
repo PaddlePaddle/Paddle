@@ -645,17 +645,19 @@ def rfftn(x, s=None, axes=None, norm="backward", name=None):
         norm(str, optional) : Normalization mode, indicates which direction of 
             the forward/backward pair of transforms is scaled and with what 
             normalization factor. Include {"backward", "ortho", "forward"}, 
-            default value is "backward".
+            default value is "backward". The details of 
+            three operations are shown below:
+                "backward": The factor of forward direction and backward direction are ``1`` 
+                and ``1/n`` respectively;
+                "forward": The factor of forward direction and backward direction are ``1/n`` 
+                and ``1`` respectively;
+                "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
         name(str, optional): The default value is None.  Normally there is no 
             need for user to set this property. For more information, please 
             refer to :ref:`api_guide_Name` . 
 
     Returns:
         out(Tensor): complex tensor
-
-
-    Raises:
-        ValueError: If `s` and `axes` have different length.
 
     Examples:
     .. code-block:: python
@@ -696,7 +698,7 @@ def irfftn(x, s=None, axes=None, norm="backward", name=None):
     Fourier Transform for real input over any number of axes in an
     M-D array by means of the Fast Fourier Transform (FFT). In
     other words, ``irfftn(rfftn(x), x.shape) == x`` to within numerical
-    accuracy. (The ``a.shape`` is necessary like ``len(a)`` is for `irfft`,
+    accuracy. (The ``x.shape`` is necessary like ``len(x)`` is for `irfft`,
     and for the same reason.)
 
     The input should be ordered in the same way as is returned by `rfftn`,
@@ -999,16 +1001,19 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
         norm(str, optional) : {"backward", "ortho", "forward"}, 
             default is "backward". Indicates which direction of the 
             forward/backward pair of transforms is scaled and with what 
-            normalization factor.
+            normalization factor. The details of 
+            three operations are shown below:
+                "backward": The factor of forward direction and backward direction are ``1`` 
+                and ``1/n`` respectively;
+                "forward": The factor of forward direction and backward direction are ``1/n`` 
+                and ``1`` respectively;
+                "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
         name(str, optional): The default value is None.  Normally there is no 
             need for user to set this property. For more information, please 
             refer to :ref:`api_guide_Name` . 
 
     Returns: 
         out(Tensor): The result of the real 2-D FFT.
-
-    Raises:
-
 
     Examples:
 
@@ -1050,7 +1055,8 @@ def irfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
             must be two-dimensional. If not specified, the last two axes are used by default.       
         norm (str): Indicates which direction to scale the `forward` or `backward` transform
             pair and what normalization factor to use. The parameter value must be one 
-            of "forward" or "backward" or "ortho". Default is "backward".
+            of "forward" or "backward" or "ortho". Default is "backward". The details of 
+            three operations are shown below:
                 "backward": The factor of forward direction and backward direction are ``1`` 
                 and ``1/n`` respectively;
                 "forward": The factor of forward direction and backward direction are ``1/n`` 
@@ -1262,6 +1268,8 @@ def rfftfreq(n, d=1.0, dtype=None, name=None):
     Args:
         n (int): Dimension inputed.
         d (scalar, optional): Sample spacing (inverse of the sampling rate). Defaults is 1.
+        dtype (str, optional): The data type of returns. Defaults is the data type of returns 
+            of ``paddle.get_default_dtype()``.
         name (str, optional): The default value is None.  Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
