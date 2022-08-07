@@ -70,7 +70,7 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& ctx,
                                          const DenseTensor& dst_index,
                                          const std::string& compute_type,
                                          DenseTensor* out) {
-  const int& index_size = src_index.dims()[0];
+  const int64_t& index_size = src_index.dims()[0];
   auto out_dims = out->dims();
   int64_t memset_size = 1;
   for (int i = 0; i < out_dims.size(); i++) {

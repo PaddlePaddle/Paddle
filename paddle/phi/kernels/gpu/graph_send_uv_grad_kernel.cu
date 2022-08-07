@@ -27,25 +27,28 @@
 
 namespace phi {
 
-template <typename Context, typename T, typename IndexT>
-__global__ void GraphSendUVCUDAKernel(const T* out_grad,
-                                      const IndexT* src_indices,
-                                      const IndexT* dst_indices,
-                                      int64_t index_size,
-                                      int64_t slice_size,
-                                      T* x_grad) {
-  Idx ty = blockIdx.y * blockDim.y + threadIdx.y;
-  const Idx stride_y = blockDim.y * gridDim.y;
+template <typename T, typename IndexT>
+__global__ void GraphSendUVGradCUDAKernel(const T* out_grad,
+                                          const IndexT* src_indices,
+                                          const IndexT* dst_indices,
+                                          int64_t index_size,
+                                          int64_t slice_size,
+                                          T* x_grad) {
+  IndexT ty = blockIdx.y * blockDim.y + threadIdx.y;
+  const IndexT stride_y = blockDim.y * gridDim.y;
   while (ty < index_size) {
     IndexT src = src_indices[ty];
     IndexT dst = dst_indices[ty];
     int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
     int64_t stride_x = blockDim.x * gridDim.x;
 
-    const T* e_off = e_data + ty * slice_size;
+    const T* out_grad_off = out_grad + ty * slice_size;
     T* x_grad_off = x_grad + dst * slice_size;
     while (tx < slice_size) {
+      paddle::platform::CudaAtomicAdd(x_grad_off + tx, out_grad_off[tx]);
+      tx += stride_x;
     }
+    ty += stride_y;
   }
 }
 
@@ -66,25 +69,16 @@ void CalculateGrad(const Context& ctx,
   bool reduce = ReduceGrad(out_grad_dims, x_grad_dims, reduce_idx);
 
   if (compute_type == "ADD") {
-#ifdef PADDLE_WITH_HIP
-    int block = 256;
-#else
-    int block = 1024;
-#endif
-    int64_t n = slice_size * index_size;
-    int max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
-    int64_t grid_tmp = (n + block - 1) / block;
-    int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
-    GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
     if (!reduce) {
-      GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
-          <<<grid, block, 0, ctx.stream()>>>(out_grad,
-                                             d_index,
-                                             s_index,
-                                             x_grad,
-                                             index_size,
-                                             slice_size,
-                                             functor);
+      const int ntx = FindNumThreads(slice_size);
+      const int nty = CUDA_MAX_NUM_THREADS / ntx;
+      const int nbx = (slice_size + ntx - 1) / ntx;
+      const int nby = (index_size + nty - 1) / nty;
+      const dim3 grid_tmp(nbx, nby);
+      const dim3 block_tmp(ntx, nty);
+      GraphSendUVGradCUDAKernel<T, IndexT>
+          <<<grid_tmp, block_tmp, 0, ctx.stream()>>>(
+              out_grad, d_index, s_index, index_size, slice_size, x_grad);
     } else {
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, x_grad_dims);
       auto out_grad_dims_1 = phi::vectorize<int>(out_grad_dims);
@@ -94,14 +88,21 @@ void CalculateGrad(const Context& ctx,
       DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
       phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
-      GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
-          <<<grid, block, 0, ctx.stream()>>>(out_grad,
-                                             d_index,
-                                             s_index,
-                                             x_grad,
-                                             index_size,
-                                             bcast_info.out_len,
-                                             functor);
+
+      const int ntx = FindNumThreads(bcast_info.out_len);
+      const int nty = CUDA_MAX_NUM_THREADS / ntx;
+      const int nbx = (bcast_info.out_len + ntx - 1) / ntx;
+      const int nby = (index_size + nty - 1) / nty;
+      const dim3 grid_tmp(nbx, nby);
+      const dim3 block_tmp(ntx, nty);
+      GraphSendUVGradCUDAKernel<T, IndexT>
+          <<<grid_tmp, block_tmp, 0, ctx.stream()>>>(out_grad,
+                                                     d_index,
+                                                     s_index,
+                                                     index_size,
+                                                     bcast_info.out_len,
+                                                     x_grad_v2_data);
+
       // Run reduce sum
       DenseTensor x_grad_out = phi::Sum<T, Context>(
           ctx,
@@ -216,7 +217,7 @@ void GraphSendUVGradOpCUDAKernelLaunchHelper(const Context& ctx,
                                              const std::string& compute_type,
                                              DenseTensor* x_grad,
                                              DenseTensor* y_grad) {
-  const int& index_size = dst_index.dims()[0];
+  const int64_t& index_size = dst_index.dims()[0];
 
   ctx.template Alloc<T>(x_grad);
   T* x_grad_data = x_grad->data<T>();
