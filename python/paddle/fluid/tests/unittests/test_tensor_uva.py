@@ -50,7 +50,7 @@ class TestUVATensorFromNumpy(unittest.TestCase):
                     tensor2 = paddle.fluid.core.to_uva_tensor(data)
                 else:
                     tensor = core.eager.to_uva_tensor(data, 0)
-                    tensor2 = paddle.fluid.core.to_uva_tensor(data)
+                    tensor2 = core.eager.to_uva_tensor(data)
 
                 self.assertTrue(tensor.place.is_gpu_place())
                 self.assertTrue(tensor2.place.is_gpu_place())
