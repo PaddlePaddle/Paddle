@@ -2067,10 +2067,10 @@ def _get_reduce_axis(axis):
         else:
             raise TypeError(
                 "The type of axis must be int, list or tuple, but received {}".format(type(axis)))
-
+    reduce_all = True if axis == None or axis == [] else False
     if axis == None:
         axis = []
-    return axis
+    return reduce_all, axis
 
 def _get_reduce_all_value(axis):
     """
@@ -2168,7 +2168,7 @@ def max(x, axis=None, keepdim=False, name=None):
             #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    axis = _get_reduce_axis(axis)
+    reduce_all, axis = _get_reduce_axis(axis)
     if in_dygraph_mode():
         return _C_ops.final_state_max(x, axis, keepdim)
     if _in_legacy_dygraph():
@@ -2269,7 +2269,7 @@ def min(x, axis=None, keepdim=False, name=None):
             #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    axis = _get_reduce_axis(axis)
+    reduce_all, axis = _get_reduce_axis(axis)
     if in_dygraph_mode():
         return _C_ops.final_state_min(x, axis, keepdim)
 
@@ -2384,7 +2384,7 @@ def amax(x, axis=None, keepdim=False, name=None):
             #[0.9., 0.9], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
 
-    axis = _get_reduce_axis(axis)
+    reduce_all, axis = _get_reduce_axis(axis)
     if in_dygraph_mode():
         return _C_ops.final_state_amax(x,  axis,  keepdim)
     if _in_legacy_dygraph():
@@ -2498,7 +2498,7 @@ def amin(x, axis=None, keepdim=False, name=None):
             #[0.1., 0.1], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
 
-    axis = _get_reduce_axis( axis )
+    reduce_all, axis = _get_reduce_axis( axis )
     if in_dygraph_mode():
         return _C_ops.final_state_amin(x, axis, keepdim)
     elif _in_legacy_dygraph():
