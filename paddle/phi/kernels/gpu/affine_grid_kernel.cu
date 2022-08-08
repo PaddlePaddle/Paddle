@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/affine_grid_kernel.h"
+
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -22,6 +23,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/affine_grid_utils.h"
 
 namespace phi {
 

@@ -46,7 +46,6 @@ TEST(ProcessMesh, Ctor) {
   auto proto = process_mesh.to_proto();
   ProcessMesh new_process_mesh = ProcessMesh::from_proto(proto);
   EXPECT_EQ(process_mesh, new_process_mesh);
-  std::cout << new_process_mesh << std::endl;
 }
 
 }  // namespace auto_parallel
