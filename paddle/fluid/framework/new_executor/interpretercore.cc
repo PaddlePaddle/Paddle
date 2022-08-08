@@ -108,6 +108,9 @@ interpreter::CostInfo InterpreterCore::DryRun(
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
 
+    // lazy initialization of gc, do not create gc is the program only run once
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+
     ExecuteInstructionList(vec_instruction_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
@@ -133,6 +136,10 @@ paddle::framework::FetchList InterpreterCore::Run(
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
+
+    // lazy initialization of gc, do not create gc is the program only run once
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+
     ExecuteInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -176,6 +183,9 @@ paddle::framework::FetchList InterpreterCore::Run(
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
+
+    // lazy initialization of gc, do not create gc is the program only run once
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
 
     ExecuteInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -479,7 +489,7 @@ void InterpreterCore::Convert(
   }
 
   BuildSkipShareLoDInfo();
-  gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+
   bool inplaced = false;
   for (auto inst : vec_instruction_) {
     if (inst.OpBase()->Type() == "share_buffer" ||

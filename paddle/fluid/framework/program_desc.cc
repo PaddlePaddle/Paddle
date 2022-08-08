@@ -217,5 +217,11 @@ void ProgramDesc::SetFetchHolderName(const std::string &fetch_holder_name) {
   fetch_holder->SetPersistable(true);
 }
 
+std::string CachedSerializeString() {
+  if (cached_serialize_str_.size() == 0) {
+    self.Proto()->SerializePartialToString(&retv),
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

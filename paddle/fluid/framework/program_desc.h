@@ -85,12 +85,16 @@ class ProgramDesc {
   // This function is used to change or unify the fetch_holder variables' name.
   void SetFetchHolderName(const std::string &fetch_holder_name);
 
+  std::string CachedSerializeString();
+
  private:
   void InitFromProto();
 
   proto::ProgramDesc desc_;
 
   std::vector<std::unique_ptr<BlockDesc>> blocks_;
+
+  std::string cached_serialize_str_;
 };
 }  // namespace framework
 }  // namespace paddle
