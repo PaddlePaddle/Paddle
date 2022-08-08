@@ -135,6 +135,29 @@ void ExpandInferMeta(const MetaTensor& x,
 void FillDiagonalInferMeta(
     const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out);
 
+void FFTC2CInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axes,
+                     const std::string& normalization,
+                     bool forward,
+                     MetaTensor* out,
+                     MetaConfig = MetaConfig());
+
+void FFTC2RInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axes,
+                     const std::string& normalization,
+                     bool forward,
+                     int64_t last_dim_size,
+                     MetaTensor* out,
+                     MetaConfig = MetaConfig());
+
+void FFTR2CInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axes,
+                     const std::string& normalization,
+                     bool forward,
+                     bool onesided,
+                     MetaTensor* out,
+                     MetaConfig = MetaConfig());
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,

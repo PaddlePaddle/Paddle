@@ -137,6 +137,14 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
                            bool is_test,
                            MetaTensor* x_grad);
 
+void FFTC2RGradInferMeta(const MetaTensor& x,
+                         const std::vector<int64_t>& axes,
+                         const std::string& normalization,
+                         bool forward,
+                         int64_t last_dim_size,
+                         MetaTensor* out,
+                         MetaConfig = MetaConfig());
+
 void FillDiagonalGradInferMeta(
     const MetaTensor& dout, float value, int offset, bool wrap, MetaTensor* dx);
 
