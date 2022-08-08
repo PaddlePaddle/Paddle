@@ -116,8 +116,7 @@ bool SkipLayerNormPluginDynamic::supportsFormatCombination(
   if (pos == 0) {
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-      return (desc.type == nvinfer1::DataType::kFLOAT ||
-              desc.type == nvinfer1::DataType::kHALF) &&
+      return (desc.type == nvinfer1::DataType::kHALF) &&
              (desc.format == nvinfer1::TensorFormat::kLINEAR);
 #else
       return (in.type == nvinfer1::DataType::kFLOAT) &&
