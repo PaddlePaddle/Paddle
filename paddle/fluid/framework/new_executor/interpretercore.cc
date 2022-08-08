@@ -98,6 +98,9 @@ InterpreterCore::~InterpreterCore() {
 interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
+  if (platform::is_gpu_place(place_)) {
+    platform::SetDeviceId(place_.device);
+  }
   Prepare(feed_names, feed_tensors, true);
   interpreter::CostInfo cost_info;
   {
@@ -122,6 +125,9 @@ interpreter::CostInfo InterpreterCore::DryRun(
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
+  if (platform::is_gpu_place(place_)) {
+    platform::SetDeviceId(place_.device);
+  }
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
@@ -153,6 +159,9 @@ paddle::framework::FetchList InterpreterCore::Run(
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names) {
+  if (platform::is_gpu_place(place_)) {
+    platform::SetDeviceId(place_.device);
+  }
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
