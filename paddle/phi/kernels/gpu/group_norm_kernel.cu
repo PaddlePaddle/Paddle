@@ -230,26 +230,28 @@ void GroupNormKernel(const Context& dev_ctx,
 
 template <typename T>
 void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
-                        const T* input,
-                        std::vector<int> input_shape,
-                        const T* bias,
-                        const T* scale,
-                        T* temp_mean,
-                        T* temp_variance,
-                        int groups,
-                        float eps,
-                        T* output,
-                        T* mean,
-                        T* variance,
-                        const DataLayout data_layout){
+                                               const T* input,
+                                               std::vector<int> input_shape,
+                                               const T* bias,
+                                               const T* scale,
+                                               T* temp_mean,
+                                               T* temp_variance,
+                                               int groups,
+                                               float eps,
+                                               T* output,
+                                               T* mean,
+                                               T* variance,
+                                               const DataLayout data_layout) {
   const auto input_ddim = phi::make_ddim(input_shape);
-  const int C = (data_layout == DataLayout::kNCHW ? input_ddim[1]
-                                                  : input_ddim[input_ddim.size() - 1]);
+  const int C =
+      (data_layout == DataLayout::kNCHW ? input_ddim[1]
+                                        : input_ddim[input_ddim.size() - 1]);
   const int group_size = C / groups;
-  const int W = (data_layout == DataLayout::kNCHW ? input_ddim[input_ddim.size() - 1]
-                                                  : input_ddim[input_ddim.size() - 2]);
-  
-  int image_size = 1;  
+  const int W =
+      (data_layout == DataLayout::kNCHW ? input_ddim[input_ddim.size() - 1]
+                                        : input_ddim[input_ddim.size() - 2]);
+
+  int image_size = 1;
   if (data_layout == DataLayout::kNCHW) {
     for (int i = 2; i < input_ddim.size(); ++i) {
       image_size *= input_ddim[i];
@@ -283,22 +285,22 @@ void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
 
     if (size < vec_size * block_size_nchw) {
       phi::ScalarGetMeanAndVarNCHW<T>
-        <<<grids, blocks, 0, stream>>>(input, temp_mean, temp_variance, size);
+          <<<grids, blocks, 0, stream>>>(input, temp_mean, temp_variance, size);
     } else {
       phi::VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
-        <<<grids, blocks, 0, stream>>>(input, temp_mean, temp_variance, size);
+          <<<grids, blocks, 0, stream>>>(input, temp_mean, temp_variance, size);
     }
   } else {
     phi::GroupNormForwardGetMeanAndVar<T>
         <<<grid, threads, 0, stream>>>(input,
-                                input_ddim[0],
-                                C,
-                                W,
-                                image_size,
-                                groups,
-                                group_size,
-                                temp_mean,
-                                temp_variance);
+                                       input_ddim[0],
+                                       C,
+                                       W,
+                                       image_size,
+                                       groups,
+                                       group_size,
+                                       temp_mean,
+                                       temp_variance);
   }
   GroupNormForward<T, 3><<<grid, threads, 0, stream>>>(
       input,
