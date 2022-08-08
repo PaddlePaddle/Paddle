@@ -14,7 +14,7 @@
 
 from __future__ import division
 from __future__ import print_function
-
+import os
 import paddle
 import numpy as np
 import random
@@ -39,6 +39,7 @@ inner_size = 8
 output_size = 10
 seq_length = 2
 batch_size = 4
+os.environ["PADDLE_TRAINERS_NUM"] = "2"
 
 def get_attr(layer, name):
     if getattr(layer, name, None) is not None:
