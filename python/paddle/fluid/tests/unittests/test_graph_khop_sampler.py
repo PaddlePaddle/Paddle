@@ -262,7 +262,7 @@ class TestGeometricGraphKhopSampler(unittest.TestCase):
         nodes = paddle.to_tensor(self.nodes)
 
         edge_src, edge_dst, sample_index, reindex_nodes = \
-            paddle.geometric.graph_khop_sampler(row, colptr,
+            paddle.geometric.khop_sampler(row, colptr,
                                                    nodes, self.sample_sizes,
                                                    return_eids=False)
         # Reindex edge_src and edge_dst to original index.
@@ -311,7 +311,7 @@ class TestGeometricGraphKhopSampler(unittest.TestCase):
             nodes = paddle.to_tensor(self.nodes)
 
             edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
-                paddle.geometric.graph_khop_sampler(row, colptr,
+                paddle.geometric.khop_sampler(row, colptr,
                                                        nodes, self.sample_sizes,
                                                        sorted_eids=sorted_eid,
                                                        return_eids=True)
@@ -357,7 +357,7 @@ class TestGeometricGraphKhopSampler(unittest.TestCase):
                                        dtype=self.nodes.dtype)
 
             edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
-                paddle.geometric.graph_khop_sampler(row, colptr,
+                paddle.geometric.khop_sampler(row, colptr,
                                                        nodes, self.sample_sizes,
                                                        sorted_eids, True)
             exe = paddle.static.Executor(paddle.CPUPlace())
@@ -403,7 +403,7 @@ class TestGeometricGraphKhopSampler(unittest.TestCase):
                                        shape=self.nodes.shape,
                                        dtype=self.nodes.dtype)
             edge_src, edge_dst, sample_index, reindex_nodes = \
-                paddle.geometric.graph_khop_sampler(row, colptr,
+                paddle.geometric.khop_sampler(row, colptr,
                                                        nodes, self.sample_sizes)
             exe = paddle.static.Executor(paddle.CPUPlace())
             ret = exe.run(feed={

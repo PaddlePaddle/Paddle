@@ -75,13 +75,13 @@ def compute_segment_min_max(x, segment_ids, pooltype="MAX"):
 
 def segment_pool_split(X, SegmentIds, pooltype):
     if pooltype == "SUM":
-        return paddle.incubate.tensor.segment_sum(X, SegmentIds)
+        return paddle.geometric.segment_sum(X, SegmentIds)
     elif pooltype == "MEAN":
-        return paddle.incubate.tensor.segment_mean(X, SegmentIds)
+        return paddle.geometric.segment_mean(X, SegmentIds)
     elif pooltype == "MIN":
-        return paddle.incubate.tensor.segment_min(X, SegmentIds)
+        return paddle.geometric.segment_min(X, SegmentIds)
     elif pooltype == "MAX":
-        return paddle.incubate.tensor.segment_max(X, SegmentIds)
+        return paddle.geometric.segment_max(X, SegmentIds)
 
 
 class TestSegmentOps(OpTest):

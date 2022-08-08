@@ -254,7 +254,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
         colptr = paddle.to_tensor(self.colptr)
         nodes = paddle.to_tensor(self.nodes)
 
-        out_neighbors, out_count = paddle.geometric.graph_sample_neighbors(
+        out_neighbors, out_count = paddle.geometric.sample_neighbors(
             row, colptr, nodes, sample_size=self.sample_size)
         out_count_cumsum = paddle.cumsum(out_count)
         for i in range(len(out_count)):
@@ -283,7 +283,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
             nodes = paddle.to_tensor(self.nodes)
             perm_buffer = paddle.to_tensor(self.edges_id)
 
-            out_neighbors, out_count = paddle.geometric.graph_sample_neighbors(
+            out_neighbors, out_count = paddle.geometric.sample_neighbors(
                 row,
                 colptr,
                 nodes,
@@ -322,7 +322,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                                        shape=self.nodes.shape,
                                        dtype=self.nodes.dtype)
 
-            out_neighbors, out_count = paddle.geometric.graph_sample_neighbors(
+            out_neighbors, out_count = paddle.geometric.sample_neighbors(
                 row, colptr, nodes, sample_size=self.sample_size)
             exe = paddle.static.Executor(paddle.CPUPlace())
             ret = exe.run(feed={
@@ -350,20 +350,18 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
         nodes = paddle.to_tensor(self.nodes)
 
         def check_eid_error():
-            paddle.geometric.graph_sample_neighbors(
-                row,
-                colptr,
-                nodes,
-                sample_size=self.sample_size,
-                return_eids=True)
+            paddle.geometric.sample_neighbors(row,
+                                              colptr,
+                                              nodes,
+                                              sample_size=self.sample_size,
+                                              return_eids=True)
 
         def check_perm_buffer_error():
-            paddle.geometric.graph_sample_neighbors(
-                row,
-                colptr,
-                nodes,
-                sample_size=self.sample_size,
-                flag_perm_buffer=True)
+            paddle.geometric.sample_neighbors(row,
+                                              colptr,
+                                              nodes,
+                                              sample_size=self.sample_size,
+                                              flag_perm_buffer=True)
 
         self.assertRaises(ValueError, check_eid_error)
         self.assertRaises(ValueError, check_perm_buffer_error)
@@ -376,7 +374,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
         eids = paddle.to_tensor(self.edges_id)
         perm_buffer = paddle.to_tensor(self.edges_id)
 
-        out_neighbors, out_count, out_eids = paddle.geometric.graph_sample_neighbors(
+        out_neighbors, out_count, out_eids = paddle.geometric.sample_neighbors(
             row,
             colptr,
             nodes,
@@ -384,7 +382,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
             sample_size=self.sample_size,
             return_eids=True)
 
-        out_neighbors, out_count, out_eids = paddle.geometric.graph_sample_neighbors(
+        out_neighbors, out_count, out_eids = paddle.geometric.sample_neighbors(
             row,
             colptr,
             nodes,
@@ -409,7 +407,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                                       shape=self.edges_id.shape,
                                       dtype=self.nodes.dtype)
 
-            out_neighbors, out_count, out_eids = paddle.geometric.graph_sample_neighbors(
+            out_neighbors, out_count, out_eids = paddle.geometric.sample_neighbors(
                 row,
                 colptr,
                 nodes,

@@ -81,7 +81,7 @@ def khop_sampler(row,
         nodes = paddle.to_tensor(nodes, dtype="int64")
         
         edge_src, edge_dst, sample_index, reindex_nodes = \
-            paddle.geometric.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
+            paddle.geometric.khop_sampler(row, colptr, nodes, sample_sizes, False)
 
     """
 
