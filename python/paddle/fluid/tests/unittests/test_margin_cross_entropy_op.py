@@ -76,17 +76,16 @@ def python_api(logits,
                margin2=0.5,
                margin3=0.0,
                scale=64.0):
-    # here only can test paddle.nn.functional.softmax_with_cross_entropy,
-    # the paddle.nn.functional.cross_entropy contains other math ops
-    return paddle.nn.functional.margin_cross_entropy(logits,
-                                                     label,
-                                                     return_softmax=False,
-                                                     margin1=margin1,
-                                                     margin2=margin2,
-                                                     margin3=margin3,
-                                                     scale=scale,
-                                                     group=None,
-                                                     reduction=None)
+    return paddle.nn.functional.margin_cross_entropy(
+        logits,
+        label,
+        return_softmax=return_softmax,
+        margin1=margin1,
+        margin2=margin2,
+        margin3=margin3,
+        scale=scale,
+        group=None,
+        reduction=None)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -96,7 +95,6 @@ class TestMarginCrossEntropyOp(OpTest):
     def initParams(self):
         self.python_api = python_api
         self.op_type = "margin_cross_entropy"
-        self.python_api = python_api
         self.python_out_sig = ["Loss"]
         self.axis = -1
         self.batch_dim = 5
@@ -246,7 +244,6 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
             self.places.append(paddle.fluid.CUDAPlace(0))
 
     def initParams(self):
-        self.python_api = python_api
         self.python_out_sig = ["Loss"]
         self.seed = 2021
         self.axis = -1

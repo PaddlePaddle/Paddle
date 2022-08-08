@@ -573,6 +573,11 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
                                      float margin3,
                                      float scale,
                                      MetaTensor* logits_grad) {
+  PADDLE_ENFORCE_NE(
+      logits_grad,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The Logits@GRAD in MarginCrossEntropy can't be nullptr."));
   auto softmax_dims = softmax.dims();
 
   logits_grad->set_dims(softmax_dims);
