@@ -25,7 +25,6 @@ import paddle.distributed.fleet as fleet
 from paddle.io import DataLoader, Dataset
 import unittest
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.distributed import init_parallel_env
 from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
 
@@ -198,8 +197,6 @@ class SimpleDPNet(fluid.dygraph.Layer):
 class TestDistMPTraning(unittest.TestCase):
 
     def setUp(self):
-        init_parallel_env()
-        os.environ["PADDLE_TRAINERS_NUM"] = "2"
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
         self.data_parallel_size = 1
