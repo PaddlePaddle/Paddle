@@ -14,14 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/constant_folding_pass.h"
 #include <string>
-#include "paddle/fluid/framework/op_registry.h"
+#include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
-
-#include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
 
@@ -52,26 +51,23 @@ struct ConstantFolding : public PatternBase {
 };
 
 PDNode *ConstantFolding::operator()(PDNode *persis_op) {
-  
-  auto assert_ops = std::unordered_set<std::string>{"unsqueeze2", "reshape2", "fill_constant"};
+  auto assert_ops = std::unordered_set<std::string>{
+      "unsqueeze2", "reshape2", "fill_constant"};
   persis_op->assert_is_ops(assert_ops);
   auto *op_out = pattern->NewNode(common_op_out_repr())
-                  ->assert_is_ops_output(assert_ops, "Out");
+                     ->assert_is_ops_output(assert_ops, "Out");
   op_out->LinksFrom({persis_op});
   return op_out;
 }
 
 }  // namespace patterns
 
-ConstantFoldingPass::ConstantFoldingPass() {
-}
+ConstantFoldingPass::ConstantFoldingPass() {}
 
-static bool ValidateOp(Node* op) 
-{
-  if(op->inputs.size() <= 1) {
+static bool ValidateOp(Node *op) {
+  if (op->inputs.size() <= 1) {
     return true;
-  }
-  else if(op->inputs.size() == 2) {
+  } else if (op->inputs.size() == 2) {
     for (int i = 0; i < 2; i++) {
       auto input_i_persis = op->inputs[i]->Var()->Persistable();
       auto input_i_outnum = op->inputs[i]->outputs.size();
@@ -89,22 +85,23 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init("constant_folding", graph);
   int found_subgraph_count = 0;
   GraphPatternDetector gpd;
-  auto *persis_op_node = gpd.mutable_pattern() 
-            ->NewNode("persis_op_node")
-            ->assert_more([&](Node* node) {
-              bool is_op = node->IsOp();
-              int op_input_size = node->inputs.size();
-              if(op_input_size == 1) {
-                return is_op && node->inputs[0]->Var()->Persistable();
-              }
-              else if(op_input_size == 0) {
-                return is_op;
-              } else {
-                return false;
-              }
-          });
+  auto *persis_op_node = gpd.mutable_pattern()
+                             ->NewNode("persis_op_node")
+                             ->assert_more([&](Node *node) {
+                               bool is_op = node->IsOp();
+                               int op_input_size = node->inputs.size();
+                               if (!is_op) return false;
+                               if (op_input_size == 1) {
+                                 return node->inputs[0]->Var()->Persistable();
+                               } else if (op_input_size == 0) {
+                                 return true;
+                               } else {
+                                 return false;
+                               }
+                             });
 
-  patterns::ConstantFolding fused_pattern(gpd.mutable_pattern(), "constant_folding");
+  patterns::ConstantFolding fused_pattern(gpd.mutable_pattern(),
+                                          "constant_folding");
   fused_pattern(persis_op_node);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -117,55 +114,56 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
 
     GET_IR_NODE_FROM_SUBGRAPH(op_out, common_op_out, fused_pattern);
 
-    auto* scope = param_scope();
+    auto *scope = param_scope();
     framework::Scope *new_scope = new framework::Scope();
-    std::unordered_set<const paddle::framework::ir::Node*> remove_nodes;
-    
-    if(subgraph.at(persis_op_node)->inputs.size()) {
+    std::unordered_set<const paddle::framework::ir::Node *> remove_nodes;
+
+    if (subgraph.at(persis_op_node)->inputs.size()) {
       auto *persis_x_node = subgraph.at(persis_op_node)->inputs[0];
       auto x_shape = persis_x_node->Var()->GetShape();
-      auto* persis_x_tensor = scope->FindVar(persis_x_node->Name())->GetMutable<LoDTensor>();
+      auto *persis_x_tensor =
+          scope->FindVar(persis_x_node->Name())->GetMutable<LoDTensor>();
       new_scope->Var(persis_x_node->Name());
-      auto* x_tensor = new_scope->FindVar(persis_x_node->Name())->GetMutable<LoDTensor>();
+      auto *x_tensor =
+          new_scope->FindVar(persis_x_node->Name())->GetMutable<LoDTensor>();
       x_tensor->Resize(persis_x_tensor->dims());
       *x_tensor = *persis_x_tensor;
     }
 
-    auto* iter_op = subgraph.at(persis_op_node);
+    auto *iter_op = subgraph.at(persis_op_node);
     std::vector<std::unique_ptr<OperatorBase>> ops;
 
-// for Op Node, it return the op's ith output, and make sure all others outputs muse be useless
-// for Var Node, it return 0th output if outputs.size() == 1 and then return nullptr
-auto PickOneOut = [&](Node* node) -> Node* {
-  if(node->outputs.size() == 1) {
-    return node->outputs[0];
-  }
-  else if(node->outputs.size() == 0) {
-    return nullptr;
-  }
-  else {
-    if(node->IsOp()) {
-      for(size_t i = 0; i < node->outputs.size(); i++)
-      {
-        if(node->outputs[i]->outputs.size() >= 1) return node->outputs[i];
+    // for Op Node, it return the op's ith output, and make sure all others
+    // outputs muse be useless for Var Node, it return 0th output if
+    // outputs.size() == 1 and then return nullptr
+    auto PickOneOut = [&](Node *node) -> Node * {
+      if (node->outputs.size() == 1) {
+        return node->outputs[0];
+      } else if (node->outputs.size() == 0) {
+        return nullptr;
+      } else {
+        if (node->IsOp()) {
+          for (size_t i = 0; i < node->outputs.size(); i++) {
+            if (node->outputs[i]->outputs.size() >= 1) return node->outputs[i];
+          }
+        } else {
+          return nullptr;
+        }
       }
-    }
-    else {
       return nullptr;
-    }
-  }
-  return nullptr;
-};
-    auto* last_persis_node = op_out;
-    while(iter_op)
-    {
+    };
+
+    auto *last_persis_node = op_out;
+    while (iter_op) {
       if (ValidateOp(iter_op)) {
         remove_nodes.emplace(iter_op);
         for (auto in_node : iter_op->inputs) {
           new_scope->Var(in_node->Var()->Name());
-          auto in_node_tensor = new_scope->FindVar(in_node->Var()->Name())->GetMutable<LoDTensor>();
+          auto in_node_tensor = new_scope->FindVar(in_node->Var()->Name())
+                                    ->GetMutable<LoDTensor>();
           if (in_node->Var()->Persistable()) {
-            *in_node_tensor = *(scope->FindVar(in_node->Var()->Name())->GetMutable<LoDTensor>());
+            *in_node_tensor = *(scope->FindVar(in_node->Var()->Name())
+                                    ->GetMutable<LoDTensor>());
           }
           remove_nodes.emplace(in_node);
         }
@@ -173,7 +171,8 @@ auto PickOneOut = [&](Node* node) -> Node* {
           new_scope->Var(out_node->Var()->Name());
           new_scope->FindVar(out_node->Var()->Name())->GetMutable<LoDTensor>();
         }
-        ops.emplace_back(paddle::framework::OpRegistry::CreateOp(*iter_op->Op()));
+        ops.emplace_back(
+            paddle::framework::OpRegistry::CreateOp(*iter_op->Op()));
         auto out_node = PickOneOut(iter_op);
         last_persis_node = out_node;
         iter_op = PickOneOut(out_node);
@@ -185,18 +184,19 @@ auto PickOneOut = [&](Node* node) -> Node* {
     for (size_t i = 0; i < ops.size(); i++) {
       ops[i]->Run(*new_scope, platform::CPUPlace());
     }
-    
+
     auto out_desc = last_persis_node->Var();
     auto out_name = out_desc->Name();
-    auto* local_out_tensor = new_scope->FindVar(out_name)->GetMutable<LoDTensor>();
+    auto *local_out_tensor =
+        new_scope->FindVar(out_name)->GetMutable<LoDTensor>();
 
     std::vector<int64_t> out_shape;
-    for(int64_t i = 0; i < local_out_tensor->dims().size(); i++) {
+    for (int64_t i = 0; i < local_out_tensor->dims().size(); i++) {
       out_shape.push_back(local_out_tensor->dims()[i]);
     }
     out_desc->SetShape(out_shape);
     out_desc->SetPersistable(true);
-    auto* out_tensor = scope->Var(out_name)->GetMutable<LoDTensor>();
+    auto *out_tensor = scope->Var(out_name)->GetMutable<LoDTensor>();
     *out_tensor = *local_out_tensor;
 
     // Remove links in graph
