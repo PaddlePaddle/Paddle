@@ -61,8 +61,8 @@ no_amp_list = [
     'lamb', 'lars_momentum_', 'lars_momentum', 'merged_adam_', 'merged_adam',
     'merged_momentum_', 'merged_momentum', 'momentum_', 'momentum',
     'proximal_adagrad_', 'proximal_adagrad', 'proximal_gd_', 'proximal_gd',
-    'rmsprop_', 'rmsprop', 'sgd_', 'sgd', 'assign_value_', 'sparse_momentum_',
-    'sparse_momentum', 'fill_constant_'
+    'rmsprop_', 'rmsprop', 'sgd_', 'sgd', 'lamb_', 'lamb', 'assign_value_',
+    'sparse_momentum_', 'sparse_momentum', 'fill_constant_'
 ]
 
 

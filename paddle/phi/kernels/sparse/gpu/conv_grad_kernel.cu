@@ -233,7 +233,7 @@ void Conv3dCooGradKernel(const Context& dev_ctx,
                          const std::string& key,
                          SparseCooTensor* x_grad,
                          DenseTensor* kernel_grad) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "Conv3dCooGradGPUKernel", ([&] {
         Conv3dCooGradGPUKernel<T, data_t>(dev_ctx,
                                           x,

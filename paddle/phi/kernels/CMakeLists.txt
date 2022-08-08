@@ -65,7 +65,8 @@ set(COMMON_KERNEL_DEPS
     matrix_solve
     phi_dynload_warpctc
     sequence_padding
-    sequence_scale)
+    sequence_scale
+    fft)
 
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
@@ -88,17 +89,6 @@ copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
-file(
-  GLOB
-  kernel_cc
-  "*.cc"
-  "cpu/*.cc"
-  "selected_rows/*.cc"
-  "selected_rows/cpu/*.cc"
-  "sparse/*.cc"
-  "sparse/cpu/*.cc"
-  "strings/*.cc"
-  "strings/cpu/*.cc")
 
 file(
   GLOB
@@ -112,10 +102,34 @@ file(
   "strings/*.cu"
   "strings/gpu/*.cu")
 
-# file(GLOB kernel_cudnn "gpudnn/*.cu")
-# file(GLOB kernel_kps "kps/*.cu")
+if(WITH_MKLDNN)
+  file(
+    GLOB
+    kernel_cc
+    "*.cc"
+    "cpu/*.cc"
+    "selected_rows/*.cc"
+    "selected_rows/cpu/*.cc"
+    "sparse/*.cc"
+    "sparse/cpu/*.cc"
+    "strings/*.cc"
+    "strings/cpu/*.cc"
+    "onednn/*.cc")
+else()
+  file(
+    GLOB
+    kernel_cc
+    "*.cc"
+    "cpu/*.cc"
+    "selected_rows/*.cc"
+    "selected_rows/cpu/*.cc"
+    "sparse/*.cc"
+    "sparse/cpu/*.cc"
+    "strings/*.cc"
+    "strings/cpu/*.cc")
+endif()
+
 file(GLOB kernel_xpu "xpu/*.cc")
-file(GLOB kernel_onednn "onednn/*.cc")
 
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
@@ -153,14 +167,6 @@ if(WITH_XPU)
   kernel_declare("${kernel_xpu_kps}")
   target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
   set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_xpu)
-endif()
-
-if(WITH_MKLDNN)
-  add_library(phi_onednn ${kernel_onednn})
-  kernel_declare(${kernel_onednn})
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_backends)
-  target_link_libraries(phi_onednn ${COMMON_KERNEL_DEPS})
-  set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_onednn)
 endif()
 
 set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})

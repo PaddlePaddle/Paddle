@@ -864,6 +864,17 @@
     data_type : dtype
     backend : place
 
+- api : fill
+  args : (Tensor x, Scalar value)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fill
+  inplace : (x -> out)
+  backward: fill_grad
+
 # fill_constant
 - api : fill_constant_
   args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -1340,6 +1351,18 @@
     data_type : label
   optional : prior_dist
   backward : label_smooth_grad
+
+- api : lamb_
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, float weight_decay, float beta1, float beta2, float epsilon, bool multi_precision)
+  output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
+  infer_meta :
+    func : LambInferMeta
+  kernel :
+    func : lamb {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
+           lamb_sr {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
+    data_type : param
+  optional : master_param, skip_update
+  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
 
 - api : layer_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis, bool is_test)
@@ -2506,6 +2529,7 @@
     func : BatchNormInferMeta
   kernel :
     func : sync_batch_norm
+    data_type : x
   backward : sync_batch_norm_grad
 
 # take_along_axis
