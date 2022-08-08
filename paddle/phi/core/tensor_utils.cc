@@ -32,6 +32,12 @@ void Copy(const Context& dev_ctx,
           Place dst_place,
           bool blocking,
           DenseTensor* dst) {
+  if (&src == dst) {
+    const DenseTensor src_copy = src;
+    Copy(dev_ctx, src_copy, dst_place, blocking, dst);
+    return;
+  }
+
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
 
