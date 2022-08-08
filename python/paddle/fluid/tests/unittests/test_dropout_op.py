@@ -1013,10 +1013,9 @@ class TestDropoutBackward(unittest.TestCase):
                 out, mask = core.ops.dropout(input, 'dropout_prob', 0.5)
                 out.backward()
 
-                self.assertTrue(
-                    np.array_equal(
-                        input.gradient(),
-                        self.cal_grad_downscale_in_infer(mask.numpy())))
+                np.testing.assert_array_equal(
+                    input.gradient(),
+                    self.cal_grad_downscale_in_infer(mask.numpy()))
 
     def test_backward_downscale_in_infer_eager(self):
         for place in self.places:
@@ -1027,10 +1026,9 @@ class TestDropoutBackward(unittest.TestCase):
                     out, mask = _C_ops.final_state_dropout(
                         input, None, 0.5, False, "downgrade_in_infer", 0, False)
                     out.backward()
-                    self.assertTrue(
-                        np.array_equal(
-                            input.gradient(),
-                            self.cal_grad_downscale_in_infer(mask.numpy())))
+                    np.testing.assert_array_equal(
+                        input.gradient(),
+                        self.cal_grad_downscale_in_infer(mask.numpy()))
 
     def test_backward_upscale_train(self):
         _enable_legacy_dygraph()
