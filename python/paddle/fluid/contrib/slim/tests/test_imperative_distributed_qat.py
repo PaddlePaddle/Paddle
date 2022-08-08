@@ -14,7 +14,7 @@
 
 from __future__ import division
 from __future__ import print_function
-
+import os
 import paddle
 import numpy as np
 import random
@@ -24,7 +24,7 @@ import paddle.distributed.fleet as fleet
 from paddle.io import DataLoader, Dataset
 import unittest
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-
+from paddle.distributed import init_parallel_env
 
 def set_random_seed(seed, dp_id, rank_id):
     """Set random seed for reproducability."""
@@ -39,7 +39,7 @@ inner_size = 8
 output_size = 10
 seq_length = 2
 batch_size = 4
-
+os.environ["PADDLE_TRAINERS_NUM"] = "2"
 
 def get_attr(layer, name):
     if getattr(layer, name, None) is not None:
@@ -170,6 +170,7 @@ class SimpleDPNet(fluid.dygraph.Layer):
 class TestDistMPTraning(unittest.TestCase):
 
     def setUp(self):
+        init_parallel_env()
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
         self.data_parallel_size = 1

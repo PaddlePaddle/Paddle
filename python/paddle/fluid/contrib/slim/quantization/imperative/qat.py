@@ -441,10 +441,10 @@ class ImperativeQuantizeOutputs(object):
 
             if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
                 cur_quant_layer = quant_layers.FakeQuantMAOutputScaleLayer(
-                    cur_layer, self._moving_rate, reduce_type)
+                    cur_layer, self._moving_rate, reduce_type=reduce_type)
             else:
                 cur_quant_layer = quant_layers.MAOutputScaleLayer(
-                    cur_layer, self._moving_rate, reduce_type)
+                    cur_layer, self._moving_rate, reduce_type=reduce_type)
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 
