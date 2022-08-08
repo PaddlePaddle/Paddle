@@ -140,12 +140,8 @@ class ConstantInitializer(Initializer):
 
         if in_dygraph_mode():
             place = _current_expected_place()
-            if isinstance(self._value, str):
-                value_ = self._value
-            else:
-                value_ = str(float(self._value))
-
-            _C_ops.final_state_fill_constant_(var, var.shape, value_, var.dtype,
+            _C_ops.final_state_fill_constant_(var, var.shape,
+                                              float(self._value), var.dtype,
                                               place)
             return None
         elif _in_legacy_dygraph():
