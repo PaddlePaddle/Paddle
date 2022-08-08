@@ -355,7 +355,9 @@ TensorDistAttr &VarDesc::MutableDistAttr() {
 }
 
 void VarDesc::SetDistAttr(const TensorDistAttr &dist_attr) {
-  dist_attr_.reset(new TensorDistAttr(dist_attr));
+  // Make sure this dist attr be created
+  MutableDistAttr();
+  *dist_attr_ = dist_attr;
 }
 
 bool operator==(const VarDesc &left, const VarDesc &right) {

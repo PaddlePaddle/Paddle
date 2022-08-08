@@ -932,7 +932,8 @@ OperatorDistAttr &OpDesc::MutableDistAttr() {
 }
 
 void OpDesc::SetDistAttr(const OperatorDistAttr &dist_attr) {
-  dist_attr_.reset(new OperatorDistAttr(dist_attr));
+  MutableDistAttr();
+  *dist_attr_ = dist_attr;
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(

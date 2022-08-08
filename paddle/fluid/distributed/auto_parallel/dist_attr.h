@@ -18,6 +18,7 @@ limitations under the License. */
 #include <cstdint>
 #include <iostream>
 #include <map>
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/distributed/auto_parallel/auto_parallel.pb.h"
@@ -51,7 +52,11 @@ class TensorDistAttr {
 
   explicit TensorDistAttr(const VarDesc& tensor);
 
-  const VarDesc& tensor() const { return *tensor_; }
+  TensorDistAttr(const TensorDistAttr& tensor);
+
+  TensorDistAttr& operator=(const TensorDistAttr& dist_attr);
+
+  const VarDesc* tensor() const { return tensor_; }
 
   const ProcessMesh& process_mesh() const { return process_mesh_; }
 
@@ -69,6 +74,10 @@ class TensorDistAttr {
 
   void set_dynamic_dims(const std::vector<bool>& dynamic_dims);
 
+  const std::map<std::string, bool>& annotated() const { return annotated_; }
+
+  void set_annotated(const std::map<std::string, bool>& annotated);
+
   void set_default_dims_mapping();
 
   bool is_annotated(const std::string& name) const {
@@ -81,6 +90,12 @@ class TensorDistAttr {
 
   bool verify_dims_mapping(const std::vector<int64_t>& dims_mapping) const;
 
+  bool verify_batch_dim(int64_t dim) const;
+
+  bool verify_dynamic_dims(const std::vector<bool>& dynamic_dims) const;
+
+  bool verify_annotated(const std::map<std::string, bool>& annotated) const;
+
   bool verify() const;
 
   // TensorDistAttr from_string(const std::string& dist_str);
@@ -91,7 +106,8 @@ class TensorDistAttr {
   TensorDistAttrProto to_proto() const;
 
  private:
-  const VarDesc* tensor_;
+  static std::vector<std::string> fields_;
+  const VarDesc* tensor_{nullptr};
   ProcessMesh process_mesh_;
   std::vector<int64_t> dims_mapping_;
   int64_t batch_dim_;
@@ -116,7 +132,11 @@ class OperatorDistAttr {
 
   explicit OperatorDistAttr(const OpDesc& op);
 
-  const OpDesc& op() const { return *op_; }
+  OperatorDistAttr(const OperatorDistAttr& dist_attr);
+
+  OperatorDistAttr& operator=(const OperatorDistAttr& dist_attr);
+
+  const OpDesc* op() const { return op_; }
 
   const VarDesc& input(const std::string& name) const {
     return *inputs_.at(name);
@@ -168,11 +188,25 @@ class OperatorDistAttr {
 
   void set_impl_idx(const int64_t& impl_idx) { impl_idx_ = impl_idx; }
 
+  const std::map<std::string, bool>& annotated() const { return annotated_; }
+
+  void set_annotated(const std::map<std::string, bool>& annotated);
+
   bool is_annotated(const std::string& name) const {
     return annotated_.count(name) == 1;
   }
 
   void annotate(const std::string& name);
+
+  bool verify_input_dist_attr(const std::string& name,
+                              const TensorDistAttr& dist_attr) const;
+
+  bool verify_output_dist_attr(const std::string& name,
+                               const TensorDistAttr& dist_attr) const;
+
+  bool verify_process_mesh(const ProcessMesh& process_mesh) const;
+
+  bool verify_annotated(const std::map<std::string, bool>& annotated) const;
 
   bool verify() const;
 
@@ -184,7 +218,8 @@ class OperatorDistAttr {
   OperatorDistAttrProto to_proto() const;
 
  private:
-  const OpDesc* op_;
+  static std::vector<std::string> fields_;
+  const OpDesc* op_{nullptr};
   std::map<std::string, VarDesc*> inputs_;
   std::map<std::string, VarDesc*> outputs_;
   std::map<std::string, TensorDistAttr> input_dist_attrs_;

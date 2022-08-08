@@ -26,6 +26,9 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
+std::vector<std::string> TensorDistAttr::fields_{
+    "process_mesh", "dims_mapping", "batch_dim", "dynamic_dims"};
+
 TensorDistAttr::TensorDistAttr(const VarDesc& tensor)
     : tensor_(&tensor), batch_dim_(0) {
   set_default_dims_mapping();
@@ -33,6 +36,29 @@ TensorDistAttr::TensorDistAttr(const VarDesc& tensor)
   for (std::size_t i = 0; i < tensor_shape.size(); ++i) {
     dynamic_dims_.push_back(false);
   }
+}
+
+TensorDistAttr::TensorDistAttr(const TensorDistAttr& dist_attr) {
+  if (tensor_ == nullptr) {
+    tensor_ = dist_attr.tensor();
+  }
+  set_process_mesh(dist_attr.process_mesh());
+  set_dims_mapping(dist_attr.dims_mapping());
+  set_batch_dim(dist_attr.batch_dim());
+  set_dynamic_dims(dist_attr.dynamic_dims());
+  set_annotated(dist_attr.annotated());
+}
+
+TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
+  if (tensor_ == nullptr) {
+    tensor_ = dist_attr.tensor();
+  }
+  set_process_mesh(dist_attr.process_mesh());
+  set_dims_mapping(dist_attr.dims_mapping());
+  set_batch_dim(dist_attr.batch_dim());
+  set_dynamic_dims(dist_attr.dynamic_dims());
+  set_annotated(dist_attr.annotated());
+  return *this;
 }
 
 void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
@@ -53,34 +79,48 @@ void TensorDistAttr::set_dims_mapping(
 }
 
 void TensorDistAttr::set_batch_dim(int64_t batch_dim) {
-  std::vector<int64_t> tensor_shape = tensor_->GetShape();
-  int64_t canonical_batch_dim = canonical_dim(batch_dim, tensor_shape.size());
-  batch_dim_ = canonical_batch_dim;
+  PADDLE_ENFORCE_EQ(
+      verify_batch_dim(batch_dim),
+      true,
+      platform::errors::InvalidArgument(
+          "Wrong batch_dim %d in this distributed attribute.", batch_dim));
+  if (tensor_ != nullptr) {
+    std::vector<int64_t> tensor_shape = tensor_->GetShape();
+    int64_t canonical_batch_dim = canonical_dim(batch_dim, tensor_shape.size());
+    batch_dim_ = canonical_batch_dim;
+  } else {
+    batch_dim_ = batch_dim;
+  }
 }
 
 void TensorDistAttr::set_dynamic_dims(const std::vector<bool>& dynamic_dims) {
-  std::vector<int64_t> tensor_shape = tensor_->GetShape();
   PADDLE_ENFORCE_EQ(
-      dynamic_dims.size(),
-      tensor_shape.size(),
-      platform::errors::InvalidArgument(
-          "The dynamic_dims size of process mesh must be equal to the "
-          "shape size of tensor.",
-          dynamic_dims.size(),
-          tensor_shape.size()));
+      verify_dynamic_dims(dynamic_dims),
+      true,
+      platform::errors::InvalidArgument("The dynamic_dims [%s] is wrong.",
+                                        str_join(dynamic_dims)));
   dynamic_dims_ = dynamic_dims;
 }
 
+void TensorDistAttr::set_annotated(
+    const std::map<std::string, bool>& annotated) {
+  PADDLE_ENFORCE_EQ(verify_annotated(annotated),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The annotated [%s] is wrong.", str_join(annotated)));
+  annotated_ = annotated;
+}
+
 void TensorDistAttr::set_default_dims_mapping() {
-  std::vector<int64_t> tensor_shape = tensor_->GetShape();
-  dims_mapping_ = std::vector<int64_t>(tensor_shape.size(), -1);
+  if (tensor_ != nullptr) {
+    std::vector<int64_t> tensor_shape = tensor_->GetShape();
+    dims_mapping_ = std::vector<int64_t>(tensor_shape.size(), -1);
+  }
 }
 
 void TensorDistAttr::annotate(const std::string& name) {
-  std::vector<std::string> field_names{
-      "process_mesh", "dims_mapping", "batch_dim", "dynamic_dims"};
-  auto result = std::find(std::begin(field_names), std::end(field_names), name);
-  if (result != std::end(field_names)) {
+  auto result = std::find(std::begin(fields_), std::end(fields_), name);
+  if (result != std::end(fields_)) {
     annotated_[name] = true;
   }
 }
@@ -99,9 +139,11 @@ bool TensorDistAttr::verify_process_mesh(
 
 bool TensorDistAttr::verify_dims_mapping(
     const std::vector<int64_t>& dims_mapping) const {
-  std::vector<int64_t> tensor_shape = tensor_->GetShape();
-  if (dims_mapping.size() != tensor_shape.size()) {
-    return false;
+  if (tensor_ != nullptr) {
+    std::vector<int64_t> tensor_shape = tensor_->GetShape();
+    if (dims_mapping.size() != tensor_shape.size()) {
+      return false;
+    }
   }
   std::unordered_map<int64_t, int64_t> map;
   if (!process_mesh_.empty()) {
@@ -125,22 +167,76 @@ bool TensorDistAttr::verify_dims_mapping(
   return true;
 }
 
+bool TensorDistAttr::verify_batch_dim(int64_t dim) const {
+  if (tensor_ != nullptr) {
+    std::vector<int64_t> tensor_shape = tensor_->GetShape();
+    int64_t ndim = tensor_shape.size();
+    if (dim < 0) {
+      dim = dim + ndim;
+    }
+    if (dim < 0 || dim >= ndim) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool TensorDistAttr::verify_dynamic_dims(
+    const std::vector<bool>& dynamic_dims) const {
+  if (tensor_ != nullptr) {
+    std::vector<int64_t> tensor_shape = tensor_->GetShape();
+    if (dynamic_dims.size() != tensor_shape.size()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool TensorDistAttr::verify_annotated(
+    const std::map<std::string, bool>& annotated) const {
+  for (const auto& item : annotated) {
+    auto result = std::find(std::begin(fields_), std::end(fields_), item.first);
+    if (result == std::end(fields_)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool TensorDistAttr::verify() const {
+  if (tensor_ == nullptr) {
+    return false;
+  }
   if (!verify_process_mesh(process_mesh_)) {
     return false;
   }
   if (!verify_dims_mapping(dims_mapping_)) {
     return false;
   }
+  if (!verify_batch_dim(batch_dim_)) {
+    return false;
+  }
+  if (!verify_dynamic_dims(dynamic_dims_)) {
+    return false;
+  }
+  if (!verify_annotated(annotated_)) {
+    return false;
+  }
   return true;
 }
 
 std::string TensorDistAttr::to_string() const {
-  std::string dist_str = "{tensor_name: " + tensor_->Name() + ", ";
+  std::string dist_str;
+  if (tensor_ != nullptr) {
+    dist_str = "{tensor_name: " + tensor_->Name() + ", ";
+  } else {
+    dist_str = "{tensor_name: None, ";
+  }
   dist_str += "process_mesh: " + process_mesh_.to_string() + ", ";
   dist_str += "dims_mappings: [" + str_join(dims_mapping_) + "], ";
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
-  dist_str += "dynamic_dims: [" + str_join(dynamic_dims_) + "]}";
+  dist_str += "dynamic_dims: [" + str_join(dynamic_dims_) + "], ";
+  dist_str += "annotated: [" + str_join(annotated_) + "]}";
   return dist_str;
 }
 
@@ -173,9 +269,6 @@ TensorDistAttrProto TensorDistAttr::to_proto() const {
 }
 
 bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
-  if (!(lhs.tensor() == rhs.tensor())) {
-    return false;
-  }
   if (lhs.process_mesh() != rhs.process_mesh()) {
     return false;
   }
@@ -191,49 +284,80 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   return true;
 }
 
+std::vector<std::string> OperatorDistAttr::fields_{
+    "process_mesh", "impl_type", "impl_idx"};
+
 OperatorDistAttr::OperatorDistAttr(const OpDesc& op) : op_(&op) {
   for (std::string name : op_->InputArgumentNames()) {
     VarDesc* input = op_->Block()->FindVarRecursive(name);
-    // inputs_[name] = input;
+    inputs_[name] = input;
     input_dist_attrs_[name] = TensorDistAttr(*input);
   }
   for (std::string name : op_->OutputArgumentNames()) {
     VarDesc* output = op_->Block()->FindVarRecursive(name);
-    // outputs_[name] = output;
+    outputs_[name] = output;
     output_dist_attrs_[name] = TensorDistAttr(*output);
   }
+  impl_type_ = "default";
+  impl_idx_ = 0;
+}
+
+OperatorDistAttr::OperatorDistAttr(const OperatorDistAttr& dist_attr) {
+  if (op_ == nullptr) {
+    op_ = dist_attr.op();
+  }
+  for (const auto& item : dist_attr.input_dist_attrs()) {
+    set_input_dist_attr(item.first, item.second);
+  }
+  for (const auto& item : dist_attr.output_dist_attrs()) {
+    set_output_dist_attr(item.first, item.second);
+  }
+  set_process_mesh(dist_attr.process_mesh());
+  set_impl_type(dist_attr.impl_type());
+  set_impl_idx(dist_attr.impl_idx());
+  set_annotated(dist_attr.annotated());
+}
+
+OperatorDistAttr& OperatorDistAttr::operator=(
+    const OperatorDistAttr& dist_attr) {
+  if (op_ == nullptr) {
+    op_ = dist_attr.op();
+  }
+  for (const auto& item : dist_attr.input_dist_attrs()) {
+    set_input_dist_attr(item.first, item.second);
+  }
+  for (const auto& item : dist_attr.output_dist_attrs()) {
+    set_output_dist_attr(item.first, item.second);
+  }
+  set_process_mesh(dist_attr.process_mesh());
+  set_impl_type(dist_attr.impl_type());
+  set_impl_idx(dist_attr.impl_idx());
+  set_annotated(dist_attr.annotated());
+  return *this;
 }
 
 void OperatorDistAttr::set_input_dist_attr(const std::string& name,
                                            const TensorDistAttr& dist_attr) {
   PADDLE_ENFORCE_EQ(
-      dist_attr.verify(),
+      verify_input_dist_attr(name, dist_attr),
       true,
       platform::errors::InvalidArgument(
           "Wrong dist_attr %s for %s.", dist_attr.to_string(), name));
-  if (input_dist_attrs_.count(name) == 1) {
-    input_dist_attrs_[name] = dist_attr;
-  }
-  // Make sure the process mesh of output be same as that of the op
-  if (input_dist_attrs_[name].process_mesh().empty()) {
-    input_dist_attrs_[name].set_process_mesh(process_mesh_);
-  }
+  input_dist_attrs_[name] = dist_attr;
+  // Make sure the process mesh of input be same as that of the op
+  input_dist_attrs_[name].set_process_mesh(process_mesh_);
 }
 
 void OperatorDistAttr::set_output_dist_attr(const std::string& name,
                                             const TensorDistAttr& dist_attr) {
   PADDLE_ENFORCE_EQ(
-      dist_attr.verify(),
+      verify_output_dist_attr(name, dist_attr),
       true,
       platform::errors::InvalidArgument(
           "Wrong dist_attr %s for %s.", dist_attr.to_string(), name));
-  if (output_dist_attrs_.count(name) == 1) {
-    output_dist_attrs_[name] = dist_attr;
-  }
+  output_dist_attrs_[name] = dist_attr;
   // Make sure the process mesh of output be same as that of the op
-  if (output_dist_attrs_[name].process_mesh().empty()) {
-    output_dist_attrs_[name].set_process_mesh(process_mesh_);
-  }
+  output_dist_attrs_[name].set_process_mesh(process_mesh_);
 }
 
 void OperatorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
@@ -247,14 +371,111 @@ void OperatorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
 }
 
 void OperatorDistAttr::annotate(const std::string& name) {
-  std::vector<std::string> field_names{"process_mesh", "impl_type", "impl_idx"};
-  auto result = std::find(std::begin(field_names), std::end(field_names), name);
-  if (result != std::end(field_names)) {
+  auto result = std::find(std::begin(fields_), std::end(fields_), name);
+  if (result != std::end(fields_)) {
     annotated_[name] = true;
+  }
+  if (name == "process_mesh") {
+    for (auto& item : input_dist_attrs_) {
+      item.second.annotate(name);
+    }
+    for (auto& item : output_dist_attrs_) {
+      item.second.annotate(name);
+    }
   }
 }
 
+void OperatorDistAttr::set_annotated(
+    const std::map<std::string, bool>& annotated) {
+  PADDLE_ENFORCE_EQ(verify_annotated(annotated),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The annotated [%s] is wrong.", str_join(annotated)));
+  annotated_ = annotated;
+}
+
+bool OperatorDistAttr::verify_input_dist_attr(
+    const std::string& name, const TensorDistAttr& dist_attr) const {
+  if (!dist_attr.verify()) {
+    return false;
+  }
+  if (op_ != nullptr) {
+    if (dist_attr.tensor() != nullptr) {
+      if (name != dist_attr.tensor()->Name()) {
+        return false;
+      }
+    }
+    if (input_dist_attrs_.count(name) == 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool OperatorDistAttr::verify_output_dist_attr(
+    const std::string& name, const TensorDistAttr& dist_attr) const {
+  if (!dist_attr.verify()) {
+    return false;
+  }
+  if (op_ != nullptr) {
+    if (dist_attr.tensor() != nullptr) {
+      if (name != dist_attr.tensor()->Name()) {
+        return false;
+      }
+    }
+    if (output_dist_attrs_.count(name) == 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool OperatorDistAttr::verify_process_mesh(
+    const ProcessMesh& process_mesh) const {
+  if (process_mesh != process_mesh_) {
+    return false;
+  }
+  for (auto& item : input_dist_attrs_) {
+    if (item.second.process_mesh() != process_mesh) {
+      return false;
+    }
+  }
+  for (auto& item : output_dist_attrs_) {
+    if (item.second.process_mesh() != process_mesh) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool OperatorDistAttr::verify_annotated(
+    const std::map<std::string, bool>& annotated) const {
+  for (const auto& item : annotated) {
+    auto result = std::find(std::begin(fields_), std::end(fields_), item.first);
+    if (result == std::end(fields_)) {
+      return false;
+    }
+  }
+  for (auto& item : input_dist_attrs_) {
+    if (!item.second.verify_annotated(item.second.annotated())) {
+      return false;
+    }
+  }
+  for (auto& item : output_dist_attrs_) {
+    if (!item.second.verify_annotated(item.second.annotated())) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool OperatorDistAttr::verify() const {
+  if (op_ == nullptr) {
+    return false;
+  }
+  if (!verify_process_mesh(process_mesh_)) {
+    return false;
+  }
   for (auto const& item : input_dist_attrs_) {
     auto input_names = op_->InputArgumentNames();
     auto found =
@@ -262,7 +483,7 @@ bool OperatorDistAttr::verify() const {
     if (found == std::end(input_names)) {
       return false;
     }
-    if (!item.second.verify()) {
+    if (!verify_input_dist_attr(item.first, item.second)) {
       return false;
     }
   }
@@ -273,7 +494,7 @@ bool OperatorDistAttr::verify() const {
     if (found == std::end(output_names)) {
       return false;
     }
-    if (!item.second.verify()) {
+    if (!verify_output_dist_attr(item.first, item.second)) {
       return false;
     }
   }
@@ -281,18 +502,20 @@ bool OperatorDistAttr::verify() const {
 }
 
 std::string OperatorDistAttr::to_string() const {
-  std::cout << "here 0" << std::endl;
-  std::string str = "{op_type: " + op_->Type() + ", ";
-  std::cout << "here 2" << std::endl;
+  std::string str;
+  if (op_ != nullptr) {
+    str += "{op_type: " + op_->Type() + ", ";
+  } else {
+    str += "{op_type: None, ";
+  }
   str += "impl_type: " + impl_type_ + ", ";
   str += "impl_idx: " + std::to_string(impl_idx_) + ", ";
+  str += "annotated: [" + str_join(annotated_) + "], ";
   str += "\nprocess_mesh: " + process_mesh_.to_string() + ", ";
-  std::cout << "here 3" << std::endl;
   str += "\ninput_dist_attrs: [\n";
   for (auto const& item : input_dist_attrs_) {
     str += "  " + item.second.to_string() + ",\n";
   }
-  std::cout << "here 4" << std::endl;
   str.replace(str.size() - 2, 2, "]");
   str += "\noutput_dist_attrs: [\n";
   for (auto const& item : output_dist_attrs_) {
@@ -340,10 +563,16 @@ OperatorDistAttrProto OperatorDistAttr::to_proto() const {
 }
 
 bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
+  if (lhs.process_mesh() != rhs.process_mesh()) {
+    return false;
+  }
+  if (lhs.impl_type() != rhs.impl_type()) {
+    return false;
+  }
+  if (lhs.impl_idx() != rhs.impl_idx()) {
+    return false;
+  }
   for (auto const& item : lhs.input_dist_attrs()) {
-    if (!(rhs.input(item.first) == lhs.input(item.first))) {
-      return false;
-    }
     if (rhs.input_dist_attrs().count(item.first) != 1) {
       return false;
     }
@@ -353,9 +582,6 @@ bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
     }
   }
   for (auto const& item : lhs.output_dist_attrs()) {
-    if (!(rhs.output(item.first) == lhs.output(item.first))) {
-      return false;
-    }
     if (rhs.output_dist_attrs().count(item.first) != 1) {
       return false;
     }
@@ -363,15 +589,6 @@ bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
         lhs.output_dist_attrs().at(item.first)) {
       return false;
     }
-  }
-  if (lhs.process_mesh() != rhs.process_mesh()) {
-    return false;
-  }
-  if (lhs.impl_type() != rhs.impl_type()) {
-    return false;
-  }
-  if (lhs.impl_idx() != rhs.impl_idx()) {
-    return false;
   }
   return true;
 }
