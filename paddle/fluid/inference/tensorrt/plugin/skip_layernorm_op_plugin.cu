@@ -155,7 +155,7 @@ nvinfer1::DataType SkipLayerNormPluginDynamic::getOutputDataType(
   PADDLE_ENFORCE_EQ(index,
                     0,
                     platform::errors::InvalidArgument(
-                        "The SkipLayerNorm Plugin only has one input, so the "
+                        "The SkipLayerNorm Plugin only has one output, so the "
                         "index value should be 0, but get %d.",
                         index));
   if (with_fp16_) {

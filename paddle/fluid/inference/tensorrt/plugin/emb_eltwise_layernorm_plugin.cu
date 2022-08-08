@@ -263,7 +263,7 @@ nvinfer1::DataType EmbEltwiseLayernormPluginDynamic::getOutputDataType(
       index,
       0,
       platform::errors::InvalidArgument(
-          "The EmbEltwiseLayernorm Plugin only has one input, so the "
+          "The EmbEltwiseLayernorm Plugin only has one output, so the "
           "index value should be 0, but get %d.",
           index));
   if (with_fp16_)
