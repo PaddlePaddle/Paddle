@@ -4978,6 +4978,8 @@ class Program(object):
         all_new_vars = []
         block_num = new_desc.num_blocks()
         for idx in range(block_num):
+            if (idx > (len(self.blocks) - 1)):
+                self._create_block()
             new_block_desc = new_desc.block(idx)
             all_new_vars.append([])
             block_new_vars = all_new_vars[-1]
