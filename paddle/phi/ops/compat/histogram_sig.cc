@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature HistogramOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("histogram", {"X"}, {"bins", "min", "max"}, {"Out"});
+  return KernelSignature("histogram", {"X", "bins"}, {"min", "max"}, {"Out"});
 }
 
 }  // namespace phi

@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -41,10 +41,11 @@ class HistogramOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) The input tensor of Histogram op,");
+    AddInput("bins", "(Tensor) The input tensor of Histogram op,");
     AddOutput("Out", "(Tensor) The output tensor of Histogram op,");
-    AddAttr<int64_t>("bins", "(int) number of histogram bins")
-        .SetDefault(100)
-        .EqualGreaterThan(1);
+    // AddAttr<std::vector<float>>("bins", "histogram bins");
+    //     .SetDefault(100)
+    //     .EqualGreaterThan(1);
     AddAttr<int>("min", "(int) lower end of the range (inclusive)")
         .SetDefault(0);
     AddAttr<int>("max", "(int) upper end of the range (inclusive)")
@@ -52,8 +53,9 @@ class HistogramOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
           Histogram Operator.
           Computes the histogram of a tensor. The elements are sorted
-          into equal width bins between min and max. If min and max are
-          both zero, the minimum and maximum values of the data are used.
+          into equal width bins between min and max when bins is an integer. If min is equal to max, 
+          the minimum and maximum values of the data are used.
+          When bins is a list or a tensor, it stores the bin edges including the rightmost edge.
       )DOC");
   }
 };

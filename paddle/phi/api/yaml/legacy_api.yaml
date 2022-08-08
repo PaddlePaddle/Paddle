@@ -1163,7 +1163,7 @@
 
 # histogram
 - api : histogram
-  args : (Tensor x, int64_t bins, int min, int max)
+  args : (Tensor x, Tensor bins, int min, int max)
   output : Tensor
   infer_meta :
     func : HistogramInferMeta

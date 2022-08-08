@@ -207,6 +207,12 @@ void GridSampleBaseInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
+void HistogramInferMeta(const MetaTensor& input,
+                        const MetaTensor& bins,
+                        int min,
+                        int max,
+                        MetaTensor* out);
+
 void HuberLossInferMeta(const MetaTensor& input_meta,
                         const MetaTensor& label_meta,
                         float delta,

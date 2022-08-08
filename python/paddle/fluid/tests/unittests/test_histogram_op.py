@@ -32,39 +32,98 @@ class TestHistogramOpAPI(unittest.TestCase):
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             inputs = fluid.data(name='input', dtype='int64', shape=[2, 3])
-            output = paddle.histogram(inputs, bins=5, min=1, max=5)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             exe.run(startup_program)
             img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
-            actual = np.array(res[0])
-            expected = np.array([0, 3, 0, 2, 1]).astype(np.int64)
+
+            # test int bins
+            output_int = paddle.histogram(inputs, bins=5, min=1, max=5)
+            res_int = exe.run(train_program,
+                              feed={'input': img},
+                              fetch_list=[output_int])
+            actual_int = np.array(res_int[0])
+            expected_int = np.array([0, 3, 0, 2, 1]).astype(np.int64)
             self.assertTrue(
-                (actual == expected).all(),
-                msg='histogram output is wrong, out =' + str(actual))
+                (actual_int == expected_int).all(),
+                msg='histogram output is wrong, out =' + str(actual_int))
+
+            # test list bins
+            output_list = paddle.histogram(inputs, bins=[1, 2, 3, 4, 5])
+            res_list = exe.run(train_program,
+                               feed={'input': img},
+                               fetch_list=[output_list])
+            actual_list = np.array(res_list[0])
+            expected_list = np.array([0, 3, 0, 3]).astype(np.int64)
+            self.assertTrue(
+                (actual_list == expected_list).all(),
+                msg='histogram output is wrong, out =' + str(actual_list))
+
+            # test Tensor bins
+            inputs = (fluid.data(name='input', dtype='int64', shape=[2, 3]),
+                      fluid.data(name='bins', dtype='int64', shape=[5]))
+            output_tensor = paddle.histogram(inputs[0], inputs[1])
+            bins = np.array([1, 2, 3, 4, 5]).astype(np.int64)
+            res_tensor = exe.run(train_program,
+                                 feed={
+                                     'input': img,
+                                     'bins': bins
+                                 },
+                                 fetch_list=[output_tensor])
+            actual_tensor = np.array(res_tensor[0])
+            expected_tensor = np.array([0, 3, 0, 3]).astype(np.int64)
+            self.assertTrue(
+                (actual_tensor == expected_tensor).all(),
+                msg='histogram output is wrong, out =' + str(actual_tensor))
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
             inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
             inputs = fluid.dygraph.to_variable(inputs_np)
-            actual = paddle.histogram(inputs, bins=5, min=1, max=5)
-            expected = np.array([0, 3, 0, 2, 1]).astype(np.int64)
-            self.assertTrue(
-                (actual.numpy() == expected).all(),
-                msg='histogram output is wrong, out =' + str(actual.numpy()))
+
+            actual_int = paddle.histogram(inputs, bins=5, min=1, max=5)
+            expected_int = np.array([0, 3, 0, 2, 1]).astype(np.int64)
+            self.assertTrue((actual_int.numpy() == expected_int).all(),
+                            msg='histogram output is wrong, out =' +
+                            str(actual_int.numpy()))
+
+            actual_list = paddle.histogram(inputs, bins=[1, 2, 3, 4, 5])
+            expected_list = np.array([0, 3, 0, 3]).astype(np.int64)
+            self.assertTrue((actual_list.numpy() == expected_list).all(),
+                            msg='histogram output is wrong, out =' +
+                            str(actual_list.numpy()))
+
+            actual_tensor = paddle.histogram(inputs,
+                                             bins=paddle.to_tensor(
+                                                 [1, 2, 3, 4, 5]),
+                                             min=1,
+                                             max=5)
+            expected_tensor = np.array([0, 3, 0, 3]).astype(np.int64)
+            self.assertTrue((actual_tensor.numpy() == expected_tensor).all(),
+                            msg='histogram output is wrong, out =' +
+                            str(actual_tensor.numpy()))
 
             with _test_eager_guard():
                 inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
                 inputs = paddle.to_tensor(inputs_np)
-                actual = paddle.histogram(inputs, bins=5, min=1, max=5)
-                self.assertTrue((actual.numpy() == expected).all(),
+
+                actual_int = paddle.histogram(inputs, bins=5, min=1, max=5)
+                self.assertTrue((actual_int.numpy() == expected_int).all(),
                                 msg='histogram output is wrong, out =' +
-                                str(actual.numpy()))
+                                str(actual_int.numpy()))
+                actual_list = paddle.histogram(inputs, bins=[1, 2, 3, 4, 5])
+                self.assertTrue((actual_list.numpy() == expected_list).all(),
+                                msg='histogram output is wrong, out =' +
+                                str(actual_list.numpy()))
+                actual_tensor = paddle.histogram(inputs,
+                                                 bins=paddle.to_tensor(
+                                                     [1, 2, 3, 4, 5]))
+                self.assertTrue(
+                    (actual_tensor.numpy() == expected_tensor).all(),
+                    msg='histogram output is wrong, out =' +
+                    str(actual_tensor.numpy()))
 
 
 class TestHistogramOpError(unittest.TestCase):
@@ -79,16 +138,63 @@ class TestHistogramOpError(unittest.TestCase):
             exe.run(main_program)
 
     def test_bins_error(self):
-        """Test bins should be greater than or equal to 1."""
+        """Test bins should be int, list or Tensor. When bins is an int, it should be greater than or equal to 1.
+        When bins is a list or a Tensor, it should be 1D, contain at least 2 elements and increase monotonically."""
 
-        def net_func():
+        # When bins is an int, it should be greater than or equal to 1.
+        def net_func_1():
             input_value = paddle.fluid.layers.fill_constant(shape=[3, 4],
                                                             dtype='float32',
                                                             value=3.0)
             paddle.histogram(input=input_value, bins=-1, min=1, max=5)
 
-        with self.assertRaises(IndexError):
-            self.run_network(net_func)
+        # When bins is a list or tensor, it should increase monotonically
+        def net_func_2():
+            input_value = paddle.fluid.layers.fill_constant(shape=[3, 4],
+                                                            dtype='float32',
+                                                            value=3.0)
+            paddle.histogram(input=input_value, bins=[1, 5, 3], min=1, max=5)
+
+        with self.assertRaises(ValueError):
+            self.run_network(net_func_1)
+
+        with self.assertRaises(ValueError):
+            self.run_network(net_func_2)
+
+        with program_guard(Program()):
+            input_value = paddle.fluid.layers.fill_constant(shape=[3, 4],
+                                                            dtype='float32',
+                                                            value=3.0)
+            # bins type must be int, list or Tensor
+            self.assertRaises(TypeError,
+                              paddle.histogram,
+                              input=input_value,
+                              bins=3.8,
+                              min=1,
+                              max=5)
+            # When bins is a list or a Tensor, the dtype should be 'int32', 'int64', 'float32', 'float64'
+            self.assertRaises(TypeError,
+                              paddle.histogram,
+                              input=input_value,
+                              bins=fluid.data(name='bins_bool',
+                                              shape=[5],
+                                              dtype='bool'),
+                              min=1,
+                              max=5)
+            # When bins is a list or a Tensor, it should be 1D
+            self.assertRaises(TypeError,
+                              paddle.histogram,
+                              input=input_value,
+                              bins=[[1, 2], [3, 4]],
+                              min=1,
+                              max=5)
+            # When bins is a list or a Tensor, it should contain at least 2 elements
+            self.assertRaises(TypeError,
+                              paddle.histogram,
+                              input=input_value,
+                              bins=[1],
+                              min=1,
+                              max=5)
 
     def test_min_max_error(self):
         """Test max must be larger or equal to min."""
@@ -140,7 +246,7 @@ class TestHistogramOp(OpTest):
         self.init_test_case()
         np_input = np.random.uniform(low=0.0, high=20.0, size=self.in_shape)
         self.python_api = paddle.histogram
-        self.inputs = {"X": np_input}
+        self.inputs = {"X": np_input, "bins": self.bins}
         self.init_attrs()
         Out, _ = np.histogram(np_input,
                               bins=self.bins,
@@ -149,12 +255,12 @@ class TestHistogramOp(OpTest):
 
     def init_test_case(self):
         self.in_shape = (10, 12)
-        self.bins = 5
+        self.bins = np.asarray([1.0, 3.0, 5.0])
         self.min = 1
         self.max = 5
 
     def init_attrs(self):
-        self.attrs = {"bins": self.bins, "min": self.min, "max": self.max}
+        self.attrs = {"min": self.min, "max": self.max}
 
     def test_check_output(self):
         self.check_output(check_eager=True)

@@ -1324,6 +1324,27 @@ void GridSampleBaseInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void HistogramInferMeta(const MetaTensor& input,
+                        const MetaTensor& bins,
+                        int min,
+                        int max,
+                        MetaTensor* out) {
+  auto bins_dims = bins.numel();
+  if (bins_dims > 1) {
+    out->set_dims({bins_dims - 1});
+  } else {
+    PADDLE_ENFORCE_GE(
+        max,
+        min,
+        phi::errors::InvalidArgument("max must be larger or equal to min."
+                                     "But received max is %d, min is %d",
+                                     max,
+                                     min));
+    out->set_dims({-1});
+  }
+  out->share_lod(input);
+}
+
 void HuberLossInferMeta(const MetaTensor& input,
                         const MetaTensor& label,
                         float delta,

@@ -1535,18 +1535,22 @@ def bmm(x, y, name=None):
 def histogram(input, bins=100, min=0, max=0, name=None):
     """
     Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
-    If min and max are both zero, the minimum and maximum values of the data are used.
+    If min is equal to max, the minimum and maximum values of the data are used.
 
     Args:
         input (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
             should be float32, float64, int32, int64.
-        bins (int, optional): number of histogram bins.
+        bins (int, list or Tensor, optional): if bins is an int, it specifies the number of histogram bins.
+            if bins is a list or 1D Tensor, it specifies the sequence of bin edges including the rightmost edge.
         min (int, optional): lower end of the range (inclusive).
         max (int, optional): upper end of the range (inclusive).
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: data type is int64, shape is (nbins,).
+
+    Note:
+        When bins is a list or a Tensor, it should increase monotonically, and have the same dtype with input.   
 
     Examples:
         .. code-block:: python
@@ -1557,22 +1561,80 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             result = paddle.histogram(inputs, bins=4, min=0, max=3)
             print(result) # [0, 2, 1, 0]
     """
+    check_type(bins, 'bins', (int, paddle.Tensor, Variable, list), 'histogram')
+
     if in_dygraph_mode():
+        if isinstance(bins, int):
+            bins = paddle.to_tensor(bins, dtype=input.dtype)
+        elif isinstance(bins, list):
+            if np.ndim(bins) != 1:
+                raise TypeError("bins should be 1D, when a lsit.")
+            if len(bins) < 2:
+                raise TypeError(
+                    "bins should contain at least 2 elements, when a list.")
+            bins = paddle.to_tensor(bins, dtype=input.dtype)
+        else:
+            if bins.dim() != 1:
+                raise TypeError("bins should be 1D, when a Tensor.")
+            if bins.shape[0] < 2:
+                raise TypeError(
+                    "bins should contain at least 2 elements, when a Tensor.")
+            bins = paddle.cast(bins, input.dtype)
         return _C_ops.final_state_histogram(input, bins, min, max)
 
     if _in_legacy_dygraph():
-        return _C_ops.histogram(input, "bins", bins, "min", min, "max", max)
+        if isinstance(bins, int):
+            bins = paddle.to_tensor(bins, dtype=input.dtype)
+        elif isinstance(bins, list):
+            if np.ndim(bins) != 1:
+                raise TypeError("bins should be 1D, when a lsit.")
+            if len(bins) < 2:
+                raise TypeError(
+                    "bins should contain at least 2 elements, when a list.")
+            bins = paddle.to_tensor(bins, dtype=input.dtype)
+        else:
+            if bins.dim() != 1:
+                raise TypeError("bins should be 1D, when a Tensor.")
+            if bins.shape[0] < 2:
+                raise TypeError(
+                    "bins should contain at least 2 elements, when a Tensor.")
+            bins = paddle.cast(bins, input.dtype)
+        return _C_ops.histogram(input, bins, "min", min, "max", max)
 
-    helper = LayerHelper('histogram', **locals())
     check_variable_and_dtype(input, 'X',
                              ['int32', 'int64', 'float32', 'float64'],
                              'histogram')
+
+    if isinstance(bins, int):
+        bins = paddle.assign(bins)
+        bins = paddle.cast(bins, input.dtype)
+    elif isinstance(bins, list):
+        if np.ndim(bins) != 1:
+            raise TypeError("bins should be 1D, when a lsit.")
+        if len(bins) < 2:
+            raise TypeError(
+                "bins should contain at least 2 elements, when a list.")
+        bins = paddle.assign(bins)
+    else:
+        if bins.dim() != 1:
+            raise TypeError("bins should be 1D, when a Tensor.")
+        if bins.shape[0] < 2:
+            raise TypeError(
+                "bins should contain at least 2 elements, when a Tensor.")
+
+    check_variable_and_dtype(bins, "bins",
+                             ['int32', 'int64', 'float32', 'float64'],
+                             'histogram')
+
+    helper = LayerHelper('histogram', **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(type='histogram',
-                     inputs={'X': input},
+                     inputs={
+                         'X': input,
+                         'bins': bins
+                     },
                      outputs={'Out': out},
                      attrs={
-                         'bins': bins,
                          'min': min,
                          'max': max
                      })
