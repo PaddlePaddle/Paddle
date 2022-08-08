@@ -37,6 +37,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   ${dist_ENVS})
   set_tests_properties(test_high_order_grad
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_quantization_pass MODULES test_quantization_pass ENVS
+                  ${dist_ENVS})
+  set_tests_properties(test_quantization_pass
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
