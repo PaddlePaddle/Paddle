@@ -27,17 +27,17 @@
 namespace paddle {
 namespace distributed {
 
-#define MPI_CHECK(cmd)                                                    \
-  do {                                                                    \
-    int r = cmd;                                                          \
-    if (r != MPI_SUCCESS) {                                               \
-      std::cout << "Failed, MPI error in" << __FILE__ << ":" << __LINE__  \
-                << "with error code: " << std::to_string(r) << std::endl; \
-      exit(EXIT_FAILURE);                                                 \
-    }                                                                     \
+#define MPI_CHECK(cmd)                                                     \
+  do {                                                                     \
+    int r = cmd;                                                           \
+    if (r != MPI_SUCCESS) {                                                \
+      LOG(FATAL) << "Failed, MPI error in" << __FILE__ << ":" << __LINE__  \
+                 << "with error code: " << std::to_string(r) << std::endl; \
+      exit(EXIT_FAILURE);                                                  \
+    }                                                                      \
   } while (0)
 
-MPI_Op ToMPIRedType(ReduceOp reduction);
+MPI_Op ToMPIType(ReduceOp reduction);
 bool CheckMpiCudaAware();
 void CheckValidInputs(const std::vector<phi::DenseTensor>& tensors);
 void CheckValidSizeAndType(const phi::DenseTensor& t_in,
