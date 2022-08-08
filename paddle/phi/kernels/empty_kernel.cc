@@ -124,7 +124,5 @@ PD_REGISTER_KERNEL(empty,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::float16) {}
 #endif

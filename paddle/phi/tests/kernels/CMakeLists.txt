@@ -11,10 +11,6 @@ cc_test(
   SRCS test_creation_dev_api.cc
   DEPS phi phi_api_utils)
 cc_test(
-  test_creation_dev_api_xpu
-  SRCS test_creation_dev_api_xpu.cc
-  DEPS phi phi_api_utils)
-cc_test(
   test_flatten_dev_api
   SRCS test_flatten_dev_api.cc
   DEPS phi phi_api_utils)
