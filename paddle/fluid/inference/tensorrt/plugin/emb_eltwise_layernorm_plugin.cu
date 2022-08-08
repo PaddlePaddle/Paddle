@@ -222,22 +222,14 @@ bool EmbEltwiseLayernormPluginDynamic::supportsFormatCombination(
                         "The EmbEltwiseLayerNorm's output should be one"
                         "but it's (%d) outputs.",
                         nb_outputs));
-  PADDLE_ENFORCE_EQ(nb_outputs,
-                    1,
-                    platform::errors::InvalidArgument(
-                        "The EmbEltwiseLayerNorm's output should be one"
-                        "but it's (%d) outputs.",
-                        nb_outputs));
+  int all_nums = nb_inputs + nb_outputs;
   PADDLE_ENFORCE_LT(
       pos,
-      nb_inputs + nb_outputs,
+      all_nums,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
                                         pos,
-                                        nb_inputs + nb_outputs));
-
-  int all_nums = nb_inputs + nb_outputs;
-
+                                        all_nums));
   const nvinfer1::PluginTensorDesc &desc = in_out[pos];
   if (desc.format != nvinfer1::TensorFormat::kLINEAR) {
     return false;
@@ -252,7 +244,7 @@ bool EmbEltwiseLayernormPluginDynamic::supportsFormatCombination(
     return desc.type == nvinfer1::DataType::kINT32 &&
            desc.dims.d[0] == prev.dims.d[0] && desc.dims.d[1] == prev.dims.d[1];
   }
-
+  // output
   if (pos == all_nums - 1) {
     if (with_fp16_ == false) {
       return desc.type == nvinfer1::DataType::kFLOAT;
