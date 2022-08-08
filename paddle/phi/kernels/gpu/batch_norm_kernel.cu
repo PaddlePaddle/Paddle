@@ -691,6 +691,9 @@ void BatchNormKernel(const Context &ctx,
 
   auto handle = ctx.cudnn_handle();
 
+  const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
+  const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
+
   // Now, depending on whether we are running test or not, we have two paths.
   // It is training mode when it's not reference AND not using pre-trained
   // model.
@@ -793,23 +796,58 @@ void BatchNormKernel(const Context &ctx,
 //             est_var->template data<BatchNormParamType<T>>())),
 //         epsilon));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnBatchNormalizationForwardInference(
-            handle,
-            // Note: PERSISTENT not implemented for inference
-            CUDNN_BATCHNORM_SPATIAL,
-            CudnnDataType<T>::kOne(),
-            CudnnDataType<T>::kZero(),
-            data_desc_,
-            transformed_x.template data<T>(),
-            data_desc_,
-            ctx.template Alloc<T>(&transformed_y),
-            bn_param_desc_,
-            scale.template data<BatchNormParamType<T>>(),
-            bias.template data<BatchNormParamType<T>>(),
-            est_mean->template data<BatchNormParamType<T>>(),
-            est_var->template data<BatchNormParamType<T>>(),
-            epsilon));
+    const bool use_native_kernel =
+        ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
+         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
+    if (use_native_kernel) {
+      const int block_size = 256;
+      const int grid_size = (N * C * H * W * D + block_size - 1) / block_size;
+      if (compute_format == DataLayout::kNCHW) {
+        BNForwardInference<T, DataLayout::kNCHW>
+            <<<grid_size, block_size, 0, ctx.stream()>>>(
+                transformed_x.template data<T>(),
+                est_mean->template data<BatchNormParamType<T>>(),
+                est_var->template data<BatchNormParamType<T>>(),
+                scale.template data<BatchNormParamType<T>>(),
+                bias.template data<BatchNormParamType<T>>(),
+                C,
+                N,
+                H * W * D,
+                epsilon,
+                transformed_y.template data<T>());
+      } else {
+        BNForwardInference<T, DataLayout::kNHWC>
+            <<<grid_size, block_size, 0, ctx.stream()>>>(
+                transformed_x.template data<T>(),
+                est_mean->template data<BatchNormParamType<T>>(),
+                est_var->template data<BatchNormParamType<T>>(),
+                scale.template data<BatchNormParamType<T>>(),
+                bias.template data<BatchNormParamType<T>>(),
+                C,
+                N,
+                H * W * D,
+                epsilon,
+                transformed_y.template data<T>());
+      }
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          paddle::platform::dynload::cudnnBatchNormalizationForwardInference(
+              handle,
+              // Note: PERSISTENT not implemented for inference
+              CUDNN_BATCHNORM_SPATIAL,
+              CudnnDataType<T>::kOne(),
+              CudnnDataType<T>::kZero(),
+              data_desc_,
+              transformed_x.template data<T>(),
+              data_desc_,
+              ctx.template Alloc<T>(&transformed_y),
+              bn_param_desc_,
+              scale.template data<BatchNormParamType<T>>(),
+              bias.template data<BatchNormParamType<T>>(),
+              est_mean->template data<BatchNormParamType<T>>(),
+              est_var->template data<BatchNormParamType<T>>(),
+              epsilon));
+    }
 #endif
   } else {
     // if MomentumTensor is set, use MomentumTensor value, momentum
@@ -909,8 +947,6 @@ void BatchNormKernel(const Context &ctx,
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
 #else
       // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
-      const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
-      const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
       const bool use_native_kernel =
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
            (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
@@ -1190,7 +1226,16 @@ PD_REGISTER_KERNEL(batch_norm,
                    ALL_LAYOUT,
                    phi::BatchNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+}
 #else
 PD_REGISTER_KERNEL(batch_norm,
                    GPU,
@@ -1200,6 +1245,10 @@ PD_REGISTER_KERNEL(batch_norm,
                    double,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);

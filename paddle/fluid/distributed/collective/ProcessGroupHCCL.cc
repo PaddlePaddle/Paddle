@@ -197,17 +197,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHCCL::Collective(
   SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
 
   auto task = CreateTask(places, rank_, op_type, inputs);
-  task->SetOutputs(outputs);
-
-  // if (FLAGS_use_stream_safe_npu_allocator) {
-  //   for (size_t i = 0; i < inputs.size(); ++i) {
-  //     platform::NPUDeviceGuard guard(places[i].GetDeviceId());
-  //     auto dense_tensor =
-  //         std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl());
-  //     memory::RecordStream(dense_tensor->Holder(),
-  //                          places_to_ctx_[key][i]->stream());
-  //   }
-  // }
 
   for (size_t i = 0; i < inputs.size(); ++i) {
     platform::NPUDeviceGuard guard(places[i].GetDeviceId());
