@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// clang-format off
 #include "paddle/phi/api/include/tensor.h"
 
 #include <memory>
@@ -35,7 +34,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
-// clang-format on
 
 namespace paddle {
 namespace experimental {
