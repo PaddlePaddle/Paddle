@@ -45,9 +45,11 @@ class Laplace(distribution.Distribution):
         self.dtype = 'float32'
 
         assert type(loc) == type(
-            scale), "type of loc and scale must ne identity!"
-        if not isinstance(loc, paddle.Tensor) and not isinstance(
-                loc, np.ndarray):
+            scale), "type of loc and scale must be identity!"
+        if (not isinstance(loc, paddle.Tensor) and not isinstance(
+                loc, np.ndarray)) or \
+            (isinstance(loc, np.ndarray) and len(loc.shape) == 0):
+            # when input shape == 0, no new dims should be expanded in returns
             self.batch_size_unknown = True
 
         if self._validate_args(loc, scale):
