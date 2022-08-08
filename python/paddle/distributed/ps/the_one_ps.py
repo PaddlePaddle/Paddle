@@ -1241,12 +1241,6 @@ class TheOnePSRuntime(RuntimeBase):
             program = self.origin_main_programs[0]
         dense_var_names = self._pull_dense(program, scope, send_ctx, dense_map)
         save_var_names = dense_var_names if var_names is None else var_names
-        #        print("save_var_names:", save_var_names)
-        #        for var in save_var_names:
-        #            tensor = scope.find_var(var).get_tensor()
-        #            paddle.save(
-        #                tensor, os.path.join(dirname, var), use_binary_format=True)
-
         vars = [program.global_block().var(i) for i in save_var_names]
         import paddle
         with paddle.static.scope_guard(scope):
@@ -1412,13 +1406,6 @@ class TheOnePSRuntime(RuntimeBase):
 
         fleet.util.barrier()
         return feasign_num
-
-    ### no use?
-    #    def _revert(self):
-    #        fleet.util.barrier()
-    #        if self.role_maker._is_first_worker():
-    #            self._worker.revert()
-    #        fleet.util.barrier()
 
     def _check_save_pre_patch_done(self):
         fleet.util.barrier()

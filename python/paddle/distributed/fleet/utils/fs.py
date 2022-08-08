@@ -766,13 +766,7 @@ class HDFSClient(FS):
         local = LocalFS()
         if not local.is_exist(local_path):
             raise FSFileNotExistsError("{} not exists".format(local_path))
-        # upload_dir
 
-
-#        if local.is_dir(local_path):
-#            self.upload_dir(local_path, fs_path, overwrite=overwrite)
-#            return
-# upload files
         all_files = get_local_files(local_path)
         if not all_files:
             print("there are nothing need to upload, function exit")
