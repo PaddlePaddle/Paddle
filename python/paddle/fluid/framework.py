@@ -7354,3 +7354,94 @@ def _get_paddle_place_list(places):
         ret.append(p)
 
     return ret
+
+
+class LazyGuard(object):
+    """
+    Guard Context to trigger switching mode between dygraph and static mode,
+    and holds the startup program resource.
+    """
+
+    def __init__(self):
+        self._init()
+        self.state = False
+        self._tracer = None
+        self._in_guard = False
+
+    def enable(self, clear_cache=True):
+        if self.state:
+            return
+        assert in_dygraph_mode(
+        ), "LazyInit.enable() is only available in dygraph mode."
+        self.state = True
+
+        if clear_cache:
+            self._init()
+
+    def disable(self):
+        if not self.state:
+            return
+        self.state = False
+
+    def _init(self):
+        self.startup_program = Program()
+
+    def __enter__(self):
+        self.enable(clear_cache=True)
+        if self._in_guard: return
+        global _dygraph_tracer_
+        self._tracer = _dygraph_tracer_
+        _dygraph_tracer_ = None
+        self._in_guard = True
+
+    def __exit__(self, *args, **kwargs):
+        self.disable()
+        if not self._in_guard: return
+        global _dygraph_tracer_
+        assert self._tracer is not None
+        _dygraph_tracer_ = self._tracer
+        self._tracer = None
+        self._in_guard = False
+
+
+_lazy_guard = LazyGuard()
+
+
+class LazyInit(object):
+    """
+    LazyInit is a wrapper interface for nn.Layer, it forwards the construct
+    process of user defined Layer. Meanwhile, it provides necessary API to
+    trigger EagerParamBase Lazy Initialization and get startup Program.
+    """
+
+    def __init__(self, class_obj=None, clear_cache=True):
+        self.class_obj = class_obj
+        self.clear_cache = clear_cache
+
+    def __call__(self, *args, **kwargs):
+        global _lazy_guard
+        _lazy_guard.enable(self.clear_cache)
+        instance = self.class_obj(*args, **kwargs)
+        _lazy_guard.disable()
+        instance.startup_program = _lazy_guard.startup_program
+
+        return instance
+
+    def __enter__(self):
+        _lazy_guard.__enter__()
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        _lazy_guard.__exit__(*args, **kwargs)
+
+    @staticmethod
+    def enable():
+        _lazy_guard.enable()
+
+    @staticmethod
+    def disable():
+        _lazy_guard.disable()
+
+    @staticmethod
+    def startup_program():
+        return _lazy_guard.startup_program
