@@ -14,9 +14,6 @@
 
 #pragma once
 #include <cmath>
-
-#include "paddle/phi/common/complex.h"
-
 namespace phi {
 namespace funcs {
 
@@ -38,9 +35,11 @@ template <typename InT, typename OutT = bool>
 struct EqualFunctor {
   HOSTDEVICE OutT operator()(const InT a, const InT b) const {
     if (std::is_floating_point<InT>::value) {
-      if (isinf(static_cast<double>(a)) || isinf(static_cast<double>(b)))
+      if (std::isinf(static_cast<float>(a)) ||
+          std::isinf(static_cast<float>(b)))
         return a == b;
-      if (isnan(static_cast<double>(a)) || isnan(static_cast<double>(b)))
+      if (std::isnan(static_cast<float>(a)) ||
+          std::isnan(static_cast<float>(b)))
         return false;
       return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-8);
     } else {
