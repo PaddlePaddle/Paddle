@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # TODO: define distributed api under this directory,
-import paddle
 from .base.role_maker import Role  # noqa: F401
 from .base.role_maker import UserDefinedRoleMaker  # noqa: F401
 from .base.role_maker import PaddleCloudRoleMaker  # noqa: F401
@@ -31,9 +30,9 @@ from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
 #from .base.fleet_base import Fleet
 from .Fleet import Fleet
-from .model import Model
-from .optimizer import Optimizer
-from .scaler import Scaler
+from .model import distributed_model
+from .optimizer import distributed_optimizer
+from .scaler import distributed_scaler
 
 __all__ = [  #noqa
     "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
@@ -43,7 +42,6 @@ __all__ = [  #noqa
 ]
 
 fleet = Fleet()
-fleet_optimizer = Optimizer(fleet)
 _final_strategy = fleet._final_strategy
 _get_applied_meta_list = fleet._get_applied_meta_list
 _get_applied_graph_list = fleet._get_applied_graph_list
@@ -78,28 +76,19 @@ init_worker = fleet.init_worker
 init_server = fleet.init_server
 run_server = fleet.run_server
 stop_worker = fleet.stop_worker
+distributed_optimizer = fleet.distributed_optimizer
 save_inference_model = fleet.save_inference_model
 save_persistables = fleet.save_persistables
 save_cache_model = fleet.save_cache_model
 load_model = fleet.load_model
 minimize = fleet.minimize
-step = fleet_optimizer.step
-clear_grad = fleet_optimizer.clear_grad
-set_lr = fleet_optimizer.set_lr
-get_lr = fleet_optimizer.get_lr
-state_dict = fleet_optimizer.state_dict
-set_state_dict = fleet_optimizer.set_state_dict
+distributed_model = distributed_model
+step = fleet.step
+clear_grad = fleet.clear_grad
+set_lr = fleet.set_lr
+get_lr = fleet.get_lr
+state_dict = fleet.state_dict
+set_state_dict = fleet.set_state_dict
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
-distributed_model = Model(fleet).distributed_model
-distributed_scaler = Scaler().distributed_scaler
-
-
-def opt_func(*args, **kwargs):
-    if paddle.fluid.framework._non_static_mode():
-        return fleet_optimizer.distributed_optimizer(*args, **kwargs)
-    else:
-        return fleet.distributed_optimizer(*args, **kwargs)
-
-
-distributed_optimizer = opt_func
+distributed_scaler = distributed_scaler

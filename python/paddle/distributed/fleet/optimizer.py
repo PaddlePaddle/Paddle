@@ -21,12 +21,13 @@ from paddle.fluid.framework import dygraph_only, _global_flags
 from .base.distributed_strategy import DistributedStrategy
 from .meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle.fluid import core
+from . import fleet
 
 
 class Optimizer(object):
 
-    def __init__(self, fleet):
-        self.fleet = fleet
+    def __init__(self):
+        self.user_defined_optimizer = None
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -342,3 +343,22 @@ class Optimizer(object):
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.clear_grad()
+
+
+optimizer = Optimizer()
+fleet.step = optimizer.step
+fleet.clear_grad = optimizer.clear_grad
+fleet.set_lr = optimizer.set_lr
+fleet.get_lr = optimizer.get_lr
+fleet.state_dict = optimizer.state_dict
+fleet.set_state_dict = optimizer.set_state_dict
+
+
+def opt_func(*args, **kwargs):
+    if paddle.fluid.framework._non_static_mode():
+        return optimizer.distributed_optimizer(*args, **kwargs)
+    else:
+        return fleet.distributed_optimizer(*args, **kwargs)
+
+
+fleet.distributed_optimizer = opt_func

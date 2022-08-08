@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.fluid.framework import dygraph_only
+from . import fleet
 
 
 class Scaler(object):
@@ -21,66 +22,67 @@ class Scaler(object):
     def __init__(self):
         pass
 
-    @dygraph_only
-    def distributed_scaler(self, scaler):
 
-        def unscale_method(self, optimizer):
-            if not self._enable:
-                return
-            if getattr(optimizer, '_param_groups', None) and isinstance(
-                    optimizer._param_groups[0], dict):
-                param_grads = []
-                param_grads_fp16 = []
-                param_grads_fp32 = []
-                for group in optimizer._param_groups:
-                    for param in group['params']:
-                        if param._grad_ivar() is not None:
-                            param_grads.append(param._grad_ivar())
-                            if param._grad_ivar(
-                            ).dtype == core.VarDesc.VarType.FP16:
-                                param_grads_fp16.append(param._grad_ivar())
-                            else:
-                                param_grads_fp32.append(param._grad_ivar())
-            else:
-                param_grads = [
-                    param._grad_ivar() for param in optimizer._parameter_list
-                    if param._grad_ivar() is not None
-                ]
-                param_grads_fp16 = [
-                    param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (
-                        param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
-                ]
-                param_grads_fp32 = [
-                    param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (
-                        param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
-                ]
-            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
-            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
-            if len(param_grads_fp16):
-                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
-                                                param_grads_fp16,
-                                                temp_found_inf_fp16)
-            if len(param_grads_fp32):
-                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
-                                                param_grads_fp32,
-                                                temp_found_inf_fp32)
+@dygraph_only
+def distributed_scaler(scaler):
 
-            self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
-            is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
+    def unscale_method(self, optimizer):
+        if not self._enable:
+            return
+        if getattr(optimizer, '_param_groups', None) and isinstance(
+                optimizer._param_groups[0], dict):
+            param_grads = []
+            param_grads_fp16 = []
+            param_grads_fp32 = []
+            for group in optimizer._param_groups:
+                for param in group['params']:
+                    if param._grad_ivar() is not None:
+                        param_grads.append(param._grad_ivar())
+                        if param._grad_ivar(
+                        ).dtype == core.VarDesc.VarType.FP16:
+                            param_grads_fp16.append(param._grad_ivar())
+                        else:
+                            param_grads_fp32.append(param._grad_ivar())
+        else:
+            param_grads = [
+                param._grad_ivar() for param in optimizer._parameter_list
+                if param._grad_ivar() is not None
+            ]
+            param_grads_fp16 = [
+                param._grad_ivar() for param in optimizer._parameter_list
+                if (param._grad_ivar() is not None) and (
+                    param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
+            ]
+            param_grads_fp32 = [
+                param._grad_ivar() for param in optimizer._parameter_list
+                if (param._grad_ivar() is not None) and (
+                    param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
+            ]
+        temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
+        temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
+        if len(param_grads_fp16):
+            _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
+                                            param_grads_fp16,
+                                            temp_found_inf_fp16)
+        if len(param_grads_fp32):
+            _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
+                                            param_grads_fp32,
+                                            temp_found_inf_fp32)
 
-            # TODO(shenliang03) Since dp allreduce in the optimizer is
-            # after the gradscaler, check_finite needs to synchronize global
-            # information. In the future, we should use check_group to speed.
-            paddle.distributed.all_reduce(is_found_inf,
-                                          op=paddle.distributed.ReduceOp.MAX,
-                                          group=None)
-            self._found_inf = is_found_inf.numpy()[0]
+        self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
+        is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
 
-        # Only tensor_parallel and pipeline_parallel need to modify scaler
-        if self._hcg.get_parallel_mode() in (ParallelMode.TENSOR_PARALLEL,
-                                             ParallelMode.PIPELINE_PARALLEL):
-            scaler._unscale = MethodType(unscale_method, scaler)
+        # TODO(shenliang03) Since dp allreduce in the optimizer is
+        # after the gradscaler, check_finite needs to synchronize global
+        # information. In the future, we should use check_group to speed.
+        paddle.distributed.all_reduce(is_found_inf,
+                                      op=paddle.distributed.ReduceOp.MAX,
+                                      group=None)
+        self._found_inf = is_found_inf.numpy()[0]
 
-        return scaler
+    # Only tensor_parallel and pipeline_parallel need to modify scaler
+    if fleet._hcg.get_parallel_mode() in (ParallelMode.TENSOR_PARALLEL,
+                                          ParallelMode.PIPELINE_PARALLEL):
+        scaler._unscale = MethodType(unscale_method, scaler)
+
+    return scaler
