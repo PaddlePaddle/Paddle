@@ -354,11 +354,8 @@ fleet.state_dict = optimizer.state_dict
 fleet.set_state_dict = optimizer.set_state_dict
 
 
-def opt_func(*args, **kwargs):
+def distributed_optimizer(*args, **kwargs):
     if paddle.fluid.framework._non_static_mode():
         return optimizer.distributed_optimizer(*args, **kwargs)
     else:
         return fleet.distributed_optimizer(*args, **kwargs)
-
-
-fleet.distributed_optimizer = opt_func
