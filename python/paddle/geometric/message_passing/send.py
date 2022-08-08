@@ -108,12 +108,12 @@ def send_uv(x, y, src_index, dst_index, compute_type="add", name=None):
                                         "compute_type", compute_type.upper())
         else:
             helper = LayerHelper("send_uv", **locals())
-            check_variable_and_dtype(x, 'x',
-                                     ['int32', 'int64', 'float32', 'float64'],
-                                     'graph_send_uv')
-            check_variable_and_dtype(y, 'y',
-                                     ['int32', 'int64', 'float32', 'float64'],
-                                     'graph_send_uv')
+            check_variable_and_dtype(
+                x, 'x', ['int32', 'int64', 'float32', 'float64', 'float16'],
+                'graph_send_uv')
+            check_variable_and_dtype(
+                y, 'y', ['int32', 'int64', 'float32', 'float64', 'float16'],
+                'graph_send_uv')
             check_variable_and_dtype(src_index, 'src_index', ['int32', 'int64'],
                                      'graph_send_uv')
             check_variable_and_dtype(dst_index, 'dst_index', ['int32', 'int64'],
