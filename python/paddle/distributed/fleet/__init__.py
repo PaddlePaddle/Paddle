@@ -28,7 +28,6 @@ from .data_generator.data_generator import MultiSlotStringDataGenerator  # noqa:
 from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
-#from .base.fleet_base import Fleet
 from .Fleet import Fleet
 from .model import distributed_model
 from .optimizer import distributed_optimizer
