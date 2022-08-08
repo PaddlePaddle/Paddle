@@ -421,6 +421,10 @@ class TensorRTEngine {
     quant_dynamic_range_[tensor] = range;
   }
 
+  // Get fp16 trt weight. If src weight is not fp16, we will cast.
+  Weight GetFp16TrtWeight(const std::string& name,
+                          const framework::Tensor& weight_tensor);
+
   // Get fp32 trt weight. If src weight is not fp32, we will cast.
   Weight GetFp32TrtWeight(const std::string& name,
                           const framework::Tensor& weight_tensor);

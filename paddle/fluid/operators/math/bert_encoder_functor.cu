@@ -42,8 +42,8 @@ __device__ inline void LayerNormSmall(T val,
                                       const phi::funcs::kvp<T> &thread_data,
                                       const int ld,
                                       const int idx,
-                                      const float *bias,
-                                      const float *scale,
+                                      const T *bias,
+                                      const T *scale,
                                       T *output,
                                       T eps) {
   using BlockReduce = cub::BlockReduce<phi::funcs::kvp<T>, TPB>;
@@ -70,8 +70,8 @@ template <typename T, int TPB>
 __device__ inline void LayerNorm(const phi::funcs::kvp<T> &thread_data,
                                  const int ld,
                                  const int offset,
-                                 const float *bias,
-                                 const float *scale,
+                                 const T *bias,
+                                 const T *scale,
                                  T *output,
                                  T eps) {
   using BlockReduce = cub::BlockReduce<phi::funcs::kvp<T>, TPB>;
@@ -131,11 +131,11 @@ __device__ inline void LayerNorm2(const phi::funcs::kvp<T> &thread_data,
 template <typename T, unsigned TPB>
 __global__ void EmbEltwiseLayernormKernel(int hidden,
                                           const int64_t *ids,
-                                          const float *scale,
-                                          const float *bias,
+                                          const T *scale,
+                                          const T *bias,
                                           const int64_t *embs,
                                           T *output,
-                                          float eps,
+                                          T eps,
                                           int input_num) {
   cub::Sum pair_sum;
   // blockIdx.x: position in the sequence
@@ -179,11 +179,11 @@ __global__ void EmbEltwiseLayernormKernel(int hidden,
 template <>
 __global__ void EmbEltwiseLayernormKernel<half, 256>(int hidden,
                                                      const int64_t *ids,
-                                                     const float *scale,
-                                                     const float *bias,
+                                                     const half *scale,
+                                                     const half *bias,
                                                      const int64_t *embs,
                                                      half *output,
-                                                     float eps,
+                                                     half eps,
                                                      int input_num) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   cub::Sum pair_sum;
@@ -231,8 +231,8 @@ void EmbEltwiseLayerNormFunctor<T>::operator()(int batch,
                                                int seq_len,
                                                int hidden,
                                                const int64_t *ids,
-                                               const float *scale,
-                                               const float *bias,
+                                               const T *scale,
+                                               const T *bias,
                                                const int64_t *embs,
                                                T *output,
                                                float eps,
@@ -720,9 +720,9 @@ __global__ void SkipLayerNormSmallKernel(int num,
                                          const T *input1,
                                          const T *input2,
                                          T *output,
-                                         const float *scale,
-                                         const float *bias,
-                                         float eps) {
+                                         const T *scale,
+                                         const T *bias,
+                                         T eps) {
   const T rld = T(1) / T(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
@@ -747,9 +747,9 @@ __global__ void SkipLayerNormSmallKernel<half, 32>(int num,
                                                    const half *input1,
                                                    const half *input2,
                                                    half *output,
-                                                   const float *scale,
-                                                   const float *bias,
-                                                   float eps) {
+                                                   const half *scale,
+                                                   const half *bias,
+                                                   half eps) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
@@ -774,9 +774,9 @@ __global__ void SkipLayerNormSmallKernel<half, 128>(int num,
                                                     const half *input1,
                                                     const half *input2,
                                                     half *output,
-                                                    const float *scale,
-                                                    const float *bias,
-                                                    float eps) {
+                                                    const half *scale,
+                                                    const half *bias,
+                                                    half eps) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
@@ -801,9 +801,9 @@ __global__ void SkipLayerNormSmallKernel<half, 384>(int num,
                                                     const half *input1,
                                                     const half *input2,
                                                     half *output,
-                                                    const float *scale,
-                                                    const float *bias,
-                                                    float eps) {
+                                                    const half *scale,
+                                                    const half *bias,
+                                                    half eps) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
@@ -829,9 +829,9 @@ __global__ void SkipLayerNormKernel(int num,
                                     const T *input1,
                                     const T *input2,
                                     T *output,
-                                    const float *scale,
-                                    const float *bias,
-                                    float eps) {
+                                    const T *scale,
+                                    const T *bias,
+                                    T eps) {
   const T rld = T(1) / T(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
@@ -856,9 +856,9 @@ __global__ void SkipLayerNormKernel<half, 256>(int num,
                                                const half *input1,
                                                const half *input2,
                                                half *output,
-                                               const float *scale,
-                                               const float *bias,
-                                               float eps) {
+                                               const half *scale,
+                                               const half *bias,
+                                               half eps) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
@@ -942,10 +942,10 @@ void SkipLayerNormFunctor<T>::operator()(const int num,
                                          const int hidden,
                                          const T *input1,
                                          const T *input2,
-                                         const float *scale,
-                                         const float *bias,
+                                         const T *scale,
+                                         const T *bias,
                                          T *output,
-                                         T eps,
+                                         float eps,
                                          gpuStream_t stream) {
   int block = num / hidden;
   if (hidden <= 32) {

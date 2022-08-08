@@ -15,11 +15,14 @@
 #include <paddle/fluid/platform/device_context.h>
 
 #include <algorithm>
+#include <type_traits>
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
@@ -100,18 +103,38 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
     float eps = context.Attr<float>("epsilon");
 
     int shared_bytes = input_num * sizeof(int64_t);
-    math::EmbEltwiseLayerNormFunctor<T> emb_eltwise_layernorm_func;
-    emb_eltwise_layernorm_func(batch,
-                               seq_len,
-                               hidden,
-                               in_ids_d,
-                               scale_d,
-                               bias_d,
-                               in_embs_d,
-                               output_d,
-                               eps,
-                               input_num,
-                               device_ctx.stream());
+
+    if (std::is_same<T, paddle::platform::float16>::value) {
+      const half *scale_new = reinterpret_cast<const half *>(scale_d);
+      const half *bias_new = reinterpret_cast<const half *>(bias_d);
+      half *output_new = reinterpret_cast<half *>(output_d);
+
+      math::EmbEltwiseLayerNormFunctor<half> emb_eltwise_layernorm_func;
+      emb_eltwise_layernorm_func(batch,
+                                 seq_len,
+                                 hidden,
+                                 in_ids_d,
+                                 scale_new,
+                                 bias_new,
+                                 in_embs_d,
+                                 output_new,
+                                 eps,
+                                 input_num,
+                                 device_ctx.stream());
+    } else {
+      math::EmbEltwiseLayerNormFunctor<T> emb_eltwise_layernorm_func;
+      emb_eltwise_layernorm_func(batch,
+                                 seq_len,
+                                 hidden,
+                                 in_ids_d,
+                                 scale_d,
+                                 bias_d,
+                                 in_embs_d,
+                                 output_d,
+                                 eps,
+                                 input_num,
+                                 device_ctx.stream());
+    }
   }
 };
 
@@ -121,4 +144,6 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     fused_embedding_eltwise_layernorm,
-    ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext, float>);
+    ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext, float>,
+    ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext,
+                                         paddle::platform::float16>);

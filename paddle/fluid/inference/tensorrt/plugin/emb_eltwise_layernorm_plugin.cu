@@ -16,6 +16,7 @@
 
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
+#include <type_traits>
 #include <vector>
 
 #include "glog/logging.h"
@@ -31,12 +32,6 @@ namespace plugin {
 
 // Dynamic shape plugin requires TRT version greater than 6.0.
 #if IS_TRT_VERSION_GE(6000)
-
-template <typename T>
-EmbEltwiseLayernormPluginDynamicImpl<
-    T>::~EmbEltwiseLayernormPluginDynamicImpl() {}
-
-inline half fp32tofp16(float x) { return static_cast<half>(x); }
 
 template <typename T>
 void EmbEltwiseLayernormPluginDynamicImpl<T>::shareGPUData(
@@ -62,36 +57,24 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::initialize() {
   embs_gpu_.resize(embs_.size());
   for (int i = 0; i < embs_.size(); i++) {
     if (embs_[i]) {
-      T *host_ptr;
+      T *host_ptr = embs_[i];
       auto size = emb_sizes_[i];
-
-      if (std::is_same<T, half>::value) {
-        host_ptr = new T[size];
-        std::transform(embs_[i], (embs_[i] + size), host_ptr, fp32tofp16);
-      } else {
-        host_ptr = reinterpret_cast<T *>(embs_[i]);
-      }
 
       cudaMalloc(&embs_gpu_[i], sizeof(T) * size);
       cudaMemcpy(
           embs_gpu_[i], host_ptr, size * sizeof(T), cudaMemcpyHostToDevice);
-      if (std::is_same<T, half>::value) {
-        delete[] host_ptr;
-      }
     }
   }
 
   if (bias_) {
-    cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
+    cudaMalloc(&bias_gpu_, sizeof(T) * bias_size_);
     cudaMemcpy(
-        bias_gpu_, bias_, bias_size_ * sizeof(float), cudaMemcpyHostToDevice);
+        bias_gpu_, bias_, bias_size_ * sizeof(T), cudaMemcpyHostToDevice);
   }
   if (scale_) {
-    cudaMalloc(&scale_gpu_, sizeof(float) * scale_size_);
-    cudaMemcpy(scale_gpu_,
-               scale_,
-               scale_size_ * sizeof(float),
-               cudaMemcpyHostToDevice);
+    cudaMalloc(&scale_gpu_, sizeof(T) * scale_size_);
+    cudaMemcpy(
+        scale_gpu_, scale_, scale_size_ * sizeof(T), cudaMemcpyHostToDevice);
   }
 
   int input_num = embs_.size();
