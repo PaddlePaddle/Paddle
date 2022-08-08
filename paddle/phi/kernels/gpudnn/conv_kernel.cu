@@ -310,11 +310,39 @@ void ConvCudnnKernel(const Context& ctx,
   fwd_result.algo = search::Find<T>(
       args, exhaustive_search, deterministic, workspace_size, ctx);
 #else
+  // paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
+  // using search =
+  //     paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+  // fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
+  // workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
+
   paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search =
       paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-  fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
-  workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
+  // nvtxRangePush("algo workspace");
+  fwd_result = search::Find<T>(args, true, false, ctx);
+  // workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
+  size_t key = args.GetCacheKey<T>();
+  static std::map<size_t, size_t> cache;
+  // nvtxMark("-K31-");
+  if (cache.find(key) != cache.end()) {
+    // nvtxMark("-K32-");
+    workspace_size = cache[key];
+  } else {
+    // nvtxMark("-K33-");
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        paddle::platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+            args.handle,
+            args.idesc.desc(),
+            args.wdesc.desc(),
+            args.cdesc.desc(),
+            args.odesc.desc(),
+            fwd_result.algo,
+            &workspace_size));
+    // nvtxMark("-K34-");
+    cache[key] = workspace_size;
+  }
+  // nvtxRangePop();
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)

@@ -831,7 +831,7 @@ void InterpreterCore::RunInstructionAsync(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       RecordStreamForGC(instr_node);
 #endif
-      CheckGC(instr_node, atomic_var_ref);
+      // CheckGC(instr_node, atomic_var_ref);
 
       interpreter::RecordEvent(instr_node, place_);
     } catch (platform::EnforceNotMet& ex) {
