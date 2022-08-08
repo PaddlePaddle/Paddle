@@ -38,13 +38,5 @@ void CompilationUnit::SetEngine(const std::string &name,
 
 const Name2EngineMap &CompilationUnit::EngineMap() const { return engine_map_; }
 
-const std::vector<std::string> CompilationUnit::FunctionNames() const {
-  std::vector<std::string> names;
-  for (auto it = engine_map_.begin(); it != engine_map_.end(); it++) {
-    names.emplace_back(it->first);
-  }
-  return names;
-}
-
 }  // namespace jit
 }  // namespace paddle

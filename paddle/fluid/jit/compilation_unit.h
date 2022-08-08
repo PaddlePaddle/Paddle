@@ -37,8 +37,6 @@ class CompilationUnit {
 
   const Name2EngineMap &EngineMap() const;
 
-  const std::vector<std::string> FunctionNames() const;
-
  private:
   Name2EngineMap engine_map_;
 };
