@@ -20,7 +20,6 @@ from paddle.nn import functional as F
 from paddle import framework
 from ...base import topology as tp
 from paddle.autograd import PyLayer
-from paddle.incubate.nn.functional import fused_linear
 
 __all__ = []
 
@@ -36,7 +35,11 @@ def _is_fused_matmul_bias_supported():
         return False
 
 
-linear = fused_linear if _is_fused_matmul_bias_supported() else F.linear
+if _is_fused_matmul_bias_supported():
+    from paddle.incubate.nn.functional import fused_linear
+    linear = fused_linear
+else:
+    linear = F.linear
 
 
 class VocabParallelEmbedding(Layer):
