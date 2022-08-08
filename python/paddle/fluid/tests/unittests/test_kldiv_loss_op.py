@@ -143,5 +143,39 @@ class TestKLDivLossTypePromotion(unittest.TestCase):
             pred_loss2 = paddle.nn.functional.kl_div(x2, target2)
 
 
+class TestKlDivZeroDim(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.disable_static()
+
+        input = paddle.rand([10])
+        label = paddle.rand([10])
+        loss = paddle.nn.functional.kl_div(input, label)
+        loss.backward()
+        self.assertEqual(loss.shape, [])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+
+        with paddle.static.program_guard(paddle.static.Program(), paddle.static.Program()):
+            input = paddle.static.data(name="input", shape=[10])
+            label = paddle.static.data(name="label", shape=[10])
+            out = paddle.nn.functional.kl_div(input, label)
+            paddle.static.append_backward(out)
+
+            input_np = np.random.random([10]).astype('float32')
+            label_np = np.random.random([10]).astype('float32')
+            exe = paddle.static.Executor()
+            result = exe.run(paddle.static.default_main_program(),
+                             feed={
+                                 "input": input_np,
+                                 "label": label_np
+                             },
+                             fetch_list=[out])
+
+            self.assertEqual(result[0].shape, ())
+
 if __name__ == "__main__":
     unittest.main()

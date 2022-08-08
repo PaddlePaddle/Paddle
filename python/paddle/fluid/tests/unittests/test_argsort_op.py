@@ -54,7 +54,7 @@ class PyArgsort(object):
         self.loss = np.sum(self.loss)
         out = (np.array(self.indices, dtype=self.indices.dtype),
                np.array(self.sorted_x, dtype=self.sorted_x.dtype),
-               np.array([self.loss], dtype=self.loss.dtype))
+               np.array(self.loss, dtype=self.loss.dtype))
         return out
 
 

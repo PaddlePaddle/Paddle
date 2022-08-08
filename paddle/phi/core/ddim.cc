@@ -154,9 +154,11 @@ DDim flatten_to_1d(const DDim& src) { return DDim({product(src)}); }
 DDim stride(const DDim& ddim) {
   DDim strides;
   strides.rank_ = ddim.size();
-  strides[ddim.size() - 1] = 1;
-  for (int i = ddim.size() - 2; i >= 0; --i) {
-    strides[i] = strides[i + 1] * ddim[i + 1];
+  if (ddim.size() > 0) {
+    strides[ddim.size() - 1] = 1;
+    for (int i = ddim.size() - 2; i >= 0; --i) {
+      strides[i] = strides[i + 1] * ddim[i + 1];
+    }
   }
   return strides;
 }
@@ -164,9 +166,11 @@ DDim stride(const DDim& ddim) {
 DDim stride_numel(const DDim& ddim) {
   DDim strides;
   strides.rank_ = ddim.size();
-  strides[ddim.size() - 1] = ddim[ddim.size() - 1];
-  for (int i = ddim.size() - 2; i >= 0; --i) {
-    strides[i] = strides[i + 1] * ddim[i];
+  if (ddim.size() > 0) {
+    strides[ddim.size() - 1] = ddim[ddim.size() - 1];
+    for (int i = ddim.size() - 2; i >= 0; --i) {
+      strides[i] = strides[i + 1] * ddim[i];
+    }
   }
   return strides;
 }
@@ -184,6 +188,14 @@ DDim DDim::reshape(std::vector<int>& shape) const {
     int reshape_out_product =
         std::accumulate(shape.begin(), shape.end(), -1, std::multiplies<int>());
     shape[index] = product(in_dims) / reshape_out_product;
+  } else {
+    int reshape_out_product =
+        std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+    PADDLE_ENFORCE_EQ(
+        product(in_dims),
+        reshape_out_product,
+        phi::errors::InvalidArgument(
+            "The numel after reshape must be same with the original"));
   }
 
   for (size_t i = 0; i < shape.size(); ++i) {

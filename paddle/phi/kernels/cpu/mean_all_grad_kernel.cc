@@ -34,8 +34,11 @@ void MeanAllGradKernel(const Context& dev_ctx,
 
   T ig_size = static_cast<T>(x_grad->numel());
   Eigen::DSizes<int, 1> bcast(static_cast<int>(ig_size));
-  EigenVector<T>::Flatten(*x_grad).device(*dev_ctx.eigen_device()) =
-      (EigenVector<T>::From(out_grad) / ig_size).broadcast(bcast);
+
+  auto dx = EigenVector<T>::Flatten(*x_grad);
+  auto dout = EigenVector<T>::Flatten(out_grad);
+  dx.device(*dev_ctx.eigen_device()) =
+      dout.broadcast(bcast) / dx.constant(ig_size);
 }
 
 }  // namespace phi

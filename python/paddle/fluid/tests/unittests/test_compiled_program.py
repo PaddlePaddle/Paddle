@@ -48,7 +48,7 @@ class TestCompiledProgram(unittest.TestCase):
                                      "label": self.label
                                  },
                                  fetch_list=[loss.name])
-            self.loss = loss_data[0]
+            self.loss = loss_data
 
     def test_compiled_program_base(self):
         with new_program_scope():
@@ -68,7 +68,7 @@ class TestCompiledProgram(unittest.TestCase):
                                      "label": self.label
                                  },
                                  fetch_list=[loss.name])
-            self.assertTrue(np.array_equal(loss_data[0], self.loss))
+            self.assertTrue(np.array_equal(loss_data, self.loss))
 
     def test_compiled_program_with_data_parallel(self):
         with new_program_scope():
@@ -90,7 +90,7 @@ class TestCompiledProgram(unittest.TestCase):
                                      "label": self.label
                                  },
                                  fetch_list=[loss.name])
-            self.assertTrue(np.array_equal(loss_data[0], self.loss))
+            self.assertTrue(np.array_equal(loss_data, self.loss))
 
 
 class TestCompiledProgramError(unittest.TestCase):

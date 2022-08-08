@@ -593,16 +593,16 @@ def val_bmn(model, args):
         avg_loss = paddle.mean(loss)
 
         loss_data += [
-            avg_loss.numpy()[0],
-            tem_loss.numpy()[0],
-            pem_reg_loss.numpy()[0],
-            pem_cls_loss.numpy()[0]
+            avg_loss.item(),
+            tem_loss.item(),
+            pem_reg_loss.item(),
+            pem_cls_loss.item()
         ]
 
         print('[VALID] iter {} '.format(batch_id)
                     + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-            '%f' % avg_loss.numpy()[0], '%f' % tem_loss.numpy()[0], \
-            '%f' % pem_reg_loss.numpy()[0], '%f' % pem_cls_loss.numpy()[0]))
+            '%f' % avg_loss.item(), '%f' % tem_loss.item(), \
+            '%f' % pem_reg_loss.item(), '%f' % pem_cls_loss.item()))
 
         if batch_id == args.valid_batch_num:
             break

@@ -138,7 +138,7 @@ class TestGradientClip(unittest.TestCase):
 
         data = next(self.train_data())
         val = exe.run(prog, feed=feeder.feed(data), fetch_list=[cost])[0]
-        self.assertEqual((1, ), val.shape)
+        self.assertEqual((), val.shape)
         self.assertFalse(np.isnan(val))
 
     def backward_and_optimize(self, cost):

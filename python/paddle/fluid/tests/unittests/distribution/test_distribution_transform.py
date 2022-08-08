@@ -862,7 +862,7 @@ class TestStickBreakingTransform(unittest.TestCase):
     @param.param_func(((np.random.random((10)), ), ))
     def test_forward_log_det_jacobian(self, x):
         self.assertEqual(
-            self._t.forward_log_det_jacobian(paddle.to_tensor(x)).shape, [1])
+            self._t.forward_log_det_jacobian(paddle.to_tensor(x)).shape, [])
 
 
 # Todo

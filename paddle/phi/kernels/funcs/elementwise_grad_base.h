@@ -287,7 +287,7 @@ void ElemwiseGradComputeWithBroadcast(const CPUContext &ctx,
       errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis,
+  PADDLE_ENFORCE_LE(axis,
                     max_dim,
                     errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
@@ -1704,7 +1704,7 @@ void ElemwiseGradComputeWithBroadcast(const GPUContext &ctx,
       errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis,
+  PADDLE_ENFORCE_LE(axis,
                     max_dim,
                     errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",

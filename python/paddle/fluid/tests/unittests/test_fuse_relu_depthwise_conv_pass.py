@@ -111,10 +111,8 @@ class TestMNIST(TestParallelExecutorBase):
             fuse_relu_depthwise_conv=False,
             optimizer=_optimizer)
 
-        for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
-        for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+        self.assertAlmostEquals(not_fuse_op_first_loss.item(), fuse_op_first_loss.item(), delta=1e-6)
+        self.assertAlmostEquals(not_fuse_op_last_loss.item(), fuse_op_last_loss.item(), delta=1e-6)         
 
     def test_simple_depthwise_with_fuse_op(self):
         self._compare(simple_depthwise_net, DeviceType.CUDA)

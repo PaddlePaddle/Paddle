@@ -1172,28 +1172,26 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.final_state_sum(x, axis, dtype, keepdim)
 
-    if len(axis) == 0:
-        reduce_all_flag = True
+    if len(axis) == 0 or len(axis) == len(x.shape):
+        reduce_all = True
+        if len(axis) == 0:
+            axis = [0]
     else:
-        if len(axis) == len(x.shape):
-            reduce_all_flag = True
-        else:
-            reduce_all_flag = False
+        reduce_all = False
 
     if _in_legacy_dygraph():
-        axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag, 'in_dtype',
+                                       'reduce_all', reduce_all, 'in_dtype',
                                        x.dtype, 'out_dtype', dtype)
         else:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag)
+                                       'reduce_all', reduce_all)
 
     attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'dim': axis,
         'keep_dim': keepdim,
-        'reduce_all': reduce_all_flag
+        'reduce_all': reduce_all
     }
 
     if dtype_flag:
@@ -3395,9 +3393,13 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
                 "The type of axis must be int, list or tuple, but received {}".
                 format(type(dim)))
 
-    reduce_all = True if dim is None or len(dim) == 0 or len(dim) == len(x.shape) else False
-    if dim is None or len(dim) == 0:
-        dim = [0]
+    if dim is None or len(dim) == 0 or len(dim) == len(x.shape):
+        reduce_all = True
+        if dim is None or len(dim) == 0:
+            dim = [0]
+    else:
+        reduce_all = False
+
 
     if in_dygraph_mode():
         return _C_ops.final_state_reduce_prod(x, dim, keepdim, reduce_all)

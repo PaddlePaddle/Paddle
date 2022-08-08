@@ -57,10 +57,8 @@ class TestFuseOptimizationOps(TestParallelExecutorBase):
             fuse_all_optimizer_ops=True,
             optimizer=optimizer)
 
-        for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
-        for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+        self.assertAlmostEquals(not_fuse_op_first_loss.item(), fuse_op_first_loss.item(), delta=1e-6)
+        self.assertAlmostEquals(not_fuse_op_last_loss.item(), fuse_op_last_loss.item(), delta=1e-6)         
 
     def _decorate_compare_fused_optimizer_ops(self, model, use_device,
                                               optimizer):

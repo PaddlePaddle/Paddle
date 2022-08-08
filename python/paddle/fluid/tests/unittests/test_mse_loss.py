@@ -109,7 +109,7 @@ class TestNNMseLoss(unittest.TestCase):
             self.assertTrue(np.allclose(static_result, expected))
             self.assertTrue(np.allclose(static_result, dy_result))
             self.assertTrue(np.allclose(dy_result, expected))
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_result.shape, ())
 
     def test_NNMseLoss_sum(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -149,7 +149,7 @@ class TestNNMseLoss(unittest.TestCase):
             self.assertTrue(np.allclose(static_result, expected))
             self.assertTrue(np.allclose(static_result, dy_result))
             self.assertTrue(np.allclose(dy_result, expected))
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_result.shape, ())
 
     def test_NNMseLoss_none(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -189,8 +189,7 @@ class TestNNMseLoss(unittest.TestCase):
             self.assertTrue(np.allclose(static_result, expected))
             self.assertTrue(np.allclose(static_result, dy_result))
             self.assertTrue(np.allclose(dy_result, expected))
-            self.assertTrue(dy_result.shape, [1])
-
+            self.assertEqual(dy_result.shape, tuple(dim))
 
 class TestNNFunctionalMseLoss(unittest.TestCase):
 
@@ -232,7 +231,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             self.assertTrue(np.allclose(static_result, expected))
             self.assertTrue(np.allclose(static_result, dy_result))
             self.assertTrue(np.allclose(dy_result, expected))
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_result.shape, ())
 
     def test_NNFunctionalMseLoss_sum(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -272,7 +271,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             self.assertTrue(np.allclose(static_result, expected))
             self.assertTrue(np.allclose(static_result, dy_result))
             self.assertTrue(np.allclose(dy_result, expected))
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_result.shape, ())
 
     def test_NNFunctionalMseLoss_none(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -312,8 +311,41 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             self.assertTrue(np.allclose(static_result, expected))
             self.assertTrue(np.allclose(static_result, dy_result))
             self.assertTrue(np.allclose(dy_result, expected))
-            self.assertTrue(dy_result.shape, [1])
+            self.assertTrue(dy_result.shape, ())
 
+class TestMseLossZeroDim(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.disable_static()
+
+        input = paddle.rand([10])
+        label = paddle.rand([10])
+        loss = paddle.nn.functional.mse_loss(input, label)
+        loss.backward()
+        self.assertEqual(loss.shape, [])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[10])
+            label = fluid.data(name="label", shape=[10])
+            out = paddle.nn.functional.mse_loss(input, label)
+            fluid.backward.append_backward(out)
+
+            input_np = np.random.random([10]).astype('float32')
+            label_np = np.random.random([10]).astype('float32')
+            exe = fluid.Executor()
+            result = exe.run(fluid.default_main_program(),
+                             feed={"input": input_np,
+                                   "label": label_np},
+                             fetch_list=[out])
+
+            self.assertEqual(result[0].shape, ())
+
+        paddle.disable_static()
 
 if __name__ == "__main__":
     paddle.enable_static()

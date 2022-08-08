@@ -30,8 +30,8 @@ class TestGcdAPI(unittest.TestCase):
     def setUp(self):
         self.x_np = 12
         self.y_np = 20
-        self.x_shape = [1]
-        self.y_shape = [1]
+        self.x_shape = []
+        self.y_shape = []
 
     def test_static_graph(self):
         startup_program = fluid.Program()
@@ -78,8 +78,8 @@ class TestGcdAPI3(TestGcdAPI):
     def setUp(self):
         self.x_np = 0
         self.y_np = 20
-        self.x_shape = [1]
-        self.y_shape = [1]
+        self.x_shape = []
+        self.y_shape = []
 
 
 class TestGcdAPI4(TestGcdAPI):
@@ -87,8 +87,8 @@ class TestGcdAPI4(TestGcdAPI):
     def setUp(self):
         self.x_np = 0
         self.y_np = 0
-        self.x_shape = [1]
-        self.y_shape = [1]
+        self.x_shape = []
+        self.y_shape = []
 
 
 class TestGcdAPI5(TestGcdAPI):
@@ -96,5 +96,5 @@ class TestGcdAPI5(TestGcdAPI):
     def setUp(self):
         self.x_np = 12
         self.y_np = -20
-        self.x_shape = [1]
-        self.y_shape = [1]
+        self.x_shape = []
+        self.y_shape = []

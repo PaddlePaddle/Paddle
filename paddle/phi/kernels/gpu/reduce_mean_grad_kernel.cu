@@ -31,7 +31,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           DenseTensor* x_grad) {
   int dim_size = x.dims().size();
   std::vector<int> reduce_dims =
-      funcs::details::GetReduceDim(dims, dim_size, reduce_all);
+      funcs::details::FormatReduceDim(dims, dim_size, reduce_all);
   int reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (x.dims())[i];

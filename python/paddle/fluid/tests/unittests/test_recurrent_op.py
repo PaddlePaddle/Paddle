@@ -41,7 +41,7 @@ class PyRNNBase(object):
     def forward(self):
         for step_id in range(self.x.shape[0]):
             self.step(step_id, self.x[step_id])
-        return np.array([np.mean(self.y)])
+        return np.mean(self.y)
 
     def segment_inputs(self):
         return [self.x[i] for i in range(self.x.shape[0])]

@@ -423,7 +423,7 @@ class TestCondBackward(unittest.TestCase):
                     },
                                          fetch_list=[loss.name])
                     multi_device_grad = (loss_delta[0] -
-                                         loss_value[0]) / delta / num_devices
+                                         loss_value) / delta / num_devices
                     for d in range(num_devices):
                         numerical_grad[d][j] = multi_device_grad[d]
                 else:
@@ -436,7 +436,7 @@ class TestCondBackward(unittest.TestCase):
                                          },
                                          fetch_list=[loss.name])
                     numerical_grad[0][j] = (loss_delta[0] -
-                                            loss_value[0]) / delta
+                                            loss_value) / delta
                 feed_img_delta[0][j] = feed_img[0][j]
             self.assertTrue(
                 np.isclose(img_grad, numerical_grad, atol=0.05,

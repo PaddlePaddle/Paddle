@@ -59,7 +59,7 @@ void ReduceGradKernel(const Context& dev_ctx,
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = in_x->dims().size();
   std::vector<int> reduce_dims =
-      funcs::details::GetReduceDim(dims, dim_size, reduce_all);
+      funcs::details::FormatReduceDim(dims, dim_size, reduce_all);
 
   auto update_dims = vectorize(d_x->dims());
   int reduce_num = 1;

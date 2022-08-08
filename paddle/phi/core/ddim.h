@@ -63,6 +63,10 @@ class DDim {
   constexpr static int kMaxRank = 9;
 
   DDim() : rank_(1) { dim_[0] = 0; }
+  /* support 0D
+  // Default empty dim shoule have the same meaning with std::vector({})
+  DDim() : rank_(0) {}
+  */
 
   DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
 
@@ -100,14 +104,14 @@ class DDim {
                       0,
                       phi::errors::InvalidArgument(
                           "Invalid DDim index to be accessed. The valid index "
-                          "is between 0 and %d, but received index is %d.",
+                          "is in the range of [0, %d), but received index is %d.",
                           rank_,
                           idx));
     PADDLE_ENFORCE_LT(idx,
                       rank_,
                       phi::errors::InvalidArgument(
                           "Invalid DDim index to be accessed. The valid index "
-                          "is between 0 and %d, but received index is %d.",
+                          "is in the range of [0, %d), but received index is %d.",
                           rank_,
                           idx));
     return dim_[idx];

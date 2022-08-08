@@ -1085,6 +1085,41 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             test_nll_loss_function_reduction_imperative_not_sum_mean_none)
 
 
+class TestNllLossZeroDim(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.disable_static()
+
+        input = paddle.rand([5, 10])
+        label = paddle.randint(0, 10, [5])
+        loss = paddle.nn.functional.nll_loss(input, label)
+        loss.backward()
+        self.assertEqual(loss.shape, [])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[5, 10])
+            label = fluid.data(name="label", shape=[5], dtype='int64')
+            out = paddle.nn.functional.nll_loss(input, label)
+            fluid.backward.append_backward(out)
+
+            input_np = np.random.random([5, 10]).astype('float32')
+            label_np = np.random.randint(0, 10, [5])
+            exe = fluid.Executor()
+            result = exe.run(fluid.default_main_program(),
+                             feed={"input": input_np,
+                                   "label": label_np},
+                             fetch_list=[out])
+
+            self.assertEqual(result[0].shape, ())
+
+        paddle.disable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

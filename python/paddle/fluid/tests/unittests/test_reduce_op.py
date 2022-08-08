@@ -23,7 +23,6 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
-
 class TestSumOp(OpTest):
 
     def setUp(self):
@@ -1046,6 +1045,77 @@ class TestAnyAPI(unittest.TestCase):
                 self.assertTrue((np_out4 == expect_res4).all())
 
         paddle.enable_static()
+
+
+
+class TestZeroDimAPI(unittest.TestCase):
+    api_list = [
+        paddle.sum,
+        paddle.mean,
+        paddle.min,
+        paddle.max,
+        paddle.nanmean,
+        paddle.nansum,
+        paddle.amin,
+        paddle.amax,
+        paddle.prod,
+    ]
+
+    def test_dygraph(self):
+        paddle.disable_static()
+
+        for api in self.api_list:
+            x = paddle.to_tensor([[1., 1.], [1., 1.]], stop_gradient=False)
+            out = api(x, None)
+            self.assertEqual(out.shape, [])
+            out.backward()
+            self.assertEqual(out.grad.shape, [])
+
+            '''
+            x = paddle.to_tensor(1., stop_gradient=False)
+            out = api(x, None)
+            self.assertEqual(out.shape, [])
+            out.backward()
+            self.assertEqual(out.grad.shape, [])
+            self.assertEqual(x.grad.shape, [])
+            '''
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+
+        for api in self.api_list:
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                x = fluid.data(name="X", shape=[-1, 2])
+                out = api(x, None)
+                p_g = fluid.backward.append_backward(out)
+
+                x_np = np.array([[1., 1.], [1., 1.]]).astype('float32')
+                exe = fluid.Executor()
+                result = exe.run(fluid.default_main_program(),
+                                feed={"X": x_np},
+                                fetch_list=[out])
+
+                self.assertEqual(result[0].shape, ())
+
+            '''
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                x = fluid.data(name="X", shape=[], stop_gradient=False)
+                out = api(x, None)
+                _, x_grad = fluid.backward.append_backward(out)
+
+                x_np = np.array(1.)
+                exe = fluid.Executor(place)
+                result = exe.run(fluid.default_main_program(),
+                                feed={"X": x_np},
+                                fetch_list=[out, x_grad])
+
+                self.assertTrue(result[0].shape, ())
+                self.assertTrue(result[1].shape, ())
+            '''
+
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

@@ -330,6 +330,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   using Tensor = framework::Tensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
+    VLOG(0) << "start InferShape of elementwise_add\n" ;
     auto out_grad_name = framework::GradVarName("Out");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOpGrad");
     OP_INOUT_CHECK(ctx->HasInput(out_grad_name),

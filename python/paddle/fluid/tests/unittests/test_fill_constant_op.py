@@ -439,11 +439,9 @@ class TestFillConstantOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_shape_type)
 
-            # The argument shape's size of fill_constant_op must not be 0.
-            def test_shape_size():
-                fluid.layers.fill_constant(shape=[], dtype="float32", value=1)
-
-            self.assertRaises(AssertionError, test_shape_size)
+            # The argument shape's size of fill_constant_op can be 0.
+            x4 = fluid.layers.fill_constant(shape=[], dtype="float32", value=1)
+            self.assertEqual(x4.shape, ())
 
             # The shape dtype of fill_constant_op must be int32 or int64.
             def test_shape_tensor_dtype():

@@ -73,12 +73,12 @@ class TestNestLayerHook(unittest.TestCase):
         if to_static:
             paddle.jit.save(net, self.path)
 
-        return out.numpy()[0]
+        return out.numpy().item()
 
     def load_train(self):
         net = paddle.jit.load(self.path)
         out = net(self.x)
-        return out.numpy()[0]
+        return out.numpy().item()
 
     def test_hook(self):
         dy_out = self.train_net(to_static=False)

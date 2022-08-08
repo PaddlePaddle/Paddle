@@ -274,6 +274,39 @@ class TestBceLossOpCase2(OpTest):
     def init_test_cast(self):
         self.shape = [2, 3, 20]
 
+class TestBceLossZeroDim(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.disable_static(paddle.CPUPlace())
+
+        input = paddle.rand([10]).astype('float32')
+        label = paddle.randint(0, 2, [10]).astype('float32')
+        loss = paddle.nn.functional.binary_cross_entropy(input, label)
+        loss.backward()
+        self.assertEqual(loss.shape, [])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[10])
+            label = fluid.data(name="label", shape=[10])
+            out = paddle.nn.functional.binary_cross_entropy(input, label)
+            fluid.backward.append_backward(out)
+
+            input_np = np.random.random([10]).astype('float32')
+            label_np = np.random.randint(0, 2, [10]).astype('float32')
+            exe = fluid.Executor()
+            result = exe.run(fluid.default_main_program(),
+                             feed={"input": input_np,
+                                   "label": label_np},
+                             fetch_list=[out])
+
+            self.assertEqual(result[0].shape, ())
+
+        paddle.disable_static()
 
 if __name__ == "__main__":
     paddle.enable_static()

@@ -515,7 +515,7 @@ class DyGraphTrainModel(object):
 
         self.clear_gradients()
 
-        return g_loss.numpy()[0], d_loss.numpy()[0]
+        return g_loss.numpy().item(), d_loss.numpy().item()
 
 
 class StaticGraphTrainModel(object):

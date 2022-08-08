@@ -54,7 +54,7 @@ TEST(DEV_API, mean) {
   auto out = phi::Mean<float>(dev_ctx, dense_x, dims, false);
 
   // 3. check result
-  ASSERT_EQ(out.dims().size(), 1);
+  ASSERT_EQ(out.dims().size(), 0);
   ASSERT_EQ(out.numel(), 1);
   ASSERT_EQ(out.meta().dtype, phi::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, phi::DataLayout::NCHW);

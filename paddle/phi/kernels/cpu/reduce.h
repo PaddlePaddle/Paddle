@@ -60,6 +60,7 @@ void ReduceFunctor(const DeviceContext& context,
   Functor functor;
 
   if (D == 1) {
+    // reduce 1D to 0D
     auto out = EigenScalar<T>::From(*output);
     functor(place, &x, &out, reduce_dim);
   } else {
@@ -216,11 +217,8 @@ void Reduce(const DeviceContext& dev_ctx,
   // no need to cast dtype
   if (out_dtype == phi::DataType::UNDEFINED || out_dtype == x.dtype()) {
     // do reduce sum
-    PD_VISIT_ALL_TYPES(
-        x.dtype(), "ReduceKernelImpl", ([&] {
-          phi::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
-              dev_ctx, x, out, dims, keep_dim, reduce_all);
-        }));
+    phi::ReduceKernelImpl<DeviceContext, T, T, Functor>(
+        dev_ctx, x, out, dims, keep_dim, reduce_all);
   } else {
     // cast x tensor to out_dtype
     auto tmp_tensor = phi::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
@@ -228,7 +226,7 @@ void Reduce(const DeviceContext& dev_ctx,
     // do reduce sum
     PD_VISIT_ALL_TYPES(
         out_dtype, "ReduceKernelImpl", ([&] {
-          phi::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
+          phi::ReduceKernelImpl<DeviceContext, data_t, data_t, Functor>(
               dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
         }));
   }

@@ -41,7 +41,7 @@ def dyfunc_empty_nonlocal(x):
 
 
 def dyfunc_with_if_else(x_v, label=None):
-    if paddle.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).item() > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -286,7 +286,7 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
 
 def if_with_and_or(x_v, label=None):
     batch_size = fluid.layers.shape(x_v)
-    if x_v is not None and (paddle.mean(x_v).numpy()[0] > 0 or label
+    if x_v is not None and (paddle.mean(x_v).item() > 0 or label
                             is not None) and batch_size[0] > 1 and True:
         x_v = x_v - 1
     else:

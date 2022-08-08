@@ -86,7 +86,7 @@ def train(to_static, build_strategy=None):
             scaler.minimize(optimizer, scaled)
             resnet.clear_gradients()
 
-            loss_data.append(avg_loss.numpy()[0])
+            loss_data.append(avg_loss.numpy().item())
             total_loss += avg_loss
             total_acc1 += acc_top1
             total_acc5 += acc_top5

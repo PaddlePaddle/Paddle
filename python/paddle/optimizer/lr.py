@@ -150,11 +150,9 @@ class LRScheduler(object):
                 continue
             value = self.__dict__[key]
             if isinstance(value, Tensor):
-                assert value.shape == [
-                    1
-                ], "shape of Tensor in state_dict must be [1] {}".format(
+                assert value.shape == [], "shape of Tensor in state_dict must be [], but it is {}".format(
                     value.shape)
-                value = value.numpy()[0]
+                value = value.item()
             state_dict[key] = value
 
         return state_dict
@@ -1367,8 +1365,7 @@ class ReduceOnPlateau(LRScheduler):
             tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
         if isinstance(metrics, (tmp, numpy.ndarray)):
-            assert len(metrics.shape) == 1 and metrics.shape[0] == 1, "the metrics.shape " \
-                                                                      "should be (1L,), but the current metrics.shape is {}. Maybe that " \
+            assert metrics.shape == [], "the metrics.shape should be (), but the current metrics.shape is {}. Maybe that " \
                                                                       "you should call paddle.mean to process it first.".format(
                 metrics.shape)
         elif not isinstance(metrics,

@@ -1500,6 +1500,20 @@ void LogsumexpInferMeta(const MetaTensor& input,
                         bool keepdim,
                         bool reduce_all,
                         MetaTensor* out) {
+  /*
+  auto input_rank = input.dims().size();
+  // only supoort 0~4D, due to eigen template compile slow
+  PADDLE_ENFORCE_LE(input_rank,
+                    4,
+                    errors::InvalidArgument(
+                        "The input tensor X's dimensions of logsumexp "
+                        "should be less or equal than 4. But received X's "
+                        "dimensions = %d.",
+                        input_rank));
+
+  ReduceInferMetaBase(input, axis, keepdim, reduce_all, out);
+  */
+
   auto x_dims = input.dims();
   auto x_rank = x_dims.size();
   std::vector<int64_t> formated_axis = axis;
@@ -1578,6 +1592,7 @@ void LogsumexpInferMeta(const MetaTensor& input,
     }
   }
   out->set_dtype(input.dtype());
+
 }
 
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
@@ -1787,7 +1802,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
 }
 
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(phi::make_ddim({1}));
+  out->set_dims(phi::make_ddim({}));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
 }
@@ -2518,6 +2533,14 @@ DDim ReduceInferDim(const MetaTensor& x,
                     bool reduce_all) {
   auto x_rank = x.dims().size();
 
+  /*
+  PADDLE_ENFORCE_LE(
+      axis.size(),
+      x_rank,
+      errors::InvalidArgument("The number of reduce dim must be less than or "
+                              "eaqul to dimensions of x"));
+  */
+
   std::vector<int64_t> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); ++i) {
     PADDLE_ENFORCE_LT(axis[i],
@@ -2554,7 +2577,7 @@ DDim ReduceInferDim(const MetaTensor& x,
   }
   reduce_all = reduce_all || full_dim;
 
-  std::vector<int64_t> out_dim_vector;
+  std::vector<int64_t> out_dim_vector({});
   if (keep_dim) {
     for (int64_t i = 0; i < x.dims().size(); ++i) {
       if (reduce_all || dims_set.find(i) != dims_set.end()) {
@@ -2571,11 +2594,8 @@ DDim ReduceInferDim(const MetaTensor& x,
         out_dim_vector.push_back(x.dims().at(i));
       }
     }
-
-    if (out_dim_vector.size() == 0) {
-      out_dim_vector.push_back(1);
-    }
   }
+  // VLOG(0) << "out_dim_vector.size: " << out_dim_vector.size();
   DDim out_dim = phi::make_ddim(out_dim_vector);
 
   return out_dim;

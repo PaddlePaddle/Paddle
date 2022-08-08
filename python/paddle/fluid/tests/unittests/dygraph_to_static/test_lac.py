@@ -508,7 +508,7 @@ class TestLACModel(unittest.TestCase):
                     words, targets, length = batch
                     start_time = time.time()
                     avg_cost, crf_decode = model(words, targets, length)
-                    loss_data.append(avg_cost.numpy()[0])
+                    loss_data.append(avg_cost.item())
 
                     # backward and optimization
                     avg_cost.backward()

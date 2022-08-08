@@ -62,7 +62,7 @@ class TestRad2degAPI2(TestRad2degAPI):
 
     def setUp(self):
         self.x_np = np.pi / 2
-        self.x_shape = [1]
+        self.x_shape = []
         self.out_np = 90
         self.x_dtype = 'float32'
 
@@ -80,7 +80,7 @@ class TestRad2degAPI3(TestRad2degAPI):
     # Test input data type is int
     def setUp(self):
         self.x_np = 1
-        self.x_shape = [1]
+        self.x_shape = []
         self.out_np = 180 / np.pi
         self.x_dtype = 'int64'
 

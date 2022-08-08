@@ -55,7 +55,7 @@ TEST(DEV_API, sum) {
       phi::Sum<float>(dev_ctx, dense_x, axis, phi::DataType::FLOAT32, false);
 
   // 3. check result
-  ASSERT_EQ(out.dims().size(), 1);
+  ASSERT_EQ(out.dims().size(), 0);
   ASSERT_EQ(out.numel(), 1);
   ASSERT_EQ(out.meta().dtype, phi::DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, phi::DataLayout::NCHW);

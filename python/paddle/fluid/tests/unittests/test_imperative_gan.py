@@ -27,6 +27,7 @@ from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.framework import _test_eager_guard
 
+paddle.enable_static()
 
 class Discriminator(fluid.Layer):
 
@@ -95,10 +96,12 @@ class TestDygraphGAN(unittest.TestCase):
                     label=fluid.layers.fill_constant(shape=[2, 1],
                                                      dtype='float32',
                                                      value=0.0)))
-
+            print(d_loss_real)
+            print(d_loss_fake)
             d_loss = d_loss_real + d_loss_fake
 
             sgd = SGDOptimizer(learning_rate=1e-3)
+            print(d_loss)
             sgd.minimize(d_loss)
 
         with new_program_scope(main=generate_p, startup=startup, scope=scope):

@@ -346,7 +346,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             return data
 
         if np.isscalar(data) and not isinstance(data, str):
-            data = np.array([data])
+            data = np.array(data)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
             if data.dtype == np.object_:

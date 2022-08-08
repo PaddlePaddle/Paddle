@@ -32,12 +32,12 @@ class TestFunctionalL1Loss(unittest.TestCase):
         dy_result = paddle.nn.functional.l1_loss(input, label)
         expected = np.mean(np.abs(self.input_np - self.label_np))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
-        self.assertTrue(dy_result.shape, [1])
+        self.assertEqual(dy_result.shape, [])
 
         dy_result = paddle.nn.functional.l1_loss(input, label, reduction='sum')
         expected = np.sum(np.abs(self.input_np - self.label_np))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
-        self.assertTrue(dy_result.shape, [1])
+        self.assertEqual(dy_result.shape, [])
 
         dy_result = paddle.nn.functional.l1_loss(input, label, reduction='none')
         expected = np.abs(self.input_np - self.label_np)
@@ -123,13 +123,13 @@ class TestClassL1Loss(unittest.TestCase):
         dy_result = l1_loss(input, label)
         expected = np.mean(np.abs(self.input_np - self.label_np))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
-        self.assertTrue(dy_result.shape, [1])
+        self.assertEqual(dy_result.shape, [])
 
         l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
         dy_result = l1_loss(input, label)
         expected = np.sum(np.abs(self.input_np - self.label_np))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
-        self.assertTrue(dy_result.shape, [1])
+        self.assertEqual(dy_result.shape, [])
 
         l1_loss = paddle.nn.loss.L1Loss(reduction='none')
         dy_result = l1_loss(input, label)
@@ -196,6 +196,41 @@ class TestClassL1Loss(unittest.TestCase):
             loss = paddle.nn.loss.L1Loss(reduction="reduce_mean")
 
         self.assertRaises(ValueError, test_value_error)
+
+
+class TestL1LossZeroDim(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.disable_static()
+
+        input = paddle.rand([10])
+        label = paddle.rand([10])
+        loss = paddle.nn.functional.l1_loss(input, label)
+        loss.backward()
+        self.assertEqual(loss.shape, [])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[10])
+            label = fluid.data(name="label", shape=[10])
+            out = paddle.nn.functional.l1_loss(input, label)
+            fluid.backward.append_backward(out)
+
+            input_np = np.random.random([10]).astype('float32')
+            label_np = np.random.random([10]).astype('float32')
+            exe = fluid.Executor()
+            result = exe.run(fluid.default_main_program(),
+                             feed={
+                                 "input": input_np,
+                                 "label": label_np
+                             },
+                             fetch_list=[out])
+
+            self.assertEqual(result[0].shape, ())
 
 
 if __name__ == "__main__":

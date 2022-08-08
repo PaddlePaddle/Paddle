@@ -62,7 +62,7 @@ class TestDeg2radAPI2(TestDeg2radAPI):
     # Test input data type is int
     def setUp(self):
         self.x_np = 180
-        self.x_shape = [1]
+        self.x_shape = []
         self.out_np = np.pi
         self.x_dtype = 'int64'
 

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 from op_test import OpTest, randomize_probability
 import paddle.fluid as fluid
@@ -403,6 +404,41 @@ class TestCrossEntropyOpError(unittest.TestCase):
                 fluid.layers.cross_entropy(x2, lab2)
 
             self.assertRaises(TypeError, test_dtype)
+
+
+class TestCrossEntropyZeroDim(object):
+
+    def test_dygraph(self):
+        paddle.disable_static()
+
+        input = paddle.rand([5, 10])
+        label = paddle.randint(0, 10, [5])
+        loss = paddle.nn.functional.cross_entropy(input, label)
+        loss.backward()
+        self.assertEqual(loss.shape, [])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[5, 10])
+            label = fluid.data(name="label", shape=[5])
+            out = paddle.nn.functional.cross_entropy(input, label)
+            fluid.backward.append_backward(out)
+
+            input_np = np.random.random([5, 10]).astype('float32')
+            label_np = np.random.randint(0, 10, [5])
+            exe = fluid.Executor()
+            result = exe.run(fluid.default_main_program(),
+                             feed={"input": input_np,
+                                   "label": label_np},
+                             fetch_list=[out])
+
+            self.assertEqual(result[0].shape, ())
+
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

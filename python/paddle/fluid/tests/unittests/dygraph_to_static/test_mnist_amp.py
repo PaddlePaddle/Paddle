@@ -75,7 +75,7 @@ class TestAMP(TestMNIST):
                 scaled.backward()
                 scaler.minimize(adam, scaled)
 
-                loss_data.append(avg_loss.numpy()[0])
+                loss_data.append(avg_loss.numpy().item())
                 # save checkpoint
                 mnist.clear_gradients()
                 if batch_id % 10 == 0:

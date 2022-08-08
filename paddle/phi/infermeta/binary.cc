@@ -156,7 +156,7 @@ void KLDivInferMeta(const MetaTensor& x,
   if ("none" == reduction) {
     out->set_dims(dim_x);
   } else {
-    out->set_dims({1});
+    out->set_dims({});
   }
   out->set_dtype(x.dtype());
 }

@@ -69,7 +69,7 @@ class TestDynamicRNN(unittest.TestCase):
                 loss_i = numpy.array(fetch_outs[0])
             #print(loss_i)
 
-            self.assertEqual((1, ), loss_i.shape)
+            self.assertEqual((), loss_i.shape)
             self.assertFalse(numpy.isnan(loss_i))
             if iter_id == 0:
                 loss_0 = loss_i

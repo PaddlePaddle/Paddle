@@ -50,7 +50,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         dy_result = paddle.nn.functional.hinge_embedding_loss(input, label)
         expected = calc_hinge_embedding_loss(self.input_np, self.label_np)
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
-        self.assertTrue(dy_result.shape, [1])
+        self.assertTrue(dy_result.shape, [])
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(input,
                                                               label,
@@ -59,7 +59,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
                                              self.label_np,
                                              reduction='sum')
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
-        self.assertTrue(dy_result.shape, [1])
+        self.assertTrue(dy_result.shape, [])
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(input,
                                                               label,
@@ -130,7 +130,7 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         dy_result = hinge_embedding_loss(input, label)
         expected = calc_hinge_embedding_loss(self.input_np, self.label_np)
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
-        self.assertTrue(dy_result.shape, [1])
+        self.assertTrue(dy_result.shape, [])
 
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
             reduction='sum')
@@ -139,7 +139,7 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
                                              self.label_np,
                                              reduction='sum')
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
-        self.assertTrue(dy_result.shape, [1])
+        self.assertTrue(dy_result.shape, [])
 
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
             reduction='none')

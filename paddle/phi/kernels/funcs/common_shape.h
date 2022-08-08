@@ -45,26 +45,28 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
       phi::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis,
+  PADDLE_ENFORCE_LE(axis,
                     max_dim,
                     phi::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim,
                         axis));
   if (x_dims.size() > y_dims.size()) {
+    std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array);
+
     std::fill(y_dims_array, y_dims_array + axis, 1);
     if (axis + y_dims.size() < max_dim) {
       std::fill(y_dims_array + axis + y_dims.size(), y_dims_array + max_dim, 1);
     }
-    std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array);
     std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array + axis);
   } else {
+    std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
+
     std::fill(x_dims_array, x_dims_array + axis, 1);
     if (axis + x_dims.size() < max_dim) {
       std::fill(x_dims_array + axis + x_dims.size(), x_dims_array + max_dim, 1);
     }
     std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array + axis);
-    std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
   }
 
   for (int i = 0; i < max_dim; i++) {

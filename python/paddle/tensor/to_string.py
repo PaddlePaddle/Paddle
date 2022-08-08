@@ -172,8 +172,6 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
     linewidth = DEFAULT_PRINT_OPTIONS.linewidth
 
     if len(var.shape) == 0:
-        # currently, shape = [], i.e., scaler tensor is not supported.
-        # If it is supported, it should be formatted like this.
         return _format_item(var, max_width, signed)
     elif len(var.shape) == 1:
         item_length = max_width + 2

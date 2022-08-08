@@ -69,7 +69,7 @@ class TestFetchLoDTensorArray(unittest.TestCase):
                                       feed=feed_dict,
                                       fetch_list=[loss, array],
                                       return_merged=False)
-            self.assertEqual(np.array(loss_v).shape, (device_num, 1))
+            self.assertEqual(np.array(loss_v).shape, (device_num, ))
             self.assertEqual(
                 np.array(array_v[0][0]).shape, (batch_size / device_num, 784))
             self.assertEqual(

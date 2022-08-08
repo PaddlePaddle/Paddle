@@ -215,7 +215,7 @@ class TestMNISTWithToStatic(TestMNIST):
                     avg_loss.backward()
 
                     adam.minimize(avg_loss)
-                    loss_data.append(avg_loss.numpy()[0])
+                    loss_data.append(avg_loss.numpy())
                     # save checkpoint
                     mnist.clear_gradients()
                     if batch_id % 10 == 0:
@@ -228,7 +228,7 @@ class TestMNISTWithToStatic(TestMNIST):
                     if batch_id == 50:
                         mnist.eval()
                         prediction, acc, avg_loss = mnist(img, label)
-                        loss_data.append(avg_loss.numpy()[0])
+                        loss_data.append(avg_loss.numpy().item())
                         # new save load check
                         self.check_jit_save_load(mnist, [dy_x_data], [img],
                                                  to_static, prediction)

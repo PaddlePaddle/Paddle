@@ -90,7 +90,7 @@ class TestFetchUnmerged(unittest.TestCase):
                                            feed=feeder.feed(data),
                                            fetch_list=[loss, prediction],
                                            return_merged=False)
-            self.assertEqual(np.array(loss_v).shape, (device_num, 1))
+            self.assertEqual(np.array(loss_v).shape, (device_num, ))
             self.assertEqual(
                 np.array(prediction_v).shape,
                 (device_num, batch_size / device_num, 10))
