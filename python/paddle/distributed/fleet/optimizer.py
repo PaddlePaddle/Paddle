@@ -62,25 +62,24 @@ class Optimizer(object):
         self.user_defined_optimizer = optimizer
 
         if strategy is not None:
-            if self.fleet._is_collective:
+            if fleet._is_collective:
                 warnings.warn(
                     "It is recommended to use DistributedStrategy "
                     "in fleet.init(). The strategy here is only for compatibility. "
                     "If the strategy in fleet.distributed_optimizer() is "
                     "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
                     "which will take effect in distributed training.")
-            self.fleet._user_defined_strategy = copy.deepcopy(strategy)
+            fleet._user_defined_strategy = copy.deepcopy(strategy)
 
-        self.fleet._context = {}
+        fleet._context = {}
 
-        if self.fleet.worker_num() > 1:
-            if self.fleet._user_defined_strategy.heter_ccl_mode == False:
-                return HybridParallelOptimizer(
-                    optimizer, self.fleet._hcg,
-                    self.fleet._user_defined_strategy)
+        if fleet.worker_num() > 1:
+            if fleet._user_defined_strategy.heter_ccl_mode == False:
+                return HybridParallelOptimizer(optimizer, fleet._hcg,
+                                               fleet._user_defined_strategy)
             else:
                 return HeterParallelOptimizer(optimizer,
-                                              self.fleet._user_defined_strategy)
+                                              fleet._user_defined_strategy)
         else:
             return optimizer
 
