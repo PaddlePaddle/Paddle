@@ -23,6 +23,7 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
+#include <random>
 #include <sstream>
 #include <string>
 #include <thread>  // NOLINT
@@ -42,6 +43,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
 #if defined(PADDLE_WITH_CUDA)
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
@@ -56,6 +58,8 @@ namespace framework {
 class DataFeedDesc;
 class Scope;
 class Variable;
+class NeighborSampleResult;
+class NodeQueryResult;
 }  // namespace framework
 }  // namespace paddle
 
@@ -420,7 +424,6 @@ struct UsedSlotGpuType {
 };
 
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-#define CUDA_CHECK(val) CHECK(val == gpuSuccess)
 template <typename T>
 struct CudaBuffer {
   T* cu_buffer;
@@ -776,6 +779,202 @@ class DLManager {
   std::map<std::string, DLHandle> handle_map_;
 };
 
+struct engine_wrapper_t {
+  std::default_random_engine engine;
+#if !defined(_WIN32)
+  engine_wrapper_t() {
+    struct timespec tp;
+    clock_gettime(CLOCK_REALTIME, &tp);
+    double cur_time = tp.tv_sec + tp.tv_nsec * 1e-9;
+    static std::atomic<uint64_t> x(0);
+    std::seed_seq sseq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
+    engine.seed(sseq);
+  }
+#endif
+};
+
+struct BufState {
+  int left;
+  int right;
+  int central_word;
+  int step;
+  engine_wrapper_t random_engine_;
+
+  int len;
+  int cursor;
+  int row_num;
+
+  int batch_size;
+  int walk_len;
+  std::vector<int>* window;
+
+  BufState() {}
+  ~BufState() {}
+
+  void Init(int graph_batch_size,
+            int graph_walk_len,
+            std::vector<int>* graph_window) {
+    batch_size = graph_batch_size;
+    walk_len = graph_walk_len;
+    window = graph_window;
+
+    left = 0;
+    right = window->size() - 1;
+    central_word = -1;
+    step = -1;
+
+    len = 0;
+    cursor = 0;
+    row_num = 0;
+    for (size_t i = 0; i < graph_window->size(); i++) {
+      VLOG(2) << "graph_window[" << i << "] = " << (*graph_window)[i];
+    }
+  }
+
+  void Reset(int total_rows) {
+    cursor = 0;
+    row_num = total_rows;
+    int tmp_len = cursor + batch_size > row_num ? row_num - cursor : batch_size;
+    len = tmp_len;
+    central_word = -1;
+    step = -1;
+    GetNextCentrolWord();
+  }
+
+  int GetNextStep() {
+    step++;
+    if (step <= right && central_word + (*window)[step] < walk_len) {
+      return 1;
+    }
+    return 0;
+  }
+
+  void Debug() {
+    VLOG(2) << "left: " << left << " right: " << right
+            << " central_word: " << central_word << " step: " << step
+            << " cursor: " << cursor << " len: " << len
+            << " row_num: " << row_num;
+  }
+
+  int GetNextCentrolWord() {
+    if (++central_word >= walk_len) {
+      return 0;
+    }
+    int window_size = window->size() / 2;
+    int random_window = random_engine_.engine() % window_size + 1;
+    left = window_size - random_window;
+    right = window_size + random_window - 1;
+    VLOG(2) << "random window: " << random_window << " window[" << left
+            << "] = " << (*window)[left] << " window[" << right
+            << "] = " << (*window)[right];
+
+    for (step = left; step <= right; step++) {
+      if (central_word + (*window)[step] >= 0) {
+        return 1;
+      }
+    }
+    return 0;
+  }
+
+  int GetNextBatch() {
+    cursor += len;
+    int tmp_len = cursor + batch_size > row_num ? row_num - cursor : batch_size;
+    if (tmp_len == 0) {
+      return 0;
+    }
+    len = tmp_len;
+    central_word = -1;
+    step = -1;
+    GetNextCentrolWord();
+    return tmp_len != 0;
+  }
+};
+
+class GraphDataGenerator {
+ public:
+  GraphDataGenerator(){};
+  virtual ~GraphDataGenerator(){};
+  void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc);
+  void AllocResource(const paddle::platform::Place& place,
+                     std::vector<LoDTensor*> feed_vec);
+  int AcquireInstance(BufState* state);
+  int GenerateBatch();
+  int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
+  int FillFeatureBuf(uint64_t* d_walk, uint64_t* d_feature, size_t key_num);
+  int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
+                     std::shared_ptr<phi::Allocation> d_feature);
+  void FillOneStep(uint64_t* start_ids,
+                   uint64_t* walk,
+                   int len,
+                   NeighborSampleResult& sample_res,
+                   int cur_degree,
+                   int step,
+                   int* len_per_row);
+  int FillInsBuf();
+  void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
+    type_to_index_[type] = h_device_keys_.size();
+    h_device_keys_.push_back(device_keys);
+  }
+
+ protected:
+  int walk_degree_;
+  int walk_len_;
+  int window_;
+  int once_sample_startid_len_;
+  int gpuid_;
+  // start ids
+  // int64_t* device_keys_;
+  // size_t device_key_size_;
+  std::vector<std::vector<uint64_t>*> h_device_keys_;
+  std::unordered_map<int, int> type_to_index_;
+  // point to device_keys_
+  size_t cursor_;
+  size_t jump_rows_;
+  int64_t* id_tensor_ptr_;
+  int64_t* show_tensor_ptr_;
+  int64_t* clk_tensor_ptr_;
+  cudaStream_t stream_;
+  paddle::platform::Place place_;
+  std::vector<LoDTensor*> feed_vec_;
+  std::vector<size_t> offset_;
+  std::shared_ptr<phi::Allocation> d_prefix_sum_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_device_keys_;
+
+  std::shared_ptr<phi::Allocation> d_walk_;
+  std::shared_ptr<phi::Allocation> d_feature_;
+  std::shared_ptr<phi::Allocation> d_len_per_row_;
+  std::shared_ptr<phi::Allocation> d_random_row_;
+  //
+  std::vector<std::shared_ptr<phi::Allocation>> d_sampleidx2rows_;
+  int cur_sampleidx2row_;
+  // record the keys to call graph_neighbor_sample
+  std::shared_ptr<phi::Allocation> d_sample_keys_;
+  int sample_keys_len_;
+
+  std::set<int> finish_node_type_;
+  std::unordered_map<int, size_t> node_type_start_;
+  std::vector<int> infer_node_type_start_;
+
+  std::shared_ptr<phi::Allocation> d_ins_buf_;
+  std::shared_ptr<phi::Allocation> d_feature_buf_;
+  std::shared_ptr<phi::Allocation> d_pair_num_;
+  std::shared_ptr<phi::Allocation> d_slot_tensor_ptr_;
+  std::shared_ptr<phi::Allocation> d_slot_lod_tensor_ptr_;
+  int ins_buf_pair_len_;
+  // size of a d_walk buf
+  size_t buf_size_;
+  int repeat_time_;
+  std::vector<int> window_step_;
+  BufState buf_state_;
+  int batch_size_;
+  int slot_num_;
+  int shuffle_seed_;
+  int debug_mode_;
+  std::vector<int> first_node_type_;
+  std::vector<std::vector<int>> meta_path_;
+  bool gpu_graph_training_;
+};
+
 class DataFeed {
  public:
   DataFeed() {
@@ -838,6 +1037,14 @@ class DataFeed {
   virtual void SetParseLogKey(bool parse_logkey) {}
   virtual void SetEnablePvMerge(bool enable_pv_merge) {}
   virtual void SetCurrentPhase(int current_phase) {}
+  virtual void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    gpu_graph_data_generator_.SetDeviceKeys(device_keys, type);
+#endif
+  }
+  virtual void SetGpuGraphMode(int gpu_graph_mode) {
+    gpu_graph_mode_ = gpu_graph_mode;
+  }
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
@@ -921,6 +1128,10 @@ class DataFeed {
 
   // The input type of pipe reader, 0 for one sample, 1 for one batch
   int input_type_;
+  int gpu_graph_mode_ = 0;
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  GraphDataGenerator gpu_graph_data_generator_;
+#endif
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.

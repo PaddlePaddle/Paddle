@@ -29,7 +29,7 @@ from .layer_function_generator import _generate_doc_string_, generate_activation
 
 import paddle
 from ..static import Variable
-from ..framework import core, in_dygraph_mode, _non_static_mode, LayerHelper
+from ..framework import core, in_dygraph_mode, _non_static_mode, LayerHelper, _in_legacy_dygraph
 from ..fluid.framework import _in_legacy_dygraph
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
@@ -288,7 +288,6 @@ def multiplex(inputs, index, name=None):
     Examples:
 
         .. code-block:: python
-            :name: code-example1
 
             import paddle
             
@@ -493,17 +492,55 @@ def _elementwise_op(helper):
 
 def add(x, y, name=None):
     """
+    Elementwise Add Operator.
+    Add two tensors element-wise
+    The equation is:
+
+    ..  math::
+
+        Out=X+Y
+
+        X : a tensor of any dimension.
+        Y: a tensor whose dimensions must be less than or equal to the dimensions of X.
+
+    There are two cases for this operator:
+    1. The shape of Y is the same with X.
+    2. The shape of Y is a continuous subsequence of X.
+    For case 2:
+    1. Broadcast Y to match the shape of X, where axis is the start dimension index for broadcasting Y onto X.
+    2. If axis is -1 (default), axis=rank(X)−rank(Y).
+    3. The trailing dimensions of size 1 for Y will be ignored for the consideration of subsequence, such as shape(Y) = (2, 1) => (2).
+
+        For example:
+
+        ..  code-block:: python
+
+            shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+            shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+
+    Args:
+        x (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
+        y (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
+        with_quant_attr (BOOLEAN) – Whether the operator has attributes used by quantization.
+        name (string, optional) – Name of the output. Default is None. It’s used to print debug info for developers. Details: :ref:`api_guide_Name`
+
+    Returns:
+        N-dimension tensor. A location into which the result is stored. It’s dimension equals with x
+
     Examples:
 
-    ..  code-block:: python
+        ..  code-block:: python
 
-        import paddle
+            import paddle
 
-        x = paddle.to_tensor([2, 3, 4], 'float64')
-        y = paddle.to_tensor([1, 5, 2], 'float64')
-        z = paddle.add(x, y)
-        print(z)  # [3., 8., 6. ]
-
+            x = paddle.to_tensor([2, 3, 4], 'float64')
+            y = paddle.to_tensor([1, 5, 2], 'float64')
+            z = paddle.add(x, y)
+            print(z)  # [3., 8., 6. ]
     """
 
     if in_dygraph_mode():
@@ -1338,7 +1375,6 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
     Examples:
 
         .. code-block:: python
-            :name: count_nonzero-example
 
             import paddle
             # x is a 2-D Tensor:
@@ -1430,7 +1466,7 @@ def add_n(inputs, name=None):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
 
             input0 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
@@ -1761,7 +1797,10 @@ def renorm(x, p, axis, max_norm):
         if not axis >= -1 * len(input_shape):
             raise ValueError("the axis:{} should not be less than -1 * length of input_shape:{}".format(axis,-1 * len(input_shape)))
         axis = axis + len(input_shape)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_renorm(x, p, axis, max_norm)
+        return out
+    elif _in_legacy_dygraph():
         out = _C_ops.renorm(x, 'p',p, 'axis',axis, 'max_norm', max_norm)
         return out
 
@@ -2334,7 +2373,11 @@ def amax(x, axis=None, keepdim=False, name=None):
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_amax(x,  axis,  keepdim)
+    if _in_legacy_dygraph():
         return _C_ops.reduce_amax(x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all)
 
     helper = LayerHelper('amax', **locals())
@@ -2446,9 +2489,12 @@ def amin(x, axis=None, keepdim=False, name=None):
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_amin(x, axis, keepdim)
+    elif _in_legacy_dygraph():
         return _C_ops.reduce_amin(x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all)
-
     helper = LayerHelper('amin', **locals())
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'amin')
@@ -3982,7 +4028,7 @@ def lerp(x, y, weight, name=None):
             y = paddle.empty([4], dtype='float32')
             y.fill_(10.)
             out = paddle.lerp(x, y, 0.5)
-            # out: [5.5., 6., 6.5, 7.]
+            # out: [5.5, 6., 6.5, 7.]
 
     """
     if in_dygraph_mode():
@@ -4581,7 +4627,6 @@ def heaviside(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            :name: heaviside-example
 
             import paddle
             x = paddle.to_tensor([-0.5, 0, 0.5])
@@ -4614,7 +4659,7 @@ def frac(x, name=None):
         Tensor: The output Tensor of frac.
 
     Examples:
-        .. code-block:: Python
+        .. code-block:: python
 
             import paddle
             import numpy as np

@@ -301,14 +301,10 @@ bool IsGPUManagedMemorySupported(int dev_id) {
                                    "but received id is: %d. GPU count is: %d.",
                                    dev_id,
                                    GetGPUDeviceCount()));
-#if defined(__linux__) || defined(_WIN32)
-  int ManagedMemoryAttr;
-  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
-      &ManagedMemoryAttr, hipDeviceAttributeManagedMemory, dev_id));
-  return ManagedMemoryAttr != 0;
-#else
+  // TODO(qili93): Hygon DTK (21.04 and 22.04) not support
+  // hipDeviceAttributeManagedMemory, temporary disable by default, to be
+  // verified in next DTK release
   return false;
-#endif
 }
 
 bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {

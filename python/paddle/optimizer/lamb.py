@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
 from paddle import _C_ops
 from paddle.fluid.executor import global_scope
+import paddle
 
 __all__ = []
 
@@ -266,6 +267,13 @@ class Lamb(Optimizer):
             master_weight = None
         found_inf = self._get_auxiliary_var('found_inf')
 
+        if framework.in_dygraph_mode():
+            _C_ops.final_state_lamb_(param_and_grad[0], param_and_grad[1], lr,
+                                     moment1, moment2, beta1_pow_acc,
+                                     beta2_pow_acc, master_weight, found_inf,
+                                     weight_decay, self._beta1, self._beta2,
+                                     self._epsilon, find_master)
+            return None
         if framework._non_static_mode():
             _C_ops.lamb(param_and_grad[0], param_and_grad[1], lr, moment1,
                         moment2, beta1_pow_acc, beta2_pow_acc, master_weight,

@@ -65,8 +65,7 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
 }  // namespace
 
 template <typename T>
-class SGDOpKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");

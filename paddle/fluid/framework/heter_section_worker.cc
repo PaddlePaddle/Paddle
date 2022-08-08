@@ -48,8 +48,7 @@ void SetMicroId(paddle::framework::Scope* scope,
     char* temp_ptr = temp.data();
     float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
     temp_ptr_float[0] = micro_id;
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(*dev_ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(*dev_ctx).stream();
     memory::Copy(
         place,
         tensor_data,

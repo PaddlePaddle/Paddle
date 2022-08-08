@@ -83,26 +83,27 @@ if(WITH_GPU)
     windows_symbolic(tensor_util SRCS tensor_util.cu)
     nv_library(
       tensor
-      SRCS tensor.cc .tensor_util.cu
+      SRCS .tensor_util.cu
       DEPS place memory data_type device_context dense_tensor)
     add_dependencies(tensor tensor_util)
   else()
     nv_library(
       tensor
-      SRCS tensor.cc tensor_util.cu
-      DEPS place memory data_type device_context profiler dense_tensor)
+      SRCS tensor_util.cu
+      DEPS place memory data_type device_context dense_tensor)
   endif()
 elseif(WITH_ROCM)
   hip_library(
     tensor
-    SRCS tensor.cc tensor_util.cu
-    DEPS place memory data_type device_context profiler dense_tensor)
+    SRCS tensor_util.cu
+    DEPS place memory data_type device_context dense_tensor)
 else()
   cc_library(
     tensor
-    SRCS tensor.cc tensor_util.cc
-    DEPS place memory data_type device_context profiler dense_tensor)
+    SRCS tensor_util.cc
+    DEPS place memory data_type device_context dense_tensor)
 endif()
+# target_link(tensor profiler)
 
 cc_test(
   tensor_test
@@ -740,6 +741,19 @@ if(WITH_DISTRIBUTE)
     set_source_files_properties(
       heterxpu_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   elseif(WITH_PSCORE)
+    # cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
+    #         dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+    #         heterxpu_trainer.cc heter_pipeline_trainer.cc
+    #         data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
+    #         downpour_worker.cc downpour_lite_worker.cc downpour_worker_opt.cc data_feed.cu
+    #         pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+    #         device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
+    #         index_sampler index_wrapper sampler index_dataset_proto
+    #         lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
+    #         graph_to_program_pass variable_helper timer monitor
+    #         heter_service_proto fleet heter_server brpc fleet_executor
+    #         graph_gpu_wrapper)
+
     cc_library(
       executor
       SRCS executor.cc
@@ -1001,21 +1015,41 @@ cc_library(
   DEPS parallel_executor)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
-  cc_test(
-    dist_multi_trainer_test
-    SRCS dist_multi_trainer_test.cc
-    DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS})
-  cc_test(
-    heter_pipeline_trainer_test
-    SRCS heter_pipeline_trainer_test.cc
-    DEPS conditional_block_op
-         scale_op
-         heter_listen_and_serv_op
-         executor
-         heter_server
-         gloo_wrapper
-         eigen_function
-         ${RPC_DEPS})
+  if(WITH_HETERPS)
+    cc_test(
+      dist_multi_trainer_test
+      SRCS dist_multi_trainer_test.cc
+      DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS}
+           graph_gpu_wrapper)
+    cc_test(
+      heter_pipeline_trainer_test
+      SRCS heter_pipeline_trainer_test.cc
+      DEPS conditional_block_op
+           scale_op
+           heter_listen_and_serv_op
+           executor
+           heter_server
+           gloo_wrapper
+           eigen_function
+           ${RPC_DEPS}
+           graph_gpu_wrapper)
+  else()
+    cc_test(
+      dist_multi_trainer_test
+      SRCS dist_multi_trainer_test.cc
+      DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS})
+    cc_test(
+      heter_pipeline_trainer_test
+      SRCS heter_pipeline_trainer_test.cc
+      DEPS conditional_block_op
+           scale_op
+           heter_listen_and_serv_op
+           executor
+           heter_server
+           gloo_wrapper
+           eigen_function
+           ${RPC_DEPS})
+  endif()
 else()
   cc_test(
     dist_multi_trainer_test
@@ -1133,9 +1167,6 @@ cc_library(
        phi_tensor
        op_meta_info
        phi_api)
-
-#cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
-#cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc
