@@ -60,7 +60,7 @@ ENDIF()
 
 SET(XPU_XRE_URL  "${XPU_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
 set(XPU_XCCL_URL
-      "https://klx-sdk-release-public.su.bcebos.com/xccl/release/1.0.1/${XPU_XCCL_DIR_NAME}.tar.gz"
+      "https://klx-sdk-release-public.su.bcebos.com/xccl/release/1.0.3/${XPU_XCCL_DIR_NAME}.tar.gz"
       CACHE STRING "" FORCE)
 SET(XPU_PACK_DEPENCE_URL "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh" CACHE STRING "" FORCE)
 

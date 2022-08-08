@@ -350,7 +350,7 @@ void PSGPUTrainer::Run() {
     all_chan_data[i] = &vec_data;
     VLOG(0) << "PSGPUTrainer Run: dataset multi_chan:" << i << ", size:" << vec_data.size();
   }
-  ps_gpu_wrapper->build_batch_fid_seq(all_chan_data, slot_is_dense);
+  ps_gpu_wrapper->build_batch_fidseq(all_chan_data, slot_is_dense);
 #endif
 #endif
 

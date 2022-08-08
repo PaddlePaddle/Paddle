@@ -791,7 +791,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   int batch_size = data_readers[0]->GetDefaultBatchSize();
   VLOG(0) << "BuildGPUTask: batchsize:" << batch_size
           << " device_num:" << device_num;
-  cache_manager->init(12, batch_size, device_num);
+  cache_manager->init(24, batch_size, device_num);
 
   VLOG(0) << "BuildGPUTask: build_sign2fids";
   for (int i = 0; i < device_num; i++) {
@@ -988,18 +988,29 @@ void PSGPUWrapper::EndPass() {
   gpu_free_channel_->Put(current_task_);
   timer.Pause();
   VLOG(0) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
+
+#if defined(PADDLE_WITH_XPU_KP)
+  if (FLAGS_dump_cache_manager) {
+    auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
+    auto name = cache_manager->dump_to_file();
+    VLOG(0) << "dump cache manager data to " << name;
+  }
+#endif
 }
 
 #if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
-void PSGPUWrapper::build_batch_fid_seq(
+void PSGPUWrapper::build_batch_fidseq(
   std::vector<std::deque<Record> *> & all_chan_recs, const std::vector<bool> & slot_is_dense) {
-  VLOG(0) << "PSGPUWrapper::build_batch_fid_seq called";
+  VLOG(0) << "PSGPUWrapper::build_batch_fidseq called";
   auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
-  cache_manager->build_batch_fid_seq(all_chan_recs, slot_is_dense);
-  if (FLAGS_dump_cache_manager) {
-    cache_manager->dump_to_file();
-  }
+  cache_manager->build_batch_fidseq(all_chan_recs, slot_is_dense);
 }
+
+void PSGPUWrapper::prepare_next_batch(int thread_id) {
+  auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
+  cache_manager->prepare_next_batch(thread_id);
+}
+
 #endif
 
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
@@ -1048,6 +1059,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                    static_cast<int>(total_length));
     VLOG(3) << "Begin call PullSparseGPU in GPUPS, dev: " << devid_2_index
             << " len: " << total_length;
+
     pull_gpups_timer.Start();
     HeterPs_->pull_sparse(devid_2_index, total_keys, total_values_gpu,
                           static_cast<int>(total_length));
@@ -1093,6 +1105,12 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                    static_cast<int>(total_length));
     VLOG(3) << "Begin call PullSparseGPU in GPUPS, dev: " << devid_2_index
             << " len: " << total_length;
+
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+    auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
+    cache_manager->convert_fid2bfid(device_id, total_keys, static_cast<int>(total_length));
+#endif
+
     pull_gpups_timer.Start();
     HeterPs_->pull_sparse(devid_2_index, total_keys, total_values_gpu,
                           static_cast<int>(total_length));
@@ -1167,6 +1185,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     VLOG(3) << "Begin call PushSparseXPU in XPUPS, dev: " << devid_2_index
             << " len: " << total_length;
     push_gpups_timer.Start();
+
     HeterPs_->push_sparse(devid_2_index, total_keys, total_grad_values_gpu,
                           static_cast<int>(total_length));
     push_gpups_timer.Pause();

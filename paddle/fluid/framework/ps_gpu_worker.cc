@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
      defined PADDLE_WITH_XPU_BKCL) &&                        \
@@ -142,6 +143,12 @@ void PSGPUWorker::TrainFiles() {
 #endif
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
+
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+    auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+    ps_gpu_wrapper->prepare_next_batch(thread_id_);
+#endif
+
     for (auto& op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -248,6 +255,11 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     timeline.Pause();
     read_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();
+
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+    auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+    ps_gpu_wrapper->prepare_next_batch(thread_id_);
+#endif
 
     int run_op_idx = 0;
     dev_ctx_->Wait();

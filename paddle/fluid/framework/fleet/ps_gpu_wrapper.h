@@ -104,8 +104,9 @@ class PSGPUWrapper {
   }
 
 #if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
-  void build_batch_fid_seq(std::vector<std::deque<Record> *> & all_chan_recs,
+  void build_batch_fidseq(std::vector<std::deque<Record> *> & all_chan_recs,
                           const std::vector<bool> & slot_is_dense);
+  void prepare_next_batch(int thread_id);
 #endif
 
   void PullSparse(const paddle::platform::Place& place, const int table_id,
