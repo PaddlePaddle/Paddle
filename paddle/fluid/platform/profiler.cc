@@ -308,6 +308,26 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
       PosixInNsec(), type, input_shapes, dtypes, callstack);
 }
 
+RecordOpInfoSupplement(const std::string& type,
+                          const std::map<std::string, std::vector<int64_t>>& input_shapes){
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    return;
+  }
+  std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
+  for (auto it = kernel_signature.input_names.begin();
+       it != kernel_signature.input_names.end();
+       it++) {
+    std::string input_name(*it);
+    if (shape_ctx.HasInputs(input_name)) {
+      input_shapes[input_name] = shape_ctx.GetInputsDim(input_name);
+    }
+  }
+  std::vector<std::string> callstack;
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes, dtypes, callstack);
+}
+
+
 std::map<const char *, std::map<uint64_t, std::vector<uint64_t>>>
     RecordMemEvent::size_cache;
 

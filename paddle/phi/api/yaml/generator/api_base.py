@@ -583,13 +583,19 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                         trans_flag = "{false, true}"
                     if input_name in self.optional_vars:
                         input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
+{code_indent}  if(RecordOpInfoSupplement::IsEnabled()){{
+{code_indent}     input_shapes["{input_name}"] = {PREFIX_TENSOR_NAME}{input_name}.shape;
+}}"""
 
                     else:
                         if self.inputs['input_info'][
                                 input_name] == "const Tensor&":
                             input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
+{code_indent}  if(RecordOpInfoSupplement::IsEnabled()){{
+{code_indent}     input_shapes["{input_name}"] = {PREFIX_TENSOR_NAME}{input_name}.shape;
+}}"""
 
                         elif self.inputs['input_info'][
                                 input_name] == "const std::vector<Tensor>&":
@@ -709,11 +715,16 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}{cudnn_args});
 {code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
-
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
+{code_indent}  std::map<std::string, std::vector<int64_t>> input_shapes;
+{code_indent}  paddle::platform::RecordEvent infer_shape_record_event(\"{kernel_name} infer_shape\", paddle::platform::TracerEventType::OperatorInner, 1);
 {input_tensors}
 {output_create}
 {self.gene_infer_meta(kernel_output_names, code_indent)}
+{code_indent}  infer_shape_record_event.End();
+{code_indent}  if(RecordOpInfoSupplement::IsEnabled()){{
+{code_indent}    RecordOpInfoSupplement({kernel_name}, input_shapes);
+}}
 
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
