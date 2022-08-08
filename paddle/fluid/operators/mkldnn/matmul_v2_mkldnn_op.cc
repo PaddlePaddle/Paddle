@@ -469,7 +469,10 @@ static void ExecuteMatMul(const ExecutionContext &ctx) {
   constexpr bool is_int8 = IsInt8<XT>();
   constexpr bool is_bfloat16 = IsBfloat16<XT>();
   const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-  const bool fuse_relu = ctx.Attr<std::string>("fuse_activation") == "relu";
+  const bool fuse_relu =
+      ctx.HasAttr("fuse_activation")
+          ? ctx.Attr<std::string>("fuse_activation") == "relu"
+          : false;
   auto *x = ctx.Input<Tensor>("X");
   auto *y = ctx.Input<Tensor>("Y");
   auto *out = ctx.Output<Tensor>("Out");
