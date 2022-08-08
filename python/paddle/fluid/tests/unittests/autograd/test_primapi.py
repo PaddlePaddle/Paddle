@@ -152,7 +152,7 @@ class TestForwardGrad(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.xs = tuple(
-            x.astype(cls.dtype) if str(x.dtype) != 'bool' else x
+            x.astype(cls.dtype) if str(x.dtype) == 'float' else x
             for x in cls.xs)
         cls._rtol = config.TOLERANCE.get(str(
             cls.dtype)).get("first_order_grad").get("rtol")
@@ -375,7 +375,7 @@ class TestGrad(unittest.TestCase):
     (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
     (('select', paddle.where, (np.random.randn(3, 4) > 0, np.random.randn(
         3, 4), np.random.randn(3, 4)), None, 'float32'), ))
-class TestGrad(unittest.TestCase):
+class TestSelectGrad(unittest.TestCase):
 
     def setUp(self):
         paddle.enable_static()

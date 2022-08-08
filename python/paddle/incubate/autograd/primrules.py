@@ -285,6 +285,7 @@ def p_norm_orig2prim(op, x):
         raise RuntimeError('Only support lower l2/l1 norm currently')
 
 
+# TODO: support broadcast
 @REGISTER_ORIG2PRIM('where')
 def select_orig2prim(op, condition, x, y):
     return select(condition, x, y)

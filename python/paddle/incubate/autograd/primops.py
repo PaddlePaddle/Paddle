@@ -314,13 +314,15 @@ def scatter_add(x, y, indextensor, axis, out=None):
 
 @REGISTER_FN('select_p', 'Condition', 'X', 'Y', 'Z')
 def select(cond, x, y, out=None):
-    assert len(cond.shape) == len(x.shape), (
-        f'len(cond.shape) should be equal to len(x.shape), '
-        f'but len(cond.shape)={len(cond.shape)} and len(x.shape)={len(x.shape)}.'
-    )
-    assert len(x.shape) == len(y.shape), (
-        f'len(x.shape) should be equal to len(y.shape), '
-        f'but len(x.shape)={len(x.shape)} and len(y.shape)={len(y.shape)}.')
+    if len(cond.shape) != len(x.shape):
+        raise ValueError(
+            "len(cond.shape) should be equal to len(x.shape), but len(cond.shape)={} and len(x.shape)={}."
+            .format(len(cond.shape), len(x.shape)))
+
+    if len(x.shape) != len(y.shape):
+        raise ValueError(
+            "len(x.shape) should be equal to len(y.shape), but len(x.shape)={} and len(y.shape)={}."
+            .format(len(x.shape), len(y.shape)))
 
     helper = LayerHelper('select_p', **locals())
     if out is None:
