@@ -5829,9 +5829,6 @@ class Program(object):
                             continue
                         if name.endswith("_threshold"):
                             continue
-                    if name in extra_attrs_map:
-                        remove_attr_list.append(name)
-                        continue
 
                     find = False
                     for attr_proto in proto.attrs:
