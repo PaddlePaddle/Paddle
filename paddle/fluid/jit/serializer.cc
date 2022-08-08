@@ -20,8 +20,8 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#include "paddle/fluid/jit/function/executor_function.h"
-#include "paddle/fluid/jit/function/pe_function.h"
+#include "paddle/fluid/jit/engine/executor_engine.h"
+#include "paddle/fluid/jit/engine/pe_engine.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/serializer_utils.h"
@@ -30,18 +30,18 @@ DECLARE_string(jit_engine_type);
 
 namespace paddle {
 namespace jit {
-
+using Name2FunctionInfoMap =
+    std::unordered_map<std::string, std::shared_ptr<FunctionInfo>>;
 Layer Deserializer::operator()(const std::string& path,
                                const phi::Place& place) {
   const auto& pdmodel_paths = utils::PdmodelFilePaths(path);
   // set is ordered
   std::set<std::string> param_names_set;
-  std::vector<std::shared_ptr<FunctionInfo>> infos;
+  Name2FunctionInfoMap info_map;
   for (auto& it : pdmodel_paths) {
     auto& func_name = it.first;
     auto program_desc = LoadProgram(it.second);
 
-    // TODO(dev): load int/float attrs
     std::vector<std::string> persist_var_names;
     auto all_var_desc = program_desc.Block(0).AllVars();
     for (auto* desc_ptr : all_var_desc) {
@@ -51,8 +51,8 @@ Layer Deserializer::operator()(const std::string& path,
     }
 
     param_names_set.insert(persist_var_names.begin(), persist_var_names.end());
-    infos.emplace_back(std::make_shared<FunctionInfo>(
-        func_name, persist_var_names, program_desc));
+    info_map[func_name] = std::make_shared<FunctionInfo>(
+        func_name, persist_var_names, program_desc);
   }
 
   Name2VariableMap params_dict;
@@ -64,23 +64,23 @@ Layer Deserializer::operator()(const std::string& path,
     VLOG(3) << "Read Property Success!";
   }
 
-  Layer layer = Layer(params_dict, attrs_dict, place);
+  Layer layer = Layer(params_dict, attrs_dict, info_map, place);
 
-  for (auto& info : infos) {
+  for (auto it = info_map.begin(); it != info_map.end(); ++it) {
+    const std::string& func_name = it->first;
+    auto& info = it->second;
     if (FLAGS_jit_engine_type == "Executor") {
-      VLOG(3) << "Add function type: ExecutorFunction. name: "
-              << info->FunctionName();
-      layer.SetFunction(
-          info->FunctionName(),
-          utils::MakeFunction<ExecutorFunction>(info, params_dict, place));
+      VLOG(3) << "Add function type: ExecutorEngine. Function name: "
+              << func_name;
+      layer.SetEngine(
+          func_name,
+          utils::MakeEngine<ExecutorEngine>(info, params_dict, place));
     } else if (FLAGS_jit_engine_type == "PE") {
-      VLOG(3) << "Add function type: PEFunction. name: "
-              << info->FunctionName();
-      layer.SetFunction(
-          info->FunctionName(),
-          utils::MakeFunction<PEFunction>(info, params_dict, place));
+      VLOG(3) << "Add function type: PEEngine. Function name: " << func_name;
+      layer.SetEngine(func_name,
+                      utils::MakeEngine<PEEngine>(info, params_dict, place));
     } else {
-      PD_THROW("Invalid JitLayer funciton type.");
+      PD_THROW("Invalid JitLayer engine type.");
     }
   }
 
