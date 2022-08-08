@@ -14,14 +14,14 @@
 
 #include "paddle/phi/kernels/multiclass_nms3_kernel.h"
 
-#include "paddle/fluid/operators/detection/gpc.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/gpc.h"
 
 namespace phi {
 
-using gpc::gpc_free_polygon;
-using gpc::gpc_polygon_clip;
+using phi::funcs::gpc_free_polygon;
+using phi::funcs::gpc_polygon_clip;
 
 template <class T>
 class Point_ {
@@ -56,15 +56,18 @@ void Array2PointVec(const T* box,
 }
 
 template <class T>
-void Array2Poly(const T* box, const size_t box_size, gpc::gpc_polygon* poly) {
+void Array2Poly(const T* box,
+                const size_t box_size,
+                phi::funcs::gpc_polygon* poly) {
   size_t pts_num = box_size / 2;
   (*poly).num_contours = 1;
   (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
   (*poly).hole[0] = 0;
-  (*poly).contour = (gpc::gpc_vertex_list*)malloc(sizeof(gpc::gpc_vertex_list));
+  (*poly).contour =
+      (phi::funcs::gpc_vertex_list*)malloc(sizeof(phi::funcs::gpc_vertex_list));
   (*poly).contour->num_vertices = pts_num;
   (*poly).contour->vertex =
-      (gpc::gpc_vertex*)malloc(sizeof(gpc::gpc_vertex) * pts_num);
+      (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = box[2 * i];
     (*poly).contour->vertex[i].y = box[2 * i + 1];
@@ -72,15 +75,17 @@ void Array2Poly(const T* box, const size_t box_size, gpc::gpc_polygon* poly) {
 }
 
 template <class T>
-void PointVec2Poly(const std::vector<Point_<T>>& vec, gpc::gpc_polygon* poly) {
+void PointVec2Poly(const std::vector<Point_<T>>& vec,
+                   phi::funcs::gpc_polygon* poly) {
   int pts_num = vec.size();
   (*poly).num_contours = 1;
   (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
   (*poly).hole[0] = 0;
-  (*poly).contour = (gpc::gpc_vertex_list*)malloc(sizeof(gpc::gpc_vertex_list));
+  (*poly).contour =
+      (phi::funcs::gpc_vertex_list*)malloc(sizeof(phi::funcs::gpc_vertex_list));
   (*poly).contour->num_vertices = pts_num;
   (*poly).contour->vertex =
-      (gpc::gpc_vertex*)malloc(sizeof(gpc::gpc_vertex) * pts_num);
+      (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = vec[i].x;
     (*poly).contour->vertex[i].y = vec[i].y;
@@ -88,7 +93,7 @@ void PointVec2Poly(const std::vector<Point_<T>>& vec, gpc::gpc_polygon* poly) {
 }
 
 template <class T>
-void Poly2PointVec(const gpc::gpc_vertex_list& contour,
+void Poly2PointVec(const phi::funcs::gpc_vertex_list& contour,
                    std::vector<Point_<T>>* vec) {
   int pts_num = contour.num_vertices;
   (*vec).resize(pts_num);
@@ -124,13 +129,13 @@ T PolyOverlapArea(const T* box1,
                   const T* box2,
                   const size_t box_size,
                   const bool normalized) {
-  gpc::gpc_polygon poly1;
-  gpc::gpc_polygon poly2;
+  phi::funcs::gpc_polygon poly1;
+  phi::funcs::gpc_polygon poly2;
   Array2Poly<T>(box1, box_size, &poly1);
   Array2Poly<T>(box2, box_size, &poly2);
-  gpc::gpc_polygon respoly;
-  gpc::gpc_op op = gpc::GPC_INT;
-  gpc::gpc_polygon_clip(op, &poly2, &poly1, &respoly);
+  phi::funcs::gpc_polygon respoly;
+  phi::funcs::gpc_op op = phi::funcs::GPC_INT;
+  phi::funcs::gpc_polygon_clip(op, &poly2, &poly1, &respoly);
 
   T inter_area = T(0.);
   int contour_num = respoly.num_contours;
@@ -142,9 +147,9 @@ T PolyOverlapArea(const T* box1,
     inter_area += GetContourArea<T>(resvec);
   }
 
-  gpc::gpc_free_polygon(&poly1);
-  gpc::gpc_free_polygon(&poly2);
-  gpc::gpc_free_polygon(&respoly);
+  phi::funcs::gpc_free_polygon(&poly1);
+  phi::funcs::gpc_free_polygon(&poly2);
+  phi::funcs::gpc_free_polygon(&respoly);
   return inter_area;
 }
 
@@ -247,7 +252,6 @@ void SliceOneClass(const Context& ctx,
                    const DenseTensor& items,
                    const int class_id,
                    DenseTensor* one_class_item) {
-  //   T* item_data = one_class_item->mutable_data<T>(ctx.GetPlace());
   T* item_data = ctx.template Alloc<T>(one_class_item);
   const T* items_data = items.data<T>();
   const int64_t num_item = items.dims()[0];

@@ -43,7 +43,7 @@ using Tensor = framework::Tensor;
 template <typename T>
 static void AllReduce(framework::Tensor &tensor,  // NOLINT
                       const int ring_id,
-                      const platform::CUDADeviceContext &ctx) {
+                      const phi::GPUContext &ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();

@@ -21,8 +21,8 @@ namespace operators {
 namespace math {
 
 template <typename T>
-struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
-  static void compute(const platform::CUDADeviceContext &context,
+struct GRUUnitFunctor<phi::GPUContext, T> {
+  static void compute(const phi::GPUContext &context,
                       GRUMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -94,7 +94,7 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
       threads = dim3(32, 32);
       grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 32 - 1) / 32);
     }
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(context);
     if (value.prev_out_value) {
       blas.GEMM(false,
                 false,
@@ -180,8 +180,8 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-struct GRUUnitGradFunctor<platform::CUDADeviceContext, T> {
-  static void compute(const platform::CUDADeviceContext &context,
+struct GRUUnitGradFunctor<phi::GPUContext, T> {
+  static void compute(const phi::GPUContext &context,
                       GRUMetaValue<T> value,
                       GRUMetaGrad<T> grad,
                       int frame_size,
@@ -230,7 +230,7 @@ struct GRUUnitGradFunctor<platform::CUDADeviceContext, T> {
                                          origin_mode);
     }
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(context);
 
     if (value.prev_out_value && grad.prev_out_grad) {
       blas.GEMM(false,
@@ -324,10 +324,10 @@ struct GRUUnitGradFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct GRUUnitFunctor<platform::CUDADeviceContext, float>;
-template struct GRUUnitFunctor<platform::CUDADeviceContext, double>;
-template struct GRUUnitGradFunctor<platform::CUDADeviceContext, float>;
-template struct GRUUnitGradFunctor<platform::CUDADeviceContext, double>;
+template struct GRUUnitFunctor<phi::GPUContext, float>;
+template struct GRUUnitFunctor<phi::GPUContext, double>;
+template struct GRUUnitGradFunctor<phi::GPUContext, float>;
+template struct GRUUnitGradFunctor<phi::GPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

@@ -1604,7 +1604,11 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
+#ifdef PADDLE_WITH_MLU
+    return ActBwdOpFwdDeps::kDepX;
+#else
     return ActBwdOpFwdDeps::kDepOut;
+#endif
   }
 };
 
@@ -2156,6 +2160,50 @@ struct CudaExpFunctor<double> : public BaseActivationFunctor<double> {
   __device__ __forceinline__ double operator()(const double x) const {
     return exp(x);
   }
+};
+
+template <typename T>
+struct CudaSeluFunctor : public BaseActivationFunctor<T> {
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"scale", &scale}, {"alpha", &alpha}};
+  }
+
+  __device__ __forceinline__ T operator()(const T x) const {
+    T res = x;
+    if (res <= zero) {
+      res = alpha * expf(res) - alpha;
+    }
+    res *= scale;
+    return res;
+  }
+
+ private:
+  float scale;
+  float alpha;
+  T zero = static_cast<T>(0.0f);
+};
+
+template <>
+struct CudaSeluFunctor<double> : public BaseActivationFunctor<double> {
+  typename BaseActivationFunctor<double>::AttrPair GetAttrs() {
+    return {{"scale", &scale}, {"alpha", &alpha}};
+  }
+
+  __device__ __forceinline__ double operator()(const double x) const {
+    double res = x;
+    double alpha_cast = static_cast<double>(alpha);
+    double scale_cast = static_cast<double>(scale);
+    if (res <= zero) {
+      res = alpha_cast * exp(res) - alpha_cast;
+    }
+    res *= scale_cast;
+    return res;
+  }
+
+ private:
+  float scale;
+  float alpha;
+  double zero = static_cast<double>(0.0f);
 };
 
 template <typename T>

@@ -17,11 +17,8 @@
 #include <string>
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/place.h"
-
-namespace phi {
-class DenseTensor;
-}  // namespace phi
 
 namespace paddle {
 namespace framework {

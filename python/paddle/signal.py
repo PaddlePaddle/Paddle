@@ -217,7 +217,9 @@ def overlap_add(x, hop_length, axis=-1, name=None):
 
     op_type = 'overlap_add'
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_overlap_add(x, hop_length, axis)
+    elif paddle.in_dynamic_mode():
         attrs = ('hop_length', hop_length, 'axis', axis)
         op = getattr(_C_ops, op_type)
         out = op(x, *attrs)

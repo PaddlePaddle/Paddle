@@ -15,14 +15,17 @@
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_init_op.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
-#include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/tensor_to_string.h"
 
 namespace paddle {
 namespace operators {
+
+using phi::funcs::FlattenToString;
+using phi::funcs::ToVector;
 
 struct ParamGradInfo {
   framework::Tensor *param_t{nullptr};
@@ -178,22 +181,21 @@ static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
 }
 
 template <typename T>
-static T *TensorFillConstant(const platform::CUDADeviceContext &dev_ctx,
+static T *TensorFillConstant(const phi::GPUContext &dev_ctx,
                              framework::Tensor *tensor,
                              const framework::DDim &dims,
                              T value) {
   tensor->Resize(dims);
   auto *ptr = tensor->mutable_data<T>(dev_ctx.GetPlace());
-  phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
+  phi::funcs::SetConstant<phi::GPUContext, T> set_constant;
   set_constant(dev_ctx, tensor, value);
   return ptr;
 }
 
-static framework::Tensor CastDataForInitedTensor(
-    const platform::CUDADeviceContext &dev_ctx,
-    framework::Tensor *origin,
-    framework::Tensor *fused_out,
-    size_t numel_offset) {
+static framework::Tensor CastDataForInitedTensor(const phi::GPUContext &dev_ctx,
+                                                 framework::Tensor *origin,
+                                                 framework::Tensor *fused_out,
+                                                 size_t numel_offset) {
   PADDLE_ENFORCE_EQ(origin->IsInitialized(),
                     true,
                     platform::errors::InvalidArgument(
@@ -338,12 +340,12 @@ static T ClipByBound(T x, T low_value, T high_value) {
 }
 
 template <typename T>
-class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
+class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     VLOG(10) << "starts to run DistributedFusedLambInitOp";
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto place = ctx.GetPlace();
     auto stream = dev_ctx.stream();
 
@@ -790,4 +792,4 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     distributed_fused_lamb_init,
-    ops::DistributedFusedLambInitOpKernel<plat::CUDADeviceContext, float>);
+    ops::DistributedFusedLambInitOpKernel<phi::GPUContext, float>);

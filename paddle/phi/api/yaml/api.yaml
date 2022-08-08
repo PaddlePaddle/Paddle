@@ -98,6 +98,33 @@
     func : erf
   backward : erf_grad
 
+- api : fft_c2c
+  args : (Tensor x, int64_t[] axes, str normalization, bool forward)
+  output : Tensor
+  infer_meta :
+    func : FFTC2CInferMeta
+  kernel :
+    func : fft_c2c
+  backward : fft_c2c_grad
+
+- api : fft_c2r
+  args : (Tensor x, int64_t[] axes, str normalization, bool forward, int64_t last_dim_size=0L)
+  output : Tensor
+  infer_meta :
+    func : FFTC2RInferMeta
+  kernel :
+    func : fft_c2r
+  backward : fft_c2r_grad
+
+- api : fft_r2c
+  args : (Tensor x, int64_t[] axes, str normalization, bool forward, bool onesided)
+  output : Tensor
+  infer_meta :
+    func : FFTR2CInferMeta
+  kernel :
+    func : fft_r2c
+  backward : fft_r2c_grad
+
 - api : graph_send_uv
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str compute_type = "ADD")
   output : Tensor(out)

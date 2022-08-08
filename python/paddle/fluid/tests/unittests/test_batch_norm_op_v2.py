@@ -323,6 +323,35 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 else:
                     self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
 
+    def test_1d_opt(self):
+        with fluid.dygraph.guard():
+            batch_size = 13700
+            channels = 16
+            shape = (batch_size, channels)
+            x = paddle.randn(shape)
+            x_4d = x.reshape((batch_size, channels, 1, 1))
+
+            x.stop_gradient = False
+            x_4d.stop_gradient = False
+
+            bn1d = paddle.nn.BatchNorm1D(channels)
+            bn2d = paddle.nn.BatchNorm2D(channels)
+
+            y = bn1d(x)
+            y2 = bn2d(x_4d)
+
+            y.backward()
+            y2.backward()
+
+            assert np.allclose(y.numpy().flatten(),
+                               y2.numpy().flatten(),
+                               atol=1e-5,
+                               rtol=1e-5)
+            assert np.allclose(bn1d.weight.grad.numpy().flatten(),
+                               bn2d.weight.grad.numpy().flatten(),
+                               atol=1e-5,
+                               rtol=1e-5)
+
 
 class TestBatchNormUseGlobalStats(unittest.TestCase):
 

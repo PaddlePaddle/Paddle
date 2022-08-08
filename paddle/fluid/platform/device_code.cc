@@ -252,7 +252,7 @@ bool CUDADeviceCode::Compile(bool include_path) {
   }
 
   // Compile the program for specified compute_capability
-  auto* dev_ctx = reinterpret_cast<CUDADeviceContext*>(
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       DeviceContextPool::Instance().Get(place_));
   int compute_capability = dev_ctx->GetComputeCapability();
   std::vector<const char*> options = {"-std=c++11", "--amdgpu-target=gfx906"};
@@ -329,7 +329,7 @@ bool CUDADeviceCode::Compile(bool include_path) {
   }
 
   // Compile the program for specified compute_capability
-  auto* dev_ctx = reinterpret_cast<CUDADeviceContext*>(
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       DeviceContextPool::Instance().Get(place_));
   int compute_capability = dev_ctx->GetComputeCapability();
   std::string compute_flag =
@@ -416,7 +416,7 @@ void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
       max_blocks,
       (static_cast<int>(n) + workload_per_block - 1) / workload_per_block);
 
-  auto* dev_ctx = reinterpret_cast<CUDADeviceContext*>(
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       DeviceContextPool::Instance().Get(place_));
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(

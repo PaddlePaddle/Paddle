@@ -397,8 +397,8 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
     const T* w_data = w->data<T>();
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     blas.GEMM(false,
               false,
               M,
