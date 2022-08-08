@@ -1074,11 +1074,6 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
       recv_varname_to_ctx);  // dense_map - key: table_id, value: params
   recv_scope_ = std::move(recv_scope);
 
-  PADDLE_ENFORCE_GT(
-      send_varname_to_ctx.size(),
-      0,
-      platform::errors::InvalidArgument("send var contexts can not be zero"));
-
   for (auto it = send_varname_to_ctx_.begin();
        it != send_varname_to_ctx_.end();) {
     auto &ctx = it->second;
@@ -1088,10 +1083,9 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
       continue;
     }
     auto &varnames = ctx.origin_varnames;
-    PADDLE_ENFORCE_GT(varnames.size(),
-                      0,
-                      platform::errors::InvalidArgument(
-                          "sparse variables num can not be zero"));
+    if (varnames.empty()) {
+      VLOG(0) << "ERROR! sparse variables num can not be zero";
+    }
     auto &varname = varnames[0];  // embedding_0.w_0@GRAD
     auto &ids = ctx.remote_sparse_ids;
     if (!ids.empty()) {
