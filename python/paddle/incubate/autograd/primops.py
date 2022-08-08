@@ -112,6 +112,11 @@ def div(x, y, out=None):
     return _simple_binop(LayerHelper('div_p', **locals()))
 
 
+@REGISTER_FN('eq_p', 'X', 'Y', 'Z')
+def eq(x, y, out=None):
+    return _simple_binop(LayerHelper('eq_p', **locals()))
+
+
 @REGISTER_FN('sqrt_p', 'X', 'Y')
 def sqrt(x, out=None):
     return _simple_unop(LayerHelper('sqrt_p', **locals()))
@@ -135,6 +140,11 @@ def cos(x, out=None):
 @REGISTER_FN('exp_p', 'X', 'Y')
 def exp(x, out=None):
     return _simple_unop(LayerHelper('exp_p', **locals()))
+
+
+@REGISTER_FN('erf_p', 'X', 'Y')
+def erf(x, out=None):
+    return _simple_unop(LayerHelper('erf_p', **locals()))
 
 
 @REGISTER_FN('reshape_p', 'X', 'Y')

@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import typing
-
+import math
 import paddle
+
+import primops
 
 from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
                       matmul, mul, neg, reduce, reshape, scatter_add, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose)
+                      transpose, erf)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -146,6 +148,13 @@ def elementwise_mul_orig2prim(op, x, y):
     return z
 
 
+@REGISTER_ORIG2PRIM('equal')
+def equal_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return primops.eq(x, y)
+
+
 @REGISTER_ORIG2PRIM('tanh')
 def tanh_orig2prim(op, x):
     return tanh(x)
@@ -164,6 +173,11 @@ def cos_orig2prim(op, x):
 @REGISTER_ORIG2PRIM('exp')
 def exp_orig2prim(op, x):
     return exp(x)
+
+
+@REGISTER_ORIG2PRIM('erf')
+def erf_orig2prim(op, x):
+    return erf(x)
 
 
 @REGISTER_ORIG2PRIM('fill_zeros_like')
@@ -308,6 +322,11 @@ def div_prim2orig(op, x, y):
     return paddle.divide(x, y)
 
 
+@REGISTER_PRIM2ORIG('eq_p')
+def eq_prim2orig(op, x, y):
+    return paddle.equal(x, y)
+
+
 @REGISTER_PRIM2ORIG('sqrt_p')
 def sqrt_prim2orig(op, x):
     return paddle.sqrt(x)
@@ -316,6 +335,11 @@ def sqrt_prim2orig(op, x):
 @REGISTER_PRIM2ORIG('tanh_p')
 def tanh_prim2orig(op, x):
     return paddle.tanh(x)
+
+
+@REGISTER_PRIM2ORIG('erf_p')
+def erf_prim2orig(op, x):
+    return paddle.erf(x)
 
 
 @REGISTER_PRIM2ORIG('sin_p')
@@ -507,6 +531,19 @@ def exp_jvp(op, x_dot):
         return None
     y = op_position_output(op)
     return mul(x_dot, y)
+
+
+@REGISTER_JVP('erf_p')
+def erf_jvp(op, x_dot):
+
+    if x_dot is None:
+        return None
+    y = op_position_output(op)
+    return mul(x_dot, y)
+
+    x, = op_position_inputs(op)
+    return mul(fill_const(2. / math.sqrt(math.pi), x.shape, x.dtype),
+               mul(x_dot, exp(neg(primops.pow(x, 2)))))
 
 
 @REGISTER_JVP('reshape_p')
