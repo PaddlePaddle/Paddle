@@ -15,6 +15,8 @@
 #pragma once
 #include <cmath>
 
+#include "paddle/phi/common/complex.h"
+
 namespace phi {
 namespace funcs {
 
