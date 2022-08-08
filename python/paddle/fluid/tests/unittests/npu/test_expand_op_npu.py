@@ -132,7 +132,7 @@ class TestExpandNet(unittest.TestCase):
         cpu_loss = self._test(False)
         npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
 
 
 # ------------------------------------------------
