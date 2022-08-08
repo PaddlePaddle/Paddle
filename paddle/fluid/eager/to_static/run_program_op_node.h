@@ -228,8 +228,10 @@ static void ShareTensorsFromScopeWithPartialBlock(
   }
 }
 
-static void BuildScopeByBlock(const paddle::framework::BlockDesc &block,
-                              paddle::framework::Scope *scope) {
+static void BuildScopeByBlock(
+    const paddle::framework::InterpreterCore &interpreter_core,
+    const paddle::framework::BlockDesc &block,
+    paddle::framework::Scope *scope) {
   VLOG(2) << "Build scope(" << scope << ") by block";
   for (auto &var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
@@ -241,8 +243,19 @@ static void BuildScopeByBlock(const paddle::framework::BlockDesc &block,
     }
     auto *ptr = scope->Var(var_name);
     InitializeVariable(ptr, var_desc->GetType());
-    VLOG(2) << "Initialize Variable " << var_name << "(" << ptr
+    VLOG(2) << "Initialize Block Variable " << var_name << "(" << ptr
             << "), which type is " << static_cast<int>(var_desc->GetType());
+  }
+  auto &data_transfer_added_vars =
+      interpreter_core.GetVariableScope()->DataTransferAddedVars();
+  for (size_t i = 0; i < data_transfer_added_vars.size(); i++) {
+    auto *ptr = scope->Var(data_transfer_added_vars[i].first);
+    InitializeVariable(ptr,
+                       static_cast<paddle::framework::proto::VarType::Type>(
+                           data_transfer_added_vars[i].second));
+    VLOG(2) << "Initialize Transfer Added Variable "
+            << data_transfer_added_vars[i].first << "(" << ptr
+            << "), which type is " << data_transfer_added_vars[i].second;
   }
 }
 
@@ -356,7 +369,8 @@ inline void RunProgramAPI(
       auto &interpreter_core = cached_value.core_;
 
       // Step 2. update scope for cache interpretercore
-      details::BuildScopeByBlock(*forward_global_block, &scope);
+      details::BuildScopeByBlock(
+          *interpreter_core.get(), *forward_global_block, &scope);
       details::ShareTensorsIntoScope(x, &scope);
       details::ShareTensorsIntoScope(params, &scope);
       interpreter_core->reset_scope(&scope);
@@ -551,7 +565,8 @@ inline void RunProgramGradAPI(
           interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/true);
       auto &interpreter_core = cached_value.core_;
       // update scope
-      details::BuildScopeByBlock(*backward_global_block, &scope);
+      details::BuildScopeByBlock(
+          *interpreter_core.get(), *backward_global_block, &scope);
       details::ShareTensorsIntoScope(out_grad, &scope);
       interpreter_core->reset_scope(&scope);
 

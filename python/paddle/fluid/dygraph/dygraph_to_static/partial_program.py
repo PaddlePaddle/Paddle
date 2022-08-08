@@ -354,7 +354,7 @@ class PartialProgramLayer:
     def forward_program(self):
         if self.training:
             if _in_amp_guard():
-                return self._train_amp_backward_program
+                return self._train_amp_forward_program
             elif _in_pure_fp16_guard():
                 return self._train_pure_fp16_forward_program
             else:
@@ -371,7 +371,7 @@ class PartialProgramLayer:
     def backward_program(self):
         if self.training:
             if _in_amp_guard():
-                return self._train_amp_program
+                return self._train_amp_backward_program
             elif _in_pure_fp16_guard():
                 return self._train_pure_fp16_backward_program
             else:
@@ -479,7 +479,7 @@ class PartialProgramLayer:
     def forward_program_id(self):
         if self.training:
             if _in_amp_guard():
-                return self._train_amp_backward_program_id
+                return self._train_amp_forward_program_id
             elif _in_pure_fp16_guard():
                 return self._train_pure_fp16_forward_program_id
             else:
@@ -496,7 +496,7 @@ class PartialProgramLayer:
     def backward_program_id(self):
         if self.training:
             if _in_amp_guard():
-                return self._train_amp_program_id
+                return self._train_amp_backward_program_id
             elif _in_pure_fp16_guard():
                 return self._train_pure_fp16_backward_program_id
             else:
@@ -587,9 +587,9 @@ class PartialProgramLayer:
         self._cast_fp16_if_pure_fp16(in_vars)
 
         # -------监测program转换是否成功 -----
-        self.whole_program
-        self.forward_program
-        self.backward_program
+        # print("self.whole_program: ", self.whole_program)
+        # print("self.forward_program: ", self.forward_program)
+        # print("self.backward_program: ", self.backward_program)
 
         attrs = [
             'global_block',
