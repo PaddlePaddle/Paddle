@@ -114,9 +114,8 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
                      const float padding_value,
                      const bool use_cvm,
                      const int cvm_offset) {
-  auto stream =
-      ctx.template device_context<platform::CUDADeviceContext>().stream();
-  auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+  auto stream = ctx.template device_context<phi::GPUContext>().stream();
+  auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
   size_t total_ptr_len = input_data.size() + output_data.size() +
                          seqpool_output_data.size() + lods.size();
   auto temp_ptr =
@@ -182,7 +181,7 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
 #endif
 
   size_t N = static_cast<size_t>(batch_size * slot_num * embedding_size);
-  platform::GpuLaunchConfig config = GetGpuLaunchConfig1D(dev_ctx, N);
+  platform::GpuLaunchConfig config = platform::GetGpuLaunchConfig1D(dev_ctx, N);
   // first sum pool
   FusedSeqpoolKernelNormal<<<config.block_per_grid.x,
                              config.thread_per_block.x,
@@ -209,7 +208,8 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
     // not need show click input
     N = static_cast<size_t>(batch_size * slot_num *
                             (embedding_size - cvm_offset));
-    platform::GpuLaunchConfig config = GetGpuLaunchConfig1D(dev_ctx, N);
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(dev_ctx, N);
     FusedCVMKernelNoCVM<<<config.block_per_grid.x,
                           config.thread_per_block.x,
                           0,
@@ -319,9 +319,8 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
                          const int embedding_size,
                          const bool use_cvm,
                          const int cvm_offset) {
-  auto stream =
-      ctx.template device_context<platform::CUDADeviceContext>().stream();
-  auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+  auto stream = ctx.template device_context<phi::GPUContext>().stream();
+  auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
   size_t total_ptr_len = out_grads_data.size() + in_grads_data.size() +
                          cvm_data.size() + lods.size();
   auto temp_ptr =
@@ -391,7 +390,7 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
 #endif
 
   size_t N = static_cast<size_t>(batch_size * slot_num * embedding_size);
-  auto config = GetGpuLaunchConfig1D(dev_ctx, N);
+  auto config = platform::GetGpuLaunchConfig1D(dev_ctx, N);
   if (use_cvm) {
     // join grad
     FusedSeqpoolCVMGradKernelWithCVM<<<config.block_per_grid.x,

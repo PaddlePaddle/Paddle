@@ -96,7 +96,7 @@ void GetOutputOffset(const framework::Vector<size_t>& x_lod,
 }
 
 template <typename T>
-static int ExpandByMemoryCopy(const platform::CUDADeviceContext& context,
+static int ExpandByMemoryCopy(const phi::GPUContext& context,
                               const LoDTensor& x,
                               LoDTensor* out,
                               const framework::Vector<size_t>& x_lod,
@@ -142,9 +142,9 @@ static int ExpandByMemoryCopy(const platform::CUDADeviceContext& context,
 }
 
 template <typename T>
-struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
+struct SequenceExpandFunctor<phi::GPUContext, T> {
   void operator()(
-      const platform::CUDADeviceContext& context,
+      const phi::GPUContext& context,
       const LoDTensor& x,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
@@ -194,8 +194,8 @@ struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& context,
+struct SequenceExpandGradFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& context,
                   const LoDTensor& dout,
                   const framework::Vector<size_t>& x_lod, /*expand source lod*/
                   const framework::Vector<size_t>& ref_lod, /*expand based lod*/
@@ -228,16 +228,14 @@ struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sequence_expand,
-    ops::SequenceExpandKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceExpandKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequenceExpandKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceExpandKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(sequence_expand,
+                        ops::SequenceExpandKernel<phi::GPUContext, float>,
+                        ops::SequenceExpandKernel<phi::GPUContext, double>,
+                        ops::SequenceExpandKernel<phi::GPUContext, int>,
+                        ops::SequenceExpandKernel<phi::GPUContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     sequence_expand_grad,
-    ops::SequenceExpandGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceExpandGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequenceExpandGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceExpandGradKernel<paddle::platform::CUDADeviceContext,
-                                  int64_t>);
+    ops::SequenceExpandGradKernel<phi::GPUContext, float>,
+    ops::SequenceExpandGradKernel<phi::GPUContext, double>,
+    ops::SequenceExpandGradKernel<phi::GPUContext, int>,
+    ops::SequenceExpandGradKernel<phi::GPUContext, int64_t>);

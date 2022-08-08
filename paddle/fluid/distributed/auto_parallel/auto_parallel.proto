@@ -1,0 +1,88 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless optional by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+syntax = "proto2";
+
+package paddle.distributed.auto_parallel;
+
+// This proto describes the capability of one device such as the computation and memory.
+message DeviceCapabilityProto {
+  optional double single_precision_flops = 1;
+
+  optional double double_precision_flops = 2;
+
+  optional double memory_size_in_bytes = 3;
+
+  optional double clock_rate_in_ghz = 4;
+}
+
+// This proto represents a device.
+message DeviceProto {
+  // The global id of this device within the cluster.
+  optional int64 global_id = 1;
+
+  // The local id of this device within the machine.
+  optional int64 local_id = 2;
+
+  // The id of the machine own this device.
+  optional int64 machine_id = 3;
+
+  // The id of the machine has this device.
+  optional string type = 4;
+
+  // The capability of this device.
+  optional DeviceCapabilityProto capability = 5; 
+}
+
+// This proto describes the capability of the link between two devices.        
+message LinkCapabilityProto {        
+  optional int64 bandwidth = 1; // Bytes/s       
+  optional int64 latency = 2;        
+}
+
+message LinkProto {
+  // The global id of the source device.
+  optional int64 source_id = 1;
+
+  // The global id of the source device.
+  optional int64 target_id = 2;
+
+  // Represent the link type.
+  optional string type = 3;
+      
+  // The capability of this link.
+  optional LinkCapabilityProto capability = 4; 
+}
+
+// DeviceMesh is used to organize devices and like n-dimension array.
+message DeviceMeshProto {
+  // The global id of this mesh. 
+  optional string name = 1;
+
+  // The size of each dimension.
+  repeated int64 shape = 2;
+
+  // These device ids are stored by a row-major way.
+  // There are no duplicate device ids within one device mesh.
+  repeated int64 device_ids = 3;
+
+  // The name of each dimension. 
+  repeated string dim_names = 4;
+
+  // The devices of this mesh.
+  repeated DeviceProto devices = 5;
+
+  // The links are between devices. 
+  repeated LinkProto links = 6;
+}

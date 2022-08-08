@@ -43,8 +43,7 @@ int GetMicroId(const platform::DeviceContext& ctx,
     std::vector<char> temp;
     temp.resize(tensor->numel() * framework::DataTypeSize(tensor->dtype()));
     char* temp_ptr = temp.data();
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(platform::CPUPlace(),
                  temp_ptr,
                  tensor->place(),

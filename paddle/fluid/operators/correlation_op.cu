@@ -176,7 +176,7 @@ __global__ void correlation_forward(T *output,
   }
 }
 
-// class CorrelationKernel<platform::CUDADeviceContext, T>
+// class CorrelationKernel<phi::GPUContext, T>
 template <typename T>
 class CorrelationCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -197,7 +197,7 @@ class CorrelationCUDAKernel : public framework::OpKernel<T> {
 
     auto *output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     // base on input1, NCHW
     auto in_dims = input1->dims();
@@ -209,11 +209,11 @@ class CorrelationCUDAKernel : public framework::OpKernel<T> {
     int padded_input_height = H + 2 * pad_size;
     int padded_input_width = W + 2 * pad_size;
 
-    Tensor rinput1 = ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>(
+    Tensor rinput1 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput1.mutable_data<T>(ctx.GetPlace());
 
-    Tensor rinput2 = ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>(
+    Tensor rinput2 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput2.mutable_data<T>(ctx.GetPlace());
 
@@ -468,7 +468,7 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
     grad_input1->mutable_data<T>(ctx.GetPlace());
     auto *grad_input2 = ctx.Output<Tensor>(framework::GradVarName("Input2"));
     grad_input2->mutable_data<T>(ctx.GetPlace());
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     auto in_dims = input1->dims();
     int N = in_dims[0];
@@ -479,11 +479,11 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
     int padded_input_height = H + 2 * pad_size;
     int padded_input_width = W + 2 * pad_size;
 
-    Tensor rinput1 = ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>(
+    Tensor rinput1 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput1.mutable_data<T>(ctx.GetPlace());
 
-    Tensor rinput2 = ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>(
+    Tensor rinput2 = ctx.AllocateTmpTensor<T, phi::GPUContext>(
         {N, padded_input_height, padded_input_width, C}, dev_ctx);
     rinput2.mutable_data<T>(ctx.GetPlace());
 

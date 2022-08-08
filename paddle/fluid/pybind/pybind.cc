@@ -331,8 +331,9 @@ bool SupportsVNNI() {
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
-#endif
+#else
   return true;
+#endif
 }
 
 bool IsCompiledWithDIST() {
@@ -1257,7 +1258,7 @@ All parameter, weight, gradient are variables in Paddle.
                  "Cannot use CUDAPlace in CPU only version, "
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
-      auto* context = new paddle::platform::CUDADeviceContext(place);
+      auto* context = new phi::GPUContext(place);
       context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(place, context->stream())

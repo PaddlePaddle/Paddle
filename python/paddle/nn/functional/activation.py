@@ -601,7 +601,6 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
 
     Examples:
         .. code-block:: python
-            :name: rrelu-example
 
             import paddle
             import paddle.nn.functional as F
@@ -964,7 +963,9 @@ def silu(x, name=None):
             out = F.silu(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_silu(x)
+    if _in_legacy_dygraph():
         return _C_ops.silu(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'silu')
@@ -1177,7 +1178,11 @@ def softplus(x, beta=1, threshold=20, name=None):
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
-    if in_dynamic_mode():
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_softplus(x, beta, threshold)
+
+    if _in_legacy_dygraph():
         return _C_ops.softplus(x, 'beta', beta, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],

@@ -360,17 +360,34 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                 "Node's in-degree cannot be negative.",
                 next_node->name()));
 
-        if (node_in_degree_map[next_node] == 0) {
-          if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
-            queue.push_front(std::move(next_node));
-          } else {
-            queue.push_back(std::move(next_node));
+        if (is_general_grad) {
+          if (node_in_degree_map[next_node] == 0 &&
+              GeneralGrad::Instance().IsNeededNodes(next_node)) {
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+              queue.push_front(std::move(next_node));
+            } else {
+              queue.push_back(std::move(next_node));
+            }
+          }
+        } else {
+          if (node_in_degree_map[next_node] == 0) {
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+              queue.push_front(std::move(next_node));
+            } else {
+              queue.push_back(std::move(next_node));
+            }
           }
         }
       }
     }
   }
 
+  VLOG(6) << "Run Backward Final hook size: "
+          << egr::Controller::Instance().FinalBackwardHooks().size();
+  for (auto& hook : egr::Controller::Instance().FinalBackwardHooks()) {
+    (*hook)();
+  }
+  egr::Controller::Instance().ClearFinalBackwardHooks();
   if (!is_general_grad) return {};
   return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
 }

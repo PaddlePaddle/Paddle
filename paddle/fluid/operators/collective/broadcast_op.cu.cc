@@ -54,7 +54,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet("Currently, the broadcast op can "
                                              "only be an In-Place operation."));
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto comm = dev_ctx.nccl_comm();
     auto stream = dev_ctx.stream();
 
