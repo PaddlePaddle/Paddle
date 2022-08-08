@@ -105,6 +105,16 @@
     func : erf_grad
     data_type : out_grad
 
+- backward_api : erfinv_grad
+  forward : erfinv (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : erfinv_grad
+    
 - backward_api : lgamma_grad
   forward : lgamma(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)

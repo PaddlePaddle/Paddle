@@ -790,16 +790,6 @@
   kernel :
     func : equal_all
 
-- api : erfinv
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : erfinv
-  inplace : (x -> out)
-  backward : erfinv_grad
-
 # exp
 - api : exp
   args : (Tensor x)
