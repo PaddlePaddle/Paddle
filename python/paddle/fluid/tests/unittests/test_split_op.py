@@ -503,6 +503,21 @@ class API_TestDygraphSplit(unittest.TestCase):
         self.assertTrue(np.allclose(ex_x1, x1_out))
         self.assertTrue(np.allclose(ex_x2, x2_out))
 
+    def func_negative_one_section(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = paddle.to_tensor(input_1)
+            num1 = paddle.full(shape=[1], fill_value=1, dtype='int32')
+            x0 = paddle.split(input, num_or_sections=[-1], axis=num1)
+            x0_out = x0[0].numpy()
+        self.assertTrue(np.array_equal(x0_out, input.numpy()))
+
+    def test_negative_one_section(self):
+        with _test_eager_guard():
+            self.func_negative_one_section()
+        self.func_negative_one_section()
+
 
 class API_TestEmptySplit(unittest.TestCase):
 

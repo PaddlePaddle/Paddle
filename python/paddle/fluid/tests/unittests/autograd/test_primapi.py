@@ -146,6 +146,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
     ('input_gradients_not_none', paddle.matmul,
      (np.random.rand(3, 3), np.random.rand(3, 3)),
      (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
+    ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
 ))
 class TestForwardGrad(unittest.TestCase):
 
@@ -256,6 +257,7 @@ class TestForwardGrad(unittest.TestCase):
     ('sin', paddle.sin, (np.random.rand(100, 200), ), None, 'float32'),
     ('cos', paddle.cos, (np.random.rand(200, 90), ), None, 'float32'),
     ('exp', paddle.exp, (np.random.rand(299, 320), ), None, 'float32'),
+    ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
 ))
 class TestGrad(unittest.TestCase):
 

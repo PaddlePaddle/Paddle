@@ -208,6 +208,26 @@ class TestExpOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+class TestLogOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'log'
+        X = paddle.static.data(name='X', shape=[3, 4], dtype='float')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['log', 'log_p']
+        self.out_map = {0: self.output['Out']}
+
+
 class TestReshape2Orig2Prim(TestElementWiseAddOrig2Prim):
 
     def init_data(self):
