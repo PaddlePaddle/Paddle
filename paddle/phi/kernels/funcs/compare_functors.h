@@ -37,10 +37,10 @@ struct EqualFunctor {
     if (std::is_floating_point<InT>::value) {
       if (std::isinf(static_cast<float>(a)) ||
           std::isinf(static_cast<float>(b)))
-        return a == b;
+        return static_cast<OutT>(a == b);
       if (std::isnan(static_cast<float>(a)) ||
           std::isnan(static_cast<float>(b)))
-        return false;
+        return static_cast<OutT>(false);
       return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-8);
     } else {
       return static_cast<OutT>(a == b);
