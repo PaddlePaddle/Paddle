@@ -13,18 +13,30 @@
 # limitations under the License.
 
 import paddle
+from paddle.fluid import core
 from paddle.fluid.dygraph.layers import Layer
 from .random import get_rng_state_tracker
 from paddle.nn import functional as F
 from paddle import framework
 from ...base import topology as tp
 from paddle.autograd import PyLayer
+from paddle.incubate.nn.functional import fused_linear
 
 __all__ = []
 
 # Follow this paper to achieve the file:
 # Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter
 # language models using model parallelism[J]. arXiv preprint arXiv:1909.08053, 2019. (https://arxiv.org/abs/1909.08053)
+
+
+def _is_fused_matmul_bias_supported():
+    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+        return hasattr(core.ops, 'fused_gemm_epilogue')
+    else:
+        return False
+
+
+linear = fused_linear if _is_fused_matmul_bias_supported() else F.linear
 
 
 class VocabParallelEmbedding(Layer):
@@ -155,10 +167,10 @@ class ColumnParallelLinear(Layer):
         else:
             input_parallel = x
 
-        output_parallel = F.linear(input_parallel,
-                                   self.weight,
-                                   self.bias,
-                                   name=self._name)
+        output_parallel = linear(input_parallel,
+                                 self.weight,
+                                 self.bias,
+                                 name=self._name)
 
         if self.gather_output and self.is_mp:
             output = paddle.distributed.collective._c_concat(
@@ -233,18 +245,22 @@ class RowParallelLinear(Layer):
             input_parallel = paddle.distributed.collective._c_split(
                 x, group=self.model_parallel_group)
 
-        output_parallel = F.linear(input_parallel, self.weight, name=self._name)
-
         if self.is_mp:
+            output_parallel = linear(input_parallel,
+                                     self.weight,
+                                     name=self._name)
             output_ = paddle.distributed.collective._mp_allreduce(
                 output_parallel,
                 group=self.model_parallel_group,
                 use_calc_stream=True,
                 use_model_parallel=True)
+            output = output_ + self.bias if self.bias is not None else output_
         else:
-            output_ = output_parallel
+            output = linear(input_parallel,
+                            self.weight,
+                            self.bias,
+                            name=self._name)
 
-        output = output_ + self.bias if self.bias is not None else output_
         return output
 
 
