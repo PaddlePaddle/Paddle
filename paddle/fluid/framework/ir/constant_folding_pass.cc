@@ -55,7 +55,17 @@ PDNode *ConstantFolding::operator()(PDNode *persis_op) {
       "unsqueeze2", "reshape2", "fill_constant"};
   persis_op->assert_is_ops(assert_ops);
   auto *op_out = pattern->NewNode(common_op_out_repr())
-                     ->assert_is_ops_output(assert_ops, "Out");
+                     ->assert_is_ops_output(assert_ops, "Out")
+                     ->assert_more([&](Node *node) {
+                       auto next_ops = std::unordered_set<std::string>{
+                           "set_value", "conditional_block", "while"};
+                       for (size_t i = 0; i < node->outputs.size(); i++) {
+                         auto op_type = node->outputs[i]->Op()->Type();
+                         if (next_ops.count(op_type)) return false;
+                       }
+                       return true;
+                     });
+
   op_out->LinksFrom({persis_op});
   return op_out;
 }
@@ -87,12 +97,13 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   GraphPatternDetector gpd;
   auto *persis_op_node = gpd.mutable_pattern()
                              ->NewNode("persis_op_node")
+                             ->assert_is_op()
                              ->assert_more([&](Node *node) {
-                               bool is_op = node->IsOp();
                                int op_input_size = node->inputs.size();
-                               if (!is_op) return false;
                                if (op_input_size == 1) {
-                                 return node->inputs[0]->Var()->Persistable();
+                                 auto *input_node = node->inputs[0];
+                                 return input_node->Var()->Persistable() &&
+                                        input_node->outputs.size() == 1;
                                } else if (op_input_size == 0) {
                                  return true;
                                } else {
@@ -143,9 +154,16 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         return nullptr;
       } else {
         if (node->IsOp()) {
+          // Pick out the most useful output var
+          int useful_out_num = 0;
+          int useful_out_index = -1;
           for (size_t i = 0; i < node->outputs.size(); i++) {
-            if (node->outputs[i]->outputs.size() >= 1) return node->outputs[i];
+            if (node->outputs[i]->outputs.size() >= 1) {
+              useful_out_num++;
+              useful_out_index = i;
+            }
           }
+          if (useful_out_num == 1) return node->outputs[useful_out_index];
         } else {
           return nullptr;
         }
@@ -199,6 +217,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     auto *out_tensor = scope->Var(out_name)->GetMutable<LoDTensor>();
     *out_tensor = *local_out_tensor;
 
+    delete new_scope;
     // Remove links in graph
     GraphSafeRemoveNodes(graph, remove_nodes);
   };
