@@ -128,17 +128,17 @@ def send_u_recv(x,
                                                   pool_type.upper(), out_size)
 
     check_variable_and_dtype(x, "X", ("float32", "float64", "int32", "int64"),
-                             "send_u_recv")
+                             "graph_send_recv")
     check_variable_and_dtype(src_index, "Src_index", ("int32", "int64"),
-                             "send_u_recv")
+                             "graph_send_recv")
     check_variable_and_dtype(dst_index, "Dst_index", ("int32", "int64"),
-                             "send_u_recv")
+                             "graph_send_recv")
     if out_size:
         check_type(out_size, 'out_size', (int, np.int32, np.int64, Variable),
-                   'send_u_recv')
+                   'graph_send_recv')
     if isinstance(out_size, Variable):
         check_dtype(out_size.dtype, 'out_size', ['int32', 'int64'],
-                    'send_u_recv')
+                    'graph_send_recv')
 
     helper = LayerHelper("send_u_recv", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -150,7 +150,7 @@ def send_u_recv(x,
     get_out_size_tensor_inputs(inputs=inputs,
                                attrs=attrs,
                                out_size=out_size,
-                               op_type='send_u_recv')
+                               op_type='graph_send_recv')
 
     helper.append_op(type="graph_send_recv",
                      inputs=inputs,
