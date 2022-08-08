@@ -825,4 +825,7 @@ if (WITH_IPU)
     # Only support Resnet50 and Ernie currently
     inference_analysis_api_test(ipu_multi_model_profile SRCS ipu_multi_model_profile.cc
         ARGS --model_name="Resnet50" --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=10)
+
 endif()
+
+inference_analysis_api_test(ernie_debug_tool ${ERNIE_INSTALL_DIR} ernie_debug_tool.cc)
