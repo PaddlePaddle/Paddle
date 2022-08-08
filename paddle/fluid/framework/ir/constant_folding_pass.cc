@@ -47,24 +47,17 @@ struct ConstantFolding : public PatternBase {
   // declare operator node's name
   PATTERN_DECL_NODE(common_op);
   // declare variable node's name
-  PATTERN_DECL_NODE(common_op_in);
+  // common_op_in may be null, so ommit it
   PATTERN_DECL_NODE(common_op_out);
 };
 
-PDNode *ConstantFolding::operator()(PDNode *persis_x) {
+PDNode *ConstantFolding::operator()(PDNode *persis_op) {
   
-  auto assert_ops = std::unordered_set<std::string>{"unsqueeze2", "reshape2"};
-  persis_x->assert_is_ops_input(assert_ops);
-
-  auto *op = pattern->NewNode(common_op_repr());
-  op->assert_has_n_inputs(1);
-  op->assert_is_ops(assert_ops);
-
+  auto assert_ops = std::unordered_set<std::string>{"unsqueeze2", "reshape2", "fill_constant"};
+  persis_op->assert_is_ops(assert_ops);
   auto *op_out = pattern->NewNode(common_op_out_repr())
                   ->assert_is_ops_output(assert_ops, "Out");
-
-  op->LinksFrom({persis_x});
-  op_out->LinksFrom({op});
+  op_out->LinksFrom({persis_op});
   return op_out;
 }
 
@@ -75,7 +68,7 @@ ConstantFoldingPass::ConstantFoldingPass() {
 
 static bool ValidateOp(Node* op) 
 {
-  if(op->inputs.size() == 1) {
+  if(op->inputs.size() <= 1) {
     return true;
   }
   else if(op->inputs.size() == 2) {
@@ -96,42 +89,50 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init("constant_folding", graph);
   int found_subgraph_count = 0;
   GraphPatternDetector gpd;
-
-  auto *persis_x_node = gpd.mutable_pattern()
-                ->NewNode("persis_x_node")
-                ->AsInput()
-                ->assert_is_persistable_var()
-                ->assert_has_n_outputs(1);
+  auto *persis_op_node = gpd.mutable_pattern() 
+            ->NewNode("persis_op_node")
+            ->assert_more([&](Node* node) {
+              bool is_op = node->IsOp();
+              int op_input_size = node->inputs.size();
+              if(op_input_size == 1) {
+                return is_op && node->inputs[0]->Var()->Persistable();
+              }
+              else if(op_input_size == 0) {
+                return is_op;
+              } else {
+                return false;
+              }
+          });
 
   patterns::ConstantFolding fused_pattern(gpd.mutable_pattern(), "constant_folding");
-  fused_pattern(persis_x_node);
+  fused_pattern(persis_op_node);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *graph) {
-    if (subgraph.count(persis_x_node) <= 0) {
+    if (subgraph.count(persis_op_node) <= 0) {
       LOG(WARNING) << "The subgraph is empty.";
       return;
     }
     VLOG(4) << "handle ConstantFolding pass";
 
-    GET_IR_NODE_FROM_SUBGRAPH(op, common_op, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(op_out, common_op_out, fused_pattern);
 
-    auto x_shape = subgraph.at(persis_x_node)->Var()->GetShape();
-   
     auto* scope = param_scope();
-    auto* persis_x_tensor = scope->FindVar(subgraph.at(persis_x_node)->Name())->GetMutable<LoDTensor>();
-    //auto* persis_x_ptr = persis_x_tensor->mutable_data<float>(platform::CPUPlace());
-    
     framework::Scope *new_scope = new framework::Scope();
-    new_scope->Var(subgraph.at(persis_x_node)->Name());
-    auto* x_tensor = new_scope->FindVar(subgraph.at(persis_x_node)->Name())->GetMutable<LoDTensor>();
-    x_tensor->Resize(persis_x_tensor->dims());
-    *x_tensor = *persis_x_tensor;
+    std::unordered_set<const paddle::framework::ir::Node*> remove_nodes;
+    
+    if(subgraph.at(persis_op_node)->inputs.size()) {
+      auto *persis_x_node = subgraph.at(persis_op_node)->inputs[0];
+      auto x_shape = persis_x_node->Var()->GetShape();
+      auto* persis_x_tensor = scope->FindVar(persis_x_node->Name())->GetMutable<LoDTensor>();
+      new_scope->Var(persis_x_node->Name());
+      auto* x_tensor = new_scope->FindVar(persis_x_node->Name())->GetMutable<LoDTensor>();
+      x_tensor->Resize(persis_x_tensor->dims());
+      *x_tensor = *persis_x_tensor;
+    }
 
-    auto* iter_op = op;
+    auto* iter_op = subgraph.at(persis_op_node);
     std::vector<std::unique_ptr<OperatorBase>> ops;
-    std::unordered_set<const paddle::framework::ir::Node*> remove_nodes{subgraph.at(persis_x_node)};
 
 // for Op Node, it return the op's ith output, and make sure all others outputs muse be useless
 // for Var Node, it return 0th output if outputs.size() == 1 and then return nullptr
