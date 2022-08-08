@@ -115,8 +115,8 @@ class OptimizerConfig {
     this->mf_beta2_decay_rate = optimizer_config.mf_beta2_decay_rate;
     this->mf_ada_epsilon = optimizer_config.mf_ada_epsilon;
 
-    this->nodeid_slot = nodeid_slot;
-    this->feature_learning_rate = feature_learning_rate;
+    this->nodeid_slot = optimizer_config.nodeid_slot;
+    this->feature_learning_rate = optimizer_config.feature_learning_rate;
   }
 };
 
