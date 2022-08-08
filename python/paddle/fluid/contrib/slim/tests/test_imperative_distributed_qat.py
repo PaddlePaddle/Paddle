@@ -169,6 +169,7 @@ class SimpleDPNet(fluid.dygraph.Layer):
 class TestDistMPTraning(unittest.TestCase):
 
     def setUp(self):
+        init_parallel_env()
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
         self.data_parallel_size = 1
@@ -184,7 +185,6 @@ class TestDistMPTraning(unittest.TestCase):
         self.check_export_model_accuracy = True
         self.diff_threshold = 0.01
         self.fuse_conv_bn = False
-        init_parallel_env()
 
     def train_batch(self, batch, model, optimizer, is_mp):
         output = model(batch)
