@@ -796,10 +796,12 @@ class PsDescBuilder(object):
         for idx, (name, ctx) in enumerate(self.send_ctx.items()):
             print("idx, name, ctx:", idx, name, ctx)
             if ctx.is_sparse():
-                if self.ps_mode == DistributedMode.GEO and name[:-5] in self.context[
-                        'local_sparse']:
-                    tables.append(globals()['GeoSparseTable'](self.context,
-                                                              ctx))
+                if self.ps_mode == DistributedMode.GEO:
+                    if (self.context['local_sparse']
+                            and name[:-5] in self.context['local_sparse']) or (
+                                not self.context['local_sparse']):
+                        tables.append(globals()['GeoSparseTable'](self.context,
+                                                                  ctx))
                 else:
                     tables.append(globals()['SparseTable'](self.context, ctx))
             else:
