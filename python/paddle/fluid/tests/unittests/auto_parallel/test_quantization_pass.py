@@ -25,7 +25,8 @@ class TestQuantizationPass(unittest.TestCase):
 
     def test_qat_pass(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        launch_model_path = os.path.join(file_dir, "quantization_pass.py")
+        launch_model_path = os.path.join(file_dir,
+                                         "auto_parallel_quantization_pass.py")
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
