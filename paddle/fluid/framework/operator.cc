@@ -1530,7 +1530,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (impl_->updateInputsShapesDimCache()) {
         if (!all_kernels_must_compute_runtime_shape_)
           this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
-        (*pt_kernel_)(impl_->getKernelContext());
+        (*phi_kernel_)(impl_->getKernelContext());
       } else if (!impl_->cudaGraphGenerated()) {
         impl_->startCudaGraphCapture();
         impl_->getKernelContext();
@@ -1547,7 +1547,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     // common cache
     if (!all_kernels_must_compute_runtime_shape_)
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
-    (*pt_kernel_)(impl_->getKernelContext());
+    (*phi_kernel_)(impl_->getKernelContext());
   };
 
   // function name: updateRuntimeContext
