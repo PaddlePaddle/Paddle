@@ -461,7 +461,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                 vec_size;
   int device_id = dev_ctx.GetPlace().GetDeviceId();
   // auto gen_cuda = paddle::framework::DefaultCUDAGenerator(device_id);
-  auto gen_cuda = dev_ctx.GetGenerator(device_id);
+  auto gen_cuda = dev_ctx.GetGenerator();
   if (!fix_seed) {
     auto seed_offset = gen_cuda->IncrementOffset(offset);
     seed_data = seed_offset.first;
@@ -579,7 +579,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                      true,
                      &num_classes_per_device);
   T actual_num_samples = num_classes_per_device.data<T>()[rank + 1];
-  sampled_local_class_center->Resize({actual_num_samples});
+  sampled_local_class_center->Resize(phi::make_ddim({actual_num_samples}));
 
   T* sampled_local_class_center_ptr =
       dev_ctx.template Alloc<T>(sampled_local_class_center);
