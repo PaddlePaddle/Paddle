@@ -87,6 +87,8 @@ class ProgramDesc {
 
   std::string CachedSerializeString();
 
+  bool NeedUpdate() const;
+
  private:
   void InitFromProto();
 

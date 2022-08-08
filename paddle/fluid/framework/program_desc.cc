@@ -217,9 +217,26 @@ void ProgramDesc::SetFetchHolderName(const std::string &fetch_holder_name) {
   fetch_holder->SetPersistable(true);
 }
 
-std::string CachedSerializeString() {
-  if (cached_serialize_str_.size() == 0) {
-    self.Proto()->SerializePartialToString(&retv),
+std::string ProgramDesc::CachedSerializeString() {
+  if (cached_serialize_str_.size() == 0 || NeedUpdate()) {
+    Flush();
+    self.Proto()->SerializePartialToString(&cached_serialize_str_),
+  }
+}
+
+bool ProgramDesc::NeedUpdate() const {
+  bool need = false;
+  for (auto &block : blocks_) {
+    if (block->NeedUpdate()) {
+      need = true;
+      break;
+    }
+    for (const auto &op : block->AllOps()) {
+      if (op->NeedUpdate()) {
+        need = true;
+        break;
+      }
+    }
   }
 }
 

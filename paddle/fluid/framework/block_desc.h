@@ -113,6 +113,8 @@ class BlockDesc {
 
   void MoveFrom(BlockDesc *block);
 
+  bool NeedUpdate() const { return need_update_; }
+
  private:
   ProgramDesc *prog_;       // not_own
   proto::BlockDesc *desc_;  // not_own

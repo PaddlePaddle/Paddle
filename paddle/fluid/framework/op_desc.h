@@ -161,6 +161,8 @@ class OpDesc {
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
 
+  bool NeedUpdate() const { return need_update_; }
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
