@@ -15,6 +15,7 @@
 
 import paddle
 from paddle.fluid.framework import Variable, set_flags, core, _global_flags
+from .strategy_base import DistributedStrategyBase
 from paddle.fluid.wrapped_decorator import wrap_decorator
 import google.protobuf.text_format
 import google.protobuf
@@ -69,12 +70,11 @@ ReduceStrategyFluid = paddle.fluid.BuildStrategy.ReduceStrategy
 ReduceStrategyFleet = int
 
 
-class DistributedStrategy(object):
+class StaticStrategy(DistributedStrategyBase):
     __lock_attr = False
 
-    def __init__(self, strategy):
-        self.strategy = strategy
-
+    def __init__(self):
+        super(StaticStrategy, self).__init__()
         # Set the default values of the following flags to the ones set by users
         key = 'FLAGS_cudnn_batchnorm_spatial_persistent'
         if _global_flags().is_public(key):

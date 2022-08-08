@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.fluid.wrapped_decorator import wrap_decorator
+from .strategy_base import DistributedStrategyBase
+
 non_auto_func_called = True
 
 
@@ -57,10 +60,18 @@ def check_configs_key(msg, config, field_name):
         assert key in key_list, "key:{} not in {}".format(key, field_name)
 
 
-class EagerStrategy(object):
+class EagerStrategy(DistributedStrategyBase):
+    __lock_attr = False
 
-    def __init__(self, strategy):
-        self.strategy = strategy
+    def __init__(self):
+        super(EagerStrategy, self).__init__()
+        self.__lock_attr = True
+
+    def __setattr__(self, key, value):
+        if self.__lock_attr and not hasattr(self, key):
+            raise TypeError("%s is not a attribute of %s" %
+                            (key, self.__class__.__name__))
+        object.__setattr__(self, key, value)
 
     @property
     def dgc(self):
@@ -123,6 +134,32 @@ class EagerStrategy(object):
     def dgc_configs(self, configs):
         check_configs_key(self.strategy.dgc_configs, configs, "dgc_configs")
         assign_configs_value(self.strategy.dgc_configs, configs)
+
+    @property
+    def nccl_comm_num(self):
+        """
+        Specifying the number of NCCL communicator
+
+        Default value: 1
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.nccl_comm_num = 2
+        """
+
+        return self.strategy.nccl_comm_num
+
+    @nccl_comm_num.setter
+    @is_strict_auto
+    def nccl_comm_num(self, value):
+        if isinstance(value, int):
+            self.strategy.nccl_comm_num = value
+        else:
+            print("WARNING: nccl_comm_num should have value of int type")
 
     @property
     def fuse_grad_size_in_MB(self):
@@ -237,3 +274,85 @@ class EagerStrategy(object):
         check_configs_key(self.strategy.hybrid_configs, configs,
                           "hybrid_configs")
         assign_configs_value(self.strategy.hybrid_configs, configs)
+
+    @property
+    def heter_ccl_mode(self):
+        """
+        Indicating whether we are using heter_ccl_mode for model training.
+        This feature is currently an experimental feature. Currently,
+        heter_ccl_mode can be used only for dataparallel with dygraph mode.
+        Default Value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle
+            import paddle.distributed.fleet as fleet
+
+            strategy = fleet.DistributedStrategy()
+            strategy.heter_ccl_mode = True
+
+            # for initialize parallel env, only need to call
+            paddle.distributed.init_parallel_env()
+            # then the heterogenous context will be created.
+        """
+        return self.strategy.heter_ccl_mode
+
+    @heter_ccl_mode.setter
+    def heter_ccl_mode(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.heter_ccl_mode = flag
+        else:
+            print("WARNING: heter_ccl_mode should have value of bool type")
+
+    @property
+    def amp(self):
+        """
+        Indicating whether we are using automatic mixed precision training
+        Default Value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.amp = True # by default this is false
+
+        """
+        return self.strategy.amp
+
+    @amp.setter
+    @is_strict_auto
+    def amp(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.amp = flag
+        else:
+            print("WARNING: amp should have value of bool type")
+
+    @property
+    def recompute(self):
+        """
+        Indicating whether we are using forward recomputation for memory optimization
+        Default value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.recompute = True
+            # suppose x and y are names of checkpoint tensors for recomputation
+            strategy.recompute_configs = {"checkpoints": ["x", "y"]}
+        """
+        return self.strategy.recompute
+
+    @recompute.setter
+    @is_strict_auto
+    def recompute(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.recompute = flag
+        else:
+            print("WARNING: recompute should have value of bool type")
