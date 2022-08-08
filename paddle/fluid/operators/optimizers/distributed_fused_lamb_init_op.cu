@@ -15,14 +15,17 @@
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_init_op.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
-#include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/tensor_to_string.h"
 
 namespace paddle {
 namespace operators {
+
+using phi::funcs::FlattenToString;
+using phi::funcs::ToVector;
 
 struct ParamGradInfo {
   framework::Tensor *param_t{nullptr};
