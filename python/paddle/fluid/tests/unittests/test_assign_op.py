@@ -214,10 +214,9 @@ class TestAssignOApi(unittest.TestCase):
         y = clone_x**3
         y.backward()
 
-        np.testing.assert_array_equal(x, [1, 1], err_msg=True)
-        np.testing.assert_array_equal(clone_x.grad.numpy(), [3, 3],
-                                      err_msg=True)
-        np.testing.assert_array_equal(x.grad.numpy(), [3, 3], err_msg=True)
+        np.testing.assert_array_equal(x, [1, 1])
+        np.testing.assert_array_equal(clone_x.grad.numpy(), [3, 3])
+        np.testing.assert_array_equal(x.grad.numpy(), [3, 3])
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.enable_static()
 
@@ -230,7 +229,7 @@ class TestAssignOApi(unittest.TestCase):
                            feed={'X': x_np},
                            fetch_list=[clone_x])[0]
 
-        np.testing.assert_array_equal(y_np, x_np, err_msg=True)
+        np.testing.assert_array_equal(y_np, x_np)
         paddle.disable_static()
 
 

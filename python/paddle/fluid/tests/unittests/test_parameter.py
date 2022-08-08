@@ -117,11 +117,9 @@ class ParameterChecks(unittest.TestCase):
             self.assertEqual(linear2.weight.shape, [10, 15])
             self.assertEqual(linear2.bias.shape, [15])
             np.testing.assert_array_equal(linear1.weight.numpy(),
-                                          linear2.weight.numpy(),
-                                          err_msg=True)
+                                          linear2.weight.numpy())
             np.testing.assert_array_equal(linear1.bias.numpy(),
-                                          linear2.bias.numpy(),
-                                          err_msg=True)
+                                          linear2.bias.numpy())
             self.assertTrue(linear2.weight.is_leaf, True)
             self.assertTrue(linear2.bias.is_leaf, True)
 
