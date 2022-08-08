@@ -14,7 +14,23 @@
 
 #pragma once
 
-#include "function.h"          //NOLINT
-#include "layer.h"             // NOLINT
-#include "serializer.h"        // NOLINT
-#include "serializer_utils.h"  // NOLINT
+#include "paddle/phi/api/include/tensor.h"
+
+namespace paddle {
+namespace jit {
+
+using Tensor = paddle::experimental::Tensor;
+using DenseTensor = phi::DenseTensor;
+
+class BaseEngine {
+ public:
+  virtual std::vector<DenseTensor> operator()(
+      const std::vector<DenseTensor> &inputs) = 0;
+
+  virtual std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) = 0;
+
+  virtual ~BaseEngine() {}
+};
+
+}  // namespace jit
+}  // namespace paddle
