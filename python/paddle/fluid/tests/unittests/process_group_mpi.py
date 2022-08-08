@@ -32,11 +32,12 @@ import paddle.distributed as dist
 
 
 def init_process_group(strategy=None):
-    pg_group = dist.mpi_init_parallel_env()
+    pg_group = dist.init_parallel_env()
     return pg_group.process_group
 
 
 class TestProcessGroup(unittest.TestCase):
+
     def setUp(self):
         paddle.seed(2022)
         random.seed(2022)
@@ -82,13 +83,15 @@ class TestProcessGroup(unittest.TestCase):
             max_result = paddle.maximum(tensor_x, tensor_y)
 
             if pg.rank() == 0:
-                task = dist.all_reduce(
-                    tensor_x, dist.ReduceOp.MAX, use_calc_stream=False)
+                task = dist.all_reduce(tensor_x,
+                                       dist.ReduceOp.MAX,
+                                       use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_x, max_result)
             else:
-                task = dist.all_reduce(
-                    tensor_y, dist.ReduceOp.MAX, use_calc_stream=False)
+                task = dist.all_reduce(tensor_y,
+                                       dist.ReduceOp.MAX,
+                                       use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_y, max_result)
 
@@ -105,13 +108,15 @@ class TestProcessGroup(unittest.TestCase):
             min_result = paddle.minimum(tensor_x, tensor_y)
 
             if pg.rank() == 0:
-                task = dist.all_reduce(
-                    tensor_x, dist.ReduceOp.MIN, use_calc_stream=False)
+                task = dist.all_reduce(tensor_x,
+                                       dist.ReduceOp.MIN,
+                                       use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_x, min_result)
             else:
-                task = dist.all_reduce(
-                    tensor_y, dist.ReduceOp.MIN, use_calc_stream=False)
+                task = dist.all_reduce(tensor_y,
+                                       dist.ReduceOp.MIN,
+                                       use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_y, min_result)
 
@@ -128,13 +133,15 @@ class TestProcessGroup(unittest.TestCase):
             prod_result = np.multiply(x, y)
 
             if pg.rank() == 0:
-                task = dist.all_reduce(
-                    tensor_x, dist.ReduceOp.PROD, use_calc_stream=False)
+                task = dist.all_reduce(tensor_x,
+                                       dist.ReduceOp.PROD,
+                                       use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_x, prod_result)
             else:
-                task = dist.all_reduce(
-                    tensor_y, dist.ReduceOp.PROD, use_calc_stream=False)
+                task = dist.all_reduce(tensor_y,
+                                       dist.ReduceOp.PROD,
+                                       use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_y, prod_result)
 
@@ -190,10 +197,12 @@ class TestProcessGroup(unittest.TestCase):
             # rank 1
             else:
                 tensor_out_list = [
-                    paddle.empty_like(tensor_x), paddle.empty_like(tensor_x)
+                    paddle.empty_like(tensor_x),
+                    paddle.empty_like(tensor_x)
                 ]
-                task = dist.all_gather(
-                    tensor_out_list, tensor_y, use_calc_stream=False)
+                task = dist.all_gather(tensor_out_list,
+                                       tensor_y,
+                                       use_calc_stream=False)
                 paddle.device.cuda.synchronize()
                 tensor_out = paddle.concat(tensor_out_list)
             out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
@@ -210,8 +219,9 @@ class TestProcessGroup(unittest.TestCase):
             # rank 1
             else:
                 tensor_out_list = []
-                task = dist.all_gather(
-                    tensor_out_list, tensor_y, use_calc_stream=False)
+                task = dist.all_gather(tensor_out_list,
+                                       tensor_y,
+                                       use_calc_stream=False)
                 paddle.device.cuda.synchronize()
                 tensor_out = paddle.concat(tensor_out_list)
             out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
@@ -317,13 +327,17 @@ class TestProcessGroup(unittest.TestCase):
             max_result = paddle.maximum(tensor_x, tensor_y)
 
             if pg.rank() == 0:
-                task = dist.reduce(
-                    tensor_x, 0, dist.ReduceOp.MAX, use_calc_stream=False)
+                task = dist.reduce(tensor_x,
+                                   0,
+                                   dist.ReduceOp.MAX,
+                                   use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_x, max_result)
             else:
-                task = dist.reduce(
-                    tensor_y, 0, dist.ReduceOp.MAX, use_calc_stream=False)
+                task = dist.reduce(tensor_y,
+                                   0,
+                                   dist.ReduceOp.MAX,
+                                   use_calc_stream=False)
                 task.wait()
 
             print("test reduce max api ok")
@@ -339,13 +353,17 @@ class TestProcessGroup(unittest.TestCase):
             min_result = paddle.minimum(tensor_x, tensor_y)
 
             if pg.rank() == 0:
-                task = dist.reduce(
-                    tensor_x, 0, dist.ReduceOp.MIN, use_calc_stream=False)
+                task = dist.reduce(tensor_x,
+                                   0,
+                                   dist.ReduceOp.MIN,
+                                   use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_x, min_result)
             else:
-                task = dist.reduce(
-                    tensor_y, 0, dist.ReduceOp.MIN, use_calc_stream=False)
+                task = dist.reduce(tensor_y,
+                                   0,
+                                   dist.ReduceOp.MIN,
+                                   use_calc_stream=False)
                 task.wait()
 
             print("test reduce min api ok")
@@ -361,13 +379,17 @@ class TestProcessGroup(unittest.TestCase):
             prod_result = np.multiply(x, y)
 
             if pg.rank() == 0:
-                task = dist.reduce(
-                    tensor_x, 0, dist.ReduceOp.PROD, use_calc_stream=False)
+                task = dist.reduce(tensor_x,
+                                   0,
+                                   dist.ReduceOp.PROD,
+                                   use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_x, prod_result)
             else:
-                task = dist.reduce(
-                    tensor_y, 0, dist.ReduceOp.PROD, use_calc_stream=False)
+                task = dist.reduce(tensor_y,
+                                   0,
+                                   dist.ReduceOp.PROD,
+                                   use_calc_stream=False)
                 task.wait()
 
             print("test reduce prod api ok")
@@ -381,8 +403,9 @@ class TestProcessGroup(unittest.TestCase):
             tensor_y = paddle.to_tensor(y)
             if pg.rank() == 0:
                 in_1, in_2 = paddle.split(tensor_x, 2)
-                task = dist.scatter(
-                    tensor_y, [in_1, in_2], 0, use_calc_stream=True)
+                task = dist.scatter(tensor_y, [in_1, in_2],
+                                    0,
+                                    use_calc_stream=True)
                 #task.wait()
                 paddle.device.cuda.synchronize()
             # rank 1

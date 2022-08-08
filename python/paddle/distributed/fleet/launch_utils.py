@@ -1965,16 +1965,25 @@ class ParameterServerLauncher(object):
 
 
 def check_backend(backend):
-    if backend not in ['nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter']:
-        raise ValueError("paddle.distributed initialize error, "
-                         "backend argument can only be one of "
-                         "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter' "
-                         "but got %s" % backend)
+    if backend not in [
+            'nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter', 'mpi'
+    ]:
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "backend argument can only be one of "
+            "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter', 'mpi' "
+            "but got %s" % backend)
 
     if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with cuda but you assign 'nccl' as backend."
+        )
+
+    if backend == 'mpi' and not fluid.core.is_compiled_with_mpi():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with mpi but you assign 'mpi' as backend."
         )
 
     if backend == 'bkcl' and not fluid.core.is_compiled_with_xpu():
