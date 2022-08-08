@@ -326,6 +326,10 @@ class AutoTuneCache {
     for (auto& v : auto_tune_map_) {
       v.second.Clean();
     }
+
+    for (auto& v : cudnn_auto_tune_map_) {
+      v.second.Clean();
+    }
   }
 
   void UpdateStatus();
