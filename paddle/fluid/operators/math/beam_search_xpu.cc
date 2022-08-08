@@ -29,7 +29,6 @@ class XPUDeviceContext;
 namespace paddle {
 namespace operators {
 namespace math {
-
 template <typename T>
 int CopyData(const T *x, T **y, int len) {
   if (nullptr == x || nullptr == y || len <= 0)
@@ -42,6 +41,17 @@ int CopyData(const T *x, T **y, int len) {
                        x,
                        len * sizeof(T));
   return xpu::Error_t::SUCCESS;
+}
+
+template <typename T>
+void CopyDataByCondition(const T *x, T **y, int len) {
+  if (x != nullptr) {
+    int r = CopyData(x, y, len);
+    PADDLE_ENFORCE_EQ(
+        r,
+        xpu::Error_t::SUCCESS,
+        platform::errors::External("Copy data form xpu to cpu failed"));
+  }
 }
 
 template <typename T>
@@ -182,15 +192,8 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
                      int end_id) {
     auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
     int64_t *pre_ids_data = nullptr;
-
-    int r = 0;
-    if (pre_ids_data_xpu != nullptr) {
-      r = CopyData<int64_t>(pre_ids_data_xpu, &pre_ids_data, pre_ids->numel());
-      PADDLE_ENFORCE_EQ(
-          r,
-          xpu::Error_t::SUCCESS,
-          platform::errors::External("Copy data form xpu to cpu failed"));
-    }
+    CopyDataByCondition<int64_t>(
+        pre_ids_data_xpu, &pre_ids_data, pre_ids->numel());
 
     auto &high_level = abs_lod[lod_level];
     for (size_t src_idx = 0; src_idx < high_level.size() - 1; ++src_idx) {
@@ -237,11 +240,9 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
   void Insert(std::vector<Item> *top_beam_ptr,
               const Item &item,
               size_t beam_size) {
-    VLOG(3) << "beam size is " << beam_size;
     std::vector<Item> &top_beam = *top_beam_ptr;
 
     size_t num_beams = top_beam.size();
-    VLOG(3) << "top beam size is " << num_beams;
 
     if (num_beams < beam_size) {
       top_beam.resize(num_beams + 1);
@@ -280,50 +281,23 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
     // find the current candidates
     auto abs_lod = framework::ToAbsOffset(scores->lod());
 
-    int r = 0;
     auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
     int64_t *pre_ids_data = nullptr;
-
-    if (pre_ids_data_xpu != nullptr) {
-      r = CopyData<int64_t>(pre_ids_data_xpu, &pre_ids_data, pre_ids->numel());
-      PADDLE_ENFORCE_EQ(
-          r,
-          xpu::Error_t::SUCCESS,
-          platform::errors::External("Copy data form xpu to cpu failed"));
-    }
+    CopyDataByCondition<int64_t>(
+        pre_ids_data_xpu, &pre_ids_data, pre_ids->numel());
 
     auto *pre_scores_data_xpu = pre_scores->data<float>();
     float *pre_scores_data = nullptr;
-    if (pre_scores_data_xpu != nullptr) {
-      r = CopyData<float>(
-          pre_scores_data_xpu, &pre_scores_data, pre_scores->numel());
-      PADDLE_ENFORCE_EQ(
-          r,
-          xpu::Error_t::SUCCESS,
-          platform::errors::External("Copy data form xpu to cpu failed"));
-    }
+    CopyDataByCondition<float>(
+        pre_scores_data_xpu, &pre_scores_data, pre_scores->numel());
 
     auto *ids_data_xpu = ids ? ids->data<int64_t>() : nullptr;
     int64_t *ids_data = nullptr;
-
-    if (ids_data_xpu != nullptr) {
-      r = CopyData<int64_t>(ids_data_xpu, &ids_data, ids->numel());
-      PADDLE_ENFORCE_EQ(
-          r,
-          xpu::Error_t::SUCCESS,
-          platform::errors::External("Copy data form xpu to cpu failed"));
-    }
+    CopyDataByCondition<int64_t>(ids_data_xpu, &ids_data, ids->numel());
 
     auto *scores_data_xpu = scores->data<float>();
     float *scores_data = nullptr;
-
-    if (scores_data_xpu != nullptr) {
-      r = CopyData<float>(scores_data_xpu, &scores_data, scores->numel());
-      PADDLE_ENFORCE_EQ(
-          r,
-          xpu::Error_t::SUCCESS,
-          platform::errors::External("Copy data form xpu to cpu failed"));
-    }
+    CopyDataByCondition<float>(scores_data_xpu, &scores_data, scores->numel());
 
     size_t num_seqs = scores->NumElements(lod_level);
     size_t seq_width = 1;
