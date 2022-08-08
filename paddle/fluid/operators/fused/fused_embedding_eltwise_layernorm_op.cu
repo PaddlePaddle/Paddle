@@ -142,8 +142,14 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
 REGISTER_OP_CUDA_KERNEL(
     fused_embedding_eltwise_layernorm,
     ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext, float>,
     ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext,
                                          paddle::platform::float16>);
+#else
+REGISTER_OP_CUDA_KERNEL(
+    fused_embedding_eltwise_layernorm,
+    ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext, float>);
+#endif

@@ -90,7 +90,12 @@ class SkipLayerNormKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
 REGISTER_OP_CUDA_KERNEL(
     skip_layernorm,
     ops::SkipLayerNormKernel<phi::GPUContext, float>,
     ops::SkipLayerNormKernel<phi::GPUContext, paddle::platform::float16>);
+#else
+REGISTER_OP_CUDA_KERNEL(skip_layernorm,
+                        ops::SkipLayerNormKernel<phi::GPUContext, float>);
+#endif
