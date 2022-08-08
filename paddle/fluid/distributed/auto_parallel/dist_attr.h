@@ -101,10 +101,6 @@ class TensorDistAttr {
   // TensorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
 
-  static TensorDistAttr from_proto(const TensorDistAttrProto& proto);
-
-  TensorDistAttrProto to_proto() const;
-
  private:
   static std::vector<std::string> fields_;
   const VarDesc* tensor_{nullptr};
@@ -212,10 +208,6 @@ class OperatorDistAttr {
 
   // OperatorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
-
-  static OperatorDistAttr from_proto(const OperatorDistAttrProto& proto);
-
-  OperatorDistAttrProto to_proto() const;
 
  private:
   static std::vector<std::string> fields_;

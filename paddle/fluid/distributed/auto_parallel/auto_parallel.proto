@@ -30,59 +30,6 @@ message ProcessMeshProto {
 
 }
 
-// This distributed attribute describes how to distribute the corresponding tensor,
-// and store any other information needed by auto parallel.
-message TensorDistAttrProto {
-  // The process mesh where a tensor is distributed.
-  optional ProcessMeshProto process_mesh = 1;
-
-  // The length of dims_mapping is same as the length of the tensor shape.
-  // The i-th dimension of the tensor will be sharded by the dims_mapping[i]-th dimension 
-  // of the above process mesh. If dims_mapping[i] is -1, the i-th dimension of the tensor
-  // will not be sharded. For example, given a tensor shape [2, 6, 12], a process mesh
-  // shape [2, 3] and a dims_mapping [-1, 1, 0], each sharded tensor will have a shape [2, 2, 6].
-  repeated int64 dims_mapping = 2;
-
-  // The batch dimension of the corresponding tensor. 
-  optional int64 batch_dim = 3;
-
-  // If the dynamic_dims[i] is True, the i-th dimension of the corresponding tensor 
-  // is dynamic changed. Otherwise, the i-th dimension of the tensor is static determined. 
-  repeated bool dynamic_dims = 4;
-}
-
-// This distributed attribute describes how to distribute the corresponding operator,
-// and store any other information needed by auto parallel.
-message OperatorDistAttrProto {
-  message TensorDistAttrMappingEntryProto {
-    optional string name = 1;
-    optional TensorDistAttrProto tensor_dist_attr = 2;
-  } 
-  // The key of this map is the input tensor name and the value is the distributed attribute
-  // of the input tensor required by this corresponding operator.   
-  // The distributed attribute of the actual tensor may be not the same as that within 
-  // the distributed attribute of the operator.
-  repeated TensorDistAttrMappingEntryProto input_dist_attrs = 1;
-
-  // The key of this map is the output tensor name and the value is the distributed attribute
-  // of the output tensor required by this corresponding operator.   
-  // The distributed attribute of the actual tensor may be not the same as that within 
-  // the distributed attribute of the operator.
-  repeated TensorDistAttrMappingEntryProto output_dist_attrs = 2;
-
-  // The process mesh where a op is distributed.
-  optional ProcessMeshProto process_mesh = 3;
-
-  // A operator ideally has a distributed operator which may have multiple distributed implementations.
-  // This filed is usually same as the operator type. However, some operators such as the element-wise operators
-  // may shared the same distributed operator, the field is use for this scenario.
-  optional string impl_type = 4;
-
-  // This field tells which distributed implementations of this corresponding operator 
-  // will be selected for the actual computation.
-  optional int64 impl_idx = 5;
-}
-
 // This proto describes the capability of one device such as the computation and memory.
 message DeviceCapabilityProto {
   optional double single_precision_flops = 1;
