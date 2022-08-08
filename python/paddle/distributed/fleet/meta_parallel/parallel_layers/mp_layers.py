@@ -108,7 +108,8 @@ class ColumnParallelLinear(Layer):
                  weight_attr=None,
                  has_bias=None,
                  gather_output=True,
-                 name=None):
+                 name=None,
+                 fuse_matmul_bias=False):
         super(ColumnParallelLinear, self).__init__()
 
         self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
@@ -155,11 +156,17 @@ class ColumnParallelLinear(Layer):
         else:
             self.bias = None
 
-        if is_fused_matmul_bias_supported():
+        self.linear = F.linear
+
+        if fuse_matmul_bias:
+            if not is_fused_matmul_bias_supported():
+                raise NotImplementedError(
+                    "You set fuse_matmul_bias=True in ColumnParallelLinear, "
+                    "however, the paddle you are using not support this operation. "
+                    "Please set fuse_matmul_bias=False or use paddle compiled "
+                    "with cuda 11.6 or higher.")
             from paddle.incubate.nn.functional import fused_linear
             self.linear = fused_linear
-        else:
-            self.linear = F.linear
 
     def forward(self, x):
         # use inner api to process identity
@@ -190,7 +197,8 @@ class RowParallelLinear(Layer):
                  weight_attr=None,
                  has_bias=True,
                  input_is_parallel=False,
-                 name=None):
+                 name=None,
+                 fuse_matmul_bias=False):
         super(RowParallelLinear, self).__init__()
 
         self.in_features = in_features
@@ -239,11 +247,17 @@ class RowParallelLinear(Layer):
         else:
             self.bias = None
 
-        if is_fused_matmul_bias_supported():
+        self.linear = F.linear
+
+        if fuse_matmul_bias:
+            if not is_fused_matmul_bias_supported():
+                raise NotImplementedError(
+                    "You set fuse_matmul_bias=True in RowParallelLinear, "
+                    "however, the paddle you are using not support this operation. "
+                    "Please set fuse_matmul_bias=False or use paddle compiled "
+                    "with cuda 11.6 or higher.")
             from paddle.incubate.nn.functional import fused_linear
             self.linear = fused_linear
-        else:
-            self.linear = F.linear
 
     def forward(self, x):
         if self.input_is_parallel or (not self.is_mp):
