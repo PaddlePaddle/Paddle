@@ -1,4 +1,4 @@
-add_subdirectory(function)
+add_subdirectory(engine)
 proto_library(paddle_jit_property_proto SRCS property.proto)
 
 cc_library(
@@ -32,6 +32,11 @@ cc_library(
   DEPS jit_function_utils)
 
 cc_library(
+  jit_function
+  SRCS function.cc
+  DEPS jit_function_utils jit_executor_engine jit_pe_engine)
+
+cc_library(
   jit_layer
   SRCS layer.cc
   DEPS jit_serializer
@@ -39,8 +44,9 @@ cc_library(
        jit_serializer_utils
        jit_compilation_unit
        jit_function_schema
-       jit_executor_function
-       jit_pe_function)
+       jit_executor_engine
+       jit_pe_engine
+       jit_function)
 
 if(WITH_TESTING AND NOT WIN32)
   add_custom_target(

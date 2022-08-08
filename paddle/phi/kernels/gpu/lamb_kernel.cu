@@ -12,25 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/lamb_kernel.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/lamb_kernel_impl.h"
 
-#include "paddle/phi/api/include/tensor.h"
-
-namespace paddle {
-namespace jit {
-
-using Tensor = paddle::experimental::Tensor;
-using DenseTensor = phi::DenseTensor;
-
-class BaseFunction {
- public:
-  virtual std::vector<DenseTensor> operator()(
-      const std::vector<DenseTensor> &inputs) = 0;
-
-  virtual std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) = 0;
-
-  virtual ~BaseFunction() {}
-};
-
-}  // namespace jit
-}  // namespace paddle
+PD_REGISTER_KERNEL(lamb,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LambKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {
+  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
+}
