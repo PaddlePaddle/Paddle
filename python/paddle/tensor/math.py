@@ -288,7 +288,6 @@ def multiplex(inputs, index, name=None):
     Examples:
 
         .. code-block:: python
-            :name: code-example1
 
             import paddle
             
@@ -1376,7 +1375,6 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
     Examples:
 
         .. code-block:: python
-            :name: count_nonzero-example
 
             import paddle
             # x is a 2-D Tensor:
@@ -1468,7 +1466,7 @@ def add_n(inputs, name=None):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
 
             input0 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
@@ -1799,7 +1797,10 @@ def renorm(x, p, axis, max_norm):
         if not axis >= -1 * len(input_shape):
             raise ValueError("the axis:{} should not be less than -1 * length of input_shape:{}".format(axis,-1 * len(input_shape)))
         axis = axis + len(input_shape)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_renorm(x, p, axis, max_norm)
+        return out
+    elif _in_legacy_dygraph():
         out = _C_ops.renorm(x, 'p',p, 'axis',axis, 'max_norm', max_norm)
         return out
 
@@ -4626,7 +4627,6 @@ def heaviside(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            :name: heaviside-example
 
             import paddle
             x = paddle.to_tensor([-0.5, 0, 0.5])
@@ -4659,7 +4659,7 @@ def frac(x, name=None):
         Tensor: The output Tensor of frac.
 
     Examples:
-        .. code-block:: Python
+        .. code-block:: python
 
             import paddle
             import numpy as np

@@ -596,7 +596,7 @@ class TestGenerateProposals(LayerTest):
                     'var': variances_np
                 },
                 fetch_list=[rois, roi_probs, rois_num],
-                with_lod=True)
+                with_lod=False)
 
         with self.dynamic_graph():
             scores_dy = base.to_variable(scores_np)

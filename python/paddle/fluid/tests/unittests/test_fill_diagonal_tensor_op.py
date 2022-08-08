@@ -86,6 +86,7 @@ class TensorFillDiagTensor_Test(OpTest):
 
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
         self.init_kernel_type()
         x = np.random.random((10, 10)).astype(self.dtype)
         y = np.random.random((10, )).astype(self.dtype)
@@ -96,22 +97,23 @@ class TensorFillDiagTensor_Test(OpTest):
 
         self.inputs = {"X": x, "Y": y}
         self.outputs = {'Out': out}
-        self.attrs = {"dim1": dim1, "dim2": dim2, "offset": offset}
+        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
 
     def init_kernel_type(self):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
 
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
         self.init_kernel_type()
         x = np.random.random((2, 20, 25)).astype(self.dtype)
         y = np.random.random((2, 20)).astype(self.dtype)
@@ -122,7 +124,7 @@ class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
 
         self.inputs = {"X": x, "Y": y}
         self.outputs = {'Out': out}
-        self.attrs = {"dim1": dim1, "dim2": dim2, "offset": offset}
+        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
 
     def init_kernel_type(self):
         self.dtype = np.float32
@@ -132,6 +134,7 @@ class TensorFillDiagTensor_Test3(TensorFillDiagTensor_Test):
 
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
         self.init_kernel_type()
         x = np.random.random((2, 20, 20, 3)).astype(self.dtype)
         y = np.random.random((2, 3, 18)).astype(self.dtype)
@@ -142,11 +145,12 @@ class TensorFillDiagTensor_Test3(TensorFillDiagTensor_Test):
 
         self.inputs = {"X": x, "Y": y}
         self.outputs = {'Out': out}
-        self.attrs = {"dim1": dim1, "dim2": dim2, "offset": offset}
+        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
 
     def init_kernel_type(self):
         self.dtype = np.float16
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

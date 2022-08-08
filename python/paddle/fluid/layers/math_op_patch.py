@@ -128,6 +128,24 @@ def monkey_patch_variable():
         var.stop_gradient = True
         return var
 
+    @static_only
+    def cpu(self):
+        """ 
+            Variable should not have cpu() and cuda() interface.
+            But this interface can greatly facilitate dy2static.
+            We do nothing here.
+        """
+        return self
+
+    @static_only
+    def cuda(self):
+        """ 
+            Variable should not have cpu() and cuda() interface.
+            But this interface can greatly facilitate dy2static.
+            We do nothing here.
+        """
+        return self
+
     def astype(self, dtype):
         """
         **Notes**:
@@ -368,6 +386,8 @@ def monkey_patch_variable():
         #   b=-a
         ('__neg__', _neg_),
         ('astype', astype),
+        ('cpu', cpu),
+        ('cuda', cuda),
         ('append', append),
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),

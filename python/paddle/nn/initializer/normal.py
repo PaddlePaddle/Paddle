@@ -72,7 +72,6 @@ class TruncatedNormal(TruncatedNormalInitializer):
 
     Examples:
         .. code-block:: python
-            :name: initializer_TruncatedNormal-example
 
             import paddle
 
