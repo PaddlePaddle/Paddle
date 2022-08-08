@@ -1532,8 +1532,11 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             output_size[1] = in_h
         if output_size[2] == None:
             output_size[2] = in_w
-
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_pool3d(x, output_size, [1, 1, 1], [0, 0, 0],
+                                         False, True, data_format, 'avg', False,
+                                         True, 'EXPLICIT')
+    if _in_legacy_dygraph():
         return _C_ops.pool3d(x, 'pooling_type', 'avg', 'ksize', output_size,
                              'global_pooling', False, 'adaptive', True,
                              'data_format', data_format)
@@ -1615,7 +1618,12 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        pool_out = _C_ops.final_state_max_pool2d_with_index(
+            x, pool_size, [1, 1], [0, 0], False, True)
+        return (squeeze(pool_out[0], [2]), squeeze(
+            pool_out[1], [2])) if return_mask else squeeze(pool_out[0], [2])
+    if _in_legacy_dygraph():
         pool_out = _C_ops.max_pool2d_with_index(x, 'pooling_type', pool_type,
                                                 'ksize', pool_size, 'adaptive',
                                                 True)
@@ -1703,8 +1711,11 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
             output_size[0] = in_h
         if output_size[1] == None:
             output_size[1] = in_w
-
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        pool_out = _C_ops.final_state_max_pool2d_with_index(
+            x, output_size, [1, 1], [0, 0], False, True)
+        return pool_out if return_mask else pool_out[0]
+    if _in_legacy_dygraph():
         pool_out = _C_ops.max_pool2d_with_index(x, 'pooling_type', 'max',
                                                 'ksize', output_size,
                                                 'adaptive', True)
@@ -1796,8 +1807,11 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
             output_size[1] = in_h
         if output_size[2] == None:
             output_size[2] = in_w
-
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        pool_out = _C_ops.final_state_max_pool3d_with_index(
+            x, output_size, [1, 1, 1], [0, 0, 0], False, True)
+        return pool_out if return_mask else pool_out[0]
+    if _in_legacy_dygraph():
         pool_out = _C_ops.max_pool3d_with_index(x, 'pooling_type', 'max',
                                                 'ksize', output_size,
                                                 'adaptive', True)

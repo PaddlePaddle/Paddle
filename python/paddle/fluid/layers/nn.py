@@ -2252,7 +2252,11 @@ def pool2d(input,
             pool_padding = [0, 0]
 
     pool_padding = update_padding(pool_padding, data_format)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_pool2d(input, pool_stride, pool_padding,
+                                         ceil_mode, exclusive, data_format,
+                                         pooling_type, global_pooling, False,
+                                         padding_algorithm)
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()

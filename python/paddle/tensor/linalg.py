@@ -420,6 +420,17 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                  keepdim=False,
                  asvector=False,
                  name=None):
+        if in_dygraph_mode():
+            out = _C_ops.final_state_abs(x)
+            reduce_all = True if axis == None or axis == [] or asvector == True else False
+            axis = axis if axis != None and axis != [] else [0]
+            if reduce_all:
+                assert (axis == []) or (axis is None)
+            if porder == np.float64('inf'):
+                return _C_ops.final_state_max(x, axis, keep_dim)
+            else:
+                return _C_ops.final_state_min(x, axis, keep_dim)
+
         helper = LayerHelper('inf_norm', **locals())
         out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
@@ -448,6 +459,13 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         NOTE:
             This function actually treats the matrix as flattened vector to calculate vector norm instead of matrix norm.
         """
+        if in_dygraph_mode():
+            abs_out = _C_ops.final_state_abs(input)
+            pow_out = _C_ops.final_state_pow(abs_out, porder)
+            sum_out = _C_ops.final_state_sum(pow_out, axis, None, keep_dim)
+            out = _C_ops.final_state_pow(sum_out, out, float(1. / porder))
+            return out
+
         block = LayerHelper('norm', **locals())
         out = block.create_variable_for_type_inference(
             dtype=block.input_dtype())
@@ -2588,8 +2606,55 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             # one can verify : x * out * x = x ;
             # or              out * x * out = x ;
     """
+    if in_dygraph_mode():
+        if not hermitian:
+            # combine svd and matmul op
+            u, s, vt = _C_ops.final_state_svd(x, False)
+            max_singular_val = _C_ops.final_state_max(s, [-1], True)
+            rcond = paddle.to_tensor(rcond, dtype=x.dtype)
+            cutoff = rcond * max_singular_val
+            y = float('inf')
+            y = paddle.to_tensor(y, dtype=x.dtype)
 
-    if _non_static_mode():
+            condition = s > cutoff
+            cond_int = cast(condition, s.dtype)
+            cond_not_int = cast(logical_not(condition), s.dtype)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
+            st, _ = _C_ops.final_state_unsqueeze(singular, [-2])
+
+            dims = list(range(len(vt.shape)))
+            perm = dims[:-2] + [dims[-1]] + [dims[-2]]
+            v, _ = _C_ops.final_state_transpose(vt, perm)
+
+            out_1 = v * st
+            out_2 = _C_ops.final_state_matmul(out_1, u, False, True)
+            return out_2
+        else:
+            # combine eigh and matmul op
+            s, u = _C_ops.final_state_eigh(x, 'UPLO')
+            s_abs = paddle.abs(s)
+            max_singular_val = _C_ops.final_state_max(s_abs, [-1], True)
+            rcond = paddle.to_tensor(rcond, dtype=s.dtype)
+            cutoff = rcond * max_singular_val
+            y = float('inf')
+            y = paddle.to_tensor(y, dtype=s.dtype)
+
+            condition = s_abs > cutoff
+            cond_int = cast(condition, s.dtype)
+            cond_not_int = cast(logical_not(condition), s.dtype)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
+            st, _ = _C_ops.final_state_unsqueeze(singular, [-2])
+
+            out_1 = u * st
+            u_conj = _C_ops.final_state_conj(u)
+            out_2 = _C_ops.final_state_matmul(out_1, u_conj, False, True)
+            return out_2
+
+    if _in_legacy_dygraph():
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, 'full_matrices', False)

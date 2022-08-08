@@ -1605,12 +1605,12 @@ def linspace(start, stop, num, dtype=None, name=None):
     if not isinstance(num, Variable):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num)
-    if _in_legacy_dygraph():
-        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
-                               dtype)
     if in_dygraph_mode():
         return _C_ops.final_state_linspace(tensor_start, tensor_stop,
                                            tensor_num, dtype)
+    if _in_legacy_dygraph():
+        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
+                               dtype)
     helper = LayerHelper("linspace", **locals())
 
     start_dtype = convert_dtype(tensor_start.dtype)
