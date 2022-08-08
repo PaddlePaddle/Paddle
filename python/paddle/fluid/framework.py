@@ -5768,12 +5768,20 @@ class Program(object):
             for var in block.all_vars():
                 var.clear_is_parameter()
                 var.clear_stop_gradient()
-            if not clip_extra:
-                continue
             for op_idx in range(0, block.op_size()):
                 op = block.op(op_idx)
                 if op.type() not in OpProtoHolder.instance().op_proto_map:
                     continue
+
+                extra_attrs_map = core.get_op_extra_attrs(op.type())
+                for name in op.attr_names():
+                    if name in extra_attrs_map:
+                        op.remove_attr(name)
+                        continue
+
+                if not clip_extra:
+                    continue
+
                 proto = OpProtoHolder.instance().get_op_proto(op.type())
                 remove_input_list = []
                 for name in op.input_names():
@@ -5815,7 +5823,6 @@ class Program(object):
                     "activation_bits", "bit_length", "quantize_weight_bits",
                     "weight_quant_scale"
                 ]
-                extra_attrs_map = core.get_op_extra_attrs(op.type())
                 for name in op.attr_names():
                     if quant:
                         if name in quant_attrs:

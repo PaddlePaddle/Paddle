@@ -1245,7 +1245,7 @@ def save_inference_model(dirname,
                          params_filename=None,
                          export_for_deployment=True,
                          program_only=False,
-                         clip_extra=True):
+                         clip_extra=False):
     """
     :api_attr: Static Graph
 
