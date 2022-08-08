@@ -16,6 +16,20 @@ syntax = "proto2";
 
 package paddle.distributed.auto_parallel;
 
+// ProcessMesh is used to organize processes and like n-dimension array.
+message ProcessMeshProto {
+  // The size of each dimension.
+  repeated int64 shape = 1;
+
+  // These process ids are stored by a row-major way.
+  // There are no duplicate process ids within one process mesh.
+  repeated int64 process_ids = 2;
+
+  // The name of each dimension. 
+  repeated string dim_names = 3;
+
+}
+
 // This proto describes the capability of one device such as the computation and memory.
 message DeviceCapabilityProto {
   optional double single_precision_flops = 1;
@@ -85,4 +99,22 @@ message DeviceMeshProto {
 
   // The links are between devices. 
   repeated LinkProto links = 6;
+}
+
+// Record the mapping between the logical processes and the physical devices.
+message DistributedMapperProto {
+  // The device meshes used by this distributed computation,
+  // which may be shared by different multiple device meshes.
+  repeated DeviceMeshProto device_meshes = 1;
+
+  message MapperEntryProto {
+    optional int64 process_id = 1;
+    optional string device_mesh_name = 2;
+    repeated int64 device_ids = 3;
+  }
+
+  // The mapping from process ids to device ids.
+  // It is also possible for one process to use multiple devices.
+  // It is possible for one device shared by multiple processes.
+  repeated MapperEntryProto process_id_to_device_ids = 2;
 }
