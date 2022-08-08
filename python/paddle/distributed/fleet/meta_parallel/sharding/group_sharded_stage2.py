@@ -132,8 +132,7 @@ class GroupShardedStage2(nn.Layer):
         # Set backward pass hooks
         self._bw_hooks = []
 
-        # TODO (Baibaifan) Set tasks flow support asynchronous communicate
-        # self._tasks_flow = deque()
+        self._reduce_tasks = []
 
         # Define optimizer step and clear_grad
         self._redefine_opt_step()
@@ -338,13 +337,11 @@ class GroupShardedStage2(nn.Layer):
                             param.clear_gradient(False)
 
                     # Synchronize the reduce parameter gradient
-                    collective.reduce(tensor=param.grad,
-                                      dst=self._group.ranks[dst_rank],
-                                      group=self._group)
-                    #  TODO (Baibaifan) Asynchronous the reduce parameter gradient
-
-                    # Clear the task flow and trigger callback to clear the redundant gradient
-                    # self._clear_task_flow()
+                    task = collective.reduce(tensor=param.grad,
+                                             dst=self._group.ranks[dst_rank],
+                                             group=self._group,
+                                             use_calc_stream=False)
+                    self._reduce_tasks.append(task)
 
                     cleanup()
 
@@ -386,16 +383,14 @@ class GroupShardedStage2(nn.Layer):
                         # Reduce the bucket
                         grad_storage.sent = True
                         # Synchronize the reduce parameter gradient
-                        collective.reduce(
+                        task = collective.reduce(
                             tensor=grad_storage.buffer,
                             dst=self._group.ranks[grad_storage.destination],
-                            group=self._group)
-                        #  TODO (Baibaifan) Asynchronous the reduce parameter gradient
+                            group=self._group,
+                            use_calc_stream=False)
+                        self._reduce_tasks.append(task)
 
                         cleanup()
-
-                    # Clear the task flow and trigger callback to clear the redundant gradient
-                    # self._clear_task_flow()
 
         return reduce
 
@@ -523,6 +518,9 @@ class GroupShardedStage2(nn.Layer):
         return rank_buffer_size
 
     def _redefine_opt_step(self):
+        for task in self._reduce_tasks:
+            task.wait()
+
         grad_func = self._grad_scale
         for opt in self._sharding_optimizers:
             opt_step = opt.step
