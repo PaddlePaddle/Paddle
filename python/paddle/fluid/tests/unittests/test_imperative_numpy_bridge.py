@@ -38,7 +38,7 @@ class TestImperativeNumpyBridge(unittest.TestCase):
             # self.assertTrue(np.array_equal(var.numpy(), data_np))
 
             var2 = fluid.dygraph.to_variable(data_np, zero_copy=False)
-            self.assertTrue(np.array_equal(var2.numpy(), data_np))
+            np.testing.assert_array_equal(var2.numpy(), data_np)
             data_np[0][0] = -1
             self.assertEqual(data_np[0][0], -1)
             if not _in_legacy_dygraph():

@@ -300,7 +300,7 @@ class TestMathOpPatches(unittest.TestCase):
                           "y": y_np
                       },
                       fetch_list=[z])
-        self.assertTrue(np.array_equal(out[0], out_np))
+        np.testing.assert_array_equal(out[0], out_np)
 
     @prog_scope()
     def test_bitwise_or(self):
@@ -319,7 +319,7 @@ class TestMathOpPatches(unittest.TestCase):
                           "y": y_np
                       },
                       fetch_list=[z])
-        self.assertTrue(np.array_equal(out[0], out_np))
+        np.testing.assert_array_equal(out[0], out_np)
 
     @prog_scope()
     def test_bitwise_xor(self):
@@ -338,7 +338,7 @@ class TestMathOpPatches(unittest.TestCase):
                           "y": y_np
                       },
                       fetch_list=[z])
-        self.assertTrue(np.array_equal(out[0], out_np))
+        np.testing.assert_array_equal(out[0], out_np)
 
     @prog_scope()
     def test_bitwise_not(self):
@@ -352,7 +352,7 @@ class TestMathOpPatches(unittest.TestCase):
         out = exe.run(fluid.default_main_program(),
                       feed={"x": x_np},
                       fetch_list=[z])
-        self.assertTrue(np.array_equal(out[0], out_np))
+        np.testing.assert_array_equal(out[0], out_np)
 
     @prog_scope()
     def test_T(self):
@@ -366,7 +366,7 @@ class TestMathOpPatches(unittest.TestCase):
         out = exe.run(fluid.default_main_program(),
                       feed={"x": x_np},
                       fetch_list=[z])
-        self.assertTrue(np.array_equal(out[0], out_np))
+        np.testing.assert_array_equal(out[0], out_np)
 
     @prog_scope()
     def test_ndim(self):
