@@ -79,6 +79,11 @@ def _is_cpuonly(backend):
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
+    elif backend == 'mpi':
+        if core.is_compiled_with_cuda() and core.is_compiled_with_mpi_aware():
+            return False
+        else:
+            return True
     else:
         return True
 
@@ -150,6 +155,20 @@ def init_parallel_env():
                 dist.spawn(train)
     """
 
+    backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
+    if backend == 'mpi':
+        pg = _new_process_group_impl(backend,
+                                     None,
+                                     -1,
+                                     -1,
+                                     _default_group_name,
+                                     pg_options=None)
+
+        rank = pg.get_rank()
+        world_size = pg.get_world_size()
+        os.environ["PADDLE_TRAINER_ID"] = str(rank)
+        os.environ["PADDLE_TRAINERS_NUM"] = str(world_size)
+
     # 0. get env & check world size
     global _global_parallel_env
     # when call init_parallel_env, need update `_global_parallel_env`
@@ -163,7 +182,6 @@ def init_parallel_env():
         return
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to
     #                 enable cpu only gloo prarllel training)
-    backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu,
     if not (is_cpu_only or core.is_compiled_with_cuda()
@@ -185,10 +203,11 @@ def init_parallel_env():
         _check_var_exists('FLAGS_selected_mlus')
         backend = "cncl" if backend == "auto" else backend
 
-    _check_var_exists("PADDLE_TRAINER_ID")
-    _check_var_exists("PADDLE_CURRENT_ENDPOINT")
-    _check_var_exists("PADDLE_TRAINERS_NUM")
-    _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
+    if backend != 'mpi':
+        _check_var_exists("PADDLE_TRAINER_ID")
+        _check_var_exists("PADDLE_CURRENT_ENDPOINT")
+        _check_var_exists("PADDLE_TRAINERS_NUM")
+        _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
     # NOTE(chenweihang): [ why config global place here? ]
     # the dygraph mode will be set to default mode,
@@ -210,6 +229,19 @@ def init_parallel_env():
     _set_expected_place(place)
 
     group = None
+    if backend == 'mpi':
+        group = Group(rank,
+                      world_size,
+                      id=0,
+                      ranks=list(range(world_size)),
+                      pg=pg,
+                      name=_default_group_name)
+        _set_group_map_by_name(_default_group_name, group)
+        _set_group_map(0, group)
+        _set_group_map_backend(group, backend)
+        parallel_helper._set_parallel_ctx(True)
+        return group
+
     if backend in _valid_backend_list and in_dygraph_mode():
         if _default_group_name in _get_group_map_by_name():
             return _get_group_map_by_name()[_default_group_name]

@@ -18,6 +18,8 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
 constexpr int64_t kWaitBlockTImeout = 10;
+namespace paddle {
+namespace distributed {
 std::map<phi::DataType, MPI_Datatype> mpiDatatype = {
     {phi::DataType::INT8, MPI_CHAR},
     {phi::DataType::UINT8, MPI_UNSIGNED_CHAR},
@@ -25,9 +27,6 @@ std::map<phi::DataType, MPI_Datatype> mpiDatatype = {
     {phi::DataType::FLOAT64, MPI_DOUBLE},
     {phi::DataType::INT32, MPI_INT},
     {phi::DataType::INT64, MPI_LONG}};
-
-namespace paddle {
-namespace distributed {
 
 void ProcessGroupMPI::MPITask::FinishMPITaskError(std::exception_ptr eptr) {
   Finish(eptr);
@@ -79,6 +78,7 @@ bool ProcessGroupMPI::MPIAsyncTask::Wait(std::chrono::milliseconds timeout) {
   if (status_.MPI_ERROR != MPI_SUCCESS) {
     AppearException();
     std::rethrow_exception(exception_);
+    return false;
   }
 
   return true;
@@ -109,10 +109,11 @@ void ProcessGroupMPI::ExitMPI() {
 
 void ProcessGroupMPI::InitOneTimeMPI() {
   std::call_once(onceFlag, []() {
-    MPI_CHECK(MPI_Init_thread(nullptr, nullptr, MPI_THREAD_SERIALIZED,
-                              &mpi_thread_support));
+    MPI_CHECK(MPI_Init_thread(
+        nullptr, nullptr, MPI_THREAD_SERIALIZED, &mpi_thread_support));
     PADDLE_ENFORCE_EQ(
-        mpi_thread_support < MPI_THREAD_SERIALIZED, false,
+        mpi_thread_support < MPI_THREAD_SERIALIZED,
+        false,
         platform::errors::InvalidArgument("MPI supports the number of threads "
                                           "less than MPI_THREAD_SERIALIZED. "));
 
@@ -158,13 +159,15 @@ std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::CreateProcessGroupMPI(
       MPI_CHECK(MPI_Comm_size(groupComm, &size));
 
       PADDLE_ENFORCE_EQ(
-          rank < 0 || size < 0, false,
+          rank < 0 || size < 0,
+          false,
           platform::errors::InvalidArgument("get world_size or rank failed!"));
     }
   }
 
   PADDLE_ENFORCE_EQ(
-      groupComm == MPI_COMM_NULL, false,
+      groupComm == MPI_COMM_NULL,
+      false,
       platform::errors::InvalidArgument("MPI comm group create failed!"));
 
   return std::make_shared<ProcessGroupMPI>(rank, size, groupComm, gid);
@@ -173,7 +176,8 @@ std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::CreateProcessGroupMPI(
 ProcessGroupMPI::ProcessGroupMPI(int rank, int size, MPI_Comm pg_comm, int gid)
     : ProcessGroup(rank, size, gid), stop_(false), pg_comm(pg_comm) {
   PADDLE_ENFORCE_EQ(
-      pg_comm == MPI_COMM_NULL, false,
+      pg_comm == MPI_COMM_NULL,
+      false,
       platform::errors::InvalidArgument("Error! mpi comm is MPI_COMM_NULL!"));
 
   worker_thread = std::thread(&ProcessGroupMPI::workLoop, this);
@@ -232,7 +236,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Enqueue(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Broadcast(
     std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors, const BroadcastOptions& opts) {
+    std::vector<phi::DenseTensor>& out_tensors,
+    const BroadcastOptions& opts) {
   CheckValidInputs(in_tensors);
   const auto places = GetPlaceList(in_tensors);
 
@@ -241,29 +246,36 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Broadcast(
         auto data = (entry->src)[0];
         std::unique_lock<std::mutex> lock(pg_global_mutex);
         const auto root = opts.source_rank + opts.source_root;
-        MPI_CHECK(MPI_Bcast(data.data(), data.numel(),
-                            mpiDatatype.at(data.dtype()), root, pg_comm));
+        MPI_CHECK(MPI_Bcast(data.data(),
+                            data.numel(),
+                            mpiDatatype.at(data.dtype()),
+                            root,
+                            pg_comm));
       };
-  auto entry = std::make_unique<TaskEntry>(&in_tensors, &out_tensors,
-                                           std::move(runFunc));
+  auto entry = std::make_unique<TaskEntry>(
+      &in_tensors, &out_tensors, std::move(runFunc));
   return Enqueue(std::move(entry), in_tensors);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllReduce(
     std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors, const AllreduceOptions& opts) {
+    std::vector<phi::DenseTensor>& out_tensors,
+    const AllreduceOptions& opts) {
   CheckValidInputs(in_tensors);
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
         auto data = (entry->src)[0];
         std::unique_lock<std::mutex> lock(pg_global_mutex);
-        MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, data.data(), data.numel(),
+        MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE,
+                                data.data(),
+                                data.numel(),
                                 mpiDatatype.at(data.dtype()),
-                                ToMPIRedType(opts.reduce_op), pg_comm));
+                                ToMPIType(opts.reduce_op),
+                                pg_comm));
       };
-  auto entry = std::make_unique<TaskEntry>(&in_tensors, &out_tensors,
-                                           std::move(runFunc));
+  auto entry = std::make_unique<TaskEntry>(
+      &in_tensors, &out_tensors, std::move(runFunc));
   return Enqueue(std::move(entry), in_tensors);
 }
 
@@ -289,9 +301,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Send(
 
   {
     std::unique_lock<std::mutex> lock(pg_global_mutex);
-    MPI_CHECK(MPI_Isend(tensor.data(), tensor.numel(),
-                        mpiDatatype.at(tensor.dtype()), dst_rank, this->gid_,
-                        pg_comm, &request));
+    MPI_CHECK(MPI_Isend(tensor.data(),
+                        tensor.numel(),
+                        mpiDatatype.at(tensor.dtype()),
+                        dst_rank,
+                        this->gid_,
+                        pg_comm,
+                        &request));
   }
 
   return std::make_shared<ProcessGroupMPI::MPIAsyncTask>(request, tensors);
@@ -306,9 +322,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Recv(
 
   {
     std::unique_lock<std::mutex> lock(pg_global_mutex);
-    MPI_CHECK(MPI_Irecv(tensor.data(), tensor.numel(),
-                        mpiDatatype.at(tensor.dtype()), src_rank, this->gid_,
-                        pg_comm, &request));
+    MPI_CHECK(MPI_Irecv(tensor.data(),
+                        tensor.numel(),
+                        mpiDatatype.at(tensor.dtype()),
+                        src_rank,
+                        this->gid_,
+                        pg_comm,
+                        &request));
   }
 
   return std::make_shared<ProcessGroupMPI::MPIAsyncTask>(request, tensors);
@@ -319,23 +339,28 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllGather(
     std::vector<phi::DenseTensor>& out_tensors) {
   CheckValidInputs(in_tensors);
 
-  PADDLE_ENFORCE_EQ(out_tensors.size() == 1, true,
+  PADDLE_ENFORCE_EQ(out_tensors.size() == 1,
+                    true,
                     platform::errors::InvalidArgument(
                         "MPI only support a single tensor op."));
 
-  std::function<void(std::unique_ptr<TaskEntry>&)> runFunc = [this](
-      std::unique_ptr<TaskEntry>& entry) {
-    auto data = (entry->src)[0];
-    std::vector<phi::DenseTensor> dst = entry->dst;
+  std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
+      [this](std::unique_ptr<TaskEntry>& entry) {
+        auto data = (entry->src)[0];
+        std::vector<phi::DenseTensor> dst = entry->dst;
 
-    std::unique_lock<std::mutex> lock(pg_global_mutex);
-    MPI_CHECK(MPI_Allgather(
-        data.data(), data.numel(), mpiDatatype.at(data.dtype()), dst[0].data(),
-        data.numel(), mpiDatatype.at(data.dtype()), pg_comm));
-  };
+        std::unique_lock<std::mutex> lock(pg_global_mutex);
+        MPI_CHECK(MPI_Allgather(data.data(),
+                                data.numel(),
+                                mpiDatatype.at(data.dtype()),
+                                dst[0].data(),
+                                data.numel(),
+                                mpiDatatype.at(data.dtype()),
+                                pg_comm));
+      };
 
-  auto entry = std::make_unique<TaskEntry>(&in_tensors, &out_tensors,
-                                           std::move(runFunc));
+  auto entry = std::make_unique<TaskEntry>(
+      &in_tensors, &out_tensors, std::move(runFunc));
 
   return Enqueue(std::move(entry), in_tensors);
 }
@@ -348,29 +373,34 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllToAll(
 
   PADDLE_ENFORCE_EQ(in_tensors[0].numel() == out_tensors[0].numel() &&
                         in_tensors[0].dtype() == out_tensors[0].dtype(),
-                    true, platform::errors::InvalidArgument(
-                              "MPI AlltoAll: input and output are not equal in "
-                              "size or data type."));
+                    true,
+                    platform::errors::InvalidArgument(
+                        "MPI AlltoAll: input and output are not equal in "
+                        "size or data type."));
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [this](std::unique_ptr<TaskEntry>& entry) {
         auto srcdata = (entry->src)[0];
         auto dstdata = (entry->dst)[0];
         std::unique_lock<std::mutex> lock(pg_global_mutex);
-        MPI_CHECK(MPI_Alltoall(srcdata.data(), srcdata.numel() / size_,
-                               mpiDatatype.at(srcdata.dtype()), dstdata.data(),
+        MPI_CHECK(MPI_Alltoall(srcdata.data(),
+                               srcdata.numel() / size_,
+                               mpiDatatype.at(srcdata.dtype()),
+                               dstdata.data(),
                                dstdata.numel() / size_,
-                               mpiDatatype.at(dstdata.dtype()), pg_comm));
+                               mpiDatatype.at(dstdata.dtype()),
+                               pg_comm));
       };
-  auto entry = std::make_unique<TaskEntry>(&in_tensors, &out_tensors,
-                                           std::move(runFunc));
+  auto entry = std::make_unique<TaskEntry>(
+      &in_tensors, &out_tensors, std::move(runFunc));
 
   return Enqueue(std::move(entry), in_tensors);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Reduce(
     std::vector<phi::DenseTensor>& tensors,
-    std::vector<phi::DenseTensor>& out_tensors, const ReduceOptions& opts) {
+    std::vector<phi::DenseTensor>& out_tensors,
+    const ReduceOptions& opts) {
   CheckValidInputs(tensors);
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
@@ -381,9 +411,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Reduce(
         void* recvbuf = (rank_ == opts.root_rank) ? dataPtr : nullptr;
 
         std::unique_lock<std::mutex> lock(pg_global_mutex);
-        MPI_CHECK(MPI_Reduce(
-            sendbuf, recvbuf, data.numel(), mpiDatatype.at(data.dtype()),
-            ToMPIRedType(opts.reduce_op), opts.root_rank, pg_comm));
+        MPI_CHECK(MPI_Reduce(sendbuf,
+                             recvbuf,
+                             data.numel(),
+                             mpiDatatype.at(data.dtype()),
+                             ToMPIType(opts.reduce_op),
+                             opts.root_rank,
+                             pg_comm));
       };
   auto entry =
       std::make_unique<TaskEntry>(&tensors, &tensors, std::move(runFunc));
@@ -392,28 +426,34 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Reduce(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Scatter(
     std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors, const ScatterOptions& opts) {
+    std::vector<phi::DenseTensor>& out_tensors,
+    const ScatterOptions& opts) {
   CheckValidInputs(in_tensors);
 
-  std::function<void(std::unique_ptr<TaskEntry>&)> runFunc = [opts, this](
-      std::unique_ptr<TaskEntry>& entry) {
-    auto data = (entry->dst)[0];
-    void* sendbuf = nullptr;
+  std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
+      [opts, this](std::unique_ptr<TaskEntry>& entry) {
+        auto data = (entry->dst)[0];
+        void* sendbuf = nullptr;
 
-    if (rank_ == opts.root_rank) {
-      std::vector<phi::DenseTensor>& inputData = entry->src;
-      sendbuf = inputData[0].data();
-    }
+        if (rank_ == opts.root_rank) {
+          std::vector<phi::DenseTensor>& inputData = entry->src;
+          sendbuf = inputData[0].data();
+        }
 
-    std::unique_lock<std::mutex> lock(pg_global_mutex);
-    MPI_CHECK(MPI_Scatter(
-        sendbuf, data.numel(), mpiDatatype.at(data.dtype()), data.data(),
-        data.numel(), mpiDatatype.at(data.dtype()), opts.root_rank, pg_comm));
-  };
+        std::unique_lock<std::mutex> lock(pg_global_mutex);
+        MPI_CHECK(MPI_Scatter(sendbuf,
+                              data.numel(),
+                              mpiDatatype.at(data.dtype()),
+                              data.data(),
+                              data.numel(),
+                              mpiDatatype.at(data.dtype()),
+                              opts.root_rank,
+                              pg_comm));
+      };
 
   if (rank_ == opts.root_rank) {
-    auto entry = std::make_unique<TaskEntry>(&in_tensors, &out_tensors,
-                                             std::move(runFunc));
+    auto entry = std::make_unique<TaskEntry>(
+        &in_tensors, &out_tensors, std::move(runFunc));
     return Enqueue(std::move(entry), in_tensors);
   } else {
     auto entry =

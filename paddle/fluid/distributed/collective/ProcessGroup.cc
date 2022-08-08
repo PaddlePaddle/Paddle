@@ -43,6 +43,8 @@ ProcessGroup::ProcessGroup(int rank,
   if (gid != IGNORE_ID) {
     auto map = ProcessGroupMapFromGid::getInstance();
     map->insert(gid_, this);
+  } else {
+    LOG(INFO) << "group id is " << gid << ", ignored!";
   }
 }
 
@@ -51,6 +53,8 @@ ProcessGroup::ProcessGroup(int rank, int size, int gid)
   if (gid != IGNORE_ID) {
     auto map = ProcessGroupMapFromGid::getInstance();
     map->insert(gid_, this);
+  } else {
+    LOG(INFO) << "group id is " << gid << ", ignored!";
   }
 }
 

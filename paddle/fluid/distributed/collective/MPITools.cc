@@ -13,14 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/MPITools.h"
-#include <mpi-ext.h>
 #include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/Types.h"
 
 namespace paddle {
 namespace distributed {
 
-MPI_Op ToMPIRedType(ReduceOp reduction) {
+MPI_Op ToMPIType(ReduceOp reduction) {
   static const std::map<ReduceOp, MPI_Op> red_type = {
       {ReduceOp::MIN, MPI_MIN},
       {ReduceOp::MAX, MPI_MAX},
@@ -28,7 +27,8 @@ MPI_Op ToMPIRedType(ReduceOp reduction) {
       {ReduceOp::PRODUCT, MPI_PROD},
   };
   auto it = red_type.find(reduction);
-  PADDLE_ENFORCE_EQ(it != red_type.end(), true,
+  PADDLE_ENFORCE_EQ(it != red_type.end(),
+                    true,
                     platform::errors::InvalidArgument(
                         "Invalid mpi reduction. Must be MPI_MIN | MPI_MAX | "
                         "MPI_PROD | MPI_SUM."));
@@ -40,7 +40,8 @@ bool CheckMpiCudaAware() { return false; }
 
 void CheckValidInputs(const std::vector<phi::DenseTensor>& tensors) {
   PADDLE_ENFORCE_EQ(
-      tensors.size() == 1, true,
+      tensors.size() == 1,
+      true,
       platform::errors::InvalidArgument("the inputs size of MPI must be 1!"));
 
   PADDLE_ENFORCE_EQ(CheckTensorsInCudaPlace(tensors) && !CheckMpiCudaAware(),
@@ -55,8 +56,9 @@ void CheckValidSizeAndType(const phi::DenseTensor& t_in,
   for (const auto& tensor : inputs) {
     PADDLE_ENFORCE_EQ(
         (tensor.numel() != t_in.numel()) || (tensor.dtype() != t_in.dtype()),
-        true, platform::errors::InvalidArgument(
-                  "Tensors are not same in data type or size!"));
+        true,
+        platform::errors::InvalidArgument(
+            "Tensors are not same in data type or size!"));
   }
 }
 
