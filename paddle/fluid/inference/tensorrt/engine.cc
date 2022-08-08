@@ -254,6 +254,11 @@ void TensorRTEngine::FreezeNetwork() {
             nvinfer1::OptProfileSelector::kOPT,
             Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
       }
+#if IS_TRT_VERSION_GE(7130)
+      if (enable_int8) {
+        infer_builder_config_->setCalibrationProfile(optim_profiles_[i]);
+      }
+#endif
       infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);
     }
     if (WithFp16() && disable_trt_plugin_fp16()) {
