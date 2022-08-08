@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/scope_guard.h"
-#include "paddle/fluid/jit/engine/executor_engine.h"
-#include "paddle/fluid/jit/engine/pe_engine.h"
+#include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/utils.h"
@@ -54,8 +53,7 @@ extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 extern PyTypeObject* g_custom_op_kernel_ctx_pytype;
-extern PyTypeObject* g_executor_engine_pytype;
-extern PyTypeObject* g_pe_engine_pytype;
+extern PyTypeObject* g_jit_function_pytype;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
@@ -232,14 +230,11 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
   return py::cast<std::shared_ptr<imperative::VarBase>>(obj);
 }
 
-std::shared_ptr<jit::BaseEngine> CastPyArg2BaseEngine(PyObject* obj,
-                                                      ssize_t arg_pos) {
-  if (PyObject_IsInstance(
-          obj, reinterpret_cast<PyObject*>(g_executor_engine_pytype))) {
-    return ::pybind11::handle(obj).cast<std::shared_ptr<jit::ExecutorEngine>>();
-  } else if (PyObject_IsInstance(
-                 obj, reinterpret_cast<PyObject*>(g_pe_engine_pytype))) {
-    return ::pybind11::handle(obj).cast<std::shared_ptr<jit::PEEngine>>();
+std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
+                                                     ssize_t arg_pos) {
+  if (PyObject_IsInstance(obj,
+                          reinterpret_cast<PyObject*>(g_jit_function_pytype))) {
+    return ::pybind11::handle(obj).cast<std::shared_ptr<jit::Function>>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "

@@ -68,6 +68,10 @@ const std::shared_ptr<jit::FunctionInfo>& Layer::FunctionInfo(
   return info_map_.at(name);
 }
 
+std::vector<std::string> Layer::FunctionNames() const {
+  return unit_->FunctionNames();
+}
+
 #define PD_SPECIALZE_ATTRIBUTE_TYPE(T)                                \
   template <>                                                         \
   T Layer::Attribute<T>(const std::string& name) const {              \
