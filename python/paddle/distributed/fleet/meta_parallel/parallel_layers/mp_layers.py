@@ -27,13 +27,12 @@ __all__ = []
 # Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter
 # language models using model parallelism[J]. arXiv preprint arXiv:1909.08053, 2019. (https://arxiv.org/abs/1909.08053)
 
-if paddle.is_compiled_with_cuda(
-) and not paddle.is_compiled_with_rocm() and hasattr(core.ops,
-                                                     'fused_gemm_epilogue'):
-    from paddle.incubate.nn.functional import fused_linear
-    linear = fused_linear
-else:
-    linear = F.linear
+
+def is_fused_matmul_bias_supported():
+    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+        return hasattr(core.ops, 'fused_gemm_epilogue')
+    else:
+        return False
 
 
 class VocabParallelEmbedding(Layer):
@@ -156,6 +155,12 @@ class ColumnParallelLinear(Layer):
         else:
             self.bias = None
 
+        if is_fused_matmul_bias_supported():
+            from paddle.incubate.nn.functional import fused_linear
+            self.linear = fused_linear
+        else:
+            self.linear = F.linear
+
     def forward(self, x):
         # use inner api to process identity
         if self.is_mp:
@@ -164,10 +169,10 @@ class ColumnParallelLinear(Layer):
         else:
             input_parallel = x
 
-        output_parallel = linear(input_parallel,
-                                 self.weight,
-                                 self.bias,
-                                 name=self._name)
+        output_parallel = self.linear(input_parallel,
+                                      self.weight,
+                                      self.bias,
+                                      name=self._name)
 
         if self.gather_output and self.is_mp:
             output = paddle.distributed.collective._c_concat(
@@ -234,6 +239,12 @@ class RowParallelLinear(Layer):
         else:
             self.bias = None
 
+        if is_fused_matmul_bias_supported():
+            from paddle.incubate.nn.functional import fused_linear
+            self.linear = fused_linear
+        else:
+            self.linear = F.linear
+
     def forward(self, x):
         if self.input_is_parallel or (not self.is_mp):
             input_parallel = x
@@ -243,9 +254,9 @@ class RowParallelLinear(Layer):
                 x, group=self.model_parallel_group)
 
         if self.is_mp:
-            output_parallel = linear(input_parallel,
-                                     self.weight,
-                                     name=self._name)
+            output_parallel = self.linear(input_parallel,
+                                          self.weight,
+                                          name=self._name)
             output_ = paddle.distributed.collective._mp_allreduce(
                 output_parallel,
                 group=self.model_parallel_group,
@@ -253,10 +264,10 @@ class RowParallelLinear(Layer):
                 use_model_parallel=True)
             output = output_ + self.bias if self.bias is not None else output_
         else:
-            output = linear(input_parallel,
-                            self.weight,
-                            self.bias,
-                            name=self._name)
+            output = self.linear(input_parallel,
+                                 self.weight,
+                                 self.bias,
+                                 name=self._name)
 
         return output
 
