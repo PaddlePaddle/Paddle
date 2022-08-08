@@ -870,10 +870,13 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
   PyObject* obj = PyTuple_GET_ITEM(args, 0);
   auto array = py::cast<py::array>(py::handle(obj));
 
-  int device_id = 0;
-  PyObject* Py_device_id = PyTuple_GET_ITEM(args, 1);
-  if (Py_device_id) {
-    device_id = CastPyArg2AttrLong(Py_device_id, 1);
+  Py_ssize_t args_num = PyTuple_Size(args);
+  int64_t device_id = 0;
+  if (args_num > 1) {
+    PyObject* Py_device_id = PyTuple_GET_ITEM(args, 1);
+    if (Py_device_id) {
+      device_id = CastPyArg2AttrLong(Py_device_id, 1);
+    }
   }
 
   if (py::isinstance<py::array_t<int32_t>>(array)) {
