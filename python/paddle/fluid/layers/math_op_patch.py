@@ -221,6 +221,17 @@ def monkey_patch_variable():
 
         array_write(x=var, i=array_length(self), array=self)
 
+    @static_only
+    def _item(self):
+        """ In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self. 
+            It will check that the shape must be a 1-D tensor
+        """
+        if len(self.shape) > 1:
+            raise TypeError(
+                "Required input var should be 1-D Variable, but received {}".
+                format(self.shape))
+        return self
+
     def _scalar_op_(var, scale, bias):
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
@@ -389,6 +400,7 @@ def monkey_patch_variable():
         ('cpu', cpu),
         ('cuda', cuda),
         ('append', append),
+        ('item', _item),
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),

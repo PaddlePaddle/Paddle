@@ -380,7 +380,6 @@ class StaticFunction(object):
         try:
             concrete_program, partial_program_layer = self.get_concrete_program(
                 *args, **kwargs, is_train=self._is_train_mode())
-
             # 3. synchronize self.training attribute.
             if isinstance(self._class_instance, layers.Layer):
                 partial_program_layer.training = self._class_instance.training

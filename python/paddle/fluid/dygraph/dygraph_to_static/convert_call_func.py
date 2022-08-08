@@ -213,6 +213,11 @@ def convert_call(func):
                 elif isinstance(fn, StaticFunction):
                     _, fn = unwrap_decorators(fn)
                     global_functions.add(fn)
+                elif inspect.isclass(fn):
+                    if isinstance(fn.__dict__.get(func.__name__, None),
+                                  staticmethod):
+                        global_functions.add(
+                            func)  # Add func to ensure that we will convert
 
             if func in global_functions:
                 converted_call = convert_to_static(func)
