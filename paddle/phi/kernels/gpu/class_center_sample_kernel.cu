@@ -262,7 +262,7 @@ class MemoryBuffer {
     offset9 = offset8 + num_temp_ele;
 
     buffer.Resize({4 * num_buffer_ele + 3 * (nranks + 1) + num_temp_ele});
-    dev_ctx.template Alloc<T>(&buffer);
+    buffer_ptr = dev_ctx.template Alloc<T>(&buffer);
   }
 
   T* cub_sort_keys_ptr() { return buffer_ptr + offset1; }
@@ -300,8 +300,6 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                              int nranks,
                              bool fix_seed,
                              int seed,
-                             float margin3,
-                             float scale,
                              DenseTensor* remapped_label,
                              DenseTensor* sampled_local_class_center) {
   PADDLE_ENFORCE_GT(num_classes,
@@ -459,7 +457,6 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                      (NumBlocks(num_classes) * kNumCUDAThreads * vec_size) +
                  1) *
                 vec_size;
-  int device_id = dev_ctx.GetPlace().GetDeviceId();
   // auto gen_cuda = paddle::framework::DefaultCUDAGenerator(device_id);
   auto gen_cuda = dev_ctx.GetGenerator();
   if (!fix_seed) {
@@ -573,11 +570,13 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<T>(remapped_label));
 
   // step 14: Get sampled class center for output
-  phi::Copy<Context>(dev_ctx,
-                     num_classes_per_device,
-                     phi::CPUPlace(),
-                     true,
-                     &num_classes_per_device);
+  paddle::framework::TensorCopySync(
+      num_classes_per_device, phi::CPUPlace(), &num_classes_per_device);
+  //  phi::Copy<Context>(dev_ctx,
+  //                     num_classes_per_device,
+  //                     phi::CPUPlace(),
+  //                     true,
+  //                     &num_classes_per_device);
   T actual_num_samples = num_classes_per_device.data<T>()[rank + 1];
   sampled_local_class_center->Resize(phi::make_ddim({actual_num_samples}));
 

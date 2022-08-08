@@ -33,8 +33,6 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                              int nranks,
                              bool fix_seed,
                              int seed,
-                             float margin3,
-                             float scale,
                              DenseTensor* remapped_label,
                              DenseTensor* sampled_local_class_center) {
   PADDLE_ENFORCE_GT(num_classes,
@@ -63,6 +61,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                         num_samples));
 
   int64_t numel = label.numel();
+  VLOG(0) << "#### label.numel() : " << label.numel();
   auto* label_ptr = label.data<T>();
 
   // get unique positive class center by ascending
@@ -86,7 +85,9 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
     seed = rnd();
   }
   std::uniform_int_distribution<T> dist(0, num_classes - 1);
+  VLOG(0) << "####2. label.numel() : " << label.numel();
   auto engine = paddle::framework::GetCPURandomEngine(seed);
+  VLOG(0) << "####3. label.numel() : " << label.numel();
   // sample negative class center randomly
   while (unique_label.size() < static_cast<size_t>(num_samples)) {
     T neg = dist(*engine);
@@ -101,6 +102,8 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   sampled_local_class_center->Resize({actual_num_samples});
   T* sampled_local_class_center_ptr =
       dev_ctx.template Alloc<T>(sampled_local_class_center);
+
+  VLOG(0) << "####4. label.numel() : " << label.numel();
   idx = 0;
   for (auto& t : actual_sampled) {
     sampled_local_class_center_ptr[idx] = t;
