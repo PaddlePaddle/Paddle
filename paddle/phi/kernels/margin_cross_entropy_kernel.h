@@ -18,15 +18,18 @@
 
 namespace phi {
 
-inline int64_t CalStride(phi::DDim dim) {
-  int rank = dim.size();
-  int64_t dimsum = 1;
-  int64_t strides = 0;
-  for (int i = rank - 1; i >= 0; i--) {
-    strides += dimsum;
-    dimsum *= dim[i];
-  }
-  return strides;
-}
-
+template <typename T, typename Context>
+void MarginCrossEntropyKernel(const Context& dev_ctx,
+                              const DenseTensor& logits,
+                              const DenseTensor& label,
+                              bool return_softmax,
+                              int ring_id,
+                              int rank,
+                              int nranks,
+                              float margin1,
+                              float margin2,
+                              float margin3,
+                              float scale,
+                              DenseTensor* softmax,
+                              DenseTensor* loss);
 }  // namespace phi

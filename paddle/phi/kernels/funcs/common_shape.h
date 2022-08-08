@@ -231,5 +231,16 @@ inline DDim GetOutputDims(const DDim &s_dims, const DDim &l_dims) {
   return phi::make_ddim(shapes);
 }
 
+inline int64_t CalStride(phi::DDim dim) {
+  int rank = dim.size();
+  int64_t dimsum = 1;
+  int64_t strides = 0;
+  for (int i = rank - 1; i >= 0; i--) {
+    strides += dimsum;
+    dimsum *= dim[i];
+  }
+  return strides;
+}
+
 }  // namespace funcs
 }  // namespace phi
