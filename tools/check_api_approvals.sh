@@ -64,9 +64,9 @@ fi
 api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
 if [ "$api_src_spec_diff" != "" ]; then
     echo_line="APIs without core.ops: \n${api_src_spec_diff}\n"
-    echo_line="${echo_line}You must have one RD (zhiqiu (Recommend) or phlrain) approval for the api change for the opreator-related api without '_C_ops'.\n"
+    echo_line="${echo_line}You must have one RD (yangjiabin01 (Recommend) or wanghuan29, phlrain) approval for the api change for the opreator-related api without '_C_ops'.\n"
     echo_line="${echo_line}For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/paddle_api_development_manual.md]\n"
-    check_approval 1 6888866 43953930
+    check_approval 1 yangjiabin01 wanghuan29 phlrain
 fi
 
 op_type_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec`

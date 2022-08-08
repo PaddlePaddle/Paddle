@@ -333,8 +333,7 @@ static std::vector<paddle::any> CastAttrsToTragetType(
                         src.size()));
   for (size_t i = 0; i < src.size(); i++) {
     size_t end = attrs_names[i].find(": ");
-    std::string type_name =
-        attrs_names[i].substr(end + 2, attrs_names.size() - end - 2);
+    std::string type_name = attrs_names[i].substr(end + 2);
     if (type_name == "int") {
       if (src[i].type() == typeid(bool)) {
         res.emplace_back(static_cast<int>(paddle::any_cast<bool>(src[i])));
@@ -373,8 +372,8 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
-  std::shared_ptr<jit::BaseFunction> function =
-      CastPyArg2BaseFunction(PyTuple_GET_ITEM(args, 0), 0);
+  std::shared_ptr<jit::BaseEngine> function =
+      CastPyArg2BaseEngine(PyTuple_GET_ITEM(args, 0), 0);
   std::vector<paddle::experimental::Tensor> ins =
       CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   std::vector<paddle::experimental::Tensor> outs = (*function)(ins);
@@ -870,10 +869,13 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
   PyObject* obj = PyTuple_GET_ITEM(args, 0);
   auto array = py::cast<py::array>(py::handle(obj));
 
-  int device_id = 0;
-  PyObject* Py_device_id = PyTuple_GET_ITEM(args, 1);
-  if (Py_device_id) {
-    device_id = CastPyArg2AttrLong(Py_device_id, 1);
+  Py_ssize_t args_num = PyTuple_Size(args);
+  int64_t device_id = 0;
+  if (args_num > 1) {
+    PyObject* Py_device_id = PyTuple_GET_ITEM(args, 1);
+    if (Py_device_id) {
+      device_id = CastPyArg2AttrLong(Py_device_id, 1);
+    }
   }
 
   if (py::isinstance<py::array_t<int32_t>>(array)) {
