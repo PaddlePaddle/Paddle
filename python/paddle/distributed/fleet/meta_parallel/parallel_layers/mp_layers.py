@@ -27,15 +27,9 @@ __all__ = []
 # Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter
 # language models using model parallelism[J]. arXiv preprint arXiv:1909.08053, 2019. (https://arxiv.org/abs/1909.08053)
 
-
-def _is_fused_matmul_bias_supported():
-    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
-        return hasattr(core.ops, 'fused_gemm_epilogue')
-    else:
-        return False
-
-
-if _is_fused_matmul_bias_supported():
+if paddle.is_compiled_with_cuda(
+) and not paddle.is_compiled_with_rocm() and hasattr(core.ops,
+                                                     'fused_gemm_epilogue'):
     from paddle.incubate.nn.functional import fused_linear
     linear = fused_linear
 else:
