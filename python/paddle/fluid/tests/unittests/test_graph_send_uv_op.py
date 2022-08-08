@@ -41,10 +41,17 @@ def compute_graph_send_uv(inputs, attributes):
     return results
 
 
+def graph_send_uv_wrapper(x, y, src_index, dst_index, compute_type="add"):
+    return paddle.geometric.send_uv(x, y, src_index, dst_index,
+                                    compute_type.lower())
+
+
 class TestGraphSendUVOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
+        self.python_api = graph_send_uv_wrapper
+        self.python_out_sig = ['out']
         self.op_type = "graph_send_uv"
         self.set_config()
         self.inputs = {
@@ -58,10 +65,10 @@ class TestGraphSendUVOp(OpTest):
         self.outputs = {'out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['x', 'y'], 'out', check_eager=False)
+        self.check_grad(['x', 'y'], 'out', check_eager=True)
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -147,3 +154,108 @@ class TestCase7(TestGraphSendUVOp):
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.compute_type = 'MUL'
+
+
+class API_GeometricSendUVTest(unittest.TestCase):
+
+    def test_compute_all_dygraph(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
+        y = paddle.to_tensor([[1, 1, 2], [2, 3, 4], [4, 5, 6]], dtype="float32")
+        src_index = paddle.to_tensor(np.array([0, 1, 2, 0]), dtype="int32")
+        dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]), dtype="int32")
+
+        res_add = paddle.geometric.send_uv(x,
+                                           y,
+                                           src_index,
+                                           dst_index,
+                                           compute_type="add")
+        res_sub = paddle.geometric.send_uv(x,
+                                           y,
+                                           src_index,
+                                           dst_index,
+                                           compute_type="sub")
+        res_mul = paddle.geometric.send_uv(x,
+                                           y,
+                                           src_index,
+                                           dst_index,
+                                           compute_type="mul")
+        res_div = paddle.geometric.send_uv(x,
+                                           y,
+                                           src_index,
+                                           dst_index,
+                                           compute_type="div")
+        res = [res_add, res_sub, res_mul, res_div]
+
+        np_add = np.array([[2, 5, 7], [5, 9, 11], [4, 9, 11], [1, 3, 5]],
+                          dtype="float32")
+        np_sub = np.array([[-2, -1, -1], [-3, -1, -1], [0, 3, 3], [-1, 1, 1]],
+                          dtype="float32")
+        np_mul = np.array([[0, 6, 12], [4, 20, 30], [4, 18, 28], [0, 2, 6]],
+                          dtype="float32")
+        np_div = np.array(
+            [[0, 2 / 3, 0.75], [0.25, 0.8, 5 / 6], [1, 2, 7 / 4], [0, 2, 1.5]],
+            dtype="float32")
+
+        for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
+            self.assertTrue(
+                np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
+                {}\n{}, check diff!".format(np_res, paddle_res))
+
+    def test_compute_all_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
+            y = paddle.static.data(name="y", shape=[3, 3], dtype="float32")
+            src_index = paddle.static.data(name="src", shape=[4], dtype="int32")
+            dst_index = paddle.static.data(name="dst", shape=[4], dtype="int32")
+            res_add = paddle.geometric.send_uv(x,
+                                               y,
+                                               src_index,
+                                               dst_index,
+                                               compute_type="add")
+            res_sub = paddle.geometric.send_uv(x,
+                                               y,
+                                               src_index,
+                                               dst_index,
+                                               compute_type="sub")
+            res_mul = paddle.geometric.send_uv(x,
+                                               y,
+                                               src_index,
+                                               dst_index,
+                                               compute_type="mul")
+            res_div = paddle.geometric.send_uv(x,
+                                               y,
+                                               src_index,
+                                               dst_index,
+                                               compute_type="div")
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            data1 = np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
+            data2 = np.array([[1, 1, 2], [2, 3, 4], [4, 5, 6]], dtype="float32")
+            data3 = np.array([0, 1, 2, 0], dtype="int32")
+            data4 = np.array([1, 2, 1, 0], dtype="int32")
+
+            np_add = np.array([[2, 5, 7], [5, 9, 11], [4, 9, 11], [1, 3, 5]],
+                              dtype="float32")
+            np_sub = np.array(
+                [[-2, -1, -1], [-3, -1, -1], [0, 3, 3], [-1, 1, 1]],
+                dtype="float32")
+            np_mul = np.array([[0, 6, 12], [4, 20, 30], [4, 18, 28], [0, 2, 6]],
+                              dtype="float32")
+            np_div = np.array([[0, 2 / 3, 0.75], [0.25, 0.8, 5 / 6],
+                               [1, 2, 7 / 4], [0, 2, 1.5]],
+                              dtype="float32")
+
+            ret = exe.run(feed={
+                'x': data1,
+                'y': data2,
+                'src': data3,
+                'dst': data4,
+            },
+                          fetch_list=[res_add, res_sub, res_mul, res_div])
+            for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div],
+                                          ret):
+                self.assertTrue(
+                    np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
+                    {}\n{}, check diff!".format(np_res, paddle_res))
