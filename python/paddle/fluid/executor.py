@@ -1187,8 +1187,9 @@ class Executor(object):
                results are spliced together in dimension 0 for the same Tensor values
                (Tensors in fetch_list) on different devices.
 
-        Examples 1:
+        Examples:
             .. code-block:: python
+                :name: code-example-1
 
                 import paddle
                 import numpy
@@ -1215,9 +1216,10 @@ class Executor(object):
                 print(array_val)
                 # [array([0.02153828], dtype=float32)]
 
-        Examples 2:
             .. code-block:: python
+                :name: code-example-2
 
+                # required: gpu
                 import paddle
                 import numpy as np
 
@@ -1265,7 +1267,7 @@ class Executor(object):
                 print("The merged prediction shape: {}".format(
                     np.array(merged_prediction).shape))
                 print(merged_prediction)
- 
+
                 # Out:
                 # The unmerged prediction shape: (2, 3, 2)
                 # [array([[-0.37620035, -0.19752218],
@@ -1415,6 +1417,12 @@ class Executor(object):
 
                 # Unsupported case 5: CUDA Graph
                 if program._build_strategy is not None and program._build_strategy.allow_cuda_graph_capture:
+                    return False
+
+                # Unsupported case 6: distributed
+                if program._build_strategy is not None and (
+                        program._build_strategy.is_distribution
+                        or program._build_strategy.num_trainers > 1):
                     return False
 
                 # Unsupported case 6 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM

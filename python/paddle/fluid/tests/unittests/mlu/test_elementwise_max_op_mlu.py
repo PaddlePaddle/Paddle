@@ -361,8 +361,8 @@ class TestElementwiseMaxNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         mlu_pred, mlu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(mlu_pred, cpu_pred))
-        self.assertTrue(np.allclose(mlu_loss, cpu_loss))
+        np.testing.assert_allclose(mlu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(mlu_loss, cpu_loss)
 
 
 if __name__ == '__main__':

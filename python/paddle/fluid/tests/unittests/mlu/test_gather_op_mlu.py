@@ -101,7 +101,7 @@ class API_TestDygraphGather(unittest.TestCase):
         output = paddle.fluid.layers.gather(input, index)
         output_np = output.numpy()
         expected_output = np.array([[3, 4], [5, 6]]).astype('int32')
-        self.assertTrue(np.allclose(output_np, expected_output))
+        np.testing.assert_allclose(output_np, expected_output)
         paddle.enable_static()
 
     def test_out12(self):
@@ -113,7 +113,7 @@ class API_TestDygraphGather(unittest.TestCase):
         output = paddle.gather(x, index, axis=0)
         output_np = output.numpy()
         expected_output = gather_numpy(input_1, index_1, axis=0)
-        self.assertTrue(np.allclose(output_np, expected_output))
+        np.testing.assert_allclose(output_np, expected_output)
         paddle.enable_static()
 
     def test_zero_index(self):
