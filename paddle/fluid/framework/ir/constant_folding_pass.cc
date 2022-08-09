@@ -102,6 +102,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       }
       op->Run(*new_scope, platform::CPUPlace());
       for (auto out_node : op_node->outputs) {
+        // this out_node is useless, do not set it Persistable
         if (out_node->outputs.size() == 0L) continue;
         auto out_desc = out_node->Var();
         auto out_name = out_desc->Name();
