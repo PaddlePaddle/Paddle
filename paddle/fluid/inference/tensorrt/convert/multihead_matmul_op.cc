@@ -29,6 +29,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input").front());
+    auto input_dims = input->getDimensions();
 
     // fc weights and fc bias
     auto weight_name = op_desc.Input("W").front();
@@ -345,7 +346,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                    bias.get());
         }
         if (input_dims.d[1] <= 384 &&
-            engine_->precision() != AnalysisConfig::Precision::kHalf) {
+            engine_->precision() != AnalysisConfig::Precision::kFloat32) {
           /*
              * input_dims.d[0]: batch(-1)
              * input_dims.d[1]: length:256
@@ -507,7 +508,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           // input_0 for plugin
           plugin_inputs.emplace_back(reshape_after_fc_layer->getOutput(0));
           // input_1(fake) for plugin
-          std::vector<int> mask = {input_dims.d[1], input_dims.d[1]};
+          std::vector<int> mask = {1};
           nvinfer1::ITensor* mask_tensor = Add1DConstantLayer(mask);
           plugin_inputs.emplace_back(mask_tensor);
           // input_2 for plugin
