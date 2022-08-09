@@ -35,16 +35,16 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     output feature map.
 
     Args:
-        theta (Tensor) - A tensor with shape [N, 2, 3]. It contains a batch of affine transform parameters.
+        theta (Tensor) - A tensor with shape [N, 2, 3] or [N, 3, 4]. It contains a batch of affine transform parameters.
                            The data type can be float32 or float64.
-        out_shape (Tensor | list | tuple): The shape of target output with format [batch_size, channel, height, width].
+        out_shape (Tensor | list | tuple): The shape of target output with format [batch_size, channel, height, width] or [batch_size, channel, depth, height, width].
                                              ``out_shape`` can be a Tensor or a list or tuple. The data
                                              type must be int32.
         align_corners(bool): Whether to align corners of target feature map and source feature map. Default: True.
         name(str|None): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, A Tensor with shape [batch_size, H, W, 2] while 'H' and 'W' are the height and width of feature map in affine transformation. The data type is the same as `theta`.
+        Tensor, A Tensor with shape [batch_size, H, W, 2] or [batch, D, H, W, 3] while ('D')'H', 'W' are the (depth)height, width of feature map in affine transformation. The data type is the same as `theta`.
 
     Raises:
         ValueError: If the type of arguments is not supported.
@@ -85,6 +85,8 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     if cudnn_version is not None and cudnn_version >= 6000 and align_corners:
         use_cudnn = True
     else:
+        use_cudnn = False
+    if theta.shape[1] == 3:
         use_cudnn = False
     if is_compiled_with_rocm():
         use_cudnn = False  # ROCM platform do not have MIOPEN kernel for affine_grid
