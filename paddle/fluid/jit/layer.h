@@ -70,6 +70,8 @@ class Layer {
   const std::shared_ptr<jit::FunctionInfo>& FunctionInfo(
       const std::string& name) const;
 
+  std::vector<std::string> FunctionNames() const;
+
  private:
   Name2VariableMap params_map_;
   Name2VariableMap attrs_map_;
