@@ -180,7 +180,7 @@ void BlockDesc::Flush() {
     op_desc->Flush();
   }
 
-  if (need_update_) {
+  if (NeedUpdate(true)) {
     this->desc_->mutable_ops()->Clear();
     for (auto &op_desc : ops_) {
       this->desc_->mutable_ops()->Add()->CopyFrom(*op_desc->Proto());
@@ -297,6 +297,25 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
   block->vars_.clear();
   block->need_update_ = true;
   block->Flush();
+}
+
+bool BlockDesc::NeedUpdate(bool include_subs) {
+  bool need = need_update_;
+  if (include_subs) {
+    for (const auto &op : ops_) {
+      if (op->NeedUpdate()) {
+        need = true;
+        break;
+      }
+    }
+    for (const auto &pair : vars_) {
+      if (pair.second->NeedUpdate()) {
+        need = true;
+        break;
+      }
+    }
+  }
+  return need;
 }
 
 }  // namespace framework

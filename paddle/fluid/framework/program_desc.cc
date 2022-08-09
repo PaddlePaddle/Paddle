@@ -217,5 +217,16 @@ void ProgramDesc::SetFetchHolderName(const std::string &fetch_holder_name) {
   fetch_holder->SetPersistable(true);
 }
 
+bool ProgramDesc::NeedUpdate() const {
+  bool need = false;
+  for (auto &block : blocks_) {
+    if (block->NeedUpdate()) {
+      need = true;
+      break;
+    }
+  }
+  return need;
+}
+
 }  // namespace framework
 }  // namespace paddle

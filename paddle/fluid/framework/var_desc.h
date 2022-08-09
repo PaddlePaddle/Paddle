@@ -65,9 +65,12 @@ class VarDesc {
     desc_.set_name(name);
     // TODO(paddle-dev): Why default to lodtensor.
     desc_.mutable_type()->set_type(proto::VarType::LOD_TENSOR);
+    need_updated_ = true;
   }
 
-  explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {}
+  explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {
+    need_updated_ = true;
+  }
 
   // Explicitly implement the copy constructor for auto parallel
   VarDesc(const VarDesc &other)
@@ -78,6 +81,7 @@ class VarDesc {
     desc_ = other.desc_;
     attrs_ = other.attrs_;
     original_id_ = other.original_id_;
+    need_updated_ = true;
     return *this;
   }
 
@@ -87,7 +91,10 @@ class VarDesc {
 
   std::string Name() const { return desc_.name(); }
 
-  void SetName(std::string name) { desc_.set_name(name); }
+  void SetName(std::string name) {
+    desc_.set_name(name);
+    need_updated_ = true;
+  }
 
   void SetTensorDescNum(size_t num);
 
@@ -170,6 +177,8 @@ class VarDesc {
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
 
+  bool NeedUpdate() const { return need_updated_; }
+
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<proto::VarType::TensorDesc> tensor_descs() const;
@@ -183,8 +192,11 @@ class VarDesc {
     return ++uid;
   }
 
+  // it it really needed? or just mantain a ptr from block?
   proto::VarDesc desc_;
   AttributeMap attrs_;
+
+  bool need_updated_{false};
 
   // Note: the id_ is unique for all VarDesc (only for auto parallel).
   uint64_t id_ = GenerateId();
