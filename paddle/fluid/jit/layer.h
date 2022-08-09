@@ -63,7 +63,7 @@ class Layer {
   void SetEngine(const std::string& name,
                  const std::shared_ptr<BaseEngine>& engine);
 
-  const EngineMap& EngineMap() const;
+  const jit::EngineMap& EngineMap() const;
 
   const std::shared_ptr<jit::FunctionInfo>& FunctionInfo(
       const std::string& name) const;

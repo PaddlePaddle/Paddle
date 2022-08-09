@@ -56,7 +56,7 @@ void Layer::SetEngine(const std::string& name,
   unit_->SetEngine(name, engine);
 }
 
-const EngineMap& Layer::EngineMap() const { return unit_->EngineMap(); }
+const jit::EngineMap& Layer::EngineMap() const { return unit_->EngineMap(); }
 
 const std::shared_ptr<jit::FunctionInfo>& Layer::FunctionInfo(
     const std::string& name) const {
