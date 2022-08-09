@@ -276,19 +276,25 @@ void AllReduceOpHandle::BKCLAllReduceFunc(
     if (all_reduce_calls.size() == 1UL) {
       all_reduce_calls[0]();
     } else {
-      PADDLE_ENFORCE_EQ(
-          bkcl_group_start(),
-          BKCL_SUCCESS,
-          platform::errors::PreconditionNotMet("bkcl_group_start failed"));
+      platform::BKCLGroupGuard guard;
       for (auto &call : all_reduce_calls) {
         call();
       }
-      PADDLE_ENFORCE_EQ(
-          bkcl_group_end(),
-          BKCL_SUCCESS,
-          platform::errors::PreconditionNotMet("bkcl_group_end failed"));
     }
   });
+
+  SyncBKCLAllReduce();
+}
+
+void AllReduceOpHandle::SyncBKCLAllReduce() {
+  // bkcl always use async kernel
+  for (auto &p : places_) {
+    int dev_id = p.device;
+    auto *bkcl_ctx = bkcl_ctxs_->DevCtx(dev_id);
+    auto stream = bkcl_ctx.stream();
+
+    platform::XpuStreamSync(stream);
+  }
 }
 #endif
 

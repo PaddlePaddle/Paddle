@@ -57,6 +57,24 @@ inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
   }
 }
 
+class BKCLGroupGuard {
+ public:
+  static std::mutex &BKCCLMutex() {
+    static std::mutex mtx;
+    return mtx;
+  }
+
+  inline BKCLGroupGuard() {
+    BKCLMutex().lock();
+    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
+  }
+
+  inline ~BKCLGroupGuard() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_end());
+    BKCLMutex().unlock();
+  }
+};
+
 struct BKCLContext {
   std::unique_ptr<platform::XPUDeviceContext> ctx_;
   BKCLContext_t comm_;
@@ -258,19 +276,32 @@ class BKCLCommunicator {
       ptr->init();
       VLOG(1) << "init local trainer";
       flat_ctxs_.emplace_back(ptr);
-      return;
+    } else {
+      PADDLE_ENFORCE_EQ(bkcl_ids.size(),
+                        1,
+                        platform::errors::Unimplemented(
+                            "Multi-all-reduce-ring is not support for XPU"));
+      for (size_t i = 0; i < bkcl_ids.size(); i++) {
+        auto ptr = new platform::BKCLContextMap(
+            places, bkcl_ids[i], trainers_num, trainer_id);
+        ptr->init();
+        VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
+        flat_ctxs_.emplace_back(ptr);
+      }
     }
 
-    PADDLE_ENFORCE_EQ(bkcl_ids.size(),
-                      1,
-                      platform::errors::Unimplemented(
-                          "Multi-all-reduce-ring is not support for XPU"));
-    for (size_t i = 0; i < bkcl_ids.size(); i++) {
-      auto ptr = new platform::BKCLContextMap(
-          places, bkcl_ids[i], trainers_num, trainer_id);
-      ptr->init();
-      VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
-      flat_ctxs_.emplace_back(ptr);
+    // as Executor have no way to use BKCLComm created by ParallelExecutor,
+    // we assign all flatten contexts to BKCLCommContext to fix.
+    int nranks = static_cast<int>(trainers_num * places.size());
+    int nrings = static_cast<int>(flat_ctxs_.size());
+    for (int ring_id = 0; ring_id < nrings; ++ring_id) {
+      for (size_t p = 0; p < places.size(); ++p) {
+        int rank = trainer_id * places.size() + p;
+        int dev_id = places[p].device;
+        auto &ctx = flat_ctxs_[ring_id]->contexts_.at(dev_id);
+        BKCLCommContext::Instance().AssignBKCLComm(
+            ctx.comm_, nranks, rank, dev_id, ring_id);
+      }
     }
   }
 
