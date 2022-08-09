@@ -134,6 +134,8 @@ class CacheManager {
   void convert_fid2bfid(int dev_id, uint32_t * fids, int fid_len);
   void get_device_fidseq_bucket(int dev_id, uint32_t ** out_keys, int * out_key_len);
   void get_device_all_fidseq_bucket(int dev_id, uint32_t ** out_keys, int * out_key_len);
+  const std::vector<uint32_t> & get_host_all_fidseq_bucket_sizes();
+  void get_device_all_fidseq_bucket_sizes(int dev_id, uint32_t ** out_buffer, int * out_len);
   void get_device_all_fidseq(int dev_id, uint32_t ** out_keys, int * out_key_len);
   void get_bfidseq(int dev_id, int ** out_keys, int * out_key_len);
   int get_device_bucket_mean_len();

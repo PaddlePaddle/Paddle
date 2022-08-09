@@ -509,6 +509,19 @@ void CacheManager::get_device_all_fidseq_bucket(int dev_id, uint32_t ** out_keys
   *out_key_len = current_batch_fidseq_->h_fidseq_bucket.size();
 }
 
+const std::vector<uint32_t> & CacheManager::get_host_all_fidseq_bucket_sizes() {
+  PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
+  return current_batch_fidseq_->h_bucket_sizes;
+}
+
+void CacheManager::get_device_all_fidseq_bucket_sizes(int dev_id, uint32_t ** out_buffer, int * out_len) {
+  PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
+  int worker_id = resource_->get_index_by_devid(dev_id);
+  *out_buffer = reinterpret_cast<uint32_t*>(
+      current_batch_fidseq_->d_bucket_sizes[worker_id]->ptr());
+  *out_len = current_batch_fidseq_->h_bucket_sizes.size();
+}
+
 void CacheManager::get_device_all_fidseq(int dev_id, uint32_t ** out_keys, int * out_key_len) {
   PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
   int worker_id = resource_->get_index_by_devid(dev_id);
