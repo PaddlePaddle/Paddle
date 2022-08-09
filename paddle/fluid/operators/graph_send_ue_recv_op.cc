@@ -62,7 +62,7 @@ class GraphSendUERecvOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input edge weight tensor, data type should be same with X");
     AddInput("Src_index", "The source index tensor.");
     AddInput("Dst_index", "The destination index tensor.");
-    AddInput("OutSizeTensor",
+    AddInput("Out_size",
              "(Tensor<int>, optional). The 0th dimension of the output."
              "It has a higher priority than Attr(out_size).")
         .AsDispensable();

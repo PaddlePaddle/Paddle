@@ -19,7 +19,7 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle import _C_ops
 
-from .utils import convert_out_size_to_list, get_out_size_tensor_inputs
+from .utils import convert_out_size_to_list, get_out_size_tensor_inputs, reshape_lhs_rhs
 
 
 def send_u_recv(x,
