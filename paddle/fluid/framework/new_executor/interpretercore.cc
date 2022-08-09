@@ -264,6 +264,17 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
   }
 }
 
+// bool InterpreterCore::IsVarPairReusable(size_t op_index, size_t invar_index,
+// size_t outvar_index) {
+//   const std::string& invar_name =
+//       var_scope_.GetNameById(invar_index);
+//   const std::string& outvar_name =
+//       var_scope_.GetNameById(outvar_index);
+//   if (invar_name == outvar_name) {
+//     return false;
+//   }
+// }
+
 void InterpreterCore::BuildInplace() {
   // NOTE(Ruibiao): coalesce_tensor_op outputs a FusedOutput Tensor and a list
   // of Output Tensors which are sliced from the FusedOutput. These outputs
@@ -277,13 +288,17 @@ void InterpreterCore::BuildInplace() {
   // After running coalesce_tensor_op, var1 is assumed to share the buffer
   // slices from fused_var. However, if sum_op is in-place, then var1 would
   // re-share the buffer with var4 instead of fused_var.
-  std::set<std::string> skip_inplace_outvars;
+  std::set<std::string> reused_in_var_names;
+  std::set<std::string> reused_out_var_names;
   for (Instruction& instr : vec_instruction_) {
     OperatorBase* op = instr.OpBase();
-    if (op->Type() == "coalesce_tensor") {
+    if (op->Type() == "coalesce_tensor" || op->Type() == "share_buffer" ||
+        op->Type() == "share_data") {
+      const std::vector<std::string>& inputs = op->InputVars();
+      reused_in_var_names.insert(inputs.begin(), inputs.end());
       const std::vector<std::string>& outputs =
-          op->OutputVars(/*has_intermediate=*/false);
-      skip_inplace_outvars.insert(outputs.begin(), outputs.end());
+          op->OutputVars(/*has_mediate=*/false);
+      reused_out_var_names.insert(outputs.begin(), outputs.end());
     }
   }
 
@@ -300,36 +315,120 @@ void InterpreterCore::BuildInplace() {
     auto& inputs = instr.Inputs();
     auto& outputs = instr.Outputs();
     for (auto& pair : in_to_outs) {
-      auto iter = inputs.find(pair.first);
-      if (iter != inputs.end() && !iter->second.empty()) {
-        auto in_var_desc = var_scope_.VarDesc(iter->second[0]);
-        if (in_var_desc && in_var_desc->Persistable()) {
-          continue;
-        }
-        if (var_scope_.GetVarSikpInplace(iter->second[0])) {
-          continue;
-        }
-        if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
-          auto iterout = outputs.find(pair.second);
-          if (iterout != outputs.end() && !iterout->second.empty()) {
-            const std::string& invar_name =
-                var_scope_.GetNameById(iter->second[0]);
-            const std::string& outvar_name =
-                var_scope_.GetNameById(iterout->second[0]);
-            auto invar = local_scope_->FindVar(invar_name);
-            auto outvar = local_scope_->FindVar(outvar_name);
-
-            if (invar && outvar && invar->IsType<LoDTensor>() &&
-                outvar->IsType<LoDTensor>() &&
-                skip_inplace_outvars.find(outvar_name) ==
-                    skip_inplace_outvars.end()) {
-              instr.AddInplace(invar, outvar);
-              VLOG(3) << "inplace " << op_base->Type() << " " << invar_name
-                      << " -> " << outvar_name;
-            }
-          }
-        }
+      // Check Input Inplace
+      auto& in_param = pair.first;
+      auto& out_param = pair.second;
+      auto iter_in = inputs.find(in_param);
+      auto iter_out = outputs.find(out_param);
+      if (iter_in == inputs.end() || iter_in->second.empty()) {
+        VLOG(4) << "Cannot inplace because Input(" << in_param
+                << ") is not found or empty in " << op_base->Type();
+        continue;
       }
+      if (iter_out == outputs.end() && iter_out->second.empty()) {
+        continue;
+      }
+      // yoki: confirm it's ok?
+      if (iter_in->second.size() != 1) {
+        VLOG(4) << "Cannot inplace because Input(" << in_param
+                << ") has multiple varibles.";
+        continue;
+      }
+      if (iter_out->second.size() != 1) {
+        VLOG(4) << "Cannot inplace because Output(" << in_param
+                << ") has multiple varibles.";
+        continue;
+      }
+
+      // Check whether op is last_live_ops
+      auto& invar_id = iter_in->second[0];
+      auto& outvar_id = iter_out->second[0];
+      // If variable has more than 1 last lived ops, this variable cannot be
+      // inplaced.
+      if (last_live_ops_[invar_id].size() != 1) {
+        VLOG(4) << "Cannot inplace because Input(" << in_param
+                << ")=" << var_scope_.GetNameById(invar_id)
+                << " has more than 1 last lived ops.";
+        continue;
+      }
+      if (!last_live_ops_[invar_id].count(i)) {
+        VLOG(4) << "Cannot inplace because Input(" << in_param
+                << ")=" << var_scope_.GetNameById(invar_id)
+                << " is not lastly used in op " << op_base->Type();
+        continue;
+      }
+
+      const std::string& invar_name = var_scope_.GetNameById(invar_id);
+      const std::string& outvar_name = var_scope_.GetNameById(outvar_id);
+      // IsVarPairReusable: they are not the same var.
+      if (invar_name == outvar_name) {
+        continue;
+      }
+
+      // IsInVarReusable
+      if (invar_name == kEmptyVarName) {
+        continue;
+      }
+
+      if (reused_in_var_names.find(invar_name) != reused_in_var_names.end()) {
+        continue;
+      }
+
+      auto in_var_desc = var_scope_.VarDesc(invar_id);
+      if (in_var_desc && in_var_desc->Persistable()) {
+        continue;
+      }
+      if (var_scope_.GetVarSikpInplace(invar_id)) {
+        continue;
+      }
+
+      if (in_var_desc->GetType() != proto::VarType::LOD_TENSOR) {
+        continue;
+      }
+
+      // IsVarPairReusable: input var does not occur in output of op.
+      if (outputs.find(in_param) != outputs.end()) {
+        continue;
+      }
+
+      // IsOutVarReusable
+      if (outvar_name == kEmptyVarName) {
+        continue;
+      }
+
+      if (reused_out_var_names.find(outvar_name) !=
+          reused_out_var_names.end()) {
+        continue;
+      }
+
+      auto out_var_desc = var_scope_.VarDesc(outvar_id);
+      // is it needed?
+      if (out_var_desc && out_var_desc->Persistable()) {
+        continue;
+      }
+
+      if (out_var_desc->GetType() != proto::VarType::LOD_TENSOR) {
+        continue;
+      }
+
+      // out var does not occur in input of op.
+      if (inputs.find(out_param) != inputs.end()) {
+        continue;
+      }
+
+      auto invar = local_scope_->FindVar(invar_name);
+      auto outvar = local_scope_->FindVar(outvar_name);
+      if (invar && outvar && invar->IsType<LoDTensor>() &&
+          outvar->IsType<LoDTensor>()) {
+        instr.AddInplace(invar, outvar);
+        VLOG(3) << "inplace " << op_base->Type() << " " << invar_name << " -> "
+                << outvar_name;
+        reused_in_var_names.insert(invar_name);
+        reused_out_var_names.insert(outvar_name);
+      }
+
+      // Update last_live_ops
+      last_live_ops_[invar_id] = last_live_ops_[outvar_id];
     }
   }
 }
@@ -480,16 +579,8 @@ void InterpreterCore::Convert(
 
   BuildSkipShareLoDInfo();
   gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
-  bool inplaced = false;
-  for (auto inst : vec_instruction_) {
-    if (inst.OpBase()->Type() == "share_buffer" ||
-        inst.OpBase()->Type() == "share_data") {
-      VLOG(4) << "Already inplaced, skip inplace now.";
-      inplaced = true;
-    }
-  }
 
-  if (FLAGS_new_executor_use_inplace && !inplaced) {
+  if (FLAGS_new_executor_use_inplace) {
     BuildInplace();
   }
 
