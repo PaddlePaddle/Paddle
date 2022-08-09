@@ -143,6 +143,9 @@ class SuggestionDict(object):
         return self.suggestion_dict[key]
 
 
+class Dy2StKeyError(Exception):
+    pass
+
 class ErrorData(object):
     """
     Error data attached to an exception which is raised in un-transformed code.
@@ -159,7 +162,10 @@ class ErrorData(object):
 
     def create_exception(self):
         message = self.create_message()
-        new_exception = self.error_type(message)
+        if self.error_type is KeyError:
+            new_exception = Dy2StKeyError(message)
+        else:
+            new_exception = self.error_type(message)
         setattr(new_exception, ERROR_DATA, self)
         return new_exception
 
