@@ -39,6 +39,7 @@ set(PYBIND_DEPS
     phi_utils
     tcp_store
     new_profiler
+    auto_parallel
     jit_layer
     jit_property)
 
@@ -125,6 +126,7 @@ set(PYBIND_SRCS
     communication.cc
     cuda_streams_py.cc
     jit.cc
+    auto_parallel_py.cc
     op_function1.cc
     op_function2.cc
     op_function3.cc

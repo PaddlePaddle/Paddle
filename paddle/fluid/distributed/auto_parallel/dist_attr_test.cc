@@ -80,7 +80,11 @@ TEST(DistAttr, ctor) {
   std::stringstream x_sstream;
   x_sstream << x_dist_attr;
   EXPECT_EQ(x_sstream.str(), x_dist_attr.to_string());
-  EXPECT_EQ(x_dist_attr, x_dist_attr);
+  auto x_proto = x_dist_attr.to_proto();
+  TensorDistAttr new_x_dist_attr = TensorDistAttr::from_proto(x_proto);
+  EXPECT_EQ(x_dist_attr, new_x_dist_attr);
+  // new_x_dist_attr is not valid since it does not bind to an var_desc
+  EXPECT_EQ(new_x_dist_attr.verify(), false);
 
   y_dist_attr.set_process_mesh(process_mesh);
   y_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 0}));
@@ -134,7 +138,11 @@ TEST(DistAttr, ctor) {
   std::stringstream mul_sstream;
   mul_sstream << mul_dist_attr;
   EXPECT_EQ(mul_sstream.str(), mul_dist_attr.to_string());
-  EXPECT_EQ(mul_dist_attr, mul_dist_attr);
+  auto mul_proto = mul_dist_attr.to_proto();
+  OperatorDistAttr new_mul_dist_attr = OperatorDistAttr::from_proto(mul_proto);
+  EXPECT_EQ(mul_dist_attr, new_mul_dist_attr);
+  // new_mul_dist_attr is not valid since it does not bind to an op_desc
+  EXPECT_EQ(new_mul_dist_attr.verify(), false);
 }
 
 }  // namespace auto_parallel

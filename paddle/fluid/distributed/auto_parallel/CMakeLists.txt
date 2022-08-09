@@ -35,3 +35,6 @@ cc_test(
   DEPS dist_mapper)
 
 proto_library(auto_parallel_proto SRCS auto_parallel.proto)
+
+cc_library(auto_parallel DEPS process_mesh device_mesh dist_attr dist_mapper
+                              auto_parallel_proto)
