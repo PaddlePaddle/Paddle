@@ -563,7 +563,7 @@ class TestBilinearInterpOpAPI(unittest.TestCase):
                                         out_w=12,
                                         align_corners=True)
         for res in results:
-            self.assertTrue(np.allclose(res, expect_res))
+            np.testing.assert_allclose(res, expect_res, rtol=1e-6)
 
 
 class TestBilinearInterpOpAPI_dy(unittest.TestCase):
@@ -576,8 +576,6 @@ class TestBilinearInterpOpAPI_dy(unittest.TestCase):
             place = core.CPUPlace()
         with fluid.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("float32")
-            input_data = np.load('input.npy').astype("float32")
-            # print(input_data)
             input_x = paddle.to_tensor(input_data)
             expect_res = bilinear_interp_np(input_data,
                                             out_h=12,
@@ -587,7 +585,7 @@ class TestBilinearInterpOpAPI_dy(unittest.TestCase):
                               size=[12, 12],
                               mode="bilinear",
                               align_corners=False)
-            self.assertTrue(np.allclose(out.numpy(), expect_res))
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-6)
 
 
 class TestBilinearInterpOpAPI_dy2(unittest.TestCase):
@@ -611,7 +609,7 @@ class TestBilinearInterpOpAPI_dy2(unittest.TestCase):
                               size=size,
                               mode="bilinear",
                               align_corners=False)
-            self.assertTrue(np.allclose(out.numpy(), expect_res))
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-6)
 
 
 class TestBilinearInterpOpAPI_dy3(unittest.TestCase):
@@ -635,7 +633,7 @@ class TestBilinearInterpOpAPI_dy3(unittest.TestCase):
                               size=[size, size],
                               mode="bilinear",
                               align_corners=False)
-            self.assertTrue(np.allclose(out.numpy(), expect_res))
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-6)
 
 
 class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
@@ -660,7 +658,7 @@ class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
                               mode="bilinear",
                               align_corners=False)
 
-            self.assertTrue(np.allclose(out.numpy(), expect_res))
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-6)
 
 
 if __name__ == "__main__":

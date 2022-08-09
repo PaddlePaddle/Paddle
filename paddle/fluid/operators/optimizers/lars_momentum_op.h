@@ -33,6 +33,7 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     T lars_coeff = ctx.Attr<float>("lars_coeff");
     T epsilon = ctx.Attr<float>("epsilon");
+    T rescale_grad = ctx.Attr<float>("rescale_grad");
 
     int op_num = param.size();
     for (int i = 0; i < op_num; ++i) {
@@ -46,6 +47,7 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
       auto p = framework::EigenVector<T>::Flatten(*(param[i]));
       auto v = framework::EigenVector<T>::Flatten(*(velocity[i]));
       auto g = framework::EigenVector<T>::Flatten(*(grad[i]));
+      auto rescale_g = rescale_grad * g;
 
       framework::Tensor p_norm_t, g_norm_t;
       p_norm_t.Resize({1});
@@ -55,14 +57,14 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
       auto ep_norm = framework::EigenScalar<T>::From(p_norm_t);
       auto eg_norm = framework::EigenScalar<T>::From(g_norm_t);
       ep_norm = p.square().sum().sqrt();
-      eg_norm = g.square().sum().sqrt();
+      eg_norm = rescale_g.square().sum().sqrt();
 
       T local_lr = lr[0];
       if (lars_weight_decay > 0 && ep_norm(0) > 0 && eg_norm(0) > 0) {
         local_lr = lr[0] * lars_coeff * ep_norm(0) /
                    (eg_norm(0) + lars_weight_decay * ep_norm(0) + epsilon);
       }
-      v_out = v * mu + local_lr * (g + lars_weight_decay * p);
+      v_out = v * mu + local_lr * (rescale_g + lars_weight_decay * p);
       p_out = p - v_out;
     }
   }

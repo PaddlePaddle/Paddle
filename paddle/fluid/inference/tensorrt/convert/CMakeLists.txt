@@ -68,7 +68,13 @@ list(
   c_allreduce_op.cc
   top_k_op.cc
   squeeze2_op.cc
-  unsqueeze2_op.cc)
+  unsqueeze2_op.cc
+  rnn_op.cc
+  fill_constant_batch_size_like_op.cc
+  sum_op.cc
+  shape_op.cc
+  fill_constant_op.cc
+  fused_token_prune_op.cc)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)

@@ -98,11 +98,17 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
             #  [[ 0.        ,  0.        ,  0.        ,  0.        ],
             #   [ 0.        ,  0.        ,  0.        ,  0.        ]]]
     """
-    inputs = {'Input': [input]}
-    attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
-
     if not isinstance(input, Variable):
         input = assign(input)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_diag_embed(input, offset, dim1, dim2)
+    elif in_dynamic_mode():
+        return _C_ops.diag_embed(input, "offset", offset, "dim1", dim1, "dim2",
+                                 dim2)
+
+    inputs = {'Input': [input]}
+    attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
 
     def __check_input(input, offset, dim1, dim2):
         check_dtype(input.dtype, 'Input',
@@ -129,8 +135,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
                "dim1 and dim2 cannot be the same dimension." \
                 "But received dim1 = %d, dim2 = %d\n"%(dim1, dim2)
 
-    if not in_dynamic_mode():
-        __check_input(input, offset, dim1, dim2)
+    __check_input(input, offset, dim1, dim2)
     helper = LayerHelper("diag_embed", **locals())
 
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -186,11 +191,10 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
+    Returns: 
+            Tensor, The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
             and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
             int32 or int64.
-
-    Return Type: Tensor
 
     Examples:
         .. code-block:: python
@@ -361,6 +365,9 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'. "
                          "Received Attr(data_format): {}.".format(data_format))
+    if in_dygraph_mode():
+        return _C_ops.final_state_temporal_shift(x, seg_num, shift_ratio,
+                                                 data_format)
     if _non_static_mode():
         return _C_ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
                                      shift_ratio, 'data_format', data_format)

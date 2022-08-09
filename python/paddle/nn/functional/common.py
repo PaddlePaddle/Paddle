@@ -44,7 +44,7 @@ __all__ = []
 def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     r"""
 
-    This op returns a col buffer of sliding local blocks of input x, also known
+    Return a col buffer of sliding local blocks of input x, also known
     as im2col for batched 2D image tensors. For each block under the convolution filter,
     all element will be rearranged as a column. While the convolution filter sliding over
     the input feature map, a series of such columns will be formed.
@@ -91,14 +91,11 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
 
     Returns:
-        The tensor corresponding to the sliding local blocks.
+        Tensor, The tensor corresponding to the sliding local blocks.
         The output shape is [N, Cout, Lout] as decriabled above.
         Cout is the  total number of values within each block,
         and Lout is the total number of such blocks.
         The data type of output is the same as the input :math:`x`
-
-    Return Type:
-        Tensor
 
     Examples:
 
@@ -850,7 +847,9 @@ def bilinear(x1, x2, weight, bias=None, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_bilinear_tensor_product(x1, x2, weight, bias)
+    elif _non_static_mode():
         return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
 
     check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
@@ -1319,21 +1318,21 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
             (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
+        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
             Default is 'constant'
-        value (float32): The value to fill the padded areas in 'constant' mode . Default is 0.0
-        data_format (str): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
+        value (float32, optional): The value to fill the padded areas in 'constant' mode . Default is 0.0
+        data_format (str, optional): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
            the input data.
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
                     
-    Returns: a Tensor padded according to pad and mode and data type is same as input.
-    Return Type: Tensor
+    Returns: 
+        Tensor, a Tensor padded according to pad and mode and data type is same as input.
 
     Examples:
         .. code-block:: text
@@ -1547,12 +1546,13 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         padding(int | Tensor | List[int] | Tuple[int]): The padding size with data type int.
             The input dimension should be 4 and pad has the form (pad_left, pad_right,
             pad_top, pad_bottom).
-        data_format(str): An string from: "NHWC", "NCHW". Specify the data format of
+        data_format(str, optional): An string from: "NHWC", "NCHW". Specify the data format of
             the input data. Default: "NCHW".
         name(str, optional): The default value is None. Normally there is no need for user
             to set this property.
 
-    Returns：Tensor，padded with 0 according to pad and data type is same as input.
+    Returns：
+        Tensor, padded with 0 according to pad and data type is same as input.
 
     Examples:
         .. code-block:: python
@@ -1585,11 +1585,11 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
     Parameters:
         x1 (Tensor): First input. float32/double.
         x2 (Tensor): Second input. float32/double.
-        axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
-        eps(float): Small value to avoid division by zero. Default is 1e-8.
+        axis (int, optional): Dimension of vectors to compute cosine similarity. Default is 1.
+        eps(float, optional): Small value to avoid division by zero. Default is 1e-8.
                     
-    Returns: a Tensor representing cosine similarity between x1 and x2 along axis.
-    Return Type: Tensor
+    Returns: 
+        Tensor, a Tensor representing cosine similarity between x1 and x2 along axis.
 
     Examples:
         .. code-block:: text
@@ -1612,16 +1612,14 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            np.random.seed(0)
-            x1 = np.random.rand(2,3)
-            x2 = np.random.rand(2,3)
-            x1 = paddle.to_tensor(x1)
-            x2 = paddle.to_tensor(x2)
+            paddle.seed(1)
+            x1 = paddle.randn(shape=[2, 3])
+            x2 = paddle.randn(shape=[2, 3])
+
             result = paddle.nn.functional.cosine_similarity(x1, x2, axis=0)
             print(result)
-            # [0.99806249 0.9817672  0.94987036]
+            # [0.97689527,  0.99996042, -0.55138415]
             
     """
     w12 = sum(paddle.multiply(x1, x2), axis=axis)
@@ -2101,7 +2099,10 @@ def fold(x,
             "Unexpected type of paddings, it should be either an integer or a list"
             "of 2 or 4 integers")
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_fold(x, output_sizes, kernel_sizes, strides,
+                                      paddings, dilations)
+    elif in_dynamic_mode():
         out = _C_ops.fold(x, "output_sizes", output_sizes, "kernel_sizes",
                           kernel_sizes, "strides", strides, "paddings",
                           paddings, "dilations", dilations)

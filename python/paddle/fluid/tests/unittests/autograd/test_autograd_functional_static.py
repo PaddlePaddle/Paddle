@@ -59,7 +59,8 @@ class TestVJP(unittest.TestCase):
         with paddle.static.program_guard(mp, sp):
             feed, static_xs, static_v = utils.gen_static_data_and_feed(
                 self.xs, self.v, stop_gradient=self.stop_gradient)
-            ys, xs_grads = paddle.autograd.vjp(self.fun, static_xs, static_v)
+            ys, xs_grads = paddle.incubate.autograd.vjp(self.fun, static_xs,
+                                                        static_v)
         exe.run(sp)
         return exe.run(mp, feed=feed, fetch_list=[ys, xs_grads])
 
@@ -103,7 +104,8 @@ class TestVJPException(unittest.TestCase):
         with paddle.static.program_guard(mp, sp):
             feed, static_xs, static_v = utils.gen_static_data_and_feed(
                 self.xs, self.v)
-            ys, xs_grads = paddle.autograd.vjp(self.fun, static_xs, static_v)
+            ys, xs_grads = paddle.incubate.autograd.vjp(self.fun, static_xs,
+                                                        static_v)
         self.exe.run(sp)
         return self.exe.run(mp, feed, fetch_list=[ys, xs_grads])
 
@@ -214,7 +216,7 @@ class TestJacobianFloat32(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             xs = make_tensors(inps)
-            JJ = paddle.autograd.functional.Jacobian(pd_f, xs, is_batched=batch)
+            JJ = paddle.incubate.autograd.Jacobian(pd_f, xs, is_batched=batch)
             if batch:
                 _, nrow, ncol = JJ.shape
             else:
@@ -244,7 +246,7 @@ class TestJacobianFloat32(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             xs = make_tensors(inps)
-            JJ = paddle.autograd.functional.Jacobian(pd_f, xs, is_batched=batch)
+            JJ = paddle.incubate.autograd.Jacobian(pd_f, xs, is_batched=batch)
             if batch:
                 nbatch, nrow, ncol = JJ.shape
                 rows = [JJ[:, i, :] for i in range(nrow)]
@@ -269,7 +271,7 @@ class TestJacobianFloat32(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             xs = make_tensors(inps)
-            JJ = paddle.autograd.functional.Jacobian(pd_f, xs, is_batched=batch)
+            JJ = paddle.incubate.autograd.Jacobian(pd_f, xs, is_batched=batch)
             if batch:
                 nbatch, nrow, ncol = JJ.shape
                 entries = [
@@ -390,7 +392,7 @@ class TestHessianFloat32(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             xs = make_tensors(inps)
-            HH = paddle.autograd.functional.Hessian(pd_f, xs, is_batched=batch)
+            HH = paddle.incubate.autograd.Hessian(pd_f, xs, is_batched=batch)
             nrow, ncol = HH.shape
             full_hessian = HH[:]
         exe = fluid.Executor(self.place)

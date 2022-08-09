@@ -350,7 +350,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     const bool merge_qkv = ctx.Attr<bool>("merge_qkv");
     const bool has_gating = ctx.Attr<bool>("has_gating");
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
     AllocWithDebugInfo<T>(dev_ctx, "fmha_out", fmha_out);
     if (has_gating) {
@@ -441,7 +441,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     bool has_gating = ctx.Attr<bool>("has_gating");
     bool merge_qkv = ctx.Attr<bool>("merge_qkv");
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     AllocWithDebugInfo<T>(dev_ctx, "query_grad", query_grad);
 
     GateAttentionGradConfig<T> config(

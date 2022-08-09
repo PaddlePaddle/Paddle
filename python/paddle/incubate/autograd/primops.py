@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
+
 from .primreg import REGISTER_FN
 
 
@@ -119,6 +120,26 @@ def sqrt(x, out=None):
 @REGISTER_FN('tanh_p', 'X', 'Y')
 def tanh(x, out=None):
     return _simple_unop(LayerHelper('tanh_p', **locals()))
+
+
+@REGISTER_FN('sin_p', 'X', 'Y')
+def sin(x, out=None):
+    return _simple_unop(LayerHelper('sin_p', **locals()))
+
+
+@REGISTER_FN('cos_p', 'X', 'Y')
+def cos(x, out=None):
+    return _simple_unop(LayerHelper('cos_p', **locals()))
+
+
+@REGISTER_FN('exp_p', 'X', 'Y')
+def exp(x, out=None):
+    return _simple_unop(LayerHelper('exp_p', **locals()))
+
+
+@REGISTER_FN('log_p', 'X', 'Y')
+def log(x, out=None):
+    return _simple_unop(LayerHelper('log_p', **locals()))
 
 
 @REGISTER_FN('reshape_p', 'X', 'Y')

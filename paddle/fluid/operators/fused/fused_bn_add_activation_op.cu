@@ -36,7 +36,7 @@ template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 template <typename T>
-class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
+class FusedBatchNormAddActKernel<phi::GPUContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -81,7 +81,7 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
     const DataLayout data_layout = DataLayout::kNHWC;
     ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     // ------------------- cudnn descriptors ---------------------
     auto handle = dev_ctx.cudnn_handle();
@@ -194,7 +194,7 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
 };
 
 template <typename T>
-class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
+class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -243,7 +243,7 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
         platform::errors::PreconditionNotMet(
             "The size of scale is equal to the channel of Input(X)."));
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     std::vector<int> dims = {N, C, H, W, D};
     std::vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
@@ -353,9 +353,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     fused_bn_add_activation,
-    ops::FusedBatchNormAddActKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::FusedBatchNormAddActKernel<phi::GPUContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     fused_bn_add_activation_grad,
-    ops::FusedBatchNormAddActGradKernel<plat::CUDADeviceContext,
-                                        plat::float16>);
+    ops::FusedBatchNormAddActGradKernel<phi::GPUContext, plat::float16>);
 #endif

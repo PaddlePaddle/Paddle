@@ -18,6 +18,7 @@
 disable_wingpu_test="^test_model$|\
 ^test_dataloader_early_reset$|\
 ^test_add_reader_dependency$|\
+^test_add_reader_dependency_for_interpretercore$|\
 ^test_decoupled_py_reader$|\
 ^test_generator_dataloader$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
@@ -71,12 +72,6 @@ disable_win_trt_test="^test_trt_convert_conv2d$|\
 ^test_trt_convert_elementwise$|\
 ^test_trt_convert_matmul$|\
 ^test_trt_convert_scale$"
-
-# /*=============Fixed Disabled Windows CUDA11.x MKL(PR-CI-Windows-Inference) unittests=================*/
-# TODO: fix these unittest that is bound to fail
-disable_wingpu11_test="^test_autograd_functional_dynamic$|\
-^disable_wingpu_test$"
-
 
 # /*==========Fixed Disabled Windows CUDA11.x inference_api_test(PR-CI-Windows-Inference) unittests=============*/
 disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
@@ -158,6 +153,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
 ^test_add_reader_dependency$|\
+^test_add_reader_dependency_for_interpretercore$|\
 ^test_compat$|\
 ^test_decoupled_py_reader$|\
 ^test_generator_dataloader$|\
@@ -183,7 +179,9 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_unsqueeze2_eltwise_fuse_pass$|\
 ^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
 ^test_parallel_executor_seresnext_with_reduce_gpu$|\
-^test_api_impl$"
+^test_api_impl$|\
+^test_tensordot$|\
+^disable_wingpu_test$"
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
@@ -281,7 +279,7 @@ bash $PADDLE_ROOT/tools/check_added_ut_win.sh
 rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
 if [ -f "$PADDLE_ROOT/added_ut" ];then
     added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-    ctest -R "(${added_uts})" -E "$disable_wingpu11_test" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+    ctest -R "(${added_uts})" -E "${disable_win_inference_test}" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
     rm -f $PADDLE_ROOT/added_ut
     if [ "$added_ut_error" != 0 ];then
         echo "========================================"
@@ -338,7 +336,13 @@ function run_unittest_gpu() {
     if [ "$2" == "" ]; then
         parallel_job=$parallel_level_base
     else
-        parallel_job=`expr $2 \* $parallel_level_base`
+        # set parallel_job according to CUDA memory and suggested parallel num,
+        # the latter is derived in linux server with 16G CUDA memory.
+        cuda_memory=$(nvidia-smi --query-gpu=memory.total --format=csv | tail -1 | awk -F ' ' '{print $1}')
+        parallel_job=$(($2 * $cuda_memory / 16000))
+        if [ $parallel_job -lt 1 ]; then
+            parallel_job=1
+        fi
     fi
     echo "************************************************************************"
     echo "********These unittests run $parallel_job job each time with 1 GPU**********"

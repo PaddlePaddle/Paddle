@@ -66,7 +66,7 @@ void SetOp(ProgramDesc* prog,
              type == "nearest_interp" || type == "nearest_interp_v2") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
-  } else if (type == "slice") {
+  } else if (type == "slice" || type == "shape") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
   } else if (type == "dropout") {
@@ -550,8 +550,12 @@ void TestImmutableOpWithManyOutputs(const std::string tested_op) {
            SCALE * S8_MAX);
 }
 
-const std::vector<std::string> immutables = {
-    "reshape2", "transpose2", "slice", "nearest_interp", "nearest_interp_v2"};
+const std::vector<std::string> immutables = {"reshape2",
+                                             "transpose2",
+                                             "slice",
+                                             "shape",
+                                             "nearest_interp",
+                                             "nearest_interp_v2"};
 
 class TestImmutables : public testing::TestWithParam<std::string> {};
 
@@ -794,14 +798,15 @@ void MainTestMultiGru(int layers) {
       if (op->Type() == "multi_gru") {
         multi_gru_nodes_count++;
 
-        auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
-        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_data")), scale)
+        auto op_name = PADDLE_GET_CONST(std::string, op->GetAttr("name"));
+        EXPECT_EQ(PADDLE_GET_CONST(float, op->GetAttr("Scale_data")), scale)
             << "Scale_data for node '" + op_name + "'.";
-        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Shift_data")), shift)
+        EXPECT_EQ(PADDLE_GET_CONST(float, op->GetAttr("Shift_data")), shift)
             << "Shift_data for node '" + op_name + "'.";
         EXPECT_EQ(op->Input("Scale_weights").size(), 2u * layers)
             << "Scale_weights for node '" + op_name + "'.";
-        EXPECT_EQ(BOOST_GET_CONST(bool, op->GetAttr("force_fp32_output")), true)
+        EXPECT_EQ(PADDLE_GET_CONST(bool, op->GetAttr("force_fp32_output")),
+                  true)
             << "force_fp32_output for node '" + op_name + "'.";
       } else if (op->Type() == "quantize") {
         quantize_nodes_count++;

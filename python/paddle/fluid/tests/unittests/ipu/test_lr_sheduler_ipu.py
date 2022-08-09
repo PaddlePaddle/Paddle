@@ -31,8 +31,6 @@ class LR_New(LRScheduler):
         return self.base_lr
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestConvNet(IPUOpTest):
 
     @IPUOpTest.static_graph

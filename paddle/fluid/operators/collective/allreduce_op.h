@@ -38,7 +38,7 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
                       platform::errors::PreconditionNotMet(
                           "AllReduce op can run on gpu place only for now."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 

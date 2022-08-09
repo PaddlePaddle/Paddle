@@ -25,7 +25,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/jit/property.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
+
+namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
@@ -34,6 +37,7 @@ PyTypeObject *g_vartype_pytype = nullptr;
 PyTypeObject *g_blockdesc_pytype = nullptr;
 
 namespace pd = paddle::framework;
+namespace jit = paddle::jit;
 
 template <typename T>
 static pybind11::bytes SerializeMessage(
@@ -45,6 +49,15 @@ static pybind11::bytes SerializeMessage(
                     platform::errors::InvalidArgument(
                         "Failed to serialize input Desc to string."));
   return retv;
+}
+
+template <typename T>
+static void DeserializeMessage(T *self, const std::string &str) {
+  PADDLE_ENFORCE_EQ(
+      self->Proto()->ParsePartialFromString(str),
+      true,
+      platform::errors::InvalidArgument("Failed to parse pb from string"));
+  return;
 }
 
 // Bind Methods
@@ -340,6 +353,88 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_original_id", &pd::OpDesc::SetOriginalId)
       .def("inputs", &pd::OpDesc::Inputs)
       .def("outputs", &pd::OpDesc::Outputs);
+}
+
+// Serialize Class Property
+void BindJitProperty(pybind11::module *m) {
+  pybind11::class_<jit::Property> property(*m, "Property");
+  property
+      .def(
+          "__init__",
+          [](jit::Property &self) { new (&self) jit::Property(); },
+          pybind11::return_value_policy::reference)
+      .def("size", &jit::Property::Size)
+      .def("set_float",
+           py::overload_cast<const float &>(&jit::Property::SetFloat),
+           "set float",
+           py::arg("val"))
+      .def("set_float",
+           py::overload_cast<const std::string &, const float &>(
+               &jit::Property::SetFloat),
+           "set float",
+           py::arg("name"),
+           py::arg("var"))
+      .def("get_float",
+           py::overload_cast<const int &>(&jit::Property::GetFloat, py::const_))
+      .def("get_float",
+           py::overload_cast<const std::string &>(&jit::Property::GetFloat,
+                                                  py::const_))
+      .def("set_floats",
+           py::overload_cast<const std::vector<float> &>(
+               &jit::Property::SetFloats),
+           "set list of float",
+           py::arg("vals"))
+      .def("set_floats",
+           py::overload_cast<const std::string &, const std::vector<float> &>(
+               &jit::Property::SetFloats),
+           "set list of float",
+           py::arg("name"),
+           py::arg("val"))
+      .def("set_int",
+           py::overload_cast<const int64_t &>(&jit::Property::SetInt64),
+           "set int",
+           py::arg("val"))
+      .def("set_int",
+           py::overload_cast<const std::string &, const int64_t &>(
+               &jit::Property::SetInt64),
+           "set int",
+           py::arg("name"),
+           py::arg("val"))
+      .def("set_ints",
+           py::overload_cast<const std::vector<int64_t> &>(
+               &jit::Property::SetInt64s),
+           "set list of int",
+           py::arg("vals"))
+      .def("set_ints",
+           py::overload_cast<const std::string &, const std::vector<int64_t> &>(
+               &jit::Property::SetInt64s),
+           "set list of int",
+           py::arg("name"),
+           py::arg("val"))
+      .def("set_string",
+           py::overload_cast<const std::string &>(&jit::Property::SetString),
+           "set string",
+           py::arg("val"))
+      .def("set_string",
+           py::overload_cast<const std::string &, const std::string &>(
+               &jit::Property::SetString),
+           "set string",
+           py::arg("name"),
+           py::arg("val"))
+      .def("set_strings",
+           py::overload_cast<const std::vector<std::string> &>(
+               &jit::Property::SetStrings),
+           "set list of string",
+           py::arg("vals"))
+      .def("set_strings",
+           py::overload_cast<const std::string &,
+                             const std::vector<std::string> &>(
+               &jit::Property::SetStrings),
+           "set list of string",
+           py::arg("name"),
+           py::arg("val"))
+      .def("serialize_to_string", SerializeMessage<jit::Property>)
+      .def("parse_from_string", DeserializeMessage<jit::Property>);
 }
 
 }  // namespace pybind

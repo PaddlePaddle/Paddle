@@ -21,8 +21,6 @@ import paddle.nn.functional as F
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -33,17 +31,18 @@ class TestBase(IPUOpTest):
         self.set_attrs()
 
     def set_atol(self):
-        self.atol = 2e-6
-        self.rtol = 1e-5
+        super().set_atol()
+        self.atol = 1e-6
+        self.rtol = 1e-3
         self.atol_fp16 = 1e-2
-        self.rtol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-1
 
     def set_training(self):
         self.is_training = True
         self.epoch = 20
 
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 28, 28])
+        data = np.random.uniform(size=[1, 3, 10, 10])
         self.feed_fp32 = {"in_0": data.astype(np.float32)}
 
     def set_feed_attr(self):
@@ -75,7 +74,7 @@ class TestBase(IPUOpTest):
 
         # using fp16
         with paddle.static.amp.fp16_guard():
-            x = paddle.static.nn.conv2d(input=x, num_filters=6, filter_size=3)
+            x = paddle.static.nn.conv2d(input=x, num_filters=3, filter_size=3)
             x = paddle.static.nn.batch_norm(x, act='relu')
             x = F.max_pool2d(x, kernel_size=2, stride=2)
 
@@ -84,9 +83,9 @@ class TestBase(IPUOpTest):
         loss = paddle.mean(x)
 
         # optimizer
-        optimizer = paddle.optimizer.Adam(learning_rate=1e-2)
+        optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
         optimizer.minimize(loss, self.startup_prog)
-        self.fetch_list = [loss.name]
+        self.fetch_list = [x.name]
 
     def run_model(self, exec_mode):
         # cast model to fp16

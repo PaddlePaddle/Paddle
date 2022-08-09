@@ -52,9 +52,10 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/pybind/uva_utils.h"
@@ -64,6 +65,7 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+std::atomic<int> VarBaseUniqueNameID{0};
 PyTypeObject *g_varbase_pytype = nullptr;
 
 namespace py = ::pybind11;
@@ -497,7 +499,14 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
-  BindOpFunctions(&m);
+  BindOpFunctions1(&m);
+  BindOpFunctions2(&m);
+  BindOpFunctions3(&m);
+  BindOpFunctions4(&m);
+  BindOpFunctions5(&m);
+  BindOpFunctions6(&m);
+  BindOpFunctions7(&m);
+  BindOpFunctions8(&m);
 
 #ifndef _WIN32
   // Dygraph DataLoader signal handler
@@ -2788,8 +2797,8 @@ void BindImperative(py::module *m_ptr) {
                   "except for the first dimension."));
         }
 
-        auto stream = paddle::platform::stream::get_current_stream(deviceId)
-                          ->raw_stream();
+        auto stream =
+            paddle::platform::get_current_stream(deviceId)->raw_stream();
 
         int64_t size = src_tensor.numel() / src_tensor.dims()[0];
         auto *src_data = src_tensor.data<float>();
@@ -2952,8 +2961,8 @@ void BindImperative(py::module *m_ptr) {
                           platform::errors::InvalidArgument(
                               "`index` tensor should be one-dimensional."));
 
-        auto stream = paddle::platform::stream::get_current_stream(deviceId)
-                          ->raw_stream();
+        auto stream =
+            paddle::platform::get_current_stream(deviceId)->raw_stream();
 
         int64_t numel = 0;  // total copy length
         int64_t copy_flag = offset_tensor.dims()[0];

@@ -283,7 +283,7 @@ struct OpFuncNode {
   platform::DeviceContext* dev_ctx_;  // not owned
 
   // fit for phi kernel
-  phi::Kernel* pt_kernel_{nullptr};  // not owned
+  phi::Kernel* phi_kernel_{nullptr};  // not owned
 
   OpFuncType type_;
 };
@@ -389,7 +389,8 @@ static bool IsCpuOp(const Instruction& instr) {
 
 // is supported heterogeneous place
 static bool IsSupportedHetePlace(const phi::Place& place) {
-  return platform::is_gpu_place(place) || platform::is_xpu_place(place);
+  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
+         platform::is_xpu_place(place) || platform::is_ipu_place(place);
 }
 
 }  // namespace interpreter

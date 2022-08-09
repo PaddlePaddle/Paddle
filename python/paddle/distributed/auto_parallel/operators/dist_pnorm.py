@@ -248,7 +248,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         # rename input
         kwargs['X'] = [allgather_out.name]
         # replicate op in dist program
-        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc = main_block.append_op(type='nop').desc
         dist_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
         for input_name in src_op.desc.input_names():
@@ -259,8 +259,6 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         op_dist_attr.set_input_dims_mapping(
             allgather_out.name, allgather_out_dist_attr.dims_mapping)
         ctx.set_op_dist_attr_for_program(pnorm_op, op_dist_attr)
-
-        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -305,7 +303,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         new_X_var_dist_attr = ctx.get_tensor_dist_attr_for_program(new_X_var)
         ctx.set_tensor_dist_attr_for_program(new_X_grad, new_X_var_dist_attr)
         # replicate op in dist program with new kwargs
-        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc = main_block.append_op(type='nop').desc
         dist_op_desc.copy_from(backward_op.desc)
         # Refer to the related dist op
         set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
@@ -319,7 +317,6 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         op_dist_attr.set_output_dims_mapping(new_X_grad.name,
                                              new_X_var_dist_attr.dims_mapping)
         ctx.set_op_dist_attr_for_program(p_norm_grad_op, op_dist_attr)
-        main_block._sync_with_cpp()
 
         # 2. insert slice op
         process_mesh_shape = op_dist_attr.process_mesh.topology
@@ -359,7 +356,6 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         slice_op_dist_attr.set_output_dims_mapping(X_grad_var.name,
                                                    X_grad_var_dims_mapping)
         ctx.set_op_dist_attr_for_program(slice_op, slice_op_dist_attr)
-        main_block._sync_with_cpp()
 
 
 register_distributed_operator_impl("p_norm",

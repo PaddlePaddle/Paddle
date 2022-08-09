@@ -409,18 +409,6 @@ def _is_enable_standalone_executor():
     return flag
 
 
-def _is_standalone_executor_enable_compiled_program():
-    """
-    Whether to use experimental executor `StandaloneExecutor` in CompiledProgram.
-    Convert Graph to Program.
-    """
-    flag = False
-    env_val = os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None)
-    if env_val in [1, '1', True, 'True', 'true']:
-        flag = True
-    return flag
-
-
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
     trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
@@ -1199,8 +1187,9 @@ class Executor(object):
                results are spliced together in dimension 0 for the same Tensor values
                (Tensors in fetch_list) on different devices.
 
-        Examples 1:
+        Examples:
             .. code-block:: python
+                :name: code-example-1
 
                 import paddle
                 import numpy
@@ -1227,9 +1216,10 @@ class Executor(object):
                 print(array_val)
                 # [array([0.02153828], dtype=float32)]
 
-        Examples 2:
             .. code-block:: python
+                :name: code-example-2
 
+                # required: gpu
                 import paddle
                 import numpy as np
 
@@ -1277,7 +1267,7 @@ class Executor(object):
                 print("The merged prediction shape: {}".format(
                     np.array(merged_prediction).shape))
                 print(merged_prediction)
- 
+
                 # Out:
                 # The unmerged prediction shape: (2, 3, 2)
                 # [array([[-0.37620035, -0.19752218],
@@ -1400,24 +1390,47 @@ class Executor(object):
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-            if core.is_compiled_with_npu() or core.is_compiled_with_mlu(
-            ) or core.is_compiled_with_ipu() or isinstance(
+            if core.is_compiled_with_mlu() or isinstance(
                     place, core.CustomPlace):
                 return False
 
             compiled = isinstance(program, compiler.CompiledProgram)
-            # print("compiled is : {}".format(compiled))
-            # NOTE(zhiqiu): do not support compiled program now
             if compiled:
-                if program._program is not None and _is_standalone_executor_enable_compiled_program(
-                ):
-                    return True
-                return False
-                # if program._is_data_parallel and len(
-                #         program._get_places(place, program._places)) == 1:
-                #     return True
-                # else:
-                #     return False
+                # Unsupported case 1 : the CompiledProgram is constructed by Graph
+                if program._program is None:
+                    return False
+
+                # Unsupported case 2: data parallel
+                if program._is_data_parallel and len(
+                        program._get_places(place, program._places)) != 1:
+                    return False
+
+                # Unsupported case 3 : parallel graph
+                if core.globals()['FLAGS_enable_parallel_graph'] in [
+                        1, '1', True, 'True', 'true'
+                ]:
+                    return False
+
+                # Unsupported case 4: inference
+                if program._is_inference:
+                    return False
+
+                # Unsupported case 5: CUDA Graph
+                if program._build_strategy is not None and program._build_strategy.allow_cuda_graph_capture:
+                    return False
+
+                # Unsupported case 6: distributed
+                if program._build_strategy is not None and (
+                        program._build_strategy.is_distribution
+                        or program._build_strategy.num_trainers > 1):
+                    return False
+
+                # Unsupported case 6 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM
+                if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
+                                  None) not in [1, '1', True, 'True', 'true']:
+                    return False
+
+                return True
             else:
                 if isinstance(program._graph, compiler.CompiledProgram):
                     return False
@@ -1426,7 +1439,7 @@ class Executor(object):
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
-        if self._enable_interpreter_core and _can_use_interpreter_core(
+        if return_merged and self._enable_interpreter_core and _can_use_interpreter_core(
                 program, self.place):
             inner_program = program._program if isinstance(
                 program, compiler.CompiledProgram) else program
@@ -1448,12 +1461,21 @@ class Executor(object):
                 # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
                 # while use program to geet _StandaloneExecutor
                 if key not in self._executor_cache._cached_executors:
+                    # To apply IR pass, compile the Program to IrGraph and convert it back to Program
                     if isinstance(program, compiler.CompiledProgram):
+                        # print(f"Program before convert:\n {inner_program}", flush=True)
                         program._compile(scope, self.place)
-                        compiled_graph = program._graph
-                        ir_graph = framework.IrGraph(compiled_graph,
-                                                     for_test=True)
+                        ir_graph = framework.IrGraph(program._graph)
                         inner_program = ir_graph.to_program()
+                        # print(f"Program after convert:\n {inner_program}", flush=True)
+                        logging.warning(
+                            "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
+                        )
+                    else:
+                        from paddle.incubate.autograd import prim_enabled, prim2orig
+                        if prim_enabled() and program == default_main_program():
+                            prim2orig()
+
                     program = self._add_feed_fetch_ops(
                         program=inner_program,
                         feed=feed,
@@ -1485,7 +1507,15 @@ class Executor(object):
                     # NOTE(dev): `set` always call TensorCopySync that is a
                     # blocking behavior. So we use `_copy_from` to replace it.
                     cpu_tensor = _as_lodtensor(data, core.CPUPlace())
-                    tensor._copy_from(cpu_tensor, self.place)
+                    # for ipu, tensor is allocated on cpu
+                    if core.is_compiled_with_ipu():
+                        tensor._copy_from(cpu_tensor, tensor._place())
+                    else:
+                        tensor._copy_from(cpu_tensor, self.place)
+
+                warnings.warn(
+                    "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
+                )
 
                 return new_exe.run(scope, list(feed.keys()), fetch_list,
                                    return_numpy)

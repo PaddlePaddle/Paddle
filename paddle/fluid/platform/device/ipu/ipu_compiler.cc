@@ -18,13 +18,13 @@
 #include <popart/adaptive.hpp>
 #include <popart/optimizer.hpp>
 #include <popart/sgd.hpp>
-
-#include "paddle/utils/blank.h"
+#include <popart/voiddata.hpp>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
 #include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+#include "paddle/utils/blank.h"
 
 namespace paddle {
 namespace platform {
@@ -200,7 +200,7 @@ popart::DataType DataTypeFromStr(const std::string& str) {
 template <typename T>
 T GetAttrAllowNull(std::string attr, OpDesc* op_desc) {
   if (op_desc->HasAttr(attr)) {
-    return BOOST_GET_CONST(T, op_desc->GetAttr(attr));
+    return PADDLE_GET_CONST(T, op_desc->GetAttr(attr));
   } else {
     return {};
   }
@@ -209,7 +209,7 @@ T GetAttrAllowNull(std::string attr, OpDesc* op_desc) {
 template <typename T>
 nonstd::optional<T> GetOptAttrAllowNull(std::string attr, OpDesc* op_desc) {
   if (op_desc->HasAttr(attr)) {
-    return BOOST_GET_CONST(T, op_desc->GetAttr(attr));
+    return PADDLE_GET_CONST(T, op_desc->GetAttr(attr));
   } else {
     return {};
   }
@@ -218,7 +218,7 @@ nonstd::optional<T> GetOptAttrAllowNull(std::string attr, OpDesc* op_desc) {
 template <typename TI, typename TO>
 TO GetCastSigAttrAllowNull(std::string attr, OpDesc* op_desc) {
   if (op_desc->HasAttr(attr)) {
-    auto x = BOOST_GET_CONST(TI, op_desc->GetAttr(attr));
+    auto x = PADDLE_GET_CONST(TI, op_desc->GetAttr(attr));
     return static_cast<TO>(x);
   } else {
     return {};
@@ -241,7 +241,7 @@ struct NameScopeHelper {
 
 NameScopeHelper::NameScopeHelper(const OpDesc* op, popart::Builder* builder)
     : builder_(builder) {
-  auto op_namescope = BOOST_GET_CONST(std::string, op->GetAttr(sOpNamescope));
+  auto op_namescope = PADDLE_GET_CONST(std::string, op->GetAttr(sOpNamescope));
   if (op_namescope.empty() || op_namescope == "/") {
     return;
   }
@@ -300,7 +300,7 @@ void Compiler::RegisterOpFunc() {
 #define INT32 std::int32_t
 #define BOOL bool
 #define STRING std::string
-#define STRING_VEC std::vector<std::string*>
+#define STRING_VEC std::vector<std::string>
 #define NONE
 
 #define ARG(Type, Name) , GetAttrAllowNull<Type>(#Name, op_desc)
@@ -388,8 +388,8 @@ void Compiler::LowerConstants(const Scope* scope) {
     auto op_type = op_desc->Type();
     if (op_type == "popart_constant") {
       auto shape =
-          BOOST_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("dims"));
-      auto dtype_ = BOOST_GET_CONST(int, op_desc->GetAttr("dtype"));
+          PADDLE_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("dims"));
+      auto dtype_ = PADDLE_GET_CONST(int, op_desc->GetAttr("dtype"));
       auto dtype = PopartDType2VarType(
           OnnxDType2PopartType(static_cast<ONNXDataType>(dtype_)));
       auto tensor_name = GetOpOutputs(op_desc).front();
@@ -445,6 +445,7 @@ void Compiler::LowerWeights(const Scope* scope) {
       for (size_t i = 0; i < tensor.dims().size(); ++i) {
         shape.push_back(tensor.dims().at(i));
       }
+
       popart::TensorInfo tensor_info(dtype, shape);
       popart::ConstVoidData const_data{tensor.data(), tensor_info};
       if (!node->outputs.empty()) {
@@ -486,7 +487,7 @@ void Compiler::LowerBody() {
         paddle::visit(visitor, attr.second);
       }
       auto __op_type =
-          BOOST_GET_CONST(std::string, op_desc->GetAttr("__op_type"));
+          PADDLE_GET_CONST(std::string, op_desc->GetAttr("__op_type"));
       VLOG(10) << "Build graph from custom op: " << __op_type;
       auto it = custom_ops_.find(__op_type);
       NameScopeHelper ns_helper(op_desc, builder_.get());
@@ -501,8 +502,8 @@ void Compiler::LowerBody() {
       auto inputs = GetOpInputs(op_desc);
       auto debug_context = BuildDebugContext(op_desc);
       auto print_gradient =
-          BOOST_GET_CONST(int64_t, op_desc->GetAttr("print_gradient"));
-      auto title = BOOST_GET_CONST(std::string, op_desc->GetAttr("title"));
+          PADDLE_GET_CONST(int64_t, op_desc->GetAttr("print_gradient"));
+      auto title = PADDLE_GET_CONST(std::string, op_desc->GetAttr("title"));
       NameScopeHelper ns_helper(op_desc, builder_.get());
       auto output_ids = builder_->aiGraphcoreOpset1().printtensor(
           inputs, print_gradient, debug_context, title);
@@ -528,37 +529,42 @@ void Compiler::LowerOptimizer(const Scope* scope) {
     auto op_type = op_desc->Type();
     if (op_type == "popart_optimizer") {
       auto raw_type =
-          BOOST_GET_CONST(std::string, op_desc->GetAttr("raw_type"));
+          PADDLE_GET_CONST(std::string, op_desc->GetAttr("raw_type"));
       resources_->optimizer_type = raw_type;
-      auto loss_var =
-          BOOST_GET_CONST(std::string, op_desc->GetAttr("loss_var"));
-      resources_->loss_var = resources_->tensors[loss_var];
       resources_->with_lr_sched =
-          BOOST_GET_CONST(bool, op_desc->GetAttr("with_lr_sched"));
+          PADDLE_GET_CONST(bool, op_desc->GetAttr("with_lr_sched"));
       if (ipu_strategy_->is_dynamic) {
+        // loss_var in dy2static is set by identity_loss. And lr is
+        // passed by ipu_strategy.
         resources_->lr = ipu_strategy_->lr;
-      } else if (op_desc->HasAttr("lr_var")) {
-        auto lr_var = BOOST_GET_CONST(std::string, op_desc->GetAttr("lr_var"));
-        resources_->lr_var = lr_var;
-        resources_->lr = GetSingleVarFromScope<float>(scope, lr_var);
       } else {
-        // adadelta has no lr
-        resources_->lr = 0.01f;
-        resources_->with_lr_sched = false;
+        auto loss_var =
+            PADDLE_GET_CONST(std::string, op_desc->GetAttr("loss_var"));
+        resources_->loss_var = resources_->tensors[loss_var];
+        if (op_desc->HasAttr("lr_var")) {
+          auto lr_var =
+              PADDLE_GET_CONST(std::string, op_desc->GetAttr("lr_var"));
+          resources_->lr_var = lr_var;
+          resources_->lr = GetSingleVarFromScope<float>(scope, lr_var);
+        } else {
+          // adadelta has no lr
+          resources_->lr = 0.01f;
+          resources_->with_lr_sched = false;
+        }
       }
       VLOG(10) << "Set initial lr: " << resources_->lr;
 
       // Get the type of optimizer
-      auto type = BOOST_GET_CONST(std::string, op_desc->GetAttr("type"));
+      auto type = PADDLE_GET_CONST(std::string, op_desc->GetAttr("type"));
       // Set weight decay by tensor names for Lamb
-      auto weight_decay_vars = BOOST_GET_CONST(
+      auto weight_decay_vars = PADDLE_GET_CONST(
           std::vector<std::string>, op_desc->GetAttr("weight_decay_vars"));
-      auto weight_decay_values = BOOST_GET_CONST(
+      auto weight_decay_values = PADDLE_GET_CONST(
           std::vector<float>, op_desc->GetAttr("weight_decay_values"));
       // Get the maximum permissible value for gradient clipping
       std::vector<popart::ClipNormSettings> clip_norm_settings = {};
       if (op_desc->HasAttr("clip_norm")) {
-        auto clip_norm = BOOST_GET_CONST(float, op_desc->GetAttr("clip_norm"));
+        auto clip_norm = PADDLE_GET_CONST(float, op_desc->GetAttr("clip_norm"));
         clip_norm_settings.push_back(
             popart::ClipNormSettings::clipAllWeights(clip_norm));
         VLOG(10) << "Set the global gradient clipping with the maximum "
@@ -574,8 +580,8 @@ void Compiler::LowerOptimizer(const Scope* scope) {
 
       if (type == "sgd") {
         auto weight_decay =
-            BOOST_GET_CONST(float, op_desc->GetAttr("weight_decay"));
-        auto momentum = BOOST_GET_CONST(float, op_desc->GetAttr("momentum"));
+            PADDLE_GET_CONST(float, op_desc->GetAttr("weight_decay"));
+        auto momentum = PADDLE_GET_CONST(float, op_desc->GetAttr("momentum"));
         resources_->optimizer_fn = [=](float lr) {
           return std::make_unique<popart::SGD>(
               popart::OptimizerValue(lr, false),
@@ -596,20 +602,20 @@ void Compiler::LowerOptimizer(const Scope* scope) {
             clip_norm_settings);
       } else if (type == "adam") {
         auto weight_decay =
-            BOOST_GET_CONST(float, op_desc->GetAttr("weight_decay"));
-        auto beta1 = BOOST_GET_CONST(float, op_desc->GetAttr("beta1"));
-        auto beta2 = BOOST_GET_CONST(float, op_desc->GetAttr("beta2"));
-        auto eps = BOOST_GET_CONST(float, op_desc->GetAttr("eps"));
+            PADDLE_GET_CONST(float, op_desc->GetAttr("weight_decay"));
+        auto beta1 = PADDLE_GET_CONST(float, op_desc->GetAttr("beta1"));
+        auto beta2 = PADDLE_GET_CONST(float, op_desc->GetAttr("beta2"));
+        auto eps = PADDLE_GET_CONST(float, op_desc->GetAttr("eps"));
         auto mwn = ipu_strategy_->max_weight_norm;
         VLOG(10) << "set max_weight_norm: " << mwn;
         auto adam_mode_ =
-            BOOST_GET_CONST(std::string, op_desc->GetAttr("adam_mode"));
+            PADDLE_GET_CONST(std::string, op_desc->GetAttr("adam_mode"));
         auto adam_mode =
             AdamModeFromStr(adam_mode_, ipu_strategy_->use_no_bias_optimizer);
         auto weight_decay_mode_ = ipu_strategy_->weight_decay_mode;
         auto scaled_optimizer_state_ = ipu_strategy_->scaled_optimizer_state;
         if (weight_decay_mode_.empty()) {
-          weight_decay_mode_ = BOOST_GET_CONST(
+          weight_decay_mode_ = PADDLE_GET_CONST(
               std::string, op_desc->GetAttr("weight_decay_mode"));
         }
         auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
@@ -720,17 +726,17 @@ void Compiler::LowerOptimizer(const Scope* scope) {
               scaled_optimizer_state_);
         }
       } else if (type == "adaptive") {
-        auto alpha = BOOST_GET_CONST(float, op_desc->GetAttr("alpha"));
-        auto momentum = BOOST_GET_CONST(float, op_desc->GetAttr("momentum"));
-        auto eps = BOOST_GET_CONST(float, op_desc->GetAttr("eps"));
+        auto alpha = PADDLE_GET_CONST(float, op_desc->GetAttr("alpha"));
+        auto momentum = PADDLE_GET_CONST(float, op_desc->GetAttr("momentum"));
+        auto eps = PADDLE_GET_CONST(float, op_desc->GetAttr("eps"));
         auto weight_decay =
-            BOOST_GET_CONST(float, op_desc->GetAttr("weight_decay"));
+            PADDLE_GET_CONST(float, op_desc->GetAttr("weight_decay"));
         auto adaptive_mode_ =
-            BOOST_GET_CONST(std::string, op_desc->GetAttr("adaptive_mode"));
+            PADDLE_GET_CONST(std::string, op_desc->GetAttr("adaptive_mode"));
         auto adaptive_mode = AdaptiveModeFromStr(adaptive_mode_);
         auto weight_decay_mode_ = ipu_strategy_->weight_decay_mode;
         if (weight_decay_mode_.empty()) {
-          weight_decay_mode_ = BOOST_GET_CONST(
+          weight_decay_mode_ = PADDLE_GET_CONST(
               std::string, op_desc->GetAttr("weight_decay_mode"));
         }
         auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
@@ -766,6 +772,19 @@ void Compiler::LowerOptimizer(const Scope* scope) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "optimizer %s is not implemented", type));
       }
+    } else if (op_type == "popart_identity_loss") {
+      auto outputs = op_desc->Outputs();
+      PADDLE_ENFORCE_EQ(
+          outputs.size(),
+          1,
+          platform::errors::InvalidArgument("Can only support one loss key"));
+      auto losses = outputs.begin()->second;
+      PADDLE_ENFORCE_EQ(
+          losses.size(),
+          1,
+          platform::errors::InvalidArgument("Can only support one loss name"));
+      auto loss_var = losses.front();
+      resources_->loss_var = resources_->tensors[loss_var];
     }
   }
 }
@@ -778,12 +797,12 @@ void Compiler::PostLower(const std::vector<std::string>& tensor_ids,
   auto tensor_ids_set =
       std::set<std::string>(tensor_ids.begin(), tensor_ids.end());
   if (op_desc->HasAttr(sIpuIndexAttr)) {
-    auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
+    auto ipu_index = PADDLE_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
     builder_->virtualGraph(tensor_ids_set, ipu_index);
     VLOG(10) << "set " << sIpuIndexAttr << " = " << ipu_index
              << " for op: " << op_desc->Type();
     if (op_desc->HasAttr(sIpuStageAttr)) {
-      auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuStageAttr));
+      auto ipu_stage = PADDLE_GET_CONST(int, op_desc->GetAttr(sIpuStageAttr));
       builder_->pipelineStage(tensor_ids_set, ipu_stage);
       VLOG(10) << "set " << sIpuStageAttr << " = " << ipu_stage
                << " for op: " << op_desc->Type();
@@ -819,12 +838,12 @@ void Compiler::PostLower(const std::string& tensor_id,
                          bool skip_pipline) {
   // Set pipline
   if (!skip_pipline && op_desc->HasAttr(sIpuIndexAttr)) {
-    auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
+    auto ipu_index = PADDLE_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
     builder_->virtualGraph(tensor_id, ipu_index);
     VLOG(10) << "set " << sIpuIndexAttr << " = " << ipu_index
              << " for op: " << op_desc->Type();
     if (op_desc->HasAttr(sIpuStageAttr)) {
-      auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuStageAttr));
+      auto ipu_stage = PADDLE_GET_CONST(int, op_desc->GetAttr(sIpuStageAttr));
       builder_->pipelineStage(tensor_id, ipu_stage);
       VLOG(10) << "set " << sIpuStageAttr << " = " << ipu_stage
                << " for op: " << op_desc->Type();
@@ -845,7 +864,8 @@ void Compiler::PostLower(const std::string& tensor_id,
       }
     } else {
       if (op_desc->HasAttr(sAvailMemAttribute)) {
-        auto amp = BOOST_GET_CONST(float, op_desc->GetAttr(sAvailMemAttribute));
+        auto amp =
+            PADDLE_GET_CONST(float, op_desc->GetAttr(sAvailMemAttribute));
         if (amp < 0.0f || amp > 1.0) {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "AvailableMemoryProportion %f is invalid, which should be in "
@@ -862,11 +882,11 @@ void Compiler::PostLower(const std::string& tensor_id,
     // Set serialize matmul
     if (op_desc->HasAttr(sMatmulSerializeFactor)) {
       auto factor =
-          BOOST_GET_CONST(int, op_desc->GetAttr(sMatmulSerializeFactor));
+          PADDLE_GET_CONST(int, op_desc->GetAttr(sMatmulSerializeFactor));
       std::string mode = "output_channels";
       if (op_desc->HasAttr(sMatmulSerializeMode)) {
-        mode = BOOST_GET_CONST(std::string,
-                               op_desc->GetAttr(sMatmulSerializeMode));
+        mode = PADDLE_GET_CONST(std::string,
+                                op_desc->GetAttr(sMatmulSerializeMode));
       }
       builder_->setSerializeMatMul({tensor_id}, mode, factor, true);
     }
@@ -918,7 +938,7 @@ const std::vector<std::string>& Compiler::GetOpOutputs(const OpDesc* op) {
 
 popart::DebugContext Compiler::BuildDebugContext(const OpDesc* op) {
   auto op_identify_id =
-      BOOST_GET_CONST(std::string, op->GetAttr(sOpIdentifyIdAttr));
+      PADDLE_GET_CONST(std::string, op->GetAttr(sOpIdentifyIdAttr));
   VLOG(10) << "op_identify_id of op: " << op->Type() << " is "
            << op_identify_id;
   return popart::DebugContext(op_identify_id);

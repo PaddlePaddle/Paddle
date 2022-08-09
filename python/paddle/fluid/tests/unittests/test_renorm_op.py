@@ -71,7 +71,7 @@ class TestRenormAPI(unittest.TestCase):
                                       [[0, 0.01045918, 0.00683333],
                                        [0, 0.01394558, 0.00683333]]])
             self.assertTrue(np.allclose(expected_grad, np.array(x.grad)))
-        #test exception:
+        # #test exception:
         with fluid.dygraph.guard():
             input = [[[2.0, 2, -2], [3, 0.3, 3]], [[2, -8, 2], [3.1, 3.7, 3]]]
             x = paddle.to_tensor(input, stop_gradient=False)
