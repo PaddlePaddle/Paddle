@@ -576,6 +576,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT8, XPUPlace()),
                      pOpKernelType(vartype::UINT8, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"warpctc", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"where_index",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::BOOL, XPUPlace()),

@@ -209,7 +209,6 @@ class UnpaddingLoDTensorFunctor<platform::XPUDeviceContext, T> {
       pad_seq_len = MaximumSequenceLength(seq_offsets);
     }
     int step_width = seq_tensor->numel() / seq_tensor_dims[0];
-
     CheckDims(seq_tensor_dims,
               pad_tensor_dims,
               seq_offsets,
@@ -224,12 +223,56 @@ class UnpaddingLoDTensorFunctor<platform::XPUDeviceContext, T> {
         reinterpret_cast<int64_t*>(seq_offsets.data()),
         static_cast<int>(seq_offsets.size()),
         nullptr};
-    int r = xpu::sequence_unpad<T, int64_t>(context.x_context(),
-                                            pad_data,
-                                            seq_data,
-                                            seq_offsets_param,
-                                            pad_seq_len /*max_seqlen*/,
-                                            step_width /*dim*/);
+    int r = xpu::sequence_unpad<float, int64_t>(
+        context.x_context(),
+        reinterpret_cast<const float*>(pad_data),
+        reinterpret_cast<float*>(seq_data),
+        seq_offsets_param,
+        pad_seq_len /*max_seqlen*/,
+        step_width /*dim*/);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sequence_unpad");
+  }
+};
+
+template <typename T>
+class UnpaddingLoDTensorFunctor<phi::XPUContext, T> {
+ public:
+  void operator()(const phi::XPUContext& context,
+                  const framework::LoDTensor& pad_tensor,
+                  framework::LoDTensor* seq_tensor,
+                  int pad_seq_len = -1,
+                  int lod_level = 0,
+                  bool norm_by_times = false,
+                  const PadLayout layout = kBatchLengthWidth) {
+    auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
+    const auto& seq_tensor_dims = seq_tensor->dims();
+    const auto& pad_tensor_dims = pad_tensor.dims();
+    if (pad_seq_len == -1) {
+      pad_seq_len = MaximumSequenceLength(seq_offsets);
+    }
+    int step_width = seq_tensor->numel() / seq_tensor_dims[0];
+    CheckDims(seq_tensor_dims,
+              pad_tensor_dims,
+              seq_offsets,
+              pad_seq_len,
+              step_width,
+              layout);
+
+    const T* pad_data = pad_tensor.data<T>();  // padding tensor x
+    T* seq_data = seq_tensor->data<T>();       // unpadding tensor y
+
+    xpu::VectorParam<int64_t> seq_offsets_param{
+        reinterpret_cast<int64_t*>(seq_offsets.data()),
+        static_cast<int>(seq_offsets.size()),
+        nullptr};
+
+    int r = xpu::sequence_unpad<float, int64_t>(
+        context.x_context(),
+        reinterpret_cast<const float*>(pad_data),
+        reinterpret_cast<float*>(seq_data),
+        seq_offsets_param,
+        pad_seq_len /*max_seqlen*/,
+        step_width /*dim*/);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sequence_unpad");
   }
 };
@@ -247,6 +290,10 @@ template class UnpaddingLoDTensorFunctor<phi::CPUContext, double>;
 
 #ifdef PADDLE_WITH_XPU
 template class UnpaddingLoDTensorFunctor<platform::XPUDeviceContext, float>;
+template class UnpaddingLoDTensorFunctor<platform::XPUDeviceContext, int>;
+
+template class UnpaddingLoDTensorFunctor<phi::XPUContext, float>;
+template class UnpaddingLoDTensorFunctor<phi::XPUContext, int>;
 #endif
 
 }  // namespace math

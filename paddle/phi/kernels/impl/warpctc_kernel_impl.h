@@ -18,7 +18,9 @@
 
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/fluid/operators/math/sequence_scale.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/backends/dynload/warpctc.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -177,18 +179,25 @@ class WarpCTCFunctor {
     phi::funcs::SetConstant<Context, T>()(
         dev_ctx, &workspace, static_cast<T>(0));
 
+    DenseTensor workspace_data_cpu;
+    if (dev_ctx.GetPlace() == phi::XPUPlace()) {
+      paddle::framework::TensorCopySync(
+          workspace, phi::CPUPlace(), &workspace_data_cpu);
+    }
+
     // compute loss and gradient
-    status =
-        ComputeCtcLossFunctor<Context, T>()(input,
-                                            gradient,
-                                            cpu_labels,
-                                            cpu_label_lengths,
-                                            cpu_input_lengths,
-                                            static_cast<int>(sequence_width),
-                                            static_cast<int>(num_sequences),
-                                            cpu_loss,
-                                            workspace_data,
-                                            options_);
+    status = ComputeCtcLossFunctor<Context, T>()(
+        input,
+        gradient,
+        cpu_labels,
+        cpu_label_lengths,
+        cpu_input_lengths,
+        static_cast<int>(sequence_width),
+        static_cast<int>(num_sequences),
+        cpu_loss,
+        (dev_ctx.GetPlace() == phi::XPUPlace()) ? workspace_data_cpu.data<T>()
+                                                : workspace_data,
+        options_);
 
     PADDLE_ENFORCE_EQ(
         CTC_STATUS_SUCCESS,
@@ -349,6 +358,7 @@ void WarpctcKernel(const Context& dev_ctx,
   if (logits_length.is_initialized()) {
     phi::Copy(dev_ctx, logits, dev_ctx.GetPlace(), true, &warpctc_logits);
   } else {
+#ifndef PADDLE_WITH_XPU
     DenseTensor cpu_pad_value;
     cpu_pad_value.Resize({1});
     T* pad_value_data = dev_ctx.template HostAlloc<T>(&cpu_pad_value);
@@ -369,6 +379,7 @@ void WarpctcKernel(const Context& dev_ctx,
         0,
         false /* norm_by_times */,
         paddle::operators::math::kLengthBatchWidth);
+#endif
   }
 
   const T* warpctc_logits_data = warpctc_logits.data<T>();
@@ -410,6 +421,24 @@ void WarpctcKernel(const Context& dev_ctx,
           0 /*lod_level*/,
           false /*norm_by_times*/,
           paddle::operators::math::kBatchLengthWidth);
+
+    } else if (dev_ctx.GetPlace() == phi::XPUPlace()) {
+      DenseTensor xpu_label;
+      xpu_label.Resize(
+          {static_cast<int64_t>(
+               paddle::operators::math::TotalSequenceLength(label_lod)),
+           1});
+      dev_ctx.template Alloc<int>(&xpu_label);
+      xpu_label.set_lod(lod);
+      paddle::operators::math::UnpaddingLoDTensorFunctor<Context, int>()(
+          dev_ctx,
+          label,
+          &xpu_label,
+          label.dims()[1] /*pad_seq_len*/,
+          0 /*lod_level*/,
+          false /*norm_by_times*/,
+          paddle::operators::math::kBatchLengthWidth);
+      phi::Copy(dev_ctx, xpu_label, phi::CPUPlace(), true, &warpctc_label);
     } else {
       DenseTensor gpu_label;
       gpu_label.Resize(
@@ -437,18 +466,48 @@ void WarpctcKernel(const Context& dev_ctx,
   DenseTensor warpctc_loss;
   warpctc_loss.Resize(loss_dims);
   T* warpctc_loss_data = dev_ctx.template HostAlloc<T>(&warpctc_loss);
-  WarpCTCFunctor<Context, T>()(dev_ctx,
-                               warpctc_logits_data,
-                               warpctcgrad_data,
-                               warpctc_label_data,
-                               warpctc_label_lengths.data(),
-                               warpctc_logits_lengths.data(),
-                               sequence_width,
-                               num_sequences,
-                               blank,
-                               warpctc_loss_data);
+
+  DenseTensor warpctc_logits_data_cpu;
+  DenseTensor warpctc_grad_data_cpu;
+  T* warpctc_grad_data_cpu_data = nullptr;
+  if (dev_ctx.GetPlace() == phi::XPUPlace()) {
+    paddle::framework::TensorCopySync(
+        warpctc_logits, phi::CPUPlace(), &warpctc_logits_data_cpu);
+
+    // warpctc stores grad in CPU memory
+    warpctc_grad_data_cpu.Resize(warpctc_logits.dims());
+    warpctc_grad_data_cpu_data =
+        dev_ctx.template HostAlloc<T>(&warpctc_grad_data_cpu);
+
+    WarpCTCFunctor<Context, T>()(dev_ctx,
+                                 warpctc_logits_data_cpu.data<T>(),
+                                 warpctc_grad_data_cpu_data,
+                                 warpctc_label_data,
+                                 warpctc_label_lengths.data(),
+                                 warpctc_logits_lengths.data(),
+                                 sequence_width,
+                                 num_sequences,
+                                 blank,
+                                 warpctc_loss_data);
+  } else {
+    WarpCTCFunctor<Context, T>()(dev_ctx,
+                                 warpctc_logits_data,
+                                 warpctcgrad_data,
+                                 warpctc_label_data,
+                                 warpctc_label_lengths.data(),
+                                 warpctc_logits_lengths.data(),
+                                 sequence_width,
+                                 num_sequences,
+                                 blank,
+                                 warpctc_loss_data);
+  }
   // Copy the loss back
   phi::Copy(dev_ctx, warpctc_loss, dev_ctx.GetPlace(), false, loss);
+  if (dev_ctx.GetPlace() == phi::XPUPlace()) {
+    // copy the warpctc_grad back
+    phi::Copy(
+        dev_ctx, warpctc_grad_data_cpu, dev_ctx.GetPlace(), false, warpctcgrad);
+  }
 }
 
 }  // namespace phi
