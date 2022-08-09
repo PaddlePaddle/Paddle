@@ -463,7 +463,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             abs_out = _C_ops.final_state_abs(input)
             pow_out = _C_ops.final_state_pow(abs_out, porder)
             sum_out = _C_ops.final_state_sum(pow_out, axis, None, keepdim)
-            out = _C_ops.final_state_pow(sum_out, out, float(1. / porder))
+            out = _C_ops.final_state_pow(sum_out, float(1. / porder))
             return out
 
         block = LayerHelper('norm', **locals())
