@@ -47,23 +47,16 @@ class ReduceOp:
     """
     Specify the type of operation used for element-wise reductions.
     It should be one of the following values:
-
         ReduceOp.SUM
-
         ReduceOp.MAX
-
         ReduceOp.MIN
-
         ReduceOp.PROD
-
     Examples:
         .. code-block:: python
-
             import numpy as np
             import paddle
             from paddle.distributed import ReduceOp
             from paddle.distributed import init_parallel_env
-
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -146,7 +139,8 @@ _group_map_backend = {}
 # Name of the default group for init_parallel_env
 _default_group_name = "_default_pg"
 
-_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'mpi']
+_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl', 'mpi']
+
 _default_store = None  # the default tcp store
 _default_backend = None
 
@@ -224,22 +218,16 @@ def _get_reduce_op(reduce_op, func_name):
 
 def get_group(id=0):
     """
-
     Get group instance by group id.
-
     Args:
         id (int): the group id. Default value is 0.
-
     Returns:
         Group: the group instance.
-
     Examples:
         .. code-block:: python
-
             ...
             gid = paddle.distributed.new_group([2,4,6])
             paddle.distributed.get_group(gid.id)
-
     """
 
     gm = _get_group_map()
@@ -274,6 +262,9 @@ def _new_process_group_impl(backend,
         pg = core.ProcessGroupHCCL(store, rank, world_size, place, group_id)
     elif backend == "mpi":
         pg = core.ProcessGroupMPI.create(src_ranks, group_id)
+    elif backend == "xccl":
+        place = core.CustomPlace(genv.device_type, genv.device_id)
+        pg = core.ProcessGroupCustom(store, rank, world_size, place, group_id)
     elif backend == "heter":
         place = None
         if core.is_compiled_with_cuda():
@@ -312,21 +303,15 @@ def _new_process_group_impl(backend,
 
 def barrier(group=None):
     """
-
     Barrier among all participators in the group.
-
     Args:
         group (Group): The group instance return by new_group or None for global default group.
-
     Returns:
         None.
-
     Examples:
         .. code-block:: python
-
             import paddle
             from paddle.distributed import init_parallel_env
-
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             paddle.distributed.barrier()
@@ -370,26 +355,19 @@ def _set_custom_gid(gid):
 
 def new_group(ranks=None, backend=None):
     """
-
     Creates a new distributed communication group.
-
     Args:
         ranks (list): The global ranks of group members.
         backend (str): The backend used to create group, only nccl is supported now.
-
     Returns:
         Group: The group instance.
-
     Examples:
         .. code-block:: python
-
             import paddle
-
             paddle.distributed.init_parallel_env()
             tindata = paddle.randn(shape=[2, 3])
             gp = paddle.distributed.new_group([2,4,6])
             paddle.distributed.all_reduce(tindata, group=gp, use_calc_stream=False)
-
     """
     global _custom_gid
     global _group_map
@@ -477,6 +455,10 @@ def new_group(ranks=None, backend=None):
                 place = core.MLUPlace(genv.device_id)
                 core.CNCLParallelContext(strategy,
                                          place).init_with_ring_id(ring_id)
+            elif core.is_compiled_with_xpu():
+                place = core.XPUPlace(genv.device_id)
+                core.BKCLParallelContext(strategy,
+                                         place).init_with_ring_id(ring_id)
             else:
                 assert False, ("no cuda device found")
         else:
@@ -494,24 +476,17 @@ def new_group(ranks=None, backend=None):
 
 def is_initialized():
     """
-
     Check whether the distributed environment has been initialized
-
     Returns (bool): `True` if distributed environment has been initialized, otherwise `False`.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import paddle
-
             print(paddle.distributed.is_initialized())
             # False
-
             paddle.distributed.init_parallel_env()
             print(paddle.distributed.is_initialized())
             # True
-
     """
     global _group_map_by_name
     return _default_group_name in _group_map_by_name
@@ -520,30 +495,24 @@ def is_initialized():
 def destroy_process_group(group=None):
     """
     Destroy a given group for communication
-
     Args:
         group (ProcessGroup, optional): The group to be destroyed. All of process groups, including 
                                         the default group, will be destroyed and the distributed 
                                         environment will be deinitialized.
     
     Returns : None
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import paddle
-
             paddle.distributed.init_parallel_env()
             group = paddle.distributed.new_group([0, 1])
-
             paddle.distributed.destroy_process_group(group)
             print(paddle.distributed.is_initialized())
             # True
             paddle.distributed.destroy_process_group()
             print(paddle.distributed.is_initialized())
             # False
-
     """
     global _group_map
     global _group_map_by_name
@@ -563,28 +532,21 @@ def destroy_process_group(group=None):
 
 def wait(tensor, group=None, use_calc_stream=True):
     """
-
     wait to sync stream for group.
-
     Args:
         tensor (Tensor): The Tensor used before sync.
         group (Group): The Group instance to perform sync.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
-
     Returns:
         None.
-
     Examples:
         .. code-block:: python
-
             import paddle
-
             paddle.distributed.init_parallel_env()
             tindata = paddle.randn(shape=[2, 3])
             paddle.distributed.all_reduce(tindata, use_calc_stream=True)
             paddle.distributed.wait(tindata)
-
     """
 
     if group is not None and not group.is_member():
@@ -631,16 +593,13 @@ def _sync_comm_stream(tensor, ring_id=0):
 
 def broadcast(tensor, src, group=None, use_calc_stream=True):
     """
-
     Broadcast a tensor from the source to all others.
     As shown below, 4 GPUs each start 4 processes and GPU0 owns data 0. Through broadcast operator,
     the data 0 will be sent to all GPUs from GPU0.
-
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/broadcast.png
         :width: 800
         :alt: broadcast
         :align: center
-
     Args:
         tensor (Tensor): The Tensor to send if current rank is the source, or the tensor to receive otherwise. Its data type
             should be float16, float32, float64, int32 or int64.
@@ -648,18 +607,14 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
-
     Returns:
         None.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
-
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -716,17 +671,14 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
 
 def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
-
     Reduce a tensor over all ranks so that all get the result.
     As shown below, 4 GPUs each start 4 processes and the data on each GPU is represnted
     by the GPU number. The reduce operator is sum. Through all_reduce operator, 
     each GPU will have the sum of the data from all GPUs.
-
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allreduce.png
         :width: 800
         :alt: all_reduce
         :align: center
-
     Args:
         tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
             should be float16, float32, float64, int32 or int64.
@@ -734,19 +686,15 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
-
     Returns:
         None.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import ReduceOp
             from paddle.distributed import init_parallel_env
-
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -813,16 +761,13 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
-
     Reduce a tensor to the destination from all others. As shown below, 4 GPUs each start 4 processes and the data on each GPU is respresnted
     by the GPU number. The destination of the reduce operator is GPU0 and the process is sum. Through reduce operator,
     the GPU0 will owns the sum of all data from all GPUs.
-
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/reduce.png
         :width: 800
         :alt: reduce
         :align: center
-
     Args:
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
             should be float16, float32, float64, int32 or int64.
@@ -831,18 +776,14 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
-
     Returns:
         None.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
-
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -920,17 +861,14 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
 def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     """
-
     Gather tensors from all participators and all get the result. As shown
     below, 4 GPUs each start 4 processes and the data on each GPU is represnted
     by the GPU number. Through the all_gather operator, each GPU will have data
     from all GPUs.
-
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allgather.png
         :width: 800
         :alt: all_gather
         :align: center
-
     Args:
         tensor_list (list): A list of output Tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
@@ -939,17 +877,13 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
-
     Returns:
         None.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import paddle
             from paddle.distributed import init_parallel_env
-
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             tensor_list = []
@@ -1036,37 +970,30 @@ def _convert_object_to_tensor(obj):
     _pickler(f).dump(obj)
     data = np.frombuffer(f.getvalue(), dtype=np.uint8)
     tensor = paddle.to_tensor(data)
-    return tensor
+    return tensor, tensor.numel()
 
 
-def _convert_tensor_to_object(tensor):
+def _convert_tensor_to_object(tensor, len_of_tensor):
     _unpickler = pickle.Unpickler
-    return _unpickler(io.BytesIO(tensor.numpy())).load()
+    return _unpickler(io.BytesIO(tensor.numpy()[:len_of_tensor])).load()
 
 
 def all_gather_object(object_list, obj, group=None):
     """
-
     Gather picklable objects from all participators and all get the result. Similiar to all_gather(), but python object can be passed in.
-
     Args:
         object_list (list): A list of output object. The datatype of every element in the list is same as the input obj.
         obj (Any): The picklable object to send.
         group (Group): The group instance return by new_group or None for global default group.
-
     Returns:
         None.
-
     Warning:
         This API only supports the dygraph mode.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import paddle
             import paddle.distributed as dist
-
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             dist.init_parallel_env()
             object_list = []
@@ -1080,25 +1007,35 @@ def all_gather_object(object_list, obj, group=None):
     assert in_dygraph_mode(
     ), "all_gather_object doesn't support static graph mode."
 
-    tensor = _convert_object_to_tensor(obj)
+    tensor, len_of_tensor = _convert_object_to_tensor(obj)
+
+    # gather len_of_tensor from all ranks
+    list_len_of_tensor = []
+    all_gather(list_len_of_tensor, len_of_tensor, group)
+    # get the max length from list
+    max_len_of_tensor = int(max(list_len_of_tensor).item())
+    # resize the input tensor to max length avoid hang in all gather
+    # Note(liyurui): Maybe we should support various length all_gather?
+    # Now this operation is efficient for we don't support resize in python.
+    numpy_data = tensor.numpy()
+    numpy_data = np.resize(numpy_data, [max_len_of_tensor])
+    input_tensor = paddle.to_tensor(numpy_data)
 
     tensor_list = []
-    all_gather(tensor_list, tensor, group)
-    for tensor in tensor_list:
-        object_list.append(_convert_tensor_to_object(tensor))
+    all_gather(tensor_list, input_tensor, group)
+    for i, tensor in enumerate(tensor_list):
+        object_list.append(
+            _convert_tensor_to_object(tensor, list_len_of_tensor[i]))
 
 
 def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     """
-
     Scatter a tensor to all participators. As shown below, 4 GPUs each start 4 processes and the source of the scatter
     is GPU0. Through scatter operator, the data in GPU0 will be sent to all GPUs averagely.
-
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/scatter.png
         :width: 800
         :alt: scatter
         :align: center
-
     Args:
         tensor (Tensor): The output Tensor. Its data type
             should be float16, float32, float64, int32 or int64.
@@ -1108,18 +1045,14 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
-
     Returns:
         None.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
-
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -1190,12 +1123,10 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
 def _c_identity(tensor, group=None):
     """
     Return a copy of the tensor, mainly used with model parallel.
-
     Args:
         tensor (Tensor): The input Tensor. Its data type
             should be float16, float32, float64, int32 or int64.
         group (int): The id of the process group to work on.
-
     Returns:
         Tensor.
     """
@@ -1228,12 +1159,10 @@ def _c_identity(tensor, group=None):
 def _c_concat(tensor, group=None):
     """
     Return allgather of the tensor, mainly used with model parallel.
-
     Args:
         tensor (Tensor): The input Tensor. Its data type
             should be float16, float32, float64, int32 or int64.
         group (int): The id of the process group to work on.
-
     Returns:
         Tensor.
     """
@@ -1275,13 +1204,11 @@ def _c_concat(tensor, group=None):
 def _c_split(tensor, group=None):
     """
     Split tensor evenly among all members, mainly used with model parallel.
-
     Args:
         tensor (Tensor): The input Tensor. Its data type
             should be float16, float32, float64, int32 or int64.
         rank (int): The rank of the current process.
         group (int): The id of the process group to work on.
-
     Returns:
         Tensor.
     """
@@ -1386,14 +1313,12 @@ def _mp_allreduce(tensor,
 def _c_lookup_table(table, index, start_index=0, name=None):
     """
     Lookup table according to index.
-
     Args:
         table (Tensor): The input Tensor. Its data type
             should be float16, float32, float64.
         index (Tensor): The index to lookup table.
         start_index (int): The initial index for table range.
         name (string): The name of the api
-
     Returns:
         Tensor.
     """
@@ -1579,7 +1504,6 @@ def _parallel_linear(x,
                      group=None):
     """
     Parallel Linear
-
     axis the dimension of the parameter of linear layer. 
     axis = 0: the row dimension
     axis = 1: the col dimension
@@ -1716,18 +1640,14 @@ def split(x,
           bias_attr=None,
           name=None):
     """
-
     Split the weight of the specified operation into multiple devices
     and do the computation in parallel.
-
     Now the following three cases are supported.
-
     Case 1: Parallel Embedding
         The weight of the embedding operation is a NxM matrix with N rows and M columns.
         With parallel embedding, the weight is split into num_partitions partitions, each
         of which is a matrix with (N/num_partitions + 1) rows and M column where the last
         row as the padding idx.
-
         Suppose we split the NxM weight into two partitons on device_0 and device_1
         respectively. Then, one each device, the final weight has (N/2 + 1) rows with the
         index range from 0 to N/2. On device_0, all values in the input within [0, N/2 -1]
@@ -1736,54 +1656,42 @@ def split(x,
         input within [N/2, N-1] will be changed to (V - N/2), and all other values are changed
         to N/2 and are mapped to all zeros after embedding. Finally, the results on the two
         devices are sum-reduced.
-
         The Embedding put on single card is as shown below:
-
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_embedding_single.png
             :width: 800
             :height: 350
             :alt: single_embedding
             :align: center
-
         Parallel Embedding is shown as below:
-
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_embedding_split.png
             :width: 800
             :alt: split_embedding
             :align: center
-
     Case 2: Row Parallel Linear
         The weight of the linear operation is a NxM matrix with N rows and M columns.
         With row parallel linear, the weight is split into num_partitions partitions, each
         of which is a matrix with N/num_partitions rows and M column.
-
         The linear layer put on single card is shown as below, the input variable is represented by X,
         the weight matrix is represented by W and the output vaiable is O. The linear layer on single card is 
         simple matrix multiplication operation, O = X * W.
-
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_single.png
             :width: 800
             :alt: single_linear
             :align: center
-
         Row Parallel Linear is shown as below. As the name suggests, Row Parallel Linear splits the weight matrix W into
         [[W_row1], [W_row2]] along the row. And accordingly the input is splitted along the column into [X_col1, X_col2] and multiply their
         respective weight matrices. Finally apply AllReduce on the output from each card to get the final output.
-
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_row.png
             :width: 800
             :alt: split_row
             :align: center
-
     Case 3: Column Parallel Linear
         The weight of the linear operation is a NxM matrix with N rows and M columns.
         With column parallel linear, the weight is split into num_paratitions partitions, each
         of which is a matrix with N rows and M/num_partitions column.
-
         The linear layer put on single card has been illustrated on case 2 and Column Parallel Linear
         is shown as below. The Column Parallel Linear splits the weight matrix W into [W_col1, W_col2] along the column and 
         these splitted matrices respectively multiply the input. Finally apply AllGather on the output from each card to get the final output. 
-
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_col.png
             :width: 800
             :alt: split_col
@@ -1791,12 +1699,10 @@ def split(x,
     
     As observed, the column parallel linear and row parallel linear can be combined to skip one ALLGATHER communication
     operator. Furthermore the Attention and MLP can be combined to imporve the performance as shown below.
-
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_col_row.png
             :width: 800
             :alt: split_col_row
             :align: center
-
     Args:
         x (Tensor): Input tensor. It's data type should be float16, float32, float64, int32 or int64.
         size (list|tuple): A list or tuple with two elements indicating the shape of the weight.
@@ -1811,17 +1717,13 @@ def split(x,
             of the specified operation. Default: None.
         name (str, Optional): The default value is None. Normally there is no need for user to set this
             property. Default: None. For more information, please refer to :ref:`api_guide_Name`.
-
     Returns:
         Tensor.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import paddle
             import paddle.distributed.fleet as fleet
-
             paddle.enable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             fleet.init(is_collective=True)
@@ -1831,7 +1733,6 @@ def split(x,
                 (8, 8),
                 operation="embedding",
                 num_partitions=2)
-
     """
     assert isinstance(
         size,
@@ -1924,12 +1825,10 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     As shown below, the in_tensor_list in GPU0 includes 0_0 and 0_1, and GPU1 includes 1_0 and 1_1.
     Through alltoall operator, the 0_0 in GPU0 will be sent to GPU0 and 0_1 to GPU1, 1_0 in GPU1 sent to GPU0 and 1_1 to GPU1.
     Finally the out_tensor_list in GPU0 includes 0_0 and 1_0, and GPU1 includes 0_1 and 1_1.
-
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/alltoall.png
         :width: 800
         :alt: alltoall
         :align: center
-
     Args:
         in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
@@ -1943,7 +1842,6 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     
     Examples:
         .. code-block:: python
-
             # required: distributed
             import numpy as np
             import paddle
@@ -2027,10 +1925,8 @@ def alltoall_single(in_tensor,
                     use_calc_stream=True):
     """
     Scatter a single input tensor to all participators and gather the received tensors in out_tensor.
-
     .. note::
         ``alltoall_single`` is only supported in eager mode.
-
     Args:
         in_tensor (Tensor): Input tensor. The data type should be float16, float32, float64, int32 or int64.
         out_tensor (Tensor): Output Tensor. The data type should be the same as the data type of the input Tensor.
@@ -2046,15 +1942,12 @@ def alltoall_single(in_tensor,
     
     Examples:
         .. code-block:: python
-
             # required: distributed
             import paddle
             import paddle.distributed as dist
-
             dist.init_parallel_env()
             rank = dist.get_rank()
             size = dist.get_world_size()
-
             # case 1
             input = paddle.arange(2, dtype='int64') + rank * 2
             # input for rank 0: [0, 1]
@@ -2064,18 +1957,15 @@ def alltoall_single(in_tensor,
             dist.alltoall_single(input, output)
             # output for rank 0: [0, 2]
             # output for rank 1: [1, 3]
-
             # case 2
             in_split_sizes = [i + 1 for i in range(size)]
             # in_split_sizes for rank 0: [1, 2] and for rank 1: [1, 2]
             out_split_sizes = [rank + 1 for i in range(size)]
             # out_split_sizes for rank 0: [1, 1] and for rank 1: [2, 2]
-
             input = paddle.ones([sum(in_split_sizes), size], dtype='float32') * rank
             # input for rank 0: [[0., 0.], [0., 0.], [0., 0.]]
             # input for rank 1: [[1., 1.], [1., 1.], [1., 1.]]
             output = paddle.empty([(rank + 1) * size, size], dtype='float32')
-
             group = dist.new_group([0, 1])
             task = dist.alltoall_single(input,
                                         output,
@@ -2086,7 +1976,6 @@ def alltoall_single(in_tensor,
             task.wait()
             # output for rank 0: [[0., 0.], [1., 1.]]
             # output for rank 1: [[0., 0.], [0., 0.], [1., 1.], [1., 1.]]
-
     """
     if group is not None and not group.is_member():
         return
@@ -2114,7 +2003,6 @@ def _get_group_rank(global_rank, group=None):
 def send(tensor, dst=0, group=None, use_calc_stream=True):
     """
     Send a tensor to the receiver.
-
     Args:
         tensor (Tensor): The Tensor to send. Its data type
             should be float16, float32, float64, int32 or int64.
@@ -2124,14 +2012,11 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
     
     Returns:
         None.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import paddle
             from paddle.distributed import init_parallel_env
-
             init_parallel_env()
             if paddle.distributed.ParallelEnv().rank == 0:
                 data = paddle.to_tensor([7, 8, 9])
@@ -2176,7 +2061,6 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
 def recv(tensor, src=0, group=None, use_calc_stream=True):
     """
     Receive a tensor to the sender.
-
     Args:
         tensor (Tensor): The Tensor to receive. Its data type
             should be float16, float32, float64, int32 or int64.
@@ -2186,14 +2070,11 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
     
     Returns:
         None.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import paddle
             from paddle.distributed import init_parallel_env
-
             init_parallel_env()
             if paddle.distributed.ParallelEnv().rank == 0:
                 data = paddle.to_tensor([7, 8, 9])
@@ -2255,7 +2136,6 @@ def _check_tensor_list(tensor_list, tensor_name):
 def isend(tensor, dst, group=None):
     """
     Sends a tensor asynchronously
-
     Args:
         tensor (Tensor): The Tensor to send. Its data type
             should be float16, float32, float64, int32 or int64.
@@ -2264,34 +2144,26 @@ def isend(tensor, dst, group=None):
     
     Returns:
         A distributed task object.
-
     Warning:    
         This API only supports the dygraph mode.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import paddle
             import paddle.distributed as dist
-
             dist.init_parallel_env()
             rank = dist.get_rank()
             world_size = dist.get_world_size()
-
             if rank == 0:
                 data = paddle.to_tensor([7, 8, 9])
                 task = paddle.distributed.isend(data, dst=1)
             else:
                 data = paddle.to_tensor([1, 2, 3])
                 task = paddle.distributed.irecv(data, src=0)
-
             task.wait()
-
             print(data)
             # paddle.tensor([7, 8, 9])     # Rank-0
             # paddle.tensor([7, 8, 9])     # Rank-1
-
     """
     _check_single_tensor(tensor, "tensor")
     if group is not None and not group.is_member():
@@ -2309,39 +2181,30 @@ def isend(tensor, dst, group=None):
 def irecv(tensor, src=None, group=None):
     """
     Receive a tensor to the sender.
-
     Args:
         tensor (Tensor): The Tensor to receive. Its data type
             should be float16, float32, float64, int32 or int64.
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-
     Returns:
          A distributed task object.
-
     Warning:    
         This API only supports the dygraph mode.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import paddle
             import paddle.distributed as dist
-
             dist.init_parallel_env()
             rank = dist.get_rank()
             world_size = dist.get_world_size()
-
             if rank == 0:
                 data = paddle.to_tensor([7, 8, 9])
                 task = paddle.distributed.isend(data, dst=1)
             else:
                 data = paddle.to_tensor([1, 2, 3])
                 task = paddle.distributed.irecv(data, src=0)
-
             task.wait()
-
             print(data)
             # paddle.tensor([7, 8, 9])     # Rank-0
             # paddle.tensor([7, 8, 9])     # Rank-1
@@ -2362,11 +2225,9 @@ def irecv(tensor, src=None, group=None):
 class P2POp(object):
     """
     A class that makes point-to-point operations for "batch_isend_irecv".
-
     This class creates the type of P2P operation, communication buffer, peer rank,
     Group. Instances of this class will be passed to
     ``paddle.distributed.batch_isend_irecv`` for point-to-point communication.
-
     Args:
         op (callable): A function to send data to or receive data from a peer process.
             The type of ``op`` is either ``paddle.distributed.isend`` or ``paddle.distributed.irecv``.
@@ -2374,7 +2235,6 @@ class P2POp(object):
         peer (int): The destination or source rank.
         group (Group, optional): The group instance return by new_group or None for global 
             default group. Default: None.
-
     """
 
     def __init__(self, op, tensor, peer, group=None):
@@ -2420,46 +2280,33 @@ def _check_p2p_op_list(p2p_op_list):
 def batch_isend_irecv(p2p_op_list):
     """
     Send or Receive a batch of tensors asynchronously and return a list of requests.
-
     Process each of the point-to-point operations in ``p2p_op_list`` and return the 
     corresponding tasks. NCCL are currently supported.
-
     Args:
         p2p_op_list: A list of point-to-point operations(type of each operator is
             ``paddle.distributed.P2POp``). The order of the isend/irecv in the list
             matters and it needs to match with corresponding isend/irecv on the
             remote end.
-
     Returns:
         A list of distributed tasks returned by calling the corresponding
         op in the op_list. 
-
     Warning:    
         This API only supports the dygraph mode.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
-
             import paddle
             import paddle.distributed as dist
-
             dist.init_parallel_env()
             rank = dist.get_rank()
             world_size = dist.get_world_size()
-
             send_t = paddle.arange(2) + rank
             # paddle.tensor([0, 1])  # Rank-0
             # paddle.tensor([1, 2])  # Rank-1
-
             recv_t = paddle.empty(shape=[2], dtype=send_t.dtype)
-
             send_op = dist.P2POp(dist.isend, send_t, (rank + 1) % world_size)
             recv_op = dist.P2POp(dist.irecv, recv_t, (rank - 1 + world_size) % world_size)
-
             tasks = dist.batch_isend_irecv([send_op, recv_op])
-
             for task in tasks:
                 task.wait()
             
@@ -2497,7 +2344,6 @@ def reduce_scatter(tensor,
                    use_calc_stream=True):
     """
     Reduces, then scatters a list of tensors to all processes in a group
-
     Args:
         tensor (Tensor): Output tensor.
         tensor_list (list[Tensor]): List of tensors to reduce and scatter.
@@ -2505,42 +2351,32 @@ def reduce_scatter(tensor,
         group (Group, optional): The group instance return by new_group or None for global 
             default group. Default: None.
         use_calc_stream (bool, optional): Whether this op should be an async op.
-
     Returns:
         Async task handle, if use_calc_stream is set to False.
         None, if use_calc_stream or if not part of the group.
     
     Warning:    
         This API only supports the dygraph mode.
-
-
     Examples:
         .. code-block:: python
-
             # required: distributed
             import paddle
             import paddle.distributed as dist
-
             dist.init_parallel_env()
             rank = dist.get_rank()
             world_size = dist.get_world_size()
-
             if rank == 0:
                 t1 = paddle.to_tensor([0, 1])
                 t2 = paddle.to_tensor([2, 3])
             else:
                 t1 = paddle.to_tensor([4, 5])
                 t2 = paddle.to_tensor([6, 7])
-
             tensor_list = [t1, t2]
-
             output = paddle.empty(shape=[2], dtype=tensor_list[0].dtype)
             dist.reduce_scatter(output, tensor_list)
-
             print(output)
             # [4, 6]     # Rank-0
             # [8, 10]     # Rank-1
-
     """
     _check_single_tensor(tensor, "tensor")
     _check_tensor_list(tensor_list, "tensor_list")
@@ -2570,7 +2406,6 @@ def _reduce_scatter_base(output,
                          use_calc_stream=True):
     """
     Reduces, then scatters a flattened tensor to all processes in a group.
-
     Args:
         output (Tensor): Output tensor.
         input (Tensor): Input tensor that is of size output tensor size times world size
@@ -2582,29 +2417,22 @@ def _reduce_scatter_base(output,
     Returns:
         Async task handle, if use_calc_stream is set to False.
         None, if use_calc_stream or if not part of the group.
-
     Examples:
         .. code-block:: python
-
             # required: distributed
-
             import paddle
             import paddle.distributed as dist
-
             dist.init_parallel_env()
             rank = dist.get_rank()
             world_size = dist.get_world_size()
-
             input = paddle.arange(4) + rank
             # [0, 1, 2, 3]  # Rank-0
             # [1, 2, 3, 4]  # Rank-1
-
             output = paddle.empty(shape=[2], dtype=input.dtype)
             paddle.distributed.collective._reduce_scatter_base(output, input)
             print(output)
             # [1, 3]     # Rank-0
             # [5, 7]     # Rank-1
-
     """
     _check_single_tensor(output, "output")
     _check_single_tensor(input, "input")

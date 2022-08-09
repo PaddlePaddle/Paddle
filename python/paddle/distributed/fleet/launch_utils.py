@@ -658,7 +658,7 @@ def watch_local_trainers(procs, nranks):
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
             .format(nranks, error_rank))
         terminate_local_procs(procs)
-        return
+        raise
     except:
         logger.error(
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
@@ -1966,12 +1966,13 @@ class ParameterServerLauncher(object):
 
 def check_backend(backend):
     if backend not in [
-            'nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter', 'mpi'
+            'nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter', 'xccl',
+            'mpi'
     ]:
         raise ValueError(
             "paddle.distributed initialize error, "
             "backend argument can only be one of "
-            "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter', 'mpi' "
+            "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter', 'xccl', 'mpi' "
             "but got %s" % backend)
 
     if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
