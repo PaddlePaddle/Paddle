@@ -22,8 +22,7 @@
 namespace paddle {
 namespace jit {
 class BaseEngine;
-using Name2EngineMap =
-    std::unordered_map<std::string, std::shared_ptr<BaseEngine>>;
+using EngineMap = std::unordered_map<std::string, std::shared_ptr<BaseEngine>>;
 
 class CompilationUnit {
  public:
@@ -35,10 +34,10 @@ class CompilationUnit {
   void SetEngine(const std::string &name,
                  const std::shared_ptr<BaseEngine> &engine);
 
-  const Name2EngineMap &EngineMap() const;
+  const EngineMap &EngineMap() const;
 
  private:
-  Name2EngineMap engine_map_;
+  EngineMap engine_map_;
 };
 
 }  // namespace jit

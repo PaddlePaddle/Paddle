@@ -37,18 +37,16 @@ class FunctionInfo;
 using DenseTensor = phi::DenseTensor;
 using Tensor = paddle::experimental::Tensor;
 using Variable = paddle::framework::Variable;
-using Name2VariableMap =
-    std::unordered_map<std::string, std::shared_ptr<Variable>>;
-using Name2EngineMap =
-    std::unordered_map<std::string, std::shared_ptr<BaseEngine>>;
-using Name2FunctionInfoMap =
+using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
+using EngineMap = std::unordered_map<std::string, std::shared_ptr<BaseEngine>>;
+using FunctionInfoMap =
     std::unordered_map<std::string, std::shared_ptr<FunctionInfo>>;
 
 class Layer {
  public:
-  Layer(const Name2VariableMap& params_map,
-        const Name2VariableMap& attrs_map_,
-        const Name2FunctionInfoMap& info_map,
+  Layer(const VariableMap& params_map,
+        const VariableMap& attrs_map_,
+        const FunctionInfoMap& info_map,
         const phi::Place& place);
 
   jit::Function Function(const std::string& name) const;
@@ -65,7 +63,7 @@ class Layer {
   void SetEngine(const std::string& name,
                  const std::shared_ptr<BaseEngine>& engine);
 
-  const Name2EngineMap& EngineMap() const;
+  const EngineMap& EngineMap() const;
 
   const std::shared_ptr<jit::FunctionInfo>& FunctionInfo(
       const std::string& name) const;
@@ -73,9 +71,9 @@ class Layer {
   std::vector<std::string> FunctionNames() const;
 
  private:
-  Name2VariableMap params_map_;
-  Name2VariableMap attrs_map_;
-  Name2FunctionInfoMap info_map_;
+  VariableMap params_map_;
+  VariableMap attrs_map_;
+  FunctionInfoMap info_map_;
   std::shared_ptr<CompilationUnit> unit_;
 };
 

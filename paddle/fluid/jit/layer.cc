@@ -26,9 +26,9 @@
 namespace paddle {
 namespace jit {
 
-Layer::Layer(const Name2VariableMap& params_map,
-             const Name2VariableMap& attrs_map,
-             const Name2FunctionInfoMap& info_map,
+Layer::Layer(const VariableMap& params_map,
+             const VariableMap& attrs_map,
+             const FunctionInfoMap& info_map,
              const phi::Place& place)
     : params_map_(params_map), attrs_map_(attrs_map), info_map_(info_map) {
   unit_.reset(new CompilationUnit());
@@ -56,7 +56,7 @@ void Layer::SetEngine(const std::string& name,
   unit_->SetEngine(name, engine);
 }
 
-const Name2EngineMap& Layer::EngineMap() const { return unit_->EngineMap(); }
+const EngineMap& Layer::EngineMap() const { return unit_->EngineMap(); }
 
 const std::shared_ptr<jit::FunctionInfo>& Layer::FunctionInfo(
     const std::string& name) const {
@@ -64,7 +64,7 @@ const std::shared_ptr<jit::FunctionInfo>& Layer::FunctionInfo(
       info_map_.count(name),
       1,
       phi::errors::InvalidArgument(
-          "FuncitonInfo named %s is not exist in info_map_.", name));
+          "FuncitonInfo named %s is not existed in info_map_.", name));
   return info_map_.at(name);
 }
 
