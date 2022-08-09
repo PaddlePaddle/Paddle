@@ -164,6 +164,19 @@ pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
+if(WITH_CINN)
+  pass_library(
+    build_cinn_pass
+    base
+    DIR
+    ../paddle2cinn
+    DEPS
+    subgraph_detector
+    cinn_compiler
+    errors
+    enforce)
+endif()
+
 if(WITH_TENSORRT)
   pass_library(trt_map_matmul_to_mul_pass inference)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)

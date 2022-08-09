@@ -585,6 +585,8 @@ void SearchAllSubgraphs(Graph* graph) {
   VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
   std::vector<GraphNodeVec> clusters =
       framework::ir::SubgraphDetector(graph, teller)();
+  LOG(INFO) << "---  detected " << clusters.size()
+            << " cinn supported subgraphs";
 
   auto cluster_debug_info = [](const GraphNodeSet& cluster) {
     std::string res = "(";
