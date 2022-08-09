@@ -189,43 +189,43 @@ class TestTopKAPI(unittest.TestCase):
         # test case for basic test case 1
         paddle_result = paddle.topk(input_tensor, k=2)
         numpy_result = numpy_topk(self.input_data, k=2)
-        self.assertTrue(np.allclose(paddle_result[0].numpy(), numpy_result[0]))
-        self.assertTrue(np.allclose(paddle_result[1].numpy(), numpy_result[1]))
+        np.testing.assert_allclose(paddle_result[0].numpy(), numpy_result[0])
+        np.testing.assert_allclose(paddle_result[1].numpy(), numpy_result[1])
         # test case for basic test case 2 with axis
         paddle_result = paddle.topk(input_tensor, k=2, axis=1)
         numpy_result = numpy_topk(self.input_data, k=2, axis=1)
-        self.assertTrue(np.allclose(paddle_result[0].numpy(), numpy_result[0]))
-        self.assertTrue(np.allclose(paddle_result[1].numpy(), numpy_result[1]))
+        np.testing.assert_allclose(paddle_result[0].numpy(), numpy_result[0])
+        np.testing.assert_allclose(paddle_result[1].numpy(), numpy_result[1])
         # test case for basic test case 3 with tensor K
         k_tensor = paddle.to_tensor(np.array([2]))
         paddle_result = paddle.topk(input_tensor, k=k_tensor, axis=1)
         numpy_result = numpy_topk(self.input_data, k=2, axis=1)
-        self.assertTrue(np.allclose(paddle_result[0].numpy(), numpy_result[0]))
-        self.assertTrue(np.allclose(paddle_result[1].numpy(), numpy_result[1]))
+        np.testing.assert_allclose(paddle_result[0].numpy(), numpy_result[0])
+        np.testing.assert_allclose(paddle_result[1].numpy(), numpy_result[1])
         # test case for basic test case 4 with tensor largest
         k_tensor = paddle.to_tensor(np.array([2]))
         paddle_result = paddle.topk(input_tensor, k=2, axis=1, largest=False)
         numpy_result = numpy_topk(self.input_data, k=2, axis=1, largest=False)
-        self.assertTrue(np.allclose(paddle_result[0].numpy(), numpy_result[0]))
-        self.assertTrue(np.allclose(paddle_result[1].numpy(), numpy_result[1]))
+        np.testing.assert_allclose(paddle_result[0].numpy(), numpy_result[0])
+        np.testing.assert_allclose(paddle_result[1].numpy(), numpy_result[1])
         # test case for basic test case 5 with axis -1
         k_tensor = paddle.to_tensor(np.array([2]))
         paddle_result = paddle.topk(input_tensor, k=2, axis=-1, largest=False)
         numpy_result = numpy_topk(self.input_data, k=2, axis=-1, largest=False)
-        self.assertTrue(np.allclose(paddle_result[0].numpy(), numpy_result[0]))
-        self.assertTrue(np.allclose(paddle_result[1].numpy(), numpy_result[1]))
+        np.testing.assert_allclose(paddle_result[0].numpy(), numpy_result[0])
+        np.testing.assert_allclose(paddle_result[1].numpy(), numpy_result[1])
         # test case for basic test case 6 for the partial sort
         paddle_result = paddle.topk(large_input_tensor, k=1, axis=-1)
         numpy_result = numpy_topk(self.large_input_data, k=1, axis=-1)
-        self.assertTrue(np.allclose(paddle_result[0].numpy(), numpy_result[0]))
-        self.assertTrue(np.allclose(paddle_result[1].numpy(), numpy_result[1]))
+        np.testing.assert_allclose(paddle_result[0].numpy(), numpy_result[0])
+        np.testing.assert_allclose(paddle_result[1].numpy(), numpy_result[1])
         # test case for basic test case 7 for the unsorted
         paddle_result = paddle.topk(input_tensor, k=2, axis=1, sorted=False)
         sort_paddle = numpy_topk(np.array(paddle_result[0].numpy()),
                                  axis=1,
                                  k=2)
         numpy_result = numpy_topk(self.input_data, k=2, axis=1)
-        self.assertTrue(np.allclose(sort_paddle[0], numpy_result[0]))
+        np.testing.assert_allclose(sort_paddle[0], numpy_result[0])
 
     def run_static(self, place):
         paddle.enable_static()
@@ -263,32 +263,32 @@ class TestTopKAPI(unittest.TestCase):
                                         result7[0], result7[1]
                                     ])
             numpy_result = numpy_topk(self.input_data, k=2)
-            self.assertTrue(np.allclose(paddle_result[0], numpy_result[0]))
-            self.assertTrue(np.allclose(paddle_result[1], numpy_result[1]))
+            np.testing.assert_allclose(paddle_result[0], numpy_result[0])
+            np.testing.assert_allclose(paddle_result[1], numpy_result[1])
             numpy_result = numpy_topk(self.input_data, k=2, axis=-1)
-            self.assertTrue(np.allclose(paddle_result[2], numpy_result[0]))
-            self.assertTrue(np.allclose(paddle_result[3], numpy_result[1]))
+            np.testing.assert_allclose(paddle_result[2], numpy_result[0])
+            np.testing.assert_allclose(paddle_result[3], numpy_result[1])
             numpy_result = numpy_topk(self.input_data, k=2, axis=1)
-            self.assertTrue(np.allclose(paddle_result[4], numpy_result[0]))
-            self.assertTrue(np.allclose(paddle_result[5], numpy_result[1]))
+            np.testing.assert_allclose(paddle_result[4], numpy_result[0])
+            np.testing.assert_allclose(paddle_result[5], numpy_result[1])
             numpy_result = numpy_topk(self.input_data,
                                       k=2,
                                       axis=1,
                                       largest=False)
-            self.assertTrue(np.allclose(paddle_result[6], numpy_result[0]))
-            self.assertTrue(np.allclose(paddle_result[7], numpy_result[1]))
+            np.testing.assert_allclose(paddle_result[6], numpy_result[0])
+            np.testing.assert_allclose(paddle_result[7], numpy_result[1])
             numpy_result = numpy_topk(self.input_data,
                                       k=2,
                                       axis=-1,
                                       largest=False)
-            self.assertTrue(np.allclose(paddle_result[8], numpy_result[0]))
-            self.assertTrue(np.allclose(paddle_result[9], numpy_result[1]))
+            np.testing.assert_allclose(paddle_result[8], numpy_result[0])
+            np.testing.assert_allclose(paddle_result[9], numpy_result[1])
             numpy_result = numpy_topk(self.large_input_data, k=1, axis=-1)
-            self.assertTrue(np.allclose(paddle_result[10], numpy_result[0]))
-            self.assertTrue(np.allclose(paddle_result[11], numpy_result[1]))
+            np.testing.assert_allclose(paddle_result[10], numpy_result[0])
+            np.testing.assert_allclose(paddle_result[11], numpy_result[1])
             sort_paddle = numpy_topk(paddle_result[12], axis=1, k=2)
             numpy_result = numpy_topk(self.input_data, k=2, axis=1)
-            self.assertTrue(np.allclose(sort_paddle[0], numpy_result[0]))
+            np.testing.assert_allclose(sort_paddle[0], numpy_result[0])
 
     def test_cases(self):
         places = [core.CPUPlace()]

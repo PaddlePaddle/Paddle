@@ -208,7 +208,7 @@ def slice(input, axes, starts, ends):
                 if isinstance(item, tmp_tensor_type) else item for item in ends
             ]
         elif isinstance(ends, tmp_tensor_type):
-            etensor_t = ends.numpy()
+            tensor_t = ends.numpy()
             ends = [ele for ele in tensor_t]
             infer_flags = list(-1 for i in range(len(axes)))
 
@@ -599,7 +599,7 @@ def crop(x, shape=None, offsets=None, name=None):
 
     Parameters:
         x (Tensor): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
-        shape (list|tuple|Tensor): The output shape is specified
+        shape (list|tuple|Tensor, optional): The output shape is specified
             by `shape`. Its data type is int32. If a list/tuple, it's length must be
             the same as the dimension size of `x`. If a Tensor, it should be a 1-D Tensor.
             When it is a list, each element can be an integer or a Tensor of shape: [1].
@@ -619,7 +619,6 @@ def crop(x, shape=None, offsets=None, name=None):
     Examples:
 
         .. code-block:: python
-          :name: code-example1
 
             import paddle
             x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
@@ -778,8 +777,11 @@ def fill_(x, value):
         raise TypeError(
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
-    return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
-                            int(value))
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_(x, value)
+    else:
+        return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
+                                int(value))
 
 
 @dygraph_only
@@ -807,7 +809,10 @@ def zero_(x):
             print(tensor.tolist())   #[0, 0, 0, 0, 0]
 
     """
-    return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_(x, 0.)
+    else:
+        return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
 
 
 @dygraph_only
@@ -888,10 +893,17 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
         y = y.reshape([1, -1])
 
     if inplace:
-        return _C_ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
-                                            'offset', offset)
-    return _C_ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
-                                       'offset', offset)
+        if in_dygraph_mode():
+            return _C_ops.final_state_fill_diagonal_tensor_(
+                x, y, offset, dim1, dim2)
+        else:
+            return _C_ops.fill_diagonal_tensor_(x, y, 'offset', offset, 'dim1',
+                                                dim1, 'dim2', dim2)
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_diagonal_tensor(x, y, offset, dim1, dim2)
+    else:
+        return _C_ops.fill_diagonal_tensor(x, y, 'offset', offset, 'dim1', dim1,
+                                           'dim2', dim2)
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
@@ -1968,7 +1980,7 @@ def squeeze(x, axis=None, name=None):
 
     Examples:
         .. code-block:: python
-	  :name: code-example1
+
             import paddle
             
             x = paddle.rand([5, 1, 10])
@@ -2180,7 +2192,7 @@ def unique(x,
 
     Examples:
         .. code-block:: python
-	  :name: code-example1
+
             import paddle
 
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
@@ -3212,7 +3224,6 @@ def reshape(x, shape, name=None):
 
     Examples:
         .. code-block:: python
-           :name: code-example1
 
             import paddle
 
@@ -4178,7 +4189,6 @@ def take_along_axis(arr, indices, axis):
     
     Examples:
         .. code-block:: python
-           :name: code-example1
 
             import paddle
 
@@ -4244,7 +4254,6 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
     
     Examples:
         .. code-block:: python
-            :name: code-example1
 
             import paddle
 

@@ -137,8 +137,8 @@ class TestBatchNorm(unittest.TestCase):
             y2 = compute_v2(x)
             y3 = compute_v3(x, False, False)
             y4 = compute_v4(x)
-            self.assertTrue(np.allclose(y1, y2))
-            self.assertTrue(np.allclose(y3, y4))
+            np.testing.assert_allclose(y1, y2)
+            np.testing.assert_allclose(y3, y4)
 
     def test_static(self):
         places = [fluid.CPUPlace()]
@@ -172,7 +172,7 @@ class TestBatchNorm(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x, False, False)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2)
 
 
 class TestBatchNormChannelLast(unittest.TestCase):
