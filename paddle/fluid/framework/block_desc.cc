@@ -179,15 +179,18 @@ void BlockDesc::Flush() {
   for (auto &op_desc : ops_) {
     op_desc->Flush();
   }
+  // no flush for var_desc? or is op_desc flush really needed?
 
   if (NeedUpdate(true)) {
     this->desc_->mutable_ops()->Clear();
     for (auto &op_desc : ops_) {
       this->desc_->mutable_ops()->Add()->CopyFrom(*op_desc->Proto());
+      // op_desc's need_update is set to false in op_desc->Flush();
     }
     this->desc_->mutable_vars()->Clear();
     for (auto &var_desc : vars_) {
       this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
+      var_desc.second->SetNeedUpdate(false);
     }
     need_update_ = false;
   }

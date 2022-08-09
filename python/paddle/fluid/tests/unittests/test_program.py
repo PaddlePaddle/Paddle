@@ -218,6 +218,7 @@ class TestProgramProto(unittest.TestCase):
         program = build_program()
         a = program.desc.serialize_to_string()
         program.current_block().ops[0]._set_attr('use_mkldnn', True)
+        self.assertTrue(program.desc.need_update())
         b = program.desc.serialize_to_string()
         self.assertFalse(a == b)
 
@@ -225,6 +226,7 @@ class TestProgramProto(unittest.TestCase):
         program = build_program()
         a = program.desc.serialize_to_string()
         program.current_block().var("x").desc.set_stop_gradient(False)
+        self.assertTrue(program.desc.need_update())
         b = program.desc.serialize_to_string()
         self.assertFalse(a == b)
 
