@@ -69,7 +69,7 @@ class VarDesc {
   }
 
   explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {
-    need_updated_ = true;
+    // need_updated_ = true;
   }
 
   // Explicitly implement the copy constructor for auto parallel

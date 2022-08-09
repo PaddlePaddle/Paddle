@@ -188,11 +188,36 @@ void BlockDesc::Flush() {
       this->desc_->mutable_ops()->Add()->CopyFrom(*op_desc->Proto());
       // op_desc's need_update is set to false in op_desc->Flush();
     }
-    this->desc_->mutable_vars()->Clear();
-    for (auto &var_desc : vars_) {
-      this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
-      var_desc.second->SetNeedUpdate(false);
+
+    std::vector<std::string> var_names;
+    std::set<std::string> var_names_set;
+
+    // keep order
+    for (const auto &var : this->desc_->vars()) {
+      var_names.emplace_back(var.name());
+      var_names_set.insert(var.name());
     }
+
+    this->desc_->mutable_vars()->Clear();
+    for (const auto &name : var_names) {
+      if (vars_.count(name)) {
+        this->desc_->mutable_vars()->Add()->CopyFrom(*vars_[name]->Proto());
+        vars_[name]->SetNeedUpdate(false);
+      }
+    }
+
+    for (auto &var_desc : vars_) {
+      if (var_names_set.count(var_desc.first) != 1) {
+        this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
+        var_desc.second->SetNeedUpdate(false);
+      }
+    }
+
+    // this->desc_->mutable_vars()->Clear();
+    // for (auto &var_desc : vars_) {
+    //   this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
+    //   var_desc.second->SetNeedUpdate(false);
+    // }
     need_update_ = false;
   }
 }
@@ -211,6 +236,7 @@ BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
   for (const proto::VarDesc &var_desc : desc_->vars()) {
     vars_[var_desc.name()].reset(new VarDesc(var_desc));
   }
+
   for (const proto::OpDesc &op_desc : desc_->ops()) {
     ops_.emplace_back(new OpDesc(op_desc, this));
   }
