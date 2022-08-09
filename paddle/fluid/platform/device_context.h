@@ -58,7 +58,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/data_layout.h"
 #endif
 
@@ -901,6 +901,8 @@ class DeviceContextPool {
     }
     return *pool;
   }
+
+  static bool IsInitialized() { return pool != nullptr; }
 
   static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
 
