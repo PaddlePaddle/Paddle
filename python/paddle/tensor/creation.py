@@ -100,8 +100,8 @@ def linspace(start, stop, num, dtype=None, name=None):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
     if in_dygraph_mode():
         return _C_ops.final_state_linspace(tensor_start, tensor_stop,
-                                           tensor_num, 'dtype', dtype)
-    if _non_static_mode():
+                                           tensor_num, dtype)
+    if _in_legacy_dygraph():
         return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                dtype)
 
@@ -1382,7 +1382,7 @@ def empty(shape, dtype=None, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        out = _C_ops.empty(shape, convert_np_dtype_to_dtype_(dtype))
+        out = _C_ops.final_state_empty(shape, convert_np_dtype_to_dtype_(dtype))
         out.stop_gradient = True
         return out
 

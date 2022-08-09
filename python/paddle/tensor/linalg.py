@@ -462,7 +462,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         if in_dygraph_mode():
             abs_out = _C_ops.final_state_abs(input)
             pow_out = _C_ops.final_state_pow(abs_out, porder)
-            sum_out = _C_ops.final_state_sum(pow_out, axis, None, keep_dim)
+            sum_out = _C_ops.final_state_sum(pow_out, axis, None, keepdim)
             out = _C_ops.final_state_pow(sum_out, out, float(1. / porder))
             return out
 
@@ -2622,11 +2622,11 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             out1 = multiply(1 / s, cond_int)
             out2 = multiply(1 / y, cond_not_int)
             singular = add(out1, out2)
-            st, _ = _C_ops.final_state_unsqueeze(singular, [-2])
+            st = _C_ops.final_state_unsqueeze(singular, [-2])
 
             dims = list(range(len(vt.shape)))
             perm = dims[:-2] + [dims[-1]] + [dims[-2]]
-            v, _ = _C_ops.final_state_transpose(vt, perm)
+            v = _C_ops.final_state_transpose(vt, perm)
 
             out_1 = v * st
             out_2 = _C_ops.final_state_matmul(out_1, u, False, True)
@@ -2647,7 +2647,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             out1 = multiply(1 / s, cond_int)
             out2 = multiply(1 / y, cond_not_int)
             singular = add(out1, out2)
-            st, _ = _C_ops.final_state_unsqueeze(singular, [-2])
+            st = _C_ops.final_state_unsqueeze(singular, [-2])
 
             out_1 = u * st
             u_conj = _C_ops.final_state_conj(u)

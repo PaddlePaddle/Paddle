@@ -4122,10 +4122,10 @@ def moveaxis(x, source, destination, name=None):
         perm[dst_dims[i]] = src_dims[i]
 
     if in_dygraph_mode():
-        out, _ = _C_ops.final_state_transpose(x, 'axis', perm)
+        out, _ = _C_ops.final_state_transpose(x, perm)
         return out
 
-    if _in_legacy_dygrpah():
+    if _in_legacy_dygraph():
         out, _ = _C_ops.transpose2(x, 'axis', perm)
         return out
 
