@@ -51,8 +51,7 @@ class TestInitializerBase(unittest.TestCase):
                               10,
                               weight_attr=self.weight_attr,
                               bias_attr=self.bias_attr)
-        print(fc.startup_program)
-
+        program = fc.startup_program
         self.check_program(program)
 
     def test_guard(self):
@@ -67,11 +66,9 @@ class TestInitializerBase(unittest.TestCase):
         self.check_program(program)
 
     def check_program(self, program):
-        print(program)
         self.assertEqual(program.block(0).var("weight").shape, (10, 10))
         self.assertEqual(program.block(0).var("bias").shape, (10, ))
         ops = [op.type for op in program.block(0).ops]
-        print(ops)
         self.assertEqual(ops, self.init_ops)
 
 
