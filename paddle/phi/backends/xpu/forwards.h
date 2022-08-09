@@ -15,6 +15,11 @@ limitations under the License. */
 // Forward-declares.
 #pragma once
 
+// Forward declaration of Eigen DefaultDevice types.
+namespace Eigen {
+struct DefaultDevice;
+}  // namespace Eigen
+
 // Forward declaration of xpu context.
 namespace baidu {
 namespace xpu {
