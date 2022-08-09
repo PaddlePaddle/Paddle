@@ -86,10 +86,11 @@ int GroupNormPlugin::enqueue(int batch_size,
   float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
   float *variance_d =
       variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  framework::Tensor temp_mean_t;
-  temp_mean_t.Resize(phi::make_ddim(mean_shape_));
-  float *temp_mean_d =
-      temp_mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+
+  //   framework::Tensor temp_mean_t;
+  //   temp_mean_t.Resize(phi::make_ddim(mean_shape_));
+  //   float *temp_mean_d =
+  //       temp_mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
   framework::Tensor temp_variance_t;
   temp_variance_t.Resize(phi::make_ddim(variance_shape_));
@@ -108,7 +109,7 @@ int GroupNormPlugin::enqueue(int batch_size,
              input_shape,
              bias_d,
              scale_d,
-             temp_mean_d,
+             mean_d,
              temp_variance_d,
              groups_,
              eps_,
@@ -184,14 +185,16 @@ int GroupNormPluginDynamic::enqueue(
   const auto input_ddim = phi::make_ddim(input_shape);
 
   int C = input_shape[1];
+  int image_size = input_shape[2] * input_shape[3];
   int batchSize = input_shape[0];
-  std::vector<int64_t> batched_mean_shape = {batchSize};
-  batched_mean_shape.insert(
-      batched_mean_shape.end(), mean_shape_.begin(), mean_shape_.end());
-  std::vector<int64_t> batched_variance_shape = {batchSize};
-  batched_variance_shape.insert(batched_variance_shape.end(),
-                                variance_shape_.begin(),
-                                variance_shape_.end());
+  std::vector<int64_t> batched_mean_shape = {batchSize * mean_shape_[0]};
+  //   batched_mean_shape.insert(
+  //       batched_mean_shape.end(), mean_shape_.begin(), mean_shape_.end());
+  std::vector<int64_t> batched_variance_shape = {batchSize *
+                                                 variance_shape_[0]};
+  //   batched_variance_shape.insert(batched_variance_shape.end(),
+  //                                 variance_shape_.begin(),
+  //                                 variance_shape_.end());
   PADDLE_ENFORCE_EQ(
       C,
       scale_.size(),
@@ -227,12 +230,12 @@ int GroupNormPluginDynamic::enqueue(
     float *variance_d =
         variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
-    framework::Tensor temp_mean_t;
+    // framework::Tensor temp_mean_t;
+    // temp_mean_t.Resize(phi::make_ddim(batched_mean_shape));
+    // float *temp_mean_d =
+    //     temp_mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
     framework::Tensor temp_variance_t;
-    temp_mean_t.Resize(phi::make_ddim(batched_mean_shape));
     temp_variance_t.Resize(phi::make_ddim(batched_variance_shape));
-    float *temp_mean_d =
-        temp_mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
     float *temp_variance_d =
         temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
     cudaMemcpyAsync(scale_d,
@@ -252,10 +255,10 @@ int GroupNormPluginDynamic::enqueue(
                input_shape,
                bias_d,
                scale_d,
-               temp_mean_d,
+               mean_d,
                temp_variance_d,
-               groups_,
-               eps_,
+               groups,
+               eps,
                output,
                mean_d,
                variance_d,

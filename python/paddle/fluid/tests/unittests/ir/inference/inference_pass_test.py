@@ -218,7 +218,7 @@ class InferencePassTest(unittest.TestCase):
                 if flatten:
                     paddle_out = paddle_out.flatten()
                     tensorrt_output = tensorrt_output.flatten()
-                print(np.max(np.abs(paddle_out - tensorrt_output)))
+
                 self.assertTrue(
                     np.allclose(paddle_out,
                                 tensorrt_output,

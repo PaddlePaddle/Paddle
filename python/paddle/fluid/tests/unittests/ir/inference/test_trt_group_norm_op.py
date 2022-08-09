@@ -30,7 +30,9 @@ class TRTGroupNormTest(InferencePassTest):
             data = fluid.data(name="data",
                               shape=[-1, 512, 12, 12],
                               dtype="float32")
-            out = self.append_group_norm(data)
+            relu_1 = fluid.layers.relu(data)
+            group_norm_out = self.append_group_norm(relu_1)
+            out = fluid.layers.softmax(input=group_norm_out)
 
         self.feeds = {
             "data": np.random.random([1, 512, 12, 12]).astype("float32"),
