@@ -1060,7 +1060,7 @@
     func : generate_proposals_v2
 
 - api : graph_send_recv
-  args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0)
+  args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", IntArray out_size = {0})
   output : Tensor(out), Tensor(dst_count)
   infer_meta :
     func : GraphSendRecvInferMeta
