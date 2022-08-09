@@ -20,6 +20,7 @@ import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 
+
 # Special case
 class TrtConvertConv3dTransposeTest(TrtLayerAutoScanTest):
 
@@ -36,7 +37,8 @@ class TrtConvertConv3dTransposeTest(TrtLayerAutoScanTest):
             return np.ones([batch, num_channels, 4, 20, 30]).astype(np.float32)
 
         def generate_weight1(num_channels, attrs: List[Dict[str, Any]]):
-            return np.random.random([num_channels, 64, 3, 3, 3]).astype(np.float32)
+            return np.random.random([num_channels, 64, 3, 3,
+                                     3]).astype(np.float32)
 
         num_channels = 128
         batch = 1

@@ -81,7 +81,8 @@ void ConvertConv3d(TensorRTEngine* engine,
   // for conv3d_transpose
   std::vector<int> output_padding;
   if (op_desc.HasAttr("output_padding")) {
-    output_padding = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
+    output_padding =
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
   }
 
   nvinfer1::Dims3 nv_ksize(filter_d, filter_h, filter_w);
@@ -107,7 +108,7 @@ void ConvertConv3d(TensorRTEngine* engine,
   layer->setStrideNd(nv_strides);
   layer->setPrePadding(nv_pre_paddings);
   nvinfer1::Dims3 nv_post_paddings = nv_pre_paddings;
-  if(output_padding.size() > 0) {
+  if (output_padding.size() > 0) {
     nv_post_paddings.d[0] -= output_padding[0];
     nv_post_paddings.d[1] -= output_padding[1];
     nv_post_paddings.d[2] -= output_padding[2];
