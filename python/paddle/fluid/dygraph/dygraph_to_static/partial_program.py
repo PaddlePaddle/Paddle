@@ -301,6 +301,15 @@ class PartialProgramLayer:
             """
             if exist a op whose inputs is var, then return True
             """
+            if var.type not in [
+                    core.VarDesc.VarType.LOD_TENSOR,
+                    core.VarDesc.VarType.SELECTED_ROWS
+            ]:
+                return False
+            if var.dtype not in [
+                'float32', 'float64'
+            ]:
+                return False
             for op in main_program.block(0).ops:
                 for in_arg in op.input_arg_names:
                     if in_arg == var.name:
