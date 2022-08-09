@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/class_center_sample_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -143,10 +144,6 @@ class ClassCenterSampleOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OP_WITHOUT_GRADIENT(class_center_sample,
                              ops::ClassCenterSampleOp,
                              ops::ClassCenterSampleOpMaker);
-REGISTER_OP_CPU_KERNEL(class_center_sample,
-                       ops::ClassCenterSampleCPUKernel<int64_t>,
-                       ops::ClassCenterSampleCPUKernel<int>);
