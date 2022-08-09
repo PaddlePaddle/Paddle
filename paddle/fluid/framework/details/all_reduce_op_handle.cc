@@ -290,10 +290,12 @@ void AllReduceOpHandle::SyncBKCLAllReduce() {
   // bkcl always use async kernel
   for (auto &p : places_) {
     int dev_id = p.device;
-    auto *bkcl_ctx = bkcl_ctxs_->DevCtx(dev_id);
+    auto *bkcl_ctxs =
+        bkcl_ctxs_->GetRunEnvBKCLCtx(run_order_, use_hierarchical_allreduce_);
+    auto &bkcl_ctx = bkcl_ctxs->at(dev_id);
     auto stream = bkcl_ctx.stream();
 
-    platform::XpuStreamSync(stream);
+    platform::XPUStreamSync(stream);
   }
 }
 #endif

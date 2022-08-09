@@ -27,6 +27,7 @@
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
@@ -59,7 +60,7 @@ inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
 
 class BKCLGroupGuard {
  public:
-  static std::mutex &BKCCLMutex() {
+  static std::mutex &BKCLMutex() {
     static std::mutex mtx;
     return mtx;
   }
@@ -83,6 +84,7 @@ struct BKCLContext {
       : ctx_(new platform::XPUDeviceContext(XPUPlace(dev_id))),
         comm_{nullptr} {}
 
+  XPUStream stream() const { return ctx_->stream(); }
   BKCLContext_t comm() const { return comm_; }
 
   int device_id() const { return ctx_->GetPlace().device; }
