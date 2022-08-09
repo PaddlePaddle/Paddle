@@ -44,6 +44,9 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
                  ->GetAttrIfExists<std::string>("fuse_activation")
                  .empty());
   }
+  static bool HasFusedElementwiseAdd(Node* conv_node) {
+    return conv_node->Op()->GetAttrIfExists<bool>("fuse_residual_connection");
+  }
 
   const std::string name_scope_{"residual_connection_fuse_pass"};
 };
