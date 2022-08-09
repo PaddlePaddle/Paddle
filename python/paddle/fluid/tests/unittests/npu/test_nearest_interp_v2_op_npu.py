@@ -398,7 +398,7 @@ class TestNearestInterpOpAPI_dy(unittest.TestCase):
                               scale_factor=scale,
                               mode="nearest",
                               align_corners=False)
-            self.assertTrue(np.allclose(out.numpy(), expect_res))
+            np.testing.assert_allclose(out.numpy(), expect_res)
 
 
 if __name__ == "__main__":

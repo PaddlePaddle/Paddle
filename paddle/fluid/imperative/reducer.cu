@@ -27,13 +27,10 @@ void Group::DivNRanks(framework::Tensor *tensor,
         "Unsupport BF16 in DataParallel for now"));
   }
   framework::VisitDataTypeForHIP(
-      dtype_,
-      DivNRanksForAllReduce<platform::CUDADeviceContext>(
-          tensor, nranks, context));
+      dtype_, DivNRanksForAllReduce<phi::GPUContext>(tensor, nranks, context));
 #else
-  framework::VisitDataType(dtype_,
-                           DivNRanksForAllReduce<platform::CUDADeviceContext>(
-                               tensor, nranks, context));
+  framework::VisitDataType(
+      dtype_, DivNRanksForAllReduce<phi::GPUContext>(tensor, nranks, context));
 #endif
 }
 #endif

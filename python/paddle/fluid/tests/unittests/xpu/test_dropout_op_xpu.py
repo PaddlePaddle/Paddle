@@ -164,7 +164,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     m = paddle.nn.Dropout(p=0.)
                     m.eval()
                     result = m(input)
-                    self.assertTrue(np.allclose(result.numpy(), result_np))
+                    np.testing.assert_allclose(result.numpy(), result_np)
 
     class TestDropoutBackward(unittest.TestCase):
 
@@ -188,10 +188,9 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     out, mask = core.ops.dropout(input, 'dropout_prob', 0.5)
                     out.backward()
 
-                    self.assertTrue(
-                        np.array_equal(
-                            input.gradient(),
-                            self.cal_grad_downscale_in_infer(mask.numpy())))
+                    np.testing.assert_allclose(
+                        input.gradient(),
+                        self.cal_grad_downscale_in_infer(mask.numpy()))
 
         def test_backward_upscale_train(self):
             for place in self.places:
@@ -205,10 +204,9 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                                                  "upscale_in_train")
                     out.backward()
 
-                    self.assertTrue(
-                        np.allclose(
-                            input.gradient(),
-                            self.cal_grad_upscale_train(mask.numpy(), prob)))
+                    np.testing.assert_allclose(
+                        input.gradient(),
+                        self.cal_grad_upscale_train(mask.numpy(), prob))
 
         def test_backward_upscale_train_2(self):
             for place in self.places:
@@ -222,10 +220,9 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                                                  "upscale_in_train")
                     out.backward()
 
-                    self.assertTrue(
-                        np.allclose(
-                            input.gradient(),
-                            self.cal_grad_upscale_train(mask.numpy(), prob)))
+                    np.testing.assert_allclose(
+                        input.gradient(),
+                        self.cal_grad_upscale_train(mask.numpy(), prob))
 
 
 support_types = get_xpu_op_support_types('dropout')

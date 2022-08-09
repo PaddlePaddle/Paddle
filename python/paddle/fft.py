@@ -17,7 +17,7 @@ import numpy as np
 import paddle
 from .tensor.attribute import is_complex, is_floating_point, is_integer
 from .tensor.creation import _real_to_complex_dtype, _complex_to_real_dtype
-from .fluid.framework import _non_static_mode
+from .fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from . import _C_ops
 from .fluid.data_feeder import check_variable_and_dtype
 from .fluid.layer_helper import LayerHelper
@@ -1392,7 +1392,9 @@ def fft_c2c(x, n, axis, norm, forward, name):
     op_type = 'fft_c2c'
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_fft_c2c(x, axes, norm, forward)
+    elif _in_legacy_dygraph():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
@@ -1426,7 +1428,9 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
     op_type = 'fft_r2c'
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], op_type)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_fft_r2c(x, axes, norm, forward, onesided)
+    elif _in_legacy_dygraph():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
                  'onesided', onesided)
         out = getattr(_C_ops, op_type)(x, *attrs)
@@ -1469,7 +1473,12 @@ def fft_c2r(x, n, axis, norm, forward, name):
     op_type = 'fft_c2r'
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        if n is not None:
+            out = _C_ops.final_state_fft_c2r(x, axes, norm, forward, n)
+        else:
+            out = _C_ops.final_state_fft_c2r(x, axes, norm, forward, 0)
+    elif _in_legacy_dygraph():
         if n is not None:
             attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
                      'last_dim_size', n)
@@ -1528,7 +1537,9 @@ def fftn_c2c(x, s, axes, norm, forward, name):
     op_type = 'fft_c2c'
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_fft_c2c(x, axes, norm, forward)
+    elif _in_legacy_dygraph():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
@@ -1579,7 +1590,9 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
     op_type = 'fft_r2c'
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], op_type)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_fft_r2c(x, axes, norm, forward, onesided)
+    elif _in_legacy_dygraph():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
                  'onesided', onesided)
         out = getattr(_C_ops, op_type)(x, *attrs)
@@ -1642,7 +1655,12 @@ def fftn_c2r(x, s, axes, norm, forward, name):
     op_type = 'fft_c2r'
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        if s is not None:
+            out = _C_ops.final_state_fft_c2r(x, axes, norm, forward, s[-1])
+        else:
+            out = _C_ops.final_state_fft_c2r(x, axes, norm, forward, 0)
+    elif _in_legacy_dygraph():
         if s:
             attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
                      'last_dim_size', s[-1])

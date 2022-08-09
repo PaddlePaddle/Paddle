@@ -57,8 +57,6 @@ class Context(object):
             return True
 
         legacy_env_list = [
-            'DISTRIBUTED_TRAINER_ENDPOINTS',
-            'PADDLE_ELASTIC_JOB_ID',
             'FLAGS_START_PORT',
         ]
 
@@ -103,4 +101,7 @@ class Context(object):
     def set_env_in_args(self):
         for k, v in env_args_mapping.items():
             if k in self.envs:
+                print(
+                    f"LAUNCH WARNNING args {v} is override by env {self.envs[k]}"
+                )
                 setattr(self.args, v, self.envs[k])

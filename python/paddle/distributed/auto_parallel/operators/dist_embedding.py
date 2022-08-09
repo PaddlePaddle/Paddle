@@ -16,6 +16,7 @@ from .common import infer_shape
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
+from .common import gradient_synchronization
 from .common import register_distributed_operator_impl, set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
@@ -518,56 +519,12 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         naive_copy_op_dist_attr_for_program(c_embedding_grad_op, backward_op,
                                             ctx)
 
-        # check if need gradient allreduce
-        need_gradient_allreduce = False
+        # data parallel gradient synchronization
+        act_grad_names = [Ids_var.name]
+        out_grad_names = [kwargs['W@GRAD'][0]]
 
-        process_mesh = dist_attr.process_mesh
-        var_dim_mapping = dist_attr.get_input_dims_mapping(Ids_var.name)
-        mesh_shape = process_mesh.topology
-        batch_size_axis = var_dim_mapping[0]
-        if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
-            need_gradient_allreduce = True
-
-            group_ranks = _get_comm_group(process_mesh.processes,
-                                          process_mesh.topology,
-                                          batch_size_axis, rank_id)
-            dp_degree = len(group_ranks)
-            dp_group = new_process_group(group_ranks)
-
-        if need_gradient_allreduce:
-            added_ops = []
-            W_Grad_var = main_block.var(kwargs['W@GRAD'][0])
-            allreduce_op = main_block.append_op(type='c_allreduce_sum',
-                                                inputs={'X': [W_Grad_var]},
-                                                outputs={'Out': [W_Grad_var]},
-                                                attrs={
-                                                    'ring_id': dp_group.id,
-                                                    'use_calc_stream': True,
-                                                    OP_ROLE_KEY: OpRole.Backward
-                                                })
-            added_ops.append(allreduce_op)
-
-            if ctx.gradient_scale:
-                scale_op = main_block.append_op(type='scale',
-                                                inputs={'X': W_Grad_var},
-                                                outputs={'Out': W_Grad_var},
-                                                attrs={
-                                                    'scale': 1.0 / dp_degree,
-                                                    OP_ROLE_KEY: OpRole.Backward
-                                                })
-                added_ops.append(scale_op)
-
-            main_block._sync_with_cpp()
-
-            dims_mapping = ctx.get_tensor_dist_attr_for_program(
-                W_Grad_var).dims_mapping
-            process_mesh = dist_attr.process_mesh
-            for op in added_ops:
-                op_attr = OperatorDistributedAttribute()
-                op_attr.process_mesh = process_mesh
-                op_attr.set_output_dims_mapping(W_Grad_var.name, dims_mapping)
-                op_attr.set_input_dims_mapping(W_Grad_var.name, dims_mapping)
-                ctx.set_op_dist_attr_for_program(op, op_attr)
+        gradient_synchronization(ctx, backward_op, act_grad_names,
+                                 out_grad_names, rank_id)
 
 
 register_distributed_operator_impl("lookup_table_v2",

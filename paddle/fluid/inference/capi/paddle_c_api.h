@@ -214,7 +214,7 @@ PADDLE_CAPI_EXPORT extern bool PD_SpecifyInputName(
 
 PADDLE_CAPI_EXPORT extern void PD_EnableTensorRtEngine(
     PD_AnalysisConfig* config,
-    int workspace_size,
+    int64_t workspace_size,
     int max_batch_size,
     int min_subgraph_size,
     Precision precision,

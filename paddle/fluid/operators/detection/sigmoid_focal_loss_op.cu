@@ -185,12 +185,9 @@ class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     sigmoid_focal_loss,
-    ops::GPUSigmoidFocalLossKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GPUSigmoidFocalLossKernel<paddle::platform::CUDADeviceContext,
-                                   double>);
+    ops::GPUSigmoidFocalLossKernel<phi::GPUContext, float>,
+    ops::GPUSigmoidFocalLossKernel<phi::GPUContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     sigmoid_focal_loss_grad,
-    ops::GPUSigmoidFocalLossGradKernel<paddle::platform::CUDADeviceContext,
-                                       float>,
-    ops::GPUSigmoidFocalLossGradKernel<paddle::platform::CUDADeviceContext,
-                                       double>);
+    ops::GPUSigmoidFocalLossGradKernel<phi::GPUContext, float>,
+    ops::GPUSigmoidFocalLossGradKernel<phi::GPUContext, double>);

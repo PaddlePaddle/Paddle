@@ -50,8 +50,8 @@ __global__ void CosSimDyKernel(const T* x_norm,
 }
 
 template <typename T>
-struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx,
+struct CosSimDyFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& ctx,
                   const T* x_norm,
                   const T* y_norm,
                   const T* x,
@@ -69,8 +69,8 @@ struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct CosSimDyFunctor<platform::CUDADeviceContext, float>;
-template struct CosSimDyFunctor<platform::CUDADeviceContext, double>;
+template struct CosSimDyFunctor<phi::GPUContext, float>;
+template struct CosSimDyFunctor<phi::GPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
