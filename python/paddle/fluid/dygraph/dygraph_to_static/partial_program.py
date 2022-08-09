@@ -288,27 +288,28 @@ class PartialProgramLayer:
         return main_program
 
     def prepare_gradient_aggregation(self, main_program, target_program):
-        # Why we need add Reverse gradient aggregation operation ?
-        # In some cases, if non leaf nodes are used as output, gradient overwriting will occur, such as
-        # def forward(self, in):
-        #     x = 2 * in  # <---- x is a non-leaf node in program.
-        #     y = x + 3
-        #     return x, y
-        #
-        # loss = forward(in)[0].sum()
-        # loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
+        """
+        Why we need add gradient aggregation operation ?
+        In some cases, if non leaf nodes are used as output, gradient overwriting will occur, such as
+        def forward(self, in):
+            x = 2 * in  # <---- x is a non-leaf node in program.
+            y = x + 3
+            return x, y
+        
+        loss = forward(in)[0].sum()
+        loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
+        """
+
         def _need_aggregation(var):
             """
             if exist a op whose inputs is var, then return True
             """
-            if var.type not in [
+            if not isinstance(var, framework.Variable) or var.type not in [
                     core.VarDesc.VarType.LOD_TENSOR,
                     core.VarDesc.VarType.SELECTED_ROWS
             ]:
                 return False
-            if var.dtype not in [
-                'float32', 'float64'
-            ]:
+            if var.dtype not in [paddle.float32, paddle.float64]:
                 return False
             for op in main_program.block(0).ops:
                 for in_arg in op.input_arg_names:
@@ -317,7 +318,9 @@ class PartialProgramLayer:
             return False
 
         def _insert_aggregation_ops_for_var(target_program, var):
-            var_grad_name = var.name + "@GRAD"
+            suffix = "@dy2static"
+            var_grad_name = var.grad_name
+            new_grad_name = var.name + suffix + "@GRAD"
             finded_ops = list(
                 filter(
                     lambda x: any([
@@ -329,22 +332,21 @@ class PartialProgramLayer:
             # len(finded_ops) may > 1, because we may have fill_constant op.
             if len(finded_ops) == 0:
                 return None
-            suffix = "@dy2static"
             # step1: create a new var named var.name@GRAD
-            target_program.block(0).create_var(name=var_grad_name + suffix,
+            target_program.block(0).create_var(name=new_grad_name,
                                                type=var.type,
                                                dtype=var.dtype,
                                                shape=var.shape)
             # step2: rename the var.name@GRAD to var.name@GRAD@dy2static
             for idx, op in finded_ops:
-                op._rename_input(var_grad_name, var_grad_name + suffix)
-                op._rename_output(var_grad_name, var_grad_name + suffix)
+                op._rename_input(var_grad_name, new_grad_name)
+                op._rename_output(var_grad_name, new_grad_name)
             # step3: insert sum op to aggregate the gradient.
-            #        var.name@GRAD = sum(var.name@GRAD@dy2static, var.name@GRAD)
+            #        var.name@GRAD = sum(var.name@dy2static@GRAD, var.name@GRAD)
             target_program.block(0)._insert_op(
                 finded_ops[-1][0] + 1,
                 type='sum',
-                inputs={'X': [var_grad_name, var_grad_name + suffix]},
+                inputs={'X': [var_grad_name, new_grad_name]},
                 outputs={"Out": var_grad_name})
             return None
 
