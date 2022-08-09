@@ -35,7 +35,7 @@ void Copy(const Context& dev_ctx,
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
 
-  if (dst->IsSharedWith(src)) {
+  if (&src == dst) {
     if (paddle::platform::is_same_place(src_place, dst_place)) {
       VLOG(6) << "Skip copy the same data(" << src_ptr << ") from " << src_place
               << " to " << dst_place;
@@ -87,6 +87,11 @@ void Copy(const Context& dev_ctx,
           dst->place(),
           dst_place));
 
+  if (src_ptr == dst_ptr && src_place == dst_place) {
+    VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+            << dst_place;
+    return;
+  }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
   CHECK(dst->layout() == src.layout());
 
