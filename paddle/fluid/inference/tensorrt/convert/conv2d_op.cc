@@ -77,10 +77,11 @@ void ConvertConv2d(TensorRTEngine* engine,
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
   std::vector<int> paddings =
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
-  // for conv2d_transpose 
+  // for conv2d_transpose
   std::vector<int> output_padding;
   if (op_desc.HasAttr("output_padding")) {
-    output_padding = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
+    output_padding =
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
   }
   std::string padding_algorithm = "EXPLICIT";
   if (op_desc.HasAttr("padding_algorithm"))
@@ -142,9 +143,8 @@ void ConvertConv2d(TensorRTEngine* engine,
       platform::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
                               " layer failed."));
   layer->setStride(nv_strides);
-
   layer->setPrePadding(nv_pre_paddings);
-  if(output_padding.size() > 0) {
+  if (output_padding.size() > 0) {
     nv_post_paddings.d[0] -= output_padding[0];
     nv_post_paddings.d[1] -= output_padding[1];
   }
