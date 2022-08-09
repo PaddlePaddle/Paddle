@@ -2041,10 +2041,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 #endif
 
-    // conv2d_transpose, conv3d_transpose, depthwise_conv2d_transpose
-    if (op_type.find("d_transpose") > 0) {
-      // trt doen't support output_padding,
-      // output_padding is set when stride > 1
+    // conv3d_transpose
+    if (op_type.find("3d_transpose") != op_type.npos) {
+      // trt doen't support output_padding when < 8406
+      // output_padding is usually set when stride > 1
+#if !IS_TRT_VERSION_GE(8400)
       if (desc.HasAttr("output_padding")) {
         const std::vector<int> output_padding =
             PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("output_padding"));
@@ -2054,6 +2055,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           if (max_padding > 0) return false;
         }
       }
+#endif
     }
 
     if (op_type == "conv3d" || op_type == "conv3d_transpose") {
