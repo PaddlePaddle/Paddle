@@ -838,9 +838,6 @@ void OpDesc::Flush() {
     this->desc_.mutable_attrs()->Clear();
     for (auto &attr : attrs_) {
       auto *attr_desc = desc_.add_attrs();
-      if (attr.first == "use_mkldnn") {
-        std::cout << PADDLE_GET_CONST(bool, attr.second) << std::endl;
-      }
       attr_desc->set_name(attr.first);
       attr_desc->set_type(
           static_cast<proto::AttrType>(attr.second.index() - 1));

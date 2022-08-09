@@ -230,6 +230,16 @@ class TestProgramProto(unittest.TestCase):
         b = program.desc.serialize_to_string()
         self.assertFalse(a == b)
 
+    # it seems the attrs of framework::VarDesc is not write to proto,
+    # except for persistable/need_check_feed/is_parameter/stop_gradient
+    def test_update_var_attr(self):
+        program = build_program()
+        a = program.desc.serialize_to_string()
+        program.current_block().var("x").desc._set_attr("a", 1)
+        self.assertFalse(program.desc.need_update())
+        b = program.desc.serialize_to_string()
+        self.assertTrue(a == b)  # not affected
+
 
 if __name__ == '__main__':
     unittest.main()

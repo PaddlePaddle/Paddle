@@ -176,12 +176,13 @@ std::vector<OpDesc *> BlockDesc::AllOps() const {
 }
 
 void BlockDesc::Flush() {
+  auto need_update = NeedUpdate(true);
   for (auto &op_desc : ops_) {
     op_desc->Flush();
   }
   // no flush for var_desc? or is op_desc flush really needed?
-
-  if (NeedUpdate(true)) {
+  VLOG(10) << "Flush " << NeedUpdate(true) << " " << need_update << std::endl;
+  if (need_update) {
     this->desc_->mutable_ops()->Clear();
     for (auto &op_desc : ops_) {
       this->desc_->mutable_ops()->Add()->CopyFrom(*op_desc->Proto());
