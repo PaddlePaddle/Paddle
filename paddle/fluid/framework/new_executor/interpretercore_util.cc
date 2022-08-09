@@ -419,7 +419,8 @@ void build_op_func_list(const platform::Place& place,
                         const std::set<std::string>& skip_gc_vars,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope,
-                        bool use_local_scope) {
+                        bool use_local_scope,
+                        bool used_for_jit) {
   VLOG(2) << "build_op_func_list";
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
@@ -428,14 +429,17 @@ void build_op_func_list(const platform::Place& place,
       ops_unique;  // its elements will be moved to vec_func_list
   // Step 1: create all ops for current block.
   create_all_ops(block, &ops_unique);
-  // If gc is enabled and block size > 1
-  const ProgramDesc& main_program = *block.Program();
-  operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
-      main_program, block.ID(), ops_unique);
-  operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-      main_program, block.ID(), ops_unique);
-  operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-      main_program, block.ID(), ops_unique);
+
+  if (!used_for_jit) {
+    // If gc is enabled and block size > 1
+    const ProgramDesc& main_program = *block.Program();
+    operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+        main_program, block.ID(), ops_unique);
+    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
+        main_program, block.ID(), ops_unique);
+    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+        main_program, block.ID(), ops_unique);
+  }
 
 #ifdef PADDLE_WITH_MKLDNN
   platform::RegisterModelLayout(ops_unique, place);

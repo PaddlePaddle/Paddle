@@ -195,7 +195,6 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
   // used in while_grad_op, and in this moment, while_grad_ops may be not
   // constructed yet.
   if (block_id != 0) return;
-
   std::vector<OpVariant> fwd_ops, bwd_ops;
   for (auto &op : all_ops) {
     if (op->Type() == "while") {

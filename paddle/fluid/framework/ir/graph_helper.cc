@@ -17,6 +17,7 @@ limitations under the License. */
 #include <queue>
 #include <stack>
 
+#include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -497,6 +498,19 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   return desc;
 }
 
+void UpdateControlOpSkipEagerDeletionVars(const Node &node) {
+  if (node.IsWrappedBy<details::OpHandleBase>()) {
+    details::OpHandleBase &op_hander =
+        const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
+    auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(&op_hander);
+    auto *op_base = compute_op->GetOp();
+    if (op_base->Attrs().count("skip_eager_deletion_vars")) {
+      node.Op()->SetAttr("skip_eager_deletion_vars",
+                         op_base->Attrs().at("skip_eager_deletion_vars"));
+    }
+  }
+}
+
 static void GetGraphOpDesc(const std::vector<Node *> &nodes,
                            std::vector<OpDesc> *ops) {
   auto is_fused_opt = [](Node *n) -> bool {
@@ -524,7 +538,6 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       ReplaceScaleLossGradOp(*n, &desc);
     } else if (n->Op()) {
       VLOG(4) << "convert op node to desc " << n->Op()->Type();
-      VLOG(4) << n->ToString();
       if (is_fused_opt(n)) {
         OpDesc depend_desc(n->Op()->Block());
 
@@ -543,7 +556,15 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         ops->emplace_back(depend_desc);
         VLOG(4) << "add depend op";
       }
+      if (n->Name() == "while" || n->Name() == "while_grad" ||
+          n->Name() == "conditional_block" ||
+          n->Name() == "conditional_block_grad" || n->Name() == "recurrent" ||
+          n->Name() == "recurrent_grad") {
+        VLOG(4) << "Update control op attr: skip_eager_deletion_vars";
+        UpdateControlOpSkipEagerDeletionVars(*n);
+      }
       ops->emplace_back(*n->Op());
+      VLOG(4) << n->ToString();
     }
     // delete no OpDesc op
   }

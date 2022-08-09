@@ -67,6 +67,10 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
   create_local_scope_ = FLAGS_new_executor_use_local_scope;
+
+  if (used_for_jit_) {
+    create_local_scope_ = false;
+  }
   VLOG(4) << "create_local_scope_ is " << create_local_scope_;
 
   if (create_local_scope_) {
@@ -175,7 +179,8 @@ paddle::framework::FetchList InterpreterCore::Run(
                                                        skip_gc_vars_,
                                                        &op_func_nodes,
                                                        &var_scope_,
-                                                       create_local_scope_);
+                                                       create_local_scope_,
+                                                       used_for_jit_);
     VLOG(2) << "============place type is:"
             << static_cast<int>(place_.GetType())
             << " place ptr is: " << &place_;
@@ -1115,7 +1120,8 @@ void InterpreterCore::Prepare(
                                                        skip_gc_vars_,
                                                        &op_func_nodes,
                                                        &var_scope_,
-                                                       create_local_scope_);
+                                                       create_local_scope_,
+                                                       used_for_jit_);
     is_build_ = true;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph

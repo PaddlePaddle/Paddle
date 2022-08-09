@@ -65,6 +65,10 @@ class InterpreterCore {
 
   void reset_scope(Scope* new_scope);
 
+  void SetUsedForJit(bool is_used_for_jit) { used_for_jit_ = is_used_for_jit; }
+
+  bool GetUsedForJit() { return used_for_jit_; }
+
  private:
   bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
 
@@ -150,6 +154,8 @@ class InterpreterCore {
 
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_deps_;
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_var_ref_;
+
+  bool used_for_jit_{false};
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(
