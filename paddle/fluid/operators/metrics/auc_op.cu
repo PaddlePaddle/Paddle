@@ -112,6 +112,12 @@ class AucCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *predict = ctx.Input<Tensor>("Predict");
     auto *label = ctx.Input<Tensor>("Label");
+    auto *ins_tag_weight = ctx.Input<Tensor>("InsTagWeight");
+    const auto *ins_tag_weight_value = ins_tag_weight->data<float>();
+    bool is_fake_data = 0;
+    if (ins_tag_weight_value[0] == 0) {
+      is_fake_data = 1;
+    }
 
     int num_thresholds = ctx.Attr<int>("num_thresholds");
     int slide_steps = ctx.Attr<int>("slide_steps");
@@ -145,8 +151,12 @@ class AucCUDAKernel : public framework::OpKernel<T> {
                  cudaMemcpyDeviceToDevice);
     }
 
+    if (slide_steps == 0 && is_fake_data) {
+      return;
+    }
+
     statAuc(ctx, label, predict, num_thresholds, slide_steps, origin_stat_pos,
-            origin_stat_neg);
+            origin_stat_neg, is_fake_data);
     int sum_offset = slide_steps * (num_thresholds + 1);
     auto stream =
         ctx.template device_context<platform::CUDADeviceContext>().stream();
@@ -165,8 +175,8 @@ class AucCUDAKernel : public framework::OpKernel<T> {
                              const framework::Tensor *label,
                              const framework::Tensor *predict,
                              const int num_thresholds, const int slide_steps,
-                             int64_t *origin_stat_pos,
-                             int64_t *origin_stat_neg) {
+                             int64_t *origin_stat_pos, int64_t *origin_stat_neg,
+                             const bool is_fake_data) {
     size_t batch_size = predict->dims()[0];
     size_t inference_width = predict->dims()[1];
     const T *inference_data = predict->data<T>();
@@ -200,10 +210,12 @@ class AucCUDAKernel : public framework::OpKernel<T> {
                     PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         label_data, inference_data, inference_width, num_thresholds,
         origin_stat_pos, origin_stat_neg, batch_size, slide_steps);
-    UpdateSumDataKernel<<<(bucket_length + PADDLE_CUDA_NUM_THREADS - 1) /
-                              PADDLE_CUDA_NUM_THREADS,
-                          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-        origin_stat_pos, origin_stat_neg, bucket_length, slide_steps);
+    if (!is_fake_data) {
+      UpdateSumDataKernel<<<(bucket_length + PADDLE_CUDA_NUM_THREADS - 1) /
+                                PADDLE_CUDA_NUM_THREADS,
+                            PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+          origin_stat_pos, origin_stat_neg, bucket_length, slide_steps);
+    }
   }
 };
 

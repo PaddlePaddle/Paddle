@@ -25,6 +25,8 @@ class AucOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Predict"), "Input", "Predict", "Auc");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "Auc");
+    OP_INOUT_CHECK(ctx->HasInput("InsTagWeight"), "Input", "InsTagWeight",
+                   "Auc");
     auto predict_width = ctx->GetInputDim("Predict")[1];
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_LE(predict_width, 2,
@@ -83,10 +85,11 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Label",
              "A 2D int tensor indicating the label of the training data. "
              "shape: [batch_size, 1]");
-
     // TODO(typhoonzero): support weight input
     AddInput("StatPos", "Statistic value when label = 1");
     AddInput("StatNeg", "Statistic value when label = 0");
+    AddInput("InsTagWeight",
+             "(Tensor) instag weight, 1 means real data, 0 means false data");
 
     AddOutput("AUC",
               "A scalar representing the "

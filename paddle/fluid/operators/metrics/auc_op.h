@@ -29,7 +29,12 @@ class AucKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *predict = ctx.Input<Tensor>("Predict");
     auto *label = ctx.Input<Tensor>("Label");
-
+    auto *ins_tag_weight = ctx.Input<Tensor>("InsTagWeight");
+    const auto *ins_tag_weight_value = ins_tag_weight->data<float>();
+    bool is_fake_data = 0;
+    if (ins_tag_weight_value[0] == 0) {
+      is_fake_data = 1;
+    }
     int num_thresholds = ctx.Attr<int>("num_thresholds");
     int slide_steps = ctx.Attr<int>("slide_steps");
 
@@ -60,8 +65,13 @@ class AucKernel : public framework::OpKernel<T> {
               (slide_steps > 0 ? 1 : 0)) *
                  sizeof(int64_t));
     }
+
+    // when calculate global_auc && is fake data, just do nothing
+    if (slide_steps == 0 && is_fake_data) {
+      return;
+    }
     statAuc(label, predict, num_thresholds, slide_steps, origin_stat_pos,
-            origin_stat_neg);
+            origin_stat_neg, is_fake_data);
 
     int sum_offset = slide_steps * (num_thresholds + 1);
     calcAuc(origin_stat_pos + sum_offset, origin_stat_neg + sum_offset,
@@ -81,8 +91,8 @@ class AucKernel : public framework::OpKernel<T> {
   inline static void statAuc(const framework::Tensor *label,
                              const framework::Tensor *predict,
                              const int num_thresholds, const int slide_steps,
-                             int64_t *origin_stat_pos,
-                             int64_t *origin_stat_neg) {
+                             int64_t *origin_stat_pos, int64_t *origin_stat_neg,
+                             const bool is_fake_data) {
     size_t batch_size = predict->dims()[0];
     size_t inference_width = predict->dims()[1];
     const T *inference_data = predict->data<T>();
@@ -148,11 +158,13 @@ class AucKernel : public framework::OpKernel<T> {
         origin_stat_neg[cur_step_begin + binIdx] += 1;
       }
     }
-    for (int i = 0; i < bucket_length; ++i) {
-      origin_stat_pos[sum_step_begin + i] +=
-          origin_stat_pos[cur_step_begin + i];
-      origin_stat_neg[sum_step_begin + i] +=
-          origin_stat_neg[cur_step_begin + i];
+    if (!is_fake_data) {
+      for (int i = 0; i < bucket_length; ++i) {
+        origin_stat_pos[sum_step_begin + i] +=
+            origin_stat_pos[cur_step_begin + i];
+        origin_stat_neg[sum_step_begin + i] +=
+            origin_stat_neg[cur_step_begin + i];
+      }
     }
   }
 

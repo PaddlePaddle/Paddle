@@ -24,6 +24,7 @@ from ..framework import Variable, in_dygraph_mode, _varbase_creator
 from .. import core
 from ..param_attr import ParamAttr
 from . import nn
+from . import tensor
 from ..data_feeder import check_variable_and_dtype
 
 __all__ = ['accuracy', 'auc']
@@ -113,7 +114,8 @@ def auc(input,
         curve='ROC',
         num_thresholds=2**12 - 1,
         topk=1,
-        slide_steps=1):
+        slide_steps=1,
+        ins_tag_weight=None):
     """
     **Area Under the Curve (AUC) Layer**
 
@@ -143,7 +145,9 @@ def auc(input,
                              the roc curve. Default 200.
         topk(int): only topk number of prediction output will be used for auc.
         slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
-
+        ins_tag_weight(Variable): A 2D int Variable indicating the ins_tag_weight of the training
+                         data. 1 means real data, 0 means fake data. 
+                         A LoDTensor or Tensor with type float32,float64.
 
     Returns:
         Variable: A tuple representing the current AUC.
@@ -159,6 +163,7 @@ def auc(input,
 
             data = fluid.data(name="input", shape=[-1, 32,32], dtype="float32")
             label = fluid.data(name="label", shape=[-1], dtype="int")
+            ins_tag_weight = fluid.data(name="ins_tag_weight", shape=[-1], dtype="float32")
             fc_out = fluid.layers.fc(input=data, size=2)
             predict = fluid.layers.softmax(input=fc_out)
             result=fluid.layers.auc(input=predict, label=label)
@@ -169,14 +174,22 @@ def auc(input,
             exe.run(fluid.default_startup_program())
             x = np.random.rand(3,32,32).astype("float32")
             y = np.array([1,0,1])
-            output= exe.run(feed={"input": x,"label": y},
+            z = np.array([1,1,1]) #this means real data
+            output= exe.run(feed={"input": x,"label": y, "ins_tag_weight": z},
                              fetch_list=[result[0]])
             print(output)
             #[array([0.5])]
     """
     helper = LayerHelper("auc", **locals())
+
+    if ins_tag_weight is None:
+        ins_tag_weight = tensor.fill_constant(
+            shape=[1, 1], dtype="float32", value=1.0)
+
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'auc')
     check_variable_and_dtype(label, 'label', ['int32', 'int64'], 'auc')
+    check_variable_and_dtype(ins_tag_weight, 'ins_tag_weight',
+                             ['float32', 'float64'], 'auc')
     auc_out = helper.create_variable_for_type_inference(dtype="float64")
     batch_auc_out = helper.create_variable_for_type_inference(dtype="float64")
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
@@ -215,7 +228,8 @@ def auc(input,
             "Predict": [input],
             "Label": [label],
             "StatPos": [batch_stat_pos],
-            "StatNeg": [batch_stat_neg]
+            "StatNeg": [batch_stat_neg],
+            "InsTagWeight": [ins_tag_weight]
         },
         attrs={
             "curve": curve,
@@ -234,7 +248,8 @@ def auc(input,
             "Predict": [input],
             "Label": [label],
             "StatPos": [stat_pos],
-            "StatNeg": [stat_neg]
+            "StatNeg": [stat_neg],
+            "InsTagWeight": [ins_tag_weight]
         },
         attrs={
             "curve": curve,
