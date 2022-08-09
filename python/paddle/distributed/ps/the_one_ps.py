@@ -1233,7 +1233,6 @@ class TheOnePSRuntime(RuntimeBase):
         send_ctx = get_the_one_send_context(
             self.context,
             split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=self.is_heter_ps_mode,
             ep_list=self.endpoints)
         if program is None or len(self.origin_main_programs) == 1:
             program = self.origin_main_programs[0]
