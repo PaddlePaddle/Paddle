@@ -30,6 +30,9 @@ class MultiheadMatMulOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input").front());
     auto input_dims = input->getDimensions();
+    bool bias_qk_attr =
+        (op_desc.Inputs().find("BiasQK") == op_desc.Inputs().end()) ? false
+                                                                    : true;
 
     // fc weights and fc bias
     auto weight_name = op_desc.Input("W").front();
@@ -345,7 +348,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                    weight.get(),
                                    bias.get());
         }
-        if (input_dims.d[1] <= 384 &&
+        if (input_dims.d[1] <= 384 && !bias_qk_attr &&
             engine_->precision() != AnalysisConfig::Precision::kFloat32) {
           /*
              * input_dims.d[0]: batch(-1)
