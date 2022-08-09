@@ -191,10 +191,10 @@ static void ParseIndexingSlice(framework::LoDTensor* tensor,
     PyObject* slice_item = PyTuple_GetItem(index, i);
 
     infer_flags->push_back(1);
-    int dim_len = shape[dim];
+    int64_t dim_len = shape[dim];
     if (PyCheckInteger(slice_item) || IsNumpyType(slice_item)) {
       // integer, PyLong_AsLong supports both int and long
-      int start = static_cast<int>(PyLong_AsLong(slice_item));
+      int64_t start = static_cast<int64_t>(PyLong_AsLong(slice_item));
       auto s_t = start;
       start = start < 0 ? start + dim_len : start;
 

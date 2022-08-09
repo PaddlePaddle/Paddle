@@ -19,12 +19,12 @@
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_op.h"
 #include "paddle/fluid/operators/optimizers/multi_tensor_apply.h"
-#include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/tensor_to_string.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -43,6 +43,8 @@ namespace operators {
 
 template <typename T>
 using MasterT = typename details::MPTypeTrait<T>::Type;
+using phi::funcs::FlattenToString;
+using phi::funcs::ToVector;
 
 template <typename T>
 static void FillZeroWithPtr(T *x, size_t n, gpuStream_t stream) {

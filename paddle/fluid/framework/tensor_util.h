@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #endif
 
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
@@ -579,6 +580,26 @@ inline void TensorToVector(const Tensor& src, std::vector<bool>* dst) {
 }
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
+
+inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
+  int rank = src.dims().size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      2,
+      platform::errors::InvalidArgument(
+          "'ReshapeToMatrix()' is only used for flatten high rank "
+          "tensors to matrixs. The dimensions of Tensor must be "
+          "greater or equal than 2. "
+          "But received dimensions of Tensor is %d",
+          rank));
+  if (rank == 2) {
+    return src;
+  }
+  Tensor res;
+  res.ShareDataWith(src);
+  res.Resize(phi::flatten_to_2d(src.dims(), num_col_dims));
+  return res;
+}
 
 }  // namespace framework
 }  // namespace paddle
