@@ -67,12 +67,12 @@ def pairwise_distance(x, y, p=2., epsilon=1e-6, keepdim=False, name=None):
     check_type(epsilon, 'epsilon', (float), 'PairwiseDistance')
     check_type(keepdim, 'keepdim', (bool), 'PairwiseDistance')
     if in_dygraph_mode():
-        sub = _C_ops.elementwise_sub(x, y)
+        sub = _C_ops.final_state_subtract(x, y)
         # p_norm op has not uesd epsilon, so change it to the following.
         if epsilon != 0.0:
             epsilon = paddle.fluid.dygraph.base.to_variable([epsilon],
                                                             dtype=sub.dtype)
-            sub = _C_ops.elementwise_add(sub, epsilon)
+            sub = _C_ops.final_state_add(sub, epsilon)
         return _C_ops.final_state_p_norm(sub, p, -1, 0., keepdim, False)
 
     if _in_legacy_dygraph():

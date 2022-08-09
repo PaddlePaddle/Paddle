@@ -22,6 +22,7 @@ import config
 import mock_data as mock
 import parameterize
 
+np.random.seed(2022)
 paddle.enable_static()
 
 
