@@ -550,10 +550,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
           // input_3 for plugin
           std::vector<int> data(input_dims.d[1], 1);
           nvinfer1::ITensor* max_seqlen_tensor = Add1DConstantLayer(data);
-          auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
-              engine_,
-              Shuffle,
-              *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
+          auto* shuffle_layer =
+              TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *max_seqlen_tensor);
           nvinfer1::Dims shape_dim;
           shape_dim.nbDims = 1;
           shape_dim.d[0] = -1;
