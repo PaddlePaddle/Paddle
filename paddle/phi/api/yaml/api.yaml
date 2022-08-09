@@ -98,6 +98,16 @@
     func : erf
   backward : erf_grad
 
+- api : erfinv
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : erfinv
+  inplace : (x -> out)
+  backward : erfinv_grad
+
 - api : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
   output : Tensor
