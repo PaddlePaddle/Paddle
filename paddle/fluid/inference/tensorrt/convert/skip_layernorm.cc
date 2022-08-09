@@ -151,7 +151,8 @@ class SkipLayerNormOpConverter : public OpConverter {
       }
     } else {
       auto GetFp16Weight =
-          [&](const std::string& var_name) -> TensorRTEngine::Weight {
+          [&](const std::string& arg_name) -> TensorRTEngine::Weight {
+        std::string var_name = op_desc.Input(arg_name).front();
         auto* temp_var = scope.FindVar(var_name);
         auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
         auto weight = engine_->GetFp16TrtWeight(var_name, *temp_tensor);
@@ -167,8 +168,10 @@ class SkipLayerNormOpConverter : public OpConverter {
         return weight;
       };
 
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      bool with_fp16 = engine_->WithFp16() &&
+                       !engine_->disable_trt_plugin_fp16() &&
+                       (input1->getType() == nvinfer1::DataType::kHALF);
+      LOG(INFO) << "with_fp16: " << with_fp16;
       TensorRTEngine::Weight bias_weight, scale_weight;
       if (with_fp16) {
         bias_weight = GetFp16Weight("Bias");

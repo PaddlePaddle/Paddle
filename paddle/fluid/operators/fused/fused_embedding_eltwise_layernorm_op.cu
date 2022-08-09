@@ -102,8 +102,6 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
     auto *output_d = out->mutable_data<T>(context.GetPlace());
     float eps = context.Attr<float>("epsilon");
 
-    int shared_bytes = input_num * sizeof(int64_t);
-
     if (std::is_same<T, paddle::platform::float16>::value) {
       const half *scale_new = reinterpret_cast<const half *>(scale_d);
       const half *bias_new = reinterpret_cast<const half *>(bias_d);

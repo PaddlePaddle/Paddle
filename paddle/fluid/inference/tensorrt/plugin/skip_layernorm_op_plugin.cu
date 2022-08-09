@@ -109,14 +109,14 @@ bool SkipLayerNormPluginDynamic::supportsFormatCombination(
                         "The SkipLayerNorm's output should be one"
                         "but it's (%d) outputs.",
                         nb_outputs));
-  int all_nums = nb_inputs + nb_outputs;
+
   PADDLE_ENFORCE_LT(
       pos,
-      all_nums,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
                                         pos,
-                                        all_nums));
+                                        nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc &desc = in_out[pos];
   if (pos == 0) {
@@ -134,18 +134,11 @@ bool SkipLayerNormPluginDynamic::supportsFormatCombination(
     }
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
-  if (pos < all_nums - 1) {
+  if (pos == 1) {
     return desc.type == prev.type && desc.format == prev.format;
   }
   // output
-  if (pos == all_nums - 1) {
-    if (with_fp16_ == false) {
-      return desc.type == nvinfer1::DataType::kFLOAT;
-    } else {
-      return desc.type == nvinfer1::DataType::kHALF;
-    }
-  }
-  return false;
+  return desc.type == prev.type && desc.format == prev.format;
 }
 
 nvinfer1::DataType SkipLayerNormPluginDynamic::getOutputDataType(
@@ -158,19 +151,12 @@ nvinfer1::DataType SkipLayerNormPluginDynamic::getOutputDataType(
                         "The SkipLayerNorm Plugin only has one output, so the "
                         "index value should be 0, but get %d.",
                         index));
-  if (with_fp16_) {
-    PADDLE_ENFORCE_EQ(
-        (input_types[0] == nvinfer1::DataType::kHALF),
-        true,
-        platform::errors::InvalidArgument("The input type should be half"));
-    return nvinfer1::DataType::kHALF;
-  } else {
-    PADDLE_ENFORCE_EQ(
-        (input_types[0] == nvinfer1::DataType::kFLOAT),
-        true,
-        platform::errors::InvalidArgument("The input type should be float"));
-    return nvinfer1::DataType::kFLOAT;
-  }
+  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
+                     input_types[0] == nvinfer1::DataType::kHALF),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The input type should be half or float"));
+  return input_types[0];
 }
 
 template <typename T>
