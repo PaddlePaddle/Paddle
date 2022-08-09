@@ -1760,7 +1760,7 @@ struct AddBiasLayernormPattern : public PatternBase {
   PATTERN_DECL_NODE(transpose_out_xshape);
 
   PATTERN_DECL_NODE(layer_norm_op);
-  PATTERN_DECL_NODE(layer_norm_in_bais);
+  PATTERN_DECL_NODE(layer_norm_in_bias);
   PATTERN_DECL_NODE(layer_norm_in_scale);
   PATTERN_DECL_NODE(layer_norm_out_y);
   PATTERN_DECL_NODE(layer_norm_out_mean);

@@ -162,6 +162,7 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "gpu_cpu_map_matmul_v2_to_mul_pass",     //
     "gpu_cpu_map_matmul_v2_to_matmul_pass",  //
     "fc_fuse_pass",
+    "add_bias_layernorm_pass",
     "fc_elementwise_layernorm_fuse_pass",
 };
 
@@ -182,6 +183,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "simplify_with_basic_ops_pass",           //
         "conv_bn_fuse_pass",                      //
         "conv_eltwiseadd_bn_fuse_pass",           //
+        "add_bias_layernorm_pass",                //
         "embedding_eltwise_layernorm_fuse_pass",  //
         "multihead_matmul_fuse_pass_v2",          //
         "gpu_cpu_squeeze2_matmul_fuse_pass",      //

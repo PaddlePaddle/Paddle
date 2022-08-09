@@ -3069,7 +3069,7 @@ PDNode *patterns::MatmulTransposeReshapePattern::operator()(
 }
 
 PDNode *patterns::AddBiasLayernormPattern::operator()(PDNode *in) {
-  in->AsInput();
+  in->assert_is_op_input("elementwise_add", "X");
 
   auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
                                 ->assert_is_op("elementwise_add");
@@ -3078,35 +3078,31 @@ PDNode *patterns::AddBiasLayernormPattern::operator()(PDNode *in) {
                                   ->assert_is_op_input("elementwise_add", "Y");
   auto elementwise_add_out =
       pattern->NewNode(elementwise_add_out_repr())
-          ->AsOutput()
-          ->assert_is_only_output_of_op("elementwise_add");
+          ->assert_is_op_output("elementwise_add")
+          ->assert_is_op_input("flatten_contiguous_range", "X");
 
   auto flatten_op =
-      pattern->NewNode(flatten_op_repr())->assert_is_op("flatten2");
+      pattern->NewNode(flatten_op_repr())->assert_is_op("flatten_contiguous_range");
   auto flatten_out = pattern->NewNode(flatten_out_repr())
-                         ->AsIntermediate()
-                         ->assert_is_op_output("flatten2", "Out")
-                         ->assert_is_op_input("conv2d", "X");
+                         ->assert_is_op_output("flatten_contiguous_range", "Out")
+                         ->assert_is_op_input("transpose2", "X");
   auto flatten_out_xshape = pattern->NewNode(flatten_out_xshape_repr())
-                                ->AsIntermediate()
-                                ->assert_is_op_output("flatten2", "XShape");
+                                ->assert_is_op_output("flatten_contiguous_range", "XShape");
 
   auto transpose_op =
       pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
   auto transpose_out = pattern->NewNode(transpose_out_repr())
-                           ->AsIntermediate()
                            ->assert_is_op_output("transpose2", "Out")
-                           ->assert_is_op_input("reshape2", "X");
+                           ->assert_is_op_input("layer_norm", "X");
   auto transpose_out_xshape = pattern->NewNode(transpose_out_xshape_repr())
-                                  ->AsIntermediate()
                                   ->assert_is_op_output("transpose2", "XShape");
 
   auto layer_norm_op =
       pattern->NewNode(layer_norm_op_repr())->assert_is_op("layer_norm");
-  auto layer_norm_in_bais = pattern->NewNode(layer_norm_in_bais_repr())
+  auto layer_norm_in_bias = pattern->NewNode(layer_norm_in_bias_repr())
                                 ->AsInput()
                                 ->assert_is_persistable_var()
-                                ->assert_is_op_input("layer_norm", "Bais");
+                                ->assert_is_op_input("layer_norm", "Bias");
   auto layer_norm_in_scale = pattern->NewNode(layer_norm_in_scale_repr())
                                  ->AsInput()
                                  ->assert_is_persistable_var()
@@ -3129,7 +3125,7 @@ PDNode *patterns::AddBiasLayernormPattern::operator()(PDNode *in) {
   flatten_op->LinksFrom({elementwise_add_out}).LinksTo({flatten_out});
   transpose_op->LinksFrom({flatten_out}).LinksTo({transpose_out});
   layer_norm_op
-      ->LinksFrom({transpose_out, layer_norm_in_bais, layer_norm_in_scale})
+      ->LinksFrom({transpose_out, layer_norm_in_bias, layer_norm_in_scale})
       .LinksTo(
           {layer_norm_out_y, layer_norm_out_mean, layer_norm_out_variance});
   return layer_norm_out_y;
