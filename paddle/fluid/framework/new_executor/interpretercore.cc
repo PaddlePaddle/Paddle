@@ -18,8 +18,6 @@
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
-#include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
-#include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
@@ -41,7 +39,6 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
-DECLARE_bool(fast_eager_deletion_mode);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 constexpr const char* kTaskCompletion = "TaskCompletion";
@@ -51,12 +48,6 @@ namespace framework {
 // NOTE(Aurelius84): Need a better strategy to determine it.
 static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
-
-bool IsInterpretercoreFastGCEnabled() {
-  return memory::allocation::AllocatorFacade::Instance()
-             .IsStreamSafeCUDAAllocatorUsed() &&
-         FLAGS_fast_eager_deletion_mode;
-}
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
@@ -70,16 +61,6 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   is_build_ = false;
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (IsInterpretercoreFastGCEnabled()) {
-    gc_ = std::make_unique<InterpreterCoreFastGarbageCollector>();
-  } else {
-    gc_ = std::make_unique<InterpreterCoreEventGarbageCollector>();
-  }
-#else
-  gc_ = std::make_unique<InterpreterCoreEventGarbageCollector>();
-#endif
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -498,16 +479,7 @@ void InterpreterCore::Convert(
   }
 
   BuildSkipShareLoDInfo();
-
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-#ifdef PADDLE_WITH_IPU
-    gc_event_.emplace_back(phi::CPUPlace(), 0);
-#else
-    gc_event_.emplace_back(vec_instruction_[i].DeviceContext().GetPlace(),
-                           platform::GenerateDeviceEventFlag());
-
-#endif
-  }
+  gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
   bool inplaced = false;
   for (auto inst : vec_instruction_) {
     if (inst.OpBase()->Type() == "share_buffer" ||
@@ -828,9 +800,6 @@ void InterpreterCore::RunInstructionAsync(
 
       RunInstruction(instr_node);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      RecordStreamForGC(instr_node);
-#endif
       CheckGC(instr_node, atomic_var_ref);
 
       interpreter::RecordEvent(instr_node, place_);
@@ -969,7 +938,9 @@ void InterpreterCore::CheckGC(
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
   platform::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
-  size_t instr_id = instr.Id();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  RecordStreamForGC(instr);
+#endif
   auto& var_scope = var_scope_;
 
   for (auto var_id : instr.GCCheckVars()) {
@@ -986,23 +957,7 @@ void InterpreterCore::CheckGC(
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
               << var_scope.GetNameById(var_id);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (IsInterpretercoreFastGCEnabled()) {
-        static_cast<InterpreterCoreFastGarbageCollector*>(gc_.get())->Add(
-            var_scope_.VarRef(var_id));
-
-      } else {
-        static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
-            var_scope_.VarRef(var_id),
-            &gc_event_.at(instr_id),
-            &instr.DeviceContext());
-      }
-#else
-      static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
-          var_scope_.VarRef(var_id),
-          &gc_event_.at(instr_id),
-          &instr.DeviceContext());
-#endif
+      gc_->Add(var_scope_.VarRef(var_id), instr);
     }
   }
 }
