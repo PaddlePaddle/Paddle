@@ -4714,7 +4714,7 @@ def sgn(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output Tensor of sgn.
+        Tensor: A sign Tensor for real input, or normalized Tensor for complex input, shape and data type are same as input.
 
     Examples:
         .. code-block:: Python
