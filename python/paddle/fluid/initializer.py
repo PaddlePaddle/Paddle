@@ -266,7 +266,7 @@ class UniformInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode() and not is_lazy_init():
+        if framework._non_static_mode():
             out_var = _C_ops.uniform_random(
                 'shape', var.shape, 'min', self._low, 'max', self._high, 'seed',
                 self._seed, 'dtype', out_dtype, 'diag_num', self._diag_num,
@@ -369,7 +369,7 @@ class NormalInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        if in_dygraph_mode() and not is_lazy_init():
+        if in_dygraph_mode():
             place = _current_expected_place()
             out_var = _C_ops.final_state_gaussian_random(
                 var.shape, self._mean, self._std_dev, self._seed, out_dtype,
@@ -382,7 +382,7 @@ class NormalInitializer(Initializer):
                 out_var._share_underline_tensor_to(var)
             return None
 
-        if _in_legacy_dygraph() and not is_lazy_init():
+        if _in_legacy_dygraph():
             out_var = _C_ops.gaussian_random('shape', var.shape, 'dtype',
                                              out_dtype, 'mean', self._mean,
                                              'std', self._std_dev, 'seed',
@@ -478,7 +478,7 @@ class TruncatedNormalInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if in_dygraph_mode() and not is_lazy_init():
+        if in_dygraph_mode():
             out_var = _C_ops.final_state_truncated_gaussian_random(
                 var.shape, self._mean, self._std_dev, self._seed, out_dtype,
                 _current_expected_place())
@@ -489,7 +489,7 @@ class TruncatedNormalInitializer(Initializer):
                 out_var._share_underline_tensor_to(var)
             return None
 
-        if _in_legacy_dygraph() and not is_lazy_init():
+        if _in_legacy_dygraph():
             out_var = _C_ops.truncated_gaussian_random('shape', var.shape,
                                                        'dtype', out_dtype,
                                                        'mean', self._mean,
@@ -621,7 +621,7 @@ class XavierInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode() and not is_lazy_init():
+        if framework._non_static_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 if in_dygraph_mode():
@@ -795,7 +795,7 @@ class MSRAInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode() and not is_lazy_init():
+        if framework._non_static_mode():
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 limit = gain * math.sqrt(3.0 / float(fan_in))
@@ -980,7 +980,7 @@ class BilinearInitializer(Initializer):
         if np.prod(shape) > 1024 * 1024:
             raise ValueError("The size of input is too big. ")
 
-        if framework._non_static_mode() and not is_lazy_init():
+        if framework._non_static_mode():
             _C_ops.assign_value(out_var, 'shape', list(shape), 'dtype',
                                 out_dtype, value_name, values)
             if var.dtype in [
@@ -1087,7 +1087,7 @@ class NumpyArrayInitializer(Initializer):
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
 
-        if framework._non_static_mode() and not is_lazy_init():
+        if framework._non_static_mode():
             _C_ops.assign_value(out_var, 'shape', list(self._value.shape),
                                 'dtype', out_dtype, value_name, values)
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
