@@ -1245,19 +1245,15 @@ struct OperatorWithKernel::CacheImpl {
 
 #if defined(PADDLE_WITH_CUDA)
   void startCudaGraphCapture() {
-    platform::CUDADeviceContext* ctx =
-        static_cast<platform::CUDADeviceContext*>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(0)));
+    phi::GPUContext* ctx = static_cast<phi::GPUContext*>(
+        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
     auto stream = ctx->stream();
     cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
   }
 
   void endCudaGraphCapture() {
-    platform::CUDADeviceContext* ctx =
-        static_cast<platform::CUDADeviceContext*>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(0)));
+    phi::GPUContext* ctx = static_cast<phi::GPUContext*>(
+        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
     auto stream = ctx->stream();
 
     cudaGraph_t graph_;
@@ -1267,10 +1263,8 @@ struct OperatorWithKernel::CacheImpl {
   }
 
   void runCudaGraph() {
-    platform::CUDADeviceContext* ctx =
-        static_cast<platform::CUDADeviceContext*>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(0)));
+    phi::GPUContext* ctx = static_cast<phi::GPUContext*>(
+        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
     auto stream = ctx->stream();
     cudaGraphLaunch(graph_instance_, stream);
   }
