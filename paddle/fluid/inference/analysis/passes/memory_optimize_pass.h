@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/phi/backends/dynload/port.h"
 
 namespace paddle {
