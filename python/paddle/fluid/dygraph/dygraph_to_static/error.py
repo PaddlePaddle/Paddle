@@ -164,7 +164,6 @@ class ErrorData(object):
     def create_exception(self):
         message = self.create_message()
         if self.error_type is KeyError:
-
             new_exception = Dy2StKeyError(message)
         else:
             new_exception = self.error_type(message)
