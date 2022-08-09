@@ -62,7 +62,7 @@ no_amp_list = [
     'merged_momentum_', 'merged_momentum', 'momentum_', 'momentum',
     'proximal_adagrad_', 'proximal_adagrad', 'proximal_gd_', 'proximal_gd',
     'rmsprop_', 'rmsprop', 'sgd_', 'sgd', 'lamb_', 'lamb', 'assign_value_',
-    'sparse_momentum_', 'sparse_momentum', 'fill_constant_'
+    'sparse_momentum_', 'sparse_momentum', 'full_'
 ]
 
 

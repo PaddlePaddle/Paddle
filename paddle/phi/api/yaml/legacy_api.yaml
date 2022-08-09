@@ -875,20 +875,6 @@
   inplace : (x -> out)
   backward: fill_grad
 
-# fill_constant
-- api : fill_constant_
-  args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
-  output : Tensor(out)
-  inplace : (output -> out)
-  infer_meta :
-    func : CreateInferMeta
-    param : [shape, dtype]
-  kernel :
-    func : full
-    param : [shape, value, dtype]
-    data_type : dtype
-    backend : place
-
 - api : fill_diagonal
   args : (Tensor x, float value, int offset, bool wrap)
   output : Tensor(out)
@@ -990,6 +976,20 @@
 - api : full
   args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor
+  infer_meta :
+    func : CreateInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : full
+    param : [shape, value, dtype]
+    data_type : dtype
+    backend : place
+
+# full
+- api : full_
+  args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  output : Tensor(out)
+  inplace : (output -> out)
   infer_meta :
     func : CreateInferMeta
     param : [shape, dtype]
