@@ -41,36 +41,7 @@ namespace patterns {
 struct ConstantFolding : public PatternBase {
   ConstantFolding(PDPattern *pattern, const std::string &name_scope)
       : PatternBase(pattern, name_scope, "constant_folding_pass") {}
-
-  PDNode *operator()(PDNode *x);
-
-  // declare operator node's name
-  PATTERN_DECL_NODE(common_op);
-  // declare variable node's name
-  // common_op_in may be null, so ommit it
-  PATTERN_DECL_NODE(common_op_out);
 };
-
-PDNode *ConstantFolding::operator()(PDNode *persis_op) {
-  auto assert_ops = std::unordered_set<std::string>{
-      "unsqueeze2", "reshape2", "fill_constant"};
-  persis_op->assert_is_ops(assert_ops);
-  auto *op_out = pattern->NewNode(common_op_out_repr())
-                     ->assert_is_ops_output(assert_ops, "Out")
-                     ->assert_more([&](Node *node) {
-                       auto next_ops = std::unordered_set<std::string>{
-                           "set_value", "conditional_block", "while"};
-                       for (size_t i = 0; i < node->outputs.size(); i++) {
-                         auto op_type = node->outputs[i]->Op()->Type();
-                         if (next_ops.count(op_type)) return false;
-                       }
-                       return true;
-                     });
-
-  op_out->LinksFrom({persis_op});
-  return op_out;
-}
-
 }  // namespace patterns
 
 ConstantFoldingPass::ConstantFoldingPass() {}
@@ -108,7 +79,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       for (auto in_node : op_node->inputs) {
         new_scope->Var(in_node->Var()->Name());
         new_scope->FindVar(in_node->Var()->Name())->GetMutable<LoDTensor>();
-        // this input persistable is exclusive
+        // This persistable input node is exclusive, and can be removed
         if (in_node->outputs.size() == 1L) remove_nodes.emplace(in_node);
 
         auto in_shape = in_node->Var()->GetShape();
