@@ -168,11 +168,13 @@ macro(compile_kernel COMPILE_ARGS)
   else()
     set(ABI_VERSION "-D_GLIBCXX_USE_CXX11_ABI=1")
   endif()
+  add_custom_target(
+    ${kernel_name}.xpu ALL
+    COMMAND ${CMAKE_COMMAND} -E copy ${kernel_path}/${kernel_name}.kps
+            kernel_build/${kernel_name}.xpu)
   add_custom_command(
     OUTPUT kernel_build/${kernel_name}.bin.o
     COMMAND ${CMAKE_COMMAND} -E make_directory kernel_build
-    COMMAND ${CMAKE_COMMAND} -E copy ${kernel_path}/${kernel_name}.kps
-            kernel_build/${kernel_name}.xpu
     COMMAND
       ${XPU_CLANG} --sysroot=${CXX_DIR} -std=c++11 ${ABI_VERSION} ${OPT_LEVEL}
       -fno-builtin -mcpu=xpu2 -fPIC ${XPU_CXX_DEFINES} ${XPU_CXX_FLAGS}
@@ -189,8 +191,6 @@ macro(compile_kernel COMPILE_ARGS)
   add_custom_command(
     OUTPUT kernel_build/${kernel_name}.host.o
     COMMAND ${CMAKE_COMMAND} -E make_directory kernel_build
-    COMMAND ${CMAKE_COMMAND} -E copy ${kernel_path}/${kernel_name}.kps
-            kernel_build/${kernel_name}.xpu
     COMMAND
       ${XPU_CLANG} --sysroot=${CXX_DIR} -std=c++11 ${ABI_VERSION} ${OPT_LEVEL}
       -fno-builtin -mcpu=xpu2 -fPIC ${XPU_CXX_DEFINES} ${XPU_CXX_FLAGS}

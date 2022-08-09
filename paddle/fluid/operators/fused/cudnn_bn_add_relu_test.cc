@@ -149,7 +149,7 @@ void ComputeInplaceRelu(framework::Tensor *cpu_x) {
   }
 }
 
-void ComputeBatchNormForward(const platform::CUDADeviceContext &ctx,
+void ComputeBatchNormForward(const phi::GPUContext &ctx,
                              const Tensor &cpu_x,
                              const Tensor &cpu_scale,
                              const Tensor &cpu_bias,
@@ -216,7 +216,7 @@ void ComputeBatchNormForward(const platform::CUDADeviceContext &ctx,
   saved_reserve_space->ShareDataWith(*reserve_space);
 }
 
-void ComputeFusedBNAddReluForward(const platform::CUDADeviceContext &ctx,
+void ComputeFusedBNAddReluForward(const phi::GPUContext &ctx,
                                   const Tensor &cpu_x,
                                   const Tensor &cpu_z,
                                   const Tensor &cpu_scale,
@@ -280,7 +280,7 @@ void ComputeFusedBNAddReluForward(const platform::CUDADeviceContext &ctx,
   saved_reserve_space->ShareDataWith(*reserve_space);
 }
 
-void ComputeFusedBNAddReluBackward(const platform::CUDADeviceContext &ctx,
+void ComputeFusedBNAddReluBackward(const phi::GPUContext &ctx,
                                    const Tensor &cpu_dy,
                                    const Tensor &cpu_x,
                                    const Tensor &cpu_scale,
@@ -384,10 +384,8 @@ class CudnnBNAddReluTester {
               << ", is_relative_atol=" << is_relative_atol
               << "] act_type=" << act_type_ << ", fuse_add=" << fuse_add_
               << ", has_shortcut=" << has_shortcut_;
-    platform::CUDADeviceContext *ctx =
-        static_cast<platform::CUDADeviceContext *>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(0)));
+    phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
+        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
     auto select = [&](Tensor *in) { return has_shortcut_ ? in : nullptr; };
 
@@ -469,10 +467,8 @@ class CudnnBNAddReluTester {
   }
 
   void CheckBackward(float diff, bool is_relative_atol = false) {
-    platform::CUDADeviceContext *ctx =
-        static_cast<platform::CUDADeviceContext *>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(0)));
+    phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
+        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
     framework::Tensor cpu_dx_base;
     framework::Tensor cpu_dz_base;
@@ -526,7 +522,7 @@ class CudnnBNAddReluTester {
         {channels_}, static_cast<float>(0.0f), cpu_saved_var);
   }
 
-  void BaselineForward(const platform::CUDADeviceContext &ctx,
+  void BaselineForward(const phi::GPUContext &ctx,
                        Tensor *cpu_mean_x,
                        Tensor *cpu_var_x,
                        Tensor *cpu_saved_mean_x,
@@ -573,7 +569,7 @@ class CudnnBNAddReluTester {
     }
   }
 
-  void BaselineForwardFusedBNAddRelu(const platform::CUDADeviceContext &ctx,
+  void BaselineForwardFusedBNAddRelu(const phi::GPUContext &ctx,
                                      Tensor *cpu_mean,
                                      Tensor *cpu_var,
                                      Tensor *cpu_saved_mean,
@@ -594,7 +590,7 @@ class CudnnBNAddReluTester {
                                  saved_reserve_space);
   }
 
-  void BaselineBackwardFusedBNAddRelu(const platform::CUDADeviceContext &ctx,
+  void BaselineBackwardFusedBNAddRelu(const phi::GPUContext &ctx,
                                       Tensor *cpu_dx,
                                       Tensor *cpu_dz,
                                       Tensor *cpu_dscale,
@@ -614,7 +610,7 @@ class CudnnBNAddReluTester {
                                   cpu_dbias);
   }
 
-  void ComputeFusedBNStatsFinalize(const platform::CUDADeviceContext &ctx,
+  void ComputeFusedBNStatsFinalize(const phi::GPUContext &ctx,
                                    const Tensor &cpu_x,
                                    const Tensor &cpu_bn_scale,
                                    const Tensor &cpu_bn_bias,
@@ -671,7 +667,7 @@ class CudnnBNAddReluTester {
   }
 
   // Get forward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
-  void FusedForward(const platform::CUDADeviceContext &ctx,
+  void FusedForward(const phi::GPUContext &ctx,
                     Tensor *cpu_mean_x,
                     Tensor *cpu_var_x,
                     Tensor *cpu_saved_mean_x,
@@ -809,7 +805,7 @@ class CudnnBNAddReluTester {
   }
 
   // Get backward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
-  void FusedBackward(const platform::CUDADeviceContext &ctx,
+  void FusedBackward(const phi::GPUContext &ctx,
                      Tensor *cpu_dx,
                      Tensor *cpu_dz,
                      Tensor *cpu_dscale,

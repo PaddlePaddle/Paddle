@@ -22,7 +22,7 @@ import paddle
 from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, _non_static_mode, static_only
+from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
@@ -37,6 +37,7 @@ from functools import reduce
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.utils import deprecated
 from paddle import _C_ops
+from ..framework import in_dygraph_mode
 
 __all__ = [
     'prior_box',
@@ -948,6 +949,22 @@ def box_coder(prior_box,
                              'box_coder')
     check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
                              'box_coder')
+    if in_dygraph_mode():
+        if isinstance(prior_box_var, Variable):
+            box_coder_op = _C_ops.final_state_box_coder(prior_box,
+                                                        prior_box_var,
+                                                        target_box, code_type,
+                                                        box_normalized, axis,
+                                                        [])
+        elif isinstance(prior_box_var, list):
+            box_coder_op = _C_ops.final_state_box_coder(prior_box, None,
+                                                        target_box, code_type,
+                                                        box_normalized, axis,
+                                                        prior_box_var)
+        else:
+            raise TypeError(
+                "Input variance of box_coder must be Variable or lisz")
+        return box_coder_op
     helper = LayerHelper("box_coder", **locals())
 
     output_box = helper.create_variable_for_type_inference(
@@ -1777,18 +1794,20 @@ def ssd_loss(location,
     return loss
 
 
-def prior_box(input,
-              image,
-              min_sizes,
-              max_sizes=None,
-              aspect_ratios=[1.],
-              variance=[0.1, 0.1, 0.2, 0.2],
-              flip=False,
-              clip=False,
-              steps=[0.0, 0.0],
-              offset=0.5,
-              name=None,
-              min_max_aspect_ratios_order=False):
+def prior_box(
+    input,
+    image,
+    min_sizes,
+    max_sizes=None,
+    aspect_ratios=[1.],
+    variance=[0.1, 0.1, 0.2, 0.2],
+    flip=False,
+    clip=False,
+    steps=[0.0, 0.0],
+    offset=0.5,
+    name=None,
+    min_max_aspect_ratios_order=False,
+):
     """
 
     This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
@@ -1888,6 +1907,15 @@ def prior_box(input,
 		# [6L, 9L, 1L, 4L]
 
     """
+
+    if in_dygraph_mode():
+        step_w, step_h = steps
+        if max_sizes == None:
+            max_sizes = []
+        return _C_ops.final_state_prior_box(input, image, min_sizes,
+                                            aspect_ratios, variance, max_sizes,
+                                            flip, clip, step_w, step_h, offset,
+                                            min_max_aspect_ratios_order)
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
     check_variable_and_dtype(input, 'input',
@@ -3614,6 +3642,16 @@ def matrix_nms(bboxes,
                                           keep_top_k=200,
                                           normalized=False)
     """
+    if in_dygraph_mode():
+        attrs = (score_threshold, nms_top_k, keep_top_k, post_threshold,
+                 use_gaussian, gaussian_sigma, background_label, normalized)
+
+        out, index = _C_ops.final_state_matrix_nms(bboxes, scores, *attrs)
+        if return_index:
+            return out, index
+        else:
+            return out
+
     check_variable_and_dtype(bboxes, 'BBoxes', ['float32', 'float64'],
                              'matrix_nms')
     check_variable_and_dtype(scores, 'Scores', ['float32', 'float64'],
@@ -3636,13 +3674,13 @@ def matrix_nms(bboxes,
                          'Scores': scores
                      },
                      attrs={
-                         'background_label': background_label,
                          'score_threshold': score_threshold,
                          'post_threshold': post_threshold,
                          'nms_top_k': nms_top_k,
-                         'gaussian_sigma': gaussian_sigma,
-                         'use_gaussian': use_gaussian,
                          'keep_top_k': keep_top_k,
+                         'use_gaussian': use_gaussian,
+                         'gaussian_sigma': gaussian_sigma,
+                         'background_label': background_label,
                          'normalized': normalized
                      },
                      outputs={

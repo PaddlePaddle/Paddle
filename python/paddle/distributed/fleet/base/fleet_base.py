@@ -511,6 +511,9 @@ class Fleet(object):
         """
         return self._role_maker._is_worker()
 
+    def is_coordinator(self):
+        return self._role_maker._is_coordinator()
+
     def worker_endpoints(self, to_string=False):
         """
         Get current worker endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
@@ -641,6 +644,25 @@ class Fleet(object):
 
         """
         self._runtime_handle._init_worker(scopes)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def init_coordinator(self, scopes=None):
+        """
+        initialize coordinator node
+        """
+        self._runtime_handle._init_coordinator(scopes)
+
+    def make_fl_strategy(self):
+        self._runtime_handle._make_fl_strategy()
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def get_fl_client(self):
+        """
+        get worker(training node) ptr
+        """
+        return self._runtime_handle._worker
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -1834,9 +1856,8 @@ class Fleet(object):
                                           group=None)
             self._found_inf = is_found_inf.numpy()[0]
 
-        # Only tensor_parallel and pipeline_parallel need to modify scaler
-        if self._hcg.get_parallel_mode() in (ParallelMode.TENSOR_PARALLEL,
-                                             ParallelMode.PIPELINE_PARALLEL):
+        # Only data_parallel doesn't need to modify scaler
+        if self._hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL:
             scaler._unscale = MethodType(unscale_method, scaler)
 
         return scaler

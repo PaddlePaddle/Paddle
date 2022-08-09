@@ -303,8 +303,8 @@ class TestNet(unittest.TestCase):
     def test_mlu(self):
         mlu_pred, mlu_loss = self._test(True)
         cpu_pred, cpu_loss = self._test(False)
-        self.assertTrue(np.allclose(mlu_pred, cpu_pred, rtol=1e-3))
-        self.assertTrue(np.allclose(mlu_loss, cpu_loss, rtol=1e-3))
+        np.testing.assert_allclose(mlu_pred, cpu_pred, rtol=1e-3)
+        np.testing.assert_allclose(mlu_loss, cpu_loss, rtol=1e-3)
 
 
 if __name__ == '__main__':

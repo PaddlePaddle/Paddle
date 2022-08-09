@@ -290,6 +290,8 @@ def monkey_patch_math_varbase():
             axis = -1
             math_op = getattr(_C_ops, op_type)
             if call_final_api:
+                if op_type == "final_state_matmul":
+                    return math_op(self, other_var, False, False)
                 return math_op(self, other_var, -1)
             return math_op(self, other_var, 'axis', axis)
 
@@ -376,16 +378,25 @@ def monkey_patch_math_varbase():
         if framework._in_eager_mode_ else
         ('__rtruediv__',
          _binary_creator_('rtruediv__', 'elementwise_div', True, None)),
-        ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
-                                     None)),
+        ('__pow__',
+         _binary_creator_('__pow__', 'final_state_elementwise_pow', False, None,
+                          True)) if framework._in_eager_mode_ else
+        ('__pow__',
+         _binary_creator_('__pow__', 'elementwise_pow', False, None)),
         ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
                                       None)),
         ('__floordiv__',
          _binary_creator_('__floordiv__', 'elementwise_floordiv', False, None)),
-        ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
-                                     None)),
-        ('__matmul__', _binary_creator_('__matmul__', "matmul_v2", False,
-                                        None)),
+        ('__mod__',
+         _binary_creator_('__mod__', 'final_state_modulo', False, None, True))
+        if framework._in_eager_mode_ else
+        ('__mod__',
+         _binary_creator_('__mod__', 'elementwise_mod', False, None)),
+        ('__matmul__',
+         _binary_creator_('__matmul__', "final_state_matmul", False, None,
+                          True)) if framework._in_eager_mode_ else
+        ('__matmul__',
+         _binary_creator_('__matmul__', "matmul_v2", False, None)),
         ## for logical compare
         ('__eq__',
          _binary_creator_('__eq__', 'final_state_equal', False, None, True))

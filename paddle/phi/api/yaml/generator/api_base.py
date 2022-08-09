@@ -125,6 +125,7 @@ class BaseAPI(object):
             'Scalar(int64_t)': 'const Scalar&',
             'Scalar(float)': 'const Scalar&',
             'Scalar(dobule)': 'const Scalar&',
+            'Scalar[]': 'const std::vector<phi::Scalar>&',
             'int': 'int',
             'int32_t': 'int32_t',
             'int64_t': 'int64_t',
@@ -135,12 +136,12 @@ class BaseAPI(object):
             'double': 'double',
             'bool': 'bool',
             'str': 'const std::string&',
-            'str[] ': 'const std::vector<std::string>&',
+            'str[]': 'const std::vector<std::string>&',
             'Place': 'const Place&',
             'DataLayout': 'DataLayout',
             'DataType': 'DataType',
             'int64_t[]': 'const std::vector<int64_t>&',
-            'int[]': 'const std::vector<int>&'
+            'int[]': 'const std::vector<int>&',
         }
         optional_types_trans = {
             'Tensor': 'const paddle::optional<Tensor>&',
@@ -582,18 +583,18 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                         trans_flag = "{false, true}"
                     if input_name in self.optional_vars:
                         input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
 
                     else:
                         if self.inputs['input_info'][
                                 input_name] == "const Tensor&":
                             input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
 
                         elif self.inputs['input_info'][
                                 input_name] == "const std::vector<Tensor>&":
                             input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
 {code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
 {code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
@@ -612,7 +613,13 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  paddle::optional<phi::TensorBase> {PREFIX_TENSOR_NAME}{input_name} = {input_name} ? paddle::optional<phi::TensorBase>(*{input_name}->impl()) : paddle::none;"""
 
                     else:
-                        input_tensor_code = input_tensor_code + f"""
+                        if self.inputs['input_info'][
+                                input_name] == "const std::vector<Tensor>&":
+                            input_tensor_code = input_tensor_code + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_uq_ptr = TensorToDenseTensor({input_name});
+{code_indent}  const auto& {PREFIX_TENSOR_NAME}{input_name} = *{PREFIX_TENSOR_NAME}{input_name}_uq_ptr;"""
+                        else:
+                            input_tensor_code = input_tensor_code + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = {input_name}.impl();"""
 
         kernel_args = ["*dev_ctx"]
@@ -642,6 +649,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 if 'IntArray' in self.attrs['attr_info'][param][0]:
                     kernel_args_type_list.append('const phi::IntArray&')
                     param = 'phi::IntArray(' + param + ')'
+                elif 'vector<phi::Scalar>' in self.attrs['attr_info'][param][0]:
+                    kernel_args_type_list.append(
+                        'const std::vector<phi::Scalar>&')
+                    param = param
                 elif 'Scalar' in self.attrs['attr_info'][param][0]:
                     kernel_args_type_list.append('const phi::Scalar&')
                     param = 'phi::Scalar(' + param + ')'
@@ -685,15 +696,21 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         outputs_args, kernel_output_names, output_create = self.gene_output(
             self.outputs['types'], out_tensor_type_list, code_indent,
             inplace_flag)
+        fallback_kernel_output_trans = ""
+        for kernel_out in outputs_args:
+            fallback_kernel_output_trans += (f"""
+{code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
+                                             )
         cudnn_args = '' if self.kernel[
             'use_gpudnn'] == 'false' else ', ' + self.kernel['use_gpudnn']
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
-{code_indent}  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+{code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}{cudnn_args});
+{code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
 
-{code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+{code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 {input_tensors}
 {output_create}
 {self.gene_infer_meta(kernel_output_names, code_indent)}
@@ -702,7 +719,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  {{
 {code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{kernel_name} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
-{code_indent}    (*kernel_fn)({kernel_args}, {outputs_args});
+{code_indent}    (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
+{code_indent}  }}
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{fallback_kernel_output_trans}
 {code_indent}  }}
 
 {code_indent}  {self.gene_return_code()}"""

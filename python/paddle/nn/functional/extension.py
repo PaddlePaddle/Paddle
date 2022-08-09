@@ -191,11 +191,10 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
+    Returns: 
+            Tensor, The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
             and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
             int32 or int64.
-
-    Return Type: Tensor
 
     Examples:
         .. code-block:: python
@@ -366,6 +365,9 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'. "
                          "Received Attr(data_format): {}.".format(data_format))
+    if in_dygraph_mode():
+        return _C_ops.final_state_temporal_shift(x, seg_num, shift_ratio,
+                                                 data_format)
     if _non_static_mode():
         return _C_ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
                                      shift_ratio, 'data_format', data_format)

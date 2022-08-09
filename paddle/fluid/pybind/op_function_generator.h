@@ -246,6 +246,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
       "SavedMean",
       "SavedVariance",
       "ReserveSpace"}},
+    {"lstsq", {"Solution", "Residuals", "Rank", "SingularValues"}},
     {"inplace_abn",
      {"Y",
       "MeanOut",

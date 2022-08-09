@@ -139,13 +139,12 @@ void MemoryCopyAsync(const platform::Place& dst_place,
     } else if (platform::is_gpu_place(dst_place) &&
                platform::is_gpu_place(src_place)) {
       auto gpu_place = src_place;
-      memory::Copy(
-          gpu_place,
-          dst_data,
-          gpu_place,
-          src_data,
-          size,
-          static_cast<const platform::CUDADeviceContext&>(ctx).stream());
+      memory::Copy(gpu_place,
+                   dst_data,
+                   gpu_place,
+                   src_data,
+                   size,
+                   static_cast<const phi::GPUContext&>(ctx).stream());
     }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/data_set.h"
 
+#include "gflags/gflags.h"
 #include "google/protobuf/text_format.h"
 #if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
@@ -26,6 +27,7 @@
 
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
 
 #if defined _WIN32 || defined __APPLE__
@@ -34,6 +36,8 @@
 #endif
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
+DECLARE_bool(graph_get_neighbor_id);
+
 namespace paddle {
 namespace framework {
 
@@ -102,7 +106,7 @@ void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
   cmd += " -Ddfs.client.block.write.retries=15 -Ddfs.rpc.timeout=500000";
-  paddle::framework::hdfs_set_command(cmd);
+  paddle::framework::dataset_hdfs_set_command(cmd);
 }
 
 template <typename T>
@@ -194,6 +198,16 @@ void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
   slots_shuffle_rclist_.ReSize(record_candidate_size);
   VLOG(3) << "SetFeaEval fea eval mode: " << fea_eval
           << " with record candidate size: " << record_candidate_size;
+}
+
+template <typename T>
+void DatasetImpl<T>::SetGpuGraphMode(int is_graph_mode) {
+  gpu_graph_mode_ = is_graph_mode;
+}
+
+template <typename T>
+int DatasetImpl<T>::GetGpuGraphMode() {
+  return gpu_graph_mode_;
 }
 
 template <typename T>
@@ -440,12 +454,91 @@ void DatasetImpl<T>::LoadIntoMemory() {
   platform::Timer timeline;
   timeline.Start();
   std::vector<std::thread> load_threads;
-  for (int64_t i = 0; i < thread_num_; ++i) {
-    load_threads.push_back(std::thread(
-        &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
-  }
-  for (std::thread& t : load_threads) {
-    t.join();
+  if (gpu_graph_mode_) {
+    VLOG(0) << "in gpu_graph_mode";
+#ifdef PADDLE_WITH_HETERPS
+    graph_all_type_total_keys_.clear();
+    auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+    auto node_to_id = gpu_graph_ptr->feature_to_id;
+    auto edge_to_id = gpu_graph_ptr->edge_to_id;
+    graph_all_type_total_keys_.resize(node_to_id.size());
+    int cnt = 0;
+    for (auto& iter : node_to_id) {
+      int node_idx = iter.second;
+      std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
+      gpu_graph_ptr->get_all_id(
+          1, node_idx, thread_num_, &gpu_graph_device_keys);
+      auto& type_total_key = graph_all_type_total_keys_[cnt];
+      type_total_key.resize(thread_num_);
+      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
+        VLOG(2) << "node type: " << node_idx << ", gpu_graph_device_keys[" << i
+                << "] = " << gpu_graph_device_keys[i].size();
+        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
+          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+          type_total_key[i].push_back(gpu_graph_device_keys[i][j]);
+        }
+      }
+
+      for (size_t i = 0; i < readers_.size(); i++) {
+        readers_[i]->SetDeviceKeys(&type_total_key[i], node_idx);
+        readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
+      }
+      cnt++;
+    }
+
+    VLOG(2) << "begin add feature_id into gpu_graph_total_keys_ size["
+            << gpu_graph_total_keys_.size() << "]";
+    for (auto& iter : node_to_id) {
+      std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
+      int node_idx = iter.second;
+      gpu_graph_ptr->get_all_feature_ids(
+          1, node_idx, thread_num_, &gpu_graph_device_keys);
+      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
+        VLOG(2) << "begin node type: " << node_idx << ", gpu_graph_device_keys["
+                << i << "] = " << gpu_graph_device_keys[i].size();
+        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
+          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+        }
+        VLOG(2) << "end node type: " << node_idx << ", gpu_graph_device_keys["
+                << i << "] = " << gpu_graph_device_keys[i].size();
+      }
+    }
+    VLOG(2) << "end add feature_id into gpu_graph_total_keys_ size["
+            << gpu_graph_total_keys_.size() << "]";
+
+    // FIX: trick for iterate edge table
+    for (auto& iter : edge_to_id) {
+      int edge_idx = iter.second;
+      std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
+      gpu_graph_ptr->get_all_id(
+          0, edge_idx, thread_num_, &gpu_graph_device_keys);
+      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
+        VLOG(1) << "edge type: " << edge_idx << ", gpu_graph_device_keys[" << i
+                << "] = " << gpu_graph_device_keys[i].size();
+        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
+          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+        }
+      }
+      if (FLAGS_graph_get_neighbor_id) {
+        std::vector<std::vector<uint64_t>> gpu_graph_neighbor_keys;
+        gpu_graph_ptr->get_all_neighbor_id(
+            0, edge_idx, thread_num_, &gpu_graph_neighbor_keys);
+        for (size_t i = 0; i < gpu_graph_neighbor_keys.size(); i++) {
+          for (size_t k = 0; k < gpu_graph_neighbor_keys[i].size(); k++) {
+            gpu_graph_total_keys_.push_back(gpu_graph_neighbor_keys[i][k]);
+          }
+        }
+      }
+    }
+#endif
+  } else {
+    for (int64_t i = 0; i < thread_num_; ++i) {
+      load_threads.push_back(std::thread(
+          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
+    }
+    for (std::thread& t : load_threads) {
+      t.join();
+    }
   }
   input_channel_->Close();
   int64_t in_chan_size = input_channel_->Size();

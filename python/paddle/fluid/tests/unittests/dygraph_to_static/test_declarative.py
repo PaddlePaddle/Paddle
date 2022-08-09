@@ -478,5 +478,21 @@ class TestSetBuffers(unittest.TestCase):
         paddle.enable_static()
 
 
+class ClassNoInheritLayer:
+
+    def func(self, x):
+        return x + 1
+
+
+class TestClassNoInheritLayer(unittest.TestCase):
+
+    def test_to_static(self):
+        paddle.disable_static()
+        net = ClassNoInheritLayer()
+        input_spec = [paddle.static.InputSpec(name='x', shape=[1])]
+        with self.assertRaises(TypeError):
+            static_func = paddle.jit.to_static(net.func, input_spec=input_spec)
+
+
 if __name__ == '__main__':
     unittest.main()

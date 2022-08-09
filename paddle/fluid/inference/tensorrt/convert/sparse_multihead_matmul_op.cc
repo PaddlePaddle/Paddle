@@ -111,6 +111,8 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
         nvinfer1::Weights bias{nvinfer1::DataType::kFLOAT,
                                static_cast<void*>(bias_data),
                                static_cast<int32_t>(bias_t->numel())};
+        auto max_seqlen_tensor = engine_->GetITensor("max_seqlen_tensor");
+        auto pos_id_tensor = engine_->GetITensor("pos_id");
         if (engine_->with_interleaved()) {
           VLOG(4) << "fused multihead_matmul op: use_varseqlen and "
                      "with_interleaved";
@@ -171,31 +173,9 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
 
           std::vector<nvinfer1::ITensor*> plugin_inputs;
           plugin_inputs.emplace_back(fc_layer->getOutput(0));
-          if (engine_->Has("ernie_pos_name")) {
-            plugin_inputs.emplace_back(engine_->GetITensor(
-                engine_->Get<std::string>("ernie_pos_name")));
-          } else {
-            plugin_inputs.emplace_back(engine_->GetITensor(
-                engine_->network()
-                    ->getInput(2)
-                    ->getName()));  // cu_seqlens, eval_placeholder_2
-          }
-          auto max_seqlen_tensor =
-              engine_->GetITensor(engine_->network()->getInput(3)->getName());
-          engine_->SetTensorDynamicRange(max_seqlen_tensor, 1.0f);
-          auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
-              engine_,
-              Shuffle,
-              *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
-          nvinfer1::Dims shape_dim;
-          shape_dim.nbDims = 1;
-          shape_dim.d[0] = -1;
-          shuffle_layer->setReshapeDimensions(shape_dim);
-          engine_->SetTensorDynamicRange(shuffle_layer->getOutput(0), 1.0f);
+          plugin_inputs.emplace_back(pos_id_tensor);
           plugin_inputs.emplace_back(
-              shuffle_layer->getOutput(0));  // max_seqlen, eval_placeholder_3
-          shuffle_layer->setName(
-              ("Multihead: Shuffle: (Output: " + output_name + ")").c_str());
+              max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
           layer = plugin_layer;
@@ -316,21 +296,9 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           std::vector<nvinfer1::ITensor*> plugin_inputs;
           plugin_inputs.emplace_back(fc_layer->getOutput(0));
           plugin_inputs.emplace_back(engine_->GetITensor("qkv_plugin_mask"));
-          plugin_inputs.emplace_back(engine_->GetITensor("pos_id"));
-
-          auto max_seqlen_tensor = engine_->GetITensor("mask_id");
-          auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
-              engine_,
-              Shuffle,
-              *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
-          nvinfer1::Dims shape_dim;
-          shape_dim.nbDims = 1;
-          shape_dim.d[0] = -1;
-          shuffle_layer->setReshapeDimensions(shape_dim);
-          engine_->SetTensorDynamicRange(shuffle_layer->getOutput(0), 1.0f);
+          plugin_inputs.emplace_back(pos_id_tensor);
           plugin_inputs.emplace_back(
-              shuffle_layer->getOutput(0));  // max_seqlen, eval_placeholder_3
-
+              max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
           layer = plugin_layer;

@@ -257,6 +257,10 @@ class StaticFunction(object):
             self._dygraph_function = getattr(function, '__func__')
             self._class_instance = getattr(function, '__self__')
 
+            if not hasattr(self._class_instance, '_original_funcs'):
+                raise TypeError(
+                    "When using 'to_static' to convert method of a class, "
+                    "please ensure the class inherits from nn.Layer")
             self._class_instance._original_funcs[
                 function.__name__] = self._dygraph_function
         else:
@@ -406,6 +410,10 @@ class StaticFunction(object):
 
     def _is_train_mode(self):
         if self._class_instance is not None:
+            if not hasattr(self._class_instance, 'training'):
+                raise TypeError(
+                    "When using 'to_static' to convert method of a class, "
+                    "please ensure the class inherits from nn.Layer")
             return self._class_instance.training
         else:
             return self._training

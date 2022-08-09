@@ -47,7 +47,6 @@ def bernoulli(x, name=None):
 
     Examples:
         .. code-block:: python
-            :name: bernoulli-example
 
             import paddle
 
@@ -620,8 +619,12 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
             #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
             #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
     """
-    return _C_ops.uniform_random_inplace_(x, 'min', min, 'max', max, 'seed',
-                                          seed)
+    if in_dygraph_mode():
+        return _C_ops.final_state_uniform_random_inplace_(
+            x, min, max, seed, 0, 0, 1.0)
+    else:
+        return _C_ops.uniform_random_inplace_(x, 'min', min, 'max', max, 'seed',
+                                              seed)
 
 
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
@@ -869,7 +872,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
         dtype = x.dtype
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    shape = x.shape
+    shape = paddle.shape(x)
 
     if low >= high:
         raise ValueError(
@@ -888,17 +891,13 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'randint_like')
 
-    inputs = dict()
+    inputs = {"ShapeTensor": shape}
     attrs = {
         'low': low,
         'high': high,
         'seed': 0,
         'dtype': core.VarDesc.VarType.INT64
     }
-    utils.get_shape_tensor_inputs(inputs=inputs,
-                                  attrs=attrs,
-                                  shape=shape,
-                                  op_type='randint_like')
 
     helper = LayerHelper("randint", **locals())
     out = helper.create_variable_for_type_inference(
