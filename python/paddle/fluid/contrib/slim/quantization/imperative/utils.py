@@ -22,34 +22,57 @@ import paddle.nn.quant.quant_layers as quant_layers
 from ..utils import _get_op_input_var_names, _get_op_output_var_names, _get_output_name_index, _get_input_name_index
 
 layer_name_map = {
-    'Conv2DTranspose': paddle.nn.Conv2DTranspose,
-    'Conv2D': paddle.nn.Conv2D,
-    'Linear': paddle.nn.Linear,
-    'AdaptiveAvgPool2D': paddle.nn.AdaptiveAvgPool2D,
-    'AdaptiveMaxPool2D': paddle.nn.AdaptiveMaxPool2D,
-    'AvgPool2D': paddle.nn.AvgPool2D,
-    'MaxPool2D': paddle.nn.MaxPool2D,
-    'Hardswish': paddle.nn.Hardswish,
-    'LeakyReLU': paddle.nn.LeakyReLU,
-    'PReLU': paddle.nn.PReLU,
-    'ReLU': paddle.nn.ReLU,
-    'ReLU6': paddle.nn.ReLU6,
-    'Sigmoid': paddle.nn.Sigmoid,
-    'Softmax': paddle.nn.Softmax,
-    'Swish': paddle.nn.Swish,
-    'Tanh': paddle.nn.Tanh,
-    'Hardswish': paddle.nn.Hardswish,
-    'BatchNorm': paddle.nn.BatchNorm,
-    'GroupNorm': paddle.nn.GroupNorm,
-    'LayerNorm': paddle.nn.LayerNorm,
-    'ColumnParallelLinear': fleet.meta_parallel.parallel_layers.mp_layers.ColumnParallelLinear,
-    'RowParallelLinear': fleet.meta_parallel.parallel_layers.mp_layers.RowParallelLinear
+    'Conv2DTranspose':
+    paddle.nn.Conv2DTranspose,
+    'Conv2D':
+    paddle.nn.Conv2D,
+    'Linear':
+    paddle.nn.Linear,
+    'AdaptiveAvgPool2D':
+    paddle.nn.AdaptiveAvgPool2D,
+    'AdaptiveMaxPool2D':
+    paddle.nn.AdaptiveMaxPool2D,
+    'AvgPool2D':
+    paddle.nn.AvgPool2D,
+    'MaxPool2D':
+    paddle.nn.MaxPool2D,
+    'Hardswish':
+    paddle.nn.Hardswish,
+    'LeakyReLU':
+    paddle.nn.LeakyReLU,
+    'PReLU':
+    paddle.nn.PReLU,
+    'ReLU':
+    paddle.nn.ReLU,
+    'ReLU6':
+    paddle.nn.ReLU6,
+    'Sigmoid':
+    paddle.nn.Sigmoid,
+    'Softmax':
+    paddle.nn.Softmax,
+    'Swish':
+    paddle.nn.Swish,
+    'Tanh':
+    paddle.nn.Tanh,
+    'Hardswish':
+    paddle.nn.Hardswish,
+    'BatchNorm':
+    paddle.nn.BatchNorm,
+    'GroupNorm':
+    paddle.nn.GroupNorm,
+    'LayerNorm':
+    paddle.nn.LayerNorm,
+    'ColumnParallelLinear':
+    fleet.meta_parallel.parallel_layers.mp_layers.ColumnParallelLinear,
+    'RowParallelLinear':
+    fleet.meta_parallel.parallel_layers.mp_layers.RowParallelLinear
 }
 
 # Apply fake quant for the inputs of these layers
 fake_quant_input_layers = [
     paddle.nn.Conv2D, paddle.nn.Linear, paddle.nn.Conv2DTranspose,
-    fleet.meta_parallel.RowParallelLinear, fleet.meta_parallel.ColumnParallelLinear
+    fleet.meta_parallel.RowParallelLinear,
+    fleet.meta_parallel.ColumnParallelLinear
 ]
 
 # Apply fake quant for the output of these layers
@@ -69,7 +92,8 @@ fake_quant_leaf_layers = [
 
 fake_quant_wrap_layers = [
     quant_layers.QuantizedConv2D, quant_layers.QuantizedLinear,
-    quant_layers.QuantizedConv2DTranspose, quant_layers.QuantizedColumnParallelLinear, 
+    quant_layers.QuantizedConv2DTranspose,
+    quant_layers.QuantizedColumnParallelLinear,
     quant_layers.QuantizedRowParallelLinear
 ]
 
@@ -177,4 +201,3 @@ def fp_numpy_to_naive(x_np):
         return float(x_np)
     else:
         return x_np.tolist()
-

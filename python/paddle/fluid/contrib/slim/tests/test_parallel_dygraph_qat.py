@@ -134,7 +134,7 @@ class TestMultipleGpus(unittest.TestCase):
 class TestDataParallelQAT(TestMultipleGpus):
 
     def test_multiple_gpus_qat(self):
-        self.run_2gpu('hybrid_parallel_qat.py', eager_mode=False)
+        self.run_2gpu('hybrid_parallel_qat.py')
 
 
 if __name__ == "__main__":
