@@ -43,6 +43,10 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
 #endif
 
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/fluid/distributed/collective/ProcessGroupCustom.h"
+#endif
+
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
 #include "paddle/fluid/distributed/collective/ProcessGroupHeter.h"
@@ -471,6 +475,24 @@ void BindDistributed(py::module *m) {
                     int,
                     int,
                     const platform::NPUPlace &,
+                    int>(),
+           py::arg("store"),
+           py::arg("rank"),
+           py::arg("world_size"),
+           py::arg("place"),
+           py::arg("group_id") = 0,
+           py::call_guard<py::gil_scoped_release>());
+
+#endif
+
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  py::class_<distributed::ProcessGroupCustom,
+             std::shared_ptr<distributed::ProcessGroupCustom>>(
+      *m, "ProcessGroupCustom", ProcessGroup)
+      .def(py::init<const std::shared_ptr<distributed::Store> &,
+                    int,
+                    int,
+                    const platform::CustomPlace &,
                     int>(),
            py::arg("store"),
            py::arg("rank"),

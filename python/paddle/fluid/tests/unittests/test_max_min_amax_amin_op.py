@@ -187,3 +187,7 @@ class TestMaxMinAmaxAminAPI6(TestMaxMinAmaxAminAPI):
         self.dtype = 'float64'
         self.axis = None
         self.keepdim = False
+
+
+if __name__ == '__main__':
+    unittest.main()

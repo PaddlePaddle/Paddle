@@ -519,11 +519,10 @@ REGISTER_OP_CPU_KERNEL(coalesce_tensor,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     coalesce_tensor,
-    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext,
-                                plat::float16>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::CoalesceTensorOpKernel<phi::GPUContext, plat::float16>,
+    ops::CoalesceTensorOpKernel<phi::GPUContext, int>,
+    ops::CoalesceTensorOpKernel<phi::GPUContext, float>,
+    ops::CoalesceTensorOpKernel<phi::GPUContext, double>);
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)

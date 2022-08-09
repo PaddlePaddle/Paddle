@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #endif
 
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
@@ -164,13 +165,12 @@ void TensorFromArray(const T* src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -242,13 +242,12 @@ void TensorFromVector(const std::vector<T>& src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -340,13 +339,12 @@ inline void TensorFromVector(const std::vector<bool>& src,
   }
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -444,13 +442,12 @@ void TensorToVector(const Tensor& src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src.place(),
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src.place(),
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
@@ -503,13 +500,12 @@ inline void TensorToVector(const Tensor& src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src.place(),
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src.place(),
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
@@ -584,6 +580,26 @@ inline void TensorToVector(const Tensor& src, std::vector<bool>* dst) {
 }
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
+
+inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
+  int rank = src.dims().size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      2,
+      platform::errors::InvalidArgument(
+          "'ReshapeToMatrix()' is only used for flatten high rank "
+          "tensors to matrixs. The dimensions of Tensor must be "
+          "greater or equal than 2. "
+          "But received dimensions of Tensor is %d",
+          rank));
+  if (rank == 2) {
+    return src;
+  }
+  Tensor res;
+  res.ShareDataWith(src);
+  res.Resize(phi::flatten_to_2d(src.dims(), num_col_dims));
+  return res;
+}
 
 }  // namespace framework
 }  // namespace paddle

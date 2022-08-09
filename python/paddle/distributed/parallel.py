@@ -72,10 +72,10 @@ def _start_kv_server(port, http_server_d, size):
 
 def _is_cpuonly(backend):
     check_backend(backend)
-    if backend in [
-            'auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'
-    ] and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
-           or core.is_compiled_with_npu() or core.is_compiled_with_mlu()):
+    if (backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'] and
+        (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
+         or core.is_compiled_with_npu()
+         or core.is_compiled_with_mlu())) or backend is 'xccl':
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
@@ -190,18 +190,23 @@ def init_parallel_env():
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend")
 
-    if not is_cpu_only and core.is_compiled_with_cuda():
-        _check_var_exists("FLAGS_selected_gpus")
-        backend = "nccl" if backend == "auto" else backend
-    elif not is_cpu_only and core.is_compiled_with_xpu():
-        _check_var_exists('FLAGS_selected_xpus')
-        backend = "bkcl" if backend == "auto" else backend
-    elif not is_cpu_only and core.is_compiled_with_npu():
-        _check_var_exists('FLAGS_selected_npus')
-        backend = "hccl" if backend == "auto" else backend
-    elif not is_cpu_only and core.is_compiled_with_mlu():
-        _check_var_exists('FLAGS_selected_mlus')
-        backend = "cncl" if backend == "auto" else backend
+    if backend == "xccl":
+        FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
+            parallel_env.device_type)
+        _check_var_exists(FLAGS_selected_custom_devices)
+    else:
+        if not is_cpu_only and core.is_compiled_with_cuda():
+            _check_var_exists("FLAGS_selected_gpus")
+            backend = "nccl" if backend == "auto" else backend
+        elif not is_cpu_only and core.is_compiled_with_xpu():
+            _check_var_exists('FLAGS_selected_xpus')
+            backend = "bkcl" if backend == "auto" else backend
+        elif not is_cpu_only and core.is_compiled_with_npu():
+            _check_var_exists('FLAGS_selected_npus')
+            backend = "hccl" if backend == "auto" else backend
+        elif not is_cpu_only and core.is_compiled_with_mlu():
+            _check_var_exists('FLAGS_selected_mlus')
+            backend = "cncl" if backend == "auto" else backend
 
     if backend != 'mpi':
         _check_var_exists("PADDLE_TRAINER_ID")
@@ -215,7 +220,10 @@ def init_parallel_env():
     # directly, if they want to switch default place,
     # they need to call a function to change default place,
     # here just set correctly place to users
-    if is_cpu_only:
+    if backend == "xccl":
+        place = core.CustomPlace(parallel_env.device_type,
+                                 parallel_env.device_id)
+    elif is_cpu_only:
         place = core.CPUPlace()
     elif core.is_compiled_with_cuda():
         place = core.CUDAPlace(parallel_env.device_id)

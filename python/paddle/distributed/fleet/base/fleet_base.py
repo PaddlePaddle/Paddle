@@ -1856,9 +1856,8 @@ class Fleet(object):
                                           group=None)
             self._found_inf = is_found_inf.numpy()[0]
 
-        # Only tensor_parallel and pipeline_parallel need to modify scaler
-        if self._hcg.get_parallel_mode() in (ParallelMode.TENSOR_PARALLEL,
-                                             ParallelMode.PIPELINE_PARALLEL):
+        # Only data_parallel doesn't need to modify scaler
+        if self._hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL:
             scaler._unscale = MethodType(unscale_method, scaler)
 
         return scaler
