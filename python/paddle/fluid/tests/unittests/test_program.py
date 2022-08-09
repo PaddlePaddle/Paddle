@@ -202,5 +202,32 @@ class TestProgram(unittest.TestCase):
                 self.assertFalse(var.has_stop_gradient())
 
 
+def build_program():
+    main_program = paddle.static.Program()
+    startuo_program = paddle.static.Program()
+    with paddle.utils.unique_name.guard():
+        with paddle.static.program_guard(main_program, startuo_program):
+            x = paddle.static.data(name='x', shape=[3, 2, 1])
+            out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
+    return main_program
+
+
+class TestProgramProto(unittest.TestCase):
+
+    def test_update_op(self):
+        program = build_program()
+        a = program.desc.serialize_to_string()
+        program.current_block().ops[0]._set_attr('use_mkldnn', True)
+        b = program.desc.serialize_to_string()
+        self.assertFalse(a == b)
+
+    def test_update_var(self):
+        program = build_program()
+        a = program.desc.serialize_to_string()
+        program.current_block().var("x").desc.set_stop_gradient(False)
+        b = program.desc.serialize_to_string()
+        self.assertFalse(a == b)
+
+
 if __name__ == '__main__':
     unittest.main()
