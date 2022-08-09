@@ -1968,6 +1968,7 @@ class Resharder:
                                                  self.auto_parallel_main_prog)
                     dist_tensor = self.dist_context.get_dist_tensor_for_program(
                         var)
+                    tensor_process_mesh = dist_tensor.dist_attr.process_mesh
                     output_attr = [
                         dist_op.dist_attr.process_mesh,
                         dist_op.dist_attr.get_output_dims_mapping(var_name)
