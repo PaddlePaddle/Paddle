@@ -1288,25 +1288,45 @@ void GridSampleBaseInferMeta(const MetaTensor& x,
                              MetaConfig config) {
   auto x_dims = x.dims();
   auto grid_dims = grid.dims();
-  PADDLE_ENFORCE_EQ(x_dims.size(),
+  PADDLE_ENFORCE_GE(x_dims.size(),
                     4,
                     phi::errors::InvalidArgument(
                         "Input(X) of GridSampleOp should be 4-D Tensor, but "
                         "received X dimension size(%d)",
                         x_dims.size()));
-  PADDLE_ENFORCE_EQ(grid_dims.size(),
+  PADDLE_ENFORCE_LE(x_dims.size(),
+                    5,
+                    phi::errors::InvalidArgument(
+                        "Input(X) of GridSampleOp should be 4-D Tensor, but "
+                        "received X dimension size(%d)",
+                        x_dims.size()));
+  PADDLE_ENFORCE_GE(grid_dims.size(),
                     4,
                     phi::errors::InvalidArgument(
                         "Input(Grid) of GridSampleOp should be 4-D Tensor, "
                         "but received X dimension size(%d)",
                         grid_dims.size()));
-  if (config.is_runtime || grid_dims[3] > 0) {
+  PADDLE_ENFORCE_LE(grid_dims.size(),
+                    5,
+                    phi::errors::InvalidArgument(
+                        "Input(Grid) of GridSampleOp should be 4-D Tensor, "
+                        "but received X dimension size(%d)",
+                        grid_dims.size()));
+  if (grid_dims.size() == 4 && (config.is_runtime || grid_dims[3] > 0)) {
     PADDLE_ENFORCE_EQ(
         grid_dims[3],
         2,
         phi::errors::InvalidArgument(
             "Input(Grid) dimension[3] should be 2, but received %d",
             grid_dims[3]));
+  }
+  if (grid_dims.size() == 5 && (config.is_runtime || grid_dims[4] > 0)) {
+    PADDLE_ENFORCE_EQ(
+        grid_dims[4],
+        3,
+        phi::errors::InvalidArgument(
+            "Input(Grid) dimension[4] should be 3, but received %d",
+            grid_dims[4]));
   }
   if (config.is_runtime) {
     PADDLE_ENFORCE_EQ(
@@ -1319,7 +1339,11 @@ void GridSampleBaseInferMeta(const MetaTensor& x,
             grid_dims[0]));
   }
 
-  out->set_dims({x_dims[0], x_dims[1], grid_dims[1], grid_dims[2]});
+  if(grid_dims.size() == 4) {
+    out->set_dims({x_dims[0], x_dims[1], grid_dims[1], grid_dims[2]});
+  } else {
+    out->set_dims({x_dims[0], x_dims[1], grid_dims[1], grid_dims[2], grid_dims[3]});
+  }
   out->set_dtype(x.dtype());
   out->share_lod(x);
 }
