@@ -58,6 +58,6 @@ file(
 
 # generate inner headers include dir for users
 generate_unify_header(backends)
-generate_unify_header(core)
+generate_unify_header(core EXCLUDES cuda_stream.h)
 generate_unify_header(infermeta)
 generate_unify_header(kernels SKIP_SUFFIX grad_kernel)

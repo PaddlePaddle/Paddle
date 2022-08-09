@@ -47,7 +47,6 @@ void SparseAccessor::InitAccessorInfo() {
   auto embedx_dim = _config.embedx_dim();
   _accessor_info.select_dim = 1 + embedx_dim;
   _accessor_info.select_size = _accessor_info.select_dim * sizeof(float);
-  ;
   _accessor_info.update_dim = 4 + embedx_dim;
   _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
   _accessor_info.mf_size =
@@ -233,11 +232,13 @@ int32_t SparseAccessor::Update(float** update_values,
     _embed_sgd_rule->UpdateValue(
         update_value + sparse_feature_value.EmbedWIndex(),
         update_value + sparse_feature_value.EmbedG2SumIndex(),
-        push_value + SparsePushValue::EmbedGIndex());
+        push_value + SparsePushValue::EmbedGIndex(),
+        push_show);
     _embedx_sgd_rule->UpdateValue(
         update_value + sparse_feature_value.EmbedxWIndex(),
         update_value + sparse_feature_value.EmbedxG2SumIndex(),
-        push_value + SparsePushValue::EmbedxGIndex());
+        push_value + SparsePushValue::EmbedxGIndex(),
+        push_show);
   }
   return 0;
 }

@@ -177,7 +177,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   std::vector<std::string> runtime_input_names_;
   mutable TensorRTEngine *trt_engine_{nullptr};
   int max_batch_size_;
-  int workspace_size_;
+  int64_t workspace_size_;
   std::unique_ptr<TRTInt8Calibrator> calibrator_;
   bool enable_int8_;
   bool enable_fp16_;
@@ -207,7 +207,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       : framework::OperatorBase(type, inputs, outputs, attrs) {
     input_names_ = Inputs("Xs");
     max_batch_size_ = Attr<int>("max_batch_size");
-    workspace_size_ = Attr<int>("workspace_size");
+    workspace_size_ = Attr<int64_t>("workspace_size");
     device_id_ = Attr<int>("gpu_id");
     enable_int8_ = Attr<bool>("enable_int8");
     enable_fp16_ = Attr<bool>("enable_fp16");
@@ -471,8 +471,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     int runtime_batch = -1;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext &>(dev_ctx).stream();
 
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");

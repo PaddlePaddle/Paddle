@@ -396,10 +396,8 @@ def square_error_cost(input, label):
         label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        The tensor storing the element-wise squared error \
-                  difference between input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor storing the element-wise squared error
+        difference between input and label.
 
     Examples:
 
@@ -531,6 +529,10 @@ def edit_distance(input,
                          outputs={"Out": [erased_label]},
                          attrs={"tokens": ignored_tokens})
         label = erased_label
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_edit_distance(input, label, input_length,
+                                                label_length, normalized)
 
     this_inputs = {"Hyps": [input], "Refs": [label]}
     if input_length is not None and label_length is not None:
@@ -977,7 +979,7 @@ def hsigmoid_loss(input,
 
 def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
     r"""
-    This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
+    Calculate smooth_l1_loss. Creates a criterion that uses a squared
     term if the absolute element-wise error falls below 1 and an L1 term otherwise.
     In some cases it can prevent exploding gradients and it is more robust and less
     sensitivity to outliers. Also known as the Huber loss:
@@ -1016,9 +1018,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        The tensor variable storing the smooth_l1_loss of input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor variable storing the smooth_l1_loss of input and label.
 
     Examples:
         .. code-block:: python
@@ -1077,7 +1077,7 @@ def margin_ranking_loss(input,
                         name=None):
     r"""
 
-    This op the calcluate the margin rank loss between the input, other and label, use the math function as follows.
+    Calcluate the margin rank loss between the input, other and label, use the math function as follows.
 
     .. math::
         margin\_rank\_loss = max(0, -label * (input - other) + margin)
@@ -1102,7 +1102,8 @@ def margin_ranking_loss(input,
         reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Returns: Tensor, if :attr:`reduction` is ``'mean'`` or ``'sum'``, the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
+    Returns: 
+        Tensor, if :attr:`reduction` is ``'mean'`` or ``'sum'``, the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
 
     Examples:
 
@@ -1536,7 +1537,7 @@ def kl_div(input, label, reduction='mean', name=None):
 
 def mse_loss(input, label, reduction='mean', name=None):
     r"""
-    This op accepts input predications and label and returns the mean square error.
+    Accept input predications and label and returns the mean square error.
 
     If :attr:`reduction` is set to ``'none'``, loss is calculated as:
 
@@ -1566,9 +1567,7 @@ def mse_loss(input, label, reduction='mean', name=None):
 
 
     Returns:
-        Tensor: The tensor tensor storing the mean square error difference of input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor tensor storing the mean square error difference of input and label.
 
     Examples:
 
@@ -1927,7 +1926,19 @@ def margin_cross_entropy(logits,
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        softmax, loss = _C_ops.final_state_margin_cross_entropy(
+            logits, label, return_softmax, ring_id, rank, nranks, margin1,
+            margin2, margin3, scale)
+        if reduction == 'mean':
+            loss = paddle.mean(loss)
+        elif reduction == 'sum':
+            loss = paddle.sum(loss)
+        if not return_softmax:
+            return loss
+        else:
+            return loss, softmax
+    elif paddle.in_dynamic_mode():
         softmax, loss = _C_ops.margin_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks,
             'margin1', margin1, 'margin2', margin2, 'margin3', margin3, 'scale',
@@ -2106,7 +2117,7 @@ def cross_entropy(input,
 
                    Return the average value of the previous results
 
-             .. math::
+            .. math::
                 \\loss=\sum_{j}loss_j/N
 
                   where, N is the number of samples and C is the number of categories.
@@ -2115,21 +2126,21 @@ def cross_entropy(input,
 
             1. Hard labels (soft_label = False)
 
-             .. math::
+            .. math::
                 \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j] 
 
             2. Soft labels (soft_label = True)
 
-             .. math::
+            .. math::
                 \\loss=\sum_{j}loss_j/\sum_{j}\left(\sum_{i}weight[label_i]\right)
- 
- 
+
+
     Parameters:
 
         - **input** (Tensor)
 
             Input tensor, the data type is float32, float64. Shape is
-	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
+        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
 
             Note: 
 
@@ -2137,7 +2148,7 @@ def cross_entropy(input,
                 output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
- 
+
         - **label** (Tensor)
 
             1. If soft_label=False, the shape is
@@ -2205,10 +2216,11 @@ def cross_entropy(input,
         2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
 
-     Example1(hard labels):
+    Examples:
 
         .. code-block:: python
-            
+
+            # hard labels
             import paddle
             paddle.seed(99999)
             N=100
@@ -2225,11 +2237,9 @@ def cross_entropy(input,
                                        label)
             print(dy_ret.numpy()) #[5.41993642]
 
-
-    Example2(soft labels):
-
         .. code-block:: python
-            
+
+            # soft labels
             import paddle
             paddle.seed(99999)
             axis = -1
@@ -2896,7 +2906,6 @@ def cosine_embedding_loss(input1,
 
     Examples:
         .. code-block:: python
-          :name: code-example1
 
             import paddle
 
