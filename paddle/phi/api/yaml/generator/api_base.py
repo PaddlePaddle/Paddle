@@ -614,7 +614,11 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                             pass
                 else:  # input is selected_rows
                     input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToSelectedRows({input_name});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToSelectedRows({input_name});
+{code_indent}  if(platform::RecordOpInfoSupplement::IsEnabled()){{
+{code_indent}     input_shapes["{input_name}"].push_back((*{PREFIX_TENSOR_NAME}{input_name}).dims());
+}}
+"""
             else:
                 if input_name in self.infer_meta['param']:
                     if input_name in self.optional_vars:
