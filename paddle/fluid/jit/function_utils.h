@@ -18,18 +18,23 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/fluid/jit/function_schema.h"
 
 namespace paddle {
+
+namespace framework {
+class Variable;
+class ProgramDesc;
+class Scope;
+}  // namespace framework
+
 namespace jit {
 using Variable = paddle::framework::Variable;
-using Name2VariableMap = std::unordered_map<std::string, Variable>;
+using Name2VariableMap =
+    std::unordered_map<std::string, std::shared_ptr<Variable>>;
 using DenseTensor = phi::DenseTensor;
 using Tensor = paddle::experimental::Tensor;
 
@@ -53,9 +58,9 @@ void ShareParamsIntoScope(const std::vector<std::string> &param_names,
 void RemoveFeedFetch(framework::ProgramDesc *program_desc);
 
 template <typename T>
-std::shared_ptr<T> MakeFunction(const std::shared_ptr<FunctionInfo> &info,
-                                const Name2VariableMap &params_dict,
-                                const phi::Place &place) {
+std::shared_ptr<T> MakeEngine(const std::shared_ptr<FunctionInfo> &info,
+                              const Name2VariableMap &params_dict,
+                              const phi::Place &place) {
   return std::make_shared<T>(info, params_dict, place);
 }
 

@@ -21,23 +21,6 @@ namespace operators {
 
 using framework::Tensor;
 
-xpu::Pooling_t XPUPoolingType(const std::string& pooltype,
-                              bool exclusive,
-                              bool is_test) {
-  if (pooltype == "max") {
-    return xpu::Pooling_t::MAX_WITHOUT_INDEX;
-  } else if (pooltype == "avg") {
-    if (exclusive) {
-      return xpu::Pooling_t::AVG_WITHOUT_PAD;
-    } else {
-      return xpu::Pooling_t::AVG_WITH_PAD;
-    }
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Pool op only supports 2D and 3D input."));
-  }
-}
-
 template <typename DeviceContext, typename T>
 class PoolXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;

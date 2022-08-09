@@ -88,7 +88,7 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
 
     auto *shuffleidx_data = shuffleidx->mutable_data<int64_t>(ctx.GetPlace());
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 #ifdef PADDLE_WITH_CUDA
     const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
 #else
@@ -106,8 +106,8 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
     auto *out_data = out->mutable_data<T>(ctx.GetPlace());
     ReorderFunctor<T, true> functor(
         x_data, shuffleidx_data, out_data, x_embed_size);
-    platform::ForRange<platform::CUDADeviceContext> for_range(
-        dev_ctx, elem_size * x_embed_size);
+    platform::ForRange<phi::GPUContext> for_range(dev_ctx,
+                                                  elem_size * x_embed_size);
     for_range(functor);
 
     auto *seed_out_data = seed_out->mutable_data<int64_t>(phi::make_ddim({1}),
@@ -136,10 +136,9 @@ class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
     auto x_embed_size = x_grad->dims()[x_grad->dims().size() - 1];
     ReorderFunctor<T, false> functor(
         out_grad_data, shuffleidx_data, x_grad_data, x_embed_size);
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     // TODO(zengjinle): for small data, direct cudaMemcpy may be better
-    platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
-                                                              x_grad->numel());
+    platform::ForRange<phi::GPUContext> for_range(dev_ctx, x_grad->numel());
     for_range(functor);
 #endif
   }

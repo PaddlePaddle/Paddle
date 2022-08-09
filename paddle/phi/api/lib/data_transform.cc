@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// clang-format off
 #include "paddle/phi/api/lib/data_transform.h"
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -24,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
-// clang-format on
 
 namespace paddle {
 namespace experimental {
@@ -292,6 +290,31 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     return {*PrepareData(*inputs, target_args_def, transform_flag)};
   }
   return paddle::none;
+}
+
+void TransDataBackend(const phi::DenseTensor* tensor,
+                      Backend target_backend,
+                      phi::DenseTensor* out) {
+  if (tensor) {
+    *out = TransDataPlace(*tensor, phi::TransToPhiPlace(target_backend));
+  }
+}
+
+void TransDataBackend(const std::vector<phi::DenseTensor*>& tensors,
+                      Backend target_backend,
+                      std::vector<phi::DenseTensor*> outs) {
+  size_t n = tensors.size();
+  for (size_t i = 0; i < n; ++i) {
+    TransDataBackend(tensors[i], target_backend, outs[i]);
+  }
+}
+
+void TransDataBackend(const phi::SelectedRows* tensor,
+                      Backend target_backend,
+                      phi::SelectedRows* out) {
+  if (tensor) {
+    TransDataBackend(&tensor->value(), target_backend, out->mutable_value());
+  }
 }
 
 }  // namespace experimental

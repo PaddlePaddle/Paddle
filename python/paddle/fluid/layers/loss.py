@@ -311,7 +311,7 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 def square_error_cost(input, label):
     r"""
 
-    This op accepts input predictions and target label and returns the
+    Accept input predictions and target label and returns the
     squared error cost.
 
     For predictions label, and target label, the equation is:
@@ -325,10 +325,8 @@ def square_error_cost(input, label):
         label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        The tensor storing the element-wise squared error \
-                  difference between input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor storing the element-wise squared 
+        error difference between input and label.
 
     Examples:
 
@@ -546,6 +544,15 @@ def warpctc(input,
                                   fetch_list=[cost.name])
             print(output)
     """
+    if in_dygraph_mode():
+        if input_length is None or label_length is None:
+            raise ValueError(
+                "input_length and label_length must not be None in dygraph mode!"
+            )
+        loss_out = _C_ops.final_state_warpctc(input, label, input_length,
+                                              label_length, blank,
+                                              norm_by_times)
+        return loss_out
     if _non_static_mode():
         if input_length is None or label_length is None:
             raise ValueError(

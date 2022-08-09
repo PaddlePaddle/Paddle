@@ -54,7 +54,8 @@ static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
 static std::unordered_set<std::string> black_ops_list = {"run_program",
                                                          "fused_gate_attention",
                                                          "fused_feedforward",
-                                                         "fused_attention"};
+                                                         "fused_attention",
+                                                         "fused_gemm_epilogue"};
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -1386,7 +1387,7 @@ static std::string GenerateGradNodeCreationContent(
       "%s"
       "  {\n"
       "    paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
-      "paddle::platform::TracerEventType::Operator, 1);\n"
+      "paddle::platform::TracerEventType::OperatorInner, 1);\n"
       "%s"
       "    if(require_any_grad) {\n"
       "      VLOG(6) << \" Construct Grad for %s \"; \n"

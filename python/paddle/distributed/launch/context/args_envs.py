@@ -96,9 +96,12 @@ def parse_args():
                             help="unique id of the job. Default default")
 
     base_group.add_argument("--devices",
+                            "--gpus",
+                            "--npus",
+                            "--xpus",
                             type=str,
                             default=None,
-                            help="accelerate devices. as --gpus,npus,xps")
+                            help="accelerate devices. as --gpus,npus,xpus")
 
     base_group.add_argument("--host", type=str, default=None, help="host ip")
 
