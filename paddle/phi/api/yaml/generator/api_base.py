@@ -584,8 +584,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     if input_name in self.optional_vars:
                         input_tensor_code = input_tensor_code + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
-{code_indent}  if(RecordOpInfoSupplement::IsEnabled()){{
-{code_indent}     input_shapes["{input_name}"] = {PREFIX_TENSOR_NAME}{input_name}.shape;
+{code_indent}  if(platform::RecordOpInfoSupplement::IsEnabled()){{
+{code_indent}     input_shapes["{input_name}"].push_back((*{PREFIX_TENSOR_NAME}{input_name}).dims());
 }}"""
 
                     else:
@@ -593,8 +593,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                                 input_name] == "const Tensor&":
                             input_tensor_code = input_tensor_code + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
-{code_indent}  if(RecordOpInfoSupplement::IsEnabled()){{
-{code_indent}     input_shapes["{input_name}"] = {PREFIX_TENSOR_NAME}{input_name}.shape;
+{code_indent}  if(platform::RecordOpInfoSupplement::IsEnabled()){{
+{code_indent}     input_shapes["{input_name}"].push_back((*{PREFIX_TENSOR_NAME}{input_name}).dims());
 }}"""
 
                         elif self.inputs['input_info'][
@@ -604,6 +604,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
 {code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
+{code_indent}    if(platform::RecordOpInfoSupplement::IsEnabled()){{
+{code_indent}     input_shapes["{input_name}"].push_back((*{PREFIX_TENSOR_NAME}{input_name}[i]).dims());
+}}
 {code_indent}  }}"""
 
                         else:
@@ -716,14 +719,14 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
-{code_indent}  std::map<std::string, std::vector<int64_t>> input_shapes;
+{code_indent}  std::map<std::string, std::vector<phi::DDim>> input_shapes;
 {code_indent}  paddle::platform::RecordEvent infer_shape_record_event(\"{kernel_name} infer_shape\", paddle::platform::TracerEventType::OperatorInner, 1);
 {input_tensors}
 {output_create}
 {self.gene_infer_meta(kernel_output_names, code_indent)}
 {code_indent}  infer_shape_record_event.End();
-{code_indent}  if(RecordOpInfoSupplement::IsEnabled()){{
-{code_indent}    RecordOpInfoSupplement({kernel_name}, input_shapes);
+{code_indent}  if(platform::RecordOpInfoSupplement::IsEnabled()){{
+{code_indent}    platform::RecordOpInfoSupplement("{kernel_name}", input_shapes);
 }}
 
 {code_indent}  using kernel_signature = {kernel_signature};

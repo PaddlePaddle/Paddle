@@ -907,7 +907,7 @@ class Layer(object):
             self._built = True
 
         if in_profiler_mode():
-            with profiler.RecordEvent(self.full_name(),
+            with profiler.RecordEvent(self.__class__.__name__,
                                       profiler.TracerEventType.Forward):
                 outputs = self.forward(*inputs, **kwargs)
         else:
