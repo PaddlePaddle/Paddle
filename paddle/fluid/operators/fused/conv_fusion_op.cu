@@ -43,7 +43,7 @@ template <typename T>
 class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* bias = ctx.Input<Tensor>("Bias");
@@ -109,17 +109,15 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       }
       framework::DDim new_input_shape(phi::make_ddim(new_input_shape_vec));
       transformed_input.Resize(new_input_shape);
-      auto& dev_ctx =
-          ctx.template device_context<paddle::platform::CUDADeviceContext>();
+      auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
       transformed_input =
-          ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
-              new_input_shape, dev_ctx);
+          ctx.AllocateTmpTensor<T, phi::GPUContext>(new_input_shape, dev_ctx);
       const int rank = transformed_input_channel.dims().size();
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+          phi::funcs::PadFunction<phi::GPUContext, T, 4>(
               dev_ctx,
               input_pad,
               transformed_input_channel,
@@ -127,7 +125,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               &transformed_input);
         } break;
         case 5: {
-          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+          phi::funcs::PadFunction<phi::GPUContext, T, 5>(
               dev_ctx,
               input_pad,
               transformed_input_channel,

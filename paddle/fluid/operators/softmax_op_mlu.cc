@@ -117,10 +117,9 @@ REGISTER_OP_MLU_KERNEL(softmax_grad,
                        ops::SoftmaxGradMLUKernel<CNNL_SOFTMAX_ACCURATE, float>,
                        ops::SoftmaxGradMLUKernel<CNNL_SOFTMAX_ACCURATE,
                                                  paddle::platform::float16>);
-REGISTER_OP_MLU_KERNEL(
-    log_softmax,
-    ops::SoftmaxMLUKernel<CNNL_SOFTMAX_LOG, float>,
-    ops::SoftmaxMLUKernel<CNNL_SOFTMAX_ACCURATE, plat::float16>);
+REGISTER_OP_MLU_KERNEL(log_softmax,
+                       ops::SoftmaxMLUKernel<CNNL_SOFTMAX_LOG, float>,
+                       ops::SoftmaxMLUKernel<CNNL_SOFTMAX_LOG, plat::float16>);
 REGISTER_OP_MLU_KERNEL(
     log_softmax_grad,
     ops::SoftmaxGradMLUKernel<CNNL_SOFTMAX_LOG, float>,

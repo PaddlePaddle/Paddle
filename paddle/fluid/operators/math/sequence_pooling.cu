@@ -189,9 +189,9 @@ __global__ void sequence_pool_kernel(Range_OP op,
 }
 
 template <typename T>
-class SequencePoolFunctor<platform::CUDADeviceContext, T> {
+class SequencePoolFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const phi::GPUContext& context,
                   const std::string pooltype,
                   T pad_value,
                   const framework::LoDTensor& input,
@@ -408,9 +408,9 @@ __global__ void sequence_pool_grad_kernel(Range_OP op,
 }
 
 template <typename T>
-class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
+class SequencePoolGradFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const phi::GPUContext& context,
                   const std::string pooltype,
                   const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
@@ -493,10 +493,10 @@ class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
 };
 
 // sequence pooling
-template class SequencePoolFunctor<platform::CUDADeviceContext, float>;
-template class SequencePoolFunctor<platform::CUDADeviceContext, double>;
-template class SequencePoolGradFunctor<platform::CUDADeviceContext, float>;
-template class SequencePoolGradFunctor<platform::CUDADeviceContext, double>;
+template class SequencePoolFunctor<phi::GPUContext, float>;
+template class SequencePoolFunctor<phi::GPUContext, double>;
+template class SequencePoolGradFunctor<phi::GPUContext, float>;
+template class SequencePoolGradFunctor<phi::GPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

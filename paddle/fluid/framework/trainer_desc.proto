@@ -68,7 +68,7 @@ message TrainerDesc {
 
   // add for gpu
   optional string fleet_desc = 37;
-
+  optional bool is_dump_in_simple_mode = 38 [ default = false ];
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;

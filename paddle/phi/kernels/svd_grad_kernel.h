@@ -20,13 +20,13 @@ namespace phi {
 
 template <typename T, typename Context>
 void SvdGradKernel(const Context& dev_ctx,
-                   const DenseTensor& X,
-                   const DenseTensor& U,
-                   const DenseTensor& VH,
-                   const DenseTensor& S,
-                   const DenseTensor& U_grad,
-                   const DenseTensor& VH_grad,
-                   const DenseTensor& S_grad,
+                   const DenseTensor& x,
+                   const DenseTensor& u,
+                   const DenseTensor& vh,
+                   const DenseTensor& s,
+                   const paddle::optional<DenseTensor>& u_grad,
+                   const paddle::optional<DenseTensor>& vh_grad,
+                   const paddle::optional<DenseTensor>& s_grad,
                    bool full_matrices,
                    DenseTensor* X_grad);
 }  // namespace phi

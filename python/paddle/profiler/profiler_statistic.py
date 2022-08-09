@@ -514,7 +514,8 @@ class EventSummary:
                         or 'memset' in host_statistic_node.name.lower():
                         self.add_memory_manipulation_item(host_statistic_node)
                     else:
-                        self.add_userdefined_item(host_statistic_node)
+                        if host_statistic_node.type == TracerEventType.PythonUserDefined:
+                            self.add_userdefined_item(host_statistic_node)
             self.add_kernel_item(host_statistic_nodes[0])
 
         for threadid, root_statistic_node in node_statistic_trees.items():

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace operators {
@@ -48,6 +49,9 @@ class LayerNormXPUKernel : public framework::OpKernel<T> {
     auto* mean_data = mean->mutable_data<float>(ctx.GetPlace());
     auto* variance_data = variance->mutable_data<float>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
+
+    // int layer_norm(Context* ctx, const T* x, T* y, int m, int n, float eps,
+    // const float* scale, const float* bias, float* mean, float* var);
     int r = xpu::layer_norm(dev_ctx.x_context(),
                             reinterpret_cast<const XPUType*>(x_data),
                             reinterpret_cast<XPUType*>(y_data),
@@ -58,12 +62,7 @@ class LayerNormXPUKernel : public framework::OpKernel<T> {
                             bias_data,
                             mean_data,
                             variance_data);
-    PADDLE_ENFORCE_EQ(r,
-                      XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU layer_norm kernel return wrong value[%d %s]",
-                          r,
-                          XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm");
   }
 };
 
@@ -103,6 +102,9 @@ class LayerNormGradXPUKernel : public framework::OpKernel<T> {
         (dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
+    // int layer_norm_grad(Context* ctx, const T* x, const T* dy, T* dx, int m,
+    // int n, float eps, const float* scale, const float* mean, const float*
+    // var, float* dscale, float* dbias);
     int r = xpu::layer_norm_grad(dev_ctx.x_context(),
                                  reinterpret_cast<const XPUType*>(x_data),
                                  reinterpret_cast<const XPUType*>(dy_data),
@@ -115,13 +117,7 @@ class LayerNormGradXPUKernel : public framework::OpKernel<T> {
                                  variance_data,
                                  dscale_data,
                                  dbias_data);
-    PADDLE_ENFORCE_EQ(
-        r,
-        XPU_SUCCESS,
-        platform::errors::External(
-            "XPU layer_norm_grad kernel return wrong value[%d %s]",
-            r,
-            XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm_grad");
   }
 };
 

@@ -31,14 +31,14 @@ paddle::optional<phi::DenseTensor> TensorToDenseTensor(
   return nullptr;
 }
 
-std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
+std::unique_ptr<std::vector<phi::DenseTensor*>> TensorToDenseTensor(
     const std::vector<Tensor>& tensors) {
-  auto pt_tensors = std::make_unique<std::vector<phi::DenseTensor>>();
+  auto pt_tensors = std::make_unique<std::vector<phi::DenseTensor*>>();
   pt_tensors->reserve(tensors.size());
 
   for (const auto& t : tensors) {
     pt_tensors->push_back(
-        *std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+        std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()).get());
   }
 
   return pt_tensors;

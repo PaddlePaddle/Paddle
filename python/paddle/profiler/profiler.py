@@ -173,7 +173,6 @@ def export_chrome_tracing(dir_name: str,
         The return value can be used as parameter ``on_trace_ready`` in :ref:`Profiler <api_paddle_profiler_Profiler>` .
 
         .. code-block:: python
-            :name: code-example1
 
             # required: gpu
             import paddle.profiler as profiler
@@ -224,7 +223,6 @@ def export_protobuf(dir_name: str,
         The return value can be used as parameter ``on_trace_ready`` in :ref:`Profiler <api_paddle_profiler_Profiler>` .
 
         .. code-block:: python
-            :name: code-example1
 
             # required: gpu
             import paddle.profiler as profiler
