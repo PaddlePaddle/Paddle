@@ -343,6 +343,240 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                    nv_ksize,
                                    weight.get(),
                                    bias.get());
+        }
+        if (input_dims.d[1] <= 384 &&
+            engine_->precision() != AnalysisConfig::Precision::kHalf) {
+          /*
+             * input_dims.d[0]: batch(-1)
+             * input_dims.d[1]: length:256
+             * input_dims.d[2]: hidden_size:768
+             input
+               |[b,256,768]
+               |
+            shuffle                 weight   bias
+               |[b,256,768,1,1]      |         |
+               |_____________________|_________|
+               |
+              fc
+               |[b,256,2304,1,1]
+               |
+            shuffle                 mask(fake)  pos   max_length
+               |[b*256,2304,1,1]       |         |        |
+               |                       |         |        |
+               |_______________________|_________|________|
+               |
+               MHA
+               |[b*256,768]
+               |
+            shuffle
+               |[b, 256, 768]
+               |
+               out
+          */
+
+          nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
+                                   static_cast<void*>(weight_data),
+                                   static_cast<int32_t>(weight_t->numel())};
+          nvinfer1::Weights bias{nvinfer1::DataType::kFLOAT,
+                                 static_cast<void*>(bias_data),
+                                 static_cast<int32_t>(bias_t->numel())};
+
+          /*** transpose the weight and bias ***/
+          int head_size = hidden_out / head_number;
+          // [3, head_number, head_size, hidden_in] -> [head_number, 3,
+          // head_size, hidden_in]
+          auto transpose_weight_v2 = [](const float* src,
+                                        float* dst,
+                                        int three,
+                                        int head_number,
+                                        int head_size,
+                                        int hidden_in) {
+            const int HH = head_size * hidden_in;
+            for (int i = 0; i < three; ++i) {
+              for (int n = 0; n < head_number; ++n) {
+                for (int hh = 0; hh < HH; ++hh) {
+                  dst[n * three * HH + i * HH + hh] =
+                      src[i * head_number * HH + n * HH + hh];
+                }
+              }
+            }
+          };
+          // [3, head_number, head_size] -> [head_number, 3, head_size]
+          auto transpose_bias_v2 =
+              [](const float* src, float* dst, int N, int H) {
+                for (int i = 0; i < 3; ++i) {
+                  for (int n = 0; n < N; ++n) {
+                    for (int h = 0; h < H; ++h) {
+                      dst[n * 3 * H + i * H + h] = src[i * N * H + n * H + h];
+                    }
+                  }
+                }
+              };
+          memcpy(weight_data_tmp.data(),
+                 weight_data,
+                 weight_t->numel() * sizeof(float));
+          transpose_weight_v2(weight_data_tmp.data(),
+                              weight_data,
+                              three,
+                              head_number,
+                              head_size,
+                              hidden_in);
+
+          std::vector<float> bias_data_tmp;
+          bias_data_tmp.reserve(bias_t->numel());
+          memcpy(
+              bias_data_tmp.data(), bias_data, bias_t->numel() * sizeof(float));
+          transpose_bias_v2(
+              bias_data_tmp.data(), bias_data, head_number, head_size);
+
+          // add shuffle for FullyConnected layer
+          std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
+          nvinfer1::ITensor* input_shape_tensor = Shape(input);
+          for (int i = 0; i < 5; i++) {
+            reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
+          }
+          for (int i = 0; i < 3; i++) {
+            reshape_before_fc_shape_tensor[i] =
+                GetEleTensorOfShape(input_shape_tensor, i);
+          }
+          auto* reshape_before_fc_layer =
+              TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+          reshape_before_fc_layer->setInput(
+              1, *Concat(reshape_before_fc_shape_tensor));
+          reshape_before_fc_layer->setName(
+              ("shuffle_before_fc_multihead_matmul(Output: " + output_name +
+               ")")
+                  .c_str());
+
+          // add fc layer
+          nvinfer1::ILayer* fc_layer = nullptr;
+          fc_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   FullyConnected,
+                                   *reshape_before_fc_layer->getOutput(0),
+                                   n,
+                                   weight,
+                                   bias);
+
+          // add shuffle for CustomQKVToContextPluginDynamic layer
+          auto* reshape_after_fc_layer =
+              TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
+          std::vector<nvinfer1::ITensor*> mha_input_tensor_shape;
+          mha_input_tensor_shape.push_back(Add1DConstantLayer(-1));
+          mha_input_tensor_shape.push_back(
+              Add1DConstantLayer(hidden_out * 3));  // Q,K,V
+          mha_input_tensor_shape.push_back(Add1DConstantLayer(1));
+          mha_input_tensor_shape.push_back(Add1DConstantLayer(1));
+          reshape_after_fc_layer->setInput(1, *Concat(mha_input_tensor_shape));
+          reshape_after_fc_layer->setName(
+              ("shuffle_after_fc_multihead_matmul(Output: " + output_name + ")")
+                  .c_str());
+
+          // add mha_plugin
+          auto creator = GetPluginRegistry()->getPluginCreator(
+              "CustomQKVToContextPluginDynamic", "2");
+          assert(creator != nullptr);
+          // set the attributes of mha_plugin
+          int type = static_cast<int>(nvinfer1::DataType::kHALF);
+          int var_seqlen = 1;
+          bool has_mask = true;
+          std::vector<nvinfer1::PluginField> fields{
+              {"hidden_size",
+               &hidden_out,
+               nvinfer1::PluginFieldType::kINT32,
+               1},
+              {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32, 1},
+              {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
+              {"has_mask", &has_mask, nvinfer1::PluginFieldType::kINT32, 1},
+              {"var_seqlen",
+               &var_seqlen,
+               nvinfer1::PluginFieldType::kINT32,
+               1}};
+          nvinfer1::PluginFieldCollection* plugin_collection =
+              static_cast<nvinfer1::PluginFieldCollection*>(malloc(
+                  sizeof(*plugin_collection) +
+                  fields.size() *
+                      sizeof(nvinfer1::PluginField)));  // remember to free
+          plugin_collection->nbFields = static_cast<int>(fields.size());
+          plugin_collection->fields = fields.data();
+          auto plugin = creator->createPlugin("CustomQKVToContextPluginDynamic",
+                                              plugin_collection);
+          free(plugin_collection);
+          // set inputs
+          std::vector<nvinfer1::ITensor*> plugin_inputs;
+          // input_0 for plugin
+          plugin_inputs.emplace_back(reshape_after_fc_layer->getOutput(0));
+          // input_1(fake) for plugin
+          std::vector<int> mask = {input_dims.d[1], input_dims.d[1]};
+          nvinfer1::ITensor* mask_tensor = Add1DConstantLayer(mask);
+          plugin_inputs.emplace_back(mask_tensor);
+          // input_2 for plugin
+          std::vector<int> pos_id = {0};
+          int max_batch = 500;
+          for (int i = 1; i < max_batch; i++) {
+            pos_id.push_back(input_dims.d[1] * i);
+          }
+          nvinfer1::ITensor* pos_id_tensor = Add1DConstantLayer(pos_id);
+          // size = batch + 1;
+          nvinfer1::ITensor* batch_tensor =
+              GetEleTensorOfShape(input_shape_tensor, 0);
+          std::vector<int> const_data = {1};
+          nvinfer1::ITensor* const_tensor = Add1DConstantLayer(const_data);
+          auto size_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   ElementWise,
+                                   *batch_tensor,
+                                   *const_tensor,
+                                   nvinfer1::ElementWiseOperation::kSUM);
+          // get size(batch + 1) data from pos_id_tensor
+          nvinfer1::Dims start;
+          nvinfer1::Dims stride;
+          nvinfer1::Dims size;
+
+          start.nbDims = 1;
+          stride.nbDims = 1;
+          size.nbDims = 1;
+
+          start.d[0] = 0;
+          stride.d[0] = 1;
+          size.d[0] = 1;
+
+          auto* slice_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Slice, *pos_id_tensor, start, size, stride);
+          slice_layer->setInput(2, *size_layer->getOutput(0));
+          plugin_inputs.emplace_back(slice_layer->getOutput(0));
+
+          // input_3 for plugin
+          std::vector<int> data(input_dims.d[1], 1);
+          nvinfer1::ITensor* max_seqlen_tensor = Add1DConstantLayer(data);
+          auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
+              engine_,
+              Shuffle,
+              *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
+          nvinfer1::Dims shape_dim;
+          shape_dim.nbDims = 1;
+          shape_dim.d[0] = -1;
+          shuffle_layer->setReshapeDimensions(shape_dim);
+          plugin_inputs.emplace_back(shuffle_layer->getOutput(0));
+          // plugin_layer
+          auto plugin_layer = engine_->network()->addPluginV2(
+              plugin_inputs.data(), plugin_inputs.size(), *plugin);
+
+          // add shuffle
+          auto* reshape_after_mha_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Shuffle, *plugin_layer->getOutput(0));
+          std::vector<nvinfer1::ITensor*> reshape_tensor;
+          reshape_tensor.push_back(Add1DConstantLayer(-1));
+          reshape_tensor.push_back(Add1DConstantLayer(input_dims.d[1]));
+          reshape_tensor.push_back(Add1DConstantLayer(input_dims.d[2]));
+          reshape_after_mha_layer->setInput(1, *Concat(reshape_tensor));
+          reshape_after_mha_layer->setName(
+              ("shuffle_last_multihead_matmul(Output: " + output_name + ")")
+                  .c_str());
+
+          // return
+          layer = reshape_after_mha_layer;
+
         } else {
           fc_layer =
               TRT_ENGINE_ADD_LAYER(engine_,
