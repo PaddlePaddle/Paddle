@@ -240,7 +240,6 @@ class Node {
   // check whether the DescOrder invalid sometime,
   // so expose it is a good idea
   static constexpr int NO_DESC_ORDER = INT_MAX;
-  bool infered_persistable = false;
 
  protected:
   std::string name_;

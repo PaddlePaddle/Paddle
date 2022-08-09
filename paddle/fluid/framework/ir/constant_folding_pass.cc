@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -88,7 +88,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     if (op_node->Op()->Type() == "feed") continue;
     bool input_persis = true;
     for (auto in_node : op_node->inputs) {
-      if (!in_node->infered_persistable && !in_node->Var()->Persistable()) {
+      if (!in_node->Var()->Persistable()) {
         input_persis = false;
       }
     }
@@ -123,7 +123,6 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       op = paddle::framework::OpRegistry::CreateOp(*op_node->Op());
       remove_nodes.emplace(op_node);
       for (auto out_node : op_node->outputs) {
-        out_node->infered_persistable = true;
         new_scope->Var(out_node->Var()->Name());
         new_scope->FindVar(out_node->Var()->Name())->GetMutable<LoDTensor>();
         if (out_node->outputs.size() == 0L) remove_nodes.emplace(out_node);
