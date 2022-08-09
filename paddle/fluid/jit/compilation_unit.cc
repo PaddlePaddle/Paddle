@@ -36,7 +36,7 @@ void CompilationUnit::SetEngine(const std::string &name,
   engine_map_[name] = engine;
 }
 
-const EngineMap &CompilationUnit::EngineMap() const { return engine_map_; }
+const jit::EngineMap &CompilationUnit::EngineMap() const { return engine_map_; }
 
 }  // namespace jit
 }  // namespace paddle

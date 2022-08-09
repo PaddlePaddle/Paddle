@@ -38,7 +38,6 @@ using DenseTensor = phi::DenseTensor;
 using Tensor = paddle::experimental::Tensor;
 using Variable = paddle::framework::Variable;
 using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
-using EngineMap = std::unordered_map<std::string, std::shared_ptr<BaseEngine>>;
 using FunctionInfoMap =
     std::unordered_map<std::string, std::shared_ptr<FunctionInfo>>;
 
@@ -62,8 +61,6 @@ class Layer {
 
   void SetEngine(const std::string& name,
                  const std::shared_ptr<BaseEngine>& engine);
-
-  const jit::EngineMap& EngineMap() const;
 
   const std::shared_ptr<jit::FunctionInfo>& FunctionInfo(
       const std::string& name) const;

@@ -34,10 +34,10 @@ class CompilationUnit {
   void SetEngine(const std::string &name,
                  const std::shared_ptr<BaseEngine> &engine);
 
-  const EngineMap &EngineMap() const;
+  const jit::EngineMap &EngineMap() const;
 
  private:
-  EngineMap engine_map_;
+  jit::EngineMap engine_map_;
 };
 
 }  // namespace jit
