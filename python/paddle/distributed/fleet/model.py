@@ -25,12 +25,6 @@ from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 from . import fleet
 
 
-class Model(object):
-
-    def __init__(self):
-        pass
-
-
 class _RecomputeModelWrapper(paddle.nn.Layer):
 
     def __init__(self, model, segments=2, preserve_rng_state=True):
