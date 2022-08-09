@@ -27,9 +27,12 @@ class Laplace(distribution.Distribution):
 
     Examples:
         .. code-block:: python
-                        m = Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+
+                        import paddle
+
+                        m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                         m.sample()  # Laplace distributed with loc=0, scale=1
-                        # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, 
                         # [3.68546247])
 
     Args:
@@ -97,8 +100,9 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
+                            import paddle
 
-                            m = Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             value = paddle.to_tensor([0.1])
                             m.log_prob(value) 
                             # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -119,7 +123,9 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
-                            m = Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+                            import paddle
+
+                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             m.entropy()
                             # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [1.69314718])
@@ -136,8 +142,9 @@ class Laplace(distribution.Distribution):
         
         Examples:
             .. code-block:: python
+                            import paddle
 
-                            m = Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             value = paddle.to_tensor([0.1])
                             m.cdf(value)
                             # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -159,8 +166,9 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
+                            import paddle
 
-                            m = Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             value = paddle.to_tensor([0.1])
                             m.icdf(value)
                             # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -184,7 +192,9 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
-                            m = Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+                            import paddle
+
+                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             m.sample()  # Laplace distributed with loc=0, scale=1
                             # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [3.68546247])
@@ -206,8 +216,9 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
+                            import paddle
 
-                            m = Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             m.rsample([1])  # Laplace distributed with loc=0, scale=1
                             # Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [[0.04337667]])
@@ -254,7 +265,9 @@ class Laplace(distribution.Distribution):
         
         Examples:
             .. code-block:: python
-                            m = Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+                            import paddle
+
+                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             m._extend_shape([1, 2])
                             # [1, 2, 1]
         """
@@ -276,8 +289,10 @@ class Laplace(distribution.Distribution):
 
         Examples:
             .. code-block:: python
-                            m1 = Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-                            m2 = Laplace(paddle.to_tensor([1.0]), paddle.to_tensor([0.5]))
+                            import paddle
+                            
+                            m1 = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+                            m2 = paddle.distribution.Laplace(paddle.to_tensor([1.0]), paddle.to_tensor([0.5]))
                             m1.kl_divergence(m2)
                             # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [1.04261160])
