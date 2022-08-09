@@ -350,18 +350,21 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         }
       }
 #endif
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto* filter_var_desc = block->FindVar(desc.Input("Filter")[0]);
-      if (!filter_var_desc->Persistable()) {
-        VLOG(3)
-            << "Trt not support filter is  a intermediate tensor in conv2d op.";
-        return false;
+      // In fact, this should include all conv
+      if (op_type == "conv2d") {
+        auto* block = desc.Block();
+        if (block == nullptr) {
+          VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                     "Developers need to check whether block_desc is passed in "
+                     "the pass.";
+          return false;
+        }
+        auto* filter_var_desc = block->FindVar(desc.Input("Filter")[0]);
+        if (!filter_var_desc->Persistable()) {
+          VLOG(3) << "Trt not support filter is  a intermediate tensor in "
+                     "conv2d op.";
+          return false;
+        }
       }
     }
 
