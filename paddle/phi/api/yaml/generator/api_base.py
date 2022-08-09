@@ -141,7 +141,7 @@ class BaseAPI(object):
             'DataLayout': 'DataLayout',
             'DataType': 'DataType',
             'int64_t[]': 'const std::vector<int64_t>&',
-            'int[]': 'const std::vector<int>&'
+            'int[]': 'const std::vector<int>&',
         }
         optional_types_trans = {
             'Tensor': 'const paddle::optional<Tensor>&',

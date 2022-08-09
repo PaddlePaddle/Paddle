@@ -32,12 +32,11 @@ class GPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     auto dims = vectorize(dx->dims());
-    const auto& dev_cxt =
-        ctx.template device_context<platform::CUDADeviceContext>();
+    const auto& dev_cxt = ctx.template device_context<phi::GPUContext>();
     float value = static_cast<float>(0.0f);
     phi::FullKernel<T>(
         static_cast<const typename paddle::framework::ConvertToPhiContext<
-            paddle::platform::CUDADeviceContext>::TYPE&>(dev_cxt),
+            phi::GPUContext>::TYPE&>(dev_cxt),
         dims,
         value,
         phi::DataType::UNDEFINED,

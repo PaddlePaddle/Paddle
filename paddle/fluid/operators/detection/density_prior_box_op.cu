@@ -164,8 +164,7 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     dim3 threads(blockx, 1);
     dim3 grids(gridx, feature_height);
 
-    auto stream =
-        ctx.template device_context<platform::CUDADeviceContext>().stream();
+    auto stream = ctx.template device_context<phi::GPUContext>().stream();
     GenDensityPriorBox<T><<<grids, threads, 0, stream>>>(feature_height,
                                                          feature_width,
                                                          img_height,

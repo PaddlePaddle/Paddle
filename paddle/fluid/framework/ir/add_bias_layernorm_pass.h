@@ -34,8 +34,6 @@ class AddBiasLayernormPass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
-
-  const std::string name_scope_{"add_bias_layernorm_pass"};
 };
 
 }  // namespace ir

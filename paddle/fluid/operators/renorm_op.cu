@@ -161,8 +161,7 @@ class CUDARenormKernel : public framework::OpKernel<T> {
     std::vector<const framework::Tensor*> ins = {x};
     std::vector<framework::Tensor*> outs = {&pow_value};
     auto func = UnsignedPowFunctor<MT, T>(p);
-    const auto& cuda_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    const auto& cuda_ctx = context.template device_context<phi::GPUContext>();
 
     paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
         cuda_ctx, ins, &outs, func);

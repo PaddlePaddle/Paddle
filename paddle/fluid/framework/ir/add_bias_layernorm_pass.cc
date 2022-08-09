@@ -163,7 +163,7 @@ void AddBiasLayernormPass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(layer_norm_in_bias, layer_norm_op);
     IR_NODE_LINK_TO(layer_norm_in_scale, layer_norm_op);
 
-    fusion_count++;
+    ++fusion_count;
   };
   gpd(graph, handler);
   AddStatis(fusion_count);
