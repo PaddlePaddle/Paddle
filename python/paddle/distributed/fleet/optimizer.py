@@ -26,62 +26,15 @@ from . import fleet
 
 class Optimizer(object):
 
-    def __init__(self):
-        self.user_defined_optimizer = None
-
-    def distributed_optimizer(self, optimizer, strategy=None):
-        """
-        Optimizer for distributed training.
-
-        For the distributed training, this method would rebuild a new instance of DistributedOptimizer.
-        Which has basic Optimizer function and special features for distributed training.
-
-        Args:
-            optimizer(Optimizer): The executor to run for init server.
-            strategy(DistributedStrategy): Extra properties for distributed optimizer. 
-                It is recommended to use DistributedStrategy in fleet.init(). The strategy
-                here is for compatibility. If the strategy in fleet.distributed_optimizer() 
-                is not None, then it will overwrite the DistributedStrategy in fleet.init(), 
-                which will take effect in distributed training.
-
-        Returns:
-            Optimizer: Hybrid Optimizer or user define optimizer.
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle
-                import paddle.distributed.fleet as fleet
-                fleet.init(is_collective=True)
-                strategy = fleet.DistributedStrategy()
-                optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-                optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-
-        """
+    def __init__(self, optimizer):
         self.user_defined_optimizer = optimizer
-
-        if strategy is not None:
-            if fleet._is_collective:
-                warnings.warn(
-                    "It is recommended to use DistributedStrategy "
-                    "in fleet.init(). The strategy here is only for compatibility. "
-                    "If the strategy in fleet.distributed_optimizer() is "
-                    "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
-                    "which will take effect in distributed training.")
-            fleet._user_defined_strategy = copy.deepcopy(strategy)
-
-        fleet._context = {}
-
         if fleet.worker_num() > 1:
             if fleet._user_defined_strategy.heter_ccl_mode == False:
-                return HybridParallelOptimizer(optimizer, fleet._hcg,
-                                               fleet._user_defined_strategy)
+                self.user_defined_optimizer = HybridParallelOptimizer(
+                    optimizer, fleet._hcg, fleet._user_defined_strategy)
             else:
-                return HeterParallelOptimizer(optimizer,
-                                              fleet._user_defined_strategy)
-        else:
-            return optimizer
+                self.user_defined_optimizer = HeterParallelOptimizer(
+                    optimizer, fleet._user_defined_strategy)
 
     @dygraph_only
     def state_dict(self):
@@ -344,17 +297,61 @@ class Optimizer(object):
         return self.user_defined_optimizer.clear_grad()
 
 
-optimizer = Optimizer()
-fleet.step = optimizer.step
-fleet.clear_grad = optimizer.clear_grad
-fleet.set_lr = optimizer.set_lr
-fleet.get_lr = optimizer.get_lr
-fleet.state_dict = optimizer.state_dict
-fleet.set_state_dict = optimizer.set_state_dict
+def dygraph_distributed_optimizer(self, optimizer, strategy=None):
+    """
+    Optimizer for distributed training.
+
+    For the distributed training, this method would rebuild a new instance of DistributedOptimizer.
+    Which has basic Optimizer function and special features for distributed training.
+
+    Args:
+        optimizer(Optimizer): The executor to run for init server.
+        strategy(DistributedStrategy): Extra properties for distributed optimizer. 
+            It is recommended to use DistributedStrategy in fleet.init(). The strategy
+            here is for compatibility. If the strategy in fleet.distributed_optimizer() 
+            is not None, then it will overwrite the DistributedStrategy in fleet.init(), 
+            which will take effect in distributed training.
+
+    Returns:
+        Optimizer: Hybrid Optimizer or user define optimizer.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.distributed.fleet as fleet
+            fleet.init(is_collective=True)
+            strategy = fleet.DistributedStrategy()
+            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+
+    """
+
+    if strategy is not None:
+        if fleet._is_collective:
+            warnings.warn(
+                "It is recommended to use DistributedStrategy "
+                "in fleet.init(). The strategy here is only for compatibility. "
+                "If the strategy in fleet.distributed_optimizer() is "
+                "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
+                "which will take effect in distributed training.")
+        fleet._user_defined_strategy = copy.deepcopy(strategy)
+
+    fleet._context = {}
+
+    fleet.step = optimizer.step
+    fleet.clear_grad = optimizer.clear_grad
+    fleet.set_lr = optimizer.set_lr
+    fleet.get_lr = optimizer.get_lr
+    fleet.state_dict = optimizer.state_dict
+    fleet.set_state_dict = optimizer.set_state_dict
+
+    return Optimizer(optimizer)
 
 
 def distributed_optimizer(*args, **kwargs):
     if paddle.fluid.framework._non_static_mode():
-        return optimizer.distributed_optimizer(*args, **kwargs)
+        return dygraph_distributed_optimizer(*args, **kwargs)
     else:
         return fleet.distributed_optimizer(*args, **kwargs)
