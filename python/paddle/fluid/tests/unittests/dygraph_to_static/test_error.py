@@ -452,7 +452,7 @@ def func_ker_error(x):
     return y
 
 class TestKeyError(unittest.TestCase):
-    def test(self):
+    def test_key_error(self):
         paddle.disable_static()
         with self.assertRaises(error.Dy2StKeyError):
             x = paddle.to_tensor([1])
