@@ -443,6 +443,20 @@ class TestSuggestionErrorInRuntime(TestErrorBase):
         for disable_new_error in [0, 1]:
             self._test_raise_new_exception(disable_new_error)
 
+@paddle.jit.to_static
+def func_ker_error(x):
+    d = {
+        'x': x
+    }
+    y = d['y'] + x
+    return y
+
+class TestKeyError(unittest.TestCase):
+    def test(self):
+        paddle.disable_static()
+        with self.assertRaises(error.Dy2StKeyError):
+            x = paddle.to_tensor([1])
+            func_ker_error(x)
 
 if __name__ == '__main__':
     unittest.main()
