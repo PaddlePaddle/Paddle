@@ -1169,7 +1169,7 @@ def diagflat(x, offset=0, name=None):
         if len(x.shape) == 1:
             return _C_ops.final_state_diag(x, offset, padding_value)
         else:
-            y, _ = _C_ops.final_state_flatten(x, 0, -1)
+            y = _C_ops.final_state_flatten(x, 0, -1)
             return _C_ops.final_state_diag(y, offset, padding_value)
 
     if _in_legacy_dygraph():
@@ -1382,7 +1382,8 @@ def empty(shape, dtype=None, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        out = _C_ops.final_state_empty(shape, convert_np_dtype_to_dtype_(dtype))
+        out = _C_ops.final_state_empty(shape, convert_np_dtype_to_dtype_(dtype),
+                                       _current_expected_place())
         out.stop_gradient = True
         return out
 
@@ -1455,7 +1456,8 @@ def empty_like(x, dtype=None, name=None):
 
     if in_dygraph_mode():
         out = _C_ops.final_state_empty(x.shape,
-                                       convert_np_dtype_to_dtype_(dtype))
+                                       convert_np_dtype_to_dtype_(dtype),
+                                       _current_expected_place())
         out.stop_gradient = True
         return out
 
