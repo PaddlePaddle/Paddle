@@ -32,7 +32,7 @@ class TestProcessMesh(unittest.TestCase):
         self.assertEqual(process_mesh.dim_size(-1), 3)
         self.assertEqual(process_mesh.dim_size("x"), 2)
         self.assertEqual(process_mesh.dim_size("y"), 3)
-        self.assertEqual(process_mesh.empty(), True)
+        self.assertEqual(process_mesh.empty(), False)
         self.assertEqual(process_mesh.contains(0), True)
         self.assertEqual(process_mesh.contains(6), False)
         self.assertEqual(process_mesh, process_mesh)
