@@ -582,33 +582,20 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
     if (op_type == "group_norm") {
       bool has_attrs = (desc.HasAttr("epsilon") && desc.HasAttr("groups"));
-      if (has_attrs == false) {
-        return false;
-      }
+      if (has_attrs == false) return false;
       auto registry = GetPluginRegistry();
-      if (registry == nullptr) {
-        return false;
-      }
+      if (registry == nullptr) return false;
       std::string layout_str =
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout"));
       // for now, only NCHW were support by group norm tensorrt plugin
-      if (layout_str != "NCHW") {
-        return false;
-      }
+      if (layout_str != "NCHW") return false;
       // for now, only float32 were support by group norm tensorrt plugin
       auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
+      if (block == nullptr) return false;
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       auto dtype = x_var_desc->GetDataType();
-      if (dtype != 5) {
-        return false;
-      }
+      if (dtype != 5) return false;
     }
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {
