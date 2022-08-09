@@ -109,7 +109,9 @@ interpreter::CostInfo InterpreterCore::DryRun(
     async_work_queue_ = GetWorkQueue();
 
     // lazy initialization of gc, do not create gc is the program only run once
-    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+    if (!gc_) {
+      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+    }
 
     ExecuteInstructionList(vec_instruction_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -138,7 +140,9 @@ paddle::framework::FetchList InterpreterCore::Run(
     async_work_queue_ = GetWorkQueue();
 
     // lazy initialization of gc, do not create gc is the program only run once
-    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+    if (!gc_) {
+      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+    }
 
     ExecuteInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -185,7 +189,9 @@ paddle::framework::FetchList InterpreterCore::Run(
     async_work_queue_ = GetWorkQueue();
 
     // lazy initialization of gc, do not create gc is the program only run once
-    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+    if (!gc_) {
+      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+    }
 
     ExecuteInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL

@@ -427,7 +427,7 @@ def _prepare_fleet_executor():
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
-    return str(program.desc.serialize_to_string()) + _get_program_cache_key(
+    return program.desc.cached_hash_str() + _get_program_cache_key(
         feed, fetch_list)
 
 
@@ -1480,9 +1480,7 @@ class Executor(object):
                                                   scope)
                     self._executor_cache._cached_executors[key] = (new_program,
                                                                    new_exe)
-                    print('not found', flush=1)
-                else:
-                    print('found', flush=1)
+
                 program, new_exe = self._executor_cache._cached_executors[key]
 
                 self._feed_data(program, feed, feed_var_name, scope)

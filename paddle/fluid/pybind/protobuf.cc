@@ -101,8 +101,14 @@ void BindProgramDesc(pybind11::module *m) {
           pybind11::arg("version") = pd::kCurProgramVersion)
       .def("_version",
            [](pd::ProgramDesc &self) -> int64_t { return self.Version(); })
-      .def("get_op_deps", [](const framework::ProgramDesc &program) {
-        return framework::ir::GetOpDependencies(program);
+      .def("get_op_deps",
+           [](const framework::ProgramDesc &program) {
+             return framework::ir::GetOpDependencies(program);
+           })
+      .def("need_update", &pd::ProgramDesc::NeedUpdate)
+      .def("cached_hash_str", [](pd::ProgramDesc &self) {
+        return self.CachedHashString();
+        // return pybind11::bytes(self.CachedHashString());
       });
 }
 
