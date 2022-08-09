@@ -1071,7 +1071,7 @@
   backward : graph_send_recv_grad
 
 - api : graph_send_ue_recv
-  args : (Tensor x, Tensor e, Tensor src_index, Tensor dst_index, str compute_type, str pool_type, IntArray out_size)
+  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str compute_type, str pool_type, IntArray out_size)
   output : Tensor(out), Tensor(dst_count)
   infer_meta :
     func : GraphSendUERecvInferMeta

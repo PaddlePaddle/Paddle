@@ -22,7 +22,7 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/graph_send_ue_recv_funcs.h"
-#include "paddle/phi/kernels/impl/graph_send_ue_recv_kernel_impl.h"
+#include "paddle/phi/kernels/impl/graph_messaage_passing_impl.h"
 
 namespace phi {
 
@@ -118,21 +118,15 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
   const int& index_size = src_index.dims()[0];
   auto out_dims = out->dims();
   int64_t memset_size = 1;
+  std::vector<int64_t> dims_ = phi::vectorize(out_dims);
   if (out_size <= 0) {
-    for (int i = 0; i < out_dims.size(); i++) {
-      memset_size *= out_dims[i];
-    }
+    dims_[0] = x.dims()[0];
   } else {
-    // set out dim following out_size.
-    std::vector<int64_t> dims_ = phi::vectorize(out_dims);
-    if (dims_.size() > 0) {
-      dims_[0] = out_size;
-    }
-    out->Resize(phi::make_ddim(dims_));
-    memset_size = out_size;
-    for (int i = 1; i < out_dims.size(); ++i) {
-      memset_size *= out_dims[i];
-    }
+    dims_[0] = out_size;
+  }
+  out->Resize(phi::make_ddim(dims_));
+  for (size_t i = 0; i < dims_.size(); i++) {
+    memset_size *= dims_[i];
   }
 
   ctx.template Alloc<T>(out);

@@ -21,7 +21,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
-#include "paddle/phi/kernels/impl/graph_send_ue_recv_kernel_impl.h"
+#include "paddle/phi/kernels/impl/graph_messaage_passing_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
@@ -558,7 +558,7 @@ void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
 template <typename T, typename Context>
 void GraphSendUERecvGradKernel(const Context& ctx,
                                const DenseTensor& x,
-                               const DenseTensor& e,
+                               const DenseTensor& y,
                                const DenseTensor& src_index,
                                const DenseTensor& dst_index,
                                const paddle::optional<DenseTensor>& out,
@@ -567,20 +567,20 @@ void GraphSendUERecvGradKernel(const Context& ctx,
                                const std::string& compute_type,
                                const std::string& pool_type,
                                DenseTensor* x_grad,
-                               DenseTensor* e_grad) {
+                               DenseTensor* y_grad) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendUERecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
         ctx,
         out_grad,
         x,
-        e,
+        y,
         src_index,
         dst_index,
         compute_type,
         pool_type,
         x_grad,
-        e_grad,
+        y_grad,
         dst_count.get_ptr(),
         out.get_ptr());
   } else if (index_type == phi::DataType::INT64) {
@@ -588,13 +588,13 @@ void GraphSendUERecvGradKernel(const Context& ctx,
         ctx,
         out_grad,
         x,
-        e,
+        y,
         src_index,
         dst_index,
         compute_type,
         pool_type,
         x_grad,
-        e_grad,
+        y_grad,
         dst_count.get_ptr(),
         out.get_ptr());
   }

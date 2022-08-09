@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/kernels/impl/graph_send_ue_recv_kernel_impl.h"
+#include "paddle/phi/kernels/impl/graph_messaage_passing_impl.h"
 
 namespace phi {
 

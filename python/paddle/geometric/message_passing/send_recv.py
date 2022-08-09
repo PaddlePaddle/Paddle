@@ -188,7 +188,7 @@ def send_ue_recv(x,
                 [1, 4, 5],
                 [2, 6, 7]]
 
-           E = [1, 1, 1]
+           Y = [1, 1, 1]
 
            src_index = [0, 1, 2, 0]
 
@@ -207,7 +207,7 @@ def send_ue_recv(x,
                   [2, 5, 6]]
     Args:
         x (Tensor): The input node feature tensor, and the available data type is float32, float64, int32, int64.
-        e (Tensor): The input edge feature tensor, and the available data type is float32, float64, int32, int64.
+        y (Tensor): The input edge feature tensor, and the available data type is float32, float64, int32, int64.
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64.
@@ -233,28 +233,28 @@ def send_ue_recv(x,
             import paddle
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
-            e = paddle.to_tensor([1, 1, 1, 1], dtype="float32")
+            y = paddle.to_tensor([1, 1, 1, 1], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.geometric.send_ue_recv(x, e, src_index, dst_index, compute_type="add", pool_type="sum")
+            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, compute_type="add", pool_type="sum")
             # Outputs: [[1., 3., 4.], [4., 10., 12.], [2., 5., 6.]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
-            e = paddle.to_tensor([1, 1, 1], dtype="float32")
+            y = paddle.to_tensor([1, 1, 1], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
             out_size = paddle.max(dst_index) + 1
-            out = paddle.geometric.send_ue_recv(x, e, src_index, dst_index, compute_type="add", pool_type="sum", out_size=out_size)
+            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, compute_type="add", pool_type="sum", out_size=out_size)
             # Outputs: [[1., 3., 4.], [[4., 10., 12.]]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
-            e = paddle.to_tensor([1, 1, 1], dtype="float32")
+            y = paddle.to_tensor([1, 1, 1], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.geometric.send_ue_recv(x, e, src_index, dst_index, compute_type="add", pool_type="sum")
+            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, compute_type="add", pool_type="sum")
             # Outputs: [[1., 3., 4.], [4., 10., 12.], [0., 0., 0.]]
 
     """
@@ -299,7 +299,7 @@ def send_ue_recv(x,
         x, "X", ("float32", "float64", "int32", "int64", "float16"),
         "graph_send_ue_recv")
     check_variable_and_dtype(
-        y, "E", ("float32", "float64", "int32", "int64", "float16"),
+        y, "Y", ("float32", "float64", "int32", "int64", "float16"),
         "graph_send_ue_recv")
     check_variable_and_dtype(src_index, "Src_index", ("int32", "int64"),
                              "graph_send_ue_recv")
@@ -317,7 +317,7 @@ def send_ue_recv(x,
     dst_count = helper.create_variable_for_type_inference(dtype="int32",
                                                           stop_gradient=True)
 
-    inputs = {"X": x, "E": y, "Src_index": src_index, "Dst_index": dst_index}
+    inputs = {"X": x, "Y": y, "Src_index": src_index, "Dst_index": dst_index}
     attrs = {
         "compute_type": compute_type.upper(),
         "pool_type": pool_type.upper()

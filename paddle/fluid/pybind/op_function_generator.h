@@ -226,7 +226,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "Mean3",
       "Var3"}},
     {"graph_send_recv", {"X", "Src_index", "Dst_index", "Out_size"}},
-    {"graph_send_ue_recv", {"X", "E", "Src_index", "Dst_index", "Out_size"}},
+    {"graph_send_ue_recv", {"X", "Y", "Src_index", "Dst_index", "Out_size"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.

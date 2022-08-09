@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void GraphSendUERecvGradKernel(const Context& ctx,
                                const DenseTensor& x,
-                               const DenseTensor& e,
+                               const DenseTensor& y,
                                const DenseTensor& src_index,
                                const DenseTensor& dst_index,
                                const paddle::optional<DenseTensor>& out,
@@ -32,5 +32,5 @@ void GraphSendUERecvGradKernel(const Context& ctx,
                                const std::string& compute_type,
                                const std::string& pool_type,
                                DenseTensor* x_grad,
-                               DenseTensor* e_grad);
+                               DenseTensor* y_grad);
 }  // namespace phi

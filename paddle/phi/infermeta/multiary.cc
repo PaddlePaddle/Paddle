@@ -2600,7 +2600,7 @@ void Yolov3LossInferMeta(const MetaTensor& x,
 }
 
 void GraphSendUERecvInferMeta(const MetaTensor& x,
-                              const MetaTensor& e,
+                              const MetaTensor& y,
                               const MetaTensor& src_index,
                               const MetaTensor& dst_index,
                               const std::string& compute_type,
@@ -2647,43 +2647,43 @@ void GraphSendUERecvInferMeta(const MetaTensor& x,
                     phi::errors::InvalidArgument(
                         "Src_index and Dst_index should have the same shape."));
 
-  auto e_dims = e.dims();
+  auto y_dims = y.dims();
   PADDLE_ENFORCE_EQ(
-      e_dims[0],
+      y_dims[0],
       src_index_dims[0],
       phi::errors::InvalidArgument(
-          "Expect Input E to have size %d as Src_index on the first dimension, "
+          "Expect Input Y to have size %d as Src_index on the first dimension, "
           "but we get %d",
           src_index_dims[0],
-          e_dims[0]));
+          y_dims[0]));
 
   auto x_dims = x.dims();
   if (pool_type == "MEAN") {
-    dst_count->set_dims({x_dims[0]});
+    dst_count->set_dims({-1});
     dst_count->set_dtype(DataType::INT32);
   }
 
   // Infer out's shape according to x and e(need broadcasting condition)
   out->set_dtype(x.dtype());
   auto x_dims1 = phi::vectorize<int>(x_dims);
-  auto e_dims1 = phi::vectorize<int>(e_dims);
+  auto y_dims1 = phi::vectorize<int>(y_dims);
   std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
-  std::vector<int> e_dims2(e_dims1.begin() + 1, e_dims1.end());
+  std::vector<int> y_dims2(y_dims1.begin() + 1, y_dims1.end());
 
-  int max_dim = std::max(x_dims2.size(), e_dims2.size());
-  int axis = std::abs(static_cast<int>(x_dims2.size() - e_dims2.size()));
+  int max_dim = std::max(x_dims2.size(), y_dims2.size());
+  int axis = std::abs(static_cast<int>(x_dims2.size() - y_dims2.size()));
   std::vector<int> x_dims_array(max_dim);
-  std::vector<int> e_dims_array(max_dim);
+  std::vector<int> y_dims_array(max_dim);
   std::vector<int> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
   phi::funcs::GetBroadcastDimsArrays(phi::make_ddim(x_dims2),
-                                     phi::make_ddim(e_dims2),
+                                     phi::make_ddim(y_dims2),
                                      x_dims_array.data(),
-                                     e_dims_array.data(),
+                                     y_dims_array.data(),
                                      out_dims_array.data(),
                                      max_dim,
                                      axis);
-  out_dims_array.insert(out_dims_array.begin(), x_dims[0]);
+  out_dims_array.insert(out_dims_array.begin(), -1);
   out->set_dims(phi::make_ddim(out_dims_array));
 }
 

@@ -40,8 +40,8 @@ class GraphSendUERecvGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto in_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), in_dims);
-    auto e_dims = ctx->GetInputDim("E");
-    ctx->SetOutputDim(framework::GradVarName("E"), e_dims);
+    auto y_dims = ctx->GetInputDim("Y");
+    ctx->SetOutputDim(framework::GradVarName("Y"), y_dims);
   }
 
  protected:
@@ -58,7 +58,7 @@ class GraphSendUERecvOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "The input tensor with data type float32, float64, int32, int64.");
-    AddInput("E",
+    AddInput("Y",
              "The input edge weight tensor, data type should be same with X");
     AddInput("Src_index", "The source index tensor.");
     AddInput("Dst_index", "The destination index tensor.");
@@ -90,13 +90,13 @@ class GraphSendUERecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Graph Learning Send_UE_Recv combine operator.
 
-$Out = Recv(Compute(Send(X, Src_index), E, compute_type), Dst_index, pool_type)$
+$Out = Recv(Compute(Send(X, Src_index), Y, compute_type), Dst_index, pool_type)$
 
 This operator is mainly used in Graph Learning domain, and the main purpose is to reduce
 intermediate memory consumption in the process of message passing.
 
 Take `X` as the input tensor, we first use `src_index` to gather corresponding data.
-Then the gather data should compute with `E` in different compute_types, like add, sub, mul, and div,
+Then the gather data should compute with `Y` in different compute_types, like add, sub, mul, and div,
 and get the computation result. Then, use `dst_index` to update the corresponding position of output 
 tensor in different pooling types, like sum, mean, max, or min.
 
@@ -113,7 +113,7 @@ class GraphSendUERecvGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("graph_send_ue_recv_grad");
     op->SetInput("X", this->Input("X"));
-    op->SetInput("E", this->Input("E"));
+    op->SetInput("Y", this->Input("Y"));
     op->SetInput("Src_index", this->Input("Src_index"));
     op->SetInput("Dst_index", this->Input("Dst_index"));
 
@@ -128,7 +128,7 @@ class GraphSendUERecvGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetOutput(framework::GradVarName("E"), this->InputGrad("E"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
     op->SetAttrMap(this->Attrs());
   }
 };

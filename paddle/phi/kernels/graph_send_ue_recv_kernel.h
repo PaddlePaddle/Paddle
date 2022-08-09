@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void GraphSendUERecvKernel(const Context& ctx,
                            const DenseTensor& x,
-                           const DenseTensor& e,
+                           const DenseTensor& y,
                            const DenseTensor& src_index,
                            const DenseTensor& dst_index,
                            const std::string& compute_type,

@@ -467,7 +467,7 @@ void Yolov3LossInferMeta(const MetaTensor& x,
                          MetaTensor* gt_match_mask);
 
 void GraphSendUERecvInferMeta(const MetaTensor& x,
-                              const MetaTensor& e,
+                              const MetaTensor& y,
                               const MetaTensor& src_index,
                               const MetaTensor& dst_index,
                               const std::string& compute_type,

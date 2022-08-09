@@ -20,12 +20,12 @@ KernelSignature GraphSendUERecvOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("Out_size")) {
     return KernelSignature("graph_send_ue_recv",
-                           {"X", "E", "Src_index", "Dst_index"},
+                           {"X", "Y", "Src_index", "Dst_index"},
                            {"compute_type", "pool_type", "Out_size"},
                            {"Out", "Dst_count"});
   } else {
     return KernelSignature("graph_send_ue_recv",
-                           {"X", "E", "Src_index", "Dst_index"},
+                           {"X", "Y", "Src_index", "Dst_index"},
                            {"compute_type", "pool_type", "out_size"},
                            {"Out", "Dst_count"});
   }
@@ -35,9 +35,9 @@ KernelSignature GraphSendUERecvGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "graph_send_ue_recv_grad",
-      {"X", "E", "Src_index", "Dst_index", "Out", "Dst_count", "Out@GRAD"},
+      {"X", "Y", "Src_index", "Dst_index", "Out", "Dst_count", "Out@GRAD"},
       {"compute_type", "pool_type"},
-      {"X@GRAD", "E@GRAD"});
+      {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi
