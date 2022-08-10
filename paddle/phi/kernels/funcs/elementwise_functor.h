@@ -21,7 +21,7 @@ limitations under the License. */
 #if defined(__xpu__)
 #include <xpu/runtime.h>
 
-#include "xpu/kernel/math_xpu2.h"  //pow()
+#include "xpu/kernel/math_xpu2.h"  // pow()
 #endif
 
 namespace phi {
@@ -557,7 +557,7 @@ struct FloorDivideFunctor {
 #ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
 #endif
-    return static_cast<T>(std::trunc(a / b));
+    return static_cast<T>(a / b);
   }
 };
 
@@ -567,7 +567,7 @@ struct InverseFloorDivideFunctor {
 #ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
 #endif
-    return static_cast<T>(std::trunc(b / a));
+    return static_cast<T>(b / a);
   }
 };
 
