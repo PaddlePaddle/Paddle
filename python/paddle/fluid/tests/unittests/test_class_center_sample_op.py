@@ -77,7 +77,6 @@ class TestClassCenterSampleOp(OpTest):
     def initParams(self):
         self.op_type = "class_center_sample"
         self.python_api = python_api
-        #self.python_out_sig = ["RemappedLabel", "SampledLocalClassCenter"]
         self.batch_size = 20
         self.num_samples = 6
         self.num_classes = 10
