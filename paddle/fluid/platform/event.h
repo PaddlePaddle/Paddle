@@ -141,6 +141,7 @@ class CudaEvent {
 #else
     cudaEventCreateWithFlags(&event_, flags_);
 #endif
+    VLOG(4) << "CudaEvent " << event_;
   }
 
   explicit CudaEvent(unsigned int flags) : flags_(flags) {
@@ -149,6 +150,7 @@ class CudaEvent {
 #else
     cudaEventCreateWithFlags(&event_, flags_);
 #endif
+    VLOG(4) << "CudaEvent " << event_;
   }
 
   ~CudaEvent() {

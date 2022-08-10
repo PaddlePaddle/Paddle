@@ -51,7 +51,7 @@ class SplitPrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "num_or_sections indicates the number of equal sized sub-Tensors that "
         "the input will be divided into. If num_or_sections has more then one "
         "element, the length of it indicates the number of sub-Tensors and the "
-        "elements in it indicate the sizes of sub-Tensors’ dimension orderly. "
+        "elements in it indicate the sizes of sub-Tensors' dimension orderly. "
         "The length of the vector must not be larger than the input's size of "
         "specified axis.");
     AddComment(R"DOC(

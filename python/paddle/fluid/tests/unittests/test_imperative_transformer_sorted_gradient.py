@@ -1133,19 +1133,19 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     4]] = out[k]
         if _in_legacy_dygraph():
-            self.assertTrue(
-                np.array_equal(static_avg_cost_value, dy_avg_cost_value))
-            self.assertTrue(
-                np.array_equal(static_sum_cost_value, dy_sum_cost_value))
-            self.assertTrue(
-                np.array_equal(static_predict_value, dy_predict_value))
-            self.assertTrue(
-                np.array_equal(static_token_num_value, dy_token_num_value))
+            np.testing.assert_array_equal(static_avg_cost_value,
+                                          dy_avg_cost_value)
+            np.testing.assert_array_equal(static_sum_cost_value,
+                                          dy_sum_cost_value)
+            np.testing.assert_array_equal(static_predict_value,
+                                          dy_predict_value)
+            np.testing.assert_array_equal(static_token_num_value,
+                                          dy_token_num_value)
 
             for key, value in six.iteritems(static_param_init):
-                self.assertTrue(np.array_equal(value, dy_param_init[key]))
+                np.testing.assert_array_equal(value, dy_param_init[key])
             for key, value in six.iteritems(static_param_updated):
-                self.assertTrue(np.array_equal(value, dy_param_updated[key]))
+                np.testing.assert_array_equal(value, dy_param_updated[key])
 
         # compare eager result with imperative result
         with guard():
@@ -1164,7 +1164,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
         self.assertTrue(np.allclose(dy_token_num_value, eager_token_num_value))
 
         for key, value in six.iteritems(static_param_init):
-            self.assertTrue(np.array_equal(value, eager_param_init[key]))
+            np.testing.assert_array_equal(value, eager_param_init[key])
         for key, value in six.iteritems(dy_param_updated):
             self.assertTrue(np.allclose(value, eager_param_updated[key]))
 

@@ -17,6 +17,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+
 namespace paddle {
 namespace framework {
 
