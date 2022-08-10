@@ -202,8 +202,8 @@ class TestPadAPI(unittest.TestCase):
                                           mode,
                                           value,
                                           data_format="NDHWC")
-            self.assertTrue(np.allclose(fetches[0], np_out1))
-            self.assertTrue(np.allclose(fetches[1], np_out2))
+            np.testing.assert_allclose(fetches[0], np_out1)
+            np.testing.assert_allclose(fetches[1], np_out2)
 
     def test_dygraph_1(self):
         paddle.disable_static()
@@ -238,8 +238,8 @@ class TestPadAPI(unittest.TestCase):
                    value=value,
                    data_format="NDHWC")
 
-        self.assertTrue(np.allclose(y1.numpy(), np_out1))
-        self.assertTrue(np.allclose(y2.numpy(), np_out2))
+        np.testing.assert_allclose(y1.numpy(), np_out1)
+        np.testing.assert_allclose(y2.numpy(), np_out2)
 
     def test_dygraph_2(self):
         paddle.disable_static()
@@ -274,8 +274,8 @@ class TestPadAPI(unittest.TestCase):
                    value=value,
                    data_format="NHWC")
 
-        self.assertTrue(np.allclose(y1.numpy(), np_out1))
-        self.assertTrue(np.allclose(y2.numpy(), np_out2))
+        np.testing.assert_allclose(y1.numpy(), np_out1)
+        np.testing.assert_allclose(y2.numpy(), np_out2)
 
     def test_dygraph_3(self):
         paddle.disable_static()
@@ -310,8 +310,8 @@ class TestPadAPI(unittest.TestCase):
                    value=value,
                    data_format="NLC")
 
-        self.assertTrue(np.allclose(y1.numpy(), np_out1))
-        self.assertTrue(np.allclose(y2.numpy(), np_out2))
+        np.testing.assert_allclose(y1.numpy(), np_out1)
+        np.testing.assert_allclose(y2.numpy(), np_out2)
 
 
 class TestPad1dAPI(unittest.TestCase):
@@ -360,14 +360,14 @@ class TestPad1dAPI(unittest.TestCase):
                                      "constant",
                                      value=value,
                                      data_format="NCL")
-        self.assertTrue(np.allclose(output.numpy(), np_out))
+        np.testing.assert_allclose(output.numpy(), np_out)
 
         output = pad_constant_int(data)
         np_out = self._get_numpy_out(input_data, [pad_int] * 2,
                                      "constant",
                                      value=value,
                                      data_format="NCL")
-        self.assertTrue(np.allclose(output.numpy(), np_out))
+        np.testing.assert_allclose(output.numpy(), np_out)
 
 
 class TestPad2dAPI(unittest.TestCase):
@@ -418,14 +418,14 @@ class TestPad2dAPI(unittest.TestCase):
                                      "constant",
                                      value=value,
                                      data_format="NCHW")
-        self.assertTrue(np.allclose(output.numpy(), np_out))
+        np.testing.assert_allclose(output.numpy(), np_out)
 
         output = pad_constant_int(data)
         np_out = self._get_numpy_out(input_data, [pad_int] * 4,
                                      "constant",
                                      value=value,
                                      data_format="NCHW")
-        self.assertTrue(np.allclose(output.numpy(), np_out))
+        np.testing.assert_allclose(output.numpy(), np_out)
 
 
 class TestPad3dAPI(unittest.TestCase):
@@ -478,14 +478,14 @@ class TestPad3dAPI(unittest.TestCase):
                                      "constant",
                                      value=value,
                                      data_format="NCDHW")
-        self.assertTrue(np.allclose(output.numpy(), np_out))
+        np.testing.assert_allclose(output.numpy(), np_out)
 
         output = pad_constant_int(data)
         np_out = self._get_numpy_out(input_data, [pad_int] * 6,
                                      "constant",
                                      value=value,
                                      data_format="NCDHW")
-        self.assertTrue(np.allclose(output.numpy(), np_out))
+        np.testing.assert_allclose(output.numpy(), np_out)
 
 
 class TestPad3dOpNpuError(unittest.TestCase):

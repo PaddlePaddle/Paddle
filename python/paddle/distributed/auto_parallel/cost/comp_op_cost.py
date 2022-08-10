@@ -16,6 +16,25 @@ from .base_cost import Cost, register_op_cost, CompOpCost, _g_op_cost_factory
 
 
 @register_op_cost
+class AdamOpCost(CompOpCost):
+    OP_TYPE = "adam"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(AdamOpCost, self).__init__(op=op,
+                                         op_desc=op_desc,
+                                         cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
 class AssignOpCost(CompOpCost):
     OP_TYPE = "assign"
 

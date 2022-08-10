@@ -50,7 +50,8 @@ class TestL2LossOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'],
                         'Out',
-                        max_relative_error=self.max_relative_error)
+                        max_relative_error=self.max_relative_error,
+                        check_eager=True)
 
 
 class TestL2LossDeterministic(unittest.TestCase):
@@ -61,7 +62,7 @@ class TestL2LossDeterministic(unittest.TestCase):
             x = paddle.to_tensor(x_np)
             y1 = _C_ops.squared_l2_norm(x)
             y2 = _C_ops.squared_l2_norm(x)
-            self.assertTrue(np.array_equal(y1.numpy(), y2.numpy()))
+            np.testing.assert_array_equal(y1.numpy(), y2.numpy())
 
     def test_main(self):
         self.check_place(paddle.CPUPlace())

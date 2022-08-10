@@ -115,7 +115,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/device_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -331,8 +331,9 @@ bool SupportsVNNI() {
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
-#endif
+#else
   return true;
+#endif
 }
 
 bool IsCompiledWithDIST() {
@@ -1166,34 +1167,33 @@ All parameter, weight, gradient are variables in Paddle.
       .def("empty", []() { return kEmptyVarName; })
       .def("temp", []() { return kTempVarName; });
 
-  // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
-                  [](paddle::platform::CPUPlace& place)
-                      -> paddle::platform::DeviceContext* {
-    auto* context = new phi::CPUContext();
-    context->SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-        .GetAllocator(place)
-        .get());
-    context->SetHostAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-        .GetAllocator(paddle::platform::CPUPlace())
-        .get());
-    context->SetZeroAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-        .GetZeroAllocator(place)
-        .get());
-    return context;
+                  [](paddle::platform::CPUPlace &place)
+                      -> paddle::platform::DeviceContext * {
+                    auto *context = new phi::CPUContext();
+                    context->SetAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(place)
+                            .get());
+                    context->SetHostAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(paddle::platform::CPUPlace())
+                            .get());
+                    context->SetZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(place)
+                            .get());
+                    return context;
                   })
-      .def_static("create",
-                  [](paddle::platform::XPUPlace& place)
-                      -> paddle::platform::DeviceContext* {
+      .def_static(
+          "create",
+          [](paddle::platform::XPUPlace &place)
+              -> paddle::platform::DeviceContext * {
 #ifndef PADDLE_WITH_XPU
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use XPUPlace in CPU/GPU version, "
-                 "Please recompile or reinstall Paddle with XPU support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot use XPUPlace in CPU/GPU version, "
+                "Please recompile or reinstall Paddle with XPU support."));
 #else
       auto* context = new paddle::platform::XPUDeviceContext(place);
       context->SetAllocator(
@@ -1210,54 +1210,53 @@ All parameter, weight, gradient are variables in Paddle.
           .get());
       return context;
 #endif
-                  })
-        .def_static("create",
-                  [](paddle::platform::MLUPlace& place)
-                      -> paddle::platform::DeviceContext* {
+          })
+      .def_static(
+          "create",
+          [](paddle::platform::MLUPlace &place)
+              -> paddle::platform::DeviceContext * {
 #ifndef PADDLE_WITH_MLU
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use MLUPlace in CPU/GPU version, "
-                 "Please recompile or reinstall Paddle with MLU support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot use MLUPlace in CPU/GPU version, "
+                "Please recompile or reinstall Paddle with MLU support."));
 #else
                     return new paddle::platform::MLUDeviceContext(place);
 #endif
-                  })
-        .def_static("create",
-                    [](paddle::platform::NPUPlace& place)
-                        -> paddle::platform::DeviceContext* {
+          })
+      .def_static(
+          "create",
+          [](paddle::platform::NPUPlace &place)
+              -> paddle::platform::DeviceContext * {
 #ifndef PADDLE_WITH_ASCEND_CL
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use NPUPlace in CPU/GPU/XPU version, "
-                 "Please recompile or reinstall Paddle with NPU support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot use NPUPlace in CPU/GPU/XPU version, "
+                "Please recompile or reinstall Paddle with NPU support."));
 #else
                 return new paddle::platform::NPUDeviceContext(place);
 #endif
-        })
-        .def_static("create",
-                    [](paddle::platform::CustomPlace& place)
-                        -> paddle::platform::DeviceContext* {
+          })
+      .def_static("create",
+                  [](paddle::platform::CustomPlace &place)
+                      -> paddle::platform::DeviceContext * {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use CustomPlace in CPU/GPU/XPU version, "
-                 "Please recompile or reinstall Paddle with "
-                 "CustomDevice support."));
+                    PADDLE_THROW(platform::errors::PermissionDenied(
+                        "Cannot use CustomPlace in CPU/GPU/XPU version, "
+                        "Please recompile or reinstall Paddle with "
+                        "CustomDevice support."));
 #else
                 return new paddle::platform::CustomDeviceContext(place);
 #endif
-        })
-      .def_static("create",
-                  [](paddle::platform::CUDAPlace& place)
-                      -> paddle::platform::DeviceContext* {
+                  })
+      .def_static(
+          "create",
+          [](paddle::platform::CUDAPlace &place)
+              -> paddle::platform::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use CUDAPlace in CPU only version, "
-                 "Please recompile or reinstall Paddle with CUDA support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot use CUDAPlace in CPU only version, "
+                "Please recompile or reinstall Paddle with CUDA support."));
 #else
-      auto* context = new paddle::platform::CUDADeviceContext(place);
+      auto* context = new phi::GPUContext(place);
       context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(place, context->stream())
@@ -1277,20 +1276,19 @@ All parameter, weight, gradient are variables in Paddle.
       context->PartialInitWithAllocator();
       return context;
 #endif
-                  })
-          .def_static("create",
-                [](paddle::platform::CUDAPinnedPlace& place)
-                        -> paddle::platform::DeviceContext* {
+          })
+      .def_static(
+          "create",
+          [](paddle::platform::CUDAPinnedPlace &place)
+              -> paddle::platform::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use CUDAPinnedPlace in CPU only version, "
-                 "Please recompile or reinstall Paddle with CUDA support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot use CUDAPinnedPlace in CPU only version, "
+                "Please recompile or reinstall Paddle with CUDA support."));
 #else
                   return new paddle::platform::CUDAPinnedDeviceContext(place);
 #endif
-                });;
-// clang-format on
+          });
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif

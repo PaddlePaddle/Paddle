@@ -40,8 +40,15 @@ class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
             "http_proxy": "",
             "CPU_NUM": "2",
             "LOG_DIRNAME": "/tmp",
+            "SAVE_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/model",
             "SAVE_CACHE_DIRNAME":
             "/tmp/TestDistMnistAsyncInMemoryDataset2x2/cache_model",
+            "SAVE_DENSE_PARAM_DIRNAME":
+            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/dense_param",
+            "SAVE_ONE_TABLE_DIRNAME":
+            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/table_0",
+            "SAVE_PATCH_DIRNAME":
+            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/patch_model",
             "LOG_PREFIX": self.__class__.__name__,
         }
 

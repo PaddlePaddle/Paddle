@@ -17,9 +17,10 @@ typedef SSIZE_T ssize_t;
 
 #include <Python.h>
 
+#include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/jit/base_function.h"
+#include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -36,6 +37,7 @@ class Scope;
 }
 namespace pybind {
 
+namespace py = ::pybind11;
 #define RETURN_PY_NONE \
   Py_INCREF(Py_None);  \
   return Py_None;
@@ -73,8 +75,8 @@ framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
 std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
                                                       ssize_t arg_pos);
 std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos);
-std::shared_ptr<jit::BaseFunction> CastPyArg2BaseFunction(PyObject* obj,
-                                                          ssize_t arg_pos);
+std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
+                                                     ssize_t arg_pos);
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
@@ -109,6 +111,39 @@ PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
 PyObject* ToPyObject(const std::unordered_map<std::wstring, int>& value);
+
+class PyTensorHook : public egr::TensorHook {
+ public:
+  explicit PyTensorHook(PyObject* func) : py_func_(func) {
+    Py_INCREF(py_func_);
+  }
+
+  ~PyTensorHook() {
+    py::gil_scoped_acquire gil;
+    Py_DECREF(py_func_);
+  }
+
+  paddle::experimental::Tensor operator()(
+      const paddle::experimental::Tensor& var) override;
+
+ private:
+  PyObject* py_func_;
+};
+
+class PyVoidHook : public egr::VoidHook {
+ public:
+  explicit PyVoidHook(PyObject* func) : py_func_(func) { Py_INCREF(py_func_); }
+
+  ~PyVoidHook() {
+    py::gil_scoped_acquire gil;
+    Py_DECREF(py_func_);
+  }
+
+  void operator()() override;
+
+ private:
+  PyObject* py_func_;
+};
 
 template <typename Tuple, size_t N>
 struct TupleTensorResult {
@@ -190,6 +225,10 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
 paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
                                               const std::string& op_type,
                                               ssize_t arg_pos);
+
+std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
+                                               const std::string& op_type,
+                                               ssize_t arg_pos);
 
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
