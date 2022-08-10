@@ -82,7 +82,7 @@ class GenerateProposalsV2OpMaker : public framework::OpProtoAndCheckerMaker {
                    "than this min_size.");
     AddAttr<float>("eta", "The parameter for adaptive NMS.");
     AddAttr<bool>("pixel_offset",
-                  "(bool, default True),",
+                  "(bool, default True),"
                   "If true, im_shape pixel offset is 1.")
         .SetDefault(true);
     AddComment(R"DOC(

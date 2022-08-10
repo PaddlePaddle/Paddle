@@ -795,8 +795,8 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
         dynamic_res = run_dynamic_graph()
         static_res = run_static_graph()
 
-        self.assertTrue(np.array_equal(dynamic_res[0], static_res[0]))
-        self.assertTrue(np.array_equal(dynamic_res[1], static_res[1]))
+        np.testing.assert_array_equal(dynamic_res[0], static_res[0])
+        np.testing.assert_array_equal(dynamic_res[1], static_res[1])
 
     def test_order(self):
         with framework._test_eager_guard():
@@ -819,7 +819,7 @@ class TestOrthogonalInitializer1(unittest.TestCase):
         self.num_ops = 9
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
+        np.testing.assert_array_equal(a, b)
         self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(10)))
 
     def func_orthogonal(self):
@@ -878,7 +878,7 @@ class TestOrthogonalInitializer2(TestOrthogonalInitializer1):
         self.num_ops = 8
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
+        np.testing.assert_array_equal(a, b)
         self.assertTrue(np.allclose(np.matmul(a.T, a), 4 * np.eye(10)))
 
 
@@ -897,7 +897,7 @@ class TestOrthogonalInitializer3(TestOrthogonalInitializer1):
         self.num_ops = 8
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
+        np.testing.assert_array_equal(a, b)
         self.assertTrue(np.allclose(np.matmul(a.T, a), np.eye(10), atol=1.e-6))
         self.assertTrue(np.allclose(np.matmul(a, a.T), np.eye(10), atol=1.e-6))
 
@@ -922,7 +922,7 @@ class TestOrthogonalInitializer4(unittest.TestCase):
         self.kernel_size = (3, 3)
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
+        np.testing.assert_array_equal(a, b)
         a = a.reshape(6, -1)
         self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(6)))
 
@@ -973,7 +973,7 @@ class TestOrthogonalInitializer5(TestOrthogonalInitializer4):
         self.kernel_size = (3, 3)
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
+        np.testing.assert_array_equal(a, b)
         a = a.reshape(50, -1)
         self.assertTrue(np.allclose(np.matmul(a.T, a), 4 * np.eye(36)))
 
@@ -993,7 +993,7 @@ class TestOrthogonalInitializer6(TestOrthogonalInitializer4):
         self.kernel_size = (3, 3)
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
+        np.testing.assert_array_equal(a, b)
         a = a.reshape(36, -1)
         self.assertTrue(np.allclose(np.matmul(a.T, a), np.eye(36), atol=1.e-6))
         self.assertTrue(np.allclose(np.matmul(a, a.T), np.eye(36), atol=1.e-6))
@@ -1014,8 +1014,8 @@ class TestDiracInitializer1(unittest.TestCase):
         self.num_ops = 8  #fill_constant*2, reshape*2, assign_value*2, scatter, cast
 
     def check_result(self, w_dygraph, w_static, conv_in, conv_out):
-        self.assertTrue(np.array_equal(w_dygraph, w_static))
-        self.assertTrue(np.array_equal(conv_out, conv_in[:, 0:2, 1:9]))
+        np.testing.assert_array_equal(w_dygraph, w_static)
+        np.testing.assert_array_equal(conv_out, conv_in[:, 0:2, 1:9])
 
     def func_dirac(self):
         self.config()
@@ -1079,11 +1079,11 @@ class TestDiracInitializer2(TestDiracInitializer1):
         self.num_ops = 8
 
     def check_result(self, w_dygraph, w_static, conv_in, conv_out):
-        self.assertTrue(np.array_equal(w_dygraph, w_static))
-        self.assertTrue(
-            np.array_equal(conv_out[:, 0:4, :, :], conv_in[:, :, 1:9, 1:9]))
-        self.assertTrue(
-            np.array_equal(conv_out[:, 4:8, :, :], np.zeros([8, 4, 8, 8])))
+        np.testing.assert_array_equal(w_dygraph, w_static)
+        np.testing.assert_array_equal(conv_out[:, 0:4, :, :], conv_in[:, :, 1:9,
+                                                                      1:9])
+        np.testing.assert_array_equal(conv_out[:, 4:8, :, :],
+                                      np.zeros([8, 4, 8, 8]))
 
 
 # initialize Conv3D weight
@@ -1101,13 +1101,11 @@ class TestDiracInitializer3(TestDiracInitializer1):
         self.num_ops = 7
 
     def check_result(self, w_dygraph, w_static, conv_in, conv_out):
-        self.assertTrue(np.array_equal(w_dygraph, w_static))
-        self.assertTrue(
-            np.array_equal(conv_out[:, 0:5, :, :, :], conv_in[:, :, 1:9, 1:9,
-                                                              1:9]))
-        self.assertTrue(
-            np.array_equal(conv_out[:, 5:10, :, :, :], conv_in[:, :, 1:9, 1:9,
-                                                               1:9]))
+        np.testing.assert_array_equal(w_dygraph, w_static)
+        np.testing.assert_array_equal(conv_out[:, 0:5, :, :, :],
+                                      conv_in[:, :, 1:9, 1:9, 1:9])
+        np.testing.assert_array_equal(conv_out[:, 5:10, :, :, :],
+                                      conv_in[:, :, 1:9, 1:9, 1:9])
 
     def test_error(self):
         self.config()

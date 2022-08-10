@@ -91,7 +91,8 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
         fleet.save_inference_model(exe, model_dir,
                                    [feed.name for feed in self.feeds],
                                    self.avg_cost)
-        self.check_model_right(model_dir)
+        if fleet.is_first_worker():
+            self.check_model_right(model_dir)
         if fleet.is_first_worker():
             fleet.save_persistables(executor=exe, dirname=model_dir)
         shutil.rmtree(model_dir)
@@ -139,7 +140,8 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
             fleet.save_inference_model(exe, model_dir,
                                        [feed.name for feed in self.feeds],
                                        self.avg_cost)
-            self.check_model_right(model_dir)
+            if fleet.is_first_worker():
+                self.check_model_right(model_dir)
             if fleet.is_first_worker():
                 fleet.save_persistables(executor=exe, dirname=model_dir)
             shutil.rmtree(model_dir)

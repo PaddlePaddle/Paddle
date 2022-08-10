@@ -244,8 +244,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             cpu_value = paddle.scatter_nd_add(paddle.to_tensor(x),
                                               paddle.to_tensor(index),
                                               paddle.to_tensor(val))
-            self.assertTrue(np.array_equal(gpu_value.numpy(),
-                                           cpu_value.numpy()))
+            np.testing.assert_array_equal(gpu_value.numpy(), cpu_value.numpy())
             paddle.set_device(device)
 
         @switch_to_static_graph
@@ -267,7 +266,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
                 gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
                 cpu_exe = paddle.static.Executor(paddle.CPUPlace())
                 cpu_value = cpu_exe.run(feed=feed, fetch_list=fetch)[0]
-                self.assertTrue(np.array_equal(gpu_value, cpu_value))
+                np.testing.assert_array_equal(gpu_value, cpu_value)
 
         test_static_graph()
 

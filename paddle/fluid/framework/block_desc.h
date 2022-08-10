@@ -113,10 +113,13 @@ class BlockDesc {
 
   void MoveFrom(BlockDesc *block);
 
+  bool NeedUpdate(bool include_subs = true);
+
  private:
   ProgramDesc *prog_;       // not_own
   proto::BlockDesc *desc_;  // not_own
-  bool need_update_;
+  bool need_update_;  // block itself need_update, not aware of its ops_ and
+                      // vars_
 
   std::deque<std::unique_ptr<OpDesc>> ops_;
   std::unordered_map<std::string, std::unique_ptr<VarDesc>> vars_;

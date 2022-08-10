@@ -139,7 +139,8 @@ def setup(**attr):
                                 compiler using dict type with ``{'cxx': [...], 'nvcc': [...]}`` . Default is None.
         **attr(dict, optional): Specify other arguments same as ``setuptools.setup`` .
 
-    Returns: None
+    Returns: 
+        None
 
     """
     cmdclass = attr.get('cmdclass', {})
