@@ -997,11 +997,13 @@ class PostTrainingQuantization(object):
                 for tensor_list in self._same_scale_tensor_list:
                     max_scale = None
                     for tensor_name in tensor_list:
-                        if not max_scale:
-                            max_scale = scale_dict[tensor_name]
+                        if '#' not in tensor_name:
+                            if not max_scale:
+                                max_scale = scale_dict[tensor_name]
+                            else:
+                                max_scale = max(max_scale,
+                                                scale_dict[tensor_name])
                         else:
-                            max_scale = max(max_scale, scale_dict[tensor_name])
-                        if '#' in tensor_name:
                             real_tensor_name, opera, scalar = tensor_name.split(
                                 '#')
                             if opera == '*':

@@ -1624,7 +1624,8 @@ class AddQuantDequantPass(object):
                  skip_pattern=["skip_quant"],
                  quantizable_op_type=["elementwise_add", "pool2d"],
                  is_full_quantized=False,
-                 is_test=None):
+                 is_test=None,
+                 scale_dict=None):
         """
         Constructor.
 
@@ -1653,6 +1654,7 @@ class AddQuantDequantPass(object):
         self._quant_bits = quant_bits
         self._is_test = is_test
         self._skip_pattern = skip_pattern
+        self._scale_dict = scale_dict
 
         if is_full_quantized:
             self._quantizable_op_type = utils._act_supported_quantizable_op_type
@@ -1751,8 +1753,14 @@ class AddQuantDequantPass(object):
         data_type = 'float64' if var_node.dtype(
         ) == core.VarDesc.VarType.FP64 else 'float32'
         try:
-            scale_value = np.array(
-                self._scope.find_var(scale_name).get_tensor())
+            if self._scale_dict is not None and var_node.name(
+            ) in self._scale_dict.keys():
+                scale_value = np.array([self._scale_dict[var_node.name()]],
+                                       dtype=data_type)
+            else:
+                scale_value = np.array(
+                    self._scope.find_var(scale_name).get_tensor(),
+                    dtype=data_type)
         except:
             scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
 
