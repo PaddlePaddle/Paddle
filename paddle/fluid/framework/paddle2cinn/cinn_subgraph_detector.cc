@@ -219,27 +219,46 @@ bool CinnSubgraphDetector::FuseSubGraph(CinnSubGraphPtr* subgraph_ptr) {
   for (auto& candidate : candidates) {
     candidate->substitute = false;
 
+    // merge nodes
     producer->nodes.insert(producer->nodes.end(),
                            candidate->nodes.begin(),
                            candidate->nodes.end());
     producer->node_set.insert(candidate->node_set.begin(),
                               candidate->node_set.end());
 
+    // update bound for check depency
     producer->max_depth = std::max(producer->max_depth, candidate->max_depth);
     producer->min_depth = std::min(producer->min_depth, candidate->min_depth);
 
+    // merge producer/consumer
     producer->producers.insert(candidate->producers.begin(),
                                candidate->producers.end());
     producer->consumers.insert(candidate->consumers.begin(),
                                candidate->consumers.end());
+    // update producers's consumer
+    for (auto& tmp : candidate->producers) {
+      if (tmp.get() == producer.get()) {
+        continue;
+      }
+      tmp->consumers.insert(producer);
+      tmp->consumers.erase(candidate);
+    }
+    // update consumers's producer
+    for (auto& tmp : candidate->consumers) {
+      tmp->producers.insert(producer);
+      tmp->producers.erase(candidate);
+    }
 
+    // remove candicate in producer/consumer
     producer->producers.erase(candidate);
     producer->consumers.erase(candidate);
 
+    // merge input nodes
     producer->input_nodes.insert(candidate->input_nodes.begin(),
                                  candidate->input_nodes.end());
   }
 
+  // remove input nodes that is in node set
   auto input_nodes = producer->input_nodes;
   for (auto input_node : input_nodes) {
     if (producer->node_set.count(input_node)) {
