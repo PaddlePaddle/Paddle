@@ -124,7 +124,6 @@ TEST(enforce, xpu_status) {
                                     "Execution interrupted by user"));
 }
 
-#ifdef PADDLE_WITH_XPU_BKCL
 TEST(enforce, bkcl_status) {
   EXPECT_TRUE(CheckXPUStatusSuccess(BKCL_SUCCESS));
   EXPECT_TRUE(
@@ -134,7 +133,6 @@ TEST(enforce, bkcl_status) {
   EXPECT_TRUE(
       CheckXPUStatusFailure(BKCL_INTERNAL_ERROR, "BKCL_INTERNAL_ERROR"));
 }
-#endif
 
 TEST(enforce, xdnn_status) {
   EXPECT_TRUE(CheckXDNNStatusSuccess(xpu::Error_t::SUCCESS));
