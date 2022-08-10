@@ -31,10 +31,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_subgraph_detector.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -583,8 +583,7 @@ void SearchAllSubgraphs(Graph* graph) {
   };
   VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
   VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
-  std::vector<GraphNodeVec> clusters =
-      framework::ir::SubgraphDetector(graph, teller)();
+  std::vector<GraphNodeVec> clusters = CinnSubgraphDetector(graph, teller)();
 
   auto cluster_debug_info = [](const GraphNodeSet& cluster) {
     std::string res = "(";
