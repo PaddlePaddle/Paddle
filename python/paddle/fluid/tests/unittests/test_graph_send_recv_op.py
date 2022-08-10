@@ -263,9 +263,13 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
                           fetch_list=[res_sum, res_mean, res_max, res_min])
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(
+                np_res,
+                ret_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, ret_res))
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -290,9 +294,13 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
         ret = [res_sum, res_mean, res_max, res_min]
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(
+                np_res,
+                ret_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, ret_res))
 
     def test_int32_input(self):
         paddle.disable_static()
@@ -317,9 +325,13 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
         ret = [res_sum, res_mean, res_max, res_min]
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(
+                np_res,
+                ret_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, ret_res))
 
     def test_set_outsize_gpu(self):
         paddle.disable_static()
@@ -335,14 +347,20 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
         np_res = np.array([[0, 2, 3], [1, 6, 8], [0, 0, 0]], dtype="float32")
         np_res_set_outsize = np.array([[0, 2, 3], [1, 6, 8]], dtype="float32")
 
-        self.assertTrue(
-            np.allclose(np_res, res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, res))
-        self.assertTrue(
-            np.allclose(np_res_set_outsize, res_set_outsize, atol=1e-6),
-            "two value is\
-                {}\n{}, check diff!".format(np_res_set_outsize,
-                                            res_set_outsize))
+        np.testing.assert_allclose(
+            np_res,
+            res,
+            rtol=1e-05,
+            atol=1e-06,
+            err_msg='two value is                {}\n{}, check diff!'.format(
+                np_res, res))
+        np.testing.assert_allclose(
+            np_res_set_outsize,
+            res_set_outsize,
+            rtol=1e-05,
+            atol=1e-06,
+            err_msg='two value is                {}\n{}, check diff!'.format(
+                np_res_set_outsize, res_set_outsize))
 
     def test_out_size_tensor_static(self):
         paddle.enable_static()
@@ -372,9 +390,13 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
                 'out_size': data4,
             },
                           fetch_list=[res_sum])
-        self.assertTrue(
-            np.allclose(np_sum, ret[0], atol=1e-6), "two value is\
-                        {}\n{}, check diff!".format(np_sum, ret[0]))
+        np.testing.assert_allclose(
+            np_sum,
+            ret[0],
+            rtol=1e-05,
+            atol=1e-06,
+            err_msg='two value is                        {}\n{}, check diff!'.
+            format(np_sum, ret[0]))
 
     def test_api_eager_dygraph(self):
         with _test_eager_guard():
@@ -423,9 +445,13 @@ class API_GeometricSendURecvTest(unittest.TestCase):
                           fetch_list=[res_sum, res_mean, res_max, res_min])
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(
+                np_res,
+                ret_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, ret_res))
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -446,9 +472,13 @@ class API_GeometricSendURecvTest(unittest.TestCase):
         ret = [res_sum, res_mean, res_max, res_min]
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(
+                np_res,
+                ret_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, ret_res))
 
     def test_int32_input(self):
         paddle.disable_static()
@@ -469,9 +499,13 @@ class API_GeometricSendURecvTest(unittest.TestCase):
         ret = [res_sum, res_mean, res_max, res_min]
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(
+                np_res,
+                ret_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, ret_res))
 
     def test_set_outsize_gpu(self):
         paddle.disable_static()
@@ -487,14 +521,20 @@ class API_GeometricSendURecvTest(unittest.TestCase):
         np_res = np.array([[0, 2, 3], [1, 6, 8], [0, 0, 0]], dtype="float32")
         np_res_set_outsize = np.array([[0, 2, 3], [1, 6, 8]], dtype="float32")
 
-        self.assertTrue(
-            np.allclose(np_res, res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, res))
-        self.assertTrue(
-            np.allclose(np_res_set_outsize, res_set_outsize, atol=1e-6),
-            "two value is\
-                {}\n{}, check diff!".format(np_res_set_outsize,
-                                            res_set_outsize))
+        np.testing.assert_allclose(
+            np_res,
+            res,
+            rtol=1e-05,
+            atol=1e-06,
+            err_msg='two value is                {}\n{}, check diff!'.format(
+                np_res, res))
+        np.testing.assert_allclose(
+            np_res_set_outsize,
+            res_set_outsize,
+            rtol=1e-05,
+            atol=1e-06,
+            err_msg='two value is                {}\n{}, check diff!'.format(
+                np_res_set_outsize, res_set_outsize))
 
     def test_out_size_tensor_static(self):
         paddle.enable_static()
@@ -524,9 +564,13 @@ class API_GeometricSendURecvTest(unittest.TestCase):
                 'out_size': data4,
             },
                           fetch_list=[res_sum])
-        self.assertTrue(
-            np.allclose(np_sum, ret[0], atol=1e-6), "two value is\
-                        {}\n{}, check diff!".format(np_sum, ret[0]))
+        np.testing.assert_allclose(
+            np_sum,
+            ret[0],
+            rtol=1e-05,
+            atol=1e-06,
+            err_msg='two value is                        {}\n{}, check diff!'.
+            format(np_sum, ret[0]))
 
     def test_api_eager_dygraph(self):
         with _test_eager_guard():

@@ -676,10 +676,11 @@ class TestNearestAPI(unittest.TestCase):
                                                 out_h=12,
                                                 out_w=12,
                                                 align_corners=True)
-        self.assertTrue(
-            np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 1))))
+        np.testing.assert_allclose(results[0],
+                                   np.transpose(expect_res, (0, 2, 3, 1)),
+                                   rtol=1e-05)
         for i in range(len(results) - 1):
-            self.assertTrue(np.allclose(results[i + 1], expect_res))
+            np.testing.assert_allclose(results[i + 1], expect_res, rtol=1e-05)
 
 
 class TestNearestInterpOpAPI_dy(unittest.TestCase):
@@ -703,7 +704,7 @@ class TestNearestInterpOpAPI_dy(unittest.TestCase):
                               scale_factor=scale,
                               mode="nearest",
                               align_corners=False)
-            self.assertTrue(np.allclose(out.numpy(), expect_res))
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 
 class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
@@ -729,7 +730,7 @@ class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
                               mode="nearest",
                               align_corners=False,
                               data_format="NCDHW")
-            self.assertTrue(np.allclose(out.numpy(), expect_res))
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 
 class TestNearestInterpException(unittest.TestCase):

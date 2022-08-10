@@ -244,13 +244,13 @@ class TestAmpScaler(unittest.TestCase):
                          [])  # optimize_ops is [] in dygraph mode
         for i in range(len(outs_with_scaler[1])):
             # check each grad
-            self.assertEqual(
-                np.allclose(outs_with_scaler[1][i][1].numpy(),
-                            outs_no_scaler[1][i][1].numpy()), True)
+            np.testing.assert_allclose(outs_with_scaler[1][i][1].numpy(),
+                                       outs_no_scaler[1][i][1].numpy(),
+                                       rtol=1e-05)
             # check each parameter
-            self.assertEqual(
-                np.allclose(outs_with_scaler[1][i][0].numpy(),
-                            outs_no_scaler[1][i][0].numpy()), True)
+            np.testing.assert_allclose(outs_with_scaler[1][i][0].numpy(),
+                                       outs_no_scaler[1][i][0].numpy(),
+                                       rtol=1e-05)
 
     def test_minimize(self):
         self.minimize()
@@ -291,9 +291,9 @@ class TestAmpScaler(unittest.TestCase):
 
         for i in range(len(outs_with_scaler)):
             # check each parameter
-            self.assertEqual(
-                np.allclose(outs_with_scaler[i].numpy(),
-                            outs_no_scaler[i].numpy()), True)
+            np.testing.assert_allclose(outs_with_scaler[i].numpy(),
+                                       outs_no_scaler[i].numpy(),
+                                       rtol=1e-05)
 
     def test_step(self):
         self.step()
@@ -555,8 +555,9 @@ class TestGradScalerStateDict(unittest.TestCase):
                                                       use_data_loader=True,
                                                       use_save_load=False)
             print('save_load:', out_use_state_dict[0], out_no_state_dict[0])
-            self.assertTrue(
-                np.allclose(out_use_state_dict[0], out_no_state_dict[0]))
+            np.testing.assert_allclose(out_use_state_dict[0],
+                                       out_no_state_dict[0],
+                                       rtol=1e-05)
 
         func_isinstance()
 
@@ -872,8 +873,9 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                                                      use_data_loader=True,
                                                      use_save_load=False)
             print('save_load:', out_use_save_load[0], out_no_save_load[0])
-            self.assertTrue(
-                np.allclose(out_use_save_load[0], out_no_save_load[0]))
+            np.testing.assert_allclose(out_use_save_load[0],
+                                       out_no_save_load[0],
+                                       rtol=1e-05)
 
         func_isinstance()
 
@@ -1114,9 +1116,14 @@ class TestResnet2(unittest.TestCase):
                 out_amp = self.train_resnet(enable_amp=True)
                 out_pure_fp16 = self.train_resnet(enable_amp=True, level='O2')
             print(out_fp32[0], out_amp[0], out_pure_fp16[0])
-            self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
-            self.assertTrue(
-                np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-2))
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
 
         func_isinstance()
 
@@ -1132,9 +1139,14 @@ class TestResnet2(unittest.TestCase):
                                                   use_data_loader=True,
                                                   level='O2')
             print(out_fp32[0], out_amp[0], out_pure_fp16[0])
-            self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
-            self.assertTrue(
-                np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-2))
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
 
         func_isinstance()
 
@@ -1153,9 +1165,14 @@ class TestResnet2(unittest.TestCase):
                                                   use_param_group=True,
                                                   level='O2')
             print(out_fp32[0], out_amp[0], out_pure_fp16[0])
-            self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
-            self.assertTrue(
-                np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-2))
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
 
         func_isinstance()
 
@@ -1247,9 +1264,14 @@ class TestResnet(unittest.TestCase):
             out_amp = self.train_resnet(enable_amp=True)
             out_pure_fp16 = self.train_resnet(enable_amp=True, level='O2')
             print(out_fp32[0], out_amp[0], out_pure_fp16[0])
-            self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
-            self.assertTrue(
-                np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-1))
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.1)
 
         func_isinstance()
 
@@ -1301,10 +1323,14 @@ class TestBf16(unittest.TestCase):
             out_fp32 = self.train(enable_amp=False)
             out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
             out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
-            self.assertTrue(
-                np.allclose(out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
-            self.assertTrue(
-                np.allclose(out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
+            np.testing.assert_allclose(out_fp32,
+                                       out_bf16_O1,
+                                       rtol=0.001,
+                                       atol=0.1)
+            np.testing.assert_allclose(out_fp32,
+                                       out_bf16_O2,
+                                       rtol=0.001,
+                                       atol=0.1)
 
         func_isinstance()
 

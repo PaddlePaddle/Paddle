@@ -668,7 +668,9 @@ class TestUniformInitializerDygraph(unittest.TestCase):
 
         tensor = paddle.zeros([1024, 1024, 16])
         tensor.stop_gradient = False
-        self.assertTrue(np.allclose(np.zeros((1024, 1024, 16)), tensor.numpy()))
+        np.testing.assert_allclose(np.zeros((1024, 1024, 16)),
+                                   tensor.numpy(),
+                                   rtol=1e-05)
 
         uniform_ = paddle.nn.initializer.Uniform()
         uniform_(tensor)
@@ -678,8 +680,11 @@ class TestUniformInitializerDygraph(unittest.TestCase):
 
         hist, prob = output_hist(tensor.numpy())
 
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=1e-3),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.001,
+                                   err_msg='hist: ' + str(hist))
 
         paddle.enable_static()
 
@@ -710,8 +715,12 @@ class TestXavierInitializerDygraph(unittest.TestCase):
         hist2, _ = output_hist(
             np.random.normal(0, np.sqrt(2.0 / (3 + 5)), [1024, 1024, 16]))
 
-        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
-                        "hist: " + str(hist) + " hist2: " + str(hist2))
+        np.testing.assert_allclose(hist,
+                                   hist2,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='hist: ' + str(hist) + ' hist2: ' +
+                                   str(hist2))
         paddle.enable_static()
 
     def test_xavier_initializer(self, dtype="float32"):
@@ -740,8 +749,12 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
         hist2, _ = output_hist(
             np.random.normal(0, np.sqrt(2.0 / (4)), [1024, 1024, 16]))
 
-        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
-                        "hist: " + str(hist) + " hist2: " + str(hist2))
+        np.testing.assert_allclose(hist,
+                                   hist2,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='hist: ' + str(hist) + ' hist2: ' +
+                                   str(hist2))
         paddle.enable_static()
 
     def test_msra_initializer(self, dtype="float32"):
@@ -898,8 +911,14 @@ class TestOrthogonalInitializer3(TestOrthogonalInitializer1):
 
     def check_result(self, a, b):
         np.testing.assert_array_equal(a, b)
-        self.assertTrue(np.allclose(np.matmul(a.T, a), np.eye(10), atol=1.e-6))
-        self.assertTrue(np.allclose(np.matmul(a, a.T), np.eye(10), atol=1.e-6))
+        np.testing.assert_allclose(np.matmul(a.T, a),
+                                   np.eye(10),
+                                   rtol=1e-05,
+                                   atol=1e-06)
+        np.testing.assert_allclose(np.matmul(a, a.T),
+                                   np.eye(10),
+                                   rtol=1e-05,
+                                   atol=1e-06)
 
     def test_error(self):
         self.config()
@@ -995,8 +1014,14 @@ class TestOrthogonalInitializer6(TestOrthogonalInitializer4):
     def check_result(self, a, b):
         np.testing.assert_array_equal(a, b)
         a = a.reshape(36, -1)
-        self.assertTrue(np.allclose(np.matmul(a.T, a), np.eye(36), atol=1.e-6))
-        self.assertTrue(np.allclose(np.matmul(a, a.T), np.eye(36), atol=1.e-6))
+        np.testing.assert_allclose(np.matmul(a.T, a),
+                                   np.eye(36),
+                                   rtol=1e-05,
+                                   atol=1e-06)
+        np.testing.assert_allclose(np.matmul(a, a.T),
+                                   np.eye(36),
+                                   rtol=1e-05,
+                                   atol=1e-06)
 
 
 # initialize Conv1D weight

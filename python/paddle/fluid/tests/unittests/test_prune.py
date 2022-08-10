@@ -598,7 +598,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                             fetch_list=[loss1.name],
                             use_prune=False)
             weight2 = np.array(scope.find_var(w1_param_attrs.name).get_tensor())
-        self.assertTrue(np.allclose(weight1, weight2))
+        np.testing.assert_allclose(weight1, weight2, rtol=1e-05)
 
     def test_prune_program_with_tupe_in_fetch_list(self):
         '''

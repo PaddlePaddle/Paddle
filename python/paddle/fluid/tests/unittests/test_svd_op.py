@@ -285,7 +285,7 @@ class TestSvdAPI(unittest.TestCase):
         x = paddle.to_tensor(a)
         u, s, vh = paddle.linalg.svd(x)
         gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
-        self.assertTrue(np.allclose(s, gt_s))
+        np.testing.assert_allclose(s, gt_s, rtol=1e-05)
 
     def test_static(self):
         paddle.enable_static()
@@ -304,7 +304,7 @@ class TestSvdAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"input": a},
                                   fetch_list=[s])
-                self.assertTrue(np.allclose(fetches[0], gt_s))
+                np.testing.assert_allclose(fetches[0], gt_s, rtol=1e-05)
 
 
 if __name__ == "__main__":

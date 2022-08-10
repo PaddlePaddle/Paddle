@@ -280,9 +280,9 @@ class TestUniqueAPI(unittest.TestCase):
                                                      return_inverse=True,
                                                      return_counts=True,
                                                      axis=0)
-        self.assertTrue(np.allclose(result[0], np_unique))
-        self.assertTrue(np.allclose(result[1], np_inverse))
-        self.assertTrue(np.allclose(result[2], np_counts))
+        np.testing.assert_allclose(result[0], np_unique, rtol=1e-05)
+        np.testing.assert_allclose(result[1], np_inverse, rtol=1e-05)
+        np.testing.assert_allclose(result[2], np_counts, rtol=1e-05)
 
 
 class TestUniqueError(unittest.TestCase):

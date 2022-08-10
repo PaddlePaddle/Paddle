@@ -112,7 +112,7 @@ class TestIndexSelectAPI(unittest.TestCase):
                            return_numpy=False)
         expect_out = np.array([[1.0, 2.0, 2.0], [5.0, 6.0, 6.0],
                                [9.0, 10.0, 10.0]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
         with program_guard(Program(), Program()):
@@ -131,7 +131,7 @@ class TestIndexSelectAPI(unittest.TestCase):
                            return_numpy=False)
         expect_out = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
                                [5.0, 6.0, 7.0, 8.0]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
         self.input_data()
@@ -143,7 +143,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             np_z = z.numpy()
         expect_out = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
                                [5.0, 6.0, 7.0, 8.0]])
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
         with fluid.dygraph.guard():
@@ -153,7 +153,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             np_z = z.numpy()
         expect_out = np.array([[1.0, 2.0, 2.0], [5.0, 6.0, 6.0],
                                [9.0, 10.0, 10.0]])
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 
 if __name__ == '__main__':

@@ -35,7 +35,7 @@ class TestComplexVariable(unittest.TestCase):
             out = paddle.fluid.layers.elementwise_add(x, y)
             self.assertIsNotNone("{}".format(out))
 
-        self.assertTrue(np.allclose(out.numpy(), a + b))
+        np.testing.assert_allclose(out.numpy(), a + b, rtol=1e-05)
         self.assertEqual(out.dtype, convert_np_dtype_to_dtype_(self._dtype))
         self.assertEqual(out.shape, x.shape)
 

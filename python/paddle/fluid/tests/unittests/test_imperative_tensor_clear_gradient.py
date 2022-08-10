@@ -54,7 +54,9 @@ class TestDygraphClearGradient(TestCase):
         gradient_actual = linear.weight.grad
         # expected result
         gradient_expected = np.zeros([2, 3]).astype('float64')
-        self.assertTrue(np.allclose(gradient_actual.numpy(), gradient_expected))
+        np.testing.assert_allclose(gradient_actual.numpy(),
+                                   gradient_expected,
+                                   rtol=1e-05)
 
     @dygraph_guard
     def test_tensor_method_clear_gradient_case2(self):

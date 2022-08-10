@@ -220,7 +220,7 @@ class TestDistributeFpnProposalsAPI(unittest.TestCase):
                 output_dy_np.append(output_np)
 
         for res_stat, res_dy in zip(output_stat_np, output_dy_np):
-            self.assertTrue(np.allclose(res_stat, res_dy))
+            np.testing.assert_allclose(res_stat, res_dy, rtol=1e-05)
 
 
 if __name__ == '__main__':

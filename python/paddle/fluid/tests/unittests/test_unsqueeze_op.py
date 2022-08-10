@@ -127,7 +127,7 @@ class API_TestUnsqueeze(unittest.TestCase):
             input = np.squeeze(input1, axis=1)
             result, = exe.run(feed={"data1": input},
                               fetch_list=[result_squeeze])
-            self.assertTrue(np.allclose(input1, result))
+            np.testing.assert_allclose(input1, result, rtol=1e-05)
 
 
 class TestUnsqueezeOpError(unittest.TestCase):
@@ -165,7 +165,7 @@ class API_TestUnsqueeze2(unittest.TestCase):
                 "data2": input2
             },
                                fetch_list=[result_squeeze])
-            self.assertTrue(np.allclose(input1, result1))
+            np.testing.assert_allclose(input1, result1, rtol=1e-05)
 
 
 class API_TestUnsqueeze3(unittest.TestCase):

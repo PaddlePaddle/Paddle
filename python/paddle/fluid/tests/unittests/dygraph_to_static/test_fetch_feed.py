@@ -92,9 +92,12 @@ class TestPool2D(unittest.TestCase):
         dygraph_res = self.train_dygraph()
         static_res = self.train_static()
 
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph_res is {}\n static_res is \n{}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph_res is {}\n static_res is \n{}'.format(
+                dygraph_res, static_res))
 
 
 class TestLinear(TestPool2D):

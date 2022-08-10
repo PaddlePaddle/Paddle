@@ -167,7 +167,7 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
                           },
                           fetch_list=[loss.name])
 
-            self.assertTrue(np.allclose(out, output))
+            np.testing.assert_allclose(out, output, rtol=1e-05)
 
 
 class TestLambOpV2Group(TestLambOpV2):

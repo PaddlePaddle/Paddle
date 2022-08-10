@@ -54,7 +54,7 @@ class TestErfLayer(unittest.TestCase):
             x_var = dg.to_variable(x)
             y_var = fluid.layers.erf(x_var)
             y_test = y_var.numpy()
-        self.assertTrue(np.allclose(y_ref, y_test))
+        np.testing.assert_allclose(y_ref, y_test, rtol=1e-05)
 
     def test_case(self):
         self._test_case(fluid.CPUPlace())

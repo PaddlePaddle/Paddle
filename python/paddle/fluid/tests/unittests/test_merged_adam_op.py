@@ -137,8 +137,10 @@ class TestMergedAdam(unittest.TestCase):
                 if place == 'gpu':
                     np.testing.assert_array_equal(value1[i], value2[i])
                 else:
-                    self.assertTrue(np.allclose(value1[i], value2[i],
-                                                atol=1e-7))
+                    np.testing.assert_allclose(value1[i],
+                                               value2[i],
+                                               rtol=1e-05,
+                                               atol=1e-07)
 
     def get_places(self):
         places = ['cpu']

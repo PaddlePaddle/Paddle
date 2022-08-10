@@ -105,7 +105,7 @@ class TestAbs(unittest.TestCase):
             for place in self._places:
                 with dg.guard(place):
                     y = paddle.abs(paddle.to_tensor(x))
-                    self.assertTrue(np.allclose(np.abs(x), y.numpy()))
+                    np.testing.assert_allclose(np.abs(x), y.numpy(), rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():

@@ -549,9 +549,12 @@ class TestLACModel(unittest.TestCase):
     def test_train(self):
         st_out = self.train(self.args, to_static=True)
         dy_out = self.train(self.args, to_static=False)
-        self.assertTrue(np.allclose(dy_out, st_out),
-                        msg="dygraph output:\n{},\nstatic output:\n {}.".format(
-                            dy_out, st_out))
+        np.testing.assert_allclose(
+            dy_out,
+            st_out,
+            rtol=1e-05,
+            err_msg='dygraph output:\n{},\nstatic output:\n {}.'.format(
+                dy_out, st_out))
         # Prediction needs trained models, so put `test_predict` at last of `test_train`
         # self.verify_predict()
 
@@ -564,12 +567,17 @@ class TestLACModel(unittest.TestCase):
             dy_pre = self.predict_dygraph(batch)
             st_pre = self.predict_static(batch)
             dy_jit_pre = self.predict_dygraph_jit(batch)
-            self.assertTrue(np.allclose(dy_pre, st_pre),
-                            msg="dy_pre:\n {}\n, st_pre: \n{}.".format(
-                                dy_pre, st_pre))
-            self.assertTrue(np.allclose(dy_jit_pre, st_pre),
-                            msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(
-                                dy_jit_pre, st_pre))
+            np.testing.assert_allclose(
+                dy_pre,
+                st_pre,
+                rtol=1e-05,
+                err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre))
+            np.testing.assert_allclose(
+                dy_jit_pre,
+                st_pre,
+                rtol=1e-05,
+                err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
+                    dy_jit_pre, st_pre))
 
     def predict_dygraph(self, batch):
         words, targets, length = batch

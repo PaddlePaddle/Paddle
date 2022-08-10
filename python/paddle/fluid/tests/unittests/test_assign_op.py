@@ -109,8 +109,8 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
         res = exe.run(main_program,
                       feed={'x': feed_x},
                       fetch_list=[sums.name, x.grad_name])
-        self.assertTrue(np.allclose(res[0], feed_add))
-        self.assertTrue(np.allclose(res[1], ones / 1000.0))
+        np.testing.assert_allclose(res[0], feed_add, rtol=1e-05)
+        np.testing.assert_allclose(res[1], ones / 1000.0, rtol=1e-05)
         paddle.disable_static()
 
 
@@ -158,8 +158,8 @@ class TestAssignOApi(unittest.TestCase):
         res = exe.run(main_program,
                       feed={'x': feed_x},
                       fetch_list=[sums.name, x.grad_name])
-        self.assertTrue(np.allclose(res[0], feed_add))
-        self.assertTrue(np.allclose(res[1], ones / 1000.0))
+        np.testing.assert_allclose(res[0], feed_add, rtol=1e-05)
+        np.testing.assert_allclose(res[1], ones / 1000.0, rtol=1e-05)
         paddle.disable_static()
 
     def test_assign_NumpyArray(self):
@@ -167,41 +167,41 @@ class TestAssignOApi(unittest.TestCase):
             array = np.random.random(size=(100, 10)).astype(np.bool_)
             result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             paddle.assign(array, result1)
-        self.assertTrue(np.allclose(result1.numpy(), array))
+        np.testing.assert_allclose(result1.numpy(), array, rtol=1e-05)
 
     def test_assign_NumpyArray1(self):
         with fluid.dygraph.guard():
             array = np.random.random(size=(100, 10)).astype(np.float32)
             result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             paddle.assign(array, result1)
-        self.assertTrue(np.allclose(result1.numpy(), array))
+        np.testing.assert_allclose(result1.numpy(), array, rtol=1e-05)
 
     def test_assign_NumpyArray2(self):
         with fluid.dygraph.guard():
             array = np.random.random(size=(100, 10)).astype(np.int32)
             result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             paddle.assign(array, result1)
-        self.assertTrue(np.allclose(result1.numpy(), array))
+        np.testing.assert_allclose(result1.numpy(), array, rtol=1e-05)
 
     def test_assign_NumpyArray3(self):
         with fluid.dygraph.guard():
             array = np.random.random(size=(100, 10)).astype(np.int64)
             result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             paddle.assign(array, result1)
-        self.assertTrue(np.allclose(result1.numpy(), array))
+        np.testing.assert_allclose(result1.numpy(), array, rtol=1e-05)
 
     def test_assign_List(self):
         l = [1, 2, 3]
         result = paddle.assign(l)
-        self.assertTrue(np.allclose(result.numpy(), np.array(l)))
+        np.testing.assert_allclose(result.numpy(), np.array(l), rtol=1e-05)
 
     def test_assign_BasicTypes(self):
         result1 = paddle.assign(2)
         result2 = paddle.assign(3.0)
         result3 = paddle.assign(True)
-        self.assertTrue(np.allclose(result1.numpy(), np.array([2])))
-        self.assertTrue(np.allclose(result2.numpy(), np.array([3.0])))
-        self.assertTrue(np.allclose(result3.numpy(), np.array([1])))
+        np.testing.assert_allclose(result1.numpy(), np.array([2]), rtol=1e-05)
+        np.testing.assert_allclose(result2.numpy(), np.array([3.0]), rtol=1e-05)
+        np.testing.assert_allclose(result3.numpy(), np.array([1]), rtol=1e-05)
 
     def test_clone(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})

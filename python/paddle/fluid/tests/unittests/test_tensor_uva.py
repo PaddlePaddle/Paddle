@@ -54,8 +54,8 @@ class TestUVATensorFromNumpy(unittest.TestCase):
 
                 self.assertTrue(tensor.place.is_gpu_place())
                 self.assertTrue(tensor2.place.is_gpu_place())
-                self.assertTrue(np.allclose(tensor.numpy(), data))
-                self.assertTrue(np.allclose(tensor2.numpy(), data))
+                np.testing.assert_allclose(tensor.numpy(), data, rtol=1e-05)
+                np.testing.assert_allclose(tensor2.numpy(), data, rtol=1e-05)
 
     def test_uva_tensor_creation(self):
         with _test_eager_guard():

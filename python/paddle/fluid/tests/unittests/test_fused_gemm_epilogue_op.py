@@ -555,9 +555,9 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
         out_np2 = get_output(x_np, y_np, bias_np, 'relu')
         out_np3 = get_output(x_np, y_np, bias_np, 'gelu')
 
-        self.assertTrue(np.allclose(out1, out_np1))
-        self.assertTrue(np.allclose(out2, out_np2))
-        self.assertTrue(np.allclose(out3, out_np3))
+        np.testing.assert_allclose(out1, out_np1, rtol=1e-05)
+        np.testing.assert_allclose(out2, out_np2, rtol=1e-05)
+        np.testing.assert_allclose(out3, out_np3, rtol=1e-05)
 
         out_grad_np1 = np.random.randint(low=-20, high=20,
                                          size=out_np1.shape).astype(np.float64)
@@ -566,9 +566,9 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
 
         x_grad_np, y_grad_np, bias_grad_np = matmul_grad(
             x_np, y_np, bias_np, out_grad_np1, False, False)
-        self.assertTrue(np.allclose(x.grad.numpy(), x_grad_np))
+        np.testing.assert_allclose(x.grad.numpy(), x_grad_np, rtol=1e-05)
         self.assertEqual(y_grad_np.shape, y_np.shape)
-        self.assertTrue(np.allclose(y.grad.numpy(), y_grad_np))
+        np.testing.assert_allclose(y.grad.numpy(), y_grad_np, rtol=1e-05)
 
         paddle.enable_static()
 

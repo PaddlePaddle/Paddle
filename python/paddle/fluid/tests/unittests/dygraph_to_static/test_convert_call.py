@@ -91,9 +91,12 @@ class TestRecursiveCall1(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.get_static_output()
         dygraph_res = self.get_dygraph_output()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph res is {}\nstatic_res is {}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph res is {}\nstatic_res is {}'.format(
+                dygraph_res, static_res))
 
 
 lambda_fun = lambda x: x
@@ -176,9 +179,12 @@ class TestRecursiveCall2(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph is {}\n static_res is \n{}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph is {}\n static_res is \n{}'.format(
+                dygraph_res, static_res))
 
 
 class TestThirdPartyLibrary(TestRecursiveCall2):

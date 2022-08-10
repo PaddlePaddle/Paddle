@@ -80,16 +80,22 @@ class TestParameterList(unittest.TestCase):
     def test_parameter_list(self):
         static_loss = self.train(False, to_static=True)
         dygraph_loss = self.train(False, to_static=False)
-        self.assertTrue(np.allclose(dygraph_loss, static_loss),
-                        msg='dygraph result is {}\nstatic result is {}'.format(
-                            dygraph_loss, static_loss))
+        np.testing.assert_allclose(
+            dygraph_loss,
+            static_loss,
+            rtol=1e-05,
+            err_msg='dygraph result is {}\nstatic result is {}'.format(
+                dygraph_loss, static_loss))
 
     def test_parameter_list_iter(self):
         static_loss = self.train(True, to_static=True)
         dygraph_loss = self.train(True, to_static=False)
-        self.assertTrue(np.allclose(dygraph_loss, static_loss),
-                        msg='dygraph result is {}\nstatic result is {}'.format(
-                            dygraph_loss, static_loss))
+        np.testing.assert_allclose(
+            dygraph_loss,
+            static_loss,
+            rtol=1e-05,
+            err_msg='dygraph result is {}\nstatic result is {}'.format(
+                dygraph_loss, static_loss))
 
 
 class NetWithRawParamList(paddle.nn.Layer):
@@ -142,9 +148,12 @@ class TestRawParameterList(unittest.TestCase):
     def test_parameter_list(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
-        self.assertTrue(np.allclose(dygraph_loss, static_loss),
-                        msg='dygraph result is {}\nstatic result is {}'.format(
-                            dygraph_loss, static_loss))
+        np.testing.assert_allclose(
+            dygraph_loss,
+            static_loss,
+            rtol=1e-05,
+            err_msg='dygraph result is {}\nstatic result is {}'.format(
+                dygraph_loss, static_loss))
 
 
 class NetWithSubLayerParamList(paddle.nn.Layer):

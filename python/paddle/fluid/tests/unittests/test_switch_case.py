@@ -77,16 +77,31 @@ class TestAPISwitchCase(unittest.TestCase):
             res = exe.run(main_program,
                           fetch_list=[out_0, out_1, out_2, out_3, out_4])
 
-            self.assertTrue(np.allclose(res[0], 1),
-                            "result is {} but answer is {}".format(res[0], 1))
-            self.assertTrue(np.allclose(res[1], 2),
-                            "result is {} but answer is {}".format(res[0], 2))
-            self.assertTrue(np.allclose(res[2], 3),
-                            "result is {} but answer is {}".format(res[0], 3))
-            self.assertTrue(np.allclose(res[3], 2),
-                            "result is {} but answer is {}".format(res[0], 2))
-            self.assertTrue(np.allclose(res[4], 2),
-                            "result is {} but answer is {}".format(res[0], 2))
+            np.testing.assert_allclose(
+                res[0],
+                1,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 1))
+            np.testing.assert_allclose(
+                res[1],
+                2,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 2))
+            np.testing.assert_allclose(
+                res[2],
+                3,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 3))
+            np.testing.assert_allclose(
+                res[3],
+                2,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 2))
+            np.testing.assert_allclose(
+                res[4],
+                2,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 2))
 
     def test_return_var_tuple(self):
 
@@ -123,10 +138,12 @@ class TestAPISwitchCase(unittest.TestCase):
             exe = fluid.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
 
-            self.assertTrue(
-                np.allclose(np.asarray(ret[0]), np.full((1, 2), 1, np.int32)))
-            self.assertTrue(
-                np.allclose(np.asarray(ret[1]), np.full((2, 3), 2, np.float32)))
+            np.testing.assert_allclose(np.asarray(ret[0]),
+                                       np.full((1, 2), 1, np.int32),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(np.asarray(ret[1]),
+                                       np.full((2, 3), 2, np.float32),
+                                       rtol=1e-05)
 
 
 class TestAPISwitchCase_Nested(unittest.TestCase):
@@ -213,12 +230,21 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                           feed={"index_1": np.array([1], dtype="uint8")},
                           fetch_list=[out_1, out_2, out_3])
 
-            self.assertTrue(np.allclose(res[0], 1),
-                            "result is {} but answer is {}".format(res[0], 1))
-            self.assertTrue(np.allclose(res[1], 2),
-                            "result is {} but answer is {}".format(res[1], 2))
-            self.assertTrue(np.allclose(res[2], 3),
-                            "result is {} but answer is {}".format(res[2], 3))
+            np.testing.assert_allclose(
+                res[0],
+                1,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[0], 1))
+            np.testing.assert_allclose(
+                res[1],
+                2,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[1], 2))
+            np.testing.assert_allclose(
+                res[2],
+                3,
+                rtol=1e-05,
+                err_msg='result is {} but answer is {}'.format(res[2], 3))
 
 
 # test TypeError and ValueError of api switch_case

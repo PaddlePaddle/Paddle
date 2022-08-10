@@ -395,7 +395,7 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
                                            out_w=12,
                                            align_corners=False)
             for res in results:
-                self.assertTrue(np.allclose(res, expect_res))
+                np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(x_data)
@@ -408,7 +408,7 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
                                        out_h=12,
                                        out_w=12,
                                        align_corners=False)
-            self.assertTrue(np.allclose(dy_result, expect))
+            np.testing.assert_allclose(dy_result, expect, rtol=1e-05)
 
 
 class TestBicubicOpError(unittest.TestCase):

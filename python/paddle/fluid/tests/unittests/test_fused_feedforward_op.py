@@ -286,8 +286,11 @@ class APITestStaticFusedFFN(unittest.TestCase):
             },
                             fetch_list=[res])
             real_res.append(fetch)
-        self.assertTrue(np.allclose(real_res[0], real_res[1], atol=1e-3),
-                        "two value is check diff")
+        np.testing.assert_allclose(real_res[0],
+                                   real_res[1],
+                                   rtol=1e-05,
+                                   atol=0.001,
+                                   err_msg='two value is check diff')
 
 
 class TestFusedFFNOpError(unittest.TestCase):

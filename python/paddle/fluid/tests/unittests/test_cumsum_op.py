@@ -72,15 +72,15 @@ class TestCumsumOp(unittest.TestCase):
                           ])
 
             z = np.cumsum(data_np)
-            self.assertTrue(np.allclose(z, out[0]))
+            np.testing.assert_allclose(z, out[0], rtol=1e-05)
             z = np.cumsum(data_np, axis=0)
-            self.assertTrue(np.allclose(z, out[1]))
+            np.testing.assert_allclose(z, out[1], rtol=1e-05)
             z = np.cumsum(data_np, axis=-1)
-            self.assertTrue(np.allclose(z, out[2]))
+            np.testing.assert_allclose(z, out[2], rtol=1e-05)
             self.assertTrue(out[3].dtype == np.float64)
             self.assertTrue(out[4].dtype == np.int32)
             z = np.cumsum(data_np, axis=-2)
-            self.assertTrue(np.allclose(z, out[5]))
+            np.testing.assert_allclose(z, out[5], rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())

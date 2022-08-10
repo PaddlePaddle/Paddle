@@ -353,7 +353,7 @@ class TestMeanAPI(unittest.TestCase):
                           fetch_list=[out1, out2, out3, out4, out5])
         out_ref = np.mean(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-04), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.0001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
@@ -366,8 +366,7 @@ class TestMeanAPI(unittest.TestCase):
                 if len(axis) == 0:
                     axis = None
             out_ref = np.mean(x, axis, keepdims=keepdim)
-            self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-04),
-                             True)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
 
         test_case(self.x)
         test_case(self.x, [])
@@ -387,13 +386,15 @@ class TestMeanAPI(unittest.TestCase):
             exe = fluid.Executor(place)
             x_np = np.random.rand(10, 10).astype(np.float32)
             res = exe.run(feed={"x": x_np}, fetch_list=[out])
-        self.assertEqual(np.allclose(res[0], np.mean(x_np, axis=1)), True)
+        np.testing.assert_allclose(res[0], np.mean(x_np, axis=1), rtol=1e-05)
 
         with fluid.dygraph.guard():
             x_np = np.random.rand(10, 10).astype(np.float32)
             x = fluid.dygraph.to_variable(x_np)
             out = fluid.layers.reduce_mean(input=x, dim=1)
-        self.assertEqual(np.allclose(out.numpy(), np.mean(x_np, axis=1)), True)
+        np.testing.assert_allclose(out.numpy(),
+                                   np.mean(x_np, axis=1),
+                                   rtol=1e-05)
 
     def test_errors(self):
         paddle.disable_static()

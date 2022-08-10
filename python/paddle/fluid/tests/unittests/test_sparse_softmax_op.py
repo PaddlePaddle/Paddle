@@ -50,9 +50,13 @@ class TestCsrSoftmax(unittest.TestCase):
             csr = paddle.to_tensor(np_x, stop_gradient=False).to_sparse_csr()
             m = paddle.incubate.sparse.nn.Softmax()
             out = m(csr)
-            self.assertTrue(np.allclose(out.crows().numpy(), np_csr.indptr))
-            self.assertTrue(np.allclose(out.cols().numpy(), np_csr.indices))
-            self.assertTrue(np.allclose(out.values().numpy(), np_out))
+            np.testing.assert_allclose(out.crows().numpy(),
+                                       np_csr.indptr,
+                                       rtol=1e-05)
+            np.testing.assert_allclose(out.cols().numpy(),
+                                       np_csr.indices,
+                                       rtol=1e-05)
+            np.testing.assert_allclose(out.values().numpy(), np_out, rtol=1e-05)
 
             # dx = (dout - sum(dout * out)) * out, dout=rand_x
             out.backward(csr.detach())
@@ -67,11 +71,15 @@ class TestCsrSoftmax(unittest.TestCase):
                 sum = np.sum(dout * out, keepdims=True)
                 dx = np.concatenate([dx, (dout - sum) * out])
 
-            self.assertTrue(np.allclose(csr.grad.crows().numpy(),
-                                        np_csr.indptr))
-            self.assertTrue(np.allclose(csr.grad.cols().numpy(),
-                                        np_csr.indices))
-            self.assertTrue(np.allclose(csr.grad.values().numpy(), dx))
+            np.testing.assert_allclose(csr.grad.crows().numpy(),
+                                       np_csr.indptr,
+                                       rtol=1e-05)
+            np.testing.assert_allclose(csr.grad.cols().numpy(),
+                                       np_csr.indices,
+                                       rtol=1e-05)
+            np.testing.assert_allclose(csr.grad.values().numpy(),
+                                       dx,
+                                       rtol=1e-05)
 
     def test_softmax3d(self):
         with _test_eager_guard():
@@ -99,7 +107,7 @@ class TestCsrSoftmax(unittest.TestCase):
             csr = paddle.to_tensor(np_x, stop_gradient=False).to_sparse_csr()
             m = paddle.incubate.sparse.nn.Softmax()
             out = m(csr)
-            self.assertTrue(np.allclose(out.values().numpy(), np_out))
+            np.testing.assert_allclose(out.values().numpy(), np_out, rtol=1e-05)
 
             # dx = (dout - sum(dout * out)) * out, dout=rand_x
             out.backward(csr.detach())
@@ -120,7 +128,9 @@ class TestCsrSoftmax(unittest.TestCase):
 
                 batch_offset += np_csr.nnz
 
-            self.assertTrue(np.allclose(csr.grad.values().numpy(), dx))
+            np.testing.assert_allclose(csr.grad.values().numpy(),
+                                       dx,
+                                       rtol=1e-05)
 
 
 if __name__ == "__main__":

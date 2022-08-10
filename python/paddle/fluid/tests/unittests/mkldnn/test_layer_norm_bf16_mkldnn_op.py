@@ -38,8 +38,11 @@ _set_use_system_allocator(True)
 class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
 
     def __assert_close(self, tensor, np_array, msg, rtol=2e-02, atol=2):
-        self.assertTrue(
-            np.allclose(np.array(tensor), np_array, rtol=rtol, atol=atol), msg)
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   rtol=rtol,
+                                   atol=atol,
+                                   err_msg=msg)
 
     def check_forward(self,
                       shape,

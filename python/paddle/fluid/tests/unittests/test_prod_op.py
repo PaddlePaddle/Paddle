@@ -28,34 +28,48 @@ class TestProdOp(unittest.TestCase):
         input = paddle.to_tensor(self.input)
         dy_result = paddle.prod(input)
         expected_result = np.prod(self.input)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
         dy_result = paddle.prod(input, axis=1)
         expected_result = np.prod(self.input, axis=1)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
         dy_result = paddle.prod(input, axis=-1)
         expected_result = np.prod(self.input, axis=-1)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
         dy_result = paddle.prod(input, axis=[0, 1])
         expected_result = np.prod(self.input, axis=(0, 1))
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
         dy_result = paddle.prod(input, axis=1, keepdim=True)
         expected_result = np.prod(self.input, axis=1, keepdims=True)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
         dy_result = paddle.prod(input, axis=1, dtype='int64')
         expected_result = np.prod(self.input, axis=1, dtype=np.int64)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
         dy_result = paddle.prod(input, axis=1, keepdim=True, dtype='int64')
         expected_result = np.prod(self.input,
                                   axis=1,
                                   keepdims=True,
                                   dtype=np.int64)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
     def run_static(self, use_gpu=False):
         input = paddle.fluid.data(name='input',
@@ -79,22 +93,36 @@ class TestProdOp(unittest.TestCase):
                                 ])
 
         expected_result = np.prod(self.input)
-        self.assertTrue(np.allclose(static_result[0], expected_result))
+        np.testing.assert_allclose(static_result[0],
+                                   expected_result,
+                                   rtol=1e-05)
         expected_result = np.prod(self.input, axis=1)
-        self.assertTrue(np.allclose(static_result[1], expected_result))
+        np.testing.assert_allclose(static_result[1],
+                                   expected_result,
+                                   rtol=1e-05)
         expected_result = np.prod(self.input, axis=-1)
-        self.assertTrue(np.allclose(static_result[2], expected_result))
+        np.testing.assert_allclose(static_result[2],
+                                   expected_result,
+                                   rtol=1e-05)
         expected_result = np.prod(self.input, axis=(0, 1))
-        self.assertTrue(np.allclose(static_result[3], expected_result))
+        np.testing.assert_allclose(static_result[3],
+                                   expected_result,
+                                   rtol=1e-05)
         expected_result = np.prod(self.input, axis=1, keepdims=True)
-        self.assertTrue(np.allclose(static_result[4], expected_result))
+        np.testing.assert_allclose(static_result[4],
+                                   expected_result,
+                                   rtol=1e-05)
         expected_result = np.prod(self.input, axis=1, dtype=np.int64)
-        self.assertTrue(np.allclose(static_result[5], expected_result))
+        np.testing.assert_allclose(static_result[5],
+                                   expected_result,
+                                   rtol=1e-05)
         expected_result = np.prod(self.input,
                                   axis=1,
                                   keepdims=True,
                                   dtype=np.int64)
-        self.assertTrue(np.allclose(static_result[6], expected_result))
+        np.testing.assert_allclose(static_result[6],
+                                   expected_result,
+                                   rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())

@@ -218,9 +218,9 @@ class TestLU_UnpackAPI(unittest.TestCase):
                 LU, P = paddle.linalg.lu(x)
                 pP, pL, pU = paddle.linalg.lu_unpack(LU, P)
 
-                self.assertTrue(np.allclose(sU, pU, atol=1e-5))
-                self.assertTrue(np.allclose(sL, pL, atol=1e-5))
-                self.assertTrue(np.allclose(sP, pP, atol=1e-5))
+                np.testing.assert_allclose(sU, pU, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(sL, pL, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(sP, pP, rtol=1e-05, atol=1e-05)
 
         tensor_shapes = [
             (3, 5),
@@ -266,9 +266,18 @@ class TestLU_UnpackAPI(unittest.TestCase):
                     fetches = exe.run(fluid.default_main_program(),
                                       feed={"input": a},
                                       fetch_list=[pP, pL, pU])
-                    self.assertTrue(np.allclose(fetches[0], sP, atol=1e-5))
-                    self.assertTrue(np.allclose(fetches[1], sL, atol=1e-5))
-                    self.assertTrue(np.allclose(fetches[2], sU, atol=1e-5))
+                    np.testing.assert_allclose(fetches[0],
+                                               sP,
+                                               rtol=1e-05,
+                                               atol=1e-05)
+                    np.testing.assert_allclose(fetches[1],
+                                               sL,
+                                               rtol=1e-05,
+                                               atol=1e-05)
+                    np.testing.assert_allclose(fetches[2],
+                                               sU,
+                                               rtol=1e-05,
+                                               atol=1e-05)
 
         tensor_shapes = [
             (3, 5),

@@ -139,9 +139,12 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph_res is {}\nstatic_res is {}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph_res is {}\nstatic_res is {}'.format(
+                dygraph_res, static_res))
 
 
 class TestSliceInIf(TestSliceWithoutControlFlow):

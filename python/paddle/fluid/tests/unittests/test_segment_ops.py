@@ -252,9 +252,13 @@ class API_SegmentOpsTest(unittest.TestCase):
                           fetch_list=[res_sum, res_mean, res_max, res_min])
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(
+                np_res,
+                ret_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, ret_res))
 
     def test_dygraph(self):
         device = paddle.CPUPlace()
@@ -275,9 +279,13 @@ class API_SegmentOpsTest(unittest.TestCase):
             ret = [res_sum, res_mean, res_max, res_min]
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res.numpy(), atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(
+                np_res,
+                ret_res.numpy(),
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, ret_res))
 
 
 if __name__ == '__main__':

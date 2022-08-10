@@ -155,10 +155,12 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
             x = paddle.to_tensor(data)
             bn_out = bn_model(x)
             sybn_out = sybn_model(x)
-            self.assertTrue(
-                np.allclose(bn_out.numpy(), sybn_out.numpy()),
-                "Output has diff. \n" + "\nBN     " + str(bn_out.numpy()) +
-                "\n" + "Sync BN " + str(sybn_out.numpy()))
+            np.testing.assert_allclose(
+                bn_out.numpy(),
+                sybn_out.numpy(),
+                rtol=1e-05,
+                err_msg='Output has diff. \n' + '\nBN     ' +
+                str(bn_out.numpy()) + '\n' + 'Sync BN ' + str(sybn_out.numpy()))
 
 
 class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):

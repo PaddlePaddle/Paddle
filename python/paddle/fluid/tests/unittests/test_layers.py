@@ -400,8 +400,8 @@ class TestLayer(LayerTest):
             dy_ret = layers.relu(base.to_variable(t))
             dy_ret_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_ret_value))
-        self.assertTrue(np.allclose(static_ret, dy_eager_ret_value))
+        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, dy_eager_ret_value, rtol=1e-05)
 
     def test_matmul(self):
         with self.static_graph():
@@ -429,8 +429,8 @@ class TestLayer(LayerTest):
             dy_ret = layers.matmul(base.to_variable(t), base.to_variable(t2))
             dy_ret_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_ret_value))
-        self.assertTrue(np.allclose(static_ret, dy_eager_ret_value))
+        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, dy_eager_ret_value, rtol=1e-05)
 
     def test_conv2d(self):
         with self.static_graph():
@@ -508,9 +508,9 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_type)
 
-        self.assertTrue(np.allclose(static_ret, dy_ret_value))
-        self.assertTrue(np.allclose(static_ret, dy_eager_ret_value))
-        self.assertTrue(np.allclose(static_ret, static_ret2))
+        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, dy_eager_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
 
         with self.dynamic_graph():
             with _test_eager_guard():
@@ -637,9 +637,15 @@ class TestLayer(LayerTest):
                 dy_ret_value.append(dy_ret[i].numpy())
 
         for i in range(len(static_ret)):
-            self.assertTrue(np.allclose(static_ret[i], static_ret2[i]))
-            self.assertTrue(np.allclose(static_ret[i], dy_ret_value[i]))
-            self.assertTrue(np.allclose(static_ret[i], dy_eager_ret_value[i]))
+            np.testing.assert_allclose(static_ret[i],
+                                       static_ret2[i],
+                                       rtol=1e-05)
+            np.testing.assert_allclose(static_ret[i],
+                                       dy_ret_value[i],
+                                       rtol=1e-05)
+            np.testing.assert_allclose(static_ret[i],
+                                       dy_eager_ret_value[i],
+                                       rtol=1e-05)
 
         with self.dynamic_graph():
             with _test_eager_guard():
@@ -749,8 +755,8 @@ class TestLayer(LayerTest):
             dy_ret = layers.elementwise_mul(ret, to_variable(n6))
             dy_ret_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_ret_value))
-        self.assertTrue(np.allclose(static_ret, dy_eager_ret_value))
+        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, dy_eager_ret_value, rtol=1e-05)
 
     def test_elementwise_minmax(self):
         n = np.ones([3, 3], dtype='float32')
@@ -770,10 +776,10 @@ class TestLayer(LayerTest):
             min_ret_value = min_ret.numpy()
             max_ret_value = max_ret.numpy()
 
-        self.assertTrue(np.allclose(n, min_ret_value))
-        self.assertTrue(np.allclose(n2, max_ret_value))
-        self.assertTrue(np.allclose(n, min_eager_ret_value))
-        self.assertTrue(np.allclose(n2, max_eager_ret_value))
+        np.testing.assert_allclose(n, min_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(n2, max_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(n, min_eager_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(n2, max_eager_ret_value, rtol=1e-05)
 
     def test_sequence_conv(self):
         inp_np = np.arange(12).reshape([3, 4]).astype('float32')
@@ -858,9 +864,9 @@ class TestLayer(LayerTest):
                 bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_rlt = conv2d_transpose(base.to_variable(inp_np))
             dy_rlt_value = dy_rlt.numpy()
-        self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt_value, static_rlt2))
-        self.assertTrue(np.allclose(dy_eager_rlt_value, static_rlt2))
+        np.testing.assert_allclose(static_rlt2, static_rlt, rtol=1e-05)
+        np.testing.assert_allclose(dy_rlt_value, static_rlt2, rtol=1e-05)
+        np.testing.assert_allclose(dy_eager_rlt_value, static_rlt2, rtol=1e-05)
 
         with self.dynamic_graph():
             with _test_eager_guard():
@@ -1169,9 +1175,9 @@ class TestLayer(LayerTest):
             dy_rlt = prelu(base.to_variable(inp_np))
             dy_rlt_value = dy_rlt.numpy()
 
-        self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
-        self.assertTrue(np.allclose(dy_eager_rlt_value, static_rlt))
+        np.testing.assert_allclose(static_rlt2, static_rlt, rtol=1e-05)
+        np.testing.assert_allclose(dy_rlt_value, static_rlt, rtol=1e-05)
+        np.testing.assert_allclose(dy_eager_rlt_value, static_rlt, rtol=1e-05)
 
         with self.dynamic_graph():
             with _test_eager_guard():
@@ -1265,9 +1271,9 @@ class TestLayer(LayerTest):
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
 
-        self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
-        self.assertTrue(np.allclose(dy_eager_rlt_value, static_rlt))
+        np.testing.assert_allclose(static_rlt2, static_rlt, rtol=1e-05)
+        np.testing.assert_allclose(dy_rlt_value, static_rlt, rtol=1e-05)
+        np.testing.assert_allclose(dy_eager_rlt_value, static_rlt, rtol=1e-05)
 
         with self.dynamic_graph():
             with _test_eager_guard():
@@ -1474,9 +1480,9 @@ class TestLayer(LayerTest):
             dy_rlt = nce(embs3, wl)
             dy_rlt_value = dy_rlt.numpy()
 
-        self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
-        self.assertTrue(np.allclose(dy_eager_rlt_value, static_rlt))
+        np.testing.assert_allclose(static_rlt2, static_rlt, rtol=1e-05)
+        np.testing.assert_allclose(dy_rlt_value, static_rlt, rtol=1e-05)
+        np.testing.assert_allclose(dy_eager_rlt_value, static_rlt, rtol=1e-05)
 
         with self.dynamic_graph():
             with _test_eager_guard():
@@ -1696,9 +1702,9 @@ class TestLayer(LayerTest):
             dy_ret = conv3d(base.to_variable(images))
             dy_rlt_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_rlt_value))
-        self.assertTrue(np.allclose(static_ret, dy_eager_rlt_value))
-        self.assertTrue(np.allclose(static_ret, static_ret2))
+        np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, dy_eager_rlt_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
 
         with self.dynamic_graph():
             with _test_eager_guard():
@@ -1812,7 +1818,7 @@ class TestLayer(LayerTest):
 
         # TODO: dygraph can't support LODTensor
 
-        self.assertTrue(np.allclose(static_ret, static_ret2))
+        np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
 
     def func_group_norm(self):
         if core.is_compiled_with_cuda():
@@ -1874,8 +1880,8 @@ class TestLayer(LayerTest):
             dy_ret = groupNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_rlt_value))
-        self.assertTrue(np.allclose(static_ret, static_ret2))
+        np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
 
     def test_group_norm(self):
         with _test_eager_guard():
@@ -1931,11 +1937,11 @@ class TestLayer(LayerTest):
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value2 = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_rlt_value))
-        self.assertTrue(np.allclose(static_ret, dy_rlt_value2))
-        self.assertTrue(np.allclose(static_ret, dy_eager_rlt_value))
-        self.assertTrue(np.allclose(static_ret, dy_eager_rlt_value2))
-        self.assertTrue(np.allclose(static_ret, static_ret2))
+        np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, dy_rlt_value2, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, dy_eager_rlt_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, dy_eager_rlt_value2, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
 
         with self.static_graph():
             # the input of InstanceNorm must be Variable.
@@ -2006,9 +2012,9 @@ class TestLayer(LayerTest):
             dy_ret = spectralNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_rlt_value))
-        self.assertTrue(np.allclose(static_ret, dy_eager_rlt_value))
-        self.assertTrue(np.allclose(static_ret, static_ret2))
+        np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, dy_eager_rlt_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
 
     def test_tree_conv(self):
         if core.is_compiled_with_cuda():
@@ -2094,9 +2100,9 @@ class TestLayer(LayerTest):
             dy_ret = treeConv(base.to_variable(vectors), base.to_variable(adj))
             dy_rlt_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, static_ret2))
-        self.assertTrue(np.allclose(static_ret, dy_rlt_value))
-        self.assertTrue(np.allclose(static_ret, dy_eager_rlt_value))
+        np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret, dy_eager_rlt_value, rtol=1e-05)
 
         with self.dynamic_graph():
             with _test_eager_guard():
@@ -2206,9 +2212,9 @@ class TestLayer(LayerTest):
                                                   use_cudnn=False)
             dy_rlt = conv3d_transpose(base.to_variable(input_array))
             dy_rlt_value = dy_rlt.numpy()
-        self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
-        self.assertTrue(np.allclose(dy_eager_rlt_value, static_rlt))
+        np.testing.assert_allclose(static_rlt2, static_rlt, rtol=1e-05)
+        np.testing.assert_allclose(dy_rlt_value, static_rlt, rtol=1e-05)
+        np.testing.assert_allclose(dy_eager_rlt_value, static_rlt, rtol=1e-05)
 
         with self.dynamic_graph():
             with _test_eager_guard():
@@ -2325,15 +2331,25 @@ class TestLayer(LayerTest):
             eye_tensor_rlt2_value = eye_tensor_rlt2.numpy()
             diag_tensor_value = diag_tensor.numpy()
 
-        self.assertTrue(np.allclose(eager_eye_tensor_value, np_eye))
-        self.assertTrue(np.allclose(eager_eye_tensor_rlt1_value, stack_rlt1))
-        self.assertTrue(np.allclose(eager_eye_tensor_rlt2_value, stack_rlt2))
-        self.assertTrue(np.allclose(eager_diag_tensor_value, np.eye(20)))
+        np.testing.assert_allclose(eager_eye_tensor_value, np_eye, rtol=1e-05)
+        np.testing.assert_allclose(eager_eye_tensor_rlt1_value,
+                                   stack_rlt1,
+                                   rtol=1e-05)
+        np.testing.assert_allclose(eager_eye_tensor_rlt2_value,
+                                   stack_rlt2,
+                                   rtol=1e-05)
+        np.testing.assert_allclose(eager_diag_tensor_value,
+                                   np.eye(20),
+                                   rtol=1e-05)
 
-        self.assertTrue(np.allclose(eye_tensor_value, np_eye))
-        self.assertTrue(np.allclose(eye_tensor_rlt1_value, stack_rlt1))
-        self.assertTrue(np.allclose(eye_tensor_rlt2_value, stack_rlt2))
-        self.assertTrue(np.allclose(diag_tensor_value, np.eye(20)))
+        np.testing.assert_allclose(eye_tensor_value, np_eye, rtol=1e-05)
+        np.testing.assert_allclose(eye_tensor_rlt1_value,
+                                   stack_rlt1,
+                                   rtol=1e-05)
+        np.testing.assert_allclose(eye_tensor_rlt2_value,
+                                   stack_rlt2,
+                                   rtol=1e-05)
+        np.testing.assert_allclose(diag_tensor_value, np.eye(20), rtol=1e-05)
 
         with self.assertRaises(TypeError):
             layers.eye(num_rows=3.1)
@@ -2878,12 +2894,12 @@ class TestBook(LayerTest):
                 dy_result_value = dy_result.numpy()
 
             if method.__name__ in self.all_close_compare:
-                self.assertTrue(
-                    np.allclose(static_result[0],
-                                dy_result_value,
-                                atol=0,
-                                rtol=1e-05),
-                    "Result of function [{}] compare failed".format(
+                np.testing.assert_allclose(
+                    static_result[0],
+                    dy_result_value,
+                    rtol=1e-05,
+                    atol=0,
+                    err_msg='Result of function [{}] compare failed'.format(
                         method.__name__))
                 continue
 
