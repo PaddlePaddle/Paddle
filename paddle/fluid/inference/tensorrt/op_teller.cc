@@ -350,7 +350,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         }
       }
 #endif
-      // In fact, this should include all conv
+      // In fact, this should include all conv, not only conv2d
       if (op_type == "conv2d") {
         auto* block = desc.Block();
         if (block == nullptr) {
