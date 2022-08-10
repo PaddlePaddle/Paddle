@@ -112,11 +112,9 @@ class TestSelectedRowsSumOp(unittest.TestCase):
 
         if has_data_w_num > 0:
             self.assertEqual(len(out.rows()), 7)
-            self.assertTrue(
-                np.array_equal(
-                    np.array(out.get_tensor()),
-                    self._get_array(self.rows, self.row_numel) *
-                    has_data_w_num))
+            np.testing.assert_array_equal(
+                np.array(out.get_tensor()),
+                self._get_array(self.rows, self.row_numel) * has_data_w_num)
         else:
             self.assertEqual(len(out.rows()), 0)
 
@@ -252,13 +250,10 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
 
         out_t = np.array(out)
         self.assertEqual(out_t.shape[0], self.height)
-        self.assertTrue(
-            np.array_equal(
-                out_t,
-                self._get_array([i
-                                 for i in range(self.height)], self.row_numel) *
-                np.tile(
-                    np.array(result).reshape(self.height, 1), self.row_numel)))
+        np.testing.assert_array_equal(
+            out_t,
+            self._get_array([i for i in range(self.height)], self.row_numel) *
+            np.tile(np.array(result).reshape(self.height, 1), self.row_numel))
 
     def create_lod_tensor(self, scope, place, var_name):
         var = scope.var(var_name)
