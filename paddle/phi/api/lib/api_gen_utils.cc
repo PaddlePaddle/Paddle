@@ -102,6 +102,18 @@ phi::MetaTensor MakeMetaTensor(
   return phi::MetaTensor();
 }
 
+std::vector<phi::MetaTensor> MakeMetaTensor(
+    const paddle::optional<std::vector<const phi::DenseTensor*>>& tensors) {
+  std::vector<phi::MetaTensor> meta_tensors;
+  if (tensors) {
+    meta_tensors.reserve(tensors->size());
+    for (auto* t : tensors.get()) {
+      meta_tensors.emplace_back(*t);
+    }
+  }
+  return meta_tensors;
+}
+
 /* ------------------ for output ----------------------- */
 
 phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {

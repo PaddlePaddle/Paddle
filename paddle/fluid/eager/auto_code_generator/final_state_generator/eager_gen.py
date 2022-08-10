@@ -383,6 +383,12 @@ CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = \
   if( {}.impl() ) {}_optional = paddle::make_optional<paddle::experimental::Tensor>({});
 """
 
+CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE = \
+"""
+  paddle::optional<std::vector<paddle::experimental::Tensor>> {}_optional;
+  if( !{}.empty() ) {}_optional = paddle::make_optional<std::vector<paddle::experimental::Tensor>>({});
+"""
+
 CHECK_BACKWARD_INPLACE_TEMPLATE = \
 """
   bool can_be_inplaced = false;
@@ -948,11 +954,21 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         )
             else:
                 assert IsVectorTensorType(ttype)
-                arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
-                amp_tensors_vector_list.append(f"{name}")
-                amp_autocast_list.append(
-                    f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
-                )
+                if is_optional:
+                    # name = "size_tensor"
+                    arg_str = f"const paddle::optional<std::vector<paddle::experimental::Tensor>>& {name}"
+                    amp_tensors_vector_optional_list.append(
+                        f"if ({name}) amp_tensors_vector.push_back( *{name} );\n"
+                    )
+                    amp_autocast_optional_list.append(
+                        f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                    )
+                else:
+                    arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
+                    amp_tensors_vector_list.append(f"{name}")
+                    amp_autocast_list.append(
+                        f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                    )
 
             inputs_args_definition_list[pos] = arg_str
             inputs_args_declaration_list[pos] = arg_str
@@ -1109,7 +1125,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         kernel_trans2_op_name_str = f"auto op_name = phi::TransToFluidOpName(\"{forward_api_name}\");"
         amp_tensors_vector_list_str = "{ " + ",".join(
             amp_tensors_vector_list) + " }"
-        amp_tensors_vector_optional_list_str = "".join(
+        amp_tensors_vector_optional_list_str = "    ".join(
             amp_tensors_vector_optional_list)
         amp_get_dst_dtype_str = f"auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
         amp_autocast_list_str = "    ".join(
@@ -1374,9 +1390,12 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         inplace_check_str = ""
         optional_inplace_var_name = []
         # Grad Ins from TensorWrappers
-        for name, (_, is_fwd_input,
+        # name = "size_tensor"
+        for name, (backward_input_type, is_fwd_input,
                    grad_api_position), in backward_forward_inputs_map.items():
+            # tensor_wrapper_name = "size_tensor_"
             tensor_wrapper_name = GetSavedName(name)
+            # transformed_tensor_name = "size_tensor"
             transformed_tensor_name = self.TransformToNextGradName(name)
 
             is_optional = (name in self.optional_inputs)
@@ -1397,9 +1416,14 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     tensor_wrapper_intermidiate_tensor_str)
                 inplace_grad_input_str = transformed_tensor_name
             if is_optional:
-                tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
-                    transformed_tensor_name, transformed_tensor_name,
-                    transformed_tensor_name, transformed_tensor_name)
+                if backward_input_type == "std::vector<Tensor>":
+                    tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE.format(
+                        transformed_tensor_name, transformed_tensor_name,
+                        transformed_tensor_name, transformed_tensor_name)
+                else:
+                    tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
+                        transformed_tensor_name, transformed_tensor_name,
+                        transformed_tensor_name, transformed_tensor_name)
 
                 grad_api_args[
                     grad_api_position] = transformed_tensor_name + "_optional"
