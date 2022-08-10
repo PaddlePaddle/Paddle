@@ -733,6 +733,87 @@ template void HeterCommKernel::convert_feature_push_value_as_float<paddle::frame
     bool to_float,
     const XPUStream& stream);
 
+template <typename GradType>
+__global__ void sum_fidseq_add_grad_kernel(
+        GradType* all_device_fidseq_grad_ptr,
+        uint32_t all_device_fidseq_grad_len,
+        uint32_t bucket_num,
+        GradType* out_fidseq_grad_compress_ptr) {
+    int cid = core_id();
+    int ncores = core_num();
+    if (cid >= ncores) {
+        return;
+    }
+    int thread_id = ncores * cluster_id() + cid;
+    int nthreads = ncores * cluster_num();
+
+    const int buf_size = 32;
+    __local__ GradType local_fidseq_grad[buf_size];
+    __local__ GradType local_fidseq_grad_offset[buf_size];
+    __local__ GradType local_fidseq_grad_out[buf_size];
+
+    int len_per_loop =
+        min(buf_size, roundup_div(all_device_fidseq_grad_len, nthreads));
+    int fidseq_grad_len_per_bucket = all_device_fidseq_grad_len / bucket_num;
+
+    for (uint32_t i = thread_id * len_per_loop; i < all_device_fidseq_grad_len;
+            i += nthreads * len_per_loop) {
+        int read_len = min(len_per_loop, all_device_fidseq_grad_len - i);
+        GM2LM(all_device_fidseq_grad_ptr + i, local_fidseq_grad,
+            read_len * sizeof(GradType));
+        GM2LM(all_device_fidseq_grad_ptr + i + all_device_fidseq_grad_len,
+            local_fidseq_grad_offset, read_len * sizeof(GradType));
+        GM2LM(out_fidseq_grad_compress_ptr + i, local_fidseq_grad_out,
+            read_len * sizeof(GradType));
+
+        for (int k = 0; k < read_len; k++) {
+            // local_fidseq_grad_out[k] =
+            //     local_fidseq_grad[k] + local_fidseq_grad_offset[k];
+
+            local_fidseq_grad_out[k].slot = local_fidseq_grad[k].slot;
+            local_fidseq_grad_out[k].show =
+                local_fidseq_grad[k].show + local_fidseq_grad_offset[k].show;
+            local_fidseq_grad_out[k].clk =
+                local_fidseq_grad[k].clk + local_fidseq_grad_offset[k].clk;
+            local_fidseq_grad_out[k].lr_g =
+                local_fidseq_grad[k].lr_g + local_fidseq_grad_offset[k].lr_g;
+            for (int l = 0; l < MF_DIM; l++) {
+                local_fidseq_grad_out[k].mf_g[l] =
+                    local_fidseq_grad[k].mf_g[l] + local_fidseq_grad_offset[k].mf_g[l];
+            }
+        }
+
+        mfence_lm();
+        LM2GM(local_fidseq_grad_out, out_fidseq_grad_compress_ptr + i,
+            read_len * sizeof(GradType));
+    }
+}
+
+template <typename GradType, typename StreamType>
+void HeterCommKernel::sum_fidseq_add_grad(
+    GradType* all_device_fidseq_grad_ptr,
+    uint32_t all_device_fidseq_grad_len,
+    const StreamType& stream,
+    uint32_t bucket_num,
+    GradType* out_fidseq_grad_compress_ptr) {
+    PADDLE_ENFORCE_LE(bucket_num, 8,
+        platform::errors::PreconditionNotMet(
+            "invalid device number[%d]: should <= 8", bucket_num));
+
+    sum_fidseq_add_grad_kernel<GradType><<<8, 64, stream>>>(
+            all_device_fidseq_grad_ptr,
+            all_device_fidseq_grad_len,
+            bucket_num,
+            out_fidseq_grad_compress_ptr);
+}
+
+template void HeterCommKernel::sum_fidseq_add_grad<paddle::framework::FeaturePushValue, XPUStream>(
+    paddle::framework::FeaturePushValue* all_device_fidseq_grad_ptr,
+    uint32_t all_device_fidseq_grad_len,
+    const XPUStream& stream,
+    uint32_t bucket_num,
+    paddle::framework::FeaturePushValue* out_fidseq_grad_compress_ptr);
+
 #endif
 
 }  // end namespace framework
