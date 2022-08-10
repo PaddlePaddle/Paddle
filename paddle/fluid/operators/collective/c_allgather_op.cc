@@ -94,4 +94,7 @@ REGISTER_OP_CPU_KERNEL(c_allgather,
                        ops::CAllGatherOpCPUKernel<double>,
                        ops::CAllGatherOpCPUKernel<int>,
                        ops::CAllGatherOpCPUKernel<int64_t>,
+                       ops::CAllGatherOpCPUKernel<uint8_t>,
+                       ops::CAllGatherOpCPUKernel<int8_t>,
+                       ops::CAllGatherOpCPUKernel<bool>,
                        ops::CAllGatherOpCPUKernel<plat::float16>);

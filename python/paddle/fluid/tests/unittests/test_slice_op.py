@@ -21,7 +21,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
 
 paddle.enable_static()
 
@@ -600,7 +600,7 @@ class TestSliceApiWithTensor(unittest.TestCase):
                                ends=paddle.to_tensor(ends, dtype='int32'))
             a_2 = paddle.slice(a, axes=axes, starts=starts, ends=ends)
 
-            self.assertTrue(np.array_equal(a_1.numpy(), a_2.numpy()))
+            np.testing.assert_array_equal(a_1.numpy(), a_2.numpy())
 
     def test_bool_tensor(self):
         with paddle.fluid.dygraph.guard():
@@ -616,7 +616,7 @@ class TestSliceApiWithTensor(unittest.TestCase):
             y_np = tt[0:3, 1:5, 2:4]
 
             self.assertTrue(paddle.bool == y_paddle.dtype)
-            self.assertTrue(np.array_equal(y_paddle.numpy(), y_np))
+            np.testing.assert_array_equal(y_paddle.numpy(), y_np)
 
 
 class TestSliceApiEager(unittest.TestCase):
@@ -635,11 +635,11 @@ class TestSliceApiEager(unittest.TestCase):
                                    axes=axes,
                                    starts=paddle.to_tensor(starts),
                                    ends=paddle.to_tensor(ends))
-
+                np.testing.assert_array_equal(a_1.numpy(), a_2.numpy())
                 a_1.backward()
                 grad_truth = paddle.zeros_like(a)
                 grad_truth[-3:3, 0:2, 2:4] = 1
-                self.assertTrue(np.array_equal(grad_truth, a.gradient()))
+                np.testing.assert_array_equal(grad_truth, a.gradient())
 
                 self.assertTrue(np.allclose(a_1.numpy(), a[-3:3, 0:2, 2:4]))
 
@@ -710,10 +710,10 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
         self.assertTrue(self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR)
         self.assertEqual(self.sliced_arr.shape, self.shape)
-        self.assertTrue(np.array_equal(self.out, self.data))
-        self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x1, np.zeros_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x2, np.zeros_like(self.data)))
+        np.testing.assert_array_equal(self.out, self.data)
+        np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
+        np.testing.assert_array_equal(self.g_x1, np.zeros_like(self.data))
+        np.testing.assert_array_equal(self.g_x2, np.zeros_like(self.data))
 
     def test_case_2(self):
         main_program = fluid.Program()
@@ -722,12 +722,11 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(
             self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY)
         self.assertEqual(self.sliced_arr.shape, self.shape)
-        self.assertTrue(
-            np.array_equal(self.out,
-                           np.stack([self.data, self.data], axis=self.axis)))
-        self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x1, np.ones_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x2, np.zeros_like(self.data)))
+        np.testing.assert_array_equal(
+            self.out, np.stack([self.data, self.data], axis=self.axis))
+        np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
+        np.testing.assert_array_equal(self.g_x1, np.ones_like(self.data))
+        np.testing.assert_array_equal(self.g_x2, np.zeros_like(self.data))
 
     def test_case_3(self):
         main_program = fluid.Program()
@@ -736,13 +735,12 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(
             self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY)
         self.assertEqual(self.sliced_arr.shape, self.shape)
-        self.assertTrue(
-            np.array_equal(
-                self.out,
-                np.stack([self.data, self.data, self.data], axis=self.axis)))
-        self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x1, np.ones_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x2, np.ones_like(self.data)))
+        np.testing.assert_array_equal(
+            self.out, np.stack([self.data, self.data, self.data],
+                               axis=self.axis))
+        np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
+        np.testing.assert_array_equal(self.g_x1, np.ones_like(self.data))
+        np.testing.assert_array_equal(self.g_x2, np.ones_like(self.data))
 
 
 class TestImperativeVarBaseGetItem(unittest.TestCase):
@@ -787,7 +785,6 @@ class TestInferShape(unittest.TestCase):
         self.assertEqual(out0.shape, (3, 3, 5))
 
     def test_axis_less_than_zero(self):
-
         # Using paddle.disable_static will make other unittests fail.
         with fluid.dygraph.guard():
             x_arr = np.arange(0, 24, dtype=np.float32).reshape([2, 3, 4])
@@ -797,11 +794,11 @@ class TestInferShape(unittest.TestCase):
                 100,
             ], [0], [1])
             np_slice = x_arr[:, :, 0:1]
-            self.assertTrue(np.array_equal(pp_slice, np_slice))
+            np.testing.assert_array_equal(pp_slice, np_slice)
 
             pp_slice = paddle.slice(x, (-100, ), [0], [1])
             np_slice = x_arr[0:1]
-            self.assertTrue(np.array_equal(pp_slice, np_slice))
+            np.testing.assert_array_equal(pp_slice, np_slice)
 
             x_arr = np.array([], dtype=np.float32)
             x = paddle.to_tensor(np.reshape(x_arr, (0, 0, 0)))
@@ -829,6 +826,7 @@ class TestInferShape(unittest.TestCase):
 class TestImperativeCUDAPinnedInput(unittest.TestCase):
 
     def test_input_cuda_pinned_var(self):
+        _enable_legacy_dygraph()
         with fluid.dygraph.guard():
             data = np.random.random((2, 80, 16128)).astype('float32')
             var = core.VarBase(value=data,

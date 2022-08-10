@@ -370,7 +370,7 @@ class HardSigmoidGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* out = ctx.Input<Tensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     float slope = ctx.Attr<float>("slope");
     float offset = ctx.Attr<float>("offset");
@@ -381,7 +381,7 @@ class HardSigmoidGradMLUKernel : public framework::OpKernel<T> {
                                    1.0f /*sliced_dim useless*/,
                                    slope,
                                    offset);
-    MLUCnnlTensorDesc out_desc(*out);
+    MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc dout_desc(*dout);
     MLUCnnlTensorDesc dx_desc(*dx);
     MLUCnnl::ActiveGrad(ctx,
@@ -392,10 +392,29 @@ class HardSigmoidGradMLUKernel : public framework::OpKernel<T> {
                         nullptr,
                         dout_desc.get(),
                         GetBasePtr(dout),
-                        out_desc.get(),
-                        GetBasePtr(out),
+                        x_desc.get(),
+                        GetBasePtr(x),
                         dx_desc.get(),
                         GetBasePtr(dx));
+  }
+};
+
+template <typename T>
+class FloorMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+
+    MLUCnnl::Floor(ctx,
+                   input_desc.get(),
+                   GetBasePtr(input),
+                   output_desc.get(),
+                   GetBasePtr(output));
   }
 };
 
@@ -589,3 +608,7 @@ REGISTER_OP_MLU_KERNEL(
     hard_sigmoid_grad,
     ops::HardSigmoidGradMLUKernel<float>,
     ops::HardSigmoidGradMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(floor,
+                       ops::FloorMLUKernel<float>,
+                       ops::FloorMLUKernel<paddle::platform::float16>);

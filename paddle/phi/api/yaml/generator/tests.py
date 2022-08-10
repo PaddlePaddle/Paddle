@@ -50,7 +50,7 @@ def supports_selected_rows_kernel(api):
 
 
 def supports_inplace(api):
-    return "inplace_map" in api
+    return api['inplace'] is not None
 
 
 def supports_no_need_buffer(api):

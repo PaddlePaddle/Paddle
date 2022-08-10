@@ -17,14 +17,16 @@
 
 #include <unordered_map>
 
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/utils/rw_lock.h"
+
 #include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace phi {
 class Device final {
@@ -105,6 +107,16 @@ class Device final {
   void MemoryDeallocateUnified(void* ptr, size_t size);
 
   void MemorySet(void* ptr, uint8_t value, size_t size);
+
+  // Blas
+  // ! y = alpha * x + beta * y
+  template <typename T>
+  void BlasAXPBY(const stream::Stream& stream,
+                 size_t numel,
+                 float alpha,
+                 const T* x,
+                 float beta,
+                 T* y);
 
   std::string Type();
 

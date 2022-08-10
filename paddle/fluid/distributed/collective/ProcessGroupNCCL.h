@@ -28,7 +28,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
@@ -46,8 +45,6 @@ namespace paddle {
 namespace distributed {
 
 using Place = paddle::platform::Place;
-using CUDAStream = platform::stream::CUDAStream;
-using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
 class ProcessGroupNCCL : public ProcessGroup {
  public:
@@ -125,6 +122,12 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      int offset,
+      int length) override;
+
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>& in,
       std::vector<phi::DenseTensor>& out) override;
@@ -170,8 +173,7 @@ class ProcessGroupNCCL : public ProcessGroup {
 
   std::unordered_map<std::string, std::vector<EventManager>> places_to_events_;
 
-  std::unordered_map<std::string,
-                     std::vector<std::unique_ptr<CUDADeviceContext>>>
+  std::unordered_map<std::string, std::vector<std::unique_ptr<phi::GPUContext>>>
       places_to_ctx_;
 
   std::set<int> used_place_ids_;
@@ -206,7 +208,7 @@ class ProcessGroupNCCL : public ProcessGroup {
   void CreateNCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);
 
-  void CheckSplitSizes(std::vector<int64_t>& split_sizes,
+  void CheckSplitSizes(std::vector<int64_t>* split_sizes,
                        std::vector<int64_t> tensor_shape);
 };
 

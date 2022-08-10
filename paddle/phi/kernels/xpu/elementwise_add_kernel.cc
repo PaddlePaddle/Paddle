@@ -24,13 +24,15 @@ void GradAddXPUKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
   dev_ctx.template Alloc<T>(out);
   auto x_shape = phi::vectorize<int>(x.dims());
   auto y_shape = phi::vectorize<int>(y.dims());
   int r = xpu::broadcast_add(dev_ctx.x_context(),
-                             x.data<T>(),
-                             y.data<T>(),
-                             out->data<T>(),
+                             reinterpret_cast<const XPUType*>(x.data<T>()),
+                             reinterpret_cast<const XPUType*>(y.data<T>()),
+                             reinterpret_cast<XPUType*>(out->data<T>()),
                              x_shape,
                              y_shape);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
@@ -38,4 +40,9 @@ void GradAddXPUKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(grad_add, XPU, ALL_LAYOUT, phi::GradAddXPUKernel, float) {}
+PD_REGISTER_KERNEL(grad_add,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::GradAddXPUKernel,
+                   phi::dtype::float16,
+                   float) {}

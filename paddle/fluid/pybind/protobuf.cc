@@ -25,7 +25,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/jit/property.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
+
+namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
@@ -34,6 +37,7 @@ PyTypeObject *g_vartype_pytype = nullptr;
 PyTypeObject *g_blockdesc_pytype = nullptr;
 
 namespace pd = paddle::framework;
+namespace jit = paddle::jit;
 
 template <typename T>
 static pybind11::bytes SerializeMessage(
@@ -45,6 +49,15 @@ static pybind11::bytes SerializeMessage(
                     platform::errors::InvalidArgument(
                         "Failed to serialize input Desc to string."));
   return retv;
+}
+
+template <typename T>
+static void DeserializeMessage(T *self, const std::string &str) {
+  PADDLE_ENFORCE_EQ(
+      self->Proto()->ParsePartialFromString(str),
+      true,
+      platform::errors::InvalidArgument("Failed to parse pb from string"));
+  return;
 }
 
 // Bind Methods
@@ -71,6 +84,7 @@ void BindProgramDesc(pybind11::module *m) {
       .def("get_feed_target_names", &pd::ProgramDesc::GetFeedTargetNames)
       .def("get_fetch_target_names", &pd::ProgramDesc::GetFetchTargetNames)
       .def("serialize_to_string", SerializeMessage<pd::ProgramDesc>)
+      .def("need_update", &pd::ProgramDesc::NeedUpdate)
       .def("parse_from_string",
            [](pd::ProgramDesc &program_desc, const std::string &data) {
              pd::proto::ProgramDesc *desc = program_desc.Proto();
@@ -276,7 +290,9 @@ void BindOpDesc(pybind11::module *m) {
       .value("BOOL", pd::proto::AttrType::BOOLEAN)
       .value("BOOLS", pd::proto::AttrType::BOOLEANS)
       .value("BLOCK", pd::proto::AttrType::BLOCK)
-      .value("BLOCKS", pd::proto::AttrType::BLOCKS);
+      .value("BLOCKS", pd::proto::AttrType::BLOCKS)
+      .value("VAR", pd::proto::AttrType::VAR)
+      .value("VARS", pd::proto::AttrType::VARS);
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
@@ -287,8 +303,16 @@ void BindOpDesc(pybind11::module *m) {
       .def("copy_from", &pd::OpDesc::CopyFrom)
       .def("type", &pd::OpDesc::Type)
       .def("set_type", &pd::OpDesc::SetType)
-      .def("input", &pd::OpDesc::Input)
-      .def("input_names", &pd::OpDesc::InputNames)
+      .def("input",
+           [](pd::OpDesc &self, const std::string &name) {
+             return self.Input(name);
+           })
+      .def(
+          "input_names",
+          [](pd::OpDesc &self, bool with_attr_var) {
+            return self.InputNames(with_attr_var);
+          },
+          py::arg("with_attr_var") = false)
       .def("output", &pd::OpDesc::Output)
       .def("output_names", &pd::OpDesc::OutputNames)
       .def("set_input",
@@ -305,16 +329,46 @@ void BindOpDesc(pybind11::module *m) {
            })
       .def("remove_output", &pd::OpDesc::RemoveOutput)
       .def("remove_input", &pd::OpDesc::RemoveInput)
-      .def("input_arg_names", &pd::OpDesc::InputArgumentNames)
+      .def(
+          "input_arg_names",
+          [](pd::OpDesc &self, bool with_attr_var) {
+            return self.InputArgumentNames(with_attr_var);
+          },
+          py::arg("with_attr_var") = false)
       .def("output_arg_names", &pd::OpDesc::OutputArgumentNames)
       .def("_rename_input", &pd::OpDesc::RenameInput)
       .def("_rename_output", &pd::OpDesc::RenameOutput)
-      .def("has_attr", &pd::OpDesc::HasAttr)
-      .def("attr_type", &pd::OpDesc::GetAttrType)
-      .def("attr_names", &pd::OpDesc::AttrNames)
+      .def(
+          "has_attr",
+          [](pd::OpDesc &self, const std::string &name, bool with_attr_var) {
+            return self.HasAttr(name, with_attr_var);
+          },
+          py::arg("name"),
+          py::arg("with_attr_var") = false)
+      .def(
+          "attr_type",
+          [](pd::OpDesc &self, const std::string &name, bool with_attr_var) {
+            return self.GetAttrType(name, with_attr_var);
+          },
+          py::arg("name"),
+          py::arg("with_attr_var") = false)
+      .def(
+          "attr_names",
+          [](pd::OpDesc &self, bool with_attr_var) {
+            return self.AttrNames(with_attr_var);
+          },
+          py::arg("with_attr_var") = false)
       .def("_set_attr", &pd::OpDesc::SetAttr)
       .def("remove_attr", &pd::OpDesc::RemoveAttr)
-      .def("attr", &pd::OpDesc::GetAttr)
+      .def(
+          "attr",
+          [](pd::OpDesc &self, const std::string &name, bool with_attr_var) {
+            return self.GetAttr(name, with_attr_var);
+          },
+          py::arg("name"),
+          py::arg("with_attr_var") = false)
+      .def("set_var_attr", &pd::OpDesc::SetVarAttr)
+      .def("set_vars_attr", &pd::OpDesc::SetVarsAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
       .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
       .def("set_serialized_attr",
@@ -338,8 +392,90 @@ void BindOpDesc(pybind11::module *m) {
       .def("id", &pd::OpDesc::Id)
       .def("original_id", &pd::OpDesc::OriginalId)
       .def("set_original_id", &pd::OpDesc::SetOriginalId)
-      .def("inputs", &pd::OpDesc::Inputs)
+      .def("inputs", [](pd::OpDesc &self) { return self.Inputs(); })
       .def("outputs", &pd::OpDesc::Outputs);
+}
+
+// Serialize Class Property
+void BindJitProperty(pybind11::module *m) {
+  pybind11::class_<jit::Property> property(*m, "Property");
+  property
+      .def(
+          "__init__",
+          [](jit::Property &self) { new (&self) jit::Property(); },
+          pybind11::return_value_policy::reference)
+      .def("size", &jit::Property::Size)
+      .def("set_float",
+           py::overload_cast<const float &>(&jit::Property::SetFloat),
+           "set float",
+           py::arg("val"))
+      .def("set_float",
+           py::overload_cast<const std::string &, const float &>(
+               &jit::Property::SetFloat),
+           "set float",
+           py::arg("name"),
+           py::arg("var"))
+      .def("get_float",
+           py::overload_cast<const int &>(&jit::Property::GetFloat, py::const_))
+      .def("get_float",
+           py::overload_cast<const std::string &>(&jit::Property::GetFloat,
+                                                  py::const_))
+      .def("set_floats",
+           py::overload_cast<const std::vector<float> &>(
+               &jit::Property::SetFloats),
+           "set list of float",
+           py::arg("vals"))
+      .def("set_floats",
+           py::overload_cast<const std::string &, const std::vector<float> &>(
+               &jit::Property::SetFloats),
+           "set list of float",
+           py::arg("name"),
+           py::arg("val"))
+      .def("set_int",
+           py::overload_cast<const int64_t &>(&jit::Property::SetInt64),
+           "set int",
+           py::arg("val"))
+      .def("set_int",
+           py::overload_cast<const std::string &, const int64_t &>(
+               &jit::Property::SetInt64),
+           "set int",
+           py::arg("name"),
+           py::arg("val"))
+      .def("set_ints",
+           py::overload_cast<const std::vector<int64_t> &>(
+               &jit::Property::SetInt64s),
+           "set list of int",
+           py::arg("vals"))
+      .def("set_ints",
+           py::overload_cast<const std::string &, const std::vector<int64_t> &>(
+               &jit::Property::SetInt64s),
+           "set list of int",
+           py::arg("name"),
+           py::arg("val"))
+      .def("set_string",
+           py::overload_cast<const std::string &>(&jit::Property::SetString),
+           "set string",
+           py::arg("val"))
+      .def("set_string",
+           py::overload_cast<const std::string &, const std::string &>(
+               &jit::Property::SetString),
+           "set string",
+           py::arg("name"),
+           py::arg("val"))
+      .def("set_strings",
+           py::overload_cast<const std::vector<std::string> &>(
+               &jit::Property::SetStrings),
+           "set list of string",
+           py::arg("vals"))
+      .def("set_strings",
+           py::overload_cast<const std::string &,
+                             const std::vector<std::string> &>(
+               &jit::Property::SetStrings),
+           "set list of string",
+           py::arg("name"),
+           py::arg("val"))
+      .def("serialize_to_string", SerializeMessage<jit::Property>)
+      .def("parse_from_string", DeserializeMessage<jit::Property>);
 }
 
 }  // namespace pybind

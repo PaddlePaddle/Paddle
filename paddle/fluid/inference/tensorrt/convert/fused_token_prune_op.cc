@@ -23,7 +23,6 @@ class FusedTokenPruneOpConverter : public OpConverter {
                   bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
-
     auto* Attn = engine_->GetITensor(op_desc.Input("Attn").front());
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     auto* Mask = engine_->GetITensor(op_desc.Input("Mask").front());
@@ -36,28 +35,54 @@ class FusedTokenPruneOpConverter : public OpConverter {
         op_desc.HasAttr("keep_order")
             ? PADDLE_GET_CONST(bool, op_desc.GetAttr("keep_order"))
             : false;
-
-    std::vector<nvinfer1::ITensor*> itensors = {Attn, X, Mask, NewMask};
-
     auto output_name = op_desc.Output("SlimmedX")[0];
     auto out_inds_name = op_desc.Output("CLSInds")[0];
     if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
       if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
         with_fp16 = true;
       }
+      bool flag_varseqlen = engine_->use_varseqlen();
       plugin::FusedTokenPrunePluginDynamic* plugin =
           new plugin::FusedTokenPrunePluginDynamic(
-              with_fp16, keep_first_token, keep_order);
-      layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
+              with_fp16, keep_first_token, keep_order, flag_varseqlen);
+      if (flag_varseqlen) {
+        auto* word_id = engine_->GetITensor("word_id");
+        auto* pos_id = engine_->GetITensor("pos_id");
+        auto* mask_id = engine_->GetITensor("mask_id");
+        std::vector<nvinfer1::ITensor*> itensors = {
+            Attn, X, Mask, NewMask, word_id, pos_id, mask_id};
+        layer = engine_->AddDynamicPlugin(itensors.data(), 7, plugin);
+
+        layer->getOutput(0)->setName(output_name.c_str());
+        engine_->SetITensor(output_name, layer->getOutput(0));
+
+        layer->getOutput(1)->setName(out_inds_name.c_str());
+        engine_->SetITensor(out_inds_name, layer->getOutput(1));
+
+        engine_->DeleteITensor("word_id", word_id);
+        layer->getOutput(2)->setName("word_id_after_token_prune");
+        engine_->SetITensor("word_id", layer->getOutput(2));
+
+        engine_->DeleteITensor("pos_id", pos_id);
+        layer->getOutput(3)->setName("pos_id_after_token_prune");
+        engine_->SetITensor("pos_id", layer->getOutput(3));
+
+        engine_->DeleteITensor("mask_id", mask_id);
+        layer->getOutput(4)->setName("mask_id_after_token_prune");
+        engine_->SetITensor("mask_id", layer->getOutput(4));
+      } else {
+        std::vector<nvinfer1::ITensor*> itensors = {Attn, X, Mask, NewMask};
+        layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
+        layer->getOutput(0)->setName(output_name.c_str());
+        engine_->SetITensor(output_name, layer->getOutput(0));
+        layer->getOutput(1)->setName(out_inds_name.c_str());
+        engine_->SetITensor(out_inds_name, layer->getOutput(1));
+      }
+      layer->setName(
+          ("fused_token_prune(Output: " + output_name + ")").c_str());
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the Ernie(Bert) model in static shape mode, which "
@@ -65,8 +90,6 @@ class FusedTokenPruneOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    RreplenishLayerAndOutput(
-        layer, "fused_token_prune", {output_name, out_inds_name}, test_mode);
   }
 };
 

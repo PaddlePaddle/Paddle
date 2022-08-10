@@ -21,23 +21,6 @@ namespace operators {
 
 using framework::Tensor;
 
-xpu::Pooling_t XPUPoolingType(const std::string& pooltype,
-                              bool exclusive,
-                              bool is_test) {
-  if (pooltype == "max") {
-    return xpu::Pooling_t::MAX_WITHOUT_INDEX;
-  } else if (pooltype == "avg") {
-    if (exclusive) {
-      return xpu::Pooling_t::AVG_WITHOUT_PAD;
-    } else {
-      return xpu::Pooling_t::AVG_WITH_PAD;
-    }
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Pool op only supports 2D and 3D input."));
-  }
-}
-
 template <typename DeviceContext, typename T>
 class PoolXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -60,6 +43,15 @@ class PoolXPUKernel : public framework::OpKernel<T> {
         2,
         platform::errors::InvalidArgument(
             "The Pool2d XPU OP only support 2 dimension pooling!"));
+
+    std::string data_format = context.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_EQ(
+        data_format,
+        "NCHW",
+        platform::errors::InvalidArgument("The Pool2d XPU OP only support"
+                                          "data_format is 'NCHW', but received "
+                                          "%s",
+                                          data_format));
 
     int* index_data = nullptr;
     bool global_pooling = context.Attr<bool>("global_pooling") ||
@@ -190,6 +182,16 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     bool exclusive = context.Attr<bool>("exclusive");
     bool adaptive = context.Attr<bool>("adaptive");
     bool ceil_mode = context.Attr<bool>("ceil_mode");
+
+    std::string data_format = context.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_EQ(
+        data_format,
+        "NCHW",
+        platform::errors::InvalidArgument("The Pool2d_grad XPU OP only support"
+                                          "data_format is 'NCHW', but received "
+                                          "%s",
+                                          data_format));
+
     std::string padding_algorithm =
         context.Attr<std::string>("padding_algorithm");
     const int* index_data = nullptr;
@@ -219,13 +221,6 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     const int out_h = out->dims()[2];
     const int out_w = out->dims()[3];
 
-    PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1) ||
-                          (in_h % out_h == 0 && in_w % out_w == 0),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The Pool2d XPU OP does not support (adaptive == "
-                          "true && output_size != 1)"));
-
     framework::DDim data_dims;
 
     data_dims = phi::slice_ddim(in_x->dims(), 2, in_x->dims().size());
@@ -251,7 +246,8 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     auto input_grad = reinterpret_cast<XPUType*>(in_x_grad->data<T>());
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = xpu::Error_t::SUCCESS;
-    if (adaptive && in_h % out_h == 0 && in_w % out_w == 0) {
+    if (adaptive) {
+      // floor for stride
       strides = {in_h / out_h, in_w / out_w};
       int kh = in_h - (out_h - 1) * strides[0];
       int kw = in_w - (out_w - 1) * strides[1];
@@ -260,6 +256,7 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     }
 
     if (pooling_type == "max") {
+      // TODO(zhanghuan05) to bind max_pool2d_grad_indices xpu api
       r = xpu::max_pool2d_grad<XPUType>(dev_ctx.x_context(),
                                         input,
                                         output,

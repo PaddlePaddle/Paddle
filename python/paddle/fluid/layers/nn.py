@@ -1132,8 +1132,11 @@ def dropout(x,
             x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
             dropped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
+    if not isinstance(dropout_prob, (float, int, Variable)):
+        raise TypeError(
+            "dropout_prob argument should be a number(int|float) or Variable")
     # fast return for p == 0
-    if dropout_prob == 0:
+    if isinstance(dropout_prob, (int, float)) and dropout_prob == 0:
         return x
 
     if _non_static_mode():
@@ -1152,6 +1155,10 @@ def dropout(x,
     def get_attrs(prog, dropout_prob, is_test, seed):
         if (seed is None or seed == 0) and prog.random_seed != 0:
             seed = prog.random_seed
+        if isinstance(dropout_prob, Variable) and not dropout_prob.shape != [1]:
+            raise TypeError(
+                "Required dropout_prob.shape == [1] if type(dropout_prob) is Variable, but received dropout_prob.shape = {}"
+                .format(dropout_prob.shape))
         attrs = {
             'dropout_prob': dropout_prob,
             'is_test': is_test,
@@ -9359,14 +9366,14 @@ def crop(x, shape=None, offsets=None, name=None):
 
     Parameters:
         x (Variable): Tensor, data type can be float32 or float64.
-        shape (Variable|list/tuple of integers): The output shape is specified
+        shape (Variable|list/tuple of integers, optional): The output shape is specified
             by `shape`, which can be a Tensor or a list/tuple of integers.
             If it is a Tensor, it's rank must be the same as `x` , only
             it's shape will be used, and the value of it will be ignored. This way
             is suitable for the case that the output shape may be changed each
             iteration. If it is a list/tuple of integers, it's length must be the same
             as the rank of `x`
-        offsets (Variable|list/tuple of integers|None): Specifies the cropping
+        offsets (Variable|list/tuple of integers|None, optional): Specifies the cropping
             offsets at each dimension. It can be a Tensor or a list/tuple
             of integers. If it is a Tensor, it's rank must be the same as `x`.
             This way is suitable for the case that the offsets may be changed
@@ -9377,13 +9384,7 @@ def crop(x, shape=None, offsets=None, name=None):
             None by default.
 
     Returns:
-        The cropped Tensor, which has the same rank and data type with `x`
-
-    Return Type:
-        Variable
-
-    Raises:
-        ValueError: If shape is not a list, tuple or Variable.
+        Tensor, The cropped Tensor, which has the same rank and data type with `x`.
 
     Examples:
 
@@ -9721,7 +9722,8 @@ def pad2d(input,
         name (str, optional) : The default value is None.  Normally there is no need for
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Returns: Tensor, a 4-D Tensor padded according to paddings and mode and data type is same as input.
+    Returns: 
+        Tensor, a 4-D Tensor padded according to paddings and mode and data type is same as input.
 
     Examples:
         .. code-block:: text
@@ -10685,6 +10687,7 @@ def unstack(x, axis=0, num=None):
             y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
+
     if _non_static_mode():
         if num == None:
             num = x.shape[axis]
@@ -13281,13 +13284,9 @@ def space_to_depth(x, blocksize, name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: The output, which should be 4 dims Tensor or LodTensor, with the shape \
+    Returns: 
+            Tensor, The output, which should be 4 dims Tensor or LodTensor, with the shape \
             [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]
-
-    Return Type: Variable
-
-    Raises:
-        TypeError: blocksize type must be int64.
 
     Examples:
         .. code-block:: python

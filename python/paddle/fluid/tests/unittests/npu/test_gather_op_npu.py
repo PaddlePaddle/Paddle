@@ -102,7 +102,7 @@ class API_TestGather(unittest.TestCase):
             },
                               fetch_list=[out])
             expected_output = np.array([[3, 4], [5, 6]])
-        self.assertTrue(np.allclose(result, expected_output))
+        np.testing.assert_allclose(result, expected_output, rtol=1e-5)
 
     def test_out2(self):
         with paddle.static.program_guard(paddle.static.Program(),
@@ -120,7 +120,7 @@ class API_TestGather(unittest.TestCase):
             },
                               fetch_list=[out])
             expected_output = gather_numpy(x_np, index_np, axis=0)
-        self.assertTrue(np.allclose(result, expected_output))
+        np.testing.assert_allclose(result, expected_output, rtol=1e-5)
 
 
 class TestGatherGrad(unittest.TestCase):
@@ -174,8 +174,8 @@ class TestGatherGrad(unittest.TestCase):
         npu_pred, npu_loss = self._test(True)
         cpu_pred, cpu_loss = self._test(False)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-5)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-5)
 
 
 if __name__ == "__main__":

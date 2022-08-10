@@ -15,7 +15,9 @@
 #include "paddle/fluid/jit/function_utils.h"
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -69,14 +71,19 @@ void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
 }
 
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
-                          const Name2VariableMap &params_dict,
+                          const VariableMap &params_dict,
                           framework::Scope *scope) {
-  VLOG(3) << "param_names size: " << param_names.size();
   for (size_t i = 0; i < param_names.size(); ++i) {
     std::string name = param_names[i];
+    PADDLE_ENFORCE_EQ(params_dict.count(name),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "Parameter named %s is not existed in params_dict. "
+                          "Please check that your model was saved correctly",
+                          name));
+
     auto &param = params_dict.find(name)->second;
-    auto &dense_tensor = param.Get<DenseTensor>();
-    VLOG(3) << "share into scope: " << name;
+    auto &dense_tensor = param->Get<DenseTensor>();
     auto *var = scope->Var(name);
     auto *dst_tensor = var->GetMutable<DenseTensor>();
     *dst_tensor = dense_tensor;

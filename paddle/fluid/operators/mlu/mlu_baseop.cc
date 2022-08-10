@@ -622,6 +622,29 @@ MLUCnnlDCNDesc::~MLUCnnlDCNDesc() {
   }
 }
 
+MLUCnnlGridSampleDesc::MLUCnnlGridSampleDesc(
+    const std::string& interp_mode_str,
+    const std::string& padding_mode_str,
+    bool align_corners) {
+  cnnlInterpMode_t interp_mode = CNNL_INTERP_BILINEAR;
+  cnnlGridSamplePaddingMode_t padding_mode = CNNL_GRIDSAMPLE_PADDING_ZEROS;
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlCreateGridSampleDescriptor(&grid_sample_desc_));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetGridSampleDescriptor(
+      grid_sample_desc_, interp_mode, padding_mode, align_corners));
+}
+
+const cnnlGridSampleDescriptor_t MLUCnnlGridSampleDesc::get() const {
+  return grid_sample_desc_;
+}
+
+MLUCnnlGridSampleDesc::~MLUCnnlGridSampleDesc() {
+  if (grid_sample_desc_) {
+    PADDLE_ENFORCE_MLU_SUCCESS(
+        cnnlDestroyGridSampleDescriptor(grid_sample_desc_));
+  }
+}
+
 MLUSeqDataDesc::MLUSeqDataDesc(cnnlSeqDataLayout_t layout,
                                cnnlDataType_t dtype,
                                int dimNb,
@@ -4916,6 +4939,38 @@ MLURNNDesc::~MLURNNDesc() {
                                                      pool_mode,
                                                      grads_image_desc,
                                                      grads_image));
+}
+
+/* static */ void MLUCnnl::GridSample(
+    const ExecutionContext& ctx,
+    const cnnlGridSampleDescriptor_t grid_sample_desc,
+    const cnnlTensorDescriptor_t input_desc,
+    const void* input,
+    const cnnlTensorDescriptor_t grid_desc,
+    const void* grid,
+    const cnnlTensorDescriptor_t output_desc,
+    void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetGridSampleForwardWorkspaceSize(
+      handle, input_desc, grid_desc, output_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGridSampleForward(handle,
+                                                   grid_sample_desc,
+                                                   input_desc,
+                                                   input,
+                                                   grid_desc,
+                                                   grid,
+                                                   output_desc,
+                                                   output,
+                                                   workspace_ptr,
+                                                   workspace_size));
 }
 
 /* static */ void MLUCnnl::SyncBatchNormStats(

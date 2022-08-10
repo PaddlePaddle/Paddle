@@ -14,15 +14,25 @@
 
 #pragma once
 
+#include <memory>
+#include <set>
 #include <string>
+#include <unordered_map>
 
-#include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/framework/variable.h"
-
-#include "paddle/fluid/jit/layer.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
+
+namespace framework {
+class Variable;
+class ProgramDesc;
+}  // namespace framework
+
 namespace jit {
+class Layer;
+using Variable = paddle::framework::Variable;
+using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
+
 // Export Layer into local disk
 class Serializer {
  public:
@@ -45,12 +55,14 @@ class Deserializer {
   void ReadTensorData(const std::string& file_name,
                       const std::set<std::string>& var_name,
                       const phi::Place& place,
-                      Name2VariableMap* params_dict) const;
+                      VariableMap* params_dict) const;
 
+  // property pb
   void ReadAttributeData(const std::string& file_path,
-                         Name2VariableMap* attrs_dict) const;
+                         VariableMap* attrs_dict) const;
 
   // void ReadExtraInfo(const std::string& file_name) const;
+
   // void ReadByteCode(const std::string& file_name) const;
 
   framework::ProgramDesc LoadProgram(const std::string& file_name);

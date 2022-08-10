@@ -67,7 +67,7 @@ cc_library(
 cc_library(
   graph_helper
   SRCS graph_helper.cc
-  DEPS graph)
+  DEPS graph program_utils scale_loss_grad_op_handle)
 cc_library(
   pass
   SRCS pass.cc
@@ -212,15 +212,13 @@ if(WITH_MKLDNN)
   pass_library(shuffle_channel_mkldnn_detect_pass inference DIR mkldnn)
   pass_library(fc_act_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(elt_act_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(cpu_quantize_placement_pass base DIR mkldnn)
   pass_library(cpu_quantize_pass inference DIR mkldnn)
   pass_library(cpu_quantize_squash_pass inference DIR mkldnn)
   pass_library(reshape_transpose_matmul_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(reshape_transpose_matmul_v2_mkldnn_fuse_pass inference DIR
-               mkldnn)
-  pass_library(matmul_transpose_reshape_fuse_pass inference DIR mkldnn)
-  pass_library(matmul_v2_transpose_reshape_fuse_pass inference DIR mkldnn)
+  pass_library(matmul_transpose_reshape_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(batch_norm_act_fuse_pass inference DIR mkldnn)
   pass_library(multi_gru_fuse_pass inference DIR mkldnn)
   pass_library(multi_gru_seq_fuse_pass inference DIR mkldnn)
@@ -492,13 +490,11 @@ if(WITH_MKLDNN)
   cc_test(
     test_reshape_transpose_matmul_mkldnn_fuse_pass
     SRCS mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass_tester.cc
-    DEPS reshape_transpose_matmul_mkldnn_fuse_pass
-         reshape_transpose_matmul_v2_mkldnn_fuse_pass)
+    DEPS reshape_transpose_matmul_mkldnn_fuse_pass)
   cc_test(
     test_matmul_transpose_reshape_fuse_pass
-    SRCS mkldnn/matmul_transpose_reshape_fuse_pass_tester.cc
-    DEPS matmul_transpose_reshape_fuse_pass
-         matmul_v2_transpose_reshape_fuse_pass)
+    SRCS mkldnn/matmul_transpose_reshape_mkldnn_fuse_pass_tester.cc
+    DEPS matmul_transpose_reshape_mkldnn_fuse_pass)
   cc_test(
     test_shuffle_channel_mkldnn_detect_pass
     SRCS mkldnn/shuffle_channel_mkldnn_detect_pass_tester.cc
