@@ -283,7 +283,7 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                     np.testing.assert_allclose(outputs[name],
                                                outs[id],
                                                rtol=1e-05,
-                                               atol=0.0001)
+                                               atol=1e-4)
 
     class TestBatchNormOpUseGlobalStats(unittest.TestCase):
 

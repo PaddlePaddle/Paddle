@@ -237,7 +237,7 @@ class TestEnableDeclarative(unittest.TestCase):
             np.testing.assert_allclose(static_output.numpy(),
                                        dygraph_output.numpy(),
                                        rtol=1e-05,
-                                       atol=0.0001)
+                                       atol=1e-4)
 
     def test_enable_disable_get_func(self):
 
@@ -293,7 +293,7 @@ class TestEnableDeclarative(unittest.TestCase):
             np.testing.assert_allclose(static_output.numpy(),
                                        dygraph_output.numpy(),
                                        rtol=1e-05,
-                                       atol=0.0001)
+                                       atol=1e-4)
 
 
 class Net(fluid.dygraph.layers.Layer):
