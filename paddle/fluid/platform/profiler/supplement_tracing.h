@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <map>
 #include <string>
+#include <utility>
 
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -59,7 +60,8 @@ class RecordOpInfoSupplement {
    */
   explicit RecordOpInfoSupplement(
       const std::string& type,
-      const std::map<std::string, std::vector<framework::DDim>>& input_shapes);
+      const std::vector<std::pair<std::string, std::vector<framework::DDim>>>&
+          input_shapes);
 };
 
 }  // namespace platform

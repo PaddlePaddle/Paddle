@@ -320,7 +320,8 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
 
 RecordOpInfoSupplement::RecordOpInfoSupplement(
     const std::string &type,
-    const std::map<std::string, std::vector<framework::DDim>> &input_shapes) {
+    const std::vector<std::pair<std::string, std::vector<framework::DDim>>>
+        &input_shapes) {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
@@ -329,12 +330,6 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   }
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   std::vector<std::string> callstack;
-  // for(auto it=shapes.begin(); it != shapes.end(); it++){
-  //   for (auto shape_vec_it = it->second.begin(); shape_vec_it !=
-  //   it->second.end(); shape_vec_it++){
-  //     input_shapes[it->first].push_back(phi::make_ddim(*shape_vec_it));
-  //   }
-  // }
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
       PosixInNsec(), type, input_shapes, dtypes, callstack);
 }
