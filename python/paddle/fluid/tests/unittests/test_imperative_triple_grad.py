@@ -78,37 +78,34 @@ class TestDygraphTripleGradMatmul(TestCase):
             new_a.backward()
 
             out_ref = np.ones([3, 3]) * 12.0
-            self.assertTrue(np.array_equal(out.numpy(), out_ref))
+            np.testing.assert_array_equal(out.numpy(), out_ref)
 
             new_x_g_ref = np.ones([3, 3]) * 6.0
             new_y_g_ref = np.ones([3, 3]) * 6.0
-            self.assertTrue(np.array_equal(new_x_g.numpy(), new_x_g_ref))
-            self.assertTrue(np.array_equal(new_y_g.numpy(), new_y_g_ref))
+            np.testing.assert_array_equal(new_x_g.numpy(), new_x_g_ref)
+            np.testing.assert_array_equal(new_y_g.numpy(), new_y_g_ref)
 
             new_a_ref = np.ones([3, 3]) * 3.0
             new_b_ref = np.ones([3, 3]) * 3.0
             new_c_ref = np.ones([3, 3]) * 12.0
 
-            self.assertTrue(np.array_equal(new_a.numpy(), new_a_ref))
-            self.assertTrue(np.array_equal(new_b.numpy(), new_b_ref))
-            self.assertTrue(np.array_equal(new_c.numpy(), new_c_ref))
+            np.testing.assert_array_equal(new_a.numpy(), new_a_ref)
+            np.testing.assert_array_equal(new_b.numpy(), new_b_ref)
+            np.testing.assert_array_equal(new_c.numpy(), new_c_ref)
 
             x_grad_ref = np.ones([3, 3]) * 0.0
-            self.assertTrue(np.array_equal(x.grad.numpy(), x_grad_ref))
+            np.testing.assert_array_equal(x.grad.numpy(), x_grad_ref)
 
             y_grad_ref = np.ones([3, 3]) * 0.0
-            self.assertTrue(np.array_equal(y.grad.numpy(), y_grad_ref))
+            np.testing.assert_array_equal(y.grad.numpy(), y_grad_ref)
 
             new_out_g_ref = np.ones([3, 3]) * 3.0
-            self.assertTrue(
-                np.array_equal(new_out_g.grad.numpy(), new_out_g_ref))
+            np.testing.assert_array_equal(new_out_g.grad.numpy(), new_out_g_ref)
 
             new_x_g_g_ref = np.ones([3, 3]) * 0.0
             new_y_g_g_ref = np.ones([3, 3]) * 3.0
-            self.assertTrue(
-                np.array_equal(new_x_g_g.grad.numpy(), new_x_g_g_ref))
-            self.assertTrue(
-                np.array_equal(new_y_g_g.grad.numpy(), new_y_g_g_ref))
+            np.testing.assert_array_equal(new_x_g_g.grad.numpy(), new_x_g_g_ref)
+            np.testing.assert_array_equal(new_y_g_g.grad.numpy(), new_y_g_g_ref)
 
 
 class TestDygraphTripleGrad(TestCase):

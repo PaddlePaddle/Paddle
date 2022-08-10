@@ -283,7 +283,7 @@ struct OpFuncNode {
   platform::DeviceContext* dev_ctx_;  // not owned
 
   // fit for phi kernel
-  phi::Kernel* pt_kernel_{nullptr};  // not owned
+  phi::Kernel* phi_kernel_{nullptr};  // not owned
 
   OpFuncType type_;
 };

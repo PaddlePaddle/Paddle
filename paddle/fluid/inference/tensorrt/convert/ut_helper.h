@@ -79,7 +79,7 @@ class TRTConvertValidation {
   TRTConvertValidation(int max_batch_size,
                        const std::unordered_set<std::string>& parameters,
                        framework::Scope& scope,  // NOLINT
-                       int workspace_size = 1 << 10,
+                       int64_t workspace_size = 1 << 30,
                        bool if_add_batch = true)
       : parameters_(parameters),
         scope_(scope),
@@ -124,7 +124,7 @@ class TRTConvertValidation {
   }
 
   void DeclVar(const std::string& name, const std::vector<int> dim_vec) {
-    platform::CUDADeviceContext ctx(place_);
+    phi::GPUContext ctx(place_);
 
     auto* x = scope_.Var(name);
     auto* x_tensor = x->GetMutable<framework::LoDTensor>();
@@ -172,7 +172,7 @@ class TRTConvertValidation {
                           "But received batch_size:%d, max_batch_size_:%d",
                           batch_size,
                           max_batch_size_));
-    platform::CUDADeviceContext ctx(place_);
+    phi::GPUContext ctx(place_);
     op_->Run(scope_, place_);
     cudaStreamSynchronize(stream_);
     std::vector<std::string> input_output_names;

@@ -214,9 +214,10 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
                 expected_result = np.matmul(data1.reshape(1, 2),
                                             data2.reshape(2, 1))
 
-                self.assertTrue(
-                    np.allclose(np_res, expected_result, atol=1e-3),
-                    "two value is\
+                np.testing.assert_allclose(np_res,
+                                           expected_result,
+                                           atol=1e-3,
+                                           err_msg="two value is\
                     {}\n{}, check diff!".format(np_res, expected_result))
 
         def test_dygraph_without_out(self):
@@ -228,8 +229,9 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
                 data2 = fluid.dygraph.to_variable(input_array2)
                 out = paddle.mm(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
-                self.assertTrue(
-                    np.allclose(expected_result, out.numpy(), atol=1e-3))
+                np.testing.assert_allclose(expected_result,
+                                           out.numpy(),
+                                           atol=1e-3)
 
     class Test_API_Matmul(unittest.TestCase):
 
@@ -244,8 +246,9 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
                     self.in_type)
                 out = paddle.matmul(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
-                self.assertTrue(
-                    np.allclose(expected_result, out.numpy(), atol=1e-3))
+                np.testing.assert_allclose(expected_result,
+                                           out.numpy(),
+                                           atol=1e-3)
 
     class API_TestMmError(unittest.TestCase):
 

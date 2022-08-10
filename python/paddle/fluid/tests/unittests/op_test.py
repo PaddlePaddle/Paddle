@@ -1048,12 +1048,13 @@ class OpTest(unittest.TestCase):
                     str(expect_out) + "\n" + "But Got" + str(actual_out) +
                     " in class " + self.__class__.__name__)
             else:
-                self.assertTrue(
-                    np.array_equal(expect_out, actual_out),
-                    "Output (" + name + ") has diff at " + str(place) +
-                    " when using and not using inplace" + "\nExpect " +
-                    str(expect_out) + "\n" + "But Got" + str(actual_out) +
-                    " in class " + self.__class__.__name__ + '\n')
+                np.testing.assert_array_equal(
+                    expect_out,
+                    actual_out,
+                    err_msg='Output (' + name + ') has diff at ' + str(place) +
+                    ' when using and not using inplace' + '\nExpect ' +
+                    str(expect_out) + '\n' + 'But Got' + str(actual_out) +
+                    ' in class ' + self.__class__.__name__ + '\n')
 
     def _construct_grad_program_from_forward(self, fwd_program, grad_op_desc,
                                              op_grad_to_var):
@@ -1457,7 +1458,6 @@ class OpTest(unittest.TestCase):
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
                     self.op_test.assertTrue(actual_np.size == 0)  # }}}
-                # print("actual_np, expect_np", actual_np, expect_np)
                 self._compare_numpy(name, actual_np, expect_np)
                 if isinstance(expect, tuple):
                     self._compare_list(name, actual, expect)

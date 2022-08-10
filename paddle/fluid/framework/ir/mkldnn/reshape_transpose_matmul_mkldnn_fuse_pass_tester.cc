@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
-#include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_v2_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -82,8 +81,8 @@ void TestMain(const std::string& op_name, bool with_xshapes) {
   int total_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);
 
-  auto pass = PassRegistry::Instance().Get("reshape_transpose_" + op_name +
-                                           "_mkldnn_fuse_pass");
+  auto pass =
+      PassRegistry::Instance().Get("reshape_transpose_matmul_mkldnn_fuse_pass");
   graph.reset(pass->Apply(graph.release()));
 
   int num_reshape_nodes_after = GetNumOpNodes(graph, "reshape2");
@@ -137,4 +136,3 @@ TEST(ReshapeTransposeMatmulV2MkldnnFusePass,
 }  // namespace paddle
 
 USE_PASS(reshape_transpose_matmul_mkldnn_fuse_pass);
-USE_PASS(reshape_transpose_matmul_v2_mkldnn_fuse_pass);
