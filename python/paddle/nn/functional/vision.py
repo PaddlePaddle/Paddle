@@ -54,7 +54,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             import paddle.nn.functional as F
             # theta shape = [1, 2, 3]
             theta = paddle.to_tensor([[[-0.7, -0.4, 0.3],
-                                            [ 0.6,  0.5, 1.5]]], dtype="float32")
+                                       [ 0.6,  0.5, 1.5]]], dtype="float32")
             y_t = F.affine_grid(
                     theta,
                     [1, 2, 3, 3],
