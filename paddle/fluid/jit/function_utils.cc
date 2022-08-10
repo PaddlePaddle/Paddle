@@ -71,14 +71,14 @@ void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
 }
 
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
-                          const Name2VariableMap &params_dict,
+                          const VariableMap &params_dict,
                           framework::Scope *scope) {
   for (size_t i = 0; i < param_names.size(); ++i) {
     std::string name = param_names[i];
     PADDLE_ENFORCE_EQ(params_dict.count(name),
                       1,
                       phi::errors::InvalidArgument(
-                          "Parameter named %s is not exist in param_names. "
+                          "Parameter named %s is not existed in params_dict. "
                           "Please check that your model was saved correctly",
                           name));
 

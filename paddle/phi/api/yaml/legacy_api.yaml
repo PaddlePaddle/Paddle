@@ -975,6 +975,20 @@
     data_type : dtype
     backend : place
 
+# full
+- api : full_
+  args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  output : Tensor(out)
+  inplace : (output -> out)
+  infer_meta :
+    func : CreateInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : full
+    param : [shape, value, dtype]
+    data_type : dtype
+    backend : place
+
 - api : full_batch_size_like
   args : (Tensor input, int[] shape, DataType dtype, Scalar value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
   output: Tensor
