@@ -84,6 +84,7 @@ void BindProgramDesc(pybind11::module *m) {
       .def("get_feed_target_names", &pd::ProgramDesc::GetFeedTargetNames)
       .def("get_fetch_target_names", &pd::ProgramDesc::GetFetchTargetNames)
       .def("serialize_to_string", SerializeMessage<pd::ProgramDesc>)
+      .def("need_update", &pd::ProgramDesc::NeedUpdate)
       .def("parse_from_string",
            [](pd::ProgramDesc &program_desc, const std::string &data) {
              pd::proto::ProgramDesc *desc = program_desc.Proto();
