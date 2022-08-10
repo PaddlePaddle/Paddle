@@ -127,12 +127,9 @@ class TestHapiWithAmp(unittest.TestCase):
                          model._scaler.state_dict()['incr_count'])
         self.assertEqual(new_model._scaler.state_dict()['decr_count'],
                          model._scaler.state_dict()['decr_count'])
-        self.assertTrue(
-            np.array_equal(
-                new_model._optimizer.state_dict()
-                ['conv2d_1.w_0_moment1_0'].numpy(),
-                model._optimizer.state_dict()
-                ['conv2d_1.w_0_moment1_0'].numpy()))
+        np.testing.assert_array_equal(
+            new_model._optimizer.state_dict()['conv2d_1.w_0_moment1_0'].numpy(),
+            model._optimizer.state_dict()['conv2d_1.w_0_moment1_0'].numpy())
 
     def test_dynamic_check_input(self):
         paddle.disable_static()

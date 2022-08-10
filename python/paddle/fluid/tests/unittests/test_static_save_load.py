@@ -332,7 +332,7 @@ class TestSaveLoadBase(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
             temp_dir.cleanup()
 
 
@@ -450,7 +450,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
             fluid.load(test_program,
                        os.path.join(temp_dir.name, "test_1.pdmodel"), None)
             temp_dir.cleanup()
@@ -561,7 +561,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
             temp_dir.cleanup()
 
 
@@ -691,7 +691,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
 
             # check 1
             for var in main_program.list_vars():
@@ -711,7 +711,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
 
             # check 2
             for var in main_program.list_vars():
@@ -731,7 +731,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
 
             # check 3
             for var in main_program.list_vars():
@@ -751,7 +751,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
             temp_dir.cleanup()
 
 
@@ -840,7 +840,7 @@ class TestVariableInit(unittest.TestCase):
                 new_t = np.array(new_scope.find_var(var.name).get_tensor())
                 base_t = base_map[var.name]
 
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
         temp_dir.cleanup()
 
 
@@ -966,7 +966,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -1096,7 +1096,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     if var.name in var_list_names:
                         # loaded vars
                         base_t = base_map[var.name]
-                        self.assertTrue(np.array_equal(new_t, base_t))
+                        np.testing.assert_array_equal(new_t, base_t)
                     else:
                         #not loaded vars
                         self.assertTrue(np.sum(np.abs(new_t)) == 0)
@@ -1213,7 +1213,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
 
             # test exception
             # change shape
@@ -1400,7 +1400,7 @@ class TestProgramStateOldSave(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 load_state = fluid.load_program_state(save_dir)
                 for k, v in load_state.items():
-                    self.assertTrue(np.array_equal(base_map[k], v))
+                    np.testing.assert_array_equal(base_map[k], v)
 
     def create_symlink(self, target, link_name):
         try:
@@ -1416,7 +1416,7 @@ class TestProgramStateOldSave(unittest.TestCase):
                 new_t = np.array(fluid.global_scope().find_var(
                     var.name).get_tensor())
                 base_t = base_map[var.name]
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
 
 class TestProgramStateOldSaveSingleModel(unittest.TestCase):
@@ -1540,7 +1540,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
 
             with self.assertRaises(ValueError):
                 fluid.load_program_state(os.path.join(save_dir, "model_1"))
@@ -1623,7 +1623,7 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                         new_t = np.array(fluid.global_scope().find_var(
                             var.name).get_tensor())
                         base_t = base_map[var.name]
-                        self.assertTrue(np.array_equal(new_t, base_t))
+                        np.testing.assert_array_equal(new_t, base_t)
 
 
 if __name__ == '__main__':
