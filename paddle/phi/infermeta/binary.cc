@@ -1445,6 +1445,9 @@ void IndexAddInferMeta(const MetaTensor& x,
           input_dim.size() - 1,
           axis));
 
+  int real_axis = axis >= 0 ? axis : axis + input_dim.size();
+  std::cout << "real_axis = " << real_axis << std::endl;
+
   PADDLE_ENFORCE_EQ(
       index_dim.size() == 1 ||
           (index_dim.size() == 2 && (index_dim[1] == 1 || index_dim[0] == 1)),
@@ -1461,18 +1464,13 @@ void IndexAddInferMeta(const MetaTensor& x,
       true,
       phi::errors::InvalidArgument("The length of Input(Index) can't be 0."));
 
-  PADDLE_ENFORCE_EQ(add_value_dim[axis] <= input_dim[axis],
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The add_value_dim[axis] must less than x_dim[axis]."));
-
   // Note, add_value does not support broadcast now.
   PADDLE_ENFORCE_EQ(input_dim.size() == add_value_dim.size(),
                     true,
                     phi::errors::InvalidArgument(
                         "The add_value must be the same dimension as x."));
   for (int i = 0; i < input_dim.size(); i++) {
-    if (i != axis) {
+    if (i != real_axis) {
       PADDLE_ENFORCE_EQ(input_dim[i] == add_value_dim[i],
                         true,
                         phi::errors::InvalidArgument(

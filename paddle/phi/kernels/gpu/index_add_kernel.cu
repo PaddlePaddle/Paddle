@@ -52,8 +52,6 @@ void IndexAddKernel(const Context& ctx,
                     const DenseTensor& add_value,
                     int axis,
                     DenseTensor* output) {
-  VLOG(10) << " limin: begin IndexAddKernel ";
-
   int dim = axis;
   auto input_dim = x.dims();
   auto output_dim = output->dims();
@@ -75,12 +73,8 @@ void IndexAddKernel(const Context& ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
 
-  VLOG(10) << " limin: begin x.data() ";
   auto* in_data = x.data<T>();
-  VLOG(10) << " limin: after x.data() ";
-  VLOG(10) << " limin: begin malloc ";
   T* out_data = ctx.template Alloc<T>(output);
-  VLOG(10) << " limin: after malloc ";
   auto* add_value_data = add_value.data<T>();
 
   int64_t numel = add_value.numel();

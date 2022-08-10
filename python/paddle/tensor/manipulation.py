@@ -4295,14 +4295,19 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
                                   reduce)
 
 
-def _index_add_params_check(x, index, add_value, axis):
+def _index_add_params_check(x, index, add_value, input_axis):
     if not isinstance(x, Variable):
         raise TypeError("The input x should be a Tensor.")
     dims = len(x.shape)
     add_value_dims = len(add_value.shape)
 
-    if not isinstance(axis, (int)):
+    if not isinstance(input_axis, (int)):
         raise TypeError("The axis should be int ")
+
+    if input_axis >= 0:
+        axis = input_axis
+    else:
+        axis = input_axis + dims
 
     check_axis = axis
     if isinstance(axis, Variable):
@@ -4334,6 +4339,9 @@ def _index_add_params_check(x, index, add_value, axis):
 
     for i in range(dims):
         if i != axis and x.shape[i] != add_value.shape[i]:
+            print("i = ", i)
+            print("x.shape[i] = ", x.shape[i])
+            print("add_value.shape[i] = ", add_value.shape[i])
             raise TypeError(
                 "The add_value.shape[i] should be equal to x.shape[i] when i != axis."
             )
@@ -4373,12 +4381,13 @@ def index_add(x, index, add_value, axis=0, name=None):
     """
     _index_add_params_check(x, index, add_value, axis)
 
-    # todo(@limin29): add final_state_index_add support.
-    # if in_dygraph_mode():
-    #     return _C_ops.final_state_index_add(x, index, add_value, axis)
-    # if _in_legacy_dygraph():
-    #     return _C_ops.index_select(x, index, add_value, "axis", axis)
-    return _C_ops.index_add(x, index, add_value, "axis", axis)
+    if _non_static_mode():
+        # todo(@limin29): add final_state_index_add support.
+        # if in_dygraph_mode():
+        #     return _C_ops.final_state_index_add(x, index, add_value, axis)
+        # if _in_legacy_dygraph():
+        #     return _C_ops.index_select(x, index, add_value, "axis", axis)
+        return _C_ops.index_add(x, index, add_value, "axis", axis)
 
     helper = LayerHelper("index_add", **locals())
     check_variable_and_dtype(
