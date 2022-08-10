@@ -25,7 +25,6 @@ namespace ir {
 
 class FuseFCActOneDNNPass : public FusePassBase {
  public:
-  FuseFCActOneDNNPass();
   virtual ~FuseFCActOneDNNPass() {}
 
  protected:

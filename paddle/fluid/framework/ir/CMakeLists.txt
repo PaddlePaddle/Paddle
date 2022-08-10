@@ -426,6 +426,10 @@ if(WITH_MKLDNN)
     SRCS mkldnn/fc_elementwise_add_mkldnn_fuse_pass_tester.cc
     DEPS fc_elementwise_add_mkldnn_fuse_pass pass_test_util)
   cc_test(
+    test_fc_act_mkldnn_fuse_pass
+    SRCS mkldnn/fc_act_mkldnn_fuse_pass_tester.cc
+    DEPS fc_act_mkldnn_fuse_pass pass_test_util)
+  cc_test(
     test_batch_norm_act_fuse_pass
     SRCS mkldnn/batch_norm_act_fuse_pass_tester.cc
     DEPS batch_norm_act_fuse_pass pass_test_util)

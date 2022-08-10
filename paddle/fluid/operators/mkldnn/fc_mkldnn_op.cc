@@ -492,6 +492,10 @@ class FCPrimitiveFactory {
       post_operations.append_sum(sum_scale);
     }
 
+    if (ctx.Attr<std::string>("activation_type") == "relu") {
+      post_operations.append_eltwise(
+          scale, dnnl::algorithm::eltwise_relu, 0.0f, 1.0f);
+    }
     platform::AppendActivation(ctx, post_operations, scale);
 
     attributes.set_post_ops(post_operations);

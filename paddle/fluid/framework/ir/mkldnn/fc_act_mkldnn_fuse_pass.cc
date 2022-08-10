@@ -44,11 +44,6 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph, std::string &act_type) const {
   int found_fc_act_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    VLOG(4) << "Fuse fc with activation op.";
-    if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << fuse_pass_id << " op compat failed.";
-      return;
-    }
     GET_IR_NODE_FROM_SUBGRAPH(fc, preceding_op, fc_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_out, preceding_op_out, fc_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act, activation, fc_act_pattern);
@@ -56,15 +51,6 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph, std::string &act_type) const {
 
     auto *fc_op = fc->Op();
     auto *act_op = act->Op();
-
-    auto fused_act =
-        PADDLE_GET_CONST(std::string, fc_op->GetAttr("activation_type"));
-    if (fused_act == "relu") {
-      LOG(WARNING) << "FC has already fused activation from fc_fuse_pass.";
-      fc_op->SetAttr("fuse_activation", act_type);
-      fc_op->SetAttr("fuse_beta", 1.0f);
-      return;
-    }
 
     if (fc_op->HasAttr("use_mkldnn")) {
       PADDLE_ENFORCE(
@@ -87,7 +73,6 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph, std::string &act_type) const {
                      : "gelu_erf";
     }
 
-    fc_op->SetAttr("activation_type", act_type);
     fc_op->SetAttr("fuse_activation", act_type);
     fc_op->SetAttr("use_mkldnn", true);
     fc_op->SetOutput("Out", {act_out->Name()});
@@ -102,170 +87,6 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph, std::string &act_type) const {
   if (!Has("disable_logs") || !Get<bool>("disable_logs"))
     PrettyLogDetail(
         "---    fused %d fc with %s activation", found_fc_act_count, act_type);
-}
-
-FuseFCActOneDNNPass::FuseFCActOneDNNPass() {
-  AddOpCompat(OpCompat("fc"))
-      .AddInput("Input")
-      .IsTensor()
-      .End()
-      .AddInput("W")
-      .IsTensor()
-      .End()
-      .AddInput("Bias")
-      .IsTensor()
-      .IsOptional()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("in_num_col_dims")
-      .IsNumGE(1)
-      .End()
-      .AddAttr("activation_type")
-      .IsStringIn({"relu", ""})
-      .End();
-
-  AddOpCompat(OpCompat("abs"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End();
-
-  AddOpCompat(OpCompat("clip"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("min")
-      .End()
-      .AddAttr("max")
-      .End();
-
-  AddOpCompat(OpCompat("gelu"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("approximate")
-      .IsType<bool>()
-      .IsOptional()
-      .End();
-
-  AddOpCompat(OpCompat("hard_sigmoid"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("slope")
-      .IsOptional()
-      .IsType<float>()
-      .End()
-      .AddAttr("offset")
-      .IsOptional()
-      .IsType<float>()
-      .End();
-
-  AddOpCompat(OpCompat("hard_swish"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("threshold")
-      .IsOptional()
-      .IsType<float>()
-      .End()
-      .AddAttr("scale")
-      .IsOptional()
-      .IsType<float>()
-      .End()
-      .AddAttr("offset")
-      .IsOptional()
-      .IsType<float>()
-      .End();
-
-  AddOpCompat(OpCompat("leaky_relu"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("alpha")
-      .IsType<float>()
-      .End();
-
-  AddOpCompat(OpCompat("mish"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End();
-
-  AddOpCompat(OpCompat("relu"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End();
-
-  AddOpCompat(OpCompat("relu6"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("threshold")
-      .IsType<float>()
-      .End();
-
-  AddOpCompat(OpCompat("sigmoid"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End();
-
-  AddOpCompat(OpCompat("sqrt"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End();
-
-  AddOpCompat(OpCompat("swish"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("beta")
-      .IsType<float>()
-      .End();
-
-  AddOpCompat(OpCompat("tanh"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End();
 }
 
 }  // namespace ir
