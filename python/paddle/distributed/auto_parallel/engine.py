@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import copy
 import logging
 from collections import defaultdict
@@ -403,7 +404,8 @@ class Engine:
             epochs=1,
             fetches=None,
             steps_per_epoch=None,
-            use_program_cache=False,
+            collate_fn=None,
+            use_cache=False,
             return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
@@ -417,17 +419,19 @@ class Engine:
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
         train_dataloader = self._create_dataloader(train_data, batch_size,
-                                                   epochs, steps_per_epoch)
+                                                   epochs, collate_fn,
+                                                   steps_per_epoch)
 
         usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
         fetch_list, fetch_map = self._fetch_map(fetch_loss, usr_fetch)
+
         for epoch in range(epochs):
             train_logs = {"epoch": epoch}
             for step, _ in enumerate(train_dataloader):
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
-                                          use_program_cache=use_program_cache,
+                                          use_program_cache=use_cache,
                                           return_numpy=return_numpy)
                 train_logs["step"] = step
                 # inner fetches
@@ -444,7 +448,8 @@ class Engine:
                  eval_data,
                  batch_size=1,
                  fetches=None,
-                 use_program_cache=False,
+                 collate_fn=None,
+                 use_cache=False,
                  return_numpy=True):
         self.mode = 'eval'
         if not self._mode_init_states[self.mode]:
@@ -452,7 +457,9 @@ class Engine:
 
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine.prepare()` first."
-        eval_dataloader = self._create_dataloader(eval_data, batch_size)
+        eval_dataloader = self._create_dataloader(eval_data,
+                                                  batch_size,
+                                                  collate_fn=collate_fn)
 
         usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
@@ -464,7 +471,7 @@ class Engine:
             eval_logs = {"step": step}
             outs = self._executor.run(self.main_program,
                                       fetch_list=fetch_list,
-                                      use_program_cache=use_program_cache,
+                                      use_program_cache=use_cache,
                                       return_numpy=return_numpy)
             # inner fetches
             if fetch_loss:
@@ -489,7 +496,8 @@ class Engine:
                 test_data,
                 batch_size=1,
                 fetches=None,
-                use_program_cache=False,
+                collate_fn=None,
+                use_cache=False,
                 return_numpy=True):
         self.mode = 'predict'
         if not self._mode_init_states[self.mode]:
@@ -497,7 +505,9 @@ class Engine:
 
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine.prepare()` first."
-        test_dataloader = self._create_dataloader(test_data, batch_size)
+        test_dataloader = self._create_dataloader(test_data,
+                                                  batch_size,
+                                                  collate_fn=collate_fn)
 
         usr_fetch = self._validate_fetches(fetches)
         fetch_outputs = self._validate_fetches(self.fetch_vars["outputs"])
@@ -508,7 +518,7 @@ class Engine:
             predict_logs = {"step": step}
             outs = self._executor.run(self.main_program,
                                       fetch_list=fetch_list,
-                                      use_program_cache=use_program_cache,
+                                      use_program_cache=use_cache,
                                       return_numpy=return_numpy)
             outputs.append(outs[:len(fetch_outputs)])
             for i, out in enumerate(outs):
@@ -521,6 +531,7 @@ class Engine:
                            dataset,
                            batch_size,
                            epochs=1,
+                           collate_fn=None,
                            steps_per_epoch=None):
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
@@ -553,6 +564,7 @@ class Engine:
                 places,
                 batch_size,
                 epochs,
+                collate_fn,
                 steps_per_epoch,
                 data_parallel_world_size=self._input_split_size,
                 data_parallel_rank=self._input_split_rank)
@@ -645,12 +657,11 @@ class Engine:
         config = self.strategy.recompute_configs
 
         # extract ckpts by specific model
-        self.model
         if isinstance(self.model, paddle.nn.Layer):
             if hasattr(
-                    self.model, "model"
-            ) and self.model.model.__class__.__name__ == 'GPTForPretraining':
-                exact_ckpts = self.model.model.gpt.checkpoints
+                    self.model, "gpt"
+            ) and self.model.__class__.__name__ == 'GPTForPretraining':
+                exact_ckpts = self.model.gpt.checkpoints
         else:
             exact_ckpts = config["checkpoints"]
 
@@ -659,7 +670,7 @@ class Engine:
             config["checkpoints"] = exact_ckpts[:]
             self.strategy.recompute_configs = config
             logs = {
-                'Model Class': self.model.model.__class__.__name__,
+                'Model Class': self.model.__class__.__name__,
                 'Applied Recompute ckpts': exact_ckpts
             }
             self._logger.info(logs)

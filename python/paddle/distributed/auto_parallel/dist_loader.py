@@ -17,7 +17,8 @@ import numpy as np
 import paddle
 from .utils import to_list
 from paddle.fluid.layers.utils import flatten
-from paddle.io import DataLoader, DistributedBatchSampler
+from paddle.io import DataLoader, BatchSampler, IterableDataset
+from paddle.fluid.dataloader.dataloader_iter import _DatasetKind, default_collate_fn, default_convert_fn
 
 
 class DistributedDataLoader(metaclass=abc.ABCMeta):
@@ -29,14 +30,32 @@ class DistributedDataLoader(metaclass=abc.ABCMeta):
                  data_parallel_world_size=None,
                  data_parallel_rank=None,
                  drop_last=False):
+        if isinstance(dataset, IterableDataset):
+            raise TypeError("IterableDataset is not supported.")
+        else:
+            self.dataset_kind = _DatasetKind.MAP
+
         self.dataset = dataset
-        self.batch_size = batch_size
         self.epochs = epochs
-        self.data_parallel_world_size = data_parallel_world_size
-        self.data_parallel_rank = data_parallel_rank
         self.drop_lost = drop_last
-        if data_parallel_world_size is not None and batch_size is not None:
-            assert batch_size % data_parallel_world_size == 0
+
+        if batch_size is None:
+            self.batch_size = None
+            self.batch_sampler = None
+        else:
+            if data_parallel_world_size is not None:
+                assert batch_size % data_parallel_world_size == 0, \
+                    "'batch_size' must be divisible by data parallel size"
+            self.batch_size = batch_size
+            self.batch_sampler = BatchSampler(dataset,
+                                              batch_size=batch_size,
+                                              shuffle=False,
+                                              drop_last=drop_last)
+
+        self.auto_collate_batch = self.batch_sampler is not None
+        self.sampler_iter = iter(self.index_sampler)
+        self.dp_world_size = 1 if data_parallel_world_size is None else data_parallel_world_size
+        self.dp_rank = 0 if data_parallel_rank is None else data_parallel_rank
 
     @abc.abstractmethod
     def __iter__(self):
@@ -45,6 +64,16 @@ class DistributedDataLoader(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __next__(self):
         raise NotImplementedError
+
+    @property
+    def index_sampler(self):
+        if self.auto_collate_batch:
+            return self.batch_sampler
+        else:
+            if self.dataset_kind == _DatasetKind.MAP:
+                return list(range(len(self.dataset)))
+            else:
+                raise TypeError()
 
 
 class NonIterableGeneratorLoader(DistributedDataLoader):
@@ -55,6 +84,7 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                  places,
                  batch_size=1,
                  epochs=1,
+                 collate_fn=None,
                  steps_per_epoch=None,
                  data_parallel_world_size=None,
                  data_parallel_rank=None,
@@ -62,15 +92,22 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
         self.feed_list = feed_list
         self.places = places
         self.steps_per_epoch = steps_per_epoch
-        self.dp_world_size = 1 if data_parallel_world_size is None else data_parallel_world_size
-        self.dp_rank = 0 if data_parallel_rank is None else data_parallel_rank
 
         super(NonIterableGeneratorLoader,
               self).__init__(dataset, batch_size, epochs,
                              data_parallel_world_size, data_parallel_rank,
                              drop_last)
-        self._inner_dataloader = self._create_inner_dataloader()
+
+        if self.auto_collate_batch:
+            self.collate_fn = collate_fn or default_collate_fn
+        else:
+            self.collate_fn = collate_fn or default_convert_fn
+        self.dataset_fetcher = _DatasetKind.create_fetcher(
+            self.dataset_kind, self.dataset, self.auto_collate_batch,
+            self.collate_fn, self.drop_lost)
+
         self._steps = self._infer_steps()
+        self._inner_dataloader = self._create_inner_dataloader()
 
     def __iter__(self):
         self._cur_step = 0
@@ -101,32 +138,26 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
     def _create_inner_dataloader(self):
 
         def sample_data_generator():
-            batch_data = None
-            for step, data in enumerate(self.dataset):
-                data = flatten(data)
-                if batch_data is None:
-                    batch_data = [[] for i in range(len(data))]
-                for idx in range(len(data)):
-                    batch_data[idx].append(data[idx])
-                if (step + 1) % self.batch_size == 0:
-                    partial_data = []
-                    for d in batch_data:
-                        array = np.array(d)
-                        partial_data.append(
-                            np.split(array, self.dp_world_size)[self.dp_rank])
-                    yield partial_data[:len(self.feed_list)]
-                    batch_data = None
+            for indices in self.sampler_iter:
+                assert len(indices) % self.dp_world_size == 0, \
+                    "Please set batch_size equal to data parallel size"
+                n = len(indices) // self.dp_world_size
+                cur_indices = [
+                    indices[i:i + n] for i in range(0, len(indices), n)
+                ]
+                batch = self.dataset_fetcher.fetch(cur_indices[self.dp_rank])
+                yield batch
 
         def batch_data_generator():
-            for data in self.dataset:
-                data = flatten(data)
+            for indices in self.sampler_iter:
                 partial_data = []
-                for d in data:
-                    assert d.shape[0] % self.dp_world_size == 0, \
+                batch = self.dataset_fetcher.fetch(indices)
+                for data in batch:
+                    assert data.shape[0] % self.dp_world_size == 0, \
                         "Please padding dataset with data parallel size"
                     partial_data.append(
-                        np.split(d, self.dp_world_size)[self.dp_rank])
-                yield partial_data[:len(self.feed_list)]
+                        np.split(data, self.dp_world_size)[self.dp_rank])
+                yield partial_data
 
         dataloader = paddle.fluid.io.DataLoader.from_generator(
             feed_list=self.feed_list, capacity=70, iterable=False)
