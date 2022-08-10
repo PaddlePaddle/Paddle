@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "paddle/phi/kernels/memcpy_h2d_kernel.h"
 
-#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/stream.h"
 
 namespace phi {
 
@@ -26,42 +29,40 @@ void MemcpyH2DKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {
-    // auto& out_tensor = *out->data();
-    // out_tensor.
-    switch (dst_place_type)
-    {
+  switch (dst_place_type) {
     case 0:
-        Copy(dev_ctx, x, GPUPlace(), false, out);
-        break;
+      Copy(dev_ctx, x, GPUPlace(), false, out);
+      break;
     case 1:
-        Copy(dev_ctx, x, NPUPlace(), false, out);
+      Copy(dev_ctx, x, NPUPlace(), false, out);
+      break;
     case 2:
-        Copy(dev_ctx, x, XPUPlace(), false, out);
-        break;
+      Copy(dev_ctx, x, XPUPlace(), false, out);
+      break;
     case 3:
-        Copy(dev_ctx, x, IPUPlace(), false, out);
-        break;
-    
+      Copy(dev_ctx, x, IPUPlace(), false, out);
+      break;
+
     default:
-        PADDLE_THROW(errors::Unimplemented(
+      PADDLE_THROW(errors::Unimplemented(
           "memcpy dst_place: %d is not supported yet.", dst_place_type));
-        break;
-    }
+      break;
+  }
 }
 
-}
+}  // namespace phi
 
 PD_REGISTER_KERNEL(memcpy_h2d,
-                   CPU,  
+                   CPU,
                    ALL_LAYOUT,
-                   phi::MemcpyH2DKernel,         
+                   phi::MemcpyH2DKernel,
                    float,
                    double,
                    int8_t,
                    uint8_t,
                    int,
                    int64_t,
-                   bool, 
+                   bool,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
@@ -70,16 +71,16 @@ PD_REGISTER_KERNEL(memcpy_h2d,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(memcpy_h2d,
-                   GPU,  
+                   GPU,
                    ALL_LAYOUT,
-                   phi::MemcpyH2DKernel,         
+                   phi::MemcpyH2DKernel,
                    float,
                    double,
                    int8_t,
                    uint8_t,
                    int,
                    int64_t,
-                   bool, 
+                   bool,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
@@ -89,20 +90,19 @@ PD_REGISTER_KERNEL(memcpy_h2d,
 
 #ifdef PADDLE_WITH_XPU
 PD_REGISTER_KERNEL(memcpy_h2d,
-                   XPU,  
+                   XPU,
                    ALL_LAYOUT,
-                   phi::MemcpyH2DKernel,         
+                   phi::MemcpyH2DKernel,
                    float,
                    double,
                    int8_t,
                    uint8_t,
                    int,
                    int64_t,
-                   bool, 
+                   bool,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    phi::dtype::float16,
                    int16_t) {}
 #endif
-

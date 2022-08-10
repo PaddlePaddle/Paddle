@@ -14,9 +14,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
-#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -112,8 +112,9 @@ raise error if the type is not listed above.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-DECLARE_INFER_SHAPE_FUNCTOR(memcpy_h2d, MemcpyH2DInferShapeFunctor,
-          PD_INFER_META(phi::MemcpyH2DInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(memcpy_h2d,
+                            MemcpyH2DInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(
     memcpy_h2d,
     ops::MemcpyH2DOp,

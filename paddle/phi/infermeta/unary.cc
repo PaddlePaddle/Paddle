@@ -3915,12 +3915,6 @@ void IdentityLossInferMeta(const MetaTensor& x,
   }
 }
 
-void MemcpyH2DInferMeta(const MetaTensor& x,
-                        int dst_place_type,
-                        MetaTensor* out) {
-  UnchangedInferMeta(x, out);
-}
-
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
