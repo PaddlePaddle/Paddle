@@ -26,6 +26,9 @@ __rescale_grad_supported_opts__ = [
     'merge_momentum'
 ]
 
+# a heuristic number
+__max_stream_num_allow__ = 16
+
 
 @register_pass("auto_parallel_data_parallel_optimization")
 class DataParallelOptimizationPass(PassBase):
@@ -87,15 +90,21 @@ class DataParallelOptimizationPass(PassBase):
         self._remove_grad_scaling()
 
     def _calc_comm_overlap(self):
+        print("_calc_comm_overlap" * 8)
 
         if not self._could_be_overlap():
             return
+        print("_calc_overlap_comms" * 8)
+        self._calc_overlap_comms()
+        print("_update_wait_comms" * 8)
+        self._update_wait_comms()
 
     def _fuse_allreduce(self):
         pass
 
     def _analyze_program(self):
         """
+        build two maps
         {param_grad_name: data_parallel_group}
         {pdata_parallel_group: aram_grad_name}
         """
@@ -209,4 +218,58 @@ class DataParallelOptimizationPass(PassBase):
             set(self._grad_name_to_group_map.keys()) - scaled_grads)
 
     def _could_be_overlap(self):
-        pass
+        # NOTE current different nccl comm will use different cuda stream
+        # so if there too many dp group there will be too many stream need to be
+        # created and sync.
+        # revise here when framework support custom stream in static mode.
+        num_dp_comm_stream = len(set(self._group_to_grad_name_map.keys()))
+        if num_dp_comm_stream > __max_stream_num_allow__:
+            return False
+
+        return True
+
+    def _calc_overlap_comms(self):
+        # TODO support InterpreterCore executor for overlap.
+        # InterpreterCore has a different logic for overlapping
+        # which is different from use_calc_stream
+        block = default_main_program().global_block()
+        ops = block.ops
+
+        # comm wait calc to finish
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if is_data_parallel_reduce_op(op):
+                assert op.has_attr('use_calc_stream')
+                assert op.has_attr('ring_id')
+
+                op._set_attr('use_calc_stream', False)
+                ring_id = op.attr("ring_id")
+
+                block._insert_op_without_sync(idx,
+                                              type='c_wait_compute',
+                                              inputs={'X': []},
+                                              outputs={'Out': []},
+                                              attrs={'ring_id': ring_id})
+
+        block._sync_with_cpp()
+
+    def _update_wait_comms(self):
+
+        block = default_main_program().global_block()
+        ops = block.ops
+
+        # update wait comm to finish
+        first_optimize_op_idx = -1
+        for idx, op in enumerate(ops):
+            if is_optimize_op(op):
+                first_optimize_op_idx = idx
+                break
+
+        assert first_optimize_op_idx > -1, "Unexception: not found optimizer op in program"
+
+        for group in self._group_to_grad_name_map.keys():
+            ring_id = group.id
+            block._insert_op_without_sync(first_optimize_op_idx,
+                                          type='c_wait_comm',
+                                          inputs={'X': []},
+                                          outputs={'Out': []},
+                                          attrs={'ring_id': ring_id})

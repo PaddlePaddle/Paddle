@@ -179,8 +179,9 @@ class Engine:
             serial_main_prog = self._orig_main_prog.clone()
             serial_startup_prog = self._orig_startup_prog.clone()
             # FIXME to support grad clip
-            with static.program_guard(serial_main_prog, serial_startup_prog), \
-                utils.unique_name.guard():
+            # with static.program_guard(serial_main_prog, serial_startup_prog), \
+            #     utils.unique_name.guard():
+            with static.program_guard(serial_main_prog, serial_startup_prog):
                 inputs_spec = self.inputs_spec
                 labels_spec = self.labels_spec if self.labels_spec else []
                 inputs = [s._create_feed_layer() for s in inputs_spec]
@@ -404,7 +405,8 @@ class Engine:
             fetches=None,
             steps_per_epoch=None,
             use_program_cache=False,
-            return_numpy=True):
+            return_numpy=True,
+            profile_dir=""):
         # TODO: callbacks
         # TODO: evaluate after training
 
@@ -418,27 +420,52 @@ class Engine:
             "train model is not ready, please call `engine.prepare()` first."
         train_dataloader = self._create_dataloader(train_data, batch_size,
                                                    epochs, steps_per_epoch)
+        import time
 
         usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
         fetch_list, fetch_map = self._fetch_map(fetch_loss, usr_fetch)
+
         for epoch in range(epochs):
             train_logs = {"epoch": epoch}
+            start_time = time.time()
             for step, _ in enumerate(train_dataloader):
+
+                if len(profile_dir) and step == 30:
+                    from paddle.fluid import core
+                    core.nvprof_start()
+                    core.nvprof_enable_record_event()
+                if len(profile_dir) and step >= 30 and step < 40:
+                    core.nvprof_nvtx_push(str(step))
+
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
                                           use_program_cache=use_program_cache,
                                           return_numpy=return_numpy)
+
+                if len(profile_dir) and step >= 30 and step < 40:
+                    core.nvprof_nvtx_pop()
+                if len(profile_dir) and step == 40:
+                    core.nvprof_stop()
+
                 train_logs["step"] = step
                 # inner fetches
                 if fetch_loss:
                     train_logs["train_loss"] = outs[0][0]
+                duration = time.time() - start_time
+                speed = 1.0 / duration
+                train_logs["speed"] = speed
+                train_logs["ips_total"] = batch_size * 1024 * speed
+                train_logs[
+                    "ips"] = batch_size * 1024 * speed / self._input_split_size
                 # user fetches
                 user_outs = outs[len(fetch_loss):]
                 user_fetch_list = fetch_list[len(fetch_loss):]
                 for i, out in enumerate(user_outs):
                     train_logs["train_" + fetch_map[user_fetch_list[i]]] = out
                 self._logger.info(train_logs)
+
+                start_time = time.time()
 
     def evaluate(self,
                  eval_data,
