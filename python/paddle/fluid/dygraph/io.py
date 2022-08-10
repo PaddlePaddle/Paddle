@@ -365,8 +365,7 @@ class _ProgramHolder(object):
     # forward:
     @switch_to_static_graph
     def _create_forward_train_program(self):
-        whole_program = paddle.static.Program()
-        whole_program._rebuild_from_desc(self._train_program_desc)
+        whole_program = _build_program_by_desc(self._train_program_desc)
         end_op_index = self._infer_program_desc.block(0).op_size()
         if end_op_index > 0:
             return self._add_build_strategy_for(whole_program, 0, end_op_index)
@@ -380,8 +379,7 @@ class _ProgramHolder(object):
     # backward
     @switch_to_static_graph
     def _create_backward_train_program(self):
-        whole_program = paddle.static.Program()
-        whole_program._rebuild_from_desc(self._train_program_desc)
+        whole_program = _build_program_by_desc(self._train_program_desc)
         start_op_index = self._infer_program_desc.block(0).op_size() + 2 * len(
             self._output_descs)
         end_op_index = whole_program.desc.block(0).op_size()
@@ -931,7 +929,9 @@ def _run_dygraph(instance, input, program_holder):
 
     # 2. run program by op
     trace_program = program_holder.infer_program if instance._is_test else program_holder.train_program
+    forward_program = program_holder.infer_program if instance._is_test else program_holder.forward_program
     end_op_index = program_holder.infer_program.block(0).op_size()
+
     attrs = [
         'global_block',
         trace_program.block(0), 'start_op_index', 0, 'end_op_index',
@@ -940,16 +940,15 @@ def _run_dygraph(instance, input, program_holder):
     ]
     print("=========================>io: _is_enable_standalone_executor",
           _is_enable_standalone_executor())
-    # print(self.forward_program)
+
     use_interpretorcore = _is_enable_standalone_executor()
     attrs.extend(('use_interpretorcore', True))
     if use_interpretorcore:
         attrs.extend(
             ('forward_global_block',
-             program_holder.forward_program.block(0), 'backward_global_block',
+             forward_program.block(0), 'backward_global_block',
              program_holder.backward_program.block(0), 'forward_program_id',
-             _hash_with_id(program_holder.forward_program,
-                           instance), 'backward_program_id',
+             _hash_with_id(forward_program, instance), 'backward_program_id',
              _hash_with_id(program_holder.backward_program, instance)))
 
     _C_ops.run_program(_valid_vars(input_vars), _valid_vars(persistable_vars),
