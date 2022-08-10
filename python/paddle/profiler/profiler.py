@@ -69,6 +69,7 @@ class ProfilerTarget(Enum):
     CPU = 0
     GPU = 1
     MLU = 2
+    CUSTOM_DEVICE = 3
 
 
 def make_scheduler(*,
@@ -263,10 +264,14 @@ def _get_supported_targets() -> Iterable[ProfilerTarget]:
     Get the current supported profiler target in the system.
     """
     if _Profiler.is_cupti_supported():
-        return [ProfilerTarget.CPU, ProfilerTarget.GPU]
+        return [
+            ProfilerTarget.CPU, ProfilerTarget.GPU, ProfilerTarget.CUSTOM_DEVICE
+        ]
     if _Profiler.is_cnpapi_supported():
-        return [ProfilerTarget.CPU, ProfilerTarget.MLU]
-    return [ProfilerTarget.CPU]
+        return [
+            ProfilerTarget.CPU, ProfilerTarget.MLU, ProfilerTarget.CUSTOM_DEVICE
+        ]
+    return [ProfilerTarget.CPU, ProfilerTarget.CUSTOM_DEVICE]
 
 
 class Profiler:
@@ -404,7 +409,8 @@ class Profiler:
                  record_shapes: Optional[bool] = False,
                  profile_memory=False,
                  timer_only: Optional[bool] = False,
-                 emit_nvtx: Optional[bool] = False):
+                 emit_nvtx: Optional[bool] = False,
+                 custom_device_type=""):
         supported_targets = _get_supported_targets()
         if targets:
             self.targets = set(targets)
@@ -422,8 +428,10 @@ class Profiler:
             profileoption.trace_switch |= (1 << 1)
         if ProfilerTarget.MLU in self.targets:
             profileoption.trace_switch |= (1 << 2)
+        if ProfilerTarget.CUSTOM_DEVICE in self.targets:
+            profileoption.trace_switch |= (1 << 3)
         wrap_optimizers()
-        self.profiler = _Profiler.create(profileoption)
+        self.profiler = _Profiler.create(profileoption, custom_device_type)
         if callable(scheduler):
             self.scheduler = scheduler
         elif isinstance(scheduler, (tuple, list)):
