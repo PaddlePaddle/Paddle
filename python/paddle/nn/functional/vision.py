@@ -222,31 +222,24 @@ def grid_sample(x,
         
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
             
-            # shape=[1, 1, 3, 3]
-            x = np.array([[[[-0.6,  0.8, -0.5],
-                            [-0.5,  0.2,  1.2],
-                            [ 1.4,  0.3, -0.2]]]]).astype("float64")
-            
+            # x shape=[1, 1, 3, 3]           
+            x = paddle.to_tensor([[[[-0.6,  0.8, -0.5],
+                                    [-0.5,  0.2,  1.2],
+                                    [ 1.4,  0.3, -0.2]]]],dtype='float64')
             # grid shape = [1, 3, 4, 2]
-            grid = np.array(
-                         [[[[ 0.2,  0.3],
-                            [-0.4, -0.3],
-                            [-0.9,  0.3],
-                            [-0.9, -0.6]],
-                           [[ 0.4,  0.1],
-                            [ 0.9, -0.8],
-                            [ 0.4,  0.5],
-                            [ 0.5, -0.2]],
-                           [[ 0.1, -0.8],
-                            [-0.3, -1. ],
-                            [ 0.7,  0.4],
-                            [ 0.2,  0.8]]]]).astype("float64")
-            
-            
-            x = paddle.to_tensor(x)
-            grid = paddle.to_tensor(grid)
+            grid = paddle.to_tensor([[[[ 0.2,  0.3],
+                                       [-0.4, -0.3],
+                                       [-0.9,  0.3],
+                                       [-0.9, -0.6]],
+                                      [[ 0.4,  0.1],
+                                       [ 0.9, -0.8],
+                                       [ 0.4,  0.5],
+                                       [ 0.5, -0.2]],
+                                      [[ 0.1, -0.8],
+                                       [-0.3, -1. ],
+                                       [ 0.7,  0.4],
+                                       [ 0.2,  0.8]]]],dtype='float64')
             y_t = F.grid_sample(
                 x,
                 grid,
