@@ -124,10 +124,44 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
     }
   }
 
+  int max_voxel = counter_ptr[kernel_size];
+  if (!subm) {
+    const auto& x_dims = x.dims();
+    Dims4D d_x_dims(x_dims[0], x_dims[3], x_dims[2], x_dims[1]);
+    int64_t table_size = 1;
+    for (int i = 0; i < x_dims.size() - 1; i++) {
+      table_size *= x_dims[i];
+    }
+    DenseTensor in_index_table = phi::Empty<int>(dev_ctx, {table_size + 1});
+    int* in_index_table_ptr = in_index_table.data<int>();
+    phi::backends::gpu::GpuMemsetAsync(in_index_table_ptr,
+                                       0,
+                                       sizeof(int) * (table_size + 1),
+                                       dev_ctx.stream());
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.nnz(), 1);
+    GetOutIndexTable<IntT, false>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           dev_ctx.stream()>>>(x.non_zero_indices().data<IntT>(),
+                               x.nnz(),
+                               d_x_dims,
+                               nullptr,
+                               in_index_table_ptr,
+                               in_index_table_ptr + table_size);
+
+    phi::backends::gpu::GpuMemcpyAsync(&max_voxel,
+                                       in_index_table_ptr + table_size,
+                                       sizeof(int),
+                                       gpuMemcpyDeviceToHost,
+                                       dev_ctx.stream());
+    dev_ctx.Wait();
+  }
+
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
   DenseTensor unique_value = phi::Empty<int>(
-      dev_ctx, {static_cast<int>(x_grad->nnz() * kernel_size * 2)});
+      dev_ctx, {static_cast<int>(x_grad->nnz() * max_voxel * kernel_size * 2)});
   DenseTensor out_index =
       phi::Empty<int>(dev_ctx, {static_cast<int>(x.nnz() * 2)});
   int* out_index_ptr = out_index.data<int>();
@@ -140,7 +174,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                   0,
                   dev_ctx.stream()>>>(rulebook_len,
                                       x.nnz(),
-                                      kernel_size,
+                                      kernel_size * max_voxel,
                                       offsets[kernel_size / 2],
                                       rulebook_ptr,
                                       out_index_ptr,
@@ -152,6 +186,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                     unique_value_ptr,
                     x.nnz(),
                     kernel_size,
+                    max_voxel,
                     in_channels,
                     2,
                     in_features_ptr);
@@ -212,6 +247,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                                    unique_value.data<int>(),
                                    x_grad->nnz(),
                                    kernel_size,
+                                   max_voxel,
                                    in_channels,
                                    2,
                                    x_grad_values_ptr);

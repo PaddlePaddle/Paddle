@@ -390,9 +390,7 @@ def concat(input, axis=0, name=None):
         attrs = {}
         if isinstance(axis, Variable):
             axis.stop_gradient = True
-            inputs['AxisTensor'] = axis
-        else:
-            attrs['axis'] = axis
+        attrs['axis'] = axis
 
         helper.append_op(type='concat',
                          inputs=inputs,

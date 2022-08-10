@@ -17,6 +17,15 @@ cc_test(
   DEPS process_mesh)
 
 cc_library(
+  dist_attr
+  SRCS dist_attr.cc
+  DEPS process_mesh auto_parallel_proto proto_desc)
+cc_test(
+  dist_attr_test
+  SRCS dist_attr_test.cc
+  DEPS dist_attr)
+
+cc_library(
   dist_mapper
   SRCS dist_mapper.cc
   DEPS device_mesh auto_parallel_proto)

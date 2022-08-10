@@ -76,6 +76,15 @@ std::string str_join(Range const& elements,
   return os.str();
 }
 
+inline std::string str_join(std::map<std::string, bool> const& elements,
+                            const std::string& delimiter = ",") {
+  std::string str;
+  for (const auto& item : elements) {
+    str += item.first + ": " + std::to_string(item.second) + ",";
+  }
+  return str.substr(0, str.size() - 2);
+}
+
 // Refer to https://stackoverflow.com/a/46931770
 inline std::vector<std::string> str_split(std::string const& input,
                                           const std::string& delimiter = ",") {

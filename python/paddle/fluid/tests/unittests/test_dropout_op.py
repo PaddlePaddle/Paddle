@@ -1013,10 +1013,9 @@ class TestDropoutBackward(unittest.TestCase):
                 out, mask = core.ops.dropout(input, 'dropout_prob', 0.5)
                 out.backward()
 
-                self.assertTrue(
-                    np.array_equal(
-                        input.gradient(),
-                        self.cal_grad_downscale_in_infer(mask.numpy())))
+                np.testing.assert_array_equal(
+                    input.gradient(),
+                    self.cal_grad_downscale_in_infer(mask.numpy()))
 
     def test_backward_downscale_in_infer_eager(self):
         for place in self.places:
@@ -1027,10 +1026,9 @@ class TestDropoutBackward(unittest.TestCase):
                     out, mask = _C_ops.final_state_dropout(
                         input, None, 0.5, False, "downgrade_in_infer", 0, False)
                     out.backward()
-                    self.assertTrue(
-                        np.array_equal(
-                            input.gradient(),
-                            self.cal_grad_downscale_in_infer(mask.numpy())))
+                    np.testing.assert_array_equal(
+                        input.gradient(),
+                        self.cal_grad_downscale_in_infer(mask.numpy()))
 
     def test_backward_upscale_train(self):
         _enable_legacy_dygraph()
@@ -1101,6 +1099,47 @@ class TestDropoutBackward(unittest.TestCase):
                         np.allclose(
                             input.gradient(),
                             self.cal_grad_upscale_train(mask.numpy(), prob)))
+
+
+class TestDropOutWithProbTensor(unittest.TestCase):
+
+    def setUp(self):
+        shapes = [[10, 10], [10, 10, 10], [10, 10, 10, 10]]
+        self.inputs = [
+            np.random.random(shape).astype("float32") for shape in shapes
+        ]
+        self.place = paddle.CUDAPlace(
+            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+
+    def api_case(self, x):
+        p = paddle.assign([0.5])
+        out = paddle.nn.functional.dropout(x=x, p=p, training=True)
+        return out
+
+    def run_static(self, x):
+        paddle.seed(2022)
+        main_program = Program()
+
+        with program_guard(main_program):
+            input = paddle.static.data(shape=x.shape, name='x', dtype='float32')
+            out = self.api_case(input)
+
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': x}, fetch_list=[out])
+
+        return res[0]
+
+    def run_dygraph(self, x):
+        paddle.seed(2022)
+        with fluid.dygraph.guard(self.place):
+            out = self.api_case(paddle.to_tensor(x))
+        return out
+
+    def test_p_tensor(self):
+        for x in self.inputs:
+            static_res = self.run_static(x)
+            dygraph_res = self.run_dygraph(x)
+            self.assertTrue(np.array_equal(static_res, dygraph_res))
 
 
 class TestRandomValue(unittest.TestCase):

@@ -92,6 +92,9 @@ class ControllerBase(object):
 
                 self.master.set_status(status)
 
+                while self.pod.logs():
+                    pass
+
                 self.ctx.logger.info("Pod {}".format(status))
                 return True
 
@@ -105,6 +108,9 @@ class ControllerBase(object):
                 fc = self.pod.failed_container()
                 self.ctx.logger.info("Pod {}".format(status))
                 self.ctx.logger.error("Container failed !!!\n{}".format(fc[0]))
+                self.ctx.logger.info(
+                    "------------------------- ERROR LOG DETAIL -------------------------"
+                )
                 fc[0].tail()
 
                 if self.ctx.args.elastic_level <= 0:
@@ -203,13 +209,8 @@ class Controller(ControllerBase):
                       container=None,
                       entrypoint=None,
                       envs={},
-                      log_tag=None,
+                      log_file=None,
                       is_init=False):
-        if not is_init and log_tag is not None:
-            log_file = "{}.{}.{}.log".format(self.job.id, self.pod.name,
-                                             log_tag)
-        else:
-            log_file = None
 
         if not container:
             container = self.new_container(entrypoint=entrypoint,

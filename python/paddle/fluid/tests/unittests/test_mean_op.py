@@ -100,7 +100,7 @@ class TestFP16MeanOp(TestMeanOp):
                 dx = paddle.grad(y, x)[0].numpy()
                 dx_expected = self.dtype(1.0 / np.prod(x_np.shape)) * np.ones(
                     x_np.shape).astype(self.dtype)
-                self.assertTrue(np.array_equal(dx, dx_expected))
+                np.testing.assert_array_equal(dx, dx_expected)
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -193,7 +193,7 @@ class TestReduceMeanOp(OpTest):
                 dx_expected = ref_reduce_mean_grad(self.inputs['X'],
                                                    self.attrs['dim'],
                                                    self.dtype)
-                self.assertTrue(np.array_equal(dx, dx_expected))
+                np.testing.assert_array_equal(dx, dx_expected)
 
 
 class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):

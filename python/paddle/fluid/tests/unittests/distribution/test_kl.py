@@ -25,6 +25,8 @@ import config
 import mock_data as mock
 import parameterize as param
 
+np.random.seed(2022)
+paddle.seed(2022)
 paddle.set_default_dtype('float64')
 
 

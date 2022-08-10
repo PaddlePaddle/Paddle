@@ -32,7 +32,7 @@ class EagerOpAPIGenerateTestCase(unittest.TestCase):
             out_arr = out.numpy()
 
             out_arr_expected = np.add(np_x, np_y)
-            self.assertTrue(np.array_equal(out_arr, out_arr_expected))
+            np.testing.assert_array_equal(out_arr, out_arr_expected)
 
     def test_sum(self):
         with _test_eager_guard():
@@ -42,7 +42,7 @@ class EagerOpAPIGenerateTestCase(unittest.TestCase):
             out = paddle.sum(x, axis=0)
             out_arr = out.numpy()
             out_arr_expected = np.sum(x_data, axis=0)
-            self.assertTrue(np.array_equal(out_arr, out_arr_expected))
+            np.testing.assert_array_equal(out_arr, out_arr_expected)
 
     def test_mm(self):
         with _test_eager_guard():

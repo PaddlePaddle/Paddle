@@ -99,7 +99,7 @@ class Container(object):
             d = os.path.dirname(pth)
             if not os.path.isdir(d):
                 os.makedirs(d, exist_ok=True)
-            return open(pth, 'w')
+            return open(pth, 'a')
         except:
             return None
 
@@ -115,11 +115,17 @@ class Container(object):
         elif self._err:
             self._stderr = self._get_fd(self._err) or sys.stderr
 
+        if not self._log_handler:
+            self._log_handler = open(self._out)
+            self._log_handler.seek(0, 2)
+            self._log_start_offset = self._log_handler.tell()
+
         self._proc = ProcessContext(self._entrypoint,
                                     env=self._env,
                                     out=self._stdout,
                                     err=self._stderr,
                                     shell=self._shell)
+
         self._proc.start()
 
     def terminate(self, force=False):
@@ -171,13 +177,16 @@ class Container(object):
 
         try:
             if offset != 0 or whence != 1:
+                if whence == 0 and offset < self._log_start_offset:
+                    offset = self._log_start_offset
                 self._log_handler.seek(offset, whence)
 
             for _ in range(limit):
                 line = self._log_handler.readline()
                 if not line:
-                    break
+                    return False
                 fn.write(line)
+            return True
         except:
             return
 
