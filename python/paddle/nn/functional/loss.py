@@ -2611,9 +2611,10 @@ def sigmoid_focal_loss(logit,
                 .format(normalizer_dims))
 
     if _non_static_mode():
-        if in_graph_mode():
+        if in_dygraph_mode():
             place = _current_expected_place()
-            _C_ops.final_state_full(logit.shape, float(value), one.dtype, place)
+            one = _C_ops.final_state_full(logit.shape, float(1.0), logit.dtype,
+                                          place)
 
             loss = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
                 logit, label, False, -100)

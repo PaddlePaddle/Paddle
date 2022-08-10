@@ -16,6 +16,7 @@ from ...fluid.initializer import Initializer
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.core import VarDesc
 from ...fluid import framework
+from ...fluid.framework import _current_expected_place
 from paddle import in_dynamic_mode
 from paddle.utils import unique_name
 from paddle import _C_ops
