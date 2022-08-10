@@ -289,7 +289,7 @@ class TestScatterAPI(unittest.TestCase):
                 gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
                 return gpu_value
 
-        self.assertTrue(np.array_equal(test_dygraph(), test_static_graph()))
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

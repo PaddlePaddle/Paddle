@@ -271,26 +271,18 @@ class Conv2DTransposeGradMLUKernel : public framework::OpKernel<T> {
           data_layout_mlu,
           ToCnnlDataType(input_grad_tensor.dtype()));
 
-      cnnlDataType_t tensor_dtype = ToCnnlDataType<T>();
-      cnnlDataType_t dt_onchip = ToCnnlDataType<T>();
-      MLUCnnl::Conv2D(ctx,
-                      conv_desc.get(),
-                      tensor_dtype,
-                      dt_onchip,
-                      nullptr /* input_position */,
-                      nullptr /* input_scale */,
-                      nullptr /* input_offset */,
-                      nullptr /* filter_position */,
-                      nullptr /* filter_scale */,
-                      nullptr /* filter_offset */,
-                      output_grad_desc.get(),
-                      GetBasePtr(&output_grad_tensor),
-                      trans_filter_desc.get(),
-                      GetBasePtr(&trans_filter),
-                      nullptr /* bias_desc*/,
-                      nullptr /* bias */,
-                      input_grad_desc.get(),
-                      GetBasePtr(&input_grad_tensor));
+      MLUCnnl::ConvolutionForward(ctx,
+                                  conv_desc.get(),
+                                  nullptr /*alpha*/,
+                                  nullptr /*beta*/,
+                                  nullptr /*bias_desc*/,
+                                  nullptr /*bias_ptr*/,
+                                  output_grad_desc.get(),
+                                  GetBasePtr(&output_grad_tensor),
+                                  trans_filter_desc.get(),
+                                  GetBasePtr(&trans_filter),
+                                  input_grad_desc.get(),
+                                  GetBasePtr(&input_grad_tensor));
       if (!channel_last) {
         // transpose output from NHWC to NCHW
         const std::vector<int> perm_to_nchw = {0, 3, 1, 2};

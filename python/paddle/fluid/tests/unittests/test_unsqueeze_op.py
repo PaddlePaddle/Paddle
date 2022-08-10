@@ -187,7 +187,7 @@ class API_TestUnsqueeze3(unittest.TestCase):
                 "data2": input2
             },
                                fetch_list=[result_squeeze])
-            self.assertTrue(np.array_equal(input1, result1))
+            np.testing.assert_array_equal(input1, result1)
             self.assertEqual(input1.shape, result1.shape)
 
 
@@ -200,7 +200,7 @@ class API_TestDyUnsqueeze(unittest.TestCase):
         input = paddle.to_tensor(input_1)
         output = paddle.unsqueeze(input, axis=[1])
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(input1, out_np))
+        np.testing.assert_array_equal(input1, out_np)
         self.assertEqual(input1.shape, out_np.shape)
 
 
@@ -213,7 +213,7 @@ class API_TestDyUnsqueeze2(unittest.TestCase):
         input = paddle.to_tensor(input1)
         output = paddle.unsqueeze(input, axis=1)
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(out1, out_np))
+        np.testing.assert_array_equal(out1, out_np)
         self.assertEqual(out1.shape, out_np.shape)
 
 
@@ -227,7 +227,7 @@ class API_TestDyUnsqueezeAxisTensor(unittest.TestCase):
         input = paddle.to_tensor(input1)
         output = paddle.unsqueeze(input, axis=paddle.to_tensor([1, 2]))
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(out1, out_np))
+        np.testing.assert_array_equal(out1, out_np)
         self.assertEqual(out1.shape, out_np.shape)
 
 
@@ -245,7 +245,7 @@ class API_TestDyUnsqueezeAxisTensorList(unittest.TestCase):
             axis=[paddle.to_tensor([1]),
                   paddle.to_tensor([2])])
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(out1, out_np))
+        np.testing.assert_array_equal(out1, out_np)
         self.assertEqual(out1.shape, out_np.shape)
 
 
