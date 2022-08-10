@@ -548,7 +548,7 @@ struct GPUContext::Impl {
 
   ncclComm_t GetNcclComm() const {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    // PD_CHECK(nccl_comm_ != nullptr, "the gpu nccl_comm is nullptr.");
+    PD_CHECK(nccl_comm_ != nullptr, "the gpu nccl_comm is nullptr.");
     return nccl_comm_;
 #endif
     return nullptr;

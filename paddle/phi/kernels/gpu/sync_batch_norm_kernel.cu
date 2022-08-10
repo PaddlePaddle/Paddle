@@ -113,6 +113,9 @@ void SyncBatchNormKernel(const Context &ctx,
           ncclSum,
           comm,
           stream));
+    } else {
+      PADDLE_THROW(
+          paddle::platform::errors::Fatal("The GPU NCCL is not initialized."));
     }
 #endif
 
