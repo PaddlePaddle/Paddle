@@ -73,10 +73,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                 np.testing.assert_allclose(train_loss,
                                            test_loss,
                                            rtol=1e-05,
-                                           atol=0.01,
-                                           err_msg='Train loss: ' +
-                                           str(train_loss) + '\n Test loss:' +
-                                           str(test_loss))
+                                           atol=0.01)
 
     def test_parallel_testing(self):
         build_strategy = fluid.BuildStrategy()

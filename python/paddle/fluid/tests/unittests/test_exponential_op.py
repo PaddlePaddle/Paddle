@@ -49,11 +49,7 @@ class TestExponentialOp1(OpTest):
         hist2 = hist2.astype("float32")
         hist2 = hist2 / float(data_np.size)
 
-        np.testing.assert_allclose(hist1,
-                                   hist2,
-                                   rtol=0.02,
-                                   err_msg='actual: {}, expected: {}'.format(
-                                       hist1, hist2))
+        np.testing.assert_allclose(hist1, hist2, rtol=0.02)
 
     def test_check_grad_normal(self):
         self.check_grad(

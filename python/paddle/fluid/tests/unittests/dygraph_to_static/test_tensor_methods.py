@@ -37,12 +37,7 @@ class TestTensorClone(unittest.TestCase):
     def test_tensor_clone(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
-        np.testing.assert_allclose(
-            dygraph_res,
-            static_res,
-            rtol=1e-05,
-            err_msg='dygraph res is {}\nstatic_res is {}'.format(
-                dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 @paddle.jit.to_static

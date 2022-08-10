@@ -680,11 +680,7 @@ class TestUniformInitializerDygraph(unittest.TestCase):
 
         hist, prob = output_hist(tensor.numpy())
 
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.001,
-                                   err_msg='hist: ' + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
         paddle.enable_static()
 
@@ -715,12 +711,7 @@ class TestXavierInitializerDygraph(unittest.TestCase):
         hist2, _ = output_hist(
             np.random.normal(0, np.sqrt(2.0 / (3 + 5)), [1024, 1024, 16]))
 
-        np.testing.assert_allclose(hist,
-                                   hist2,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg='hist: ' + str(hist) + ' hist2: ' +
-                                   str(hist2))
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
         paddle.enable_static()
 
     def test_xavier_initializer(self, dtype="float32"):
@@ -749,12 +740,7 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
         hist2, _ = output_hist(
             np.random.normal(0, np.sqrt(2.0 / (4)), [1024, 1024, 16]))
 
-        np.testing.assert_allclose(hist,
-                                   hist2,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg='hist: ' + str(hist) + ' hist2: ' +
-                                   str(hist2))
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
         paddle.enable_static()
 
     def test_msra_initializer(self, dtype="float32"):

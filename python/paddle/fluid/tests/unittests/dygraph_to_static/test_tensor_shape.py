@@ -265,12 +265,7 @@ class TestTensorShapeBasic(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.get_static_output()
         dygraph_res = self.get_dygraph_output()
-        np.testing.assert_allclose(
-            dygraph_res,
-            static_res,
-            rtol=1e-05,
-            err_msg='dygraph res is {}\nstatic_res is {}'.format(
-                dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
     def _set_expected_op_num(self):
         self.expected_op_num = 2

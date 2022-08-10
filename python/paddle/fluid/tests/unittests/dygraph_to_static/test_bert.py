@@ -181,18 +181,8 @@ class TestBert(unittest.TestCase):
                                                     self.data_reader)
         dygraph_loss, dygraph_ppl = self.train_dygraph(self.bert_config,
                                                        self.data_reader)
-        np.testing.assert_allclose(
-            static_loss,
-            dygraph_loss,
-            rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss))
-        np.testing.assert_allclose(
-            static_ppl,
-            dygraph_ppl,
-            rtol=1e-05,
-            err_msg='static_ppl: {} \n dygraph_ppl: {}'.format(
-                static_ppl, dygraph_ppl))
+        np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
+        np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
         self.verify_predict()
 

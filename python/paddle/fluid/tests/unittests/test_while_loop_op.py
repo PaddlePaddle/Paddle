@@ -248,11 +248,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                       },
                       fetch_list=[mean.name, i.grad_name])
         np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
-        np.testing.assert_allclose(
-            np.asarray(res[1]),
-            i_grad,
-            rtol=1e-05,
-            err_msg=' \nres = \n{} \n\n ans = \n{}'.format(res[1], i_grad))
+        np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
 
     def test_while_loop_backward2(self):
 
@@ -293,16 +289,8 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                       },
                       fetch_list=[mean.name, i.grad_name, x.grad_name])
         np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
-        np.testing.assert_allclose(
-            np.asarray(res[1]),
-            i_grad,
-            rtol=1e-05,
-            err_msg=' \nres = \n{} \n\n ans = \n{}'.format(res[1], i_grad))
-        np.testing.assert_allclose(
-            np.asarray(res[2]),
-            x_grad,
-            rtol=1e-05,
-            err_msg=' \nres = \n{} \n\n ans = \n{}'.format(res[2], x_grad))
+        np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
 
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):

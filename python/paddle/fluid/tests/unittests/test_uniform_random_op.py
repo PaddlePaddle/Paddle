@@ -73,11 +73,7 @@ class TestUniformRandomOp_attr_tensorlist(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg='hist: ' + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestMaxMinAreInt(TestUniformRandomOp_attr_tensorlist):
@@ -110,11 +106,7 @@ class TestUniformRandomOp_attr_tensorlist_int32(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg='hist: ' + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOp_attr_tensor(OpTest):
@@ -135,11 +127,7 @@ class TestUniformRandomOp_attr_tensor(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg='hist: ' + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOp_attr_tensor_int32(OpTest):
@@ -160,11 +148,7 @@ class TestUniformRandomOp_attr_tensor_int32(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg='hist: ' + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOp(OpTest):
@@ -190,11 +174,7 @@ class TestUniformRandomOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg='hist: ' + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
     def test_check_api(self):
         places = self._get_places()
@@ -284,11 +264,7 @@ class TestUniformRandomOpSelectedRows(unittest.TestCase):
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg='hist: ' + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOpSelectedRowsWithDiagInit(
@@ -310,11 +286,7 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [500, 784])
         hist, prob = output_hist_diag(np.array(out.get_tensor()))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg='hist: ' + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOpApi(unittest.TestCase):
@@ -450,11 +422,7 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg='hist: ' + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
@@ -486,11 +454,7 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg='hist: ' + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomDygraphMode(unittest.TestCase):

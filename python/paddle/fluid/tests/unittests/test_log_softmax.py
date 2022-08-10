@@ -168,7 +168,7 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = F.log_softmax(x, axis, dtype)
-        np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05, err_msg=True)
+        np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
         paddle.enable_static()
 
     def test_check_api(self):

@@ -209,11 +209,7 @@ class TestDeclarative(unittest.TestCase):
     def test_train(self):
         st_out = train(self.args, self.place, to_static=True)
         dy_out = train(self.args, self.place, to_static=False)
-        np.testing.assert_allclose(
-            st_out,
-            dy_out,
-            rtol=1e-05,
-            err_msg='dy_out:\n {}\n st_out:\n{}\n'.format(dy_out, st_out))
+        np.testing.assert_allclose(st_out, dy_out, rtol=1e-05)
 
 
 if __name__ == '__main__':

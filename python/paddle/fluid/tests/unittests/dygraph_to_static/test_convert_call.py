@@ -179,12 +179,7 @@ class TestRecursiveCall2(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        np.testing.assert_allclose(
-            dygraph_res,
-            static_res,
-            rtol=1e-05,
-            err_msg='dygraph is {}\n static_res is \n{}'.format(
-                dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestThirdPartyLibrary(TestRecursiveCall2):

@@ -363,8 +363,7 @@ class TestReQuantizeOpReused(TestReQuantizeOp):
             np.testing.assert_allclose(variables['output'],
                                        out[0],
                                        rtol=1e-05,
-                                       atol=0.0001,
-                                       err_msg='output')
+                                       atol=0.0001)
 
 
 # ---------------test reused requantize op, no shift------------------------

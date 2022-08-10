@@ -49,10 +49,7 @@ class BenchmarkSuite(OpTest):
             np.testing.assert_allclose(actual_t,
                                        expect_t,
                                        rtol=1e-05,
-                                       atol=atol,
-                                       err_msg='Output (' + var_name +
-                                       ') has diff' + str(actual_t) + '\n' +
-                                       str(expect_t))
+                                       atol=atol)
             self.assertListEqual(actual.lod(), expect.lod(),
                                  "Output (" + var_name + ") has different lod")
 

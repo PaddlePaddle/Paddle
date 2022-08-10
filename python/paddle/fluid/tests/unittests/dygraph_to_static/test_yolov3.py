@@ -168,13 +168,10 @@ class TestYolov3(unittest.TestCase):
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
-        np.testing.assert_allclose(
-            dygraph_loss,
-            static_loss,
-            rtol=0.001,
-            atol=1e-05,
-            err_msg='dygraph_loss: {} \nstatic_loss: {}'.format(
-                dygraph_loss, static_loss))
+        np.testing.assert_allclose(dygraph_loss,
+                                   static_loss,
+                                   rtol=0.001,
+                                   atol=1e-05)
 
 
 if __name__ == '__main__':

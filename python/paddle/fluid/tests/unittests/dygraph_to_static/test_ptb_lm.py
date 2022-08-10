@@ -305,22 +305,9 @@ class TestPtb(unittest.TestCase):
         loss_1, hidden_1, cell_1 = train_static(self.place)
         loss_2, hidden_2, cell_2 = train_dygraph(self.place)
 
-        np.testing.assert_allclose(
-            loss_1,
-            loss_2,
-            rtol=1e-05,
-            err_msg='static loss: {} \ndygraph loss: {}'.format(loss_1, loss_2))
-        np.testing.assert_allclose(
-            hidden_1,
-            hidden_2,
-            rtol=1e-05,
-            err_msg='static hidden: {} \ndygraph acc1: {}'.format(
-                hidden_1, hidden_2))
-        np.testing.assert_allclose(
-            cell_1,
-            cell_2,
-            rtol=1e-05,
-            err_msg='static cell: {} \ndygraph cell: {}'.format(cell_1, cell_2))
+        np.testing.assert_allclose(loss_1, loss_2, rtol=1e-05)
+        np.testing.assert_allclose(hidden_1, hidden_2, rtol=1e-05)
+        np.testing.assert_allclose(cell_1, cell_2, rtol=1e-05)
 
 
 if __name__ == '__main__':

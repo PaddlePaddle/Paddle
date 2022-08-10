@@ -404,18 +404,8 @@ class TestTransformer(unittest.TestCase):
         static_seq_ids, static_scores = predict_static(args, batch_generator)
         dygraph_seq_ids, dygraph_scores = predict_dygraph(args, batch_generator)
 
-        np.testing.assert_allclose(
-            static_seq_ids,
-            static_seq_ids,
-            rtol=1e-05,
-            err_msg='static_seq_ids: {} \n dygraph_seq_ids: {}'.format(
-                static_seq_ids, dygraph_seq_ids))
-        np.testing.assert_allclose(
-            static_scores,
-            dygraph_scores,
-            rtol=1e-05,
-            err_msg='static_scores: {} \n dygraph_scores: {}'.format(
-                static_scores, dygraph_scores))
+        np.testing.assert_allclose(static_seq_ids, static_seq_ids, rtol=1e-05)
+        np.testing.assert_allclose(static_scores, dygraph_scores, rtol=1e-05)
 
     def test_check_result(self):
         self._test_train()

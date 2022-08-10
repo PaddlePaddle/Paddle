@@ -69,12 +69,7 @@ class TestLstm(unittest.TestCase):
     def test_lstm_to_static(self):
         dygraph_out = self.run_lstm(to_static=False)
         static_out = self.run_lstm(to_static=True)
-        np.testing.assert_allclose(
-            dygraph_out,
-            static_out,
-            rtol=1e-05,
-            err_msg='dygraph_out is {}\n static_out is \n{}'.format(
-                dygraph_out, static_out))
+        np.testing.assert_allclose(dygraph_out, static_out, rtol=1e-05)
 
     def test_save_in_eval(self, with_training=True):
         paddle.jit.ProgramTranslator().enable(True)

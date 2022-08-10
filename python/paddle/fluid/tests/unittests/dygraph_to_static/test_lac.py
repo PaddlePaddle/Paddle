@@ -567,17 +567,8 @@ class TestLACModel(unittest.TestCase):
             dy_pre = self.predict_dygraph(batch)
             st_pre = self.predict_static(batch)
             dy_jit_pre = self.predict_dygraph_jit(batch)
-            np.testing.assert_allclose(
-                dy_pre,
-                st_pre,
-                rtol=1e-05,
-                err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre))
-            np.testing.assert_allclose(
-                dy_jit_pre,
-                st_pre,
-                rtol=1e-05,
-                err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                    dy_jit_pre, st_pre))
+            np.testing.assert_allclose(dy_pre, st_pre, rtol=1e-05)
+            np.testing.assert_allclose(dy_jit_pre, st_pre, rtol=1e-05)
 
     def predict_dygraph(self, batch):
         words, targets, length = batch

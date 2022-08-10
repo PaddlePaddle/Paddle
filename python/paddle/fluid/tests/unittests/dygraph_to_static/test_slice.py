@@ -139,12 +139,7 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()
-        np.testing.assert_allclose(
-            dygraph_res,
-            static_res,
-            rtol=1e-05,
-            err_msg='dygraph_res is {}\nstatic_res is {}'.format(
-                dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestSliceInIf(TestSliceWithoutControlFlow):
@@ -286,11 +281,7 @@ class TestPaddleStridedSlice(unittest.TestCase):
                                   strides=stride2)
 
         array_slice = array[s2[0]:e2[0]:stride2[0], ::, s2[1]:e2[1]:stride2[1]]
-        np.testing.assert_array_equal(
-            sl.numpy(),
-            array_slice,
-            err_msg='paddle.strided_slice:\n {} \n numpy slice:\n{}'.format(
-                sl.numpy(), array_slice))
+        np.testing.assert_array_equal(sl.numpy(), array_slice)
 
 
 if __name__ == '__main__':

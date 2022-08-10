@@ -467,11 +467,7 @@ class TestImperativeResneXt(unittest.TestCase):
                         static_grad_value[static_grad_name_list[
                             i - grad_start_pos]] = out[i]
 
-        np.testing.assert_allclose(
-            static_out,
-            dy_out,
-            rtol=1e-05,
-            err_msg='\nstatic_out: {}\ndy_out: {}'.format(static_out, dy_out))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))
 
@@ -485,33 +481,18 @@ class TestImperativeResneXt(unittest.TestCase):
         self.assertEqual(len(dy_grad_value), len(static_grad_value))
 
         for key, value in six.iteritems(static_grad_value):
-            np.testing.assert_allclose(
-                value,
-                dy_grad_value[key],
-                rtol=1e-05,
-                err_msg='\nstatic_grad_value: {}\ndy_grad_value: {}'.format(
-                    value, dy_grad_value[key]))
+            np.testing.assert_allclose(value, dy_grad_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
         self.assertEqual(len(dy_param_value), len(static_param_value))
         for key, value in six.iteritems(static_param_value):
-            np.testing.assert_allclose(
-                value,
-                dy_param_value[key],
-                rtol=1e-05,
-                err_msg='\nstatic_param_value: {}\ndy_param_value: {}'.format(
-                    value, dy_param_value[key]))
+            np.testing.assert_allclose(value, dy_param_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
         # check eager
-        np.testing.assert_allclose(
-            static_out,
-            eager_out,
-            rtol=1e-05,
-            err_msg='\nstatic_out: {}\neager_out: {}'.format(
-                static_out, eager_out))
+        np.testing.assert_allclose(static_out, eager_out, rtol=1e-05)
 
         self.assertEqual(len(eager_param_init_value),
                          len(static_param_init_value))
@@ -524,21 +505,13 @@ class TestImperativeResneXt(unittest.TestCase):
         self.assertEqual(len(eager_grad_value), len(static_grad_value))
 
         for key, value in six.iteritems(static_grad_value):
-            np.testing.assert_allclose(
-                value,
-                eager_grad_value[key],
-                rtol=1e-05,
-                err_msg='\nstatic_grad_value: {}\neager_grad_value: {}'.format(
-                    value, eager_grad_value[key]))
+            np.testing.assert_allclose(value, eager_grad_value[key], rtol=1e-05)
 
         self.assertEqual(len(eager_param_value), len(static_param_value))
         for key, value in six.iteritems(static_param_value):
-            np.testing.assert_allclose(
-                value,
-                eager_param_value[key],
-                rtol=1e-05,
-                err_msg='\nstatic_param_value: {}\neagear_param_value: {}'.
-                format(value, eager_param_value[key]))
+            np.testing.assert_allclose(value,
+                                       eager_param_value[key],
+                                       rtol=1e-05)
 
 
 if __name__ == '__main__':
