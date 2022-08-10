@@ -1626,6 +1626,35 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                         self.assertTrue(np.array_equal(new_t, base_t))
 
 
+class TestSaveLoadInferenceModel(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(self.temp_dir.name, 'no_params')
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_no_params(self):
+        main_program = framework.Program()
+        with framework.program_guard(main_program):
+            x = paddle.static.data(name="x", shape=[10, 10], dtype='float32')
+            y = x + x
+
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+
+            paddle.static.save_inference_model(self.model_path, [x], [y], exe)
+
+            [inference_program, feed_target_names, fetch_targets
+             ] = (paddle.static.load_inference_model(self.model_path, exe))
+
+            self.assertEqual(feed_target_names, ['x'])
+            self.assertEqual(fetch_targets[0].shape, (10, 10))
+            ops = [op.type for op in inference_program.block(0).ops]
+            self.assertEqual(ops, ['feed', 'elementwise_add', 'scale', 'fetch'])
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
