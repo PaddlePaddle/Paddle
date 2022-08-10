@@ -29,12 +29,17 @@ namespace plugin {
 class GroupNormPlugin : public PluginTensorRT {
  public:
   size_t getSerializationSize() const TRT_NOEXCEPT override {
+    printf(
+        "@@ww group norm coverage probe, "
+        "GroupNormPlugin::getSerializationSize\r\n");
     return getBaseSerializationSize() + SerializedSize(scale_) +
            SerializedSize(bias_) + SerializedSize(eps_) +
            SerializedSize(groups_) + SerializedSize(mean_shape_) +
            SerializedSize(variance_shape_);
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
+    printf("@@ww group norm coverage probe, GroupNormPlugin::serialize\r\n");
+
     serializeBase(buffer);
     SerializeValue(&buffer, scale_);
     SerializeValue(&buffer, bias_);
@@ -70,9 +75,15 @@ class GroupNormPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &mean_shape_);
     DeserializeValue(&serialData, &serialLength, &variance_shape_);
   }
-  ~GroupNormPlugin() {}
+  ~GroupNormPlugin() {
+    printf(
+        "@@ww group norm coverage probe, "
+        "GroupNormPlugin::~GroupNormPlugin\r\n");
+  }
   int initialize() TRT_NOEXCEPT override;
   GroupNormPlugin* clone() const TRT_NOEXCEPT override {
+    printf("@@ww group norm coverage probe, GroupNormPlugin::clone\r\n");
+
     return new GroupNormPlugin(scale_.data(),
                                scale_.size(),
                                bias_.data(),
@@ -83,9 +94,15 @@ class GroupNormPlugin : public PluginTensorRT {
                                variance_shape_);
   }
   const char* getPluginType() const TRT_NOEXCEPT override {
+    printf(
+        "@@ww group norm coverage probe, GroupNormPlugin::getPluginType\r\n");
+
     return "groupnorm_plugin";
   }
-  int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
+  int getNbOutputs() const TRT_NOEXCEPT override {
+    printf("@@ww group norm coverage probe, GroupNormPlugin::getNbOutputs\r\n");
+    return 1;
+  }
   nvinfer1::Dims getOutputDimensions(int index,
                                      const nvinfer1::Dims* inputs,
                                      int nbInputDims) TRT_NOEXCEPT override;
@@ -158,6 +175,8 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &variance_shape_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
+    printf("@@ww group norm coverage probe, GroupNormPluginDynamic::clone\r\n");
+
     return new GroupNormPluginDynamic(scale_.data(),
                                       scale_.size(),
                                       bias_.data(),
@@ -169,17 +188,32 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
+    printf(
+        "@@ww group norm coverage probe, "
+        "GroupNormPluginDynamic::getPluginType\r\n");
     return "groupnorm_plugin_dynamic";
   }
-  int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
+  int getNbOutputs() const TRT_NOEXCEPT override {
+    printf(
+        "@@ww group norm coverage probe, "
+        "GroupNormPluginDynamic::getNbOutputs\r\n");
+
+    return 1;
+  }
   int initialize() TRT_NOEXCEPT override { return 0; }
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
+    printf(
+        "@@ww group norm coverage probe, "
+        "GroupNormPluginDynamic::getSerializationSize\r\n");
     return SerializedSize(scale_) + SerializedSize(bias_) +
            SerializedSize(eps_) + SerializedSize(groups_) +
            SerializedSize(mean_shape_) + SerializedSize(variance_shape_);
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
+    printf(
+        "@@ww group norm coverage probe, "
+        "GroupNormPluginDynamic::serialize\r\n");
     SerializeValue(&buffer, scale_);
     SerializeValue(&buffer, bias_);
     SerializeValue(&buffer, eps_);
@@ -201,12 +235,20 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nbInputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nbOutputs) TRT_NOEXCEPT override {}
+                       int nbOutputs) TRT_NOEXCEPT override {
+    printf(
+        "@@ww group norm coverage probe, "
+        "GroupNormPluginDynamic::configurePlugin\r\n");
+  }
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nbInputs,
                           const nvinfer1::PluginTensorDesc* outputs,
                           int nbOutputs) const TRT_NOEXCEPT override {
+    printf(
+        "@@ww group norm coverage probe, "
+        "GroupNormPluginDynamic::getWorkspaceSize\r\n");
+
     return 0;
   }
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
@@ -220,7 +262,11 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
                                        int nbInputs) const
       TRT_NOEXCEPT override;
 
-  void destroy() TRT_NOEXCEPT override { delete this; }
+  void destroy() TRT_NOEXCEPT override {
+    printf(
+        "@@ww group norm coverage probe, GroupNormPluginDynamic::destroy\r\n");
+    delete this;
+  }
   // void terminate() TRT_NOEXCEPT override;
 
  private:
