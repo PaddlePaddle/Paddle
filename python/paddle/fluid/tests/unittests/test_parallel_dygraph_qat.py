@@ -138,5 +138,4 @@ class TestDataParallelQAT(TestMultipleGpus):
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()
