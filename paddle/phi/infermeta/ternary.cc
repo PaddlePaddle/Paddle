@@ -317,16 +317,6 @@ void InstanceNormInferMeta(const MetaTensor& x,
                     nullptr,
                     phi::errors::InvalidArgument(
                         "The y in InstanceNormInferMeta can't be nullptr."));
-  PADDLE_ENFORCE_NE(
-      saved_mean,
-      nullptr,
-      phi::errors::InvalidArgument(
-          "The saved_mean in InstanceNormInferMeta can't be nullptr."));
-  PADDLE_ENFORCE_NE(
-      saved_variance,
-      nullptr,
-      phi::errors::InvalidArgument(
-          "The saved_variance in InstanceNormInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
   PADDLE_ENFORCE_NE(phi::product(x_dims),
                     0,
@@ -401,11 +391,15 @@ void InstanceNormInferMeta(const MetaTensor& x,
     }
   }
   y->set_dims(x_dims);
-  saved_mean->set_dims({NxC});
-  saved_variance->set_dims({NxC});
   y->share_lod(x);
   y->set_dtype(x.dtype());
   y->set_layout(x.layout());
+  if (saved_mean) {
+    saved_mean->set_dims({NxC});
+  }
+  if (saved_variance) {
+    saved_variance->set_dims({NxC});
+  }
 }
 
 void GraphSendRecvInferMeta(const MetaTensor& x,
