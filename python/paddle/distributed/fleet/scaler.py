@@ -14,19 +14,13 @@
 
 import paddle
 from paddle.fluid.framework import dygraph_only
-from . import fleet
+from .base.topology import ParallelMode
+from paddle.distributed import fleet
 
 
-class Scaler(paddle.nn.GradScaler):
+def distributed_scaler(scaler):
 
-    def __init__(self, scaler):
-        super(Scaler, self).__init__(scaler._enable, scaler._init_loss_scaling,
-                                     scaler._incr_ratio, scaler._decr_ratio,
-                                     scaler._incr_every_n_steps,
-                                     scaler._decr_every_n_nan_or_inf,
-                                     scaler._use_dynamic_loss_scaling)
-
-    def _unscale(self, optimizer):
+    def unscale_method(self, optimizer):
         if not self._enable:
             return
         if getattr(optimizer, '_param_groups', None) and isinstance(
@@ -80,13 +74,8 @@ class Scaler(paddle.nn.GradScaler):
                                       group=None)
         self._found_inf = is_found_inf.numpy()[0]
 
-
-@dygraph_only
-def distributed_scaler(scaler):
-
-    # Only tensor_parallel and pipeline_parallel need to modify scaler
-    if fleet._hcg.get_parallel_mode() in (ParallelMode.TENSOR_PARALLEL,
-                                          ParallelMode.PIPELINE_PARALLEL):
-        scaler = Scaler(scaler)
+    # Only data_parallel doesn't need to modify scaler
+    if fleet.Fleet._hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL:
+        scaler._unscale = MethodType(unscale_method, scaler)
 
     return scaler
