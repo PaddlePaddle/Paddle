@@ -1892,11 +1892,21 @@ PDNode *patterns::Reshape2Matmul::operator()() {
   return matmul_out;
 }
 
-PDNode *patterns::MatmulWithInputOps::operator()() {
+PDNode *patterns::MatmulWithInputOps::operator()(bool with_residual) {
   auto prev_op_x = pattern->NewNode(prev_op_x_repr())->assert_is_op();
   auto prev_op_y = pattern->NewNode(prev_op_y_repr())->assert_is_op();
 
   auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
+  if (!with_residual) {
+    matmul_op->assert_more([&](Node *x) {
+      if (!HasInput(x, "ResidualData") ||
+          x->Op()->Input("ResidualData").size() == 0)
+        return true;
+      return false;
+    });
+  }
+
   auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
                          ->AsInput()
                          ->assert_is_op_input("matmul", "X");
@@ -1905,11 +1915,21 @@ PDNode *patterns::MatmulWithInputOps::operator()() {
                          ->assert_is_op_input("matmul", "Y");
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
-                        ->assert_is_op_output("matmul", "Out");
+                        ->assert_is_op_output("matmul", "Out")
+                        ->assert_is_only_output_of_op("matmul");
+  std::vector<PDNode *> links_from{matmul_in_x, matmul_in_y};
+
+  if (with_residual) {
+    auto matmul_residual_data =
+        pattern->NewNode(matmul_residual_data_repr())
+            ->AsInput()
+            ->assert_is_op_input("matmul", "ResidualData");
+    links_from.push_back(matmul_residual_data);
+  }
 
   prev_op_x->LinksTo({matmul_in_x});
   prev_op_y->LinksTo({matmul_in_y});
-  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  matmul_op->LinksFrom(links_from).LinksTo({matmul_out});
   return matmul_out;
 }
 
