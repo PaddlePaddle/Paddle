@@ -138,26 +138,26 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   auto phi_kernel_map =
       phi::KernelFactory::Instance().SelectKernelMap(op_with_kernel->Type());
   if (phi_kernel_map.size() > 0) {
-    auto pt_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
-    auto pt_kernel_name = op_with_kernel->PhiKernelSignature()->name;
+    auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+    auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
 
-    VLOG(6) << "pt_kernel_key " << pt_kernel_key << "\n";
+    VLOG(6) << "phi_kernel_key " << phi_kernel_key << "\n";
 
     if (op_with_kernel->PhiKernel()->IsValid()) {
       run_phi_kernel = true;
     } else {
       if (!op_with_kernel->SupportsKernelType(expected_kernel_key)) {
-        auto pt_cpu_kernel_key =
-            FallBackToCpu(expected_kernel_key, pt_kernel_key, *op_with_kernel);
+        auto phi_cpu_kernel_key =
+            FallBackToCpu(expected_kernel_key, phi_kernel_key, *op_with_kernel);
         op_with_kernel->ResetPhiKernel(
             new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-                pt_kernel_name, pt_cpu_kernel_key)));
+                phi_kernel_name, phi_cpu_kernel_key)));
         if (op_with_kernel->PhiKernel()->IsValid()) {
-          VLOG(6) << "Static mode PrepareImpl - kernel name: " << pt_kernel_name
-                  << " | kernel key: " << pt_cpu_kernel_key
+          VLOG(6) << "Static mode PrepareImpl - kernel name: "
+                  << phi_kernel_name << " | kernel key: " << phi_cpu_kernel_key
                   << " | kernel: " << *(op_with_kernel->PhiKernel());
           op_with_kernel->ResetKernelType(new OpKernelType(
-              TransPhiKernelKeyToOpKernelType(pt_cpu_kernel_key)));
+              TransPhiKernelKeyToOpKernelType(phi_cpu_kernel_key)));
           run_phi_kernel = true;
         }
       }
@@ -174,11 +174,11 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     new_op_func_node.kernel_func_ = *op_with_kernel->kernel_func();
     new_op_func_node.kernel_func_(exec_ctx);
   } else {
-    new_op_func_node.pt_kernel_ = op_with_kernel->PhiKernel();
-    phi::KernelContext pt_kernel_context;
+    new_op_func_node.phi_kernel_ = op_with_kernel->PhiKernel();
+    phi::KernelContext phi_kernel_context;
     op_with_kernel->BuildPhiKernelContext(
-        runtime_context, dev_ctx, &pt_kernel_context);
-    (*new_op_func_node.pt_kernel_)(&pt_kernel_context);
+        runtime_context, dev_ctx, &phi_kernel_context);
+    (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
   }
 
   // NOTE(winter-wang): in npu device, D2H kernel is asynchronous. need to
