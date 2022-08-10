@@ -28,6 +28,16 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+#define CHECK_SET_TYPE(want, fact)                                             \
+  PADDLE_ENFORCE_EQ(                                                           \
+      (want),                                                                  \
+      (fact),                                                                  \
+      platform::errors::InvalidArgument(                                       \
+          "Errors occures in Paddle-TRT cast op, try to use C++ Api "          \
+          "config.Exp_DisableTensorRtOPs({\"cast\"})\n; or Python Api "        \
+          "config.exp_disable_tensorrt_ops([\"cast\"]) to forbid cat op into " \
+          "Paddle-TRT."));
+
 class CastOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -44,12 +54,18 @@ class CastOpConverter : public OpConverter {
     switch (out_dtype) {
       case 2:  // INT32 = 2
         layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
+        CHECK_SET_TYPE(nvinfer1::DataType::kINT32,
+                       layer->getOutput(0)->getType());
         break;
       case 4:  // FP16 = 4
         layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
+        CHECK_SET_TYPE(nvinfer1::DataType::kHALF,
+                       layer->getOutput(0)->getType());
         break;
       case 5:  // FP32 = 5
         layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
+        CHECK_SET_TYPE(nvinfer1::DataType::kFLOAT,
+                       layer->getOutput(0)->getType());
         break;
       default:
         LOG(ERROR) << "Unable to convert a fluid data type(" << out_dtype
