@@ -197,6 +197,7 @@ class Parallelizer:
             return
 
         # data parallel optimization
+        config = {}
         config["dist_context"] = self._dist_context
         config["global_rank"] = rank
         dp_pass = new_pass("auto_parallel_data_parallel_optimization", config)
