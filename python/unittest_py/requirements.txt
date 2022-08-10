@@ -14,3 +14,4 @@ scipy>=1.5; python_version == "3.6"
 prettytable
 distro
 numpy>=1.20,<1.22; python_version >= "3.7"
+autograd

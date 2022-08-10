@@ -658,7 +658,7 @@ TEST(PrimOp, eq_p) {
   NewVar(block, y, shape);
   AppendOp(block, "eq_p", {{"X", {x}}, {"Y", {y}}}, {{"Z", {z}}}, {});
   ASSERT_EQ(block->Var("z")->GetType(), proto::VarType::LOD_TENSOR);
-  ASSERT_EQ(block->Var("z")->GetDataType(), proto::VarType_Type_FP32);
+  ASSERT_EQ(block->Var("z")->GetDataType(), proto::VarType::BOOL);
   auto shapes = block->Var("z")->GetShape();
   ASSERT_EQ(shapes.size(), 3UL);
   ASSERT_EQ(shapes[0], 3L);
