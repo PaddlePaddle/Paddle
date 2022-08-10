@@ -320,7 +320,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
 
 RecordOpInfoSupplement::RecordOpInfoSupplement(
     const std::string &type,
-    const std::vector<std::pair<std::string, std::vector<framework::DDim>>>
+    const std::vector<std::pair<const char *, std::vector<framework::DDim>>>
         &input_shapes) {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
@@ -332,6 +332,11 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   std::vector<std::string> callstack;
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
       PosixInNsec(), type, input_shapes, dtypes, callstack);
+}
+
+bool RecordEvent::IsEnabled() {
+  return FLAGS_enable_host_event_recorder_hook || g_enable_nvprof_hook ||
+         g_state != ProfilerState::kDisabled;
 }
 
 bool RecordOpInfoSupplement::IsEnabled() {

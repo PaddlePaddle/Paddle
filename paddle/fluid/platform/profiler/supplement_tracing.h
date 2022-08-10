@@ -60,7 +60,7 @@ class RecordOpInfoSupplement {
    */
   explicit RecordOpInfoSupplement(
       const std::string& type,
-      const std::vector<std::pair<std::string, std::vector<framework::DDim>>>&
+      const std::vector<std::pair<const char*, std::vector<framework::DDim>>>&
           input_shapes);
 };
 
