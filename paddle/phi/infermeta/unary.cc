@@ -325,6 +325,13 @@ void ClassCenterSampleInferMeta(const MetaTensor& label,
       errors::InvalidArgument("Rank of Input(Label) should be equal to 1, "
                               "but the value given is %d.",
                               label.dims().size()));
+  PADDLE_ENFORCE_NOT_NULL(remapped_label,
+                          phi::errors::InvalidArgument(
+                              "output of remapped label should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      sampled_local_class_center,
+      phi::errors::InvalidArgument(
+          "output of sampled local class center should not be null."));
   remapped_label->set_dims(label.dims());
   remapped_label->set_dtype(label.dtype());
   sampled_local_class_center->set_dims(phi::make_ddim({num_samples}));
