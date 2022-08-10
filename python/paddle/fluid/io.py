@@ -184,8 +184,6 @@ def is_belong_to_optimizer(var):
 @dygraph_not_support
 def get_program_parameter(program):
     """
-    :api_attr: Static Graph
-
     Get all the parameters from Program.
 
     Args:
@@ -212,8 +210,6 @@ def get_program_parameter(program):
 @dygraph_not_support
 def get_program_persistable_vars(program):
     """
-    :api_attr: Static Graph
-
     Get all the persistable vars from Program.
 
     Args:
@@ -292,9 +288,7 @@ def save_vars(executor,
               predicate=None,
               filename=None):
     """
-    :api_attr: Static Graph
-
-    This API saves specific variables in the `Program` to files.
+    Save specific variables in the `Program` to files.
 
     There are two ways to specify the variables to be saved: set variables in
     a list and assign it to the `vars`, or use the `predicate` function to select
@@ -436,9 +430,7 @@ def save_vars(executor,
 @dygraph_not_support
 def save_params(executor, dirname, main_program=None, filename=None):
     """
-    :api_attr: Static Graph
-
-    This operator saves all parameters from the :code:`main_program` to
+    Save all parameters from the :code:`main_program` to
     the folder :code:`dirname` or file :code:`filename`. You can refer to
     :ref:`api_guide_model_save_reader_en` for more details.
 
@@ -670,9 +662,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
 @dygraph_not_support
 def save_persistables(executor, dirname, main_program=None, filename=None):
     """
-    :api_attr: Static Graph
-
-    This operator saves all persistable variables from :code:`main_program` to 
+    Save all persistable variables from :code:`main_program` to 
     the folder :code:`dirname` or file :code:`filename`. You can refer to 
     :ref:`api_guide_model_save_reader_en` for more details. And then
     saves these persistables variables to the folder :code:`dirname` or file
@@ -779,9 +769,6 @@ def load_vars(executor,
 
     Returns:
         None
-
-    Raises:
-        TypeError: If `main_program` is not an instance of Program nor None.
 
     Examples:
         .. code-block:: python
@@ -1247,8 +1234,6 @@ def save_inference_model(dirname,
                          program_only=False,
                          clip_extra=True):
     """
-    :api_attr: Static Graph
-
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` .
     If you just want to save parameters of your trained model, please use the
@@ -1279,7 +1264,7 @@ def save_inference_model(dirname,
         params_filename(str, optional): The name of file to save all related parameters.
                                         If it is set None, parameters will be saved
                                         in separate files .
-        export_for_deployment(bool): If True, programs are modified to only support
+        export_for_deployment(bool, optional): If True, programs are modified to only support
                                      direct inference deployment. Otherwise,
                                      more information will be stored for flexible
                                      optimization and re-training. Currently, only
@@ -1290,14 +1275,7 @@ def save_inference_model(dirname,
                                       Default: False.
 
     Returns:
-        The fetch variables' name list
-
-     Return Type:
-        list
-
-    Raises:
-        ValueError: If `feed_var_names` is not a list of basestring, an exception is thrown.
-        ValueError: If `target_vars` is not a list of Variable, an exception is thrown.
+        list, The fetch variables' name list.
 
     Examples:
         .. code-block:: python
@@ -1462,8 +1440,6 @@ def load_inference_model(dirname,
                          params_filename=None,
                          pserver_endpoints=None):
     """
-    :api_attr: Static Graph
-
     Load the inference model from a given directory. By this API, you can get the model
     structure(Inference Program) and model parameters. If you just want to load
     parameters of the pre-trained model, please use the :ref:`api_fluid_io_load_params` API.
@@ -1501,8 +1477,6 @@ def load_inference_model(dirname,
         ``Variable`` (refer to :ref:`api_guide_Program_en`). It contains variables from which
         we can get inference results.
 
-    Raises:
-        ValueError: If `dirname` is not a existing directory.
 
     Examples:
         .. code-block:: python
@@ -1658,12 +1632,6 @@ def get_parameter_value_by_name(name, executor, program=None):
 
     Returns:
         numpy.array: The parameter's values.
-
-    Raises:
-        TypeError: If given `name` is not an instance of basestring.
-        TypeError: If the parameter with the given name doesn't exist.
-        AssertionError: If there is a variable named `name` in the
-                        given program but it is not a Parameter.
 
     Examples:
         .. code-block:: python
@@ -2314,8 +2282,6 @@ def load_program_state(model_path, var_list=None):
 @static_only
 def set_program_state(program, state_dict):
     """
-    :api_attr: Static Graph
-
     Set program parameter from state_dict
 
     An exception will throw if shape or dtype of the parameters is not match.

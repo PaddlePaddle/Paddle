@@ -221,6 +221,28 @@ inline proto::AttrType AttrTypeID(const Attribute& attr) {
   return static_cast<proto::AttrType>(attr.index() - 1);
 }
 
+inline bool IsAttrVar(const Attribute& attr) {
+  return AttrTypeID(attr) == proto::AttrType::VAR;
+}
+
+inline bool IsAttrVars(const Attribute& attr) {
+  return AttrTypeID(attr) == proto::AttrType::VARS;
+}
+
+inline bool HasAttrVar(const Attribute& attr) {
+  return IsAttrVar(attr) || IsAttrVars(attr);
+}
+
+inline AttributeMap FilterAttrVar(const AttributeMap& attrs) {
+  AttributeMap attrs_var;
+  for (auto& attr : attrs) {
+    if (HasAttrVar(attr.second)) {
+      attrs_var.emplace(attr);
+    }
+  }
+  return attrs_var;
+}
+
 class AttrReader {
  public:
   explicit AttrReader(const AttributeMap& attrs)
@@ -414,9 +436,15 @@ class TypedAttrChecker {
       }
       return;
     }
+    // If attribute is VarDesc(s), we should verify it's dtype and shape.
+    auto it = attr_map->find(attr_name_);
+    if (it != attr_map->end() && HasAttrVar(it->second)) {
+      VLOG(1) << "Found Attribute " << attr_name_
+              << " with Variable, skip attr_checker.";
+      return;
+    }
 
     if (only_check_exist_value) {
-      auto it = attr_map->find(attr_name_);
       if (it != attr_map->end()) {
         ExtractAttribute<T> extract_attr(attr_name_);
         T* attr_value = extract_attr(it->second);
@@ -425,7 +453,6 @@ class TypedAttrChecker {
         }
       }
     } else {
-      auto it = attr_map->find(attr_name_);
       if (it == attr_map->end()) {
         // user do not set this attr
         PADDLE_ENFORCE_EQ(

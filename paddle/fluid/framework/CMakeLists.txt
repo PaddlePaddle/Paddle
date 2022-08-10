@@ -83,26 +83,27 @@ if(WITH_GPU)
     windows_symbolic(tensor_util SRCS tensor_util.cu)
     nv_library(
       tensor
-      SRCS tensor.cc .tensor_util.cu
+      SRCS .tensor_util.cu
       DEPS place memory data_type device_context dense_tensor)
     add_dependencies(tensor tensor_util)
   else()
     nv_library(
       tensor
-      SRCS tensor.cc tensor_util.cu
-      DEPS place memory data_type device_context profiler dense_tensor)
+      SRCS tensor_util.cu
+      DEPS place memory data_type device_context dense_tensor)
   endif()
 elseif(WITH_ROCM)
   hip_library(
     tensor
-    SRCS tensor.cc tensor_util.cu
-    DEPS place memory data_type device_context profiler dense_tensor)
+    SRCS tensor_util.cu
+    DEPS place memory data_type device_context dense_tensor)
 else()
   cc_library(
     tensor
-    SRCS tensor.cc tensor_util.cc
-    DEPS place memory data_type device_context profiler dense_tensor)
+    SRCS tensor_util.cc
+    DEPS place memory data_type device_context dense_tensor)
 endif()
+# target_link(tensor profiler)
 
 cc_test(
   tensor_test
@@ -437,6 +438,7 @@ if(WITH_XPU)
     SRCS operator.cc
     DEPS xpu_op_list
          op_info
+         proto_desc
          device_context
          tensor
          scope
@@ -461,6 +463,7 @@ else()
     operator
     SRCS operator.cc
     DEPS op_info
+         proto_desc
          device_context
          tensor
          scope
@@ -1172,9 +1175,6 @@ cc_library(
        phi_tensor
        op_meta_info
        phi_api)
-
-#cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
-#cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc

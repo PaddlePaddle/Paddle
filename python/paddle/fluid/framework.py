@@ -1262,6 +1262,17 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
                             True if persistable else False)
 
 
+def _all_is_type(vals, expected_type):
+    """
+    Return True if type of each element is expected_type.
+
+    NOTE: BuiltIn all() will always return True if vals is empty.
+    """
+    assert isinstance(vals, (list, tuple))
+    if not vals: return False
+    return all(isinstance(v, expected_type) for v in vals)
+
+
 class VariableMetaClass(type):
 
     @classmethod
@@ -2942,7 +2953,28 @@ class Operator(object):
             if skip_op_callstack and name == "op_callstack":
                 continue
 
-            attr_type = self.desc.attr_type(name)
+            attr_type = self.desc.attr_type(name, True)
+            if attr_type == core.AttrType.VAR:
+                attr_var_name = self.desc.attr(name, True).name()
+                a = "{name} = Var['{value}']".format(name=name,
+                                                     type=attr_type,
+                                                     value=attr_var_name)
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
+            if attr_type == core.AttrType.VARS:
+                attr_var_names = [
+                    "'%s'" % var.name() for var in self.desc.attr(name, True)
+                ]
+                a = "{name} = Vars[{value}]".format(
+                    name=name, type=attr_type, value=','.join(attr_var_names))
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
             if attr_type == core.AttrType.BLOCK:
                 a = "{name} = block[{value}]".format(
                     name=name, type=attr_type, value=self._block_attr_id(name))
@@ -3136,10 +3168,13 @@ class Operator(object):
         Raises:
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            self.desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            self.desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and all(
-                isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             self.desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
@@ -3149,7 +3184,7 @@ class Operator(object):
 
     @property
     def attr_names(self):
-        return self.desc.attr_names()
+        return self.desc.attr_names(True)
 
     def attr(self, name):
         """
@@ -4400,10 +4435,13 @@ class IrOpNode(IrNode):
         assert self.node.op() is not None, \
             "The node operator description can not be None."
         desc = self.node.op()
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and \
-                all(isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
@@ -4858,10 +4896,13 @@ class IrGraph(object):
         """
         Update the value of desc's attribute by attribute's name.
         """
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and all(
-                isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):

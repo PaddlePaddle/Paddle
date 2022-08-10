@@ -599,7 +599,7 @@ def crop(x, shape=None, offsets=None, name=None):
 
     Parameters:
         x (Tensor): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
-        shape (list|tuple|Tensor): The output shape is specified
+        shape (list|tuple|Tensor, optional): The output shape is specified
             by `shape`. Its data type is int32. If a list/tuple, it's length must be
             the same as the dimension size of `x`. If a Tensor, it should be a 1-D Tensor.
             When it is a list, each element can be an integer or a Tensor of shape: [1].
@@ -777,8 +777,11 @@ def fill_(x, value):
         raise TypeError(
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
-    return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
-                            int(value))
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_(x, value)
+    else:
+        return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
+                                int(value))
 
 
 @dygraph_only
@@ -806,7 +809,10 @@ def zero_(x):
             print(tensor.tolist())   #[0, 0, 0, 0, 0]
 
     """
-    return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_(x, 0.)
+    else:
+        return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
 
 
 @dygraph_only
@@ -1111,9 +1117,7 @@ def concat(x, axis=0, name=None):
         attrs = {}
         if isinstance(axis, Variable):
             axis.stop_gradient = True
-            inputs['AxisTensor'] = axis
-        else:
-            attrs['axis'] = axis
+        attrs['axis'] = axis
 
         helper.append_op(type='concat',
                          inputs=inputs,
@@ -2931,13 +2935,11 @@ def tile(x, repeat_times, name=None):
 
     if isinstance(repeat_times, Variable):
         repeat_times.stop_gradient = True
-        inputs['RepeatTimes'] = repeat_times
-        attrs['repeat_times'] = [-1]
+        attrs['repeat_times'] = repeat_times
     elif isinstance(repeat_times, (list, tuple)):
         attrs['repeat_times'] = get_attr_repeat_times(repeat_times)
         if utils._contain_var(repeat_times):
-            inputs['repeat_times_tensor'] = utils._convert_to_tensor_list(
-                repeat_times)
+            attrs['repeat_times'] = utils._convert_to_tensor_list(repeat_times)
 
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)

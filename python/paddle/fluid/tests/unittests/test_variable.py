@@ -178,34 +178,31 @@ class TestVariable(unittest.TestCase):
                                     var13, var14, var15
                                 ])
 
-            self.assertTrue(
-                np.array_equal(local_out[1], tensor_array[0, 1, 1:2]))
-            self.assertTrue(np.array_equal(local_out[2], tensor_array[1:]))
-            self.assertTrue(np.array_equal(local_out[3], tensor_array[0:1]))
-            self.assertTrue(np.array_equal(local_out[4], tensor_array[::-1]))
-            self.assertTrue(
-                np.array_equal(local_out[5], tensor_array[1, 1:, 1:]))
-            self.assertTrue(
-                np.array_equal(local_out[6],
-                               tensor_array.reshape((3, -1, 3))[:, :, -1]))
-            self.assertTrue(
-                np.array_equal(local_out[7], tensor_array[:, :, :-1]))
-            self.assertTrue(
-                np.array_equal(local_out[8], tensor_array[:1, :1, :1]))
-            self.assertTrue(
-                np.array_equal(local_out[9], tensor_array[:-1, :-1, :-1]))
-            self.assertTrue(
-                np.array_equal(local_out[10], tensor_array[::-1, :1, :-1]))
-            self.assertTrue(
-                np.array_equal(local_out[11], tensor_array[:-1, ::-1, -1:]))
-            self.assertTrue(
-                np.array_equal(local_out[12], tensor_array[1:2, 2:, ::-1]))
-            self.assertTrue(
-                np.array_equal(local_out[13], tensor_array[2:10, 2:, -2:-1]))
-            self.assertTrue(
-                np.array_equal(local_out[14], tensor_array[1:-1, 0:2, ::-1]))
-            self.assertTrue(
-                np.array_equal(local_out[15], tensor_array[::-1, ::-1, ::-1]))
+            np.testing.assert_array_equal(local_out[1], tensor_array[0, 1, 1:2])
+            np.testing.assert_array_equal(local_out[2], tensor_array[1:])
+            np.testing.assert_array_equal(local_out[3], tensor_array[0:1])
+            np.testing.assert_array_equal(local_out[4], tensor_array[::-1])
+            np.testing.assert_array_equal(local_out[5], tensor_array[1, 1:, 1:])
+            np.testing.assert_array_equal(
+                local_out[6],
+                tensor_array.reshape((3, -1, 3))[:, :, -1])
+            np.testing.assert_array_equal(local_out[7], tensor_array[:, :, :-1])
+            np.testing.assert_array_equal(local_out[8],
+                                          tensor_array[:1, :1, :1])
+            np.testing.assert_array_equal(local_out[9],
+                                          tensor_array[:-1, :-1, :-1])
+            np.testing.assert_array_equal(local_out[10],
+                                          tensor_array[::-1, :1, :-1])
+            np.testing.assert_array_equal(local_out[11], tensor_array[:-1, ::-1,
+                                                                      -1:])
+            np.testing.assert_array_equal(local_out[12], tensor_array[1:2,
+                                                                      2:, ::-1])
+            np.testing.assert_array_equal(local_out[13], tensor_array[2:10, 2:,
+                                                                      -2:-1])
+            np.testing.assert_array_equal(local_out[14],
+                                          tensor_array[1:-1, 0:2, ::-1])
+            np.testing.assert_array_equal(local_out[15],
+                                          tensor_array[::-1, ::-1, ::-1])
 
     def _test_slice_index_tensor(self, place):
         data = np.random.rand(2, 3).astype("float32")
@@ -593,7 +590,7 @@ class TestListIndex(unittest.TestCase):
                 getitem_pp = exe.run(prog,
                                      feed={x.name: array},
                                      fetch_list=fetch_list)
-                self.assertTrue(np.array_equal(getitem_np, getitem_pp[0]))
+                np.testing.assert_array_equal(getitem_np, getitem_pp[0])
 
             array = array[0]
             index = index[0]
@@ -620,7 +617,7 @@ class TestListIndex(unittest.TestCase):
                 index = index[0]
                 continue
             getitem_pp = pt[index_mod]
-            self.assertTrue(np.array_equal(getitem_np, getitem_pp.numpy()))
+            np.testing.assert_array_equal(getitem_np, getitem_pp.numpy())
 
             array = array[0]
             index = index[0]
@@ -680,9 +677,10 @@ class TestListIndex(unittest.TestCase):
                                  },
                                  fetch_list=fetch_list)
 
-            self.assertTrue(np.array_equal(y2, getitem_pp[0]),
-                            msg='\n numpy:{},\n paddle:{}'.format(
-                                y2, getitem_pp[0]))
+            np.testing.assert_array_equal(
+                y2,
+                getitem_pp[0],
+                err_msg='\n numpy:{},\n paddle:{}'.format(y2, getitem_pp[0]))
 
     def test_dygraph_list_index_muti_dim(self):
         paddle.disable_static()
@@ -707,7 +705,7 @@ class TestListIndex(unittest.TestCase):
 
         y_np = array[index_t1, index_t2]
         y = x[index_t1, index_t2]
-        self.assertTrue(np.array_equal(y.numpy(), y_np))
+        np.testing.assert_array_equal(y.numpy(), y_np)
 
     def run_getitem_list_index(self, array, index):
         x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
@@ -966,12 +964,16 @@ class TestListIndex(unittest.TestCase):
                                          index_2.name: index_mod2
                                      },
                                      fetch_list=fetch_list)
-                self.assertTrue(np.array_equal(array2, setitem_pp[0]),
-                                msg='\n numpy:{},\n paddle:{}'.format(
-                                    array2, setitem_pp[0]))
-                self.assertTrue(np.array_equal(array3, setitem_pp[1]),
-                                msg='\n numpy:{},\n paddle:{}'.format(
-                                    array3, setitem_pp[1]))
+                np.testing.assert_array_equal(
+                    array2,
+                    setitem_pp[0],
+                    err_msg='\n numpy:{},\n paddle:{}'.format(
+                        array2, setitem_pp[0]))
+                np.testing.assert_array_equal(
+                    array3,
+                    setitem_pp[1],
+                    err_msg='\n numpy:{},\n paddle:{}'.format(
+                        array3, setitem_pp[1]))
             array = array[0]
             index1 = index1[0]
             index2 = index2[0]
@@ -1028,19 +1030,27 @@ class TestListIndex(unittest.TestCase):
                                          x2.name: array
                                      },
                                      fetch_list=fetch_list)
-                self.assertTrue(np.array_equal(array2, setitem_pp[0]),
-                                msg='\n numpy:{},\n paddle:{}'.format(
-                                    array2, setitem_pp[0]))
-                self.assertTrue(np.array_equal(array3, setitem_pp[1]),
-                                msg='\n numpy:{},\n paddle:{}'.format(
-                                    array3, setitem_pp[1]))
+                np.testing.assert_array_equal(
+                    array2,
+                    setitem_pp[0],
+                    err_msg='\n numpy:{},\n paddle:{}'.format(
+                        array2, setitem_pp[0]))
+                np.testing.assert_array_equal(
+                    array3,
+                    setitem_pp[1],
+                    err_msg='\n numpy:{},\n paddle:{}'.format(
+                        array3, setitem_pp[1]))
 
-                self.assertTrue(np.array_equal(y_np1, setitem_pp[2]),
-                                msg='\n numpy:{},\n paddle:{}'.format(
-                                    y_np1, setitem_pp[2]))
-                self.assertTrue(np.array_equal(y_np2, setitem_pp[3]),
-                                msg='\n numpy:{},\n paddle:{}'.format(
-                                    y_np2, setitem_pp[3]))
+                np.testing.assert_array_equal(
+                    y_np1,
+                    setitem_pp[2],
+                    err_msg='\n numpy:{},\n paddle:{}'.format(
+                        y_np1, setitem_pp[2]))
+                np.testing.assert_array_equal(
+                    y_np2,
+                    setitem_pp[3],
+                    err_msg='\n numpy:{},\n paddle:{}'.format(
+                        y_np2, setitem_pp[3]))
             array = array[0]
             index1 = index1[0]
             index2 = index2[0]
@@ -1069,26 +1079,30 @@ class TestListIndex(unittest.TestCase):
 
             y_t1 = tensor1[index_mod_t2, index_mod_t1]
 
-            self.assertTrue(np.array_equal(y_t1.numpy(), y_np1),
-                            msg='\n numpy:{},\n paddle:{}'.format(
-                                y_np1, y_t1.numpy()))
+            np.testing.assert_array_equal(
+                y_t1.numpy(),
+                y_np1,
+                err_msg='\n numpy:{},\n paddle:{}'.format(y_np1, y_t1.numpy()))
             # 1 dim getitem
             array2 = array.copy()
             y_np2 = array2[index_mod2]
             tensor2 = paddle.to_tensor(array)
 
             y_t2 = tensor2[index_mod_t2]
-            self.assertTrue(np.array_equal(y_t2.numpy(), y_np2),
-                            msg='\n numpy:{},\n paddle:{}'.format(
-                                y_np2, y_t2.numpy()))
+            np.testing.assert_array_equal(
+                y_t2.numpy(),
+                y_np2,
+                err_msg='\n numpy:{},\n paddle:{}'.format(y_np2, y_t2.numpy()))
 
             # 2 dim setitem
             array1 = array.copy()
             array1[index_mod1, index_mod2] = 1
             tensor1[index_mod_t1, index_mod_t2] = 1
-            self.assertTrue(np.array_equal(tensor1.numpy(), array1),
-                            msg='\n numpy:{},\n paddle:{}'.format(
-                                array1, tensor1.numpy()))
+            np.testing.assert_array_equal(
+                tensor1.numpy(),
+                array1,
+                err_msg='\n numpy:{},\n paddle:{}'.format(
+                    array1, tensor1.numpy()))
             # 1 dim setitem
             array2 = array.copy()
 
@@ -1096,9 +1110,11 @@ class TestListIndex(unittest.TestCase):
 
             tensor2[index_mod_t1] = 2.5
 
-            self.assertTrue(np.array_equal(tensor2.numpy(), array2),
-                            msg='\n numpy:{},\n paddle:{}'.format(
-                                array2, tensor2.numpy()))
+            np.testing.assert_array_equal(
+                tensor2.numpy(),
+                array2,
+                err_msg='\n numpy:{},\n paddle:{}'.format(
+                    array2, tensor2.numpy()))
 
             array = array[0]
             index1 = index1[0]
