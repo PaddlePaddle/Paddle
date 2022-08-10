@@ -41,7 +41,8 @@ class InterpreterCore {
   InterpreterCore(const platform::Place& place,
                   const BlockDesc& block,
                   const std::set<std::string>& skip_gc_vars,
-                  Scope* scope);
+                  Scope* scope,
+                  bool used_for_jit = false);
 
   ~InterpreterCore();
 

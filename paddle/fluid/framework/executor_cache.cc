@@ -366,7 +366,8 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
       place,
       program_desc.Block(0),
       /*skip_gc_vars=*/std::set<std::string>(),
-      scope);
+      scope,
+      /*used_for_jit=*/true);
 
   // 3. Insert exe into cached map.
   auto &cached_value =

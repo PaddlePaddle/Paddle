@@ -336,8 +336,6 @@ inline void RunProgramAPI(
           paddle::framework::CreateInterpreterCoreInfoToCache(
               *forward_program, place, /*is_grad=*/false, program_id, &scope);
 
-      interpreter_core->SetUsedForJit(true);
-
       // Step 3. get all eager gc vars
       std::set<std::string> skip_eager_delete_vars;
       // all out_vars are skip_eager_var
@@ -540,8 +538,6 @@ inline void RunProgramGradAPI(
       auto interpreter_core =
           paddle::framework::CreateInterpreterCoreInfoToCache(
               *backward_program, place, /*is_grad=*/true, program_id, &scope);
-
-      interpreter_core->SetUsedForJit(true);
 
       // get all eager gc vars
       std::set<std::string> skip_eager_delete_vars;

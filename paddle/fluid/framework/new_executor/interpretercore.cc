@@ -52,12 +52,14 @@ static constexpr size_t kDeviceNumThreads = 1;
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
                                  const std::set<std::string>& skip_gc_vars,
-                                 framework::Scope* scope)
+                                 framework::Scope* scope,
+                                 bool used_for_jit)
     : place_(place),
       block_(block),
       skip_gc_vars_(skip_gc_vars),
       var_scope_(scope),
-      stream_analyzer_(place) {
+      stream_analyzer_(place),
+      used_for_jit_(used_for_jit) {
   VLOG(2) << "InterpreterCore(): " << this << " on " << place_
           << " place ptr is: " << &place_;
 
