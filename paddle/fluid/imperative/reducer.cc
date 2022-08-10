@@ -21,7 +21,7 @@
 #include "paddle/fluid/imperative/parallel_context.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
-#ifdef PADDLE_WITH_XPU_BKCL
+#ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
 #include "paddle/fluid/string/string_helper.h"

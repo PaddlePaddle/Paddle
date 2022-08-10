@@ -100,7 +100,7 @@ class TestGradientWithPrune(unittest.TestCase):
             out = exe.run(main,
                           feed={'x': np.ones([3]).astype('float32')},
                           fetch_list=[x1_grad])
-            self.assertTrue(np.array_equal(out[0], [2., 0., 0.]))
+            np.testing.assert_array_equal(out[0], [2.0, 0.0, 0.0])
 
 
 class TestDoubleGradient(unittest.TestCase):
