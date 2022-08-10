@@ -356,42 +356,42 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
     const Context& ctx,
     const DenseTensor& out_grad,
     const DenseTensor& x,
-    const DenseTensor& e,
+    const DenseTensor& y,
     const DenseTensor& src_index,
     const DenseTensor& dst_index,
     const std::string& compute_type,
     const std::string& pool_type,
     DenseTensor* x_grad,
-    DenseTensor* e_grad,
+    DenseTensor* y_grad,
     const DenseTensor* dst_count = nullptr,
     const DenseTensor* out = nullptr) {
   const int& index_size = dst_index.dims()[0];
 
   ctx.template Alloc<T>(x_grad);
   T* x_grad_data = x_grad->data<T>();
-  ctx.template Alloc<T>(e_grad);
-  T* e_grad_data = e_grad->data<T>();
+  ctx.template Alloc<T>(y_grad);
+  T* y_grad_data = y_grad->data<T>();
   const auto& x_dims = x.dims();
-  const auto& e_dims = e.dims();
-  int64_t memset_size_x = 1, memset_size_e = 1;
+  const auto& y_dims = y.dims();
+  int64_t memset_size_x = 1, memset_size_y = 1;
   int64_t slice_size = 1;
   for (int i = 0; i < x_dims.size(); i++) {
     memset_size_x *= x_dims[i];
     if (i > 0) slice_size *= x_dims[i];
   }
-  for (int i = 0; i < e_dims.size(); i++) {
-    memset_size_e *= e_dims[i];
+  for (int i = 0; i < y_dims.size(); i++) {
+    memset_size_y *= y_dims[i];
   }
   const size_t& memset_bytes_x = memset_size_x * sizeof(T);
-  const size_t& memset_bytes_e = memset_size_e * sizeof(T);
+  const size_t& memset_bytes_y = memset_size_y * sizeof(T);
   memset(x_grad_data, 0, memset_bytes_x);
-  memset(e_grad_data, 0, memset_bytes_e);
+  memset(y_grad_data, 0, memset_bytes_y);
 
   if (index_size == 0) return;
 
   const T* out_grad_data = out_grad.data<T>();
   const T* x_data = x.data<T>();
-  const T* e_data = e.data<T>();
+  const T* y_data = y.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
 
@@ -399,10 +399,10 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
     CalculateXGrad<Context, T, IndexT>(ctx,
                                        out_grad_data,
                                        x_data,
-                                       e_data,
+                                       y_data,
                                        out_grad.dims(),
                                        x_dims,
-                                       e_dims,
+                                       y_dims,
                                        d_index,
                                        s_index,
                                        compute_type,
@@ -415,29 +415,29 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
                                        out);
     CalculateEGrad<T, IndexT>(out_grad_data,
                               x_data,
-                              e_data,
+                              y_data,
                               x_dims,
-                              e_dims,
+                              y_dims,
                               s_index,
                               d_index,
                               compute_type,
                               pool_type,
                               index_size,
-                              e_grad_data,
+                              y_grad_data,
                               dst_count);
   } else if (pool_type == "MIN" || pool_type == "MAX") {
     CalculateXEGradForMinMax<T, IndexT>(out_grad_data,
                                         x_data,
-                                        e_data,
+                                        y_data,
                                         x_dims,
-                                        e_dims,
+                                        y_dims,
                                         d_index,
                                         s_index,
                                         compute_type,
                                         pool_type,
                                         index_size,
                                         x_grad_data,
-                                        e_grad_data,
+                                        y_grad_data,
                                         out);
   }
 }
@@ -445,7 +445,7 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
 template <typename T, typename Context>
 void GraphSendUERecvGradKernel(const Context& ctx,
                                const DenseTensor& x,
-                               const DenseTensor& e,
+                               const DenseTensor& y,
                                const DenseTensor& src_index,
                                const DenseTensor& dst_index,
                                const paddle::optional<DenseTensor>& out,
@@ -454,20 +454,20 @@ void GraphSendUERecvGradKernel(const Context& ctx,
                                const std::string& compute_type,
                                const std::string& pool_type,
                                DenseTensor* x_grad,
-                               DenseTensor* e_grad) {
+                               DenseTensor* y_grad) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendUERecvGradOpKernelLaunchHelper<Context, T, int32_t>(
         ctx,
         out_grad,
         x,
-        e,
+        y,
         src_index,
         dst_index,
         compute_type,
         pool_type,
         x_grad,
-        e_grad,
+        y_grad,
         dst_count.get_ptr(),
         out.get_ptr());
   } else if (index_type == phi::DataType::INT64) {
@@ -475,13 +475,13 @@ void GraphSendUERecvGradKernel(const Context& ctx,
         ctx,
         out_grad,
         x,
-        e,
+        y,
         src_index,
         dst_index,
         compute_type,
         pool_type,
         x_grad,
-        e_grad,
+        y_grad,
         dst_count.get_ptr(),
         out.get_ptr());
   }

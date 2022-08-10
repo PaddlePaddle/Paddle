@@ -41,7 +41,7 @@ def send_u_recv(x,
 
            Given:
 
-           X = [[0, 2, 3],
+           x = [[0, 2, 3],
                 [1, 4, 5],
                 [2, 6, 7]]
 
@@ -55,7 +55,7 @@ def send_u_recv(x,
 
            Then:
 
-           Out = [[0, 2, 3],
+           out = [[0, 2, 3],
                   [2, 8, 10],
                   [1, 4, 5]]
 
@@ -176,7 +176,7 @@ def send_ue_recv(x,
 
     This api is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory 
     consumption in the process of message passing. Take `x` as the input tensor, we first use `src_index`
-    to gather the corresponding data, after computing with `y` in different compute types, then use `dst_index` to 
+    to gather the corresponding data, after computing with `y` in different compute types like add/sub/mul/div, then use `dst_index` to 
     update the corresponding position of output tensor in different pooling types, like sum, mean, max, or min. 
     Besides, we can use `out_size` to set necessary output shape.
 
@@ -184,11 +184,11 @@ def send_ue_recv(x,
 
            Given:
 
-           X = [[0, 2, 3],
+           x = [[0, 2, 3],
                 [1, 4, 5],
                 [2, 6, 7]]
 
-           Y = [1, 1, 1]
+           y = [1, 1, 1]
 
            src_index = [0, 1, 2, 0]
 
@@ -202,7 +202,7 @@ def send_ue_recv(x,
 
            Then:
 
-           Out = [[1, 3, 4],
+           out = [[1, 3, 4],
                   [4, 10, 12],
                   [2, 5, 6]]
     Args:

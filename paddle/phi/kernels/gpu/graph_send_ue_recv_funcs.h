@@ -16,9 +16,6 @@
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
 
-#include <algorithm>
-#include <vector>
-
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"

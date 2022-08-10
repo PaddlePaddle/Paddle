@@ -29,7 +29,7 @@ namespace phi {
 template <typename T, typename IndexT, typename ComputeFunctor>
 void GraphSendUERecvSumCpuKernel(const BroadCastInfo& bcast,
                                  const T* x_data,
-                                 const T* e_data,
+                                 const T* y_data,
                                  const IndexT* src_indices,
                                  const IndexT* dst_indices,
                                  T* output,
@@ -43,11 +43,11 @@ void GraphSendUERecvSumCpuKernel(const BroadCastInfo& bcast,
     IndexT dst = dst_indices[i];
     T* out_off = output + dst * bcast.out_len;
     const T* x_off = x_data + src * bcast.l_len;
-    const T* e_off = e_data + i * bcast.r_len;
+    const T* y_off = y_data + i * bcast.r_len;
     for (int64_t j = 0; j < bcast.out_len; j++) {
       int64_t x_add = bcast.use_bcast ? bcast.l_offset[j] : j;
-      int64_t e_add = bcast.use_bcast ? bcast.r_offset[j] : j;
-      T val = cfunctor(x_off[x_add], e_off[e_add]);
+      int64_t y_add = bcast.use_bcast ? bcast.r_offset[j] : j;
+      T val = cfunctor(x_off[x_add], y_off[y_add]);
       if (val != 0) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp atomic
@@ -64,7 +64,7 @@ template <typename T,
           typename CmpFunctor>
 void GraphSendUERecvMinMaxCpuKernel(const BroadCastInfo& bcast,
                                     const T* x_data,
-                                    const T* e_data,
+                                    const T* y_data,
                                     const IndexT* src_indices,
                                     const IndexT* dst_indices,
                                     T* output,
@@ -80,17 +80,17 @@ void GraphSendUERecvMinMaxCpuKernel(const BroadCastInfo& bcast,
     IndexT dst = dst_indices[i];
     T* out_off = output + dst * bcast.out_len;
     const T* x_off = x_data + src * bcast.l_len;
-    const T* e_off = e_data + i * bcast.r_len;
+    const T* y_off = y_data + i * bcast.r_len;
     bool in_set = existed_dst.find(dst) != existed_dst.end();
     for (int64_t j = 0; j < bcast.out_len; j++) {
       int64_t x_add = bcast.use_bcast ? bcast.l_offset[j] : j;
-      int64_t e_add = bcast.use_bcast ? bcast.r_offset[j] : j;
-      T val = cfunctor(x_off[x_add], e_off[e_add]);
+      int64_t y_add = bcast.use_bcast ? bcast.r_offset[j] : j;
+      T val = cfunctor(x_off[x_add], y_off[y_add]);
 #ifdef PADDLE_WITH_MKLML
 #pragma omp critical
 #endif
       if (!in_set) {
-        out_off[j] += val;
+        out_off[j] = val;
       } else {
         out_off[j] = pfunctor(out_off[j], val);
       }
@@ -107,7 +107,7 @@ void GraphSendUERecvMinMaxCpuKernel(const BroadCastInfo& bcast,
 template <typename Context, typename T, typename IndexT>
 void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                          const DenseTensor& x,
-                                         const DenseTensor& e,
+                                         const DenseTensor& y,
                                          const DenseTensor& src_index,
                                          const DenseTensor& dst_index,
                                          const std::string& compute_type,
@@ -135,9 +135,9 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
   memset(out_data, 0, memset_bytes);
 
   if (index_size == 0) return;
-  const auto& bcast_info = phi::CalcBCastInfo(x.dims(), e.dims());
+  const auto& bcast_info = phi::CalcBCastInfo(x.dims(), y.dims());
   const T* x_data = x.data<T>();
-  const T* e_data = e.data<T>();
+  const T* y_data = y.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
   if (pool_type == "SUM" || pool_type == "MEAN") {
@@ -145,7 +145,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
       GraphAddFunctor<T> add_functor;
       GraphSendUERecvSumCpuKernel<T, IndexT, GraphAddFunctor<T>>(bcast_info,
                                                                  x_data,
-                                                                 e_data,
+                                                                 y_data,
                                                                  s_index,
                                                                  d_index,
                                                                  out_data,
@@ -155,7 +155,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
       GraphMulFunctor<T> mul_functor;
       GraphSendUERecvSumCpuKernel<T, IndexT, GraphMulFunctor<T>>(bcast_info,
                                                                  x_data,
-                                                                 e_data,
+                                                                 y_data,
                                                                  s_index,
                                                                  d_index,
                                                                  out_data,
@@ -187,7 +187,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                      GraphAddFunctor<T>,
                                      GraphMinFunctor<T>>(bcast_info,
                                                          x_data,
-                                                         e_data,
+                                                         y_data,
                                                          s_index,
                                                          d_index,
                                                          out_data,
@@ -201,7 +201,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                      GraphMulFunctor<T>,
                                      GraphMinFunctor<T>>(bcast_info,
                                                          x_data,
-                                                         e_data,
+                                                         y_data,
                                                          s_index,
                                                          d_index,
                                                          out_data,
@@ -218,7 +218,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                      GraphAddFunctor<T>,
                                      GraphMaxFunctor<T>>(bcast_info,
                                                          x_data,
-                                                         e_data,
+                                                         y_data,
                                                          s_index,
                                                          d_index,
                                                          out_data,
@@ -232,7 +232,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                      GraphMulFunctor<T>,
                                      GraphMaxFunctor<T>>(bcast_info,
                                                          x_data,
-                                                         e_data,
+                                                         y_data,
                                                          s_index,
                                                          d_index,
                                                          out_data,
@@ -246,7 +246,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
 template <typename T, typename Context>
 void GraphSendUERecvKernel(const Context& ctx,
                            const DenseTensor& x,
-                           const DenseTensor& e,
+                           const DenseTensor& y,
                            const DenseTensor& src_index,
                            const DenseTensor& dst_index,
                            const std::string& compute_type,
@@ -259,7 +259,7 @@ void GraphSendUERecvKernel(const Context& ctx,
   if (index_type == phi::DataType::INT32) {
     GraphSendUERecvOpKernelLaunchHelper<Context, T, int32_t>(ctx,
                                                              x,
-                                                             e,
+                                                             y,
                                                              src_index,
                                                              dst_index,
                                                              compute_type,
@@ -270,7 +270,7 @@ void GraphSendUERecvKernel(const Context& ctx,
   } else if (index_type == phi::DataType::INT64) {
     GraphSendUERecvOpKernelLaunchHelper<Context, T, int64_t>(ctx,
                                                              x,
-                                                             e,
+                                                             y,
                                                              src_index,
                                                              dst_index,
                                                              compute_type,
