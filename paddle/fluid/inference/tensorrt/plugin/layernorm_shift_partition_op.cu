@@ -26,6 +26,413 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#define FINAL_MASK 0xffffffff
+
+template <typename T>
+__inline__ __device__ T warpReduceSum(T val) {
+#pragma unroll
+  for (int mask = 16; mask > 0; mask >>= 1)
+    val += __shfl_xor_sync(FINAL_MASK, val, mask, 32);
+  return val;
+}
+
+/* Calculate the sum of all elements in a block */
+template <typename T>
+__inline__ __device__ T blockReduceSum(T val) {
+  static __shared__ T shared[32];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  val = warpReduceSum<T>(val);
+
+  if (lane == 0) shared[wid] = val;
+
+  __syncthreads();
+
+  // Modify from blockDim.x << 5 to blockDim.x / 32. to prevent
+  // blockDim.x is not divided by 32
+  val = (threadIdx.x < (blockDim.x / 32.f)) ? shared[lane] : (T)(0.0f);
+  val = warpReduceSum<T>(val);
+
+  return val;
+}
+
+template <typename T>
+__global__ void layernorm_shift_partition(T *out,
+                                          const T *input,
+                                          const T *gamma,
+                                          const T *beta,
+                                          int batch,
+                                          int H,
+                                          int W,
+                                          int n,
+                                          int shift_size,
+                                          int window_size,
+                                          const float eps) {
+  int tid = threadIdx.x;
+  const int batch_offset = blockIdx.z * gridDim.y * gridDim.x;
+  const int bid = batch_offset + blockIdx.y * gridDim.x + blockIdx.x;
+  const int shifted_H_idx =
+      (shift_size != 0) ? ((blockIdx.y - shift_size + gridDim.y) % gridDim.y)
+                        : blockIdx.y;
+  const int shifted_W_idx =
+      (shift_size != 0) ? ((blockIdx.x - shift_size + gridDim.x) % gridDim.x)
+                        : blockIdx.x;
+  const int window_H_idx = shifted_H_idx / window_size;
+  const int window_W_idx = shifted_W_idx / window_size;
+  const int stride_of_window_H = W / window_size;
+  const int window_idx = window_H_idx * stride_of_window_H + window_W_idx;
+  const int idx_in_window = (shifted_H_idx % window_size) * window_size +
+                            (shifted_W_idx % window_size);
+  const int output_bid =
+      batch_offset + window_idx * window_size * window_size + idx_in_window;
+  __shared__ float s_mean;
+  __shared__ float s_variance;
+  float mean = 0.0f;
+  float variance = 0.0f;
+
+  float local_out = (tid < n) ? static_cast<float>(__ldg(input + bid * n + tid)) : 0.0f;
+
+  mean = blockReduceSum<float>(local_out);
+  if (threadIdx.x == 0) {
+    s_mean = mean / n;
+  }
+  __syncthreads();
+
+  float diff = (tid < n) ? (local_out - s_mean) : 0.0f;
+  variance = blockReduceSum<float>(diff * diff);
+  if (threadIdx.x == 0) {
+    s_variance = variance / n + eps;
+  }
+  __syncthreads();
+
+  if (tid < n) {
+    out[output_bid * n + tid] =
+        (T)(((local_out - s_mean) * rsqrtf(s_variance)) *
+        static_cast<float>(__ldg(&gamma[tid])) +
+        static_cast<float>(__ldg(&beta[tid])));
+  }
+}
+
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+template <>
+__global__ void layernorm_shift_partition(half2 *out_ptr,
+                                          const half2 *input_ptr,
+                                          const half2 *gamma_ptr,
+                                          const half2 *beta_ptr,
+                                          int batch,
+                                          int H,
+                                          int W,
+                                          int n,
+                                          int shift_size,
+                                          int window_size,
+                                          const float eps) {
+  const int batch_offset = blockIdx.z * gridDim.y * gridDim.x;
+  const int bid = batch_offset + blockIdx.y * gridDim.x + blockIdx.x;
+  const int shifted_H_idx =
+      (shift_size != 0) ? ((blockIdx.y - shift_size + gridDim.y) % gridDim.y)
+                        : blockIdx.y;
+  const int shifted_W_idx =
+      (shift_size != 0) ? ((blockIdx.x - shift_size + gridDim.x) % gridDim.x)
+                        : blockIdx.x;
+  const int window_H_idx = shifted_H_idx / window_size;
+  const int window_W_idx = shifted_W_idx / window_size;
+  const int stride_of_window_H = W / window_size;
+  const int window_idx = window_H_idx * stride_of_window_H + window_W_idx;
+  const int idx_in_window = (shifted_H_idx % window_size) * window_size +
+                            (shifted_W_idx % window_size);
+  const int output_bid =
+      batch_offset + window_idx * window_size * window_size + idx_in_window;
+  int tid = threadIdx.x;
+  __shared__ float s_mean;
+  __shared__ float s_variance;
+  float mean = 0.0f;
+  float variance = 0.0f;
+  float2 local_out_fp2;
+
+  float local_out = 0.0f;
+  int id = bid * n + tid;
+  if (tid < n) {
+    local_out_fp2 = __half22float2(__ldg(input_ptr + id));
+    local_out += local_out_fp2.x;
+    local_out += local_out_fp2.y;
+  }
+
+  mean = blockReduceSum<float>(local_out);
+  if (threadIdx.x == 0) {
+    s_mean = mean / (n * 2);
+  }
+  __syncthreads();
+
+  if (tid < n) {
+    variance = (local_out_fp2.x - s_mean) * (local_out_fp2.x - s_mean);
+    variance += (local_out_fp2.y - s_mean) * (local_out_fp2.y - s_mean);
+  }
+  variance = blockReduceSum<float>(variance);
+  if (threadIdx.x == 0) {
+    s_variance = rsqrtf(variance / (n * 2) + eps);
+  }
+  __syncthreads();
+
+  if (tid < n) {
+    float2 gamma_val = __half22float2(__ldg(&gamma_ptr[tid]));
+    float2 beta_val = __half22float2(__ldg(&beta_ptr[tid]));
+    local_out_fp2.x =
+        (local_out_fp2.x - s_mean) * s_variance * gamma_val.x + beta_val.x;
+    local_out_fp2.y =
+        (local_out_fp2.y - s_mean) * s_variance * gamma_val.y + beta_val.y;
+    out_ptr[output_bid * n + tid] = __float22half2_rn(local_out_fp2);
+  }
+}
+#endif
+
+#define kITE 4
+template <typename T>
+__global__ void layernorm_shift_partition_v2(T *out,
+                                             const T *__restrict input,
+                                             const T *__restrict gamma,
+                                             const T *__restrict beta,
+                                             int batch,
+                                             int H,
+                                             int W,
+                                             int n,
+                                             int shift_size,
+                                             int window_size,
+                                             const float eps) {
+  //constexpr int kITE = 4;
+  const int tid = threadIdx.x;
+  const int batch_offset = blockIdx.z * gridDim.y * gridDim.x;
+  const int bid = batch_offset + blockIdx.y * gridDim.x + blockIdx.x;
+  const int shifted_H_idx =
+      (shift_size != 0) ? ((blockIdx.y - shift_size + gridDim.y) % gridDim.y)
+                        : blockIdx.y;
+  const int shifted_W_idx =
+      (shift_size != 0) ? ((blockIdx.x - shift_size + gridDim.x) % gridDim.x)
+                        : blockIdx.x;
+  const int window_H_idx = shifted_H_idx / window_size;
+  const int window_W_idx = shifted_W_idx / window_size;
+  const int stride_of_window_H = W / window_size;
+  const int window_idx = window_H_idx * stride_of_window_H + window_W_idx;
+  const int idx_in_window = (shifted_H_idx % window_size) * window_size +
+                            (shifted_W_idx % window_size);
+  const int output_bid =
+      batch_offset + window_idx * window_size * window_size + idx_in_window;
+  const int offset = bid * n;
+  const int output_offset = output_bid * n;
+
+  __shared__ float s_mean;
+  __shared__ float s_variance;
+  float mean = 0.0f;
+  float variance = 0.0f;
+  float local_out[kITE];
+
+  float sum = 0.0f;
+#pragma unroll
+  for (int i = 0; i < kITE; i++) {
+    int col_id = i * blockDim.x + tid;
+    if (col_id < n) {
+      local_out[i] = static_cast<float>(__ldg(input + offset + col_id));
+      sum += local_out[i];
+    }
+  }
+
+  mean = blockReduceSum<float>(sum);
+  if (tid == 0) {
+    s_mean = mean / n;
+  }
+  __syncthreads();
+
+  float var = 0.0f;
+#pragma unroll
+  for (int i = 0; i < kITE; i++) {
+    int col_id = i * blockDim.x + tid;
+    if (col_id < n) {
+      float diff = local_out[i] - s_mean;
+      local_out[i] = diff;
+      var += diff * diff;
+    }
+  }
+
+  variance = blockReduceSum<float>(var);
+  if (tid == 0) {
+    s_variance = rsqrtf(variance / n + eps);
+  }
+  __syncthreads();
+
+#pragma unroll
+  for (int i = 0; i < kITE; i++) {
+    int col_id = i * blockDim.x + tid;
+    if (col_id < n) {
+      out[output_offset + col_id] =
+          (T)(local_out[i] * s_variance * static_cast<float>(__ldg(&gamma[col_id])) +
+          static_cast<float>(__ldg(&beta[col_id])));
+    }
+  }
+}
+
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+template <>
+__global__ void layernorm_shift_partition_v2(half2 *out_ptr,
+                                             const half2 *__restrict input_ptr,
+                                             const half2 *__restrict gamma_ptr,
+                                             const half2 *__restrict beta_ptr,
+                                             int batch,
+                                             int H,
+                                             int W,
+                                             int n,
+                                             int shift_size,
+                                             int window_size,
+                                             const float eps) {
+  //constexpr int ite = 4;
+  const int tid = threadIdx.x;
+  const int batch_offset = blockIdx.z * gridDim.y * gridDim.x;
+  const int bid = batch_offset + blockIdx.y * gridDim.x + blockIdx.x;
+  const int shifted_H_idx =
+      (shift_size != 0) ? ((blockIdx.y - shift_size + gridDim.y) % gridDim.y)
+                        : blockIdx.y;
+  const int shifted_W_idx =
+      (shift_size != 0) ? ((blockIdx.x - shift_size + gridDim.x) % gridDim.x)
+                        : blockIdx.x;
+  const int window_H_idx = shifted_H_idx / window_size;
+  const int window_W_idx = shifted_W_idx / window_size;
+  const int stride_of_window_H = W / window_size;
+  const int window_idx = window_H_idx * stride_of_window_H + window_W_idx;
+  const int idx_in_window = (shifted_H_idx % window_size) * window_size +
+                            (shifted_W_idx % window_size);
+  const int output_bid =
+      batch_offset + window_idx * window_size * window_size + idx_in_window;
+  const int offset = bid * n;
+  const int output_offset = output_bid * n;
+  __shared__ float s_mean;
+  __shared__ float s_variance;
+  float mean = 0.0f;
+  float variance = 0.0f;
+  half2 local_out_half2[kITE];
+  const half2 zero = {static_cast<half>(0.0f), static_cast<half>(0.0f)};
+
+  // float sum = 0.0f;
+  half2 sum = __float2half2_rn(0.0f);
+#pragma unroll
+  for (int i = 0; i < kITE; i++) {
+    int col_id = i * blockDim.x + tid;
+    if (col_id < n) {
+      local_out_half2[i] = __ldg(input_ptr + offset + col_id);
+      sum += local_out_half2[i];
+    }
+  }
+
+  mean = blockReduceSum<float>(static_cast<float>(sum.x + sum.y));
+  if (threadIdx.x == 0) {
+    s_mean = mean / (n * 2);
+  }
+  __syncthreads();
+
+  float var = 0.0f;
+  half2 s_mean_2 = __float2half2_rn(s_mean);
+#pragma unroll
+  for (int i = 0; i < kITE; i++) {
+    int col_id = i * blockDim.x + tid;
+    if (col_id < n) {
+      local_out_half2[i] = local_out_half2[i] - s_mean_2;
+      float v1 = static_cast<float>(local_out_half2[i].x);
+      float v2 = static_cast<float>(local_out_half2[i].y);
+      var += v1 * v1 + v2 * v2;
+    }
+  }
+
+  variance = blockReduceSum<float>(var);
+  if (threadIdx.x == 0) {
+    s_variance = rsqrtf(variance / (n * 2) + eps);
+  }
+  __syncthreads();
+
+  half2 s_var_2 = __float2half2_rn(s_variance);
+#pragma unroll
+  for (int i = 0; i < kITE; i++) {
+    int col_id = i * blockDim.x + tid;
+    if (col_id < n) {
+      out_ptr[output_offset + col_id] =
+          local_out_half2[i] * s_var_2 * __ldg(&gamma_ptr[col_id]) +
+          __ldg(&beta_ptr[col_id]);
+    }
+  }
+}
+#endif
+
+template <typename T>
+void invokeLayernormShiftPartition(T *out,
+                                   const T *input,
+                                   const T *gamma,
+                                   const T *beta,
+                                   int batch,
+                                   int H,
+                                   int W,
+                                   int n,
+                                   int shift_size,
+                                   int window_size,
+                                   const float eps,
+                                   cudaStream_t stream) {
+  dim3 grid(W, H, batch);
+  int blockSize = (n + 31) / 32 * 32;
+  if (blockSize >= 768) {
+    blockSize = ((blockSize / 4) + 31) / 32 * 32;
+    layernorm_shift_partition_v2<T><<<grid, blockSize, 0, stream>>>(
+        out, input, gamma, beta, batch, H, W, n, shift_size, window_size, eps);
+  } else {
+    layernorm_shift_partition<T><<<grid, blockSize, 0, stream>>>(
+        out, input, gamma, beta, batch, H, W, n, shift_size, window_size, eps);
+  }
+}
+
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+template <>
+void invokeLayernormShiftPartition(half *out,
+                                   const half *input,
+                                   const half *gamma,
+                                   const half *beta,
+                                   int batch,
+                                   int H,
+                                   int W,
+                                   int n,
+                                   int shift_size,
+                                   int window_size,
+                                   const float eps,
+                                   cudaStream_t stream) {
+  dim3 grid(W, H, batch);
+  int blockSize = n / 2;
+  blockSize = (blockSize + 31) / 32 * 32;
+
+  if ((batch * H * W >= 512 && blockSize >= 768) || blockSize > 1024) {
+    blockSize = ((blockSize / 4) + 31) / 32 * 32;
+    layernorm_shift_partition_v2<<<grid, blockSize, 0, stream>>>(
+        reinterpret_cast<half2 *>(out),
+        (const half2 *)input,
+        (const half2 *)gamma,
+        (const half2 *)beta,
+        batch,
+        H,
+        W,
+        n / 2,
+        shift_size,
+        window_size,
+        eps);
+  } else {
+    layernorm_shift_partition<<<grid, blockSize, 0, stream>>>(
+        reinterpret_cast<half2 *>(out),
+        (const half2 *)input,
+        (const half2 *)gamma,
+        (const half2 *)beta,
+        batch,
+        H,
+        W,
+        n / 2,
+        shift_size,
+        window_size,
+        eps);
+  }
+}
+#endif
+
 template <typename T>
 static void convertAndCopy(const std::vector<float> &host, T *dev) {
   T *host_ptr = new T[host.size()];
@@ -152,7 +559,7 @@ nvinfer1::DimsExprs LayernormShiftPartitionPluginDynamic::getOutputDimensions(
                               *inputs[0].d[1]),
       *expr_builder.constant(window_size_ * window_size_));
   ret.d[1] = expr_builder.constant(window_size_ * window_size_);
-  ret.d[2] = expr_builder.constant(shift_size_);
+  ret.d[2] = inputs[0].d[2];
   return ret;
 }
 
@@ -165,9 +572,44 @@ int LayernormShiftPartitionPluginDynamic::enqueue(
     cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = input_desc[0].dims;
   auto input_type = input_desc[0].type;
+  int batch = input_dims.d[0];
+  int emb_dim = input_dims.d[2];
+  PADDLE_ENFORCE_EQ(
+      input_resolution_ * input_resolution_,
+      input_dims.d[1],
+      platform::errors::InvalidArgument(
+          "The LayernormShiftPartition‘s input_resolution is wrong (%d)",
+          input_dims.d[1]));
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(3) << "TRT Plugin DataType selected. LayernormShiftPartition-->fp32";
-
+    invokeLayernormShiftPartition(
+        reinterpret_cast<float *>(outputs[0]),
+        reinterpret_cast<const float *>(inputs[0]),
+        reinterpret_cast<const float *>(gamma_dev_.get()),
+        reinterpret_cast<const float *>(beta_dev_.get()),
+        batch,
+        input_resolution_,
+        input_resolution_,
+        emb_dim,
+        shift_size_,
+        window_size_,
+        eps_,
+        stream);
+  } else if (input_type == nvinfer1::DataType::kHALF) {
+    VLOG(3) << "TRT Plugin DataType selected. LayernormShiftPartition-->half";
+    invokeLayernormShiftPartition(
+        reinterpret_cast<half *>(outputs[0]),
+        reinterpret_cast<const half *>(inputs[0]),
+        reinterpret_cast<const half *>(gamma_dev_.get()),
+        reinterpret_cast<const half *>(beta_dev_.get()),
+        batch,
+        input_resolution_,
+        input_resolution_,
+        emb_dim,
+        shift_size_,
+        window_size_,
+        eps_,
+        stream);
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "The LayerNorm TRT Plugin's input type should be float."));

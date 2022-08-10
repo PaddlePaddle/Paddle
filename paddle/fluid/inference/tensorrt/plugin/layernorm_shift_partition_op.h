@@ -36,12 +36,16 @@ class LayernormShiftPartitionPluginDynamic : public DynamicPluginTensorRT {
       const int param_num,
       int shift_size,
       int window_size,
+      int input_resolution,
+      float eps,
       bool with_fp16,
       std::shared_ptr<void> gamma_dev = nullptr,
       std::shared_ptr<void> beta_dev = nullptr)
       : with_fp16_(with_fp16),
         window_size_(window_size),
         shift_size_(shift_size),
+        input_resolution_(input_resolution),
+        eps_(eps),
         param_num_(param_num),
         gamma_dev_(gamma_dev),
         beta_dev_(beta_dev) {
@@ -59,6 +63,8 @@ class LayernormShiftPartitionPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &with_fp16_);
     DeserializeValue(&serialData, &serialLength, &shift_size_);
     DeserializeValue(&serialData, &serialLength, &window_size_);
+    DeserializeValue(&serialData, &serialLength, &input_resolution_);
+    DeserializeValue(&serialData, &serialLength, &eps_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     return new LayernormShiftPartitionPluginDynamic(beta_.data(),
@@ -66,6 +72,8 @@ class LayernormShiftPartitionPluginDynamic : public DynamicPluginTensorRT {
                                                     beta_.size(),
                                                     shift_size_,
                                                     window_size_,
+                                                    input_resolution_,
+                                                    eps_,
                                                     with_fp16_,
                                                     gamma_dev_,
                                                     beta_dev_);
@@ -80,7 +88,8 @@ class LayernormShiftPartitionPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(beta_) + SerializedSize(gamma_) +
            SerializedSize(param_num_) + SerializedSize(with_fp16_) +
-           SerializedSize(shift_size_) + SerializedSize(window_size_);
+           SerializedSize(shift_size_) + SerializedSize(window_size_) +
+           SerializedSize(input_resolution_) + SerializedSize(eps_);
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT override {
@@ -90,6 +99,8 @@ class LayernormShiftPartitionPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, with_fp16_);
     SerializeValue(&buffer, shift_size_);
     SerializeValue(&buffer, window_size_);
+    SerializeValue(&buffer, input_resolution_);
+    SerializeValue(&buffer, eps_);
   }
 
   nvinfer1::DimsExprs getOutputDimensions(int output_index,
@@ -134,7 +145,9 @@ class LayernormShiftPartitionPluginDynamic : public DynamicPluginTensorRT {
   std::vector<float> beta_;
   int window_size_;
   int shift_size_;
+  int input_resolution_;
   int param_num_;
+  float eps_;
   std::shared_ptr<void> gamma_dev_;
   std::shared_ptr<void> beta_dev_;
 };
