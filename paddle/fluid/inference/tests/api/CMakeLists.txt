@@ -1372,6 +1372,7 @@ cc_binary(
   ernie_debug_tool.cc
   DEPS
   ${INFERENCE_C_EXTRA_DEPS}
+  init
   gflags
   glog)
 target_compile_options(ernie_debug_tool PRIVATE -Wno-error=sign-compare)

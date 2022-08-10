@@ -279,7 +279,7 @@ cc_library(
   DEPS pass graph_pattern_detector)
 
 set(GLOB_PASS_LIB
-    ${PASS_LIBRARY}
+    ${INFER_IR_PASSES}
     CACHE INTERNAL "Global PASS library")
 
 cc_library(

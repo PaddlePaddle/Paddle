@@ -1,11 +1,11 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@
 #include <numeric>
 
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/init.h"
 
 using paddle_infer::Config;
 using paddle_infer::CreatePredictor;
@@ -51,6 +52,9 @@ DEFINE_bool(paddle_fp16, false, "paddle phi fp16");
 DEFINE_bool(clear_passes, false, "clear all passes");
 DEFINE_bool(delete_pass, false, "delete pass");
 DEFINE_bool(enable_cinn, false, "enable cinn");
+
+DECLARE_string(allow_cinn_ops);
+DECLARE_string(deny_cinn_ops);
 
 constexpr int output_cut_off = 10;
 int max_single_seq_len = FLAGS_max_sequence_length;
@@ -186,14 +190,13 @@ std::shared_ptr<Predictor> init_pred_no_varlen() {
   }
 
   if (FLAGS_enable_cinn) {
-    int idx = 0;
-    for (const auto &p : config.pass_builder()->AllPasses()) {
-      if (p == "fc_fuse_pass") {
-        break;
-      }
-      idx++;
-    }
-    config.pass_builder()->InsertPass(idx, "build_cinn_pass");
+    config.EnableMemoryOptim(false);
+    config.pass_builder()->ClearPasses();
+    config.pass_builder()->AppendPass("gpu_cpu_map_matmul_v2_to_mul_pass");
+    config.pass_builder()->AppendPass("gpu_cpu_map_matmul_v2_to_matmul_pass");
+    config.pass_builder()->AppendPass("gpu_cpu_map_matmul_to_mul_pass");
+    config.pass_builder()->AppendPass("build_cinn_pass");
+    config.pass_builder()->AppendPass("graph_viz_pass");
   }
 
   if (FLAGS_clear_passes) {
@@ -680,6 +683,8 @@ void run_model(const std::string &mode,
 
 int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
+  paddle::framework::InitGflags({"--tryfromenv=allow_cinn_ops,deny_cinn_ops,enable_pe_launch_cinn"});
+
   std::vector<std::string> run_modes;
   std::vector<double> qps_res;
   std::vector<std::vector<float>> out_datas;
