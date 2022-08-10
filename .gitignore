@@ -38,6 +38,7 @@ build_doc/
 CMakeSettings.json
 Makefile
 .test_env/
+.cache/
 third_party/
 
 *~
