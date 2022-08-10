@@ -605,12 +605,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           return false;
         }
 #endif
-        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-        auto dtype = x_var_desc->GetDataType();
-        // At present, forbid int64_t into trt.
-        if (dtype == 3) {
-          return false;
-        }
       }
     }
 
