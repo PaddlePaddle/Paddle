@@ -427,9 +427,9 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             if reduce_all:
                 assert (axis == []) or (axis is None)
             if porder == np.float64('inf'):
-                return _C_ops.final_state_max(x, axis, keep_dim)
+                return _C_ops.final_state_max(x, axis, keepdim)
             else:
-                return _C_ops.final_state_min(x, axis, keep_dim)
+                return _C_ops.final_state_min(x, axis, keepdim)
 
         helper = LayerHelper('inf_norm', **locals())
         out = helper.create_variable_for_type_inference(
