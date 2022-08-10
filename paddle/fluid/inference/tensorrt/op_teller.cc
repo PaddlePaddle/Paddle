@@ -605,6 +605,12 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           return false;
         }
 #endif
+        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        auto dtype = x_var_desc->GetDataType();
+        // At present, forbid int64_t into trt.
+        if (dtype == 3) {
+          return false;
+        }
       }
     }
 
@@ -928,6 +934,19 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           return false;
         }
       }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+      auto dtype = x_var_desc->GetDataType();
+      // At present, forbid int64_t into trt.
+      if (dtype == 3) {
+        return false;
+      }
     }
 
     if (op_type == "unsqueeze2") {
@@ -946,6 +965,19 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                      "supported in static shape";
           return false;
         }
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+      auto dtype = x_var_desc->GetDataType();
+      // At present, forbid int64_t into trt.
+      if (dtype == 3) {
+        return false;
       }
     }
 
@@ -1089,6 +1121,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+      auto dtype = x_var_desc->GetDataType();
+      // At present, only support float32 or float16 into trt.
+      if (!(dtype == 5 || dtype == 4)) {
+        return false;
+      }
       if (!with_dynamic_shape && x_shape.size() == 1) {
         VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
         return false;
@@ -1178,6 +1215,20 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         if (desc.Input("EndsTensorList").size()) {
           return false;
         }
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x_var_desc = block->FindVar(desc.Input("Input")[0]);
+      auto dtype = x_var_desc->GetDataType();
+      // At present, forbid int64_t into trt.
+      if (dtype == 3) {
+        return false;
       }
     }
 
