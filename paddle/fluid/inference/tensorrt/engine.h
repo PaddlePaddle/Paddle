@@ -614,6 +614,10 @@ class TensorRTEngine {
 
   void SetUseInspector(bool use_inspector) { use_inspector_ = use_inspector; }
 
+  void SetCalibrator(TRTInt8Calibrator* calibrator) {
+    calibrator_ = calibrator;
+  }
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
