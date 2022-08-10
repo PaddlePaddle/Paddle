@@ -667,7 +667,7 @@
   backward : divide_grad
 
 - api : dropout
-  args : (Tensor x, Tensor seed_tensor, float p, bool is_test, str mode, int seed, bool fix_seed)
+  args : (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed)
   output : Tensor(out), Tensor(mask)
   infer_meta :
     func : DropoutInferMeta

@@ -1117,9 +1117,7 @@ def concat(x, axis=0, name=None):
         attrs = {}
         if isinstance(axis, Variable):
             axis.stop_gradient = True
-            inputs['AxisTensor'] = axis
-        else:
-            attrs['axis'] = axis
+        attrs['axis'] = axis
 
         helper.append_op(type='concat',
                          inputs=inputs,
@@ -2937,13 +2935,11 @@ def tile(x, repeat_times, name=None):
 
     if isinstance(repeat_times, Variable):
         repeat_times.stop_gradient = True
-        inputs['RepeatTimes'] = repeat_times
-        attrs['repeat_times'] = [-1]
+        attrs['repeat_times'] = repeat_times
     elif isinstance(repeat_times, (list, tuple)):
         attrs['repeat_times'] = get_attr_repeat_times(repeat_times)
         if utils._contain_var(repeat_times):
-            inputs['repeat_times_tensor'] = utils._convert_to_tensor_list(
-                repeat_times)
+            attrs['repeat_times'] = utils._convert_to_tensor_list(repeat_times)
 
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
