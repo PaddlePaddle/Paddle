@@ -216,15 +216,6 @@ class InterpreterCoreInfoCache {
   std::unordered_map<int64_t, InterpreterCoreInfo> info_map_;
 };
 
-using GettedCacheInfo =
-    std::pair<std::shared_ptr<InterpreterCore>, bool /*is_new_created*/>;
-
-GettedCacheInfo GetInterpreterCoreInfoFromCache(const ProgramDesc& program_desc,
-                                                const platform::Place& place,
-                                                bool is_grad,
-                                                int64_t program_id,
-                                                framework::Scope* scope);
-
 std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
     const ProgramDesc& program_desc,
     const platform::Place& place,

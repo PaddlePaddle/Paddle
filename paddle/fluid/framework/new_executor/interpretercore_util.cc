@@ -242,11 +242,6 @@ void build_variable_scope(const framework::BlockDesc& block,
     var_scope->AddVar(var_name, var_desc);
   }
   VLOG(4) << "end build_variable_scope: =========";
-  VLOG(2) << "local scope size is: " << local_scope << ", "
-          << local_scope->Size();
-  for (size_t i = 0; i < local_scope->Size(); i++) {
-    std::cout << local_scope->LocalVarNames()[i] << std::endl;
-  }
 }
 
 void create_all_ops(const framework::BlockDesc& block,

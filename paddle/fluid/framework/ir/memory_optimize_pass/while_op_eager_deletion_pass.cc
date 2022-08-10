@@ -68,11 +68,9 @@ class WhileOpEagerDeletionPass : public ir::Pass {
 
       auto all_ops = graph->OriginProgram().Block(0).AllOps();
       if (while_ops.empty()) {
-        VLOG(1) << "AppendOpVariantByOpName: while";
         operators::AppendOpVariantByOpName(
             all_ops, std::string("while"), &while_ops);
       } else if (while_grad_ops.empty()) {
-        VLOG(1) << "AppendOpVariantByOpName: while_grad";
         operators::AppendOpVariantByOpName(
             all_ops, std::string("while_grad"), &while_grad_ops);
       } else {
@@ -89,76 +87,6 @@ class WhileOpEagerDeletionPass : public ir::Pass {
       operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
           graph->OriginProgram(), while_ops, while_grad_ops);
     }
-
-    // VLOG(1) << "======>end eager delete while op";
-    // for (auto *op : all_ops) {
-    //   auto compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
-    //   if (compute_op == nullptr) continue;
-
-    //   if (compute_op->Name() == "while") {
-    //     VLOG(1) << "get nodes: while";
-    //     auto* while_op_base = compute_op->GetOp();
-
-    //     std::string attr_str = "(";
-    //     std::vector<std::string> skip_eager_deletion_vars;
-    //     if (while_op_base->Attrs().count("skip_eager_deletion_vars")) {
-    //       skip_eager_deletion_vars =
-    //       PADDLE_GET_CONST(std::vector<std::string>,
-    //       while_op_base->Attrs().at("skip_eager_deletion_vars"));
-    //       attr_str.append("skip_eager_deletion_vars(");
-    //       for (size_t j=0; j < skip_eager_deletion_vars.size(); j++) {
-    //         attr_str.append(skip_eager_deletion_vars[j]);
-    //         attr_str.append(",");
-    //       }
-    //     }
-    //     attr_str.append(")");
-    //     VLOG(1) << "while node attr skip_eager_deletion_vars: " << attr_str;
-
-    //   } else if (compute_op->Name() == "while_grad") {
-    //     VLOG(1) << "get nodes: while_grad";
-    //     auto* while_grad_op_base = compute_op->GetOp();
-
-    //     std::string attr_str = "(";
-    //     std::vector<std::string> skip_eager_deletion_vars;
-    //     if (while_grad_op_base->Attrs().count("skip_eager_deletion_vars")) {
-    //       skip_eager_deletion_vars =
-    //       PADDLE_GET_CONST(std::vector<std::string>,
-    //       while_grad_op_base->Attrs().at("skip_eager_deletion_vars"));
-    //       attr_str.append("skip_eager_deletion_vars(");
-    //       for (size_t j=0; j < skip_eager_deletion_vars.size(); j++) {
-    //         attr_str.append(skip_eager_deletion_vars[j]);
-    //         attr_str.append(",");
-    //       }
-    //     }
-    //     attr_str.append(")");
-    //     VLOG(1) << "while node attr skip_eager_deletion_vars: " << attr_str;
-    //   }
-    // }
-    // VLOG(1) <<  "get all from graph node ";
-    // std::vector<OpDesc> ops;
-    // for (auto* n : graph->Nodes()) {
-    //   // if node is not Op, skip
-    //   if (!n->IsOp()) continue;
-    //   VLOG(1) << "Node : " << n->Name();
-    //   if (n->Name() == "while" || n->Name() == "while_grad") {
-    //     auto* op_desc = n->Op();
-
-    //     std::string attr_str = "(";
-    //     std::vector<std::string> skip_eager_deletion_vars;
-    //     if (op_desc->GetAttrMap().count("skip_eager_deletion_vars")) {
-    //       skip_eager_deletion_vars =
-    //       PADDLE_GET_CONST(std::vector<std::string>,
-    //       op_desc->GetAttrMap().at("skip_eager_deletion_vars"));
-    //       attr_str.append("skip_eager_deletion_vars(");
-    //       for (size_t j=0; j < skip_eager_deletion_vars.size(); j++) {
-    //         attr_str.append(skip_eager_deletion_vars[j]);
-    //         attr_str.append(",");
-    //       }
-    //     }
-    //     attr_str.append(")");
-    //     VLOG(1) << "while node attr skip_eager_deletion_vars: " << attr_str;
-    //   }
-    // }
   }
 };
 

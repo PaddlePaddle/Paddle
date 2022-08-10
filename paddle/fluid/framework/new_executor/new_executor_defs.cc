@@ -565,10 +565,6 @@ VariableScope::VariableScope(Scope* scope) {
   vec_meta_info_.emplace_back(0, nullptr);
   scope_ = scope;
   VLOG(2) << "construct VarScope by Scope " << scope;
-  VLOG(2) << "VarScope is" << scope_;
-  for (size_t i = 0; i < scope_->LocalVarNames().size(); i++) {
-    std::cout << scope_->LocalVarNames()[i] << std::endl;
-  }
   PADDLE_ENFORCE_NE(
       scope,
       nullptr,

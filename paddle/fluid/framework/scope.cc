@@ -170,8 +170,10 @@ void Scope::DeleteScope(Scope* scope) const {
     this->kids_.erase(it);
     // When making memory benchmark on Fluid, we have to delete scope sync.
     if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
+      VLOG(1) << "delete scope sync";
       delete scope;
     } else {
+      VLOG(1) << "delete scope async";
       Async([scope] { delete scope; });
     }
   }
