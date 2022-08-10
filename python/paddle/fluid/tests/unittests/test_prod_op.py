@@ -48,7 +48,8 @@ class TestProdOp(unittest.TestCase):
         expected_result = np.prod(self.input, axis=(0, 1))
         np.testing.assert_allclose(dy_result.numpy(),
                                    expected_result,
-                                   rtol=1e-05)
+                                   rtol=1e-05,
+                                   atol=1e-8)
 
         dy_result = paddle.prod(input, axis=1, keepdim=True)
         expected_result = np.prod(self.input, axis=1, keepdims=True)

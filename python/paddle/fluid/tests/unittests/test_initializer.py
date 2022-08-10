@@ -833,7 +833,10 @@ class TestOrthogonalInitializer1(unittest.TestCase):
 
     def check_result(self, a, b):
         np.testing.assert_array_equal(a, b)
-        self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(10)))
+        np.testing.assert_allclose(np.matmul(a, a.T),
+                                   9 * np.eye(10),
+                                   rtol=1e-5,
+                                   atol=1e-8)
 
     def func_orthogonal(self):
         self.config()
@@ -892,7 +895,10 @@ class TestOrthogonalInitializer2(TestOrthogonalInitializer1):
 
     def check_result(self, a, b):
         np.testing.assert_array_equal(a, b)
-        self.assertTrue(np.allclose(np.matmul(a.T, a), 4 * np.eye(10)))
+        np.testing.assert_allclose(np.matmul(a.T, a),
+                                   4 * np.eye(10),
+                                   rtol=1e-5,
+                                   atol=1e-8)
 
 
 # 2-D Parameter with shape: [10, 10]
@@ -943,7 +949,10 @@ class TestOrthogonalInitializer4(unittest.TestCase):
     def check_result(self, a, b):
         np.testing.assert_array_equal(a, b)
         a = a.reshape(6, -1)
-        self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(6)))
+        np.testing.assert_allclose(np.matmul(a, a.T),
+                                   9 * np.eye(6),
+                                   rtol=1e-5,
+                                   atol=1e-8)
 
     def func_orthogonal(self):
         self.config()
@@ -994,7 +1003,10 @@ class TestOrthogonalInitializer5(TestOrthogonalInitializer4):
     def check_result(self, a, b):
         np.testing.assert_array_equal(a, b)
         a = a.reshape(50, -1)
-        self.assertTrue(np.allclose(np.matmul(a.T, a), 4 * np.eye(36)))
+        np.testing.assert_allclose(np.matmul(a.T, a),
+                                   4 * np.eye(36),
+                                   rtol=1e-5,
+                                   atol=1e-8)
 
 
 # 4-D Parameter with shape: [36, 4, 3, 3]

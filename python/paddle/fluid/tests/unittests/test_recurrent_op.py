@@ -204,6 +204,7 @@ class RecurrentOpTest1(unittest.TestCase):
                 num_grad[idx],
                 ana_grad[idx],
                 rtol=rtol,
+                atol=1e-8,
                 err_msg='num_grad (' + name + ') has diff at ' +
                 str(self.place) + '\nExpect ' + str(num_grad[idx]) + '\n' +
                 'But Got' + str(ana_grad[idx]) + ' in class ' +
