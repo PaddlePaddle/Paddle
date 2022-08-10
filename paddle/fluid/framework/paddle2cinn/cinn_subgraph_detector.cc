@@ -82,7 +82,7 @@ struct CinnSubGraph {
 
   int depth{0};
   int max_depth{0}, min_depth{INT_MAX};
-  bool substitute{true};  // sub graph kind
+  bool substitute{true};
   std::vector<Node*> nodes;
   std::unordered_set<Node*> node_set;
   std::unordered_set<Node*> input_nodes;
@@ -199,11 +199,11 @@ bool CinnSubgraphDetector::FuseSubGraph(CinnSubGraphPtr* subgraph_ptr) {
     if (!consumer->substitute) {
       continue;
     }
-
+    // fast depency check.
     if (IsDependencySimplify(producer, consumer, consumers)) {
       continue;
     }
-
+    // global depency check.
     if (IsDependency(producer, consumer, consumers)) {
       continue;
     }
@@ -266,6 +266,7 @@ bool CinnSubgraphDetector::FuseSubGraph(CinnSubGraphPtr* subgraph_ptr) {
     }
   }
 
+  // remove producer from set.
   producer->producers.erase(producer);
   producer->consumers.erase(producer);
 
@@ -305,8 +306,8 @@ bool CinnSubgraphDetector::IsDependencySimplify(
     const std::unordered_set<CinnSubGraphPtr, Hasher, Comparator>& consumers) {
   std::queue<CinnSubGraphPtr> candidates;
   candidates.push(consumer);
-  // check upper.
-  int check_upper_depth = producer_g.get() ? producer_g->max_depth : INT_MAX;
+  // check upper bound.
+  int check_upper_depth = producer_g->max_depth;
   std::unordered_set<CinnSubGraphPtr, Hasher, Comparator> visited_set;
   while (!candidates.empty()) {
     auto& candidate = candidates.front();
