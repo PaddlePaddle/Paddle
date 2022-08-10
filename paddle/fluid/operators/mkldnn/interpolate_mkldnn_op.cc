@@ -105,7 +105,8 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
           }
         }
       }
-      if (scale[0] > 0.0f && scale[1] > 0.0f && scale[2] > 0.0f) {
+      if (scale.size() == 3 && scale[0] > 0.0f && scale[1] > 0.0f &&
+          scale[2] > 0.0f) {
         int j = 0;
         std::vector<int64_t> in_dhw_vec = phi::vectorize(in_dhw_dims);
         std::transform(

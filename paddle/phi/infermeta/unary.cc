@@ -309,6 +309,35 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void ClassCenterSampleInferMeta(const MetaTensor& label,
+                                int num_classes,
+                                int num_samples,
+                                int ring_id,
+                                int rank,
+                                int nranks,
+                                bool fix_seed,
+                                int seed,
+                                MetaTensor* remapped_label,
+                                MetaTensor* sampled_local_class_center) {
+  PADDLE_ENFORCE_EQ(
+      label.dims().size(),
+      1,
+      errors::InvalidArgument("Rank of Input(Label) should be equal to 1, "
+                              "but the value given is %d.",
+                              label.dims().size()));
+  PADDLE_ENFORCE_NOT_NULL(remapped_label,
+                          phi::errors::InvalidArgument(
+                              "output of remapped label should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      sampled_local_class_center,
+      phi::errors::InvalidArgument(
+          "output of sampled local class center should not be null."));
+  remapped_label->set_dims(label.dims());
+  remapped_label->set_dtype(label.dtype());
+  sampled_local_class_center->set_dims(phi::make_ddim({num_samples}));
+  sampled_local_class_center->set_dtype(label.dtype());
+}
+
 void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out) {
   PADDLE_ENFORCE_GT(
       max_norm,

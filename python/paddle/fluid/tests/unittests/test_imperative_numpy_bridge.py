@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
+import warnings
+
 import numpy as np
 import paddle.fluid as fluid
-import warnings
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 
 class TestImperativeNumpyBridge(unittest.TestCase):
@@ -31,14 +32,14 @@ class TestImperativeNumpyBridge(unittest.TestCase):
                     w[-1].message)
             # Temporally diable zero_copy
             # var = fluid.dygraph.to_variable(data_np, zero_copy=True)
-            # self.assertTrue(np.array_equal(var.numpy(), data_np))
+            # np.testing.assert_array_equal(var.numpy(), data_np)
             # data_np[0][0] = 4
             # self.assertEqual(data_np[0][0], 4)
             # self.assertEqual(var[0][0].numpy()[0], 4)
-            # self.assertTrue(np.array_equal(var.numpy(), data_np))
+            # np.testing.assert_array_equal(var.numpy(), data_np)
 
             var2 = fluid.dygraph.to_variable(data_np, zero_copy=False)
-            self.assertTrue(np.array_equal(var2.numpy(), data_np))
+            np.testing.assert_array_equal(var2.numpy(), data_np)
             data_np[0][0] = -1
             self.assertEqual(data_np[0][0], -1)
             if not _in_legacy_dygraph():
