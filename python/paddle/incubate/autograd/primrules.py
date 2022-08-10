@@ -18,7 +18,7 @@ import paddle
 from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
                       matmul, mul, neg, reduce, reshape, scatter_add, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, log, select)
+                      transpose, log, select, eq, pow)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -66,6 +66,10 @@ index_select
 scale
 assign
 sqrt
+log
+select
+equal
+elementwise_pow
 
 These original ops are partially supported:
 
@@ -296,6 +300,22 @@ def select_orig2prim(op, condition, x, y):
     return select(condition, x, y)
 
 
+@REGISTER_ORIG2PRIM('equal')
+def equal_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return eq(x, y)
+
+
+@REGISTER_ORIG2PRIM('elementwise_pow')
+def elementwise_pow_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+
+    z = pow(x, y)
+    return z
+
+
 ## Register prim2orig lower rules
 
 
@@ -433,6 +453,16 @@ def fill_constant_prim2orig(op):
 @REGISTER_PRIM2ORIG('select_p')
 def select_prim2orig(op, condition, x, y):
     return paddle.where(condition, x, y)
+
+
+@REGISTER_PRIM2ORIG('eq_p')
+def eq_prim2orig(op, x, y):
+    return paddle.equal(x, y)
+
+
+@REGISTER_PRIM2ORIG('pow_p')
+def pow_prim2orig(op, x, y):
+    return paddle.pow(x, y)
 
 
 ## Register linearize rules
@@ -662,8 +692,48 @@ def select_jvp(op, cond_dot, x_dot, y_dot):
     if x_dot is None and y_dot is None:
         return None
 
-    cond, _, _ = op_position_inputs(op)
+    cond, x, y = op_position_inputs(op)
+    if x_dot is None:
+        x_dot = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+    if y_dot is None:
+        y_dot = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
     return select(cond, x_dot, y_dot)
+
+
+@REGISTER_JVP('eq_p')
+def eq_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+    x, _ = op_position_inputs(op)
+    z_dot = fill_const(value=0., shape=x.shape, dtype=x.dtype)
+    return z_dot
+
+
+@REGISTER_JVP('pow_p')
+def pow_jvp(op, x_dot, y_dot):
+
+    def _compute_t1(x, y):
+        zero_y = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+        one_y = fill_const(value=1.0, shape=y.shape, dtype=y.dtype)
+
+        cond = eq(y, zero_y)
+        new_y = select(cond, one_y, sub(y, one_y))
+        t1 = mul(x_dot, mul(y, pow(x, new_y)))
+        return t1
+
+    if x_dot is None and y_dot is None:
+        return None
+    x, y = op_position_inputs(op)
+    z = op_position_output(op)
+
+    if y_dot is None:
+        return _compute_t1(x, y)
+    elif x_dot is None:
+        return mul(y_dot, mul(log(x), z))
+    else:
+        t1, t2 = _compute_t1(x, y), mul(y_dot, mul(log(x), z))
+        z_dot = add(t1, t2)
+        return z_dot
 
 
 ## Register transpose rules

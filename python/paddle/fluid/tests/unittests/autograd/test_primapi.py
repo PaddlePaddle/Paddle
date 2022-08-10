@@ -16,6 +16,8 @@ import typing
 import unittest
 
 import numpy as np
+import autograd.numpy as agnp
+
 import paddle
 
 import config
@@ -148,6 +150,8 @@ class TestWithoutProgramGuard(unittest.TestCase):
      (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
     ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
 ))
+# paddle.where, paddle.pow has no double grad definition,
+# can not compute forward grad use double trick
 class TestForwardGrad(unittest.TestCase):
 
     @classmethod
@@ -242,23 +246,27 @@ class TestForwardGrad(unittest.TestCase):
 
 
 @utils.place(config.DEVICES)
-@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'), (
-    ('matmul', paddle.matmul,
-     (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
-    ('multiply', paddle.multiply,
-     (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
-    ('add', paddle.add,
-     (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
-    ('input_not_sequence', paddle.tanh,
-     (np.random.rand(5, 5), ), None, 'float64'),
-    ('input_gradients_not_none', paddle.matmul,
-     (np.random.rand(3, 3), np.random.rand(3, 3)),
-     (np.random.rand(3, 3), ), 'float64'),
-    ('sin', paddle.sin, (np.random.rand(100, 200), ), None, 'float32'),
-    ('cos', paddle.cos, (np.random.rand(200, 90), ), None, 'float32'),
-    ('exp', paddle.exp, (np.random.rand(299, 320), ), None, 'float32'),
-    ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
-))
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
+    (
+        ('matmul', paddle.matmul,
+         (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
+        ('multiply', paddle.multiply,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
+        ('add', paddle.add,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+        ('input_not_sequence', paddle.tanh,
+         (np.random.rand(5, 5), ), None, 'float64'),
+        ('input_gradients_not_none', paddle.matmul,
+         (np.random.rand(3, 3), np.random.rand(3, 3)),
+         (np.random.rand(3, 3), ), 'float64'),
+        ('sin', paddle.sin, (np.random.rand(100, 200), ), None, 'float32'),
+        ('cos', paddle.cos, (np.random.rand(200, 90), ), None, 'float32'),
+        ('exp', paddle.exp, (np.random.rand(299, 320), ), None, 'float32'),
+        # pow_p and pow has diff when compute z_dot of 0^0
+        ('pow', paddle.pow,
+         (np.array([1, 2, 3]), np.array([0, 2, 7])), None, 'float32'),
+    ))
 class TestGrad(unittest.TestCase):
 
     def setUp(self):
@@ -492,6 +500,33 @@ class TestSelectGrad(unittest.TestCase):
             np.testing.assert_allclose(i, j, rtol=self._rtol, atol=self._atol)
 
 
+def multiply_pd(x):
+    x2 = paddle.multiply(x, x)
+    x3 = paddle.multiply(x2, x2)
+    x4 = paddle.multiply(x3, x)
+    return x4
+
+
+multiply_ag = lambda xs: xs[0] * xs[0] * xs[0] * xs[0] * xs[0]
+sin_ag = lambda xs: agnp.sin(xs[0])
+cos_ag = lambda xs: agnp.cos(xs[0])
+exp_ag = lambda xs: agnp.exp(xs[0])
+pow_ag = lambda xs: xs[0]**xs[1]
+log_ag = lambda xs: agnp.log(xs[0])
+
+
+@utils.place(config.DEVICES)
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'), (
+        ('multiply', multiply_pd, multiply_ag,
+         (np.random.rand(3, 5), ), None, 'float32'),
+        ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
+        ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
+        ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
+        ('pow', paddle.pow, pow_ag,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+        ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
+    ))
 class TestGradWithHigherOrder(unittest.TestCase):
 
     def setUp(self):
@@ -502,105 +537,59 @@ class TestGradWithHigherOrder(unittest.TestCase):
         paddle.incubate.autograd.disable_prim()
         paddle.disable_static()
 
-    def test_third_order(self):
-        paddle.incubate.autograd.enable_prim()
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name='x', shape=[1], dtype='float32')
-            x2 = paddle.multiply(x, x)
-            x3 = paddle.multiply(x2, x)
-            x4 = paddle.multiply(x3, x)
+    @classmethod
+    def setUpClass(cls):
+        cls.xs = tuple(
+            x.astype(cls.dtype) if x.dtype != bool else x for x in cls.xs)
+        cls._rtol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("rtol")
+        cls._atol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("atol")
 
-            grad1, = paddle.incubate.autograd.grad([x4], [x])
-            grad2, = paddle.incubate.autograd.grad([grad1], [x])
-            grad3, = paddle.incubate.autograd.grad([grad2], [x])
+    def test_grad(self):
 
-            paddle.incubate.autograd.prim2orig(main.block(0))
+        def expected():
+            from autograd import elementwise_grad as egrad
+            grad_3 = egrad(egrad(egrad(self.fun_ag)))(self.xs)
+            grad_4 = egrad(egrad(egrad(egrad(self.fun_ag))))(self.xs)
+            grad_5 = egrad(egrad(egrad(egrad(egrad(self.fun_ag)))))(self.xs)
+            # grad_3 is tuple
+            return list(grad_3 + grad_4 + grad_5)
 
-        feed = {x.name: np.array([2.]).astype('float32')}
-        fetch_list = [grad3.name]
-        result = [np.array([48.])]
+        def actual():
+            from paddle.incubate.autograd import grad as paddle_grad
+            paddle.incubate.autograd.enable_prim()
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                feed, static_xs, static_v = utils.gen_static_data_and_feed(
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun_pd(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun_pd(static_xs)
 
-        place = paddle.CPUPlace()
-        if paddle.device.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        exe.run(startup)
-        outs = exe.run(main, feed=feed, fetch_list=fetch_list)
-        np.testing.assert_allclose(outs, result, rtol=1e-5, atol=1e-5)
-        paddle.incubate.autograd.disable_prim()
+                grad1 = paddle_grad(ys, static_xs, static_v)
+                grad2 = paddle_grad(grad1, static_xs, static_v)
+                grad3 = paddle_grad(grad2, static_xs, static_v)
+                grad4 = paddle_grad(grad3, static_xs, static_v)
+                grad5 = paddle_grad(grad4, static_xs, static_v)
+                paddle.incubate.autograd.prim2orig()
 
-    def test_fourth_order(self):
-        paddle.incubate.autograd.enable_prim()
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name='x', shape=[1], dtype='float32')
-            x2 = paddle.multiply(x, x)
-            x3 = paddle.multiply(x2, x)
-            x4 = paddle.multiply(x3, x)
-            x5 = paddle.multiply(x4, x)
-            out = paddle.sqrt(x5 + x4)
+            fetch_list = [grad3, grad4, grad5]
 
-            grad1, = paddle.incubate.autograd.grad([out], [x])
-            grad2, = paddle.incubate.autograd.grad([grad1], [x])
-            grad3, = paddle.incubate.autograd.grad([grad2], [x])
-            grad4, = paddle.incubate.autograd.grad([grad3], [x])
+            place = paddle.CPUPlace()
+            if paddle.device.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            exe = paddle.static.Executor(place)
+            exe.run(startup)
+            outs = exe.run(main, feed=feed, fetch_list=fetch_list)
+            paddle.incubate.autograd.disable_prim()
+            return outs
 
-            paddle.incubate.autograd.prim2orig(main.block(0))
-
-        feed = {
-            x.name: np.array([2.]).astype('float32'),
-        }
-        fetch_list = [grad4.name]
-        # (3*(-5*x^2-16*x-16))/(16*(x+1)^3.5)
-        result = [np.array([-0.27263762711])]
-
-        place = paddle.CPUPlace()
-        if paddle.device.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        exe.run(startup)
-        outs = exe.run(main, feed=feed, fetch_list=fetch_list)
-        np.testing.assert_allclose(outs, result, rtol=1e-5, atol=1e-5)
-        paddle.incubate.autograd.disable_prim()
-
-    def test_fifth_order(self):
-        paddle.incubate.autograd.enable_prim()
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name='x', shape=[1], dtype='float32')
-            x2 = paddle.multiply(x, x)
-            x3 = paddle.multiply(x2, x)
-            x4 = paddle.multiply(x3, x)
-            x5 = paddle.multiply(x4, x)
-            x6 = paddle.multiply(x5, x)
-            out = x6 + x5
-
-            grad1, = paddle.incubate.autograd.grad([out], [x])
-            grad2, = paddle.incubate.autograd.grad([grad1], [x])
-            grad3, = paddle.incubate.autograd.grad([grad2], [x])
-            grad4, = paddle.incubate.autograd.grad([grad3], [x])
-            grad5, = paddle.incubate.autograd.grad([grad4], [x])
-
-            paddle.incubate.autograd.prim2orig()
-
-        feed = {
-            x.name: np.array([2.]).astype('float32'),
-        }
-        fetch_list = [grad5.name]
-        result = [np.array([1560.0])]
-
-        place = paddle.CPUPlace()
-        if paddle.device.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        exe.run(startup)
-        outs = exe.run(main, feed=feed, fetch_list=fetch_list)
-        np.testing.assert_allclose(outs, result, rtol=1e-5, atol=1e-5)
-        paddle.incubate.autograd.disable_prim()
+        actual = actual()
+        expected = expected()
+        self.assertEqual(type(actual), type(expected))
+        for i, j in zip(actual, expected):
+            np.testing.assert_allclose(i, j, rtol=self._rtol, atol=self._atol)
 
 
 if __name__ == '__main__':

@@ -137,11 +137,6 @@ def exp(x, out=None):
     return _simple_unop(LayerHelper('exp_p', **locals()))
 
 
-@REGISTER_FN('log_p', 'X', 'Y')
-def log(x, out=None):
-    return _simple_unop(LayerHelper('log_p', **locals()))
-
-
 @REGISTER_FN('reshape_p', 'X', 'Y')
 def reshape(x, shape, out=None):
     return _manipulation_unop(LayerHelper('reshape_p', **locals()))
@@ -317,6 +312,11 @@ def scatter_add(x, y, indextensor, axis, out=None):
     return out
 
 
+@REGISTER_FN('log_p', 'X', 'Y')
+def log(x, out=None):
+    return _simple_unop(LayerHelper('log_p', **locals()))
+
+
 @REGISTER_FN('select_p', 'Condition', 'X', 'Y', 'Z')
 def select(cond, x, y, out=None):
     if len(cond.shape) != len(x.shape):
@@ -340,3 +340,13 @@ def select(cond, x, y, out=None):
                      },
                      outputs={'Z': out})
     return out
+
+
+@REGISTER_FN('eq_p', 'X', 'Y', 'Z')
+def eq(x, y, out=None):
+    return _simple_binop(LayerHelper('eq_p', **locals()))
+
+
+@REGISTER_FN('pow_p', 'X', 'Y', 'Z')
+def pow(x, y, out=None):
+    return _simple_binop(LayerHelper('pow_p', **locals()))
