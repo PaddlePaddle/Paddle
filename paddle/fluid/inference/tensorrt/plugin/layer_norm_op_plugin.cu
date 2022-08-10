@@ -94,6 +94,7 @@ int LayerNormPlugin::enqueue(int batch_size,
   cudaGetDevice(&device_id);
   auto input_type = getDataType();
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";
     const float *input = reinterpret_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
 
@@ -126,21 +127,29 @@ int LayerNormPlugin::enqueue(int batch_size,
                begin_norm_axis,
                eps);
   } else if (input_type == nvinfer1::DataType::kHALF) {
+    VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp16";
     const half *input = reinterpret_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
 
-    half *scale_d = scale_t.mutable_data<half>(platform::CUDAPlace(device_id));
-    half *bias_d = bias_t.mutable_data<half>(platform::CUDAPlace(device_id));
-    half *mean_d = mean_t.mutable_data<half>(platform::CUDAPlace(device_id));
+    half *scale_d =
+          reinterpret_cast<half *>(scale_t.mutable_data<int16_t>(
+              platform::CUDAPlace(device_id)));
+    half *bias_d =
+          reinterpret_cast<half *>(bias_t.mutable_data<int16_t>(
+              platform::CUDAPlace(device_id)));
+    half *mean_d =
+          reinterpret_cast<half *>(variance_t.mutable_data<int16_t>(
+              platform::CUDAPlace(device_id)));
     half *variance_d =
-        variance_t.mutable_data<half>(platform::CUDAPlace(device_id));
+          reinterpret_cast<half *>(scale_t.mutable_data<int16_t>(
+              platform::CUDAPlace(device_id)));
     cudaMemcpyAsync(scale_d,
-                    scale_.data(),
+                    reinterpret_cast<half *>(scale_.data()),
                     sizeof(half) * feature_size,
                     cudaMemcpyHostToDevice,
                     stream);
     cudaMemcpyAsync(bias_d,
-                    bias_.data(),
+                    reinterpret_cast<half *>(bias_.data()),
                     sizeof(half) * feature_size,
                     cudaMemcpyHostToDevice,
                     stream);
@@ -197,9 +206,6 @@ bool LayerNormPluginDynamic::supportsFormatCombination(
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
-    // TODO(Shangzhizhou) FP16 support
-    // return (in.type == nvinfer1::DataType::kFLOAT) &&
-    //        (in.format == nvinfer1::TensorFormat::kLINEAR);
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
   // output
@@ -263,12 +269,6 @@ int LayerNormPluginDynamic::enqueue(
   variance_t.Resize(phi::make_ddim(variance_shape_));
   int device_id;
   cudaGetDevice(&device_id);
-  // float *scale_d =
-  //       scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  // float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  // float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  // float *variance_d =
-  //     variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";
@@ -309,19 +309,25 @@ int LayerNormPluginDynamic::enqueue(
     const half *input = reinterpret_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
 
-    half *scale_d = scale_t.mutable_data<half>(platform::CUDAPlace(device_id));
-    half *bias_d = bias_t.mutable_data<half>(platform::CUDAPlace(device_id));
-    half *mean_d = mean_t.mutable_data<half>(platform::CUDAPlace(device_id));
+    half *scale_d =
+          reinterpret_cast<half *>(scale_t.mutable_data<int16_t>(
+              platform::CUDAPlace(device_id)));
+    half *bias_d =
+          reinterpret_cast<half *>(bias_t.mutable_data<int16_t>(
+              platform::CUDAPlace(device_id)));
+    half *mean_d =
+          reinterpret_cast<half *>(variance_t.mutable_data<int16_t>(
+              platform::CUDAPlace(device_id)));
     half *variance_d =
-        variance_t.mutable_data<half>(platform::CUDAPlace(device_id));
-
+          reinterpret_cast<half *>(scale_t.mutable_data<int16_t>(
+              platform::CUDAPlace(device_id)));
     cudaMemcpyAsync(scale_d,
-                    scale_.data(),
+                    reinterpret_cast<half *>(scale_.data()),
                     sizeof(half) * feature_size,
                     cudaMemcpyHostToDevice,
                     stream);
     cudaMemcpyAsync(bias_d,
-                    bias_.data(),
+                    reinterpret_cast<half *>(bias_.data()),
                     sizeof(half) * feature_size,
                     cudaMemcpyHostToDevice,
                     stream);
