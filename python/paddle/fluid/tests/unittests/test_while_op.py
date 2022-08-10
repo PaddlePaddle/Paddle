@@ -190,5 +190,44 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
         self.assertListEqual(list(res.shape), [3, 1, 5])
 
 
+class TestOutputsMustExistsInputs(unittest.TestCase):
+
+    def test_outputs_exists_inputs(self):
+        """
+        We guarantee that the output tensor must be in the input tensor, so that the output and input can correspond to each other, but the input can be greater than the number of outputs. It's required in paddle2onnx.
+        """
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+
+            def func(x):
+                s = paddle.zeros([1])
+                i = paddle.ones([1])
+                max_len = paddle.shape(x)[0]
+
+                def cond(i, s, x):
+                    return i < max_len
+
+                def body(i, s, x):
+                    iter = x[i]
+                    s += iter
+                    i += 1
+                    return i, s, x
+
+                [i, s, x] = paddle.static.nn.while_loop(cond, body, [i, s, x])
+                return s
+
+            paddle.enable_static()
+            x = paddle.static.data(shape=[-1], name='x')
+            func(x)
+        for op in main_program.block(0).ops:
+            if op.type == "while":
+                for out_name in op.output("Out"):
+                    self.assertTrue(
+                        out_name in op.input("X"),
+                        "In while op, the variable in output(`Out`) must exists in inputs(`X`), but the variable with name `{}` not meet the precondition."
+                        .format(out_name))
+
+
 if __name__ == '__main__':
     unittest.main()
