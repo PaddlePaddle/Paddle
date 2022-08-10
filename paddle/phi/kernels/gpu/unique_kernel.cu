@@ -334,8 +334,10 @@ static void ComputeUniqueDims(const Context& context,
   counts->Resize(phi::make_ddim({num_out}));
   auto* count_data = context.template Alloc<IndexT>(counts);
   thrust::fill(thrust::device, count_data, count_data + num_out, 0);
-  thrust::adjacent_difference(
-      thrust::device, range_data_ptr + 1, range_data_ptr + num_out + 1, count_data);
+  thrust::adjacent_difference(thrust::device,
+                              range_data_ptr + 1,
+                              range_data_ptr + num_out + 1,
+                              count_data);
 }
 
 // Calculate unique when 'axis' is set
