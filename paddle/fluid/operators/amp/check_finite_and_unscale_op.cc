@@ -91,47 +91,6 @@ Otherwise, FoundInfinite will be 0 (False).
   }
 };
 
-template <typename T>
-class CheckFiniteAndUnscaleCpuKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
-    const auto xs = ctx.MultiInput<framework::Tensor>("X");
-    const auto* scale = ctx.Input<framework::Tensor>("Scale");
-    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
-
-    const T* scale_data = scale->data<T>();
-    bool* found_inf_data = found_inf->mutable_data<bool>(dev_ctx.GetPlace());
-
-    *found_inf_data = false;
-    framework::Tensor is_finite =
-        ctx.AllocateTmpTensor<bool, phi::CPUContext>({1}, dev_ctx);
-    bool* is_finite_data = is_finite.template data<bool>();
-
-    auto& dev = *ctx.template device_context<phi::CPUContext>().eigen_device();
-
-    T inverse_scale = Inverse<T>(*scale_data);
-    for (size_t i = 0; i < xs.size(); ++i) {
-      const auto* x = xs[i];
-      auto* out = outs[i];
-      out->mutable_data<T>(dev_ctx.GetPlace());
-      if (!(*found_inf_data)) {
-        framework::TensorIsfinite(*x, &is_finite);
-        *found_inf_data = !(*is_finite_data);
-      }
-      auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-      auto eigen_in = framework::EigenVector<T>::Flatten(*x);
-      if (!(*found_inf_data)) {
-        eigen_out.device(dev) = eigen_in * inverse_scale;
-      } else {
-        eigen_out.device(dev) = eigen_in * static_cast<T>(0);
-      }
-    }
-    return;
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -143,7 +102,3 @@ REGISTER_OPERATOR(
     ops::CheckFiniteAndUnscaleOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(check_finite_and_unscale,
-                       ops::CheckFiniteAndUnscaleCpuKernel<float>,
-                       ops::CheckFiniteAndUnscaleCpuKernel<double>);
