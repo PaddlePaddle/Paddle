@@ -3,23 +3,21 @@ set_source_files_properties(
 cc_test(
   table_test
   SRCS table_test.cc
-  DEPS common_table table tensor_accessor ps_framework_proto ${COMMON_DEPS}
-       ${RPC_DEPS})
+  DEPS common_table table ps_framework_proto ${COMMON_DEPS} ${RPC_DEPS})
 
 set_source_files_properties(
   dense_table_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 cc_test(
   dense_table_test
   SRCS dense_table_test.cc
-  DEPS common_table table tensor_accessor ps_framework_proto ${COMMON_DEPS}
-       ${RPC_DEPS})
+  DEPS common_table table ps_framework_proto ${COMMON_DEPS} ${RPC_DEPS})
 
 set_source_files_properties(
   barrier_table_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 cc_test(
   barrier_table_test
   SRCS barrier_table_test.cc
-  DEPS common_table table tensor_accessor ps_framework_proto ${COMMON_DEPS})
+  DEPS common_table table ps_framework_proto ${COMMON_DEPS})
 
 set_source_files_properties(
   brpc_service_dense_sgd_test.cc PROPERTIES COMPILE_FLAGS
