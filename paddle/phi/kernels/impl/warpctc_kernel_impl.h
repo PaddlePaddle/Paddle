@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/fluid/operators/math/sequence_scale.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/backends/dynload/warpctc.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
