@@ -486,12 +486,6 @@ class Case5(LargeInputCase):
 
 class Case6(TestGridSamplerOp):
 
-    def get_places(self):
-        places = []
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6, 7)
         self.grid_shape = (2, 8, 9, 10, 3)
@@ -556,12 +550,6 @@ class Case9(TestGridSamplerOp):
                     "however it is desirable to cover the forward pass")
 class LargeInput3DCase(TestGridSamplerOp):
 
-    def get_places(self):
-        places = []
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def initTestCase(self):
         self.no_need_check_grad = True
         self.x_shape = (2, 3, 24, 24, 12)
@@ -570,6 +558,8 @@ class LargeInput3DCase(TestGridSamplerOp):
         self.align_corners = False
         self.padding_mode = "reflection"
         self.mode = "bilinear"
+        self.use_cudnn = False
+        self.__class__.op_type = 'grid_sampler'
 
     def test_check_grad_normal(self):
         pass
@@ -587,7 +577,8 @@ class Case10(LargeInput3DCase):
         self.align_corners = True
         self.padding_mode = "zeros"
         self.mode = "bilinear"
-        self.use_cudnn = False  #if core.is_compiled_with_rocm() else True
+        self.use_cudnn = False
+        self.__class__.op_type = 'grid_sampler'
 
 
 if __name__ == "__main__":
