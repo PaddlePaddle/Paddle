@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/layernorm_shift_partition_op.h"
+#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
 namespace inference {
@@ -24,7 +24,8 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid layernorm_shift_partition op to tensorrt layernorm_shift_partition plugin";
+    VLOG(4) << "convert a fluid layernorm_shift_partition op to tensorrt "
+               "layernorm_shift_partition plugin";
     framework::OpDesc op_desc(op, nullptr);
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
@@ -37,7 +38,8 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
     const float eps = op_desc.HasAttr("epsilon")
                           ? PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"))
                           : 1e-5f;
-    const int window_size = PADDLE_GET_CONST(int, op_desc.GetAttr("window_size"));
+    const int window_size =
+        PADDLE_GET_CONST(int, op_desc.GetAttr("window_size"));
     const int input_resolution = std::sqrt(X->getDimensions().d[1]);
     int shift_size = window_size / 2;
     shift_size = (input_resolution <= window_size) ? 0 : shift_size;
@@ -46,8 +48,8 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
         X->getDimensions().d[1] % input_resolution,
         0,
         platform::errors::InvalidArgument(
-          "The input_resolution of LayernormShiftPartition is wrong %d",
-          input_resolution));
+            "The input_resolution of LayernormShiftPartition is wrong %d",
+            input_resolution));
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
         platform::errors::InvalidArgument(
@@ -60,8 +62,8 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
         begin_norm_axis,
         2,
         platform::errors::InvalidArgument(
-          "The begin_norm_axis of LayernormShiftPartition should be %d",
-          begin_norm_axis));
+            "The begin_norm_axis of LayernormShiftPartition should be %d",
+            begin_norm_axis));
 
     auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
     auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();
@@ -70,15 +72,15 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
         engine_->GetFp32TrtWeight(op_desc.Input("Bias").front(), *Bias_t);
     auto scale_weight =
         engine_->GetFp32TrtWeight(op_desc.Input("Scale").front(), *Scale_t);
-    bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
-    PADDLE_ENFORCE_EQ(
-        bias_weight.get().count,
-        scale_weight.get().count,
-        platform::errors::InvalidArgument(
-          "The num between bias_weight and cale_weight should be equal. (%d vs %d)",
-          bias_weight.get().count, scale_weight.get().count));
+    PADDLE_ENFORCE_EQ(bias_weight.get().count,
+                      scale_weight.get().count,
+                      platform::errors::InvalidArgument(
+                          "The num between bias_weight and cale_weight should "
+                          "be equal. (%d vs %d)",
+                          bias_weight.get().count,
+                          scale_weight.get().count));
     nvinfer1::ILayer* layernorm_layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       plugin::LayernormShiftPartitionPluginDynamic* plugin =
@@ -93,8 +95,8 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
               with_fp16);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
-        PADDLE_THROW(
-          platform::errors::Fatal("LayernormShiftPartition TRT Plugin should run in dynamic shape."));
+      PADDLE_THROW(platform::errors::Fatal(
+          "LayernormShiftPartition TRT Plugin should run in dynamic shape."));
     }
 
     auto output_name = op_desc.Output("Y").front();
@@ -107,4 +109,5 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(layernorm_shift_partition, LayerNormShiftPartitionOpConverter);
+REGISTER_TRT_OP_CONVERTER(layernorm_shift_partition,
+                          LayerNormShiftPartitionOpConverter);
