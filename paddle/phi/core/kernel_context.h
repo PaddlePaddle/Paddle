@@ -23,6 +23,7 @@
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/type_defs.h"
+#include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/small_vector.h"
 
@@ -75,6 +76,10 @@ class KernelContext {
 
   void AssignOutputRange(std::pair<int, int>&& range, size_t idx);
 
+  const paddle::small_vector<size_t>& GetElementsNum(size_t idx) const;
+
+  void EmplaceBackElementsNum(size_t idx, size_t vec_num);
+
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
     return static_cast<const TensorType&>(*(inputs_.at(idx)));
@@ -96,6 +101,34 @@ class KernelContext {
       v.emplace_back(t);
     }
     return v;
+  }
+
+  template <typename TensorType>
+  std::vector<std::vector<const TensorType*>> Inputs2DBetween(
+      size_t start, size_t end, const paddle::small_vector<size_t>& ele_num) {
+    std::vector<std::vector<const TensorType*>> result;
+    size_t start_index = start;
+    size_t end_index = start;
+
+    for (size_t j = 0; j < ele_num.size(); j++) {
+      std::vector<const TensorType*> v;
+      end_index = start_index + ele_num[j];
+      if (end_index > end) {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "The number of tensor that you want to get is beyond "
+            "this arg's tensor_range when construct "
+            "input(vector<vector<Tensor>>)."
+            "May be something wrong when you BuildPhiKernelContext"));
+      }
+      for (size_t i = 0; i < end_index; ++i) {
+        auto* t = static_cast<const TensorType*>(inputs_.at(i));
+        v.emplace_back(t);
+      }
+      start_index = end_index;
+      result.emplace_back(v);
+    }
+
+    return result;
   }
 
   template <typename TensorType>
@@ -145,6 +178,9 @@ class KernelContext {
   paddle::small_vector<std::pair<int, int>, kInputSmallVectorSize> input_range_;
   paddle::small_vector<std::pair<int, int>, kOutputSmallVectorSize>
       output_range_;
+
+  paddle::flat_hash_map<size_t, paddle::small_vector<size_t>>
+      inputs_elements_num_;
 };
 
 }  // namespace phi

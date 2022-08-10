@@ -113,6 +113,15 @@ const std::pair<int, int>& KernelContext::OutputRangeAt(size_t idx) const {
   return output_range_.at(idx);
 }
 
+const paddle::small_vector<size_t>& KernelContext::GetElementsNum(
+    size_t idx) const {
+  return inputs_elements_num_.at(idx);
+}
+
+void KernelContext::EmplaceBackElementsNum(size_t idx, size_t vec_num) {
+  inputs_elements_num_[idx].push_back(vec_num);
+}
+
 template <typename AttrType>
 const AttrType& KernelContext::AttrAt(size_t idx) const {
   try {

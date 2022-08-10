@@ -129,6 +129,32 @@ namespace phi {
     }                                                                        \
   }
 
+#define PD_SPECIALIZE_KernelCallHelper_FOR_2D_INPUT(tensor_type)               \
+  template <typename... Tail>                                                  \
+  struct KernelCallHelper<const std::vector<std::vector<const tensor_type*>>&, \
+                          Tail...> {                                           \
+    template <int dev_ctx_idx,                                                 \
+              int in_idx,                                                      \
+              int attr_idx,                                                    \
+              int out_idx,                                                     \
+              typename... PreviousArgs>                                        \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {          \
+      static_assert(attr_idx == 0,                                             \
+                    "Kernel's Input should appear before Attributes.");        \
+      static_assert(out_idx == 0,                                              \
+                    "Kernel's Input should appear before Outputs.");           \
+      const std::pair<int, int>& range = ctx->InputRangeAt(in_idx);            \
+      const paddle::small_vector<size_t>& elements_num =                       \
+          ctx->GetElementsNum(in_idx);                                         \
+      std::vector<std::vector<const tensor_type*>> arg =                       \
+          std::move(ctx->Inputs2DBetween<tensor_type>(                         \
+              range.first, range.second, elements_num));                       \
+      KernelCallHelper<Tail...>::                                              \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(        \
+              ctx, pargs..., arg);                                             \
+    }                                                                          \
+  }
+
 #define PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_MULTI_INPUT(tensor_type)  \
   template <typename... Tail>                                                 \
   struct KernelCallHelper<                                                    \
@@ -269,8 +295,11 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(TensorBase);
+  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_MULTI_INPUT(DenseTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_2D_INPUT(DenseTensor);
 
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCooTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCooTensor);

@@ -336,6 +336,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           tensor_vector.emplace_back(&t);
         }
         kernel_ctx->EmplaceBackInputsWithoutSetRange(tensor_vector);
+        kernel_ctx->EmplaceBackElementsNum(start_idx, tensor_array.size());
         end_idx += tensor_array.size() - 1;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(

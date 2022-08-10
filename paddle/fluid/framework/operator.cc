@@ -2653,6 +2653,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
           tensor_vector.emplace_back(&t);
         }
         phi_kernel_context->EmplaceBackInputsWithoutSetRange(tensor_vector);
+        phi_kernel_context->EmplaceBackElementsNum(start_idx,
+                                                   tensor_array.size());
         end_idx += tensor_array.size() - 1;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(

@@ -100,7 +100,7 @@
   infer_meta :
     func : AddNInferMeta
   kernel :
-    func : add_n
+    func : add_n_middle
   backward : add_n_grad
 
 - api : addmm
