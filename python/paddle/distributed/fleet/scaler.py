@@ -17,6 +17,8 @@ from paddle.fluid.framework import dygraph_only
 from .base.topology import ParallelMode
 from paddle.distributed import fleet
 
+fleet_env = fleet.fleet
+
 
 def distributed_scaler(scaler):
 
@@ -75,7 +77,8 @@ def distributed_scaler(scaler):
         self._found_inf = is_found_inf.numpy()[0]
 
     # Only data_parallel doesn't need to modify scaler
-    if fleet.Fleet._hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL:
+    fleet_env = fleet.fleet
+    if fleet_env._hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL:
         scaler._unscale = MethodType(unscale_method, scaler)
 
     return scaler

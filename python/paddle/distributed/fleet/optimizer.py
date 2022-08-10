@@ -47,7 +47,7 @@ def distributed_optimizer(optimizer, strategy=None):
                 optimizer = paddle.optimizer.SGD(learning_rate=0.001)
                 optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         """
-    fleet.Fleet.user_defined_optimizer = optimizer
+    fleet.user_defined_optimizer = optimizer
 
     fleet.step = optimizer.step
     fleet.clear_grad = optimizer.clear_grad
@@ -56,24 +56,25 @@ def distributed_optimizer(optimizer, strategy=None):
     fleet.state_dict = optimizer.state_dict
     fleet.set_state_dict = optimizer.set_state_dict
 
+    fleet_env = fleet.fleet
     if strategy is not None:
-        if fleet.Fleet._is_collective:
+        if fleet_env._is_collective:
             warnings.warn(
                 "It is recommended to use DistributedStrategy "
-                "in fleet.init(). The strategy here is only for compatibility. "
-                "If the strategy in fleet.distributed_optimizer() is "
-                "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
+                "in fleet_env.init(). The strategy here is only for compatibility. "
+                "If the strategy in fleet_env.distributed_optimizer() is "
+                "not None, then it will overwrite the DistributedStrategy in fleet_env.init(), "
                 "which will take effect in distributed training.")
-        fleet.Fleet._user_defined_strategy = copy.deepcopy(strategy)
+        fleet_env._user_defined_strategy = copy.deepcopy(strategy)
 
-    fleet.Fleet._context = {}
+    fleet_env._context = {}
 
-    if fleet.Fleet.worker_num() > 1:
-        if fleet.Fleet._user_defined_strategy.heter_ccl_mode == False:
-            return HybridParallelOptimizer(optimizer, fleet.Fleet._hcg,
-                                           fleet.Fleet._user_defined_strategy)
+    if fleet_env.worker_num() > 1:
+        if fleet_env._user_defined_strategy.heter_ccl_mode == False:
+            return HybridParallelOptimizer(optimizer, fleet_env._hcg,
+                                           fleet_env._user_defined_strategy)
         else:
             return HeterParallelOptimizer(optimizer,
-                                          fleet.Fleet._user_defined_strategy)
+                                          fleet_env._user_defined_strategy)
     else:
         return optimizer
