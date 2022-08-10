@@ -244,18 +244,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
 
   auto task = CreateTask(places, rank_, op_type, inputs);
-  task->SetOutputs(outputs);
 
   // construct uninitialize guard for device
   platform::CUDADeviceGuard cuda_guard;
-
-  if (FLAGS_use_stream_safe_cuda_allocator) {
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      cuda_guard.SetDevice(places[i]);
-      memory::RecordStream(inputs[i].Holder(),
-                           places_to_ctx_[key][i]->stream());
-    }
-  }
 
   {
     platform::NCCLGroupGuard nccl_guard;
@@ -263,6 +254,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
       cuda_guard.SetDevice(places[i]);
       const auto& nccl_stream = places_to_ctx_[key][i]->stream();
       fn(inputs[i], outputs[i], nccl_comms[i]->GetNcclComm(), nccl_stream);
+    }
+  }
+
+  if (FLAGS_use_stream_safe_cuda_allocator) {
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      cuda_guard.SetDevice(places[i]);
+      memory::RecordStream(inputs[i].Holder(),
+                           places_to_ctx_[key][i]->stream());
     }
   }
 

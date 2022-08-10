@@ -111,6 +111,7 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
                     key = args_map[key]
                 if val in args_map:
                     val = args_map[val]
+                key, val = val, key
                 inplace_map[key] = val
             forward_api_item['inplace'] = inplace_map
 

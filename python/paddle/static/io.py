@@ -423,6 +423,25 @@ def save_to_file(path, content):
         content(bytes): Content to write.
     Returns:
         None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            path_prefix = "./infer_model"
+            # 用户自定义网络，此处用 softmax 回归为例。
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            loss = paddle.nn.functional.cross_entropy(predict, label)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            # 序列化参数
+            serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+            # 将序列化之后的参数保存到文件
+            params_path = path_prefix + ".params"
+            paddle.static.save_to_file(params_path, serialized_params)
     """
 
     if not isinstance(content, bytes):
@@ -450,8 +469,11 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
         executor(Executor): The executor that saves the inference model. You can refer
                             to :ref:`api_guide_executor_en` for more details.
         kwargs: Supported keys including 'program' and "clip_extra". Attention please, kwargs is used for backward compatibility mainly.
-          - program(Program): specify a program if you don't want to use default main program.
-          - clip_extra(bool): set to True if you want to clip extra information for every operator.
+
+            - program(Program): specify a program if you don't want to use default main program.
+
+            - clip_extra(bool): set to True if you want to clip extra information for every operator.
+
     Returns:
         None
 
@@ -520,7 +542,9 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
     save_to_file(model_path, program_bytes)
     # serialize and save params
     params_bytes = _serialize_persistables(program, executor)
-    save_to_file(params_path, params_bytes)
+    # program may not contain any parameter and just compute operation
+    if params_bytes is not None:
+        save_to_file(params_path, params_bytes)
 
 
 @static_only
@@ -638,6 +662,12 @@ def deserialize_persistables(program, data, executor):
         check_vars.append(var)
         load_var_map[var_copy.name] = var_copy
 
+    if data is None:
+        assert len(
+            origin_shape_map
+        ) == 0, "Required 'data' shall be not None if program contains parameter, but received 'data' is None."
+        return
+
     # append load_combine op to load parameters,
     load_var_list = []
     for name in sorted(load_var_map.keys()):
@@ -675,6 +705,28 @@ def load_from_file(path):
         path(str): Path of an existed file.
     Returns:
         bytes: Content of file.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            path_prefix = "./infer_model"
+            # 用户自定义网络，此处用 softmax 回归为例。
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            loss = paddle.nn.functional.cross_entropy(predict, label)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            # 序列化参数
+            serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+            # 将序列化之后的参数保存到文件
+            params_path = path_prefix + ".params"
+            paddle.static.save_to_file(params_path, serialized_params)
+            # 从文件加载序列化之后的参数
+            serialized_params_copy = paddle.static.load_from_file(params_path)
     """
     with open(path, 'rb') as f:
         data = f.read()
@@ -805,7 +857,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
         params_filename = os.path.basename(params_path)
         # load params data
         params_path = os.path.join(load_dirname, params_filename)
-        params_bytes = load_from_file(params_path)
+        params_bytes = None
+        if os.path.exists(params_path):
+            params_bytes = load_from_file(params_path)
 
     # deserialize bytes to program
     program = deserialize_program(program_bytes)

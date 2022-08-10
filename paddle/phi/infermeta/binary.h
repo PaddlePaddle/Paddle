@@ -143,7 +143,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void DropoutInferMeta(const MetaTensor& x,
                       const MetaTensor& seed_tensor,
-                      float p,
+                      const Scalar& p,
                       bool is_test,
                       const std::string& mode,
                       int seed,
@@ -153,7 +153,7 @@ void DropoutInferMeta(const MetaTensor& x,
 
 void DropoutNdInferMeta(const MetaTensor& x,
                         const MetaTensor& seed_tensor,
-                        float p,
+                        const Scalar& p,
                         bool is_test,
                         const std::string& mode,
                         int seed,
@@ -181,6 +181,13 @@ void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
                        const std::vector<int>& target_shape,
                        MetaTensor* out);
+
+void FillDiagonalTensorInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 int64_t offset,
+                                 int dim1,
+                                 int dim2,
+                                 MetaTensor* out);
 
 void GatherInferMeta(const MetaTensor& x,
                      const MetaTensor& index,
@@ -232,6 +239,20 @@ void LUUnpackInferMeta(const MetaTensor& x,
                        MetaTensor* pmat,
                        MetaTensor* l,
                        MetaTensor* u);
+
+void MarginCrossEntropyInferMeta(const MetaTensor& logits,
+                                 const MetaTensor& label,
+                                 bool return_softmax,
+                                 int ring_id,
+                                 int rank,
+                                 int nranks,
+                                 float margin1,
+                                 float margin2,
+                                 float margin3,
+                                 float scale,
+                                 MetaTensor* softmax,
+                                 MetaTensor* loss,
+                                 MetaConfig config = MetaConfig());
 
 void MaskedSelectInferMeta(const MetaTensor& x,
                            const MetaTensor& mask,
@@ -359,5 +380,25 @@ void ValueCompareInferMeta(const MetaTensor& x,
                            MetaConfig config = MetaConfig());
 
 void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void UnpoolInferMeta(const MetaTensor& x,
+                     const MetaTensor& indices,
+                     const std::vector<int>& ksize,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     const std::vector<int>& output_size,
+                     const std::string& data_format,
+                     MetaTensor* out,
+                     MetaConfig config = MetaConfig());
+
+void Unpool3dInferMeta(const MetaTensor& x,
+                       const MetaTensor& indices,
+                       const std::vector<int>& ksize,
+                       const std::vector<int>& strides,
+                       const std::vector<int>& paddings,
+                       const std::vector<int>& output_size,
+                       const std::string& data_format,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
 
 }  // namespace phi

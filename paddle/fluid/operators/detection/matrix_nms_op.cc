@@ -14,8 +14,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/detection/nms_util.h"
 #include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/kernels/funcs/detection/nms_util.h"
 
 namespace paddle {
 namespace operators {
@@ -85,7 +85,7 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<float>("gaussian_sigma",
                    "(float) "
-                   "Sigma for Gaussian decreasing function, only takes effect ",
+                   "Sigma for Gaussian decreasing function, only takes effect "
                    "when 'use_gaussian' is enabled.")
         .SetDefault(2.);
     AddOutput("Out",

@@ -113,10 +113,17 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
     if (FindFuseOption(*conv_op, *elementwise_op) != FUSE_MKLDNN) return;
     if (!IsReachable(g, residual_data, conv_output)) return;
     if (HasFusedActivation(conv_op)) return;
+    if (HasFusedElementwiseAdd(conv_op)) return;
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
           << "conv_elementwise_add_mkldnn_fuse_pass in op compat failed.";
+      return;
+    }
+
+    if (residual_data->Var()->GetShape() != conv_output->Var()->GetShape()) {
+      LOG(WARNING) << "conv_elementwise_add_mkldnn_fuse_pass doesn't support " -
+                          "broadcasting";
       return;
     }
 
