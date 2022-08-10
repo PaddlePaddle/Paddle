@@ -28,26 +28,26 @@ namespace funcs {
 
 template <typename T>
 HOSTDEVICE inline T CubicConvolution1(T x, T A) {
-  return ((A + 2) * x - (A + 3)) * x * x + 1;
+  return ((A + T(2)) * x - (A + T(3))) * x * x + T(1);
 }
 
 template <typename T>
 HOSTDEVICE inline T CubicConvolution2(T x, T A) {
-  return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
+  return ((A * x - T(5) * A) * x + T(8) * A) * x - T(4) * A;
 }
 
 template <typename T>
 HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
-  T A = -0.75;
+  T A = T(-0.75);
 
   T x1 = t;
-  coeffs[0] = CubicConvolution2<T>(x1 + 1.0, A);
+  coeffs[0] = CubicConvolution2<T>(x1 + T(1.0), A);
   coeffs[1] = CubicConvolution1<T>(x1, A);
 
   // opposite coefficients
   T x2 = 1.0 - t;
   coeffs[2] = CubicConvolution1<T>(x2, A);
-  coeffs[3] = CubicConvolution2<T>(x2 + 1.0, A);
+  coeffs[3] = CubicConvolution2<T>(x2 + T(1.0), A);
 }
 
 inline void ExtractNCDWH(const DDim& dims,

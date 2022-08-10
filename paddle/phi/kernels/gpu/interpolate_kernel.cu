@@ -19,6 +19,7 @@
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
@@ -34,11 +35,11 @@ __forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(
     T* lambda2,
     T src_x,
     const int in_img_x) {
-  src_x = (src_x > 0) ? src_x : 0.f;
+  src_x = (src_x > T(0)) ? src_x : T(0);
   *in_img_idx = static_cast<int>(src_x);
   *x_id = (*in_img_idx < in_img_x - 1) ? 1 : 0;
-  *lambda1 = src_x - *in_img_idx;
-  *lambda2 = 1.f - *lambda1;
+  *lambda1 = static_cast<T>(static_cast<float>(src_x) - *in_img_idx);
+  *lambda2 = T(1.0) - *lambda1;
 }
 
 template <typename T>
@@ -79,11 +80,12 @@ __global__ void KeLinearInterpFw(const T* in,
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;  // w
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;  // w_id
 
-    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
-    src_w = (src_w > 0) ? src_w : 0;
-    T w1lambda =
-        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
-    T w2lambda = 1.f - w1lambda;
+    T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
+    src_w = (src_w > T(0)) ? src_w : T(0);
+    T w1lambda = align_flag
+                     ? static_cast<T>(static_cast<float>(src_w) - in_img_idx)
+                     : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
+    T w2lambda = T(1.0) - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
       const T* in_pos =
@@ -222,8 +224,12 @@ __global__ void KeBilinearInterpFw(const T* in,
 
     int in_img_idx, in_img_idy, h_id, w_id;
     T h1lambda, w1lambda, h2lambda, w2lambda;
-    T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
-    T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
+    T src_w = static_cast<T>(
+        ratio_w * (out_img_idx + static_cast<float>(align_type_value)) -
+        static_cast<float>(align_type_value));
+    T src_h = static_cast<T>(
+        ratio_h * (out_img_idy + static_cast<float>(align_type_value)) -
+        static_cast<float>(align_type_value));
 
     PreCalculatorForLinearInterpInputIndex(
         &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
@@ -262,8 +268,12 @@ __global__ void KeBilinearInterpNCHWFw(const T* in,
 
   int in_img_idx, in_img_idy, h_id, w_id;
   T h1lambda, w1lambda, h2lambda, w2lambda;
-  T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
-  T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
+  T src_w = static_cast<T>(
+      ratio_w * (out_img_idx + static_cast<float>(align_type_value)) -
+      static_cast<float>(align_type_value));
+  T src_h = static_cast<T>(
+      ratio_h * (out_img_idy + static_cast<float>(align_type_value)) -
+      static_cast<float>(align_type_value));
 
   PreCalculatorForLinearInterpInputIndex(
       &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
@@ -296,13 +306,13 @@ template <typename T>
 __device__ __forceinline__ static T Kecubic_interp(
     const T x0, const T x1, const T x2, const T x3, T t) {
   T coeffs[4];
-  T a = -0.75;
+  T a = T(-0.75);
   T x_1 = t;
-  T x_2 = 1.0 - t;
-  coeffs[0] = funcs::CubicConvolution2<T>(x_1 + 1.0, a);
+  T x_2 = T(1.0) - t;
+  coeffs[0] = funcs::CubicConvolution2<T>(x_1 + T(1.0), a);
   coeffs[1] = funcs::CubicConvolution1<T>(x_1, a);
   coeffs[2] = funcs::CubicConvolution1<T>(x_2, a);
-  coeffs[3] = funcs::CubicConvolution2<T>(x_2 + 1.0, a);
+  coeffs[3] = funcs::CubicConvolution2<T>(x_2 + T(1.0), a);
   return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
 }
 
@@ -348,13 +358,13 @@ __global__ void KeBicubicInterpFw(const T* in,
                        ? static_cast<T>(ratio_h * out_img_idy)
                        : static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
     int input_y = floorf(in_img_idy);
-    const T y_t = in_img_idy - input_y;
+    const T y_t = static_cast<T>(static_cast<float>(in_img_idy) - input_y);
 
     T in_img_idx = align_corners
                        ? static_cast<T>(ratio_w * out_img_idx)
                        : static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
     int input_x = floorf(in_img_idx);
-    const T x_t = in_img_idx - input_x;
+    const T x_t = static_cast<T>(static_cast<float>(in_img_idx) - input_x);
 
     T coefficients[4];
     const T* in_pos_0;
@@ -482,33 +492,36 @@ __global__ void KeTrilinearInterpFw(const T* in,
                          : static_cast<int>(ratio_d * out_img_idt);
     in_img_idt = (in_img_idt > 0) ? in_img_idt : 0;
     int d_id = (in_img_idt < in_img_d - 1) ? 1 : 0;
-    T src_d = ratio_d * (out_img_idt + 0.5) - 0.5;
-    src_d = (src_d > 0) ? src_d : 0;
-    T d1lambda =
-        align_flag ? src_d - in_img_idt : ratio_d * out_img_idt - in_img_idt;
-    T d2lambda = 1.f - d1lambda;
+    T src_d = static_cast<T>(ratio_d * (out_img_idt + 0.5) - 0.5);
+    src_d = (src_d > T(0)) ? src_d : T(0);
+    T d1lambda = align_flag
+                     ? static_cast<T>(static_cast<float>(src_d) - in_img_idt)
+                     : static_cast<T>(ratio_d * out_img_idt - in_img_idt);
+    T d2lambda = T(1.0) - d1lambda;
 
     int in_img_idy = align_flag
                          ? static_cast<int>(ratio_h * (out_img_idy + 0.5) - 0.5)
                          : static_cast<int>(ratio_h * out_img_idy);
     in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    T src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
-    src_h = (src_h > 0) ? src_h : 0;
-    T h1lambda =
-        align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy;
-    T h2lambda = 1.f - h1lambda;
+    T src_h = static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
+    src_h = (src_h > T(0)) ? src_h : T(0);
+    T h1lambda = align_flag
+                     ? static_cast<T>(static_cast<float>(src_h) - in_img_idy)
+                     : static_cast<T>(ratio_h * out_img_idy - in_img_idy);
+    T h2lambda = T(1.0) - h1lambda;
 
     int in_img_idx = align_flag
                          ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
                          : static_cast<int>(ratio_w * out_img_idx);
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
-    src_w = (src_w > 0) ? src_w : 0;
-    T w1lambda =
-        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
-    T w2lambda = 1.f - w1lambda;
+    T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
+    src_w = (src_w > T(0)) ? src_w : T(0);
+    T w1lambda = align_flag
+                     ? static_cast<T>(static_cast<float>(src_w) - in_img_idx)
+                     : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
+    T w2lambda = T(1.0) - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
       int in_pos1_idx = out_id_h * input_w + channel_id * in_img_size +
@@ -926,7 +939,8 @@ static void Interpolate2DCUDAFwd(
       thread_num = 512;
     }
 #endif
-    const T align_type_value = (align_mode == 0 && !align_corners) ? 0.5f : 0;
+    const T align_type_value =
+        (align_mode == 0 && !align_corners) ? T(0.5) : T(0);
     if (data_layout == DataLayout::kNCHW) {
       // get launch 3D config
       int nc = n * c;
@@ -1446,6 +1460,7 @@ PD_REGISTER_KERNEL(bilinear_interp_v2,
                    phi::BilinearInterpKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
@@ -1456,6 +1471,7 @@ PD_REGISTER_KERNEL(nearest_interp_v2,
                    phi::NearestInterpKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int,
                    int64_t) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
