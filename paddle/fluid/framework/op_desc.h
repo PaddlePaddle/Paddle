@@ -174,6 +174,8 @@ class OpDesc {
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
 
+  bool NeedUpdate() const { return need_update_; }
+
  private:
   friend class ProgramDesc;
   // Find VarDesc from OpDesc located Block into global Block
@@ -198,7 +200,7 @@ class OpDesc {
     // Must start from one
     return ++uid;
   }
-
+  // it it really needed? or just mantain a ptr from block?
   proto::OpDesc desc_;
   BlockDesc *block_{nullptr};  // not_own
   // input arg name => input variable names
