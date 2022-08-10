@@ -1465,8 +1465,19 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
 def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     """
-    This API implements adaptive average pooling 3d operation.
-    See more details in :ref:`api_nn_pooling_AdaptiveAvgPool3d` .
+    This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
+    of the output tensor are determined by the parameter output_size.
+    
+    For avg adaptive pool3d:
+    ..  math::
+        dstart &= floor(i * D_{in} / D_{out})
+        dend &= ceil((i + 1) * D_{in} / D_{out})
+        hstart &= floor(j * H_{in} / H_{out})
+        hend &= ceil((j + 1) * H_{in} / H_{out})
+        wstart &= floor(k * W_{in} / W_{out})
+        wend &= ceil((k + 1) * W_{in} / W_{out})
+        Output(i ,j, k) &= \frac{\sum Input[dstart:dend, hstart:hend, wstart:wend]}
+            {(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
     Args:
         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
@@ -1482,8 +1493,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
                              None by default.
     Returns:
         Tensor: The output tensor of avg adaptive pool3d result. The data type is same as input tensor.
-    Raises:
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
+
     Examples:
         .. code-block:: python
 
