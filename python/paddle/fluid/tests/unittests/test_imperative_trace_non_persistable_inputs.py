@@ -62,7 +62,7 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
                     dygraph_out = layer(in_x)
                 dygraph_out_numpy = dygraph_out.numpy()
                 static_out = traced_layer([in_x])[0]
-                self.assertTrue(np.array_equal(dygraph_out_numpy, static_out))
+                np.testing.assert_array_equal(dygraph_out_numpy, static_out)
 
                 loss = fluid.layers.reduce_mean(dygraph_out)
                 loss.backward()
