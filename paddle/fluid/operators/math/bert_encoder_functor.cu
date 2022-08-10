@@ -547,7 +547,8 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
                              T beta) {
   CBLAS_TRANSPOSE transA = !q_trans ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !k_trans ? CblasNoTrans : CblasTrans;
-
+  printf("@@ MatMulWithHeadQK: batch_size:%d, head_num:%d, seq_len:%d\r\n",
+         batch_size,head_num,seq_len);
   typedef typename CUDATypeTraits<T>::TYPE run_type;
   auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(context);
   auto stream = context.stream();

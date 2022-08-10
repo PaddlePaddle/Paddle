@@ -309,6 +309,35 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void ClassCenterSampleInferMeta(const MetaTensor& label,
+                                int num_classes,
+                                int num_samples,
+                                int ring_id,
+                                int rank,
+                                int nranks,
+                                bool fix_seed,
+                                int seed,
+                                MetaTensor* remapped_label,
+                                MetaTensor* sampled_local_class_center) {
+  PADDLE_ENFORCE_EQ(
+      label.dims().size(),
+      1,
+      errors::InvalidArgument("Rank of Input(Label) should be equal to 1, "
+                              "but the value given is %d.",
+                              label.dims().size()));
+  PADDLE_ENFORCE_NOT_NULL(remapped_label,
+                          phi::errors::InvalidArgument(
+                              "output of remapped label should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      sampled_local_class_center,
+      phi::errors::InvalidArgument(
+          "output of sampled local class center should not be null."));
+  remapped_label->set_dims(label.dims());
+  remapped_label->set_dtype(label.dtype());
+  sampled_local_class_center->set_dims(phi::make_ddim({num_samples}));
+  sampled_local_class_center->set_dtype(label.dtype());
+}
+
 void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out) {
   PADDLE_ENFORCE_GT(
       max_norm,
@@ -864,6 +893,112 @@ void FillDiagonalInferMeta(
   auto x_dims = x.dims();
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
+}
+
+void FFTC2CInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axes,
+                     const std::string& normalization,
+                     bool forward,
+                     MetaTensor* out,
+                     MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      phi::errors::InvalidArgument("Output of fft_c2c should not be null."));
+  // only ensure that fft axes' size greater than zero at runtime
+  // they might be -1 to indicate unknown size ar compile time
+  if (config.is_runtime) {
+    const phi::DDim x_dim = x.dims();
+    for (size_t i = 0; i < axes.size(); i++) {
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+    }
+  }
+  out->share_meta(x);
+}
+
+void FFTC2RInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axes,
+                     const std::string& normalization,
+                     bool forward,
+                     int64_t last_dim_size,
+                     MetaTensor* out,
+                     MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      phi::errors::InvalidArgument("Output of fft_c2r should not be null."));
+  const phi::DDim x_dim = x.dims();
+  const int64_t last_fft_axis = axes.back();
+
+  // only ensure that fft axes' size greater than zero at runtime
+  // they might be -1 to indicate unknown size ar compile time
+  if (config.is_runtime) {
+    size_t signal_dims = axes.size();
+    for (size_t i = 0; i < signal_dims - 1; i++) {
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+    }
+  }
+
+  out->set_layout(x.layout());
+  out->set_dtype(ToRealType(x.dtype()));
+  phi::DDim out_dim = x_dim;
+
+  if (last_dim_size > 0) {
+    out_dim.at(last_fft_axis) = last_dim_size;
+  } else if (config.is_runtime) {
+    const int64_t input_last_dim_size = x_dim[last_fft_axis];
+    const int64_t fft_n_point = (input_last_dim_size - 1) * 2;
+    PADDLE_ENFORCE_GT(
+        fft_n_point,
+        0,
+        phi::errors::InvalidArgument("Invalid fft n-point (%d).", fft_n_point));
+    out_dim.at(last_fft_axis) = fft_n_point;
+  } else {
+    const int64_t input_last_dim_size = x_dim[last_fft_axis];
+    out_dim.at(last_fft_axis) =
+        input_last_dim_size == -1 ? -1 : (input_last_dim_size - 1) * 2;
+  }
+  out->set_dims(out_dim);
+}
+
+void FFTR2CInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axes,
+                     const std::string& normalization,
+                     bool forward,
+                     bool onesided,
+                     MetaTensor* out,
+                     MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      phi::errors::InvalidArgument("Output of fft_r2c should not be null."));
+  const phi::DDim x_dim = x.dims();
+
+  // only ensure that fft axes' size greater than zero at runtime
+  // they might be -1 to indicate unknown size ar compile time
+  if (config.is_runtime) {
+    for (size_t i = 0; i < axes.size(); i++) {
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+    }
+  }
+
+  out->set_layout(x.layout());
+  out->set_dtype(ToComplexType(x.dtype()));
+  if (!onesided) {
+    out->share_dims(x);
+  } else {
+    phi::DDim out_dim = x.dims();
+    const int64_t last_fft_axis = axes.back();
+    const int64_t last_fft_dim_size = x_dim[last_fft_axis];
+    out_dim.at(last_fft_axis) = last_fft_dim_size / 2 + 1;
+    out->set_dims(out_dim);
+  }
 }
 
 void FlattenInferMeta(const MetaTensor& x,
@@ -2480,6 +2615,9 @@ void ReduceInferMeta(const MetaTensor& x,
                      bool keep_dim,
                      MetaTensor* out) {
   bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
 }
 
@@ -2841,7 +2979,7 @@ void SplitInferMeta(const MetaTensor& x,
   // step1: get formated sections
   std::vector<int64_t> sections;
   // num_or_sections is a number
-  if (num_or_sections_data.size() == 1) {
+  if (num_or_sections_data.size() == 1 && num_or_sections_data[0] > 0) {
     int num = num_or_sections_data.at(0);
 
     PADDLE_ENFORCE_EQ(input_axis_dim % num,
@@ -3148,6 +3286,9 @@ void SumInferMeta(const MetaTensor& x,
                   bool keep_dim,
                   MetaTensor* out) {
   bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
   SumRawInferMeta(x, axis, keep_dim, reduce_all, dtype, out);
 }
 
@@ -4109,6 +4250,211 @@ void IdentityLossInferMeta(const MetaTensor& x,
     out->set_dims(x.dims());
   } else {
     out->set_dims(phi::make_ddim({1}));
+    out->set_dtype(x.dtype());
+  }
+}
+
+void FoldInferMeta(const MetaTensor& x,
+                   const std::vector<int>& output_sizes,
+                   const std::vector<int>& kernel_sizes,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
+                   const std::vector<int>& dilations,
+                   MetaTensor* out) {
+  auto in_dims = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      output_sizes.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "It is expected output_size equals to 2, but got size %d",
+          output_sizes.size()));
+  PADDLE_ENFORCE_EQ(
+      kernel_sizes.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "It is expected kernel_size equals to 2, but got size %d",
+          kernel_sizes.size()));
+  PADDLE_ENFORCE_EQ(
+      strides.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "It is expected strides_size equals to 2, but got size %d",
+          strides.size()));
+  PADDLE_ENFORCE_EQ(
+      paddings.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "It is expected paddings_size equals to 4, but got size %d",
+          paddings.size()));
+
+  PADDLE_ENFORCE_EQ(
+      dilations.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "It is expected dilations_size equals to 2, but got size %d",
+          dilations.size()));
+
+  int output_height = output_sizes[0];
+  int output_width = output_sizes[1];
+  int kernel_height = kernel_sizes[0];
+  int kernel_width = kernel_sizes[1];
+  int dilation_height = dilations[0];
+  int dilation_width = dilations[1];
+  int stride_height = strides[0];
+  int stride_width = strides[1];
+
+  // check kernel_sizes
+  PADDLE_ENFORCE_GT(kernel_height,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The `kernel_sizes` should be greater than zero, "
+                        "but received kernel_height: %d kernel_width: %d.",
+                        kernel_sizes[0],
+                        kernel_sizes[1]));
+  PADDLE_ENFORCE_GT(kernel_width,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The `kernel_sizes` should be greater than zero, "
+                        "but received kernel_height: %d kernel_width: %d.",
+                        kernel_sizes[0],
+                        kernel_sizes[1]));
+  // check strides
+  PADDLE_ENFORCE_GT(stride_height,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The `strides` should be greater than zero, "
+                        "but received strides_height: %d strides_width: %d.",
+                        strides[0],
+                        strides[1]));
+  PADDLE_ENFORCE_GT(stride_width,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The `strides` should be greater than zero, "
+                        "but received strides_height: %d strides_width: %d.",
+                        strides[0],
+                        strides[1]));
+  // check dilations
+  PADDLE_ENFORCE_GT(output_height,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The `output_height` should be greater than one, "
+                        "but received output_height: %d .",
+                        output_height));
+  PADDLE_ENFORCE_GT(output_width,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The `output_width` should be greater than one, "
+                        "but received output_width: %d .",
+                        output_width));
+  // check output size
+  PADDLE_ENFORCE_GT(
+      dilation_height,
+      0,
+      phi::errors::InvalidArgument(
+          "The `dilations` should be greater than zero, "
+          "but received dilations_height: %d dilations_width: %d.",
+          dilations[0],
+          dilations[1]));
+  PADDLE_ENFORCE_GT(
+      dilation_width,
+      0,
+      phi::errors::InvalidArgument(
+          "The `dilations` should be greater than zero, "
+          "but received dilations_height: %d dilations_width: %d.",
+          dilations[0],
+          dilations[1]));
+
+  std::vector<int> out_dims;
+  // batch_size
+  out_dims.push_back(in_dims[0]);
+  // output_plane
+  int output_channels = in_dims[1] / (kernel_width * kernel_height);
+  out_dims.push_back(output_channels);
+
+  int blocks_height = (output_sizes[0] + 2 * paddings[0] -
+                       (dilations[0] * (kernel_sizes[0] - 1) + 1)) /
+                          strides[0] +
+                      1;
+  int blocks_width = (output_sizes[1] + 2 * paddings[1] -
+                      (dilations[1] * (kernel_sizes[1] - 1) + 1)) /
+                         strides[1] +
+                     1;
+
+  // check output height and width
+  PADDLE_ENFORCE_GT(
+      blocks_height,
+      0,
+      phi::errors::InvalidArgument(
+          "The sliding blocks calculated from input spatial size (%d, %d), "
+          "kernel_sizes (%d, %d), strides (%d, %d), dilations (%d, %d), "
+          "is (%d, %d), which should be a positive integer.",
+          in_dims[2],
+          in_dims[3],
+          kernel_sizes[0],
+          kernel_sizes[1],
+          strides[0],
+          strides[1],
+          dilations[0],
+          dilations[1],
+          output_height,
+          output_width));
+
+  PADDLE_ENFORCE_GT(
+      blocks_width,
+      0,
+      phi::errors::InvalidArgument(
+          "The sliding blocks calculated from input spatial size (%d, %d), "
+          "kernel_sizes (%d, %d), strides (%d, %d), dilations (%d, %d), "
+          "is (%d, %d), which should be a positive integer.",
+          in_dims[2],
+          in_dims[3],
+          kernel_sizes[0],
+          kernel_sizes[1],
+          strides[0],
+          strides[1],
+          dilations[0],
+          dilations[1],
+          output_height,
+          output_width));
+
+  PADDLE_ENFORCE_EQ(
+      blocks_height * blocks_width,
+      in_dims[2],
+      phi::errors::InvalidArgument(
+          "Given input output_size (%d, %d), "
+          "kernel_sizes (%d, %d), strides (%d, %d), dilations (%d, %d), "
+          "which should be expected size of input's dimension "
+          "2 to match the calculated number of %d * %d = %d, but got %d",
+          output_height,
+          output_width,
+          kernel_sizes[0],
+          kernel_sizes[1],
+          strides[0],
+          strides[1],
+          dilations[0],
+          dilations[1],
+          blocks_height,
+          blocks_width,
+          blocks_height * blocks_width,
+          in_dims[2]));
+
+  PADDLE_ENFORCE_EQ(
+      in_dims[1] % (kernel_sizes[0] * kernel_sizes[1]),
+      0,
+      phi::errors::InvalidArgument(
+          "Expected size of input's dimension 1 to be divisible by the"
+          "product of kernel_size, but got input.size(1)=%d and "
+          "kernel_size=( %d"
+          ", %d).",
+          in_dims[1],
+          kernel_sizes[0],
+          kernel_sizes[1]));
+
+  out_dims.push_back(output_height);
+  out_dims.push_back(output_width);
+  if (out != nullptr) {
+    out->set_dims(phi::make_ddim(out_dims));
     out->set_dtype(x.dtype());
   }
 }

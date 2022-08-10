@@ -130,11 +130,10 @@ class TestCastOpEager(unittest.TestCase):
                 x = paddle.ones([2, 2], dtype="float16")
                 x.stop_gradient = False
                 out = paddle.cast(x, "float32")
-                self.assertTrue(
-                    np.array_equal(out,
-                                   np.ones([2, 2]).astype("float32")))
+                np.testing.assert_array_equal(out,
+                                              np.ones([2, 2]).astype('float32'))
                 out.backward()
-                self.assertTrue(np.array_equal(x.gradient(), x.numpy()))
+                np.testing.assert_array_equal(x.gradient(), x.numpy())
                 self.assertTrue(x.gradient().dtype == np.float16)
 
 

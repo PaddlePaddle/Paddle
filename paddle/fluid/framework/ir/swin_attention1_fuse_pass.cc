@@ -93,6 +93,14 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
         auto bias_qkv_dims = phi::make_ddim({3, bias_qkv_tensor->dims()[0]/3});
         bias_qkv_tensor->Resize(bias_qkv_dims);
 
+        auto * bias_qk_1_var = scope->FindVar(elementwise_70_in_y->Name());
+        auto* bias_qk_1_tensor = bias_qk_1_var->GetMutable<LoDTensor>();
+        auto bias_qk_1_dims = bias_qk_1_tensor->dims();
+        auto* bias_qk_1_data = bias_qk_1_tensor->mutable_data<float>(platform::CPUPlace());
+        printf("@@@ in pass biasqk 0: %f ",bias_qk_1_data[0]);
+        VLOG(0)<<"@@@ bias_qk_1_tensor:";
+        VLOG(0)<<bias_qk_1_dims;
+        
         std::vector<int64_t> softmax_shape=softmax_80_out->Var()->GetShape();
         float alpha=PADDLE_GET_CONST(float,scale_50_op->Op()->GetAttr("scale"));
 

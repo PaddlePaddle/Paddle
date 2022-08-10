@@ -318,6 +318,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
             engine_->GetFp32TrtWeight(biasqk_name, *biasqk_t);
           biasQK_constLayer = TRT_ENGINE_ADD_LAYER(
             engine_, Constant, biasqk_dims, biasqk_const_weight.get());
+          float* biasqk_data = const_cast<float*>(static_cast<const float*>(
+            engine_->GetFp32TrtWeight(biasqk_name, *biasqk_t).get().values));
+          printf("@@ in convert biasqk_data 0 1 2 3: %f %f %f %f \r\n",biasqk_data[0],biasqk_data[1],biasqk_data[2],biasqk_data[3]);
+
           engine_->SetITensor(biasqk_name,biasQK_constLayer->getOutput(0));
           op_desc.SetInput("BiasQK",{biasqk_name});
         }
