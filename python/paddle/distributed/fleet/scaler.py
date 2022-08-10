@@ -17,8 +17,6 @@ from paddle.fluid.framework import dygraph_only
 from .base.topology import ParallelMode
 from paddle.distributed import fleet
 
-fleet_env = fleet.fleet
-
 
 def distributed_scaler(scaler):
 
