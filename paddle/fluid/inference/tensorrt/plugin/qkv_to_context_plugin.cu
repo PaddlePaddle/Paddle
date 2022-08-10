@@ -298,6 +298,24 @@ __global__ void broadcast(const T *src,
   }
 }
 
+template <typename T>
+__global__ void broadcast_batch(const T *src,
+                          T *dst,
+                          const int seq_len,
+                          const int head_num,
+                          const int window_num) {
+  int WindownumHeadSeqlen_id = blockIdx.x % (window_num * head_num * seq_len);
+  int dst_offset = blockIdx.x * seq_len;
+  if (threadIdx.x < seq_len) {
+    dst[threadIdx.x + dst_offset] = src[threadIdx.x+WindownumHeadSeqlen_id*seq_len];
+  }
+}
+
+// TODO wangbojun for debug
+__global__ void print_float(const float *src, int index){
+  printf("%f:",src[index]);
+}
+
 int QkvToContextPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc,
@@ -329,6 +347,7 @@ int QkvToContextPluginDynamic::enqueue(
     // fit to [batch, head_num, length, length] + [batch, 1, 1, length]
     framework::Tensor temp_qk_bias_tensor;
     float *qk_bias = const_cast<float *>(static_cast<const float *>(inputs[1]));
+
     if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
       auto *temp_qk_bias = temp_qk_bias_tensor.mutable_data<float>(
@@ -342,7 +361,36 @@ int QkvToContextPluginDynamic::enqueue(
           head_number_);
       qk_bias = temp_qk_bias;
     }
+    // if bias_qk is [window_num,head_number,seq_len,seq_len]
+    // in swin SW-MSA block dim[0] of input is batch_number*windows_number 
+    // therefore, we broadcast bias_qk to [Batch_num*window_num, head_number, seq_len, seq_len]
+    int window_num=input_desc[1].dims.d[0];
+    if(ProductDim(input_desc[1].dims)==window_num*head_number_*seq_len*seq_len){
+      temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
+      auto *temp_qk_bias = temp_qk_bias_tensor.mutable_data<float>(
+          platform::CUDAPlace(device_id));
+      int grid = batch * head_number_ * seq_len;
+      int block = round_up(seq_len);
+      broadcast_batch<<<grid, block, 0, stream>>>(
+          static_cast<const float *>(inputs[1]), 
+          temp_qk_bias, 
+          seq_len, 
+          head_number_, 
+          window_num);
+      qk_bias = temp_qk_bias;
+    }
+
+    printf("@@@ input_desc[0] shape: %d, %d, %d \r\n",input_desc[0].dims.d[0],input_desc[0].dims.d[1],input_desc[0].dims.d[2]);
+    printf("@@@ input_desc[1] shape: %d, %d, %d, %d \r\n",input_desc[1].dims.d[0],input_desc[1].dims.d[1],input_desc[1].dims.d[2],input_desc[1].dims.d[3]);
+    printf("\r\n");
+
     const float *input1_data = static_cast<const float *>(qk_bias);
+    printf("@@@ in plugin biasqk 0 1 2 3: ");
+    print_float<<<1,1,0,stream>>>(input1_data,0);
+    print_float<<<1,1,0,stream>>>(input1_data,1);
+    print_float<<<1,1,0,stream>>>(input1_data,2);
+    print_float<<<1,1,0,stream>>>(input1_data,3);
+    printf("\r\n");
     // BxSx3xNxH => tptr: 3xBxNxSxH.
     TransposeQKV(
         batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
@@ -398,6 +446,27 @@ int QkvToContextPluginDynamic::enqueue(
           head_number_);
       qk_bias = temp_qk_bias;
     }
+    // if bias_qk is [window_num,head_number,seq_len,seq_len]
+    // in swin SW-MSA block dim[0] of input is batch_number*windows_number 
+    // therefore, we broadcast bias_qk to [Batch_num*window_num, head_number, seq_len, seq_len]
+    int window_num=input_desc[1].dims.d[0];
+    if(ProductDim(input_desc[1].dims)==window_num*head_number_*seq_len*seq_len){
+      temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
+      auto *temp_qk_bias =           
+          reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
+              platform::CUDAPlace(device_id)));
+      int grid = batch * head_number_ * seq_len;
+      int block = round_up(seq_len);
+      broadcast_batch<<<grid, block, 0, stream>>>(
+          static_cast<const half *>(inputs[1]), 
+          temp_qk_bias, 
+          seq_len, 
+          head_number_, 
+          window_num);
+      qk_bias = temp_qk_bias;
+    }
+
+
     const half *input1_data = static_cast<const half *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
     TransposeQKV(
