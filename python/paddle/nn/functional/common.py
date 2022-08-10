@@ -1952,7 +1952,11 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_class_center_sample(
+            label, num_classes, num_samples, ring_id, rank, nranks, seed
+            is not None, seed if seed is not None else 0)
+    elif paddle.in_dynamic_mode():
         remapped_label, sampled_class_center = _C_ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed', seed
