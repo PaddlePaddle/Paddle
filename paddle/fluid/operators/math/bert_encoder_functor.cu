@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <type_traits>
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -100,8 +101,8 @@ template <typename T, typename T2, int TPB>
 __device__ inline void LayerNorm2(const phi::funcs::kvp<T> &thread_data,
                                   const int ld,
                                   const int offset,
-                                  const float2 *bias,
-                                  const float2 *scale,
+                                  const T2 *bias,
+                                  const T2 *scale,
                                   T2 *output,
                                   T eps) {
   using BlockReduce = cub::BlockReduce<phi::funcs::kvp<T>, TPB>;
@@ -120,8 +121,8 @@ __device__ inline void LayerNorm2(const phi::funcs::kvp<T> &thread_data,
   for (int i = threadIdx.x; i < ld; i += TPB) {
     const int idx = offset + i;
     T2 val = output[idx];
-    const float2 g = scale[i];
-    const float2 b = bias[i];
+    const T2 g = scale[i];
+    const T2 b = bias[i];
     val.x = T(g.x) * (val.x - mu) * rsigma + T(b.x);
     val.y = T(g.y) * (val.y - mu) * rsigma + T(b.y);
     output[idx] = val;
@@ -884,8 +885,8 @@ __global__ void SkipLayerNormKernel2(int num,
                                      const T2 *input1,
                                      const T2 *input2,
                                      T2 *output,
-                                     const float2 *scale,
-                                     const float2 *bias,
+                                     const T2 *scale,
+                                     const T2 *bias,
                                      float eps) {
   const T rld = T(0.5f / hidden);  // because hidden is hidden/2
   const int offset = blockIdx.x * hidden;
@@ -912,8 +913,8 @@ __global__ void SkipLayerNormKernel2<half, half2, 256>(int num,
                                                        const half2 *input1,
                                                        const half2 *input2,
                                                        half2 *output,
-                                                       const float2 *scale,
-                                                       const float2 *bias,
+                                                       const half2 *scale,
+                                                       const half2 *bias,
                                                        float eps) {
 // operator "+" of half only suppotted after cuda version 10.0
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) && CUDA_VERSION >= 10000
@@ -984,8 +985,8 @@ void SkipLayerNormFunctor<T>::operator()(const int num,
                 reinterpret_cast<const __half2 *>(input1),
                 reinterpret_cast<const __half2 *>(input2),
                 reinterpret_cast<__half2 *>(output),
-                reinterpret_cast<const float2 *>(scale),
-                reinterpret_cast<const float2 *>(bias),
+                reinterpret_cast<const __half2 *>(scale),
+                reinterpret_cast<const __half2 *>(bias),
                 eps);
 #endif
       } else {
