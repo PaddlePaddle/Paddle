@@ -1161,6 +1161,8 @@ class While(object):
             if inner_var:
                 out_vars.append(inner_var)
 
+        x_name_list |= set(map(lambda x: x.name, out_vars))
+
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
 
