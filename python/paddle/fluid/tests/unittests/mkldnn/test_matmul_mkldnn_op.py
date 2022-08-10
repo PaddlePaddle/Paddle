@@ -271,42 +271,6 @@ class TestDnnlMatMulOpInt8ForceFP32BasicScales(TestDnnlMatMulOp):
         self.attrs = {'force_fp32_output': True}
 
 
-@skip_check_grad_ci(reason="DNNL's MatMul doesn't implement grad kernel.")
-class TestReshapeTransposeMatMulOp(OpTest):
-
-    def init_data_type(self):
-        self.data_type_ = 'float32'
-
-    def generate_data(self):
-        self.x = np.random.random([2, 128, 768]).astype("float32").reshape(
-            [2, 128, 12, 64]).transpose([0, 2, 1, 3])
-        self.y = np.random.random([2, 128, 768]).astype("float32").reshape(
-            [2, 128, 12, 64]).transpose([0, 2, 1, 3])
-        self.out = np.matmul(self.x, self.y.transpose([0, 1, 3, 2]))
-
-    def set_op_type_and_transpose_y_name(self):
-        self.op_type = "matmul"
-        self.transpose_y_name = "transpose_Y"
-
-    def setUp(self):
-        self.set_op_type_and_transpose_y_name()
-        self._cpu_only = True
-        self.use_mkldnn = True
-        self.transpose_y = True
-        self.init_data_type()
-        self.generate_data()
-
-        self.inputs = {'X': self.x, 'Y': self.y}
-        self.attrs = {
-            'use_mkldnn': self.use_mkldnn,
-            self.transpose_y_name: self.transpose_y
-        }
-        self.outputs = {'Out': self.out}
-
-    def test_check_output(self):
-        self.check_output()
-
-
 if __name__ == "__main__":
     from paddle import enable_static
     enable_static()
