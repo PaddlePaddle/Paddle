@@ -140,6 +140,8 @@ class ConstantInitializer(Initializer):
 
         if in_dygraph_mode():
             place = _current_expected_place()
+            if self._force_cpu:
+                place = core.CPUPlace()
             _C_ops.final_state_full_(var, var.shape, str(float(self._value)),
                                      var.dtype, place)
             return None

@@ -797,7 +797,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
         if out is not None:
             # final state mode is support out is not None.
-            place = _current_expected_place()
             _C_ops.final_state_full_(out, shape, float(value), dtype, place)
             out.stop_gradient = True
             return out
