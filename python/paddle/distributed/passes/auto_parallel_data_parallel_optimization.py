@@ -71,7 +71,7 @@ class DataParallelOptimizationPass(PassBase):
         with paddle.static.program_guard(main_program, startup_program):
             self._analyze_program()
             self._prune_grad_scaling()
-            self._overlap_comm()
+            self._calc_comm_overlap()
             self._fuse_allreduce()
 
     def _prune_grad_scaling(self):
@@ -86,8 +86,10 @@ class DataParallelOptimizationPass(PassBase):
 
         self._remove_grad_scaling()
 
-    def _overlap_comm(self):
-        pass
+    def _calc_comm_overlap(self):
+
+        if not self._could_be_overlap():
+            return
 
     def _fuse_allreduce(self):
         pass
@@ -205,3 +207,6 @@ class DataParallelOptimizationPass(PassBase):
         assert scaled_grads == set(self._grad_name_to_group_map.keys(
         )), "Unexception: gradients [{}] are unscaled.".format(
             set(self._grad_name_to_group_map.keys()) - scaled_grads)
+
+    def _could_be_overlap(self):
+        pass
