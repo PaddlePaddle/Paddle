@@ -35,6 +35,75 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
+int SetMeta(const LoDTensor& srcTensor, LoDTensor* dstTensor) {
+  if (srcTensor.dtype() == paddle::experimental::DataType::INT64 ||
+      srcTensor.dtype() == paddle::experimental::DataType::FLOAT32 ||
+      srcTensor.dtype() == paddle::experimental::DataType::FLOAT16 ||
+      srcTensor.dtype() == paddle::experimental::DataType::FLOAT64) {
+    const phi::DenseTensorMeta meta_data(srcTensor.dtype(), srcTensor.dims());
+    dstTensor->set_meta(meta_data);
+  } else {
+    return xpu::Error_t::INVALID_PARAM;
+  }
+
+  return xpu::Error_t::SUCCESS;
+}
+template <typename T>
+int CopyTensorByXPU(const LoDTensor& srcTensor,
+                    LoDTensor* dstTensor,
+                    int flag) {
+  const T* srcData = srcTensor.template data<T>();
+  if (nullptr == srcData || nullptr == dstTensor || flag < 0 || flag > 1)
+    return xpu::Error_t::INVALID_PARAM;
+
+  int r = SetMeta(srcTensor, dstTensor);
+  PADDLE_ENFORCE_EQ(
+      r,
+      xpu::Error_t::SUCCESS,
+      platform::errors::External("Execute function SetMeta failed by [%d]", r));
+
+  if (flag == 0) {
+    T* dstData =
+        dstTensor->template mutable_data<T>(paddle::platform::CPUPlace());
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         dstData,
+                         paddle::platform::XPUPlace(),
+                         srcData,
+                         srcTensor.numel() * sizeof(T));
+  } else {
+    T* dstData =
+        dstTensor->template mutable_data<T>(paddle::platform::XPUPlace());
+    paddle::memory::Copy(paddle::platform::XPUPlace(),
+                         dstData,
+                         paddle::platform::CPUPlace(),
+                         srcData,
+                         srcTensor.numel() * sizeof(T));
+  }
+
+  return xpu::Error_t::SUCCESS;
+}
+
+const int CopyTensorByType(const LoDTensor& srcTensor,
+                           LoDTensor* dstTensor,
+                           int flag) {
+  int r = 0;
+  if (srcTensor.dtype() == paddle::experimental::DataType::FLOAT32)
+    r = CopyTensorByXPU<float>(srcTensor, dstTensor, flag);
+  else if (srcTensor.dtype() == paddle::experimental::DataType::FLOAT16)
+    r = CopyTensorByXPU<paddle::platform::float16>(srcTensor, dstTensor, flag);
+  else if (srcTensor.dtype() == paddle::experimental::DataType::FLOAT64)
+    r = CopyTensorByXPU<double>(srcTensor, dstTensor, flag);
+  else
+    return xpu::Error_t::INVALID_PARAM;
+
+  PADDLE_ENFORCE_EQ(r,
+                    xpu::Error_t::SUCCESS,
+                    platform::errors::External(
+                        "Execute function CopyTensorByXPU failed by [%d]", r));
+
+  return xpu::Error_t::SUCCESS;
+}
+
 struct BeamSearchDecodeFunctor {
   BeamSearchDecodeFunctor(const LoDTensorArray& step_ids,
                           const LoDTensorArray& step_scores,
@@ -44,58 +113,95 @@ struct BeamSearchDecodeFunctor {
                           int end_id)
       : beam_size_(beam_size),
         end_id_(end_id),
-        step_ids_origin_(step_ids),
-        step_scores_origin_(step_scores),
         id_tensor_(id_tensor),
         score_tensor_(score_tensor) {
     tensor_on_gpu_ = false;
     tensor_on_npu_ = false;
+    tensor_on_xpu_ = false;
+    int r = 0;
+
+    if (platform::is_xpu_place(step_ids[0].place()) == false) {
+      for (auto& step_id : step_ids) step_ids_origin_.push_back(step_id);
+
+      for (auto& step_score : step_scores)
+        step_scores_origin_.push_back(step_score);
+    }
+
     // First make a copy of GPU data on CPU
-    if (platform::is_gpu_place(step_ids_origin_[0].place()) ||
-        platform::is_npu_place(step_ids_origin_[0].place())) {
-      if (platform::is_gpu_place(step_ids_origin_[0].place())) {
+    if (platform::is_gpu_place(step_ids[0].place()) ||
+        platform::is_npu_place(step_ids[0].place()) ||
+        platform::is_xpu_place(step_ids[0].place())) {
+      if (platform::is_gpu_place(step_ids[0].place())) {
         tensor_on_gpu_ = true;
-      } else {
+      } else if (platform::is_npu_place(step_ids[0].place())) {
         tensor_on_npu_ = true;
+      } else {
+        tensor_on_xpu_ = true;
       }
+
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
-      auto* dev_ctx = pool.Get(step_ids_origin_[0].place());
+
+      auto* dev_ctx = pool.Get(step_ids[0].place());
       // Copy all tensors in the input tensor array
-      for (auto& step_id : step_ids_origin_) {
+      for (auto& step_id : step_ids) {
         framework::LoDTensor out;
         if (step_id.numel() > 0) {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
+          } else if (tensor_on_xpu_) {
+            r = CopyTensorByXPU<int64_t>(step_id, &out, 0);
+            PADDLE_ENFORCE_EQ(
+                r,
+                xpu::Error_t::SUCCESS,
+                platform::errors::External(
+                    "Execute function CopyTensorByXPU failed by [%d]", r));
+          } else {
+            framework::TensorCopy(
+                step_id, platform::CPUPlace(), *dev_ctx, &out);
+            dev_ctx->Wait();
           }
-          framework::TensorCopy(step_id, platform::CPUPlace(), *dev_ctx, &out);
-          dev_ctx->Wait();
         }
 
         out.set_lod(step_id.lod());
         step_ids_.push_back(out);
       }
     }
-    if (platform::is_gpu_place(step_scores_origin_[0].place()) ||
-        platform::is_npu_place(step_scores_origin_[0].place())) {
-      if (platform::is_gpu_place(step_scores_origin_[0].place())) {
+
+    if (platform::is_gpu_place(step_scores[0].place()) ||
+        platform::is_npu_place(step_scores[0].place()) ||
+        platform::is_xpu_place(step_scores[0].place())) {
+      if (platform::is_gpu_place(step_scores[0].place())) {
         tensor_on_gpu_ = true;
-      } else {
+      } else if (platform::is_npu_place(step_scores[0].place())) {
         tensor_on_npu_ = true;
+      } else {
+        tensor_on_xpu_ = true;
       }
+
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
-      auto* dev_ctx = pool.Get(step_scores_origin_[0].place());
+
+      auto* dev_ctx = pool.Get(step_scores[0].place());
       // Copy all tensors in the input tensor array
-      for (auto& step_score : step_scores_origin_) {
+      for (auto& step_score : step_scores) {
         framework::LoDTensor out;
         if (step_score.numel() > 0) {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
+          } else if (tensor_on_xpu_) {
+            r = CopyTensorByType(step_score, &out, 0);
+            PADDLE_ENFORCE_EQ(
+                r,
+                xpu::Error_t::SUCCESS,
+                platform::errors::External(
+                    "Execute function CopyTensorByType failed by [%d]", r));
+
+          } else {
+            framework::TensorCopy(
+                step_score, platform::CPUPlace(), *dev_ctx, &out);
+            dev_ctx->Wait();
           }
-          framework::TensorCopy(
-              step_score, platform::CPUPlace(), *dev_ctx, &out);
-          dev_ctx->Wait();
         }
 
         out.set_lod(step_score.lod());
@@ -109,13 +215,14 @@ struct BeamSearchDecodeFunctor {
 
   bool tensor_on_gpu_;
   bool tensor_on_npu_;
+  bool tensor_on_xpu_;
   size_t beam_size_;
   int end_id_;
   // TODO(Superjomn) Here might result serious performance issue in the
   // concurrency
   // scenarios.
-  const LoDTensorArray& step_ids_origin_;
-  const LoDTensorArray& step_scores_origin_;
+  LoDTensorArray step_ids_origin_ = LoDTensorArray();
+  LoDTensorArray step_scores_origin_ = LoDTensorArray();
   LoDTensorArray step_ids_ = LoDTensorArray();
   LoDTensorArray step_scores_ = LoDTensorArray();
   LoDTensor* id_tensor_;
@@ -126,7 +233,7 @@ template <typename T>
 void BeamSearchDecodeFunctor::apply() const {
   BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
   // Check if the tensor is on GPU or NPU. If so, use the CPU copy instead
-  if (tensor_on_gpu_ || tensor_on_npu_) {
+  if (tensor_on_gpu_ || tensor_on_npu_ || tensor_on_xpu_) {
     beam_search_decoder.Backtrace(
         step_ids_, step_scores_, id_tensor_, score_tensor_);
   } else {
@@ -169,6 +276,7 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
             "size of Input(Ids) LoDTensorArray. beam search steps should "
             "be larger than 0, but received %d. ",
             step_num));
+
     const size_t source_num = ids->at(0).lod().at(0).size() - 1;
     PADDLE_ENFORCE_GT(
         source_num,
@@ -195,13 +303,47 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     int end_id = ctx.Attr<int>("end_id");
 
     // prepare output
-    LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
-    LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
+    LoDTensor* sentenceIds = nullptr;
+    LoDTensor* sentenceScores = nullptr;
+
+    LoDTensor* sentenceIds_temp = ctx.Output<LoDTensor>("SentenceIds");
+    LoDTensor* sentenceScores_temp = ctx.Output<LoDTensor>("SentenceScores");
+
+    if (platform::is_xpu_place(ids->at(0).place())) {
+      sentenceIds = new LoDTensor();
+      sentenceIds->set_lod(sentenceIds_temp->lod());
+    } else {
+      sentenceIds = sentenceIds_temp;
+    }
+
+    if (platform::is_xpu_place(ids->at(0).place())) {
+      sentenceScores = new LoDTensor();
+      sentenceScores->set_lod(sentenceScores_temp->lod());
+    } else {
+      sentenceScores = sentenceScores_temp;
+    }
 
     framework::VisitDataType(
         framework::TransToProtoVarType(scores->at(0).dtype()),
         BeamSearchDecodeFunctor(
             *ids, *scores, sentenceIds, sentenceScores, beam_size, end_id));
+
+    if (platform::is_xpu_place(ids->at(0).place())) {
+      int r = 0;
+      r = CopyTensorByXPU<int64_t>(*sentenceIds, sentenceIds_temp, 1);
+      PADDLE_ENFORCE_EQ(
+          r,
+          xpu::Error_t::SUCCESS,
+          platform::errors::External(
+              "Execute function CopyTensorByXPU failed by [%d]", r));
+
+      r = CopyTensorByXPU<float>(*sentenceScores, sentenceScores_temp, 1);
+      PADDLE_ENFORCE_EQ(
+          r,
+          xpu::Error_t::SUCCESS,
+          platform::errors::External(
+              "Execute function CopyTensorByXPU failed by [%d]", r));
+    }
   }
 };
 
