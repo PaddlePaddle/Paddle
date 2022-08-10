@@ -19,7 +19,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/program_utils.h"
 
 DECLARE_bool(convert_all_blocks);
 PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
@@ -547,6 +549,18 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
   }
 }
 
+template <class T = Node *>
+static void GetGraphVarDesc(const Graph &graph,
+                            const std::unordered_set<T> &nodes,
+                            std::vector<proto::VarDesc> *vars) {
+  for (T node : nodes) {
+    if (node->IsVar() && node->Var() &&
+        node->GetVarNodeBlockId() == graph.GetBlockId()) {
+      vars->emplace_back(*node->Var()->Proto());
+    }
+  }
+}
+
 static void GraphToBlock(const Graph &graph,
                          proto::BlockDesc *block,
                          const SortKind *sort_kind) {
@@ -559,20 +573,27 @@ static void GraphToBlock(const Graph &graph,
             << vars2remove.size() << " nodes";
   }
 
+  std::vector<proto::VarDesc> vars_in_graph;
+  GetGraphVarDesc<Node *>(graph, graph.Nodes(), &vars_in_graph);
+  if (graph.Has(details::kRemovedVars)) {
+    auto &removed_vars = graph.Get<details::RemovedVars>(details::kRemovedVars);
+    GetGraphVarDesc<std::shared_ptr<ir::Node>>(
+        graph, removed_vars, &vars_in_graph);
+  }
+
+  // add vars_in_graph to blcok
   block->clear_vars();
   std::unordered_set<std::string> visited_vars;
-  for (Node *n : graph.Nodes()) {
-    if (n->IsVar()) {
-      if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
-          !vars2remove.count(n->Var()->Name()) &&
-          n->GetVarNodeBlockId() == graph.GetBlockId()) {
-        visited_vars.insert(n->Var()->Name());
-        block->add_vars()->MergeFrom(*n->Var()->Proto());
-      }
+  for (proto::VarDesc &var : vars_in_graph) {
+    const std::string &var_name = var.name();
+    if (visited_vars.find(var_name) == visited_vars.end() &&
+        vars2remove.find(var_name) == vars2remove.end()) {
+      block->add_vars()->MergeFrom(var);
+      visited_vars.insert(var_name);
     }
   }
-  block->clear_ops();
 
+  block->clear_ops();
   std::vector<Node *> nodes;
   if (sort_kind != nullptr) {
     // Inference Memory Optimize relays on this branch.
@@ -630,6 +651,13 @@ void GraphToProgram(const Graph &graph,
   }
 
   program->CopyFrom(program_pb);
+
+  if (graph.Has(details::kProgramDescs)) {
+    details::ProgramDescs program_descs =
+        graph.Get<details::ProgramDescs>(details::kProgramDescs);
+    VLOG(8) << "Merge main programs";
+    MergePrograms(program, program_descs, /*append=*/false);
+  }
 }
 
 static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(

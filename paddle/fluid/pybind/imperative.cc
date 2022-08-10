@@ -52,6 +52,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -669,7 +670,7 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__",
            [](imperative::VarBase &self,
               framework::proto::VarType::Type dtype,
-              const std::vector<int> &dims,
+              const std::vector<int64_t> &dims,
               const py::handle &name,
               framework::proto::VarType::Type type,
               bool persistable) {
@@ -2796,8 +2797,8 @@ void BindImperative(py::module *m_ptr) {
                   "except for the first dimension."));
         }
 
-        auto stream = paddle::platform::stream::get_current_stream(deviceId)
-                          ->raw_stream();
+        auto stream =
+            paddle::platform::get_current_stream(deviceId)->raw_stream();
 
         int64_t size = src_tensor.numel() / src_tensor.dims()[0];
         auto *src_data = src_tensor.data<float>();
@@ -2960,8 +2961,8 @@ void BindImperative(py::module *m_ptr) {
                           platform::errors::InvalidArgument(
                               "`index` tensor should be one-dimensional."));
 
-        auto stream = paddle::platform::stream::get_current_stream(deviceId)
-                          ->raw_stream();
+        auto stream =
+            paddle::platform::get_current_stream(deviceId)->raw_stream();
 
         int64_t numel = 0;  // total copy length
         int64_t copy_flag = offset_tensor.dims()[0];

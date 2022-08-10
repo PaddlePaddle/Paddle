@@ -225,6 +225,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "Bias3",
       "Mean3",
       "Var3"}},
+    {"graph_send_recv", {"X", "Src_index", "Dst_index", "Out_size"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -245,6 +246,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
       "SavedMean",
       "SavedVariance",
       "ReserveSpace"}},
+    {"lstsq", {"Solution", "Residuals", "Rank", "SingularValues"}},
     {"inplace_abn",
      {"Y",
       "MeanOut",

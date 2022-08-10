@@ -78,6 +78,7 @@ import paddle.onnx  # noqa: F401
 import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
+import paddle.geometric  # noqa: F401
 
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
@@ -222,6 +223,7 @@ from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
 from .tensor.math import nansum  # noqa: F401
 from .tensor.math import nanmean  # noqa: F401
+from .tensor.math import count_nonzero  # noqa: F401
 from .tensor.math import tanh  # noqa: F401
 from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
@@ -293,6 +295,7 @@ from .tensor.search import argmax  # noqa: F401
 from .tensor.search import argmin  # noqa: F401
 from .tensor.search import argsort  # noqa: F401
 from .tensor.search import searchsorted  # noqa: F401
+from .tensor.search import bucketize  # noqa: F401
 from .tensor.search import masked_select  # noqa: F401
 from .tensor.search import topk  # noqa: F401
 from .tensor.search import where  # noqa: F401
@@ -444,6 +447,7 @@ __all__ = [  # noqa
     'flops',
     'sort',
     'searchsorted',
+    'bucketize',
     'split',
     'logical_and',
     'full_like',
@@ -562,6 +566,7 @@ __all__ = [  # noqa
     'sum',
     'nansum',
     'nanmean',
+    'count_nonzero',
     'tile',
     'greater_equal',
     'isfinite',

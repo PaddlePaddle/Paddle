@@ -219,8 +219,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertIsNone(scope.find_var(loss2.name))  #loss2 is pruned
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-                self.assertTrue(np.array_equal(weight_init,
-                                               weight))  # weight not changed
+                np.testing.assert_array_equal(weight_init,
+                                              weight)  # weight not changed
 
     def test_prune_fetches_with_optimizer(self):
         """
@@ -311,8 +311,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertIsNone(scope.find_var(loss2.name))
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-                self.assertTrue(np.array_equal(weight_init,
-                                               weight))  # weight unchanged
+                np.testing.assert_array_equal(weight_init,
+                                              weight)  # weight unchanged
 
     def test_prune_feed_with_optimizer(self):
         program = framework.Program()
@@ -527,7 +527,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             weight_expected = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor())
 
-        self.assertTrue(np.array_equal(weight_with_prune, weight_expected))
+        np.testing.assert_array_equal(weight_with_prune, weight_expected)
         self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
 
     def test_prune_with_multi_devices(self):
@@ -661,7 +661,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             weight_expected = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor())
 
-        self.assertTrue(np.array_equal(weight_with_prune, weight_expected))
+        np.testing.assert_array_equal(weight_with_prune, weight_expected)
         self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
 
     def test_prune_program_partial_parameter_updated(self):
@@ -708,8 +708,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     scope.find_var(w2_param_attrs.name).get_tensor())
                 self.assertFalse(np.array_equal(weight1_init,
                                                 weight1))  # weight changed
-                self.assertTrue(np.array_equal(weight2_init,
-                                               weight2))  # weight2 unchanged
+                np.testing.assert_array_equal(weight2_init,
+                                              weight2)  # weight2 unchanged
 
     def test_prune_override_use_prune(self):
         '''
@@ -768,7 +768,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             weight_expected = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor())
 
-        self.assertTrue(np.array_equal(weight_with_prune, weight_expected))
+        np.testing.assert_array_equal(weight_with_prune, weight_expected)
         self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
 
     def test_prune_feed_var_in_fetchlist_1(self):
@@ -797,8 +797,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertIsNone(scope.find_var(x.name))
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-                self.assertTrue(np.array_equal(weight_init,
-                                               weight))  # weight unchanged
+                np.testing.assert_array_equal(weight_init,
+                                              weight)  # weight unchanged
 
     def test_prune_feed_var_in_fetchlist_2(self):
         # the variable to be fed is leaf
@@ -825,8 +825,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertIsNone(scope.find_var(loss2.name))
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-                self.assertTrue(np.array_equal(weight_init,
-                                               weight))  # weight unchanged
+                np.testing.assert_array_equal(weight_init,
+                                              weight)  # weight unchanged
 
 
 if __name__ == '__main__':

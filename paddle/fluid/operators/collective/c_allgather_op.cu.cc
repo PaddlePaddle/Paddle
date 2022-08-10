@@ -68,7 +68,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
@@ -100,5 +100,8 @@ REGISTER_OP_CUDA_KERNEL(c_allgather,
                         ops::CAllGatherOpCUDAKernel<plat::bfloat16>,
 #endif
                         ops::CAllGatherOpCUDAKernel<int>,
+                        ops::CAllGatherOpCUDAKernel<uint8_t>,
+                        ops::CAllGatherOpCUDAKernel<int8_t>,
                         ops::CAllGatherOpCUDAKernel<int64_t>,
+                        ops::CAllGatherOpCUDAKernel<bool>,
                         ops::CAllGatherOpCUDAKernel<plat::float16>);

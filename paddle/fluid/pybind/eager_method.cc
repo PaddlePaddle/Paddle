@@ -57,86 +57,6 @@ typedef SSIZE_T ssize_t;
 namespace paddle {
 namespace pybind {
 
-namespace py = ::pybind11;
-
-class PyTensorHook : public egr::TensorHook {
- public:
-  explicit PyTensorHook(PyObject* func) : py_func_(func) {
-    Py_INCREF(py_func_);
-  }
-
-  ~PyTensorHook() {
-    py::gil_scoped_acquire gil;
-    Py_DECREF(py_func_);
-  }
-
-  paddle::experimental::Tensor operator()(
-      const paddle::experimental::Tensor& var) override {
-    py::gil_scoped_acquire gil;
-    VLOG(3) << "Call PyTensorHook for var " << var.name();
-
-    PyObject* res = nullptr;
-    try {
-      PyObject* p_tmp_var = ToPyObject(var);
-      res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
-      Py_DECREF(p_tmp_var);
-    } catch (platform::EnforceNotMet& e) {
-      throw std::move(e);
-    } catch (std::exception& e) {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Hook function of Tensor raises an exception: %s.", e.what()));
-    } catch (...) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Hook function of Tensor raises an unknown exception."));
-    }
-
-    PADDLE_ENFORCE_NOT_NULL(res,
-                            platform::errors::Unavailable(
-                                "Hook function of Tensor return a nullptr."));
-    if (res == Py_None) {
-      return var;
-    }
-    auto res_tensor = reinterpret_cast<TensorObject*>(res)->tensor;
-    Py_DECREF(res);
-    return res_tensor;
-  }
-
- private:
-  PyObject* py_func_;
-};
-
-class PyTensorVoidHook : public egr::TensorVoidHook {
- public:
-  explicit PyTensorVoidHook(PyObject* func) : py_func_(func) {
-    Py_INCREF(py_func_);
-  }
-
-  ~PyTensorVoidHook() {
-    py::gil_scoped_acquire gil;
-    Py_DECREF(py_func_);
-  }
-
-  void operator()() override {
-    py::gil_scoped_acquire gil;
-    VLOG(3) << "Call PyTensorVoidHook";
-
-    try {
-      PyObject_CallFunctionObjArgs(py_func_, nullptr);
-    } catch (platform::EnforceNotMet& e) {
-      throw std::move(e);
-    } catch (std::exception& e) {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Hook function of Tensor raises an exception: %s.", e.what()));
-    } catch (...) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Hook function of Tensor raises an unknown exception."));
-    }
-  }
-
- private:
-  PyObject* py_func_;
-};
-
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
                                      const paddle::platform::Place& place,
@@ -905,8 +825,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       }
 
       paddle::experimental::Tensor new_out;
-      framework::AttributeMap attrs = {{"axes", none_axes}};
-      new_out = std::get<0>(unsqueeze2_dygraph_function(out, std::move(attrs)));
+      new_out = unsqueeze_final_state_dygraph_function(out, none_axes);
       return ToPyObject(new_out);
     }
   }
@@ -1363,7 +1282,7 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self,
   auto accumulation_grad_node =
       std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
   accumulation_grad_node->RegisterReduceHook(
-      std::make_shared<PyTensorVoidHook>(hook_func));
+      std::make_shared<PyVoidHook>(hook_func));
 
   RETURN_PY_NONE
 

@@ -45,6 +45,7 @@ atype_to_parsing_function = {
     "std::vector<double>": "CastPyArg2Float64s",
     "std::vector<std::string>": "CastPyArg2Strings",
     "paddle::experimental::Scalar": "CastPyArg2Scalar",
+    "std::vector<phi::Scalar>": "CastPyArg2ScalarArray",
     "paddle::experimental::IntArray": "CastPyArg2IntArray",
     "paddle::Place": "CastPyArg2Place",
     "paddle::experimental::DataType": "CastPyArg2DataType",
@@ -53,40 +54,15 @@ atype_to_parsing_function = {
 # This list contains ops that do not need to generate amp logic
 # All optimizer ops in this list
 no_amp_list = [
-    'adam_',
-    'adam',
-    'adamw_',
-    'adamw',
-    'decayed_adagrad_',
-    'decayed_adagrad',
-    'dgc_momentum_',
-    'dgc_momentum',
-    'distributed_fused_lamb_',
-    'distributed_fused_lamb',
-    'dpsgd_',
-    'dpsgd',
-    'ftrl_',
-    'ftrl',
-    'lamb_',
-    'lamb',
-    'lars_momentum_',
-    'lars_momentum',
-    'merged_adam_',
-    'merged_adam',
-    'merged_momentum_',
-    'merged_momentum',
-    'momentum_',
-    'momentum',
-    'proximal_adagrad_',
-    'proximal_adagrad',
-    'proximal_gd_',
-    'proximal_gd',
-    'rmsprop_',
-    'rmsprop',
-    'sgd_',
-    'sgd',
-    'sparse_momentum_',
-    'sparse_momentum',
+    'adam_', 'adam', 'adamw_', 'adamw', 'average_accumulates',
+    'average_accumulates_', 'decayed_adagrad_', 'decayed_adagrad',
+    'dgc_momentum_', 'dgc_momentum', 'distributed_fused_lamb_',
+    'distributed_fused_lamb', 'dpsgd_', 'dpsgd', 'ftrl_', 'ftrl', 'lamb_',
+    'lamb', 'lars_momentum_', 'lars_momentum', 'merged_adam_', 'merged_adam',
+    'merged_momentum_', 'merged_momentum', 'momentum_', 'momentum',
+    'proximal_adagrad_', 'proximal_adagrad', 'proximal_gd_', 'proximal_gd',
+    'rmsprop_', 'rmsprop', 'sgd_', 'sgd', 'lamb_', 'lamb', 'assign_value_',
+    'sparse_momentum_', 'sparse_momentum', 'full_'
 ]
 
 
@@ -111,7 +87,7 @@ PARSE_PYTHON_C_ARGS_TEMPLATE = \
 
 
 RECORD_EVENT_TEMPLATE = \
-"paddle::platform::RecordEvent {}(\"{} {}\", paddle::platform::TracerEventType::Operator, 1);"
+"paddle::platform::RecordEvent {}(\"{} {}\", paddle::platform::TracerEventType::UserDefined, 1);"
 
 
 RETURN_INPLACE_PYOBJECT_TEMPLATE = \

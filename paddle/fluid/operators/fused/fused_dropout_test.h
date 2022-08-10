@@ -49,7 +49,7 @@ void Dropout(const std::vector<T> &x,
              const framework::DDim &x_dim,
              std::vector<T> *out,
              std::vector<uint8_t> *mask,
-             const platform::CUDADeviceContext &ctx,
+             const phi::GPUContext &ctx,
              uint64_t seed,
              float dropout_prob,
              bool is_upscale_in_train,
@@ -97,7 +97,7 @@ void DropoutGrad(std::vector<T> *dx,
                  const framework::DDim &x_dim,
                  const std::vector<T> &dout,
                  const std::vector<uint8_t> &mask,
-                 const platform::CUDADeviceContext &ctx,
+                 const phi::GPUContext &ctx,
                  float dropout_prob,
                  bool is_upscale_in_train) {
   framework::Scope scope;
@@ -148,7 +148,7 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
                const float epsilon,
                const int rows,
                const int cols,
-               const platform::CUDADeviceContext &ctx) {
+               const phi::GPUContext &ctx) {
   framework::Scope scope;
   auto place = ctx.GetPlace();
   paddle::optional<framework::LoDTensor> scale_opt;
