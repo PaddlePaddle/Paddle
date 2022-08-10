@@ -163,8 +163,9 @@ class SkipLayerNormOpConverter : public OpConverter {
       auto scale_weight = GetFp32Weight("Scale").get();
 
       float eps = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      // bool with_fp16 =
+      //     engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      bool with_fp16 = false;
       plugin::SkipLayerNormPluginDynamic* plugin =
           new plugin::SkipLayerNormPluginDynamic(
               static_cast<const float*>(bias_weight.values),
