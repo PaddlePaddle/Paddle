@@ -48,6 +48,6 @@ class MetaParallelBase(Layer):
     def __getattr__(self, name):
         if hasattr(self._layers, name):
             raise Exception(
-                "the attribute[{}] in {}, but invalid in distributed mode {}.".
-                format(name, self._layers.__class__.__name__,
-                       self.__class__.__name__))
+                "the attribute[{}] in {} is valid, but invalid in distributed mode {}."
+                .format(name, self._layers.__class__.__name__,
+                        self.__class__.__name__))
