@@ -82,20 +82,23 @@ set_source_files_properties(
 set_source_files_properties(
   coordinator_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
+set_source_files_properties(
+  ps_service/graph_py_service.cc PROPERTIES COMPILE_FLAGS
+                                            ${DISTRIBUTE_COMPILE_FLAGS})
 cc_library(
   brpc_utils
   SRCS brpc_utils.cc
   DEPS tensor device_context ${COMMON_DEPS} ${RPC_DEPS})
 
-cc_library(
-  server
-  SRCS graph_brpc_server.cc brpc_ps_server.cc server.cc
-  DEPS eigen3 table brpc_utils simple_threadpool ${RPC_DEPS})
-cc_library(
-  client
-  SRCS graph_brpc_client.cc brpc_ps_client.cc ps_local_client.cc
-       coordinator_client.cc ps_client.cc
-  DEPS eigen3 table brpc_utils simple_threadpool ${RPC_DEPS})
+#cc_library(
+#  server
+#  SRCS graph_brpc_server.cc brpc_ps_server.cc server.cc
+#  DEPS eigen3 table brpc_utils simple_threadpool ${RPC_DEPS})
+#cc_library(
+#  client
+#  SRCS graph_brpc_client.cc brpc_ps_client.cc ps_local_client.cc
+#       coordinator_client.cc ps_client.cc
+#  DEPS eigen3 table brpc_utils simple_threadpool ${RPC_DEPS})
 
 #cc_library(
 #  client
@@ -106,14 +109,31 @@ cc_library(
 #  SRCS server.cc
 #  DEPS downpour_server ${RPC_DEPS})
 
-cc_library(
-  communicator
-  SRCS communicator/communicator.cc
-  DEPS scope client table math_function selected_rows_functor ${RPC_DEPS})
+#cc_library(
+#  communicator
+#  SRCS communicator/communicator.cc
+#  DEPS scope client table math_function selected_rows_functor ${RPC_DEPS})
 cc_library(
   ps_service
-  SRCS ps_service/service.cc
-  DEPS communicator client server ${RPC_DEPS})
+  SRCS graph_brpc_server.cc
+       brpc_ps_server.cc
+       server.cc
+       graph_brpc_client.cc
+       brpc_ps_client.cc
+       ps_local_client.cc
+       coordinator_client.cc
+       ps_client.cc
+       communicator/communicator.cc
+       ps_service/service.cc
+       ps_service/graph_py_service.cc
+  DEPS eigen3
+       table
+       brpc_utils
+       simple_threadpool
+       scope
+       math_function
+       selected_rows_functor
+       ${RPC_DEPS})
 
 cc_library(
   heter_client
@@ -124,12 +144,9 @@ cc_library(
   SRCS heter_server.cc
   DEPS heter_client brpc_utils ${COMMON_DEPS} ${RPC_DEPS})
 
-set_source_files_properties(
-  ps_service/graph_py_service.cc PROPERTIES COMPILE_FLAGS
-                                            ${DISTRIBUTE_COMPILE_FLAGS})
-cc_library(
-  graph_py_service
-  SRCS ps_service/graph_py_service.cc
-  DEPS ps_service)
+#cc_library(
+#  graph_py_service
+#  SRCS ps_service/graph_py_service.cc
+#  DEPS ps_service)
 
 #add_subdirectory(communicator)

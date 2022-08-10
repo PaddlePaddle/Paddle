@@ -92,11 +92,11 @@ set_source_files_properties(
 #  sparse_sgd_rule
 #  SRCS sparse_sgd_rule.cc
 #  DEPS ${TABLE_DEPS} ps_framework_proto)
-cc_library(
-  ctr_accessor
-  SRCS sparse_sgd_rule.cc ctr_accessor.cc ctr_double_accessor.cc
-       sparse_accessor.cc ctr_dymf_accessor.cc tensor_accessor.cc
-  DEPS ${TABLE_DEPS} ps_framework_proto eigen3)
+#cc_library(
+#  ctr_accessor
+#  SRCS sparse_sgd_rule.cc ctr_accessor.cc ctr_double_accessor.cc
+#       sparse_accessor.cc ctr_dymf_accessor.cc tensor_accessor.cc
+#  DEPS ${TABLE_DEPS} ps_framework_proto eigen3)
 #cc_library(
 #  sparse_table
 #  SRCS memory_sparse_table.cc ssd_sparse_table.cc memory_sparse_geo_table.cc
@@ -110,7 +110,15 @@ cc_library(
 
 cc_library(
   table
-  SRCS memory_sparse_table.cc ssd_sparse_table.cc memory_sparse_geo_table.cc
+  SRCS sparse_sgd_rule.cc
+       ctr_accessor.cc
+       ctr_double_accessor.cc
+       sparse_accessor.cc
+       ctr_dymf_accessor.cc
+       tensor_accessor.cc
+       memory_sparse_table.cc
+       ssd_sparse_table.cc
+       memory_sparse_geo_table.cc
        table.cc
   DEPS ${TABLE_DEPS}
        common_table
@@ -123,7 +131,8 @@ cc_library(
        glog
        fs
        afs_wrapper
-       ctr_accessor
-       rocksdb)
+       #ctr_accessor
+       rocksdb
+       eigen3)
 
 target_link_libraries(table -fopenmp)
