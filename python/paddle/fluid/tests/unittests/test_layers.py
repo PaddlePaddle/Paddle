@@ -1271,15 +1271,9 @@ class TestLayer(LayerTest):
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
 
-        np.testing.assert_allclose(static_rlt2,
-                                   static_rlt,
-                                   rtol=1e-05,
-                                   atol=1e-8)
-        np.testing.assert_allclose(dy_rlt_value, static_rlt, rtol=1e-05)
-        np.testing.assert_allclose(dy_eager_rlt_value,
-                                   static_rlt,
-                                   rtol=1e-05,
-                                   atol=1e-8)
+        self.assertTrue(np.allclose(static_rlt2, static_rlt))
+        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
+        self.assertTrue(np.allclose(dy_eager_rlt_value, static_rlt))
 
         with self.dynamic_graph():
             with _test_eager_guard():
