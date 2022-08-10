@@ -224,7 +224,7 @@ class PartialProgramLayer:
         if end_op_index > 0:
             return self._add_build_strategy_for(whole_program, 0, end_op_index)
         else:
-            return paddle.static.Program()
+            return whole_program
 
     @switch_to_static_graph
     def _create_forward_train_amp_program(self):
@@ -233,7 +233,7 @@ class PartialProgramLayer:
         if end_op_index > 0:
             return self._add_build_strategy_for(whole_program, 0, end_op_index)
         else:
-            return paddle.static.Program()
+            return whole_program
 
     @switch_to_static_graph
     def _create_forward_train_pure_fp16_program(self):
@@ -243,7 +243,7 @@ class PartialProgramLayer:
         if end_op_index > 0:
             return self._add_build_strategy_for(whole_program, 0, end_op_index)
         else:
-            return paddle.static.Program()
+            return whole_program
 
     # backward
     @switch_to_static_graph
@@ -657,9 +657,9 @@ class PartialProgramLayer:
         self._cast_fp16_if_pure_fp16(in_vars)
 
         # -------监测program转换是否成功 -----
-        print("self.whole_program: ", self.whole_program)
-        print("self.forward_program: ", self.forward_program)
-        print("self.backward_program: ", self.backward_program)
+        # print("self.whole_program: ", self.whole_program)
+        # print("self.forward_program: ", self.forward_program)
+        # print("self.backward_program: ", self.backward_program)
 
         attrs = [
             'global_block',
