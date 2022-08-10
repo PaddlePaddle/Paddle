@@ -620,8 +620,9 @@ std::vector<std::string> OpDesc::AttrNames(bool with_attr_var) const {
 }
 
 bool OpDesc::HasAttr(const std::string &name, bool with_attr_var) const {
-  bool is_found = attrs_.find(name) != attrs_.end() ||
-                  runtime_attrs_.find(name) != runtime_attrs_.end();
+  auto iter = attrs_.find(name);
+  bool is_found =
+      iter != attrs_.end() || runtime_attrs_.find(name) != runtime_attrs_.end();
   if (with_attr_var) {
     return is_found;
   }
