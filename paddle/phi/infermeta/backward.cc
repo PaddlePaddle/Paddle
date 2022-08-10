@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/common/type_traits.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace phi {
@@ -285,6 +286,47 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
   }
 }
 
+void FFTC2RGradInferMeta(const MetaTensor& x,
+                         const std::vector<int64_t>& axes,
+                         const std::string& normalization,
+                         bool forward,
+                         int64_t last_dim_size,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(out,
+                          phi::errors::InvalidArgument(
+                              "Output of fft_c2r _grad should not be null."));
+  const phi::DDim x_dim = x.dims();
+
+  // only ensure that fft axes' size greater than zero at runtime
+  // they might be -1 to indicate unknown size ar compile time
+  if (config.is_runtime) {
+    for (size_t i = 0; i < axes.size(); i++) {
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+    }
+  }
+
+  out->set_layout(x.layout());
+  out->set_dtype(ToComplexType(x.dtype()));
+
+  phi::DDim out_dim = x.dims();
+  const int64_t last_fft_axis = axes.back();
+  if (last_dim_size > 0) {
+    out_dim.at(last_fft_axis) = last_dim_size / 2 + 1;
+  } else if (config.is_runtime) {
+    const int64_t last_fft_dim_size = x_dim[last_fft_axis];
+    out_dim.at(last_fft_axis) = last_fft_dim_size / 2 + 1;
+  } else {
+    const int64_t last_fft_dim_size = x_dim[last_fft_axis];
+    out_dim.at(last_fft_axis) =
+        last_fft_dim_size == -1 ? -1 : last_fft_dim_size / 2 + 1;
+  }
+  out->set_dims(out_dim);
+}
+
 void FillDiagonalGradInferMeta(const MetaTensor& dout,
                                float value,
                                int offset,
@@ -516,6 +558,30 @@ void LUUnpackGradInferMeta(const MetaTensor& x,
     x_grad->set_dims(x_dims);
     x_grad->set_dtype(x.dtype());
   }
+}
+
+void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
+                                     const MetaTensor& label,
+                                     const MetaTensor& softmax,
+                                     const MetaTensor& loss_grad,
+                                     bool return_softmax,
+                                     int ring_id,
+                                     int rank,
+                                     int nranks,
+                                     float margin1,
+                                     float margin2,
+                                     float margin3,
+                                     float scale,
+                                     MetaTensor* logits_grad) {
+  PADDLE_ENFORCE_NE(
+      logits_grad,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The Logits@GRAD in MarginCrossEntropy can't be nullptr."));
+  auto softmax_dims = softmax.dims();
+
+  logits_grad->set_dims(softmax_dims);
+  logits_grad->set_dtype(softmax.dtype());
 }
 
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,

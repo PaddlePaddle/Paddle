@@ -219,7 +219,7 @@ PD_Bool PD_ConfigIrOptim(__pd_keep PD_Config* pd_config) {
 }
 
 void PD_ConfigEnableTensorRtEngine(__pd_keep PD_Config* pd_config,
-                                   int32_t workspace_size,
+                                   int64_t workspace_size,
                                    int32_t max_batch_size,
                                    int32_t min_subgraph_size,
                                    PD_PrecisionType precision,
