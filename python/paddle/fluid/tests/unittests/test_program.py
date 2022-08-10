@@ -281,7 +281,6 @@ class TestProgramHash(unittest.TestCase):
 
     def test_program_clone(self):
         program = self.build_program()
-        program.flush()
         program_clone = program.clone()
 
         self.assertFalse(id(program) == id(program_clone))
