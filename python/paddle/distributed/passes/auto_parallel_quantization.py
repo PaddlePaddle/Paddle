@@ -16,13 +16,11 @@ import paddle
 
 from paddle.fluid import core, framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.distributed.auto_parallel.utils import set_dist_op_desc_original_id, print_program_with_dist_attr, is_backward_op, is_optimize_op
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
+from paddle.fluid.contrib.slim.quantization import utils
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPassV2
-from paddle.fluid.contrib.slim.quantization import QuantWeightPass
 from paddle.fluid.contrib.slim.quantization import AddQuantDequantPassV2
 from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass
-from paddle.fluid.contrib.slim.quantization import utils
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 
 from .pass_base import PassBase, register_pass
 
