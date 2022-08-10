@@ -84,11 +84,11 @@ class FakeQuantAbsMax(Layer):
                                          persistable=False)
             out_scale = self._scale
             if self._reduce_type == "sum":
-                out_scale = paddle.distributed.all_reduce(
-                    self._scale, op=paddle.distributed.ReduceOp.SUM)
+                paddle.distributed.all_reduce(
+                    out_scale, op=paddle.distributed.ReduceOp.SUM)
             elif self._reduce_type == "max":
-                out_scale = paddle.distributed.all_reduce(
-                    self._scale, op=paddle.distributed.ReduceOp.MAX)
+                paddle.distributed.all_reduce(
+                    out_scale, op=paddle.distributed.ReduceOp.MAX)
 
             if not out_scale:
                 out_scale = _varbase_creator(
@@ -190,10 +190,10 @@ class FakeQuantMovingAverageAbsMax(Layer):
                                          dtype=input.dtype,
                                          persistable=False)
             if self._reduce_type == "sum":
-                self._scale = paddle.distributed.all_reduce(
+                paddle.distributed.all_reduce(
                     self._scale, op=paddle.distributed.ReduceOp.SUM)
             elif self._reduce_type == "max":
-                self._scale = paddle.distributed.all_reduce(
+                paddle.distributed.all_reduce(
                     self._scale, op=paddle.distributed.ReduceOp.MAX)
 
             state = self._state if self.training else None
@@ -281,11 +281,11 @@ class FakeQuantChannelWiseAbsMax(Layer):
 
             out_scale = self._scale
             if self._reduce_type == "sum":
-                out_scale = paddle.distributed.all_reduce(
-                    self._scale, op=paddle.distributed.ReduceOp.SUM)
+                paddle.distributed.all_reduce(
+                    out_scale, op=paddle.distributed.ReduceOp.SUM)
             elif self._reduce_type == "max":
-                out_scale = paddle.distributed.all_reduce(
-                    self._scale, op=paddle.distributed.ReduceOp.MAX)
+                paddle.distributed.all_reduce(
+                    out_scale, op=paddle.distributed.ReduceOp.MAX)
             if out_scale is None:
                 out_scale = _varbase_creator(
                     type=core.VarDesc.VarType.LOD_TENSOR,
@@ -384,10 +384,10 @@ class MovingAverageAbsMaxScale(Layer):
                                          dtype=input.dtype,
                                          persistable=False)
             if self._reduce_type == "sum":
-                self._scale = paddle.distributed.all_reduce(
+                paddle.distributed.all_reduce(
                     self._scale, op=paddle.distributed.ReduceOp.SUM)
             elif self._reduce_type == "max":
-                self._scale = paddle.distributed.all_reduce(
+                paddle.distributed.all_reduce(
                     self._scale, op=paddle.distributed.ReduceOp.MAX)
 
             state = self._state if self.training else None
