@@ -29,12 +29,16 @@ from .data_generator.data_generator import MultiSlotStringDataGenerator  # noqa:
 from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
+from .moe.gate import GShardGate, BaseGate, SwitchGate, NaiveGate
+from .moe.moe_layer import MoELayer
+from .moe.grad_clip import ClipGradForMOEByGlobalNorm
 
 __all__ = [  #noqa
     "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
     "MultiSlotStringDataGenerator", "UserDefinedRoleMaker",
     "DistributedStrategy", "Role", "MultiSlotDataGenerator",
-    "PaddleCloudRoleMaker", "Fleet"
+    "PaddleCloudRoleMaker", "Fleet", "MoELayer", "GShardGate", "BaseGate",
+    "SwitchGate", "NaiveGate", "ClipGradForMOEByGlobalNorm"
 ]
 
 fleet = Fleet()
