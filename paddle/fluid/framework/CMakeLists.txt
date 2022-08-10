@@ -438,6 +438,7 @@ if(WITH_XPU)
     SRCS operator.cc
     DEPS xpu_op_list
          op_info
+         proto_desc
          device_context
          tensor
          scope
@@ -462,6 +463,7 @@ else()
     operator
     SRCS operator.cc
     DEPS op_info
+         proto_desc
          device_context
          tensor
          scope

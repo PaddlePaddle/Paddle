@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/jit/function/pe_function.h"
+#include "paddle/fluid/jit/engine/pe_engine.h"
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
+#include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -54,9 +57,9 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
   return execution_strategy;
 }
 
-PEFunction::PEFunction(const std::shared_ptr<FunctionInfo> &info,
-                       const Name2VariableMap &params_dict,
-                       const phi::Place &place)
+PEEngine::PEEngine(const std::shared_ptr<FunctionInfo> &info,
+                   const VariableMap &params_dict,
+                   const phi::Place &place)
     : info_(info), place_(place) {
   info_->RemoveDescFeedFetch();
   PADDLE_ENFORCE_GT(
@@ -69,7 +72,7 @@ PEFunction::PEFunction(const std::shared_ptr<FunctionInfo> &info,
   CreateGraphAndPE();
 }
 
-void PEFunction::CreateGraphAndPE() {
+void PEEngine::CreateGraphAndPE() {
   framework::details::BuildStrategy build_strategy;
   auto execution_strategy = GetExecutionStrategy(place_);
 
@@ -85,12 +88,12 @@ void PEFunction::CreateGraphAndPE() {
   inner_pe_->SkipMemoryReuse(/*scope_idx=*/0, info_->InputArgNames());
 }
 
-std::vector<Tensor> PEFunction::operator()(const std::vector<Tensor> &inputs) {
+std::vector<Tensor> PEEngine::operator()(const std::vector<Tensor> &inputs) {
   auto dense_tensors = utils::ToDenseTensors(inputs);
   return utils::ToTensors(this->operator()(dense_tensors));
 }
 
-std::vector<DenseTensor> PEFunction::operator()(
+std::vector<DenseTensor> PEEngine::operator()(
     const std::vector<DenseTensor> &inputs) {
   utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
 
@@ -109,7 +112,7 @@ std::vector<DenseTensor> PEFunction::operator()(
   return outputs;
 }
 
-const std::shared_ptr<FunctionInfo> &PEFunction::Info() const { return info_; }
+const std::shared_ptr<FunctionInfo> &PEEngine::Info() const { return info_; }
 
 }  // namespace jit
 }  // namespace paddle

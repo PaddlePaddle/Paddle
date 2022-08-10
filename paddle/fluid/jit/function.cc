@@ -12,25 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/jit/function.h"
+
+#include <string>
+#include <vector>
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
+
+#include "paddle/fluid/jit/engine/base_engine.h"
+#include "paddle/fluid/jit/function_utils.h"
 
 namespace paddle {
 namespace jit {
 
-using Tensor = paddle::experimental::Tensor;
-using DenseTensor = phi::DenseTensor;
+Function::Function(BaseEngine* engine) : engine_(engine) {}
 
-class BaseFunction {
- public:
-  virtual std::vector<DenseTensor> operator()(
-      const std::vector<DenseTensor> &inputs) = 0;
+std::vector<Tensor> Function::operator()(
+    const std::vector<Tensor>& inputs) const {
+  auto dense_tensors = utils::ToDenseTensors(inputs);
+  return utils::ToTensors(this->operator()(dense_tensors));
+}
 
-  virtual std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) = 0;
-
-  virtual ~BaseFunction() {}
-};
+std::vector<DenseTensor> Function::operator()(
+    const std::vector<DenseTensor>& inputs) const {
+  return (*engine_)(inputs);
+}
 
 }  // namespace jit
 }  // namespace paddle

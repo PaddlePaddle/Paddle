@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/kernels/lamb_kernel.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/lamb_kernel_impl.h"
 
-namespace phi {
-
-KernelSignature ErfinvGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("erfinv_grad", {"Out", "Out@GRAD"}, {}, {"X@GRAD"});
+PD_REGISTER_KERNEL(lamb,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LambKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {
+  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
 }
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(erfinv_grad, phi::ErfinvGradOpArgumentMapping);
