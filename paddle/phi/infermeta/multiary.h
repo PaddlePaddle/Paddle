@@ -195,6 +195,11 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
 void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out);
 
+void CheckFiniteAndUnscaleInferMeta(const std::vector<const MetaTensor*>& xs,
+                                    const MetaTensor& scale,
+                                    std::vector<MetaTensor*> outs,
+                                    MetaTensor* found_infinite);
+
 void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,

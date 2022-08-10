@@ -763,6 +763,27 @@ void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
   }
 }
 
+void CheckFiniteAndUnscaleInferMeta(const std::vector<const MetaTensor*>& xs,
+                                    const MetaTensor& scale,
+                                    std::vector<MetaTensor*> outs,
+                                    MetaTensor* found_infinite) {
+  PADDLE_ENFORCE_EQ(
+      xs.size(),
+      outs.size(),
+      phi::errors::InvalidArgument(
+          "The input(X) and output(Out) should have same size in "
+          "Operator(check_finite_and_unscale), size of input(X) is %d "
+          "and size of output(Out) is %d.",
+          xs.size(),
+          outs.size()));
+  for (size_t i = 0; i < xs.size(); ++i) {
+    outs[i]->set_dims(xs[i]->dims());
+    outs[i]->set_dtype(xs[i]->dtype());
+  }
+  found_infinite->set_dims({1});
+  found_infinite->set_dtype(DataType::BOOL);
+}
+
 void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,

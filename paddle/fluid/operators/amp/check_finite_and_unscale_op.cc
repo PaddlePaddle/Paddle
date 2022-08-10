@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,23 +27,6 @@ class CheckFiniteAndUnscaleOp : public framework::OperatorWithKernel {
                           const framework::VariableNameMap& outputs,
                           const framework::AttributeMap& attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    if (ctx->HasInputs("X") || ctx->HasOutputs("Out")) {
-      PADDLE_ENFORCE_EQ(
-          ctx->Inputs("X").size(),
-          ctx->Outputs("Out").size(),
-          platform::errors::InvalidArgument(
-              "The input(X) and output(Out) should have same size in "
-              "Operator(check_finite_and_unscale), size of input(X) is %d "
-              "and size of output(Out) is %d.",
-              ctx->Inputs("X").size(),
-              ctx->Outputs("Out").size()));
-      auto x_dims = ctx->GetInputsDim("X");
-      ctx->SetOutputsDim("Out", x_dims);
-    }
-    ctx->SetOutputDim("FoundInfinite", {1});
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -96,9 +82,13 @@ Otherwise, FoundInfinite will be 0 (False).
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(check_finite_and_unscale,
+                            CheckFiniteAndUnscaleInferShapeFunctor,
+                            PD_INFER_META(phi::CheckFiniteAndUnscaleInferMeta));
 REGISTER_OPERATOR(
     check_finite_and_unscale,
     ops::CheckFiniteAndUnscaleOp,
     ops::CheckFiniteAndUnscaleOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    CheckFiniteAndUnscaleInferShapeFunctor);
