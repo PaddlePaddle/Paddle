@@ -159,10 +159,13 @@ void AddBiasLayernormPass::ApplyImpl(ir::Graph* graph) const {
     auto input_node = subgraph.at(x);
     input_node->outputs.clear();
     elementwise_add_op->inputs.clear();
+    elementwise_add_in_y->outputs.clear();
     elementwise_add_out->outputs.clear();
     flatten_op->inputs.clear();
     transpose_out->outputs.clear();
     layer_norm_op->inputs.clear();
+    layer_norm_in_bias->outputs.clear();
+    layer_norm_in_scale->outputs.clear();
     IR_NODE_LINK_TO(input_node, flatten_op);
     IR_NODE_LINK_TO(transpose_out, elementwise_add_op);
     IR_NODE_LINK_TO(elementwise_add_in_y, elementwise_add_op);
