@@ -633,9 +633,6 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                             input_tensor_code = input_tensor_code + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = {input_name}.impl();"""
         input_tensor_code = input_tensor_code + f"""
-{code_indent}  if(infer_shape_record_event != nullptr){{
-{code_indent}    delete infer_shape_record_event;
-{code_indent}  }}
 {code_indent}  if(platform::RecordOpInfoSupplement::IsEnabled()){{"""
         single_tensor_names = []
         list_tensor_names = []
@@ -782,14 +779,16 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
-{code_indent}  paddle::platform::RecordEvent *infer_shape_record_event = nullptr;
-{code_indent}  if(paddle::platform::RecordEvent::IsEnabled()){{
-{code_indent}    infer_shape_record_event = new paddle::platform::RecordEvent(\"{self.api} infer_shape\", paddle::platform::TracerEventType::OperatorInner, 1);
-{code_indent}  }}
 {input_tensors}
 {output_create}
+{code_indent}  paddle::platform::RecordEvent *infer_shape_record_event = nullptr;
+{code_indent}  if(paddle::platform::RecordEvent::IsEnabled()){{
+{code_indent}    infer_shape_record_event = new paddle::platform::RecordEvent(\"{self.api} infer_meta\", paddle::platform::TracerEventType::OperatorInner, 1);
+{code_indent}  }}
 {self.gene_infer_meta(kernel_output_names, code_indent)}
-
+{code_indent}  if(infer_shape_record_event != nullptr){{
+{code_indent}    delete infer_shape_record_event;
+{code_indent}  }}
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  paddle::platform::RecordEvent* kernel_record_event = nullptr;
