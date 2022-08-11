@@ -29,6 +29,7 @@ from paddle.distributed.fleet.base.private_helper_function import wait_server_re
 from paddle.distributed.fleet.proto import the_one_ps_pb2
 from paddle.fluid.communicator import Communicator, HeterClient
 from google.protobuf import text_format
+from paddle.distributed.ps.coordinator import Coordinator
 
 __all__ = [
     'Table', 'SparseTable', 'GeoSparseTable', 'BarrierTable', 'TensorTable',
@@ -153,6 +154,12 @@ class Accessor:
                 accessor_proto.embedx_dim = embedding_dim - 3
         if not accessor_proto.HasField("embedx_threshold"):
             accessor_proto.embedx_threshold = 0
+
+        graph_sgd_param = accessor_proto.graph_sgd_param
+        if not graph_sgd_param.HasField("nodeid_slot"):
+            graph_sgd_param.nodeid_slot = 9008
+        if not graph_sgd_param.HasField("feature_learning_rate"):
+            graph_sgd_param.feature_learning_rate = 0.05
 
         ctr_accessor_param = accessor_proto.ctr_accessor_param
         if not ctr_accessor_param.HasField("nonclk_coeff"):
@@ -584,6 +591,10 @@ class SparseTable(Table):
         table_proto.table_class = self.table_class
         table_proto.type = the_one_ps_pb2.PS_SPARSE_TABLE
         table_proto.shard_num = self.shard_num
+        if table_proto.sparse_table_cache_file_num > len(
+                get_ps_endpoints(self.context['role_maker'])):
+            table_proto.sparse_table_cache_file_num = len(
+                get_ps_endpoints(self.context['role_maker']))
 
         self.common.table_name = self.context['grad_name_to_param_name'][
             ctx.origin_varnames()[0]]
@@ -774,6 +785,7 @@ class PsDescBuilder(object):
         self.fs_client = self._get_fs_client()
 
         self.ps_desc = the_one_ps_pb2.PSParameter()
+        self.fl_desc = the_one_ps_pb2.FLParameter()
 
     def _get_tensor_tables(self):
         program_idx = 0
@@ -811,6 +823,9 @@ class PsDescBuilder(object):
 
     def _get_fs_client(self):
         return fsClient(self.context["user_defined_strategy"].fs_client_param)
+
+    def build_fl_client_desc(self, client_info):
+        pass
 
     def build_worker_desc(self):
         for table in self.tables:
@@ -850,6 +865,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator = None
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
+        self._coordinator = None
         self._server_sub_program = []
         self._heter_client = None
         self._send_ctx = None
@@ -857,6 +873,8 @@ class TheOnePSRuntime(RuntimeBase):
     def _set_basic_info(self, context):
         self.context = context
         self.role_maker = context["role_maker"]
+        self.role_id = get_role_id(self.role_maker)
+        self.debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
         self.origin_main_program = context["origin_main_program"]
         self.origin_main_programs = context.get("origin_main_programs",
@@ -878,6 +896,8 @@ class TheOnePSRuntime(RuntimeBase):
         self.context['tensor_table'] = {}
         build_var_distributed(self.context)
 
+        self.trainer_endpoints = get_trainer_endpoints(self.role_maker)
+
         self.endpoints = get_ps_endpoints(self.role_maker)
         self.string_hosts = []
         for idx, ep in enumerate(self.endpoints):
@@ -885,9 +905,20 @@ class TheOnePSRuntime(RuntimeBase):
             pshost = fluid.core.PSHost(host, int(port), idx)
             self.string_hosts.append(pshost.serialize_to_string())
 
+        self.with_coordinator = self.role_maker._with_coordinator
+        self.coordinator_hosts = []
+        if self.with_coordinator:
+            print("fl-ps > all ps addrs: {}".format(self.string_hosts))
+            coordinator_endpoints = self.role_maker._get_coordinator_endpoints()
+            for idx, ep in enumerate(coordinator_endpoints):
+                ip, port = ep.split(":")
+                pshost = fluid.core.PSHost(ip, int(port), idx)
+                self.coordinator_hosts.append(pshost.serialize_to_string())
+
         self.ps_desc_builder = PsDescBuilder(self.context)
 
     def _init_all_params(self, scopes, send_ctx, recv_map):
+        all_var_names = []
         for name, ctx in send_ctx.items():
             if ctx.is_sparse():
                 continue
@@ -897,8 +928,11 @@ class TheOnePSRuntime(RuntimeBase):
             var_names = recv_map[table_id]
             #print("init params:", idx, table_id, var_names)
             self._worker.push_dense_params(scope, table_id, var_names)
+            all_var_names.extend(var_names)
+        return all_var_names
 
     def _pull_all_dense(self, scopes, send_ctx, recv_map):
+        all_var_names = []
         for name, ctx in send_ctx.items():
             if ctx.is_sparse():
                 continue
@@ -908,8 +942,11 @@ class TheOnePSRuntime(RuntimeBase):
             var_names = recv_map[table_id]
             #print("pull all dense:", idx, table_id, var_names)
             self._worker.pull_dense_params(scope, table_id, var_names)
+            all_var_names.extend(var_names)
+        return all_var_names
 
     def _init_params(self, program, scope, send_ctx, recv_map):
+        all_var_names = []
         for name, ctx in send_ctx.items():
             if ctx.is_sparse():
                 continue
@@ -919,8 +956,11 @@ class TheOnePSRuntime(RuntimeBase):
             var_names = recv_map[table_id]
             # print("init params:", table_id, var_names)
             self._worker.push_dense_params(scope, table_id, var_names)
+            all_var_names.extend(var_names)
+        return all_var_names
 
     def _pull_dense(self, program, scope, send_ctx, recv_map):
+        all_var_names = []
         for name, ctx in send_ctx.items():
             if ctx.is_sparse():
                 continue
@@ -930,11 +970,11 @@ class TheOnePSRuntime(RuntimeBase):
             var_names = recv_map[table_id]
             # print("pull dense:", table_id, var_names)
             self._worker.pull_dense_params(scope, table_id, var_names)
+            all_var_names.extend(var_names)
+        return all_var_names
 
     def _init_worker(self, scopes=None):
         worker_desc = self.ps_desc_builder.build_worker_desc()
-        #with open("test_fl_ps_worker_desc", "w") as f:
-        #    f.write(worker_desc)
         if self.context['use_ps_gpu']:
             main_program = self.context['loss'].block.program
             if not main_program._fleet_opt:
@@ -963,10 +1003,8 @@ class TheOnePSRuntime(RuntimeBase):
         self._send_ctx = send_ctx
         trainer_config = self.context['trainer']
 
-        proto_txt = worker_desc
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("worker: \n{}".format(proto_txt))
+        if self.debug:
+            print("worker_desc: \n{}".format(worker_desc))
             print("communicator send_ctx:")
             for key in send_ctx:
                 print("{}: {}".format(key, send_ctx[key]))
@@ -986,15 +1024,21 @@ class TheOnePSRuntime(RuntimeBase):
 
         print("communicator config:", trainer_config.get_communicator_flags())
 
-        role_id = get_role_id(self.role_maker)
-        self._worker.init_worker(proto_txt, self.string_hosts, role_id)
+        self._worker.init_worker(worker_desc, self.string_hosts, self.role_id)
+        self.trainer_endpoint = get_trainer_endpoint(self.role_maker)
+        print("fl-ps > trainer_endpoint: {}".format(self.trainer_endpoint))
+        print("fl-ps > with_coordinator? {}".format(self.with_coordinator))
+        print("fl-ps > coordinator addr: {}".format(self.coordinator_hosts))
+        if self.with_coordinator:
+            self._worker.init_fl_worker(self.coordinator_hosts, self.role_id,
+                                        self.trainer_endpoint)
 
         if self.context[
                 'ps_mode'] == DistributedMode.GEO or self.is_heter_ps_mode:
             self._communicator = Communicator(
                 trainer_config.mode, kwargs,
                 trainer_config.get_communicator_flags())
-            self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
+            self._communicator.init_with_ctx(send_ctx, dense_map, worker_desc,
                                              self.string_hosts,
                                              fluid.global_scope())
         fleet.util.barrier()
@@ -1002,7 +1046,8 @@ class TheOnePSRuntime(RuntimeBase):
         # info = self._communicator.get_client_info()
         info = self._worker.get_client_info()
         if isinstance(info, list) and len(info) > 0:
-            all_info = self.role_maker._all_gather(info[0])
+            all_info = self.role_maker._all_gather(
+                info[0])  # 收集其他 client 的 service 地址
             # for unittest
             if not isinstance(all_info, list):
                 warnings.warn("gloo may not initialize correctly")
@@ -1045,7 +1090,7 @@ class TheOnePSRuntime(RuntimeBase):
                 self._communicator.init_params(init_params)
             else:
                 if not self.context['use_ps_gpu']:
-                    if role_id == 0:
+                    if self.role_id == 0:
                         print("entering self._init_all_params()")
                         self._init_all_params(scopes, send_ctx, dense_map)
 
@@ -1080,21 +1125,32 @@ class TheOnePSRuntime(RuntimeBase):
                     next_trainers, previous_trainers,
                     self.role_maker._role_id())  # --> HeterClient::GetInstance
 
+    def _init_coordinator(self, scopes=None):
+        if self._coordinator == None:
+            self._coordinator = Coordinator(self.string_hosts)
+
+        print(">>> curr node ip: {}".format(self.coordinator_hosts[0]))
+        print(">>> all trainer endpoints: {}".format(self.trainer_endpoints))
+        self._coordinator.start_coordinator(self.coordinator_hosts[0],
+                                            self.trainer_endpoints)
+
+    def _make_fl_strategy(self):
+        if self._coordinator == None:
+            assert ("Coordinator py object is null!")
+        else:
+            self._coordinator.make_fl_strategy()
+
     def _init_server(self, dirname=None, var_names=None, **kwargs):
         server_desc = self.ps_desc_builder.build_server_desc()
-        #with open("test_fl_ps_server_desc", "w") as f:
-        #    f.write(server_desc)
-        role_id = get_role_id(self.role_maker)
         trainers = get_trainers(self.role_maker)
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
 
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("server: \n{}".format(server_desc))
+        if self.debug:
+            print("server_desc: \n{}".format(server_desc))
 
         self._server = fluid.core.DistFleetWrapper()
-        self._server.init_server(server_desc, self.string_hosts, role_id,
+        self._server.init_server(server_desc, self.string_hosts, self.role_id,
                                  trainers, self._server_sub_program)
 
         dist_varnames = get_sparse_tablenames(self.origin_main_programs, True)
@@ -1168,6 +1224,32 @@ class TheOnePSRuntime(RuntimeBase):
             model_path = os.path.join(dirname, "dnn_plugin")
         return model_path
 
+    def _ps_save_dense_params(self,
+                              executor,
+                              dirname,
+                              scope,
+                              program,
+                              var_names=None):
+        dense_map = get_the_one_recv_context(
+            self.context, split_dense_table=self.is_heter_ps_mode)
+        send_ctx = get_the_one_send_context(
+            self.context,
+            split_dense_table=self.is_heter_ps_mode,
+            use_origin_program=self.is_heter_ps_mode,
+            ep_list=self.endpoints)
+        if program is None or len(self.origin_main_programs) == 1:
+            program = self.origin_main_programs[0]
+        dense_var_names = self._pull_dense(program, scope, send_ctx, dense_map)
+        save_var_names = dense_var_names if var_names is None else var_names
+        vars = [program.global_block().var(i) for i in save_var_names]
+        import paddle
+        with paddle.static.scope_guard(scope):
+            paddle.static.save_vars(executor,
+                                    "./",
+                                    program,
+                                    vars=vars,
+                                    filename=dirname)
+
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
         distributed_varnames = get_sparse_tablenames(self.origin_main_programs,
@@ -1190,49 +1272,9 @@ class TheOnePSRuntime(RuntimeBase):
     def _save_distributed_persistables(self,
                                        executor,
                                        dirname,
-                                       main_program,
-                                       mode=0):
-
-        denses = get_the_one_recv_context(
-            self.context,
-            is_dense=True,
-            split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=True)
-        sparses = get_the_one_recv_context(
-            self.context,
-            is_dense=False,
-            split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=True)
-
-        sparse_varnames = self._save_sparse_params(executor, dirname, sparses,
-                                                   main_program, mode)
-
-        recv_dense_varnames = []
-        for id, names in denses.items():
-            recv_dense_varnames.extend(names)
-        self._communicator.pull_dense(denses)
-
-        saved_varnames = sparse_varnames
-
-        remaining_vars = list(
-            filter(TheOnePSRuntime.__exclude_vars(saved_varnames),
-                   main_program.list_vars()))
-
-        import paddle
-        for var in remaining_vars:
-            # if var.name not in recv_dense_varnames:
-            #     continue
-            tensor = var.get_value()
-            paddle.save(tensor,
-                        os.path.join(dirname, var.name),
-                        use_binary_format=True)
-
-    def _ps_inference_save_persistables(self,
-                                        executor,
-                                        dirname,
-                                        main_program=None,
-                                        mode=0,
-                                        **kwargs):
+                                       main_program=None,
+                                       mode=0,
+                                       **kwargs):
         """
         This function filters out all variables with `persistable==True` from the
         give `main_program` and then saves these variables to the folder `dirname`
@@ -1261,9 +1303,6 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        # Todo(MrChengmo): Save optimizer status
-        # self._save_distributed_persistables(executor, dirname, main_program,
-        #                                     mode)
         self._worker.save_all_model(dirname, mode)
 
     def _ps_inference_save_inference_model(self,
@@ -1344,14 +1383,8 @@ class TheOnePSRuntime(RuntimeBase):
                         os.path.join(model_path, var.name),
                         use_binary_format=True)
 
-    def _save_inference_model(self, *args, **kwargs):
-        self._ps_inference_save_inference_model(*args, **kwargs)
-
-    def _save_persistables(self, *args, **kwargs):
-        self._ps_inference_save_persistables(*args, **kwargs)
-
     def _save_cache_model(self, dirname, **kwargs):
-        mode = kwargs.get("mode", 0)
+        mode = kwargs.get("mode", 1)
         table_id = kwargs.get("table_id", 0)
         self._worker.client_flush()
         fleet.util.barrier()
@@ -1373,6 +1406,12 @@ class TheOnePSRuntime(RuntimeBase):
 
         fleet.util.barrier()
         return feasign_num
+
+    def _check_save_pre_patch_done(self):
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            self._worker.check_save_pre_patch_done()
+        fleet.util.barrier()
 
     def _load_sparse_params(self, dirname, context, main_program, mode):
         distributed_varnames = get_sparse_tablenames(self.origin_main_programs,
@@ -1429,10 +1468,7 @@ class TheOnePSRuntime(RuntimeBase):
             filter(TheOnePSRuntime.__exclude_vars(loaded_varnames),
                    main_program.list_vars()))
 
-        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
-            model_path = "./dnn_plugin"
-        else:
-            model_path = os.path.join(dirname, "dnn_plugin")
+        model_path = self._get_inference_model_path(dirname)
         import paddle
         for var in remaining_vars:
             if var.name not in recv_dense_varnames:
@@ -1442,14 +1478,40 @@ class TheOnePSRuntime(RuntimeBase):
 
         self._init_params(main_program, scope, send_ctx, dense_map)
 
-    def _load_distributed_persistables(self, path, mode):
-        self._worker.load_model(path, mode)
+    def _save_one_table(self, table_id, path, mode):
+        if self.role_maker._is_first_worker():
+            self._worker.save_one_model(table_id, path, mode)
+        fleet.util.barrier()
 
-    def load_model(self, path, mode):
-        if mode == 0 or mode == 3:
-            self._load_distributed_persistables(path, mode)
-        else:
+    def _save_dense_params(self, *args, **kwargs):
+        if self.role_maker._is_first_worker():
+            self._ps_save_dense_params(*args, **kwargs)
+        fleet.util.barrier()
+
+    def _save_persistables(self, *args, **kwargs):
+        if self.role_maker._is_first_worker():
+            self._save_distributed_persistables(*args, **kwargs)
+        fleet.util.barrier()
+
+    def _save_inference_model(self, *args, **kwargs):
+        if self.role_maker._is_first_worker():
+            self._ps_inference_save_inference_model(*args, **kwargs)
+        fleet.util.barrier()
+
+    def _load_one_table(self, table_id, path, mode):
+        if self.role_maker._is_first_worker():
+            self._worker.load_one_table(table_id, path, mode)
+        fleet.util.barrier()
+
+    def _load_persistables(self, path, mode):
+        if self.role_maker._is_first_worker():
+            self._worker.load_model(path, mode)
+        fleet.util.barrier()
+
+    def _load_inference_model(self, path, mode):
+        if self.role_maker._is_first_worker():
             self._ps_inference_load_inference_model(path, mode)
+        fleet.util.barrier()
 
     def _shrink(self, threshold=None):
         if threshold is not None:

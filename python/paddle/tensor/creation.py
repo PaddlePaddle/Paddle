@@ -178,7 +178,6 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
 
     Examples:
         .. code-block:: python
-            :name: logspace-example
 
             import paddle
             data = paddle.logspace(0, 10, 5, 2, 'float32')
@@ -492,25 +491,24 @@ def ones(shape, dtype=None, name=None):
 
     Examples:
         .. code-block:: python
-          :name: ones-example
 
-          import paddle 
-          
-          # default dtype for ones OP
-          data1 = paddle.ones(shape=[3, 2]) 
-          # [[1. 1.]
-          #  [1. 1.]
-          #  [1. 1.]]
-          
-          data2 = paddle.ones(shape=[2, 2], dtype='int32') 
-          # [[1 1]
-          #  [1 1]]
-          
-          # shape is a Tensor
-          shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
-          data3 = paddle.ones(shape=shape, dtype='int32') 
-          # [[1 1]
-          #  [1 1]]
+            import paddle 
+
+            # default dtype for ones OP
+            data1 = paddle.ones(shape=[3, 2]) 
+            # [[1. 1.]
+            #  [1. 1.]
+            #  [1. 1.]]
+
+            data2 = paddle.ones(shape=[2, 2], dtype='int32') 
+            # [[1 1]
+            #  [1 1]]
+
+            # shape is a Tensor
+            shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
+            data3 = paddle.ones(shape=shape, dtype='int32') 
+            # [[1 1]
+            #  [1 1]]
     """
     if dtype is None:
         dtype = 'float32'
@@ -713,30 +711,29 @@ def full(shape, fill_value, dtype=None, name=None):
 
     Examples:
         .. code-block:: python
-           :name: code-example1
 
-          import paddle
+            import paddle
 
-          data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') 
-          #[[0]
-          # [0]]
+            data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') 
+            #[[0]
+            # [0]]
 
-          # attr shape is a list which contains Tensor.
-          positive_2 = paddle.full([1], 2, "int32")
-          data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5)
-          # [[1.5 1.5]]
+            # attr shape is a list which contains Tensor.
+            positive_2 = paddle.full([1], 2, "int32")
+            data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5)
+            # [[1.5 1.5]]
 
-          # attr shape is a Tensor.
-          shape = paddle.full([2], 2, "int32")
-          data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) 
-          # [[True True] 
-          #  [True True]]
-          
-          # attr fill_value is a Tensor.
-          val = paddle.full([1], 2.0, "float32")
-          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
-          # [[2.0] 
-          #  [2.0]]
+            # attr shape is a Tensor.
+            shape = paddle.full([2], 2, "int32")
+            data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) 
+            # [[True True] 
+            #  [True True]]
+            
+            # attr fill_value is a Tensor.
+            val = paddle.full([1], 2.0, "float32")
+            data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
+            # [[2.0] 
+            #  [2.0]]
     """
 
     if dtype is None:
@@ -1110,57 +1107,59 @@ def diagflat(x, offset=0, name=None):
 
     Examples:
         .. code-block:: python
+            :name: code-example-1
 
-          import paddle
+            import paddle
 
-          x = paddle.to_tensor([1, 2, 3])
-          y = paddle.diagflat(x)
-          print(y.numpy())
-          # [[1 0 0]
-          #  [0 2 0]
-          #  [0 0 3]]
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.diagflat(x)
+            print(y.numpy())
+            # [[1 0 0]
+            #  [0 2 0]
+            #  [0 0 3]]
 
-          y = paddle.diagflat(x, offset=1)
-          print(y.numpy())
-          # [[0 1 0 0]
-          #  [0 0 2 0]
-          #  [0 0 0 3]
-          #  [0 0 0 0]]
+            y = paddle.diagflat(x, offset=1)
+            print(y.numpy())
+            # [[0 1 0 0]
+            #  [0 0 2 0]
+            #  [0 0 0 3]
+            #  [0 0 0 0]]
 
-          y = paddle.diagflat(x, offset=-1)
-          print(y.numpy())
-          # [[0 0 0 0]
-          #  [1 0 0 0]
-          #  [0 2 0 0]
-          #  [0 0 3 0]]
-        
+            y = paddle.diagflat(x, offset=-1)
+            print(y.numpy())
+            # [[0 0 0 0]
+            #  [1 0 0 0]
+            #  [0 2 0 0]
+            #  [0 0 3 0]]
+
         .. code-block:: python
+            :name: code-example-2
 
-          import paddle
+            import paddle
 
-          x = paddle.to_tensor([[1, 2], [3, 4]])
-          y = paddle.diagflat(x)
-          print(y.numpy())
-          # [[1 0 0 0]
-          #  [0 2 0 0]
-          #  [0 0 3 0]
-          #  [0 0 0 4]]
+            x = paddle.to_tensor([[1, 2], [3, 4]])
+            y = paddle.diagflat(x)
+            print(y.numpy())
+            # [[1 0 0 0]
+            #  [0 2 0 0]
+            #  [0 0 3 0]
+            #  [0 0 0 4]]
 
-          y = paddle.diagflat(x, offset=1)
-          print(y.numpy())
-          # [[0 1 0 0 0]
-          #  [0 0 2 0 0]
-          #  [0 0 0 3 0]
-          #  [0 0 0 0 4]
-          #  [0 0 0 0 0]]
+            y = paddle.diagflat(x, offset=1)
+            print(y.numpy())
+            # [[0 1 0 0 0]
+            #  [0 0 2 0 0]
+            #  [0 0 0 3 0]
+            #  [0 0 0 0 4]
+            #  [0 0 0 0 0]]
 
-          y = paddle.diagflat(x, offset=-1)
-          print(y.numpy())
-          # [[0 0 0 0 0]
-          #  [1 0 0 0 0]
-          #  [0 2 0 0 0]
-          #  [0 0 3 0 0]
-          #  [0 0 0 4 0]]
+            y = paddle.diagflat(x, offset=-1)
+            print(y.numpy())
+            # [[0 0 0 0 0]
+            #  [1 0 0 0 0]
+            #  [0 2 0 0 0]
+            #  [0 0 3 0 0]
+            #  [0 0 0 4 0]]
     """
     padding_value = 0
     if paddle.in_dynamic_mode():
@@ -1240,47 +1239,49 @@ def diag(x, offset=0, padding_value=0, name=None):
 
     Examples:
         .. code-block:: python
+            :name: code-example-1
 
-          import paddle
+            import paddle
 
-          paddle.disable_static()
-          x = paddle.to_tensor([1, 2, 3])
-          y = paddle.diag(x)
-          print(y.numpy())
-          # [[1 0 0]
-          #  [0 2 0]
-          #  [0 0 3]]
+            paddle.disable_static()
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.diag(x)
+            print(y.numpy())
+            # [[1 0 0]
+            #  [0 2 0]
+            #  [0 0 3]]
 
-          y = paddle.diag(x, offset=1)
-          print(y.numpy())
-          # [[0 1 0 0]
-          #  [0 0 2 0]
-          #  [0 0 0 3]
-          #  [0 0 0 0]]
+            y = paddle.diag(x, offset=1)
+            print(y.numpy())
+            # [[0 1 0 0]
+            #  [0 0 2 0]
+            #  [0 0 0 3]
+            #  [0 0 0 0]]
 
-          y = paddle.diag(x, padding_value=6)
-          print(y.numpy())
-          # [[1 6 6]
-          #  [6 2 6]
-          #  [6 6 3]]
+            y = paddle.diag(x, padding_value=6)
+            print(y.numpy())
+            # [[1 6 6]
+            #  [6 2 6]
+            #  [6 6 3]]
 
         .. code-block:: python
+            :name: code-example-2
 
-          import paddle
+            import paddle
 
-          paddle.disable_static()
-          x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
-          y = paddle.diag(x)
-          print(y.numpy())
-          # [1 5]
+            paddle.disable_static()
+            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            y = paddle.diag(x)
+            print(y.numpy())
+            # [1 5]
 
-          y = paddle.diag(x, offset=1)
-          print(y.numpy())
-          # [2 6]
+            y = paddle.diag(x, offset=1)
+            print(y.numpy())
+            # [2 6]
 
-          y = paddle.diag(x, offset=-1)
-          print(y.numpy())
-          # [4]
+            y = paddle.diag(x, offset=-1)
+            print(y.numpy())
+            # [4]
     """
     if in_dygraph_mode():
         return _C_ops.final_state_diag(x, offset, padding_value)
@@ -1485,18 +1486,17 @@ def assign(x, output=None):
  
     Examples:
         .. code-block:: python
-          :name: assign-example
 
-          import paddle
-          import numpy as np
-          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          array = np.array([[1, 1],
-                            [3, 4],
-                            [1, 3]]).astype(np.int64)
-          result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-          paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
-          result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+            import paddle
+            import numpy as np
+            data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+            array = np.array([[1, 1],
+                                [3, 4],
+                                [1, 3]]).astype(np.int64)
+            result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+            paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+            result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+            result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     input = x
     helper = LayerHelper('assign', **locals())
@@ -1535,11 +1535,32 @@ def assign(x, output=None):
                              inputs={'X': [input]},
                              outputs={'Out': [output]})
     elif isinstance(input, np.ndarray):
-        # Not support [var, var, ...] currently.
+        # We now support the form of [var, VAR...] if the Var.shape=[1,]
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
+            # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
+            if not all(
+                [x.shape == (1, ) for x in input if isinstance(x, Variable)]):
+                raise TypeError(
+                    "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."
+                )
+
+            def convert_scalar(x):
+                if not isinstance(x, Variable):
+                    return assign(x)
+                return x
+
+            to_stack_list = list(map(convert_scalar, input))
+            ret = paddle.stack(to_stack_list)
+            ret = paddle.squeeze(ret, -1)
+            return ret
+
+        if input.dtype == 'object':
+            """ may be this form [[Var], [Var], [3], [4]], we reject them.
+            """
             raise TypeError(
-                "Required type(input) numpy.ndarray, but found `list(Variable)` in input."
+                "The type of received input == `object`, it is not supported to convert to tensor, such as [[Var], [Var], [3], [4]]"
             )
+
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == core.VarDesc.VarType.FP64:
             # Setting FP64 numpy data is not supported in Paddle, so we
@@ -1569,13 +1590,20 @@ def assign(x, output=None):
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
-        if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
-        if _non_static_mode():
+        if in_dygraph_mode():
+            if output is None:
+                output = zeros(list(input.shape), dtype)
+            _C_ops.final_state_assign_value_(output, list(input.shape), dtype,
+                                             values, _current_expected_place())
+        elif _in_legacy_dygraph():
+            if output is None:
+                output = core.VarBase()
             _C_ops.assign_value(output, 'shape', list(input.shape), 'dtype',
                                 dtype, value_name, values)
         else:
+            if output is None:
+                output = helper.create_variable_for_type_inference(
+                    dtype=input.dtype)
             helper.append_op(type='assign_value',
                              outputs={'Out': [output]},
                              attrs={
@@ -1600,7 +1628,8 @@ def clone(x, name=None):
         x (Tensor): The input Tensor.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
-    Returns: A Tensor copied from ``input`` .
+    Returns: 
+        Tensor, A Tensor copied from ``input``.
 
     Examples:
         .. code-block:: python
@@ -1633,7 +1662,7 @@ def _memcpy(input, place=None, output=None):
             be created as :attr:`output`. Default: None.
 
     Returns:
-        Tensor: A tensor with the same shape, data type and value as :attr:`input`.
+        Tensor, A tensor with the same shape, data type and value as :attr:`input`.
 
     Examples:
         .. code-block:: python
@@ -1749,7 +1778,6 @@ def tril_indices(row, col, offset=0, dtype='int64'):
 
     Examples:
         .. code-block:: python
-            :name: tril_indices-example
 
             import paddle
             

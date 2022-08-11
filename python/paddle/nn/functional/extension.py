@@ -191,11 +191,10 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
+    Returns: 
+            Tensor, The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
             and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
             int32 or int64.
-
-    Return Type: Tensor
 
     Examples:
         .. code-block:: python

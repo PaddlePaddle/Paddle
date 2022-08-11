@@ -21,7 +21,7 @@
 #include "paddle/fluid/imperative/parallel_context.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
-#ifdef PADDLE_WITH_XPU_BKCL
+#ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
 #include "paddle/fluid/string/string_helper.h"
@@ -283,11 +283,10 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    ConcatTensorsWithType(
-        static_cast<const platform::CUDADeviceContext &>(context),
-        dense_tensors_,
-        &dense_contents_,
-        dtype_);
+    ConcatTensorsWithType(static_cast<const phi::GPUContext &>(context),
+                          dense_tensors_,
+                          &dense_contents_,
+                          dtype_);
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't concat grad tensors since it's not compiled with NCCL,"
@@ -344,11 +343,10 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    SplitTensorsWithType(
-        static_cast<const platform::CUDADeviceContext &>(context),
-        &dense_contents_,
-        &dense_tensors_,
-        dtype_);
+    SplitTensorsWithType(static_cast<const phi::GPUContext &>(context),
+                         &dense_contents_,
+                         &dense_tensors_,
+                         dtype_);
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split grad tensor since it's not compiled with NCCL,"

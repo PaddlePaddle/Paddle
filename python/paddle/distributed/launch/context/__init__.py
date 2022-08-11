@@ -51,25 +51,13 @@ class Context(object):
         if self.args.legacy:
             return True
 
+        if self.args.master:
+            return False
+
         if len(self.unknown_args) > 0:
             self.logger.warning("Compatible mode enable with args {}".format(
                 self.unknown_args))
             return True
-
-        legacy_env_list = [
-            'DISTRIBUTED_TRAINER_ENDPOINTS',
-            'PADDLE_ELASTIC_JOB_ID',
-            'FLAGS_START_PORT',
-        ]
-
-        for env in legacy_env_list:
-            if env in self.envs:
-                self.logger.warning(
-                    "ENV {} is deprecated, legacy launch enable".format(env))
-                return True
-
-        if self.args.master:
-            return False
 
         return False
 
@@ -103,4 +91,7 @@ class Context(object):
     def set_env_in_args(self):
         for k, v in env_args_mapping.items():
             if k in self.envs:
+                print(
+                    f"LAUNCH WARNNING args {v} is override by env {self.envs[k]}"
+                )
                 setattr(self.args, v, self.envs[k])

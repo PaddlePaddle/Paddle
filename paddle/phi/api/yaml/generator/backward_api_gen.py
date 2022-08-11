@@ -118,12 +118,12 @@ class BackwardAPI(BaseAPI):
                     out_tensor_type_list=None,
                     code_indent='',
                     inplace_flag=False):
-        kernel_output = ""
+        kernel_output = []
         output_names = []
         output_create = ""
 
         if len(out_dtype_list) == 1:
-            kernel_output = 'kernel_out'
+            kernel_output.append('kernel_out')
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[self.outputs['names'][
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
@@ -144,7 +144,7 @@ class BackwardAPI(BaseAPI):
         elif len(out_dtype_list) > 1:
             output_create = ""
             for i, out_type_item in enumerate(out_dtype_list):
-                kernel_output = kernel_output + f'kernel_out_{i}, '
+                kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
                 set_out_func = 'SetKernelOutput' if out_tensor_type_list is None or out_tensor_type_list[
                     i] == 'dense' else 'SetSelectedRowsKernelOutput'
@@ -168,7 +168,6 @@ class BackwardAPI(BaseAPI):
                     output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}(&{self.outputs['names'][i]});"""
 
-            kernel_output = kernel_output[:-2]
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(
@@ -221,6 +220,7 @@ def source_include(header_file_path):
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 DECLARE_bool(conv2d_disable_cudnn);
 """

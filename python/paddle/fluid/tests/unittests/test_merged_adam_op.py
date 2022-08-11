@@ -135,7 +135,7 @@ class TestMergedAdam(unittest.TestCase):
             value2 = outs2[key]
             for i in range(len(value1)):
                 if place == 'gpu':
-                    self.assertTrue(np.array_equal(value1[i], value2[i]))
+                    np.testing.assert_array_equal(value1[i], value2[i])
                 else:
                     self.assertTrue(np.allclose(value1[i], value2[i],
                                                 atol=1e-7))

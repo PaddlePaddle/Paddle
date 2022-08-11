@@ -390,9 +390,7 @@ def concat(input, axis=0, name=None):
         attrs = {}
         if isinstance(axis, Variable):
             axis.stop_gradient = True
-            inputs['AxisTensor'] = axis
-        else:
-            attrs['axis'] = axis
+        attrs['axis'] = axis
 
         helper.append_op(type='concat',
                          inputs=inputs,
@@ -690,12 +688,20 @@ def assign(input, output=None):
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
-        if output is None:
-            output = helper.create_variable_for_type_inference(dtype=dtype)
-        if _non_static_mode():
+        if in_dygraph_mode():
+            if output is None:
+                output = zeros(list(input.shape), dtype)
+            _C_ops.final_state_assign_value_(output, list(input.shape), dtype,
+                                             values, _current_expected_place())
+        elif _in_legacy_dygraph():
+            if output is None:
+                output = core.VarBase()
             _C_ops.assign_value(output, 'shape', list(input.shape), 'dtype',
                                 dtype, value_name, values)
         else:
+            if output is None:
+                output = helper.create_variable_for_type_inference(
+                    dtype=input.dtype)
             helper.append_op(type='assign_value',
                              outputs={'Out': [output]},
                              attrs={
@@ -768,43 +774,49 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             attrs['str_value'] = str(float(value))
             attrs['value'] = float(value)
 
-    if _non_static_mode():
-        if out is None and in_dygraph_mode():
-            #Currently, final state mode don't support out is None.
-            place = _current_expected_place()
-            if force_cpu:
-                place = core.CPUPlace()
-            if isinstance(shape, (list, tuple)):
-                for item in shape:
-                    if not isinstance(item, Variable):
-                        shape = list(
-                            map(
-                                lambda x: x.numpy().flat[0]
-                                if isinstance(x, Variable) else x, shape))
-                        break
+    if in_dygraph_mode():
+        place = _current_expected_place()
+        if force_cpu:
+            place = core.CPUPlace()
+        if isinstance(shape, (list, tuple)):
+            for item in shape:
+                if not isinstance(item, Variable):
+                    shape = list(
+                        map(
+                            lambda x: x.numpy().flat[0]
+                            if isinstance(x, Variable) else x, shape))
+                    break
 
-            if not isinstance(dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+
+        if out is None:
             out = _C_ops.final_state_full(shape, float(value), dtype, place)
             out.stop_gradient = True
             return out
 
-        else:
-            shape = utils.convert_shape_to_list(shape)
-            if out is None:
-                out = _varbase_creator(dtype=dtype)
-
-            if isinstance(value, Variable):
-                if dtype in ['uint8', 'int16', 'int32', 'int64']:
-                    attrs['str_value'] = str(int(value.numpy().item(0)))
-                else:
-                    attrs['str_value'] = str(float(value.numpy().item(0)))
-
-            _C_ops.fill_constant(out, 'value', float(value), 'force_cpu',
-                                 force_cpu, 'dtype', out.dtype, 'str_value',
-                                 attrs['str_value'], 'shape', shape)
+        if out is not None:
+            # final state mode is support out is not None.
+            _C_ops.final_state_full_(out, shape, float(value), dtype, place)
             out.stop_gradient = True
             return out
+
+    if _in_legacy_dygraph():
+        shape = utils.convert_shape_to_list(shape)
+        if out is None:
+            out = _varbase_creator(dtype=dtype)
+
+        if isinstance(value, Variable):
+            if dtype in ['uint8', 'int16', 'int32', 'int64']:
+                attrs['str_value'] = str(int(value.numpy().item(0)))
+            else:
+                attrs['str_value'] = str(float(value.numpy().item(0)))
+
+        _C_ops.fill_constant(out, 'value', float(value), 'force_cpu', force_cpu,
+                             'dtype', out.dtype, 'str_value',
+                             attrs['str_value'], 'shape', shape)
+        out.stop_gradient = True
+        return out
 
     helper = LayerHelper("fill_constant", **locals())
     inputs = {}
@@ -1271,6 +1283,11 @@ def reverse(x, axis):
     check_type(axis, 'axis', (int, tuple, list), 'reverse')
     if isinstance(axis, int):
         axis = [axis]
+    if in_dygraph_mode():
+        if x.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            return _C_ops.final_state_reverse_array(x, axis)
+        else:
+            return _C_ops.final_state_reverse(x, axis)
     helper = LayerHelper("reverse", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='reverse',

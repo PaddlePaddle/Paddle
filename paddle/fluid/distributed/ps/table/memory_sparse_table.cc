@@ -41,14 +41,14 @@ namespace paddle {
 namespace distributed {
 
 int32_t MemorySparseTable::Initialize() {
-  _shards_task_pool.resize(_task_pool_size);
-  for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
-    _shards_task_pool[i].reset(new ::ThreadPool(1));
-  }
   auto& profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_sparse_update_all");
   profiler.register_profiler("pserver_sparse_select_all");
   InitializeValue();
+  _shards_task_pool.resize(_task_pool_size);
+  for (int i = 0; i < _shards_task_pool.size(); ++i) {
+    _shards_task_pool[i].reset(new ::ThreadPool(1));
+  }
   VLOG(0) << "initalize MemorySparseTable succ";
   return 0;
 }
@@ -65,9 +65,13 @@ int32_t MemorySparseTable::InitializeValue() {
     _real_local_shard_num =
         _real_local_shard_num < 0 ? 0 : _real_local_shard_num;
   }
+#ifdef PADDLE_WITH_HETERPS
+  _task_pool_size = _sparse_table_shard_num;
+#endif
   VLOG(1) << "memory sparse table _avg_local_shard_num: "
           << _avg_local_shard_num
-          << " _real_local_shard_num: " << _real_local_shard_num;
+          << " _real_local_shard_num: " << _real_local_shard_num
+          << " _task_pool_size:" << _task_pool_size;
 
   _local_shards.reset(new shard_type[_real_local_shard_num]);
 
@@ -336,7 +340,11 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
 
   size_t file_start_idx = _avg_local_shard_num * _shard_idx;
 
+#ifdef PADDLE_WITH_GPU_GRAPH
+  int thread_num = _real_local_shard_num;
+#else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
+#endif
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _real_local_shard_num; ++i) {
