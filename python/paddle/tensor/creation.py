@@ -412,6 +412,8 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                                 persistable=False,
                                 zero_copy=False,
                                 stop_gradient=stop_gradient)
+    
+    # call assign instead for static graph
     else:
         output = assign(data)
         if dtype is not None:
