@@ -436,12 +436,6 @@ class ImperativeQuantizeOutputs(object):
                 utils.find_parent_layer_and_sub_name(model, cur_name)
 
             reduce_type = None
-            if paddle.distributed.get_world_size() > 1:
-                if isinstance(cur_layer, fleet.meta_parallel.RowParallelLinear):
-                    reduce_type = 'sum'
-                elif isinstance(cur_layer,
-                                fleet.meta_parallel.ColumnParallelLinear):
-                    reduce_type = 'max'
 
             if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
                 cur_quant_layer = quant_layers.FakeQuantMAOutputScaleLayer(

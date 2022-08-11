@@ -24,6 +24,7 @@ import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 from paddle.io import DataLoader, Dataset
 import unittest
+import paddle.nn as nn
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
@@ -95,6 +96,24 @@ def parallel_matmul(lm_output, logit_weights, parallel_output):
     else:
         logits = paddle.matmul(lm_output, logit_weights, transpose_y=True)
         return logits
+
+
+class PACT(nn.Layer):
+
+    def __init__(self, init_value=20):
+        super(PACT, self).__init__()
+        alpha_attr = paddle.ParamAttr(
+            name=self.full_name() + ".pact",
+            initializer=paddle.nn.initializer.Constant(value=init_value))
+        self.alpha = self.create_parameter(shape=[1],
+                                           attr=alpha_attr,
+                                           dtype='float32')
+
+    def forward(self, x):
+        out_left = paddle.nn.functional.relu(x - self.alpha)
+        out_right = paddle.nn.functional.relu(-self.alpha - x)
+        x = x - out_left + out_right
+        return x
 
 
 class SimpleMPNet(fluid.dygraph.Layer):
@@ -224,8 +243,10 @@ class TestDistMPTraning(unittest.TestCase):
                                          parameters=model.parameters())
         return optimizer
 
-    def build_model_optimizer(self, weight_quantize_type,
-                              activation_quantize_type):
+    def build_model_optimizer(self,
+                              weight_quantize_type,
+                              activation_quantize_type,
+                              use_pact=False):
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
         mp_id = hcg.get_model_parallel_rank()
@@ -234,7 +255,8 @@ class TestDistMPTraning(unittest.TestCase):
         imperative_qat = ImperativeQuantAware(
             weight_quantize_type=weight_quantize_type,
             activation_quantize_type=activation_quantize_type,
-            fuse_conv_bn=self.fuse_conv_bn)
+            fuse_conv_bn=self.fuse_conv_bn,
+            act_preprocess_layer=PACT if use_pact else None)
         set_random_seed(1024, dp_id, rank_id)
 
         np_fc1 = np.ones((hidden_size, inner_size))
@@ -295,7 +317,8 @@ class TestDistMPTraning(unittest.TestCase):
 
         model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
             weight_quantize_type='channel_wise_abs_max',
-            activation_quantize_type='moving_average_abs_max')
+            activation_quantize_type='moving_average_abs_max',
+            use_pact=True)
         self.train(model_a, optimizer_a, model_b, optimizer_b)
 
 

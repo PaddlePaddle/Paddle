@@ -84,10 +84,7 @@ class FakeQuantAbsMax(Layer):
                                          dtype=input.dtype,
                                          persistable=False)
             out_scale = self._scale
-            if self._reduce_type == "sum":
-                paddle.distributed.all_reduce(
-                    out_scale, op=paddle.distributed.ReduceOp.SUM)
-            elif self._reduce_type == "max":
+            if self._reduce_type == "max":
                 paddle.distributed.all_reduce(
                     out_scale, op=paddle.distributed.ReduceOp.MAX)
 
@@ -190,10 +187,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
                                          shape=input.shape,
                                          dtype=input.dtype,
                                          persistable=False)
-            if self._reduce_type == "sum":
-                paddle.distributed.all_reduce(
-                    self._scale, op=paddle.distributed.ReduceOp.SUM)
-            elif self._reduce_type == "max":
+            if self._reduce_type == "max":
                 paddle.distributed.all_reduce(
                     self._scale, op=paddle.distributed.ReduceOp.MAX)
 
@@ -281,10 +275,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
                                          persistable=False)
 
             out_scale = self._scale
-            if self._reduce_type == "sum":
-                paddle.distributed.all_reduce(
-                    out_scale, op=paddle.distributed.ReduceOp.SUM)
-            elif self._reduce_type == "max":
+            if self._reduce_type == "max":
                 paddle.distributed.all_reduce(
                     out_scale, op=paddle.distributed.ReduceOp.MAX)
             if out_scale is None:
@@ -384,10 +375,7 @@ class MovingAverageAbsMaxScale(Layer):
                                          shape=input.shape,
                                          dtype=input.dtype,
                                          persistable=False)
-            if self._reduce_type == "sum":
-                paddle.distributed.all_reduce(
-                    self._scale, op=paddle.distributed.ReduceOp.SUM)
-            elif self._reduce_type == "max":
+            if self._reduce_type == "max":
                 paddle.distributed.all_reduce(
                     self._scale, op=paddle.distributed.ReduceOp.MAX)
 
