@@ -57,6 +57,11 @@ struct BatchFidSeq {
   std::vector<std::vector<int>> debug_h_cache_fids;
   std::vector<std::shared_ptr<memory::Allocation>> d_cache_bfids; // cache bfids in pull/push for different devices
 
+  std::vector<std::vector<int>> h_cache_bfid_resort_indexes;
+  std::vector<std::shared_ptr<memory::Allocation>> d_cache_bfid_resort_indexes;
+  std::vector<std::vector<int>> h_cache_bfid_lods;
+  std::vector<std::shared_ptr<memory::Allocation>> d_cache_bfid_lods;
+
   std::string to_string() {
     std::stringstream data_ss;
     data_ss << "BatchFidSeq begin >>>>>>>>>>>>>>>>>>>>>>>>>>>>\n";
@@ -86,6 +91,20 @@ struct BatchFidSeq {
       }
     }
 
+    data_ss << "\nh_cache_bfid_resort_indexes:\n";
+    for (size_t d = 0; d < h_cache_bfid_lods.size(); d++) {
+      for (size_t i = 1; i < h_cache_bfid_lods[d].size(); i++) {
+        data_ss << "dev:" << d;
+        data_ss << ", h_cache_bfid_lods-" << i << ":" << h_cache_bfid_lods[d][i] << " [";
+        for (int j = h_cache_bfid_lods[d][i - 1]; j < h_cache_bfid_lods[d][i]; j++) {
+          data_ss << j << ":" << h_cache_bfid_resort_indexes[d][j]
+                  << "->bfid:" << debug_h_cache_bfids[d][h_cache_bfid_resort_indexes[d][j]]
+                  << "->fid:" << debug_h_cache_fids[d][h_cache_bfid_resort_indexes[d][j]] << " ";
+      }
+      data_ss << "]\n";
+    }
+    }
+
     data_ss << "BatchFidSeq end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n";
     return data_ss.str();
   }
@@ -104,6 +123,12 @@ class CacheManager {
   ~CacheManager() {
     if (batch_fidseq_proc_thread_.joinable()) {
       batch_fidseq_proc_thread_.join();
+    }
+
+    for (auto & thrd : prepare_merge_grad_threads_) {
+      if (thrd.joinable()) {
+        thrd.join();
+      }
     }
 
     for (int i = 0; i < worker_num_; i++) {
@@ -128,7 +153,7 @@ class CacheManager {
       parse_all_fidseq(std::vector<std::deque<Record> *> & all_chan_recs,
                                   const std::vector<bool> & slot_is_dense);
   void build_batch_fidseq(
-      std::vector<std::deque<Record> *> & all_chan_recs, 
+      std::vector<std::deque<Record> *> & all_chan_recs,
                 const std::vector<bool> & slot_is_dense);
   void prepare_next_batch(int worker_id);
   void convert_fid2bfid(int dev_id, uint32_t * fids, int fid_len);
@@ -144,7 +169,11 @@ class CacheManager {
   void compress_bucket(int dev_id, T * vals, int val_len, const XPUStream & stream) {
     compress_bucket(dev_id, vals, val_len, sizeof(T), stream);
   }
-  //void debug();
+
+  void prepare_merge_grad(int dev_id);
+  void get_merge_grad_params(int dev_id,
+      int ** key_resort_idxs, int * out_key_resort_idx_len, 
+                   int ** fidseq_lods, int * fidseq_lod_len);
 #endif
 
   std::string dump_to_file();
@@ -178,6 +207,8 @@ class CacheManager {
 
   std::vector<ppStream> comm_streams_;
   std::shared_ptr<paddle::framework::ChannelObject<std::string>> debug_data_chan_ = nullptr;
+
+  std::vector<std::thread> prepare_merge_grad_threads_;
 #endif
 };
 

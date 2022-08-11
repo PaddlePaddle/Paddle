@@ -729,6 +729,9 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",fill_dvals_with_bfid:" << timeline.ElapsedSec();
+
+  cache_mgr_->prepare_merge_grad(dev_id);
+
   //VLOG(0) << "pull_sparse time cost:" << total_time
   //       << " sec, detail:" << time_ss.str();
 #else
@@ -998,6 +1001,21 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   int bfid_len = 0;
   cache_mgr_->get_bfidseq(dev_id, &d_bfids_ptr, &bfid_len);
   PADDLE_ENFORCE_EQ(bfid_len, len);
+
+  //timeline.Start();
+  // for new merge-grad impl
+  int * fidseq_grad_idxs = nullptr;
+  int fidseq_grad_idx_len = 0;
+  int * fidseq_lods = nullptr;
+  int fidseq_lod_len = 0;
+  cache_mgr_->get_merge_grad_params(
+      dev_id, &fidseq_grad_idxs, &fidseq_grad_idx_len, &fidseq_lods, &fidseq_lod_len);
+  PADDLE_ENFORCE_EQ(fidseq_grad_idx_len, len);
+  PADDLE_ENFORCE_EQ(fidseq_lod_len, all_fidseq_bucket_len + 1);
+  // for new merge-grad impl end
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",get_merge_grad_params:" << timeline.ElapsedSec();
 
   heter_comm_kernel_->merge_grad(d_bfids_ptr, d_grads, len, d_all_fidseq_bucket_grads_ptr, stream);
   //timeline.Pause();
