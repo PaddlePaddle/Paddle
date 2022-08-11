@@ -38,8 +38,11 @@ namespace distributed {
   } while (0)
 
 MPI_Op ToMPIType(ReduceOp reduction);
+
 bool CheckMpiCudaAware();
+
 void CheckValidInputs(const std::vector<phi::DenseTensor>& tensors);
+
 void CheckValidSizeAndType(const phi::DenseTensor& t_in,
                            const std::vector<phi::DenseTensor>& inputs);
 

@@ -478,7 +478,7 @@ void* GetWarpCTCDsoHandle() {
 
 void* GetMPIDsoHandle() {
   std::string warning_msg(
-      "You may need to install mpi support, such as "
+      "You may need to install mpi library, such as "
       "openmpi, MPICH2, MVAPICH, MVAPICH2, Intel MPI and so on."
       "before install PaddlePaddle.");
 

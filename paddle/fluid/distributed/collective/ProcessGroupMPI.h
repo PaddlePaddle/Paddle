@@ -81,7 +81,8 @@ class ProcessGroupMPI : public ProcessGroup {
         // Waits for the user-provided timeout.
         cv_.wait_for(lock, timeout, [&] { return is_completed_; });
         PADDLE_ENFORCE_EQ(
-            is_completed_, true,
+            is_completed_,
+            true,
             platform::errors::InvalidArgument("MPI operation timeout! "));
       }
       if (exception_) {
@@ -183,7 +184,6 @@ class ProcessGroupMPI : public ProcessGroup {
       std::vector<int> ranks, int gid);
 
  protected:
-  // Worker thread loop
   void workLoop();
 
   std::shared_ptr<ProcessGroup::Task> Enqueue(
@@ -193,16 +193,12 @@ class ProcessGroupMPI : public ProcessGroup {
  private:
   bool stop_;
   std::mutex pg_mutex;
-
-  // main dispatch thread
   std::thread worker_thread;
-
   std::deque<std::tuple<std::unique_ptr<TaskEntry>, std::shared_ptr<MPITask>>>
       queue_;
   std::condition_variable queue_produce;
   std::condition_variable queue_consume;
 
-  // Global states
   static void InitOneTimeMPI();
   static void ExitMPI();
   static std::once_flag onceFlag;
