@@ -60,6 +60,7 @@ option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
+include(experimental) # experimental build options
 
 if(WITH_GPU AND WITH_XPU)
   message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
@@ -289,8 +290,6 @@ option(WITH_POCKETFFT "Compile with pocketfft support" ON)
 option(WITH_RECORD_BUILDTIME
        "Compile PaddlePaddle with record all targets build time" OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
-
-include(experimental) # experimental build options
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
