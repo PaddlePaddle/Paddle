@@ -18,34 +18,34 @@ import paddle
 
 from test_collective_base_xpu import TestDistBase
 
+import sys
+
+sys.path.append("..")
+
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
 paddle.enable_static()
 
 
-class TestCAllgatherOp(TestDistBase):
+class XPUTestCAllgatherOP(XPUOpTestWrapper):
 
-    def _setup_config(self):
-        pass
+    def __init__(self):
+        self.op_name = 'c_allgather'
+        self.use_dynamic_create_class = False
 
-    def test_allgather_fp16(self):
-        self.check_with_place("collective_allgather_op_xpu.py", "allgather",
-                              "float16")
+    class TestCAllgatherOp(TestDistBase):
 
-    def test_allgather_fp32(self):
-        self.check_with_place("collective_allgather_op_xpu.py", "allgather",
-                              "float32")
+        def _setup_config(self):
+            pass
 
-    def test_allgather_fp64(self):
-        self.check_with_place("collective_allgather_op_xpu.py", "allgather",
-                              "float64")
+        def test_allgather(self):
+            self.check_with_place("collective_allgather_op_xpu.py", "allgather",
+                                  self.in_type_str)
 
-    def test_allgather_int32(self):
-        self.check_with_place("collective_allgather_op_xpu.py", "allgather",
-                              "int32")
 
-    def test_allgather_int64(self):
-        self.check_with_place("collective_allgather_op_xpu.py", "allgather",
-                              "int64")
-
+support_types = get_xpu_op_support_types('c_allgather')
+for stype in support_types:
+    create_test_class(globals(), XPUTestCAllgatherOP, stype)
 
 if __name__ == '__main__':
     unittest.main()

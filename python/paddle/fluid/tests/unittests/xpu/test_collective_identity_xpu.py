@@ -18,34 +18,34 @@ import paddle
 
 from test_collective_base_xpu import TestDistBase
 
+import sys
+
+sys.path.append("..")
+
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
 paddle.enable_static()
 
 
-class TestCIdentityOp(TestDistBase):
+class XPUTestCIdentityOP(XPUOpTestWrapper):
 
-    def _setup_config(self):
-        pass
+    def __init__(self):
+        self.op_name = 'c_identity'
+        self.use_dynamic_create_class = False
 
-    def test_identity_fp16(self):
-        self.check_with_place("collective_identity_op_xpu.py", "identity",
-                              "float16")
+    class TestCIdentityOp(TestDistBase):
 
-    def test_identity_fp32(self):
-        self.check_with_place("collective_identity_op_xpu.py", "identity",
-                              "float32")
+        def _setup_config(self):
+            pass
 
-    def test_identity_fp64(self):
-        self.check_with_place("collective_identity_op_xpu.py", "identity",
-                              "float64")
+        def test_identity(self):
+            self.check_with_place("collective_identity_op_xpu.py", "identity",
+                                  self.in_type_str)
 
-    def test_identity_int32(self):
-        self.check_with_place("collective_identity_op_xpu.py", "identity",
-                              "int32")
 
-    def test_identity_int64(self):
-        self.check_with_place("collective_identity_op_xpu.py", "identity",
-                              "int64")
-
+support_types = get_xpu_op_support_types('c_identity')
+for stype in support_types:
+    create_test_class(globals(), XPUTestCIdentityOP, stype)
 
 if __name__ == '__main__':
     unittest.main()

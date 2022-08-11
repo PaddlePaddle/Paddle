@@ -214,15 +214,17 @@ class TestDistBase(unittest.TestCase):
         path1 = os.path.join(self.temp_dir.name, "/tmp/tr1_err.log")
         tr0_pipe = open(path0, "wb")
         tr1_pipe = open(path1, "wb")
-        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
-                                    stdout=subprocess.PIPE,
-                                    stderr=tr0_pipe,
-                                    env=env0)
+        tr0_proc = subprocess.Popen(
+            tr0_cmd.strip().split(),
+            stdout=subprocess.PIPE,
+            #stderr=tr0_pipe,
+            env=env0)
 
-        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
-                                    stdout=subprocess.PIPE,
-                                    stderr=tr1_pipe,
-                                    env=env1)
+        tr1_proc = subprocess.Popen(
+            tr0_cmd.strip().split(),
+            stdout=subprocess.PIPE,
+            #stderr=tr1_pipe,
+            env=env1)
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()

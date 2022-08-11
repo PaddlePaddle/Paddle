@@ -18,22 +18,34 @@ import paddle
 
 from test_collective_base_xpu import TestDistBase
 
+import sys
+
+sys.path.append("..")
+
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
 paddle.enable_static()
 
 
-class TestCAllReduceOp(TestDistBase):
+class XPUTestCAllreduceOP(XPUOpTestWrapper):
 
-    def _setup_config(self):
-        pass
+    def __init__(self):
+        self.op_name = 'c_allreduce_sum'
+        self.use_dynamic_create_class = False
 
-    def test_allreduce_fp16(self):
-        self.check_with_place("collective_allreduce_op_xpu.py", "allreduce",
-                              "float16")
+    class TestCAllreduceOp(TestDistBase):
 
-    def test_allreduce_fp32(self):
-        self.check_with_place("collective_allreduce_op_xpu.py", "allreduce",
-                              "float32")
+        def _setup_config(self):
+            pass
 
+        def test_allreduce(self):
+            self.check_with_place("collective_allreduce_op_xpu.py", "allreduce",
+                                  self.in_type_str)
+
+
+support_types = get_xpu_op_support_types('c_allreduce_sum')
+for stype in support_types:
+    create_test_class(globals(), XPUTestCAllreduceOP, stype)
 
 if __name__ == '__main__':
     unittest.main()
