@@ -42,6 +42,10 @@ DEFINE_bool(enable_host_event_recorder_hook,
             false,
             "enable HostEventRecorder, hook Profiler");
 
+DEFINE_bool(enable_record_input_shape, false, "enable input shape recorder");
+
+DEFINE_bool(enable_record_memory, false, "enable memory recorder");
+
 namespace paddle {
 namespace platform {
 
@@ -258,6 +262,9 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
+  if (IsEnabled() == false) {
+    return;
+  }
   std::map<std::string, std::vector<framework::DDim>> input_shapes;
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   for (auto it = ctx.inputs.begin(); it != ctx.inputs.end(); it++) {
@@ -285,6 +292,9 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
+  if (IsEnabled() == false) {
+    return;
+  }
   std::map<std::string, std::vector<framework::DDim>> input_shapes;
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   for (auto it = kernel_signature.input_names.begin();
@@ -308,6 +318,33 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
       PosixInNsec(), type, input_shapes, dtypes, callstack);
 }
 
+RecordOpInfoSupplement::RecordOpInfoSupplement(
+    const std::string &type,
+    const std::vector<std::pair<const char *, std::vector<framework::DDim>>>
+        &input_shapes) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    return;
+  }
+  if (IsEnabled() == false) {
+    return;
+  }
+  std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
+  std::vector<std::string> callstack;
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes, dtypes, callstack);
+}
+
+bool RecordEvent::IsEnabled() {
+  return FLAGS_enable_host_event_recorder_hook || g_enable_nvprof_hook ||
+         g_state != ProfilerState::kDisabled;
+}
+
+bool RecordOpInfoSupplement::IsEnabled() {
+  return FLAGS_enable_record_input_shape;
+}
+
+bool RecordMemEvent::IsEnabled() { return FLAGS_enable_record_memory; }
+
 std::map<const char *, std::map<uint64_t, std::vector<uint64_t>>>
     RecordMemEvent::size_cache;
 
@@ -322,6 +359,11 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
       FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
+
+  if (IsEnabled() == false) {
+    return;
+  }
+
   if (type == TracerMemEventType::Allocate) {
     uint64_t current_allocated;
     uint64_t peak_allocated;
@@ -1044,6 +1086,14 @@ void EnableHostEventRecorder() { FLAGS_enable_host_event_recorder_hook = true; }
 void DisableHostEventRecorder() {
   FLAGS_enable_host_event_recorder_hook = false;
 }
+
+void EnableInputShapeRecorder() { FLAGS_enable_record_input_shape = true; }
+
+void DisableInputShapeRecorder() { FLAGS_enable_record_input_shape = false; }
+
+void EnableMemoryRecorder() { FLAGS_enable_record_memory = true; }
+
+void DisableMemoryRecorder() { FLAGS_enable_record_memory = false; }
 
 std::string PrintHostEvents() {
   std::ostringstream oss;

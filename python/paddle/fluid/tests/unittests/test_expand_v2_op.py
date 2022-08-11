@@ -277,11 +277,11 @@ class TestExpandV2DygraphAPI(unittest.TestCase):
             np_array = np.array([2, 5])
             expand_2 = paddle.expand(a, shape=np_array)
 
-            self.assertTrue(
-                np.array_equal(egr_expand_1.numpy(), egr_expand_2.numpy()))
-            self.assertTrue(np.array_equal(expand_1.numpy(), expand_2.numpy()))
-            self.assertTrue(
-                np.array_equal(expand_1.numpy(), egr_expand_1.numpy()))
+            np.testing.assert_array_equal(egr_expand_1.numpy(),
+                                          egr_expand_2.numpy())
+            np.testing.assert_array_equal(expand_1.numpy(), expand_2.numpy())
+            np.testing.assert_array_equal(expand_1.numpy(),
+                                          egr_expand_1.numpy())
 
 
 if __name__ == "__main__":

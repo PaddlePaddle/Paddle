@@ -121,12 +121,11 @@ class TestDygraphModel(unittest.TestCase):
             if _in_legacy_dygraph():
                 custom_relu_dy2stat_train_out = self.train_model(
                     use_custom_op=True, dy2stat=True)  # for to_static
-                self.assertTrue(
-                    np.array_equal(origin_relu_train_out,
-                                   custom_relu_dy2stat_train_out))
+                np.testing.assert_array_equal(origin_relu_train_out,
+                                              custom_relu_dy2stat_train_out)
 
-            self.assertTrue(
-                np.array_equal(origin_relu_train_out, custom_relu_train_out))
+            np.testing.assert_array_equal(origin_relu_train_out,
+                                          custom_relu_train_out)
 
             # for eval
             origin_relu_eval_out = self.eval_model(use_custom_op=False)
@@ -134,12 +133,11 @@ class TestDygraphModel(unittest.TestCase):
             if _in_legacy_dygraph():
                 custom_relu_dy2stat_eval_out = self.eval_model(
                     use_custom_op=True, dy2stat=True)  # for to_static
-                self.assertTrue(
-                    np.array_equal(origin_relu_eval_out,
-                                   custom_relu_dy2stat_eval_out))
+                np.testing.assert_array_equal(origin_relu_eval_out,
+                                              custom_relu_dy2stat_eval_out)
 
-            self.assertTrue(
-                np.array_equal(origin_relu_eval_out, custom_relu_eval_out))
+            np.testing.assert_array_equal(origin_relu_eval_out,
+                                          custom_relu_eval_out)
 
     def test_train_eval(self):
         with _test_eager_guard():
@@ -243,11 +241,10 @@ class TestStaticModel(unittest.TestCase):
                                                         use_custom_op=True,
                                                         use_pe=True)
 
-            self.assertTrue(
-                np.array_equal(original_relu_train_out, custom_relu_train_out))
-            self.assertTrue(
-                np.array_equal(original_relu_train_pe_out,
-                               custom_relu_train_pe_out))
+            np.testing.assert_array_equal(original_relu_train_out,
+                                          custom_relu_train_out)
+            np.testing.assert_array_equal(original_relu_train_pe_out,
+                                          custom_relu_train_pe_out)
 
             # for eval
             original_relu_eval_out = self.eval_model(device,
@@ -261,11 +258,10 @@ class TestStaticModel(unittest.TestCase):
                                                       use_custom_op=True,
                                                       use_pe=True)
 
-            self.assertTrue(
-                np.array_equal(original_relu_eval_out, custom_relu_eval_out))
-            self.assertTrue(
-                np.array_equal(original_relu_eval_pe_out,
-                               custom_relu_eval_pe_out))
+            np.testing.assert_array_equal(original_relu_eval_out,
+                                          custom_relu_eval_out)
+            np.testing.assert_array_equal(original_relu_eval_pe_out,
+                                          custom_relu_eval_pe_out)
 
     def train_model(self, device, use_custom_op=False, use_pe=False):
         # reset random seed

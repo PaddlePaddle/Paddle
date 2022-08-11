@@ -23,6 +23,7 @@ import parameterize as param
 from config import ATOL, RTOL
 from parameterize import xrand
 
+np.random.seed(2022)
 paddle.enable_static()
 
 

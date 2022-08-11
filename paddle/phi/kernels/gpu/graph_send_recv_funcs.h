@@ -81,7 +81,7 @@ __global__ void InputResetMaxCUDAKernel(T* output,
                                         size_t input_size,
                                         size_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, input_size * slice_size, int64_t) {
-    if (*(output + i) == std::numeric_limits<T>::min()) {
+    if (*(output + i) == std::numeric_limits<T>::lowest()) {
       *(output + i) = 0;
     }
   }
