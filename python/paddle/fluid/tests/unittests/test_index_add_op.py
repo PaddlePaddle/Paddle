@@ -157,14 +157,14 @@ class TestIndexAddOp(unittest.TestCase):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         self.run_imperative()
 
-
+@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAddOpMoreType(TestIndexAddOp):
 
     def setType(self):
         self.x_type = np.float16
         self.index_type = np.int64
 
-
+@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAdOpCase2(TestIndexAddOp):
 
     def config(self):
@@ -183,7 +183,7 @@ class TestIndexAdOpCase3(TestIndexAddOp):
         self.index_size = 20
         self.add_value_shape = (100, 100, 20)
 
-
+@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAdOpCase4(TestIndexAddOp):
 
     def config(self):
@@ -192,7 +192,7 @@ class TestIndexAdOpCase4(TestIndexAddOp):
         self.index_size = 4
         self.add_value_shape = (4, )
 
-
+@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAdOpCase5(TestIndexAddOp):
 
     def config(self):
