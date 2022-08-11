@@ -107,6 +107,29 @@ framework::ir::Node* GetRealNode(
   return node;
 }
 
+inline bool VarIsMultiOpsOut(
+    const std::vector<framework::ir::Graph*>& graphes,
+    int block_idx,
+    framework::ir::Node* op_node,
+    std::unordered_map<std::string,
+                       std::pair<framework::proto::VarType::Type, int>>*
+        vars_in_multi_block_map,
+    const std::vector<std::set<std::string>>& vars_appear_multi_in_one_block) {
+  CHECK_EQ(op_node->IsOp(), true);
+  for (auto* out : op_node->outputs) {
+    if (out->IsCtrlVar()) continue;
+    auto* real_node =
+        GetRealNode(graphes, block_idx, out, vars_in_multi_block_map);
+    if (!real_node->Var()->Persistable() &&
+        vars_appear_multi_in_one_block[block_idx].count(out->Name())) {
+      VLOG(2) << out->Name()
+              << " is multi op's out, so we skip convert to fp16";
+      return true;
+    }
+  }
+  return false;
+}
+
 void SaveMixedModel(
     framework::ir::Graph* graph,
     framework::Scope* scope,
@@ -473,13 +496,21 @@ void FindVarsInMultiBlock(
     framework::ProgramDesc* program_desc,
     std::unordered_map<std::string,
                        std::pair<framework::proto::VarType::Type, int>>*
-        vars_in_multi_block_map) {
+        vars_in_multi_block_map,
+    std::vector<std::set<std::string>>* vars_appear_multi_in_one_block) {
   std::vector<std::set<std::string>> block_var_names_set(program_desc->Size());
   for (size_t i = 0; i < program_desc->Size(); ++i) {
     for (auto op : program_desc->Block(i).AllOps()) {
       auto in_names = op->InputArgumentNames();
       block_var_names_set[i].insert(in_names.begin(), in_names.end());
       auto out_names = op->OutputArgumentNames();
+      if (op->HasAttr("sub_block") == false) {
+        for (auto& n : out_names) {
+          if (block_var_names_set[i].count(n)) {
+            (*vars_appear_multi_in_one_block)[i].insert(n);
+          }
+        }
+      }
       block_var_names_set[i].insert(out_names.begin(), out_names.end());
     }
   }
@@ -514,7 +545,7 @@ bool OpInOutHasTensorArray(
     auto* real_node =
         GetRealNode(graphes, block_idx, in, vars_in_multi_block_map);
     if (!NodeVarHasDtype(real_node)) continue;
-    if (real_node->Var()->GetDataType() ==
+    if (real_node->Var()->GetType() ==
         framework::proto::VarType::LOD_TENSOR_ARRAY)
       return true;
   }
@@ -524,7 +555,7 @@ bool OpInOutHasTensorArray(
         GetRealNode(graphes, block_idx, out, vars_in_multi_block_map);
     if (!NodeVarHasDtype(real_node)) continue;
 
-    if (real_node->Var()->GetDataType() ==
+    if (real_node->Var()->GetType() ==
         framework::proto::VarType::LOD_TENSOR_ARRAY)
       return true;
   }
@@ -541,7 +572,8 @@ void ConvertTensorDtype(
     int block_idx,
     std::unordered_map<std::string,
                        std::pair<framework::proto::VarType::Type, int>>*
-        vars_in_multi_block_map) {
+        vars_in_multi_block_map,
+    const std::vector<std::set<std::string>>& vars_appear_multi_in_one_block) {
   auto graph = graphes[block_idx];
   framework::proto::VarType::Type to_type;
   if (tensor_dtype == phi::DataType::FLOAT16) {
@@ -629,7 +661,15 @@ void ConvertTensorDtype(
     //      - cast weight to fp16/bf16.
     //      - add cast op if the input dtype is not fp16/bf16.
     //      - set output dtype.
-    else if (blacklist.count(op_type) == 0) {  // NOLINT
+    //
+    // If a var(op's out var) appears multiple times in a block, we should not
+    // convert to fp16.
+    else if (blacklist.count(op_type) == 0 &&  // NOLINT
+             !VarIsMultiOpsOut(graphes,
+                               block_idx,
+                               op_node,
+                               vars_in_multi_block_map,
+                               vars_appear_multi_in_one_block)) {
       bool support_precision =
           OpSupportPrecision(op_type, backend, tensor_dtype, blacklist);
       VLOG(2) << " support low precision " << support_precision;
@@ -826,7 +866,17 @@ void ConvertToMixedPrecision(const std::string& model_file,
   std::unordered_map<std::string,
                      std::pair<framework::proto::VarType::Type, int>>
       vars_in_multi_block_map;
-  FindVarsInMultiBlock(program_desc.get(), &vars_in_multi_block_map);
+  std::vector<std::set<std::string>> vars_appear_multi_in_one_block(
+      program_desc->Size());
+  FindVarsInMultiBlock(program_desc.get(),
+                       &vars_in_multi_block_map,
+                       &vars_appear_multi_in_one_block);
+  for (size_t i = 0; i < vars_appear_multi_in_one_block.size(); ++i) {
+    LOG(INFO) << "vars_appear_multi_in_one_block " << i;
+    for (auto x : vars_appear_multi_in_one_block[i]) {
+      LOG(INFO) << "   " << x;
+    }
+  }
 
   std::vector<framework::ir::Graph*> graphes;
   for (size_t i = 0; i < main_graph->SubGraphsSize(); ++i) {
@@ -843,7 +893,8 @@ void ConvertToMixedPrecision(const std::string& model_file,
                        backend,
                        mixed_precision,
                        i,
-                       &vars_in_multi_block_map);
+                       &vars_in_multi_block_map,
+                       vars_appear_multi_in_one_block);
     FixCastAttr(graph);
   }
 

@@ -438,15 +438,14 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
             cudnn_output_desc,
             algo,
             &workspace_size_in_bytes));
-    PADDLE_ENFORCE_LE(
-        workspace_size_in_bytes,
-        workspace_size_limit,
-        platform::errors::InvalidArgument(
-            "The actual workspace size to be allocated for cuDNN is expected "
-            "to be less than the limit. But received: the actual workspace "
-            "size = %d, limit = %d.",
-            workspace_size_in_bytes,
-            workspace_size_limit));
+    // PADDLE_ENFORCE_LE(
+    //     workspace_size_in_bytes,
+    //     workspace_size_limit,
+    //     platform::errors::InvalidArgument(
+    //         "The actual workspace size to be allocated for cuDNN is expected
+    //         " "to be less than the limit. But received: the actual workspace
+    //         " "size = %d, limit = %d.", workspace_size_in_bytes,
+    //         workspace_size_limit));
 
     if ((activation == "identity") && (!residual)) {
       // Only the CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM algo is
