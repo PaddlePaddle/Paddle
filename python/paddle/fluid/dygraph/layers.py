@@ -98,6 +98,26 @@ class Layer(object):
 
     Returns:
         None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            class MyLayer(paddle.nn.Layer):
+                def __init__(self):
+                    super(MyLayer, self).__init__()
+                    self._linear = paddle.nn.Linear(1, 1)
+                    self._dropout = paddle.nn.Dropout(p=0.5)
+                def forward(self, input):
+                    temp = self._linear(input)
+                    temp = self._dropout(temp)
+                    return temp
+            x = paddle.randn([10, 1], 'float32')
+            mylayer = MyLayer()
+            mylayer.eval()  # set mylayer._dropout to eval mode
+            out = mylayer(x)
+            mylayer.train()  # set mylayer._dropout to train mode
+            out = mylayer(x)
     """
 
     def __init__(self, name_scope=None, dtype="float32"):
@@ -907,7 +927,7 @@ class Layer(object):
             self._built = True
 
         if in_profiler_mode():
-            with profiler.RecordEvent(self.full_name(),
+            with profiler.RecordEvent(self.__class__.__name__,
                                       profiler.TracerEventType.Forward):
                 outputs = self.forward(*inputs, **kwargs)
         else:

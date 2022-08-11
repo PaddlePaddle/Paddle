@@ -66,7 +66,7 @@ class TestTruncatedNormal(unittest.TestCase):
         cpu_w = self._test(False)
         npu_w = self._test(True)
 
-        self.assertTrue(np.allclose(npu_w, cpu_w))
+        np.testing.assert_allclose(npu_w, cpu_w)
 
 
 if __name__ == '__main__':
