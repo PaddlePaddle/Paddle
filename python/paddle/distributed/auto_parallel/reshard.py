@@ -508,7 +508,7 @@ class Remover:
                     idx += 1
 
             for var in remove_vars:
-                if block.vars[var].is_data:
+                if block.vars[var].is_data or "learning_rate" in var:
                     continue
                 block._remove_var(var)
 
@@ -1426,6 +1426,8 @@ class Resharder:
                     for var_name in op.input_arg_names:
                         # skip lod_tensor_blocking_queue_0
                         if var_name == "lod_tensor_blocking_queue_0":
+                            continue
+                        if "learning_rate" in var_name:
                             continue
                         var = get_var_with_recursion(
                             var_name, block, self.auto_parallel_main_prog)

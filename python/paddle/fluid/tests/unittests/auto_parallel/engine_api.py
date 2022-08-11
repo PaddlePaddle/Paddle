@@ -31,6 +31,8 @@ from paddle.static import InputSpec
 from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.engine import Engine
+from paddle.optimizer.lr import CosineAnnealingDecay
+from paddle.fluid.dataloader.collate import default_collate_fn
 
 paddle.enable_static()
 global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
@@ -106,11 +108,13 @@ def train(fetch):
                    dropout_ratio=0.1,
                    initializer_range=0.02)
     loss = paddle.nn.CrossEntropyLoss()
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
-                                                     beta1=0.9,
-                                                     beta2=0.999,
-                                                     epsilon=1e-08,
-                                                     grad_clip=None)
+    scheduler = paddle.optimizer.lr.CosineAnnealingDecay(learning_rate=0.00001,
+                                                         T_max=10)
+    optimizer = paddle.optimizer.Adam(learning_rate=scheduler,
+                                      beta1=0.9,
+                                      beta2=0.999,
+                                      epsilon=1e-08,
+                                      grad_clip=None)
 
     inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
     labels_spec = InputSpec([batch_size], 'int64', 'label')
@@ -140,7 +144,8 @@ def train(fetch):
     engine.fit(train_dataset,
                batch_size=batch_size,
                steps_per_epoch=batch_num * batch_size,
-               fetches=fetches)
+               fetches=fetches,
+               collate_fn=default_collate_fn)
 
     # eval
     eval_dataset = MyDataset(batch_size)
