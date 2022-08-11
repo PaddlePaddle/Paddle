@@ -164,7 +164,7 @@ class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
         net = ShapeLayer()
         out = net(x)
 
-        self.assertTrue(np.array_equal(out.numpy(), x.numpy()))
+        np.testing.assert_array_equal(out.numpy(), x.numpy())
 
 
 class TestIfElseNoValue(unittest.TestCase):

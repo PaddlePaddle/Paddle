@@ -132,7 +132,7 @@ class TestTranslatedLayer(unittest.TestCase):
         translated_layer.eval()
         pred = translated_layer(x)
 
-        self.assertTrue(np.array_equal(orig_pred.numpy(), pred.numpy()))
+        np.testing.assert_array_equal(orig_pred.numpy(), pred.numpy())
 
     def load_and_fine_tuning(self):
         # load
@@ -148,9 +148,11 @@ class TestTranslatedLayer(unittest.TestCase):
                       parameters=translated_layer.parameters())
         loss = train(translated_layer, self.loader, self.loss_fn, sgd)
 
-        self.assertTrue(np.array_equal(orig_loss.numpy(), loss.numpy()),
-                        msg="original loss:\n{}\nnew loss:\n{}\n".format(
-                            orig_loss.numpy(), loss.numpy()))
+        np.testing.assert_array_equal(
+            orig_loss.numpy(),
+            loss.numpy(),
+            err_msg='original loss:\n{}\nnew loss:\n{}\n'.format(
+                orig_loss.numpy(), loss.numpy()))
 
     def test_get_program(self):
         # load

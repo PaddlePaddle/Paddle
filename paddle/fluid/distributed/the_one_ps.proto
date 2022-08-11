@@ -120,7 +120,7 @@ message TableParameter {
   optional bool enable_sparse_table_cache = 10 [ default = true ];
   optional double sparse_table_cache_rate = 11 [ default = 0.00055 ];
   optional uint32 sparse_table_cache_file_num = 12 [ default = 16 ];
-  optional bool enable_revert = 13 [ default = true ];
+  optional bool enable_revert = 13 [ default = false ];
   optional float shard_merge_rate = 14 [ default = 1.0 ];
 }
 

@@ -130,7 +130,7 @@ class ForwardAPI(BaseAPI):
                 selected_code = [
                     f"std::get<{i}>(api_output)" for i in return_out_list
                 ]
-            return 'return {' + ", ".join(selected_code) + '};'
+            return 'return std::make_tuple(' + ", ".join(selected_code) + ');'
 
     def gene_output(self,
                     out_dtype_list,

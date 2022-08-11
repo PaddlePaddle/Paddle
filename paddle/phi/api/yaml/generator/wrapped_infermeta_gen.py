@@ -18,6 +18,8 @@ import argparse
 
 from api_gen import ForwardAPI
 
+kernel_func_set = set()
+
 
 def get_wrapped_infermeta_name(api_name):
     return api_name.capitalize() + 'InferMeta'
@@ -29,6 +31,9 @@ def gene_wrapped_infermeta_and_register(api):
 PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']});"""
 
         if api.infer_meta['param'] is not None:
+            if api.kernel['func'][0] in kernel_func_set:
+                return '', '', ''
+
             kernel_params = api.kernel['param']
             if kernel_params is None:
                 kernel_params = api.inputs['names'] + api.attrs['names']
@@ -78,6 +83,7 @@ void {wrapped_infermeta_name}({", ".join(args)}) {{
             register_code = f"""
 PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{get_wrapped_infermeta_name(api.kernel['func'][0])});"""
 
+            kernel_func_set.add(api.kernel['func'][0])
             return declare_code, defind_code, register_code
         else:
             return '', '', register_code

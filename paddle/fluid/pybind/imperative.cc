@@ -670,7 +670,7 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__",
            [](imperative::VarBase &self,
               framework::proto::VarType::Type dtype,
-              const std::vector<int> &dims,
+              const std::vector<int64_t> &dims,
               const py::handle &name,
               framework::proto::VarType::Type type,
               bool persistable) {

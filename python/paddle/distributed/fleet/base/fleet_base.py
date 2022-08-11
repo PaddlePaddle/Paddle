@@ -710,10 +710,60 @@ class Fleet(object):
                 # build net
                 # fleet.distributed_optimizer(...)
 
-                fleet.load_model("path", "mode")
+                fleet.load_model("path", mode=0)
 
         """
-        self._runtime_handle.load_model(path, mode)
+        self._runtime_handle._load_persistables(path, mode)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def load_one_table(self, table_id, path, mode):
+        """
+        load fleet one table from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.load_one_table(0, "path", mode=0)
+
+        """
+        self._runtime_handle._load_one_table(table_id, path, mode)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def load_inference_model(self, path, mode):
+        """
+        load fleet inference model from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.load_inference_model("path", mode=1)
+
+        """
+        self._runtime_handle._load_inference_model(path, mode)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -905,6 +955,70 @@ class Fleet(object):
     @inited_runtime_handler
     def save_cache_model(self, dirname, **configs):
         return self._runtime_handle._save_cache_model(dirname, **configs)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def check_save_pre_patch_done(self):
+        return self._runtime_handle._check_save_pre_patch_done()
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def save_one_table(self, table_id, path, mode):
+        """
+        save fleet one table from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.save_one_table(0, "path", mode=0)
+
+        """
+        self._runtime_handle._save_one_table(table_id, path, mode)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def save_dense_params(self,
+                          executor,
+                          dirname,
+                          scope,
+                          program,
+                          var_names=None):
+        """
+        save fleet one table from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                import paddle
+                place = paddle.fluid.CPUPlace()
+                exe = paddle.fluid.Executor(place)
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.save_dense_params(exe, "path", scope=paddle.static.global_scope(), program=paddle.static.default_main_program())
+
+        """
+        self._runtime_handle._save_dense_params(executor, dirname, scope,
+                                                program, var_names)
 
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
