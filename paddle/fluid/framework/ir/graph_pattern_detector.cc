@@ -2081,44 +2081,24 @@ PDNode *patterns::Concat::operator()() {
   return output_var;
 }
 
-PDNode *patterns::ConcatReLU::operator()() {
+PDNode *patterns::ConcatActivation::operator()(
+    const std::string &activation_type) {
   auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
-  auto relu_op = pattern->NewNode(relu_op_repr())->assert_is_op("relu");
-
-  auto concat_out =
-      pattern->NewNode(concat_out_repr())->assert_is_op_output("concat", "Out");
-
-  auto relu_out = pattern->NewNode(relu_out_repr())
-                      ->AsOutput()
-                      ->assert_is_op_output("relu", "Out");
-
-  concat_op->LinksTo({concat_out});
-  relu_op->LinksFrom({concat_out}).LinksTo({relu_out});
-
-  return relu_out;
-}
-
-PDNode *patterns::ConvConcatReLU::operator()() {
-  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
-  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
-  auto relu_op = pattern->NewNode(relu_op_repr())->assert_is_op("relu");
-
-  auto conv_out = pattern->NewNode(conv_out_repr())
-                      ->assert_is_op_output("conv2d", "Output");
+  auto act_op =
+      pattern->NewNode(activation_op_repr())->assert_is_op(activation_type);
 
   auto concat_out = pattern->NewNode(concat_out_repr())
                         ->assert_is_op_output("concat", "Out")
-                        ->assert_is_op_input("relu", "X");
+                        ->assert_is_only_output_of_op("concat");
 
-  auto relu_out = pattern->NewNode(relu_out_repr())
-                      ->AsOutput()
-                      ->assert_is_op_output("relu", "Out");
+  auto act_out = pattern->NewNode(activation_out_repr())
+                     ->AsOutput()
+                     ->assert_is_op_output(activation_type, "Out");
 
-  conv_op->LinksTo({conv_out});
-  concat_op->LinksFrom({conv_out}).LinksTo({concat_out});
-  relu_op->LinksFrom({concat_out}).LinksTo({relu_out});
+  concat_op->LinksTo({concat_out});
+  act_op->LinksFrom({concat_out}).LinksTo({act_out});
 
-  return relu_out;
+  return act_out;
 }
 
 PDNode *patterns::OpRequant::operator()() {

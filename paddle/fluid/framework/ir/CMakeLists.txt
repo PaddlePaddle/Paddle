@@ -198,7 +198,6 @@ if(WITH_MKLDNN)
   pass_library(conv_affine_channel_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_bias_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_activation_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(conv_concat_relu_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(int8_scale_calculation_mkldnn_pass inference DIR mkldnn)
   pass_library(params_quantization_mkldnn_pass inference DIR mkldnn)
@@ -408,7 +407,7 @@ if(WITH_MKLDNN)
   cc_test(
     test_conv_concat_relu_mkldnn_fuse_pass
     SRCS mkldnn/conv_concat_relu_mkldnn_fuse_pass_tester.cc
-    DEPS conv_concat_relu_mkldnn_fuse_pass)
+    DEPS conv_activation_mkldnn_fuse_pass)
   cc_test(
     test_conv_elementwise_add_mkldnn_fuse_pass
     SRCS mkldnn/conv_elementwise_add_mkldnn_fuse_pass_tester.cc

@@ -1228,37 +1228,16 @@ struct Concat : public PatternBase {
   PATTERN_DECL_NODE(concat_out);
 };
 
-// Concat + ReLU
-// named nodes:
-// concat_op, concat_out, relu_op, relu_out
-struct ConcatReLU : public PatternBase {
-  ConcatReLU(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "concat_relu") {}
+struct ConcatActivation : public PatternBase {
+  ConcatActivation(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "concat_activation") {}
 
-  PDNode* operator()();
+  PDNode* operator()(const std::string& activation_type);
 
   PATTERN_DECL_NODE(concat_op);
   PATTERN_DECL_NODE(concat_out);
-  PATTERN_DECL_NODE(relu_op);
-  PATTERN_DECL_NODE(relu_out);
-};
-
-// Conv + Concat + ReLU
-// named nodes:
-// conv_op, conv_out
-// concat_op, concat_out, relu_op, relu_out
-struct ConvConcatReLU : public PatternBase {
-  ConvConcatReLU(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "conv_concat_relu") {}
-
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(conv_op);
-  PATTERN_DECL_NODE(conv_out);
-  PATTERN_DECL_NODE(concat_op);
-  PATTERN_DECL_NODE(concat_out);
-  PATTERN_DECL_NODE(relu_op);
-  PATTERN_DECL_NODE(relu_out);
+  PATTERN_DECL_NODE(activation_op);
+  PATTERN_DECL_NODE(activation_out);
 };
 
 // Op + Requant

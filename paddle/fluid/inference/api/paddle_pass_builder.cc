@@ -299,7 +299,6 @@ void CpuPassStrategy::EnableMKLDNN() {
              // TODO(baoachun): Need to support 5-dimensional input.
              // "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
-             "conv_concat_relu_mkldnn_fuse_pass",
              "conv_activation_mkldnn_fuse_pass",           //
              "scale_matmul_fuse_pass",                     //
              "reshape_transpose_matmul_mkldnn_fuse_pass",  //
@@ -392,7 +391,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("conv_bias_mkldnn_fuse_pass");
     passes_.push_back("conv_transpose_bias_mkldnn_fuse_pass");
     passes_.push_back("conv_elementwise_add_mkldnn_fuse_pass");
-    passes_.push_back("conv_concat_relu_mkldnn_fuse_pass");
     passes_.push_back("conv_activation_mkldnn_fuse_pass");
     passes_.push_back("fc_fuse_pass");
     passes_.push_back("repeated_fc_relu_fuse_pass");
