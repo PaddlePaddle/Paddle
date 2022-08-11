@@ -35,8 +35,8 @@ class BasicApiTransformer(BaseTransformer):
         self.class_node_dict = {}
 
     def transform(self):
-        to_tensor_transformer = ToTensorTransformer(self.root)
-        to_tensor_transformer.transform()
+        # to_tensor_transformer = ToTensorTransformer(self.root)
+        # to_tensor_transformer.transform()
         self.visit(self.root)
 
         return self.wrapper_root
