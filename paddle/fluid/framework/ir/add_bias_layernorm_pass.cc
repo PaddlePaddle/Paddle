@@ -148,6 +148,13 @@ void AddBiasLayernormPass::ApplyImpl(ir::Graph* graph) const {
         0,
         platform::errors::NotFound("Detector did not find input x of elementwise_add."));
 
+    // update elem_add weight axis
+    auto* op = elementwise_add_op->Op();
+    if (op->HasAttr("axis")) {
+      LOG(INFO) << "update elem_add weight";
+      op->SetAttr("axis", 2);
+    }
+
     // relink nodes
     auto input_node = subgraph.at(x);
     input_node->outputs.clear();
