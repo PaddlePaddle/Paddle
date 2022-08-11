@@ -150,9 +150,9 @@ class TestIndexAddOp(unittest.TestCase):
                 out = self.run_static(device)
             ref_out = self.compute_index_add_ref()
             np.testing.assert_allclose(ref_out,
-                                    np.array(out[0]),
-                                    rtol=self.rtol,
-                                    atol=self.atol)
+                                       np.array(out[0]),
+                                       rtol=self.rtol,
+                                       atol=self.atol)
 
     def test_dynamic(self):
         #paddle.disable_static(place=paddle.CUDAPlace(0))
@@ -160,7 +160,6 @@ class TestIndexAddOp(unittest.TestCase):
             self.run_imperative(device)
 
 
-@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAddOpMoreType(TestIndexAddOp):
 
     def setType(self):
@@ -168,7 +167,6 @@ class TestIndexAddOpMoreType(TestIndexAddOp):
         self.index_type = np.int64
 
 
-@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAdOpCase2(TestIndexAddOp):
 
     def config(self):
@@ -178,7 +176,6 @@ class TestIndexAdOpCase2(TestIndexAddOp):
         self.add_value_shape = (100, 20, 5)
 
 
-@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAdOpCase3(TestIndexAddOp):
 
     def config(self):
@@ -188,7 +185,6 @@ class TestIndexAdOpCase3(TestIndexAddOp):
         self.add_value_shape = (100, 100, 20)
 
 
-@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAdOpCase4(TestIndexAddOp):
 
     def config(self):
@@ -198,7 +194,6 @@ class TestIndexAdOpCase4(TestIndexAddOp):
         self.add_value_shape = (4, )
 
 
-@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAdOpCase5(TestIndexAddOp):
 
     def config(self):
@@ -206,6 +201,7 @@ class TestIndexAdOpCase5(TestIndexAddOp):
         self.x_shape = (10, 10)
         self.index_size = 4
         self.add_value_shape = (10, 4)
+
 
 class TestIndexAdOpGPU(TestIndexAddOp):
 
