@@ -1253,7 +1253,7 @@ class Fleet(object):
 
         # Use the auto-parallel's routines instead
         if self._user_defined_strategy.semi_auto or self._user_defined_strategy.auto_search:
-            from ...auto_parallel.parallelizer import AutoParallelizer
+            from ..auto_parallel.parallelizer import AutoParallelizer
             auto_parallelizer = AutoParallelizer(self)
             optimize_ops, params_grads, dist_startup_prog, dist_main_prog = auto_parallelizer.parallelize(
                 loss, startup_program, parameter_list, no_grad_set)
@@ -1428,7 +1428,7 @@ class Fleet(object):
         optimize_ops = []
         params_grads = []
 
-        from ..meta_optimizers import ParameterServerOptimizer
+        from .meta_optimizers import ParameterServerOptimizer
         ps_optimizer = ParameterServerOptimizer(self.user_defined_optimizer)
         ps_optimizer._set_basic_info(losses, self._role_maker,
                                      self.user_defined_optimizer,
