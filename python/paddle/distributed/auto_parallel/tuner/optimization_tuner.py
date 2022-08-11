@@ -366,8 +366,8 @@ class OptimizationTuner:
             str(self.rank), "--device_id",
             str(self.device_id), "--ctx_filename", ctx_path,
             "--profile_start_step",
-            str(self.config.profile_start_step), "--profile_end_step",
-            str(self.config.profile_end_step)
+            str(self._config.profile_start_step), "--profile_end_step",
+            str(self._config.profile_end_step)
         ])
         cmd_args = "-m paddle.distributed.auto_parallel.tuner.profiler" + " " + profile_args
         cmd = [sys.executable, "-u"] + coverage_args + shlex.split(cmd_args)
