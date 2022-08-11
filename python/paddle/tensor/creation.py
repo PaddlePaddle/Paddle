@@ -414,7 +414,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                              stop_gradient=stop_gradient)
 
 
-
 def full_like(x, fill_value, dtype=None, name=None):
     """
 
