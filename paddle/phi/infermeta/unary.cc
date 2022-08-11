@@ -2633,6 +2633,9 @@ void ReduceMinInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaConfig config) {
   bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
   ReduceMinInferMetaBase(x, axis, keep_dim, reduce_all, out, config);
 }
 

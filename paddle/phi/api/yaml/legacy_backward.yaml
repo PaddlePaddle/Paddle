@@ -1479,8 +1479,8 @@
     func : meshgrid_grad
 
 - backward_api : min_grad
-  forward: min (Tensor x,  IntArray dims,  bool keep_dim=false) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, IntArray dims, bool keep_dim=false, bool reduce_all=false)
+  forward: min (Tensor x,  IntArray dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray dims={}, bool keep_dim=false, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
