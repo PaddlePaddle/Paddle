@@ -955,7 +955,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             else:
                 assert IsVectorTensorType(ttype)
                 if is_optional:
-                    # name = "size_tensor"
                     arg_str = f"const paddle::optional<std::vector<paddle::experimental::Tensor>>& {name}"
                     amp_tensors_vector_optional_list.append(
                         f"if ({name}) amp_tensors_vector.push_back( *{name} );\n"
@@ -1390,12 +1389,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         inplace_check_str = ""
         optional_inplace_var_name = []
         # Grad Ins from TensorWrappers
-        # name = "size_tensor"
         for name, (backward_input_type, is_fwd_input,
                    grad_api_position), in backward_forward_inputs_map.items():
-            # tensor_wrapper_name = "size_tensor_"
             tensor_wrapper_name = GetSavedName(name)
-            # transformed_tensor_name = "size_tensor"
             transformed_tensor_name = self.TransformToNextGradName(name)
 
             is_optional = (name in self.optional_inputs)
