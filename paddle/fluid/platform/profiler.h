@@ -248,6 +248,12 @@ void NvprofDisableRecordEvent();
 void EnableHostEventRecorder();
 void DisableHostEventRecorder();
 
+void EnableMemoryRecorder();
+void DisableMemoryRecorder();
+
+void EnableInputShapeRecorder();
+void DisableInputShapeRecorder();
+
 // Defined for UT
 std::string PrintHostEvents();
 

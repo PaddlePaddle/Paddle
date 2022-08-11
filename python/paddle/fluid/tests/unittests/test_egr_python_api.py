@@ -54,7 +54,7 @@ class EagerScaleTestCase(unittest.TestCase):
             self.assertIsNone(data_eager.grad)
             out_eager.backward(grad_eager, False)
             self.assertIsNotNone(data_eager.grad)
-            self.assertTrue(np.array_equal(data_eager.grad.numpy(), input_data))
+            np.testing.assert_array_equal(data_eager.grad.numpy(), input_data)
 
     def test_retain_grad_and_run_backward_raises(self):
         with _test_eager_guard():
@@ -92,7 +92,7 @@ class EagerDtypeTestCase(unittest.TestCase):
             arr = np.random.random([4, 16, 16, 32]).astype(dtype)
             tensor = paddle.to_tensor(arr, dtype)
             self.assertEqual(tensor.dtype, proto_dtype)
-            self.assertTrue(np.array_equal(arr, tensor.numpy()))
+            np.testing.assert_array_equal(arr, tensor.numpy())
 
     def test_dtype_base(self):
         print("Test_dtype")
@@ -138,7 +138,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor1.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor1.stop_gradient, False)
         self.assertTrue(egr_tensor1.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor1.numpy(), arr0))
+        np.testing.assert_array_equal(egr_tensor1.numpy(), arr0)
 
         arr1 = np.random.randint(100, size=(4, 16, 16, 32), dtype=np.int64)
         egr_tensor2 = core.eager.Tensor(arr1, place, False, True,
@@ -149,7 +149,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor2.dtype, core.VarDesc.VarType.INT64)
         self.assertEqual(egr_tensor2.stop_gradient, True)
         self.assertTrue(egr_tensor2.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor2.numpy(), arr1))
+        np.testing.assert_array_equal(egr_tensor2.numpy(), arr1)
 
         arr2 = np.random.rand(4, 16, 16, 32, 64).astype('float32')
         egr_tensor3 = core.eager.Tensor(arr2)
@@ -161,7 +161,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(
             egr_tensor3.place._equals(
                 paddle.fluid.framework._current_expected_place()))
-        self.assertTrue(np.array_equal(egr_tensor3.numpy(), arr2))
+        np.testing.assert_array_equal(egr_tensor3.numpy(), arr2)
 
         egr_tensor3.stop_gradient = False
         egr_tensor4 = core.eager.Tensor(egr_tensor3)
@@ -173,8 +173,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(
             egr_tensor4.place._equals(
                 paddle.fluid.framework._current_expected_place()))
-        self.assertTrue(np.array_equal(egr_tensor4.numpy(),
-                                       egr_tensor3.numpy()))
+        np.testing.assert_array_equal(egr_tensor4.numpy(), egr_tensor3.numpy())
 
         arr4 = np.random.rand(4, 16, 16, 32).astype('float32')
         egr_tensor5 = core.eager.Tensor(arr4, place)
@@ -184,7 +183,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor5.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor5.stop_gradient, True)
         self.assertTrue(egr_tensor5.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor5.numpy(), arr4))
+        np.testing.assert_array_equal(egr_tensor5.numpy(), arr4)
 
         egr_tensor6 = core.eager.Tensor(egr_tensor5, core.CPUPlace())
         self.assertEqual(egr_tensor6.persistable, False)
@@ -193,8 +192,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor6.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor6.stop_gradient, True)
         self.assertEqual(egr_tensor6.place.is_cpu_place(), True)
-        self.assertTrue(np.array_equal(egr_tensor6.numpy(),
-                                       egr_tensor5.numpy()))
+        np.testing.assert_array_equal(egr_tensor6.numpy(), egr_tensor5.numpy())
 
         egr_tensor7 = core.eager.Tensor(arr4, place, True)
         self.assertEqual(egr_tensor7.persistable, True)
@@ -203,7 +201,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor7.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor7.stop_gradient, True)
         self.assertTrue(egr_tensor7.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor7.numpy(), arr4))
+        np.testing.assert_array_equal(egr_tensor7.numpy(), arr4)
 
         egr_tensor8 = core.eager.Tensor(egr_tensor6, place, "egr_tensor8")
         self.assertEqual(egr_tensor8.persistable, False)
@@ -212,8 +210,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor8.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor8.stop_gradient, True)
         self.assertTrue(egr_tensor8.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor8.numpy(),
-                                       egr_tensor5.numpy()))
+        np.testing.assert_array_equal(egr_tensor8.numpy(), egr_tensor5.numpy())
 
         egr_tensor9 = core.eager.Tensor(arr4, place, True, True)
         self.assertEqual(egr_tensor9.persistable, True)
@@ -222,7 +219,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor9.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor9.stop_gradient, True)
         self.assertTrue(egr_tensor9.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor9.numpy(), arr4))
+        np.testing.assert_array_equal(egr_tensor9.numpy(), arr4)
 
         x = np.random.rand(3, 3).astype('float32')
         t = paddle.fluid.Tensor()
@@ -234,7 +231,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor10.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor10.stop_gradient, True)
         self.assertTrue(egr_tensor10.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor10.numpy(), x))
+        np.testing.assert_array_equal(egr_tensor10.numpy(), x)
 
         egr_tensor11 = core.eager.Tensor(t, place, "framework_constructed")
         self.assertEqual(egr_tensor11.persistable, False)
@@ -243,7 +240,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor11.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor11.stop_gradient, True)
         self.assertTrue(egr_tensor11.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor11.numpy(), x))
+        np.testing.assert_array_equal(egr_tensor11.numpy(), x)
 
         egr_tensor12 = core.eager.Tensor(t)
         self.assertEqual(egr_tensor12.persistable, False)
@@ -252,7 +249,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor12.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor12.stop_gradient, True)
         self.assertTrue(egr_tensor12.place._equals(paddle.fluid.CPUPlace()))
-        self.assertTrue(np.array_equal(egr_tensor12.numpy(), x))
+        np.testing.assert_array_equal(egr_tensor12.numpy(), x)
 
         with self.assertRaisesRegexp(
                 ValueError, "The shape of Parameter should not be None"):
@@ -489,8 +486,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(
             egr_tensor15.place._equals(
                 paddle.fluid.framework._current_expected_place()))
-        self.assertTrue(
-            np.array_equal(egr_tensor15.numpy(), egr_tensor4.numpy()))
+        np.testing.assert_array_equal(egr_tensor15.numpy(), egr_tensor4.numpy())
 
         egr_tensor16 = core.eager.Tensor(value=egr_tensor4,
                                          name="new_eager_tensor")
@@ -502,8 +498,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(
             egr_tensor16.place._equals(
                 paddle.fluid.framework._current_expected_place()))
-        self.assertTrue(
-            np.array_equal(egr_tensor16.numpy(), egr_tensor4.numpy()))
+        np.testing.assert_array_equal(egr_tensor16.numpy(), egr_tensor4.numpy())
 
         egr_tensor17 = core.eager.Tensor(
             value=egr_tensor4,
@@ -516,8 +511,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor17.dtype, egr_tensor4.dtype)
         self.assertEqual(egr_tensor17.stop_gradient, True)
         self.assertTrue(egr_tensor17.place._equals(place))
-        self.assertTrue(
-            np.array_equal(egr_tensor17.numpy(), egr_tensor4.numpy()))
+        np.testing.assert_array_equal(egr_tensor17.numpy(), egr_tensor4.numpy())
 
         egr_tensor18 = core.eager.Tensor(
             egr_tensor4,
@@ -530,8 +524,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor18.dtype, egr_tensor4.dtype)
         self.assertEqual(egr_tensor18.stop_gradient, True)
         self.assertTrue(egr_tensor18.place._equals(place))
-        self.assertTrue(
-            np.array_equal(egr_tensor18.numpy(), egr_tensor4.numpy()))
+        np.testing.assert_array_equal(egr_tensor18.numpy(), egr_tensor4.numpy())
 
         egr_tensor19 = core.eager.Tensor(
             egr_tensor4,
@@ -544,8 +537,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor19.dtype, egr_tensor4.dtype)
         self.assertEqual(egr_tensor19.stop_gradient, True)
         self.assertTrue(egr_tensor19.place._equals(place))
-        self.assertTrue(
-            np.array_equal(egr_tensor19.numpy(), egr_tensor4.numpy()))
+        np.testing.assert_array_equal(egr_tensor19.numpy(), egr_tensor4.numpy())
 
         # init eager tensor by framework tensor
         x = np.random.rand(3, 3).astype('float32')
@@ -560,7 +552,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(
             egr_tensor20.place._equals(
                 paddle.fluid.framework._current_expected_place()))
-        self.assertTrue(np.array_equal(egr_tensor20.numpy(), x))
+        np.testing.assert_array_equal(egr_tensor20.numpy(), x)
 
         egr_tensor21 = core.eager.Tensor(value=t, place=place)
         self.assertEqual(egr_tensor21.persistable, False)
@@ -569,7 +561,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor21.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor21.stop_gradient, True)
         self.assertTrue(egr_tensor21.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor21.numpy(), x))
+        np.testing.assert_array_equal(egr_tensor21.numpy(), x)
 
         egr_tensor22 = core.eager.Tensor(t, place=place)
         self.assertEqual(egr_tensor22.persistable, False)
@@ -578,7 +570,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor22.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor22.stop_gradient, True)
         self.assertTrue(egr_tensor22.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor22.numpy(), x))
+        np.testing.assert_array_equal(egr_tensor22.numpy(), x)
 
         egr_tensor23 = core.eager.Tensor(t, place, name="from_framework_tensor")
         self.assertEqual(egr_tensor23.persistable, False)
@@ -587,7 +579,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor23.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor23.stop_gradient, True)
         self.assertTrue(egr_tensor23.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor23.numpy(), x))
+        np.testing.assert_array_equal(egr_tensor23.numpy(), x)
 
         egr_tensor24 = core.eager.Tensor(value=t,
                                          place=place,
@@ -598,7 +590,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor24.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor24.stop_gradient, True)
         self.assertTrue(egr_tensor24.place._equals(place))
-        self.assertTrue(np.array_equal(egr_tensor24.numpy(), x))
+        np.testing.assert_array_equal(egr_tensor24.numpy(), x)
 
         # Bad usage
         # SyntaxError: positional argument follows keyword argument
@@ -632,53 +624,53 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
                                        core.CPUPlace())
             tensor1.persistable = True
             self.assertEqual(tensor1.stop_gradient, True)
-            self.assertTrue(np.array_equal(tensor.numpy(), arr))
+            np.testing.assert_array_equal(tensor.numpy(), arr)
             print("Test copy_")
             tensor.copy_(tensor1, True)
             self.assertEqual(tensor.persistable, False)
             self.assertEqual(tensor.shape, [4, 16])
             self.assertEqual(tensor.dtype, core.VarDesc.VarType.FP32)
-            self.assertTrue(np.array_equal(tensor.numpy(), arr1))
+            np.testing.assert_array_equal(tensor.numpy(), arr1)
 
             print("Test _copy_to")
             tensor2 = paddle.to_tensor(arr2, core.VarDesc.VarType.FP32,
                                        core.CPUPlace())
-            self.assertTrue(np.array_equal(tensor2.numpy(), arr2))
+            np.testing.assert_array_equal(tensor2.numpy(), arr2)
             self.assertTrue(tensor2.place.is_cpu_place())
             tensor2.persistable = True
             tensor2.stop_gradient = False
             if core.is_compiled_with_cuda():
                 tensor3 = tensor2._copy_to(core.CUDAPlace(0), True)
-                self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
+                np.testing.assert_array_equal(tensor3.numpy(), arr2)
                 self.assertEqual(tensor3.persistable, True)
                 self.assertEqual(tensor3.stop_gradient, True)
                 self.assertTrue(tensor3.place.is_gpu_place())
 
                 tensor4 = tensor2.cuda(0, True)
-                self.assertTrue(np.array_equal(tensor4.numpy(), arr2))
+                np.testing.assert_array_equal(tensor4.numpy(), arr2)
                 self.assertEqual(tensor4.persistable, True)
                 self.assertEqual(tensor4.stop_gradient, False)
                 self.assertTrue(tensor4.place.is_gpu_place())
 
                 tensor5 = tensor4.cpu()
-                self.assertTrue(np.array_equal(tensor5.numpy(), arr2))
+                np.testing.assert_array_equal(tensor5.numpy(), arr2)
                 self.assertEqual(tensor5.persistable, True)
                 self.assertEqual(tensor5.stop_gradient, False)
                 self.assertTrue(tensor5.place.is_cpu_place())
 
                 tensor10 = paddle.to_tensor([1, 2, 3], place='gpu_pinned')
                 tensor11 = tensor10._copy_to(core.CUDAPlace(0), True)
-                self.assertTrue(
-                    np.array_equal(tensor10.numpy(), tensor11.numpy()))
+                np.testing.assert_array_equal(tensor10.numpy(),
+                                              tensor11.numpy())
             else:
                 tensor3 = tensor2._copy_to(core.CPUPlace(), True)
-                self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
+                np.testing.assert_array_equal(tensor3.numpy(), arr2)
                 self.assertEqual(tensor3.persistable, True)
                 self.assertEqual(tensor3.stop_gradient, True)
                 self.assertTrue(tensor3.place.is_cpu_place())
 
                 tensor4 = tensor2.cpu()
-                self.assertTrue(np.array_equal(tensor4.numpy(), arr2))
+                np.testing.assert_array_equal(tensor4.numpy(), arr2)
                 self.assertEqual(tensor4.persistable, True)
                 self.assertEqual(tensor4.stop_gradient, False)
                 self.assertTrue(tensor4.place.is_cpu_place())
@@ -700,15 +692,15 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             else:
                 tensor2 = paddle.to_tensor(arr2, core.VarDesc.VarType.FP32,
                                            core.CPUPlace())
-            self.assertTrue(np.array_equal(tensor.numpy(), arr))
-            self.assertTrue(np.array_equal(tensor2.numpy(), arr2))
+            np.testing.assert_array_equal(tensor.numpy(), arr)
+            np.testing.assert_array_equal(tensor2.numpy(), arr2)
             tensor2._share_buffer_to(tensor)
-            self.assertTrue(np.array_equal(tensor.numpy(), arr2))
-            self.assertTrue(np.array_equal(tensor2.numpy(), arr2))
+            np.testing.assert_array_equal(tensor.numpy(), arr2)
+            np.testing.assert_array_equal(tensor2.numpy(), arr2)
             self.assertTrue(tensor._is_shared_buffer_with(tensor2))
             self.assertTrue(tensor2._is_shared_buffer_with(tensor))
             tensor._share_buffer_to(tensor3)
-            self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
+            np.testing.assert_array_equal(tensor3.numpy(), arr2)
             self.assertTrue(tensor3._is_shared_buffer_with(tensor))
 
     def test_share_underline_tensor_to(self):
@@ -728,15 +720,15 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             else:
                 tensor2 = paddle.to_tensor(arr2, core.VarDesc.VarType.FP32,
                                            core.CPUPlace())
-            self.assertTrue(np.array_equal(tensor.numpy(), arr))
-            self.assertTrue(np.array_equal(tensor2.numpy(), arr2))
+            np.testing.assert_array_equal(tensor.numpy(), arr)
+            np.testing.assert_array_equal(tensor2.numpy(), arr2)
             tensor2._share_underline_tensor_to(tensor)
-            self.assertTrue(np.array_equal(tensor.numpy(), arr2))
-            self.assertTrue(np.array_equal(tensor2.numpy(), arr2))
+            np.testing.assert_array_equal(tensor.numpy(), arr2)
+            np.testing.assert_array_equal(tensor2.numpy(), arr2)
             self.assertTrue(tensor._is_shared_underline_tensor_with(tensor2))
             self.assertTrue(tensor2._is_shared_underline_tensor_with(tensor))
             tensor._share_underline_tensor_to(tensor3)
-            self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
+            np.testing.assert_array_equal(tensor3.numpy(), arr2)
             self.assertTrue(tensor3._is_shared_underline_tensor_with(tensor))
 
     def test_properties(self):
@@ -810,7 +802,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             egr_tensor = core.eager.Tensor(value=ori_arr)
             self.assertEqual(egr_tensor.stop_gradient, True)
             self.assertEqual(egr_tensor.shape, [4, 16, 16, 32])
-            self.assertTrue(np.array_equal(egr_tensor.numpy(), ori_arr))
+            np.testing.assert_array_equal(egr_tensor.numpy(), ori_arr)
             ori_place = egr_tensor.place
 
             new_arr = np.random.rand(4, 16, 16, 32).astype('float32')
@@ -820,7 +812,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             self.assertEqual(egr_tensor.stop_gradient, True)
             self.assertTrue(egr_tensor.place._equals(ori_place))
             self.assertEqual(egr_tensor.shape, [4, 16, 16, 32])
-            self.assertTrue(np.array_equal(egr_tensor.numpy(), new_arr))
+            np.testing.assert_array_equal(egr_tensor.numpy(), new_arr)
 
     def test_sharding_related_api(self):
         with _test_eager_guard():
@@ -839,7 +831,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             out = x + x
             out.backward()
             x._copy_gradient_from(y)
-            self.assertTrue(np.array_equal(x.grad.numpy(), np_y))
+            np.testing.assert_array_equal(x.grad.numpy(), np_y)
 
     def test_clear(self):
         with _test_eager_guard():
@@ -862,11 +854,10 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
             linear = paddle.nn.Linear(1, 3)
             linear_copy = copy.deepcopy(linear)
             linear_copy2 = linear.weight._copy_to(core.CPUPlace(), True)
-            self.assertTrue(
-                np.array_equal(linear.weight.numpy(),
-                               linear_copy.weight.numpy()))
-            self.assertTrue(
-                np.array_equal(linear.weight.numpy(), linear_copy2.numpy()))
+            np.testing.assert_array_equal(linear.weight.numpy(),
+                                          linear_copy.weight.numpy())
+            np.testing.assert_array_equal(linear.weight.numpy(),
+                                          linear_copy2.numpy())
 
     def func_fp16_initilaizer(self):
         paddle.set_default_dtype("float16")
@@ -905,7 +896,7 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
         res2 = self.func_fp16_initilaizer()
 
         for i in range(len(res1)):
-            self.assertTrue(np.array_equal(res1[i], res2[i]))
+            np.testing.assert_array_equal(res1[i], res2[i])
 
     def func_layer_helper_base(self, value):
         base = paddle.fluid.layer_helper_base.LayerHelperBase(
@@ -924,8 +915,8 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
             res3 = self.func_base_to_variable(value)
         res2 = self.func_layer_helper_base(value)
         res4 = self.func_base_to_variable(value)
-        self.assertTrue(np.array_equal(res1, res2))
-        self.assertTrue(np.array_equal(res3, res4))
+        np.testing.assert_array_equal(res1, res2)
+        np.testing.assert_array_equal(res3, res4)
 
     def test_backward_with_single_tensor(self):
         with _test_eager_guard():
@@ -939,11 +930,11 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
             self.assertEqual(egr_tensor12.dtype, core.VarDesc.VarType.FP32)
             self.assertEqual(egr_tensor12.stop_gradient, True)
             self.assertTrue(egr_tensor12.place._equals(paddle.fluid.CPUPlace()))
-            self.assertTrue(np.array_equal(egr_tensor12.numpy(), arr4))
-            self.assertTrue(np.array_equal(egr_tensor12.gradient(), None))
+            np.testing.assert_array_equal(egr_tensor12.numpy(), arr4)
+            np.testing.assert_array_equal(egr_tensor12.gradient(), None)
             egr_tensor12.stop_gradient = False
             egr_tensor12.backward()
-            self.assertTrue(np.array_equal(egr_tensor12.gradient(), arr))
+            np.testing.assert_array_equal(egr_tensor12.gradient(), arr)
 
     def test_set_value(self):
         with _test_eager_guard():
@@ -953,7 +944,7 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
             self.assertFalse(np.array_equal(linear.weight.numpy(), new_weight))
 
             linear.weight.set_value(new_weight)
-            self.assertTrue(np.array_equal(linear.weight.numpy(), new_weight))
+            np.testing.assert_array_equal(linear.weight.numpy(), new_weight)
             self.assertTrue(linear.weight.place._equals(ori_place))
 
 

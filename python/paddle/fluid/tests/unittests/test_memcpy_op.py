@@ -139,7 +139,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                                     feed={},
                                     fetch_list=[gpu_var.name, pinned_var.name])
             expect_value = np.array([1]).astype('bool')
-            self.assertTrue(np.array_equal(gpu_, expect_value))
+            np.testing.assert_array_equal(gpu_, expect_value)
         else:
             pass
 
@@ -201,7 +201,7 @@ class TestMemcpyApi(unittest.TestCase):
         a = paddle.ones([1024, 1024])
         b = paddle.tensor.creation._memcpy(a, paddle.CUDAPinnedPlace())
         self.assertEqual(b.place.__repr__(), "Place(gpu_pinned)")
-        self.assertTrue(np.array_equal(a.numpy(), b.numpy()))
+        np.testing.assert_array_equal(a.numpy(), b.numpy())
 
 
 if __name__ == '__main__':

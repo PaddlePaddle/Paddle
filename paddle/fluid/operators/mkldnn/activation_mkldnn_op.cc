@@ -197,98 +197,19 @@ struct SoftplusMKLDNNFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-using ReluMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_relu>;
-
-template <typename T>
 using Relu6MKLDNNFunctor =
     MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
 
 template <typename T>
-using SwishMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_swish>;
-
-template <typename T>
-using HardSwishMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_hardswish>;
-
-template <typename T>
-using MishMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_mish>;
-
-template <typename T>
-using SigmoidMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_logistic>;
-
-template <typename T>
-using TanhMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_tanh>;
-
-template <typename T>
-using SqrtMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_sqrt>;
-
-template <typename T>
 using AbsMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_abs>;
-
-template <typename T>
-using EluMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_elu>;
-
-template <typename T>
-using ExpMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_exp>;
-
-template <typename T>
-using RoundMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_round>;
-
-template <typename T>
-using ReluMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_relu>;
 
 template <typename T>
 using Relu6MKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
 
 template <typename T>
-using SwishMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_swish>;
-
-template <typename T>
-using HardSwishMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_hardswish>;
-
-template <typename T>
-using MishMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_mish>;
-
-template <typename T>
-using SigmoidMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T,
-    dnnl::algorithm::eltwise_logistic_use_dst_for_bwd>;
-
-template <typename T>
-using TanhMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T,
-    dnnl::algorithm::eltwise_tanh_use_dst_for_bwd>;
-
-template <typename T>
-using SqrtMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T,
-    dnnl::algorithm::eltwise_sqrt_use_dst_for_bwd>;
-
-template <typename T>
 using AbsMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_abs>;
-
-template <typename T>
-using EluMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T,
-    dnnl::algorithm::eltwise_elu_use_dst_for_bwd>;
-
-template <typename T>
-using ExpMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T,
-    dnnl::algorithm::eltwise_exp_use_dst_for_bwd>;
 
 }  // namespace operators
 }  // namespace paddle
@@ -316,25 +237,12 @@ namespace ops = paddle::operators;
                      ::paddle::platform::CPUPlace,                    \
                      ops::MKLDNNActivationKernel<ops::functor<float>>);
 
-#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                            \
-  __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);                    \
-  __macro(elu, EluMKLDNNFunctor, EluMKLDNNGradUseOutFunctor);              \
-  __macro(exp, ExpMKLDNNFunctor, ExpMKLDNNGradUseOutFunctor);              \
-  __macro(gelu, GeluMKLDNNFunctor, GeluMKLDNNGradFunctor);                 \
-  __macro(hard_swish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor); \
-  __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);           \
-  __macro(mish, MishMKLDNNFunctor, MishMKLDNNGradFunctor);                 \
-  __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);                 \
-  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);              \
-  __macro(sigmoid, SigmoidMKLDNNFunctor, SigmoidMKLDNNGradUseOutFunctor);  \
-  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradUseOutFunctor);           \
-  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);              \
-  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradUseOutFunctor);
+#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)            \
+  __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);    \
+  __macro(gelu, GeluMKLDNNFunctor, GeluMKLDNNGradFunctor); \
+  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
-
-// round eltwise primitive doesn't support BF16, nor does it support grad
-REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(round, RoundMKLDNNFunctor);
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(

@@ -68,7 +68,7 @@ class TestShuffleBatchOpBase(OpTest):
         assert y is not None
         sort_x = self.sort_array(x)
         sort_y = self.sort_array(y)
-        self.assertTrue(np.array_equal(sort_x, sort_y))
+        np.testing.assert_array_equal(sort_x, sort_y)
 
     def sort_array(self, array):
         shape = array.shape
