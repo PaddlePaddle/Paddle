@@ -1290,7 +1290,7 @@ def nll_loss(input,
              it treated as if having all ones. the data type is
              float32, float64, Default is ``'None'``.
          ignore_index (int64, optional): Specifies a target value that is ignored
-             and does not contribute to the input gradient.
+             and does not contribute to the input gradient. Default is -100.
          reduction (str, optional): Indicate how to average the loss,
              the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
              If `reduction` is ``'mean'``, the reduced mean loss is returned;

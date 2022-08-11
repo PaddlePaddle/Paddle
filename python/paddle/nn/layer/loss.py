@@ -791,7 +791,7 @@ class NLLLoss(Layer):
     This class accepts input and target label and returns negative log likelihood
     cross error. It is useful to train a classification problem with C classes.
 
-    The input for the loss is epected to contain log-probabilities of
+    The input for the loss is expected to contain log-probabilities of
     each classes. It has to be a Tensor of size either (batch_size, C) or
     (batch_size, C, d1, d2, ..., dK) with K >= 1 for the K-dimensional case.
     The label for the loss should be a class index in the range [0, C-1]
@@ -809,7 +809,7 @@ class NLLLoss(Layer):
 
         \ell(x, y) = L = \{l_1,\dots,l_N\}^\top, \quad
         l_n = - w_{y_n} x_{n,y_n}, \quad
-        w_{c} = \text{weight}[c] \cdot \mathbb{1}\{c \not= \text{ignore\_index}\},
+        w_{c} = \text{weight}[c] \cdot \mathbb{1}\{c \not= \text{ignore_index}\},
 
     where :math:`N` is the batch size. If :attr:`reduction` is not ``'none'``
     (default ``'mean'``), then
