@@ -90,7 +90,8 @@ class MultiHeadMatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Input", "The input of MultiHeadMatMul op");
     AddInput("W", "The weight input of MultiHeadMatMul op");
     AddInput("Bias", "The bias input of MultiHeadMatMul op");
-    AddInput("BiasQK", "The QK bias input of MultiHeadMatMul op");
+    AddInput("BiasQK", "The QK bias input of MultiHeadMatMul op")
+        .AsDispensable();
     AddOutput("Out", "The output of MultiHeadMatMul op");
     AddAttr<bool>("transpose_Q",
                   R"DOC(If true, use the transpose of `Q`.
