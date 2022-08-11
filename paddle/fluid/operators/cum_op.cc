@@ -74,6 +74,11 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class CummaxOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
 class CummaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -105,7 +110,7 @@ the input. If exclusive is true, the first element of the result is 0.
 };
 
 template <typename T>
-class CummaxGradMaker : public framework::SingleGradOpMaker<T> {
+class CummaxGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -213,10 +218,10 @@ REGISTER_OPERATOR(cumsum,
                   ops::CumsumGradMaker<paddle::imperative::OpBase>,
                   CumsumInferShapeFunctor);
 REGISTER_OPERATOR(cummax,
-                  ops::CumOp,
+                  ops::CummaxOp,
                   ops::CummaxOpMaker,
-                  ops::CummaxGradMaker<paddle::framework::OpDesc>,
-                  ops::CummaxGradMaker<paddle::imperative::OpBase>,
+                  ops::CummaxGradOpMaker<paddle::framework::OpDesc>,
+                  ops::CummaxGradOpMaker<paddle::imperative::OpBase>,
                   CummaxInferShapeFunctor);
 REGISTER_OPERATOR(logcumsumexp,
                   ops::CumOp,
