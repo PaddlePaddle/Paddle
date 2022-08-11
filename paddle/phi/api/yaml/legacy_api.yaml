@@ -1374,6 +1374,17 @@
   kernel :
     func : less_than
 
+- api : linear_interp_v2
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : linear_interp_v2
+    data_type : x
+  backward : linear_interp_v2_grad
+
 - api : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
   output : Tensor
