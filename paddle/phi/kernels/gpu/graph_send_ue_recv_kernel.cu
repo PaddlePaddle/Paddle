@@ -35,8 +35,8 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                              const DenseTensor& e,
                                              const DenseTensor& src_index,
                                              const DenseTensor& dst_index,
-                                             const std::string& compute_type,
-                                             const std::string& pool_type,
+                                             const std::string& message_op,
+                                             const std::string& reduce_op,
                                              int64_t out_size,
                                              DenseTensor* out,
                                              DenseTensor* dst_count = nullptr) {
@@ -57,20 +57,20 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
   ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
-  if (pool_type == "SUM" || pool_type == "MEAN") {
+  if (reduce_op == "SUM" || reduce_op == "MEAN") {
 #ifdef PADDLE_WITH_HIP
     hipMemset(out_data, 0, memset_bytes);
 #else
     cudaMemset(out_data, 0, memset_bytes);
 #endif
-  } else if (pool_type == "MAX") {
+  } else if (reduce_op == "MAX") {
     thrust::device_ptr<T> out_data_ptr(out_data);
     thrust::fill(thrust::device,
                  out_data_ptr,
                  out_data_ptr + memset_size,
                  std::numeric_limits<T>::lowest());
 
-  } else if (pool_type == "MIN") {
+  } else if (reduce_op == "MIN") {
     thrust::device_ptr<T> out_data_ptr(out_data);
     thrust::fill(thrust::device,
                  out_data_ptr,
@@ -104,9 +104,9 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
 #else
   int block_ = 1024;
 #endif
-  if (pool_type == "SUM" || pool_type == "MEAN") {
+  if (reduce_op == "SUM" || reduce_op == "MEAN") {
     GraphSendUERecvSumCUDAFunctor<T> sum_functor;
-    if (compute_type == "ADD") {
+    if (message_op == "ADD") {
       funcs::AddFunctor<T> add_funtor;
       GraphSendUERecvCUDAKernel<T,
                                 IndexT,
@@ -127,7 +127,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
               bcast_info.use_bcast,
               add_funtor,
               sum_functor);
-    } else if (compute_type == "MUL") {
+    } else if (message_op == "MUL") {
       funcs::MultiplyFunctor<T> mul_functor;
       GraphSendUERecvCUDAKernel<T,
                                 IndexT,
@@ -149,7 +149,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
               mul_functor,
               sum_functor);
     }
-    if (pool_type == "MEAN") {
+    if (reduce_op == "MEAN") {
       input_size = out_size <= 0 ? x.dims()[0] : out_size;
       dst_count->Resize({input_size});
       ctx.template Alloc<int>(dst_count);
@@ -171,9 +171,9 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
       ManipulateMeanCUDAKernel<T><<<grid_mean_, block_, 0, ctx.stream()>>>(
           out_data, dst_count_data, input_size, out_len);
     }
-  } else if (pool_type == "MAX") {
+  } else if (reduce_op == "MAX") {
     GraphSendUERecvMaxCUDAFunctor<T> max_functor;
-    if (compute_type == "ADD") {
+    if (message_op == "ADD") {
       funcs::AddFunctor<T> add_funtor;
       GraphSendUERecvCUDAKernel<T,
                                 IndexT,
@@ -194,7 +194,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
               bcast_info.use_bcast,
               add_funtor,
               max_functor);
-    } else if (compute_type == "MUL") {
+    } else if (message_op == "MUL") {
       funcs::MultiplyFunctor<T> mul_functor;
       GraphSendUERecvCUDAKernel<T,
                                 IndexT,
@@ -224,9 +224,9 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
     int64_t grid_max_ = grid_max < max_grid_dimx ? grid_max : max_grid_dimx;
     InputResetMaxCUDAKernel<T>
         <<<grid_max_, block_, 0, ctx.stream()>>>(out_data, input_size, out_len);
-  } else if (pool_type == "MIN") {
+  } else if (reduce_op == "MIN") {
     GraphSendUERecvMinCUDAFunctor<T> min_functor;
-    if (compute_type == "ADD") {
+    if (message_op == "ADD") {
       funcs::AddFunctor<T> add_funtor;
       GraphSendUERecvCUDAKernel<T,
                                 IndexT,
@@ -247,7 +247,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
               bcast_info.use_bcast,
               add_funtor,
               min_functor);
-    } else if (compute_type == "MUL") {
+    } else if (message_op == "MUL") {
       funcs::MultiplyFunctor<T> mul_functor;
       GraphSendUERecvCUDAKernel<T,
                                 IndexT,
@@ -286,8 +286,8 @@ void GraphSendUERecvKernel(const Context& ctx,
                            const DenseTensor& y,
                            const DenseTensor& src_index,
                            const DenseTensor& dst_index,
-                           const std::string& compute_type,
-                           const std::string& pool_type,
+                           const std::string& message_op,
+                           const std::string& reduce_op,
                            const IntArray& out_size,
                            DenseTensor* out,
                            DenseTensor* dst_count) {
@@ -300,8 +300,8 @@ void GraphSendUERecvKernel(const Context& ctx,
         y,
         src_index,
         dst_index,
-        compute_type,
-        pool_type,
+        message_op,
+        reduce_op,
         out_size_data[0],
         out,
         dst_count);
@@ -312,8 +312,8 @@ void GraphSendUERecvKernel(const Context& ctx,
         y,
         src_index,
         dst_index,
-        compute_type,
-        pool_type,
+        message_op,
+        reduce_op,
         out_size_data[0],
         out,
         dst_count);

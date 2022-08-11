@@ -1060,7 +1060,7 @@
     func : generate_proposals_v2
 
 - api : graph_send_recv
-  args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", IntArray out_size = {0})
+  args : (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0})
   output : Tensor(out), Tensor(dst_count)
   infer_meta :
     func : GraphSendRecvInferMeta
@@ -1071,7 +1071,7 @@
   backward : graph_send_recv_grad
 
 - api : graph_send_ue_recv
-  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str compute_type, str pool_type, IntArray out_size)
+  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op, str reduce_op, IntArray out_size)
   output : Tensor(out), Tensor(dst_count)
   infer_meta :
     func : GraphSendUERecvInferMeta

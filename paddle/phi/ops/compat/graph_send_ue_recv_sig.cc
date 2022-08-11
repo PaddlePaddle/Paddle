@@ -21,12 +21,12 @@ KernelSignature GraphSendUERecvOpArgumentMapping(
   if (ctx.HasInput("Out_size")) {
     return KernelSignature("graph_send_ue_recv",
                            {"X", "Y", "Src_index", "Dst_index"},
-                           {"compute_type", "pool_type", "Out_size"},
+                           {"message_op", "reduce_op", "Out_size"},
                            {"Out", "Dst_count"});
   } else {
     return KernelSignature("graph_send_ue_recv",
                            {"X", "Y", "Src_index", "Dst_index"},
-                           {"compute_type", "pool_type", "out_size"},
+                           {"message_op", "reduce_op", "out_size"},
                            {"Out", "Dst_count"});
   }
 }
@@ -36,7 +36,7 @@ KernelSignature GraphSendUERecvGradOpArgumentMapping(
   return KernelSignature(
       "graph_send_ue_recv_grad",
       {"X", "Y", "Src_index", "Dst_index", "Out", "Dst_count", "Out@GRAD"},
-      {"compute_type", "pool_type"},
+      {"message_op", "reduce_op"},
       {"X@GRAD", "Y@GRAD"});
 }
 

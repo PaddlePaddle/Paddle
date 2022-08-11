@@ -2603,8 +2603,8 @@ void GraphSendUERecvInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               const MetaTensor& src_index,
                               const MetaTensor& dst_index,
-                              const std::string& compute_type,
-                              const std::string& pool_type,
+                              const std::string& message_op,
+                              const std::string& reduce_op,
                               const IntArray& out_size,
                               MetaTensor* out,
                               MetaTensor* dst_count) {
@@ -2658,7 +2658,7 @@ void GraphSendUERecvInferMeta(const MetaTensor& x,
           y_dims[0]));
 
   auto x_dims = x.dims();
-  if (pool_type == "MEAN") {
+  if (reduce_op == "MEAN") {
     dst_count->set_dims({-1});
     dst_count->set_dtype(DataType::INT32);
   }

@@ -68,14 +68,14 @@ class GraphSendUERecvOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("Out", "Output tensor of graph_send_ue_recv op.");
     AddOutput("Dst_count",
-              "Count tensor of Dst_index, mainly for MEAN pool_type.")
+              "Count tensor of Dst_index, mainly for MEAN reduce_op.")
         .AsIntermediate();
-    AddAttr<std::string>("compute_type",
+    AddAttr<std::string>("message_op",
                          "(string, default 'ADD')"
                          "Define differenct computation types between X and E.")
         .SetDefault("ADD")
         .InEnum({"ADD", "MUL"});
-    AddAttr<std::string>("pool_type",
+    AddAttr<std::string>("reduce_op",
                          "(string, default 'SUM')"
                          "Define different pool types to receive the result "
                          "tensors of Dst_index.")
@@ -90,13 +90,13 @@ class GraphSendUERecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Graph Learning Send_UE_Recv combine operator.
 
-$Out = Recv(Compute(Send(X, Src_index), Y, compute_type), Dst_index, pool_type)$
+$Out = Recv(Compute(Send(X, Src_index), Y, message_op), Dst_index, reduce_op)$
 
 This operator is mainly used in Graph Learning domain, and the main purpose is to reduce
 intermediate memory consumption in the process of message passing.
 
 Take `X` as the input tensor, we first use `src_index` to gather corresponding data.
-Then the gather data should compute with `Y` in different compute_types, like add, sub, mul, and div,
+Then the gather data should compute with `Y` in different message_ops, like add, sub, mul, and div,
 and get the computation result. Then, use `dst_index` to update the corresponding position of output 
 tensor in different pooling types, like sum, mean, max, or min.
 
@@ -117,12 +117,12 @@ class GraphSendUERecvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Src_index", this->Input("Src_index"));
     op->SetInput("Dst_index", this->Input("Dst_index"));
 
-    if (PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MEAN") {
       op->SetInput("Dst_count", this->Output("Dst_count"));
     }
 
-    if (PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
-        PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MIN" ||
+        PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MAX") {
       op->SetInput("Out", this->Output("Out"));
     }
 

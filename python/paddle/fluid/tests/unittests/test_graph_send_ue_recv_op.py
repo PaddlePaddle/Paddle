@@ -103,7 +103,7 @@ def compute_graph_send_ue_recv_for_sum(inputs, attributes):
     y = inputs['Y']
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
-    message_op = attributes['compute_type']
+    message_op = attributes['message_op']
 
     gather_x = x[src_index]
     out_shp = [
@@ -126,7 +126,7 @@ def compute_graph_send_ue_recv_for_mean(inputs, attributes):
     y = inputs['Y']
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
-    message_op = attributes['compute_type']
+    message_op = attributes['message_op']
 
     gather_x = x[src_index]
     out_shp = [
@@ -155,8 +155,8 @@ def compute_graph_send_ue_recv_for_max_min(inputs, attributes):
     y = inputs['Y']
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
-    message_op = attributes['compute_type']
-    reduce_op = attributes['pool_type']
+    message_op = attributes['message_op']
+    reduce_op = attributes['reduce_op']
 
     gather_x = x[src_index]
     out_shp = [
@@ -277,7 +277,7 @@ class TestGraphSendUERecvSumOp(OpTest):
             'Src_index': self.src_index,
             'Dst_index': self.dst_index
         }
-        self.attrs = {'compute_type': self.message_op, 'pool_type': 'SUM'}
+        self.attrs = {'message_op': self.message_op, 'reduce_op': 'SUM'}
 
         out = compute_graph_send_ue_recv_for_sum(self.inputs, self.attrs)
 
@@ -389,7 +389,7 @@ class TestGraphSendUERecvMeanOp(OpTest):
             'Src_index': self.src_index,
             'Dst_index': self.dst_index
         }
-        self.attrs = {'compute_type': self.message_op, 'pool_type': 'MEAN'}
+        self.attrs = {'message_op': self.message_op, 'reduce_op': 'MEAN'}
 
         out, dst_count = compute_graph_send_ue_recv_for_mean(
             self.inputs, self.attrs)
@@ -502,7 +502,7 @@ class TestGraphSendUERecvMaxOp(OpTest):
             'Src_index': self.src_index,
             'Dst_index': self.dst_index
         }
-        self.attrs = {'compute_type': self.message_op, 'pool_type': 'MAX'}
+        self.attrs = {'message_op': self.message_op, 'reduce_op': 'MAX'}
 
         out, self.gradients = compute_graph_send_ue_recv_for_max_min(
             self.inputs, self.attrs)
@@ -618,7 +618,7 @@ class TestGraphSendUERecvMinOp(OpTest):
             'Src_index': self.src_index,
             'Dst_index': self.dst_index
         }
-        self.attrs = {'compute_type': self.message_op, 'pool_type': 'MIN'}
+        self.attrs = {'message_op': self.message_op, 'reduce_op': 'MIN'}
 
         out, self.gradients = compute_graph_send_ue_recv_for_max_min(
             self.inputs, self.attrs)

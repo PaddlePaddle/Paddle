@@ -110,8 +110,8 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                          const DenseTensor& y,
                                          const DenseTensor& src_index,
                                          const DenseTensor& dst_index,
-                                         const std::string& compute_type,
-                                         const std::string& pool_type,
+                                         const std::string& message_op,
+                                         const std::string& reduce_op,
                                          int64_t out_size,
                                          DenseTensor* out,
                                          DenseTensor* dst_count = nullptr) {
@@ -140,8 +140,8 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
   const T* y_data = y.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
-  if (pool_type == "SUM" || pool_type == "MEAN") {
-    if (compute_type == "ADD") {
+  if (reduce_op == "SUM" || reduce_op == "MEAN") {
+    if (message_op == "ADD") {
       GraphAddFunctor<T> add_functor;
       GraphSendUERecvSumCpuKernel<T, IndexT, GraphAddFunctor<T>>(bcast_info,
                                                                  x_data,
@@ -151,7 +151,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                                                  out_data,
                                                                  index_size,
                                                                  add_functor);
-    } else if (compute_type == "MUL") {
+    } else if (message_op == "MUL") {
       GraphMulFunctor<T> mul_functor;
       GraphSendUERecvSumCpuKernel<T, IndexT, GraphMulFunctor<T>>(bcast_info,
                                                                  x_data,
@@ -162,7 +162,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                                                  index_size,
                                                                  mul_functor);
     }
-    if (pool_type == "MEAN") {
+    if (reduce_op == "MEAN") {
       int64_t input_size = out_size <= 0 ? x.dims()[0] : out_size;
       dst_count->Resize({input_size});
       int* dst_count_data = ctx.template Alloc<int>(dst_count);
@@ -178,9 +178,9 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
         eigen_out = eigen_out / static_cast<T>(dst_count_data[i]);
       }
     }
-  } else if (pool_type == "MIN") {
+  } else if (reduce_op == "MIN") {
     GraphMinFunctor<T> min_functor;
-    if (compute_type == "ADD") {
+    if (message_op == "ADD") {
       GraphAddFunctor<T> add_functor;
       GraphSendUERecvMinMaxCpuKernel<T,
                                      IndexT,
@@ -194,7 +194,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                                          index_size,
                                                          add_functor,
                                                          min_functor);
-    } else if (compute_type == "MUL") {
+    } else if (message_op == "MUL") {
       GraphMulFunctor<T> mul_functor;
       GraphSendUERecvMinMaxCpuKernel<T,
                                      IndexT,
@@ -209,9 +209,9 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                                          mul_functor,
                                                          min_functor);
     }
-  } else if (pool_type == "MAX") {
+  } else if (reduce_op == "MAX") {
     GraphMaxFunctor<T> max_functor;
-    if (compute_type == "ADD") {
+    if (message_op == "ADD") {
       GraphAddFunctor<T> add_functor;
       GraphSendUERecvMinMaxCpuKernel<T,
                                      IndexT,
@@ -225,7 +225,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                                          index_size,
                                                          add_functor,
                                                          max_functor);
-    } else if (compute_type == "MUL") {
+    } else if (message_op == "MUL") {
       GraphMulFunctor<T> mul_functor;
       GraphSendUERecvMinMaxCpuKernel<T,
                                      IndexT,
@@ -249,8 +249,8 @@ void GraphSendUERecvKernel(const Context& ctx,
                            const DenseTensor& y,
                            const DenseTensor& src_index,
                            const DenseTensor& dst_index,
-                           const std::string& compute_type,
-                           const std::string& pool_type,
+                           const std::string& message_op,
+                           const std::string& reduce_op,
                            const IntArray& out_size,
                            DenseTensor* out,
                            DenseTensor* dst_count) {
@@ -262,8 +262,8 @@ void GraphSendUERecvKernel(const Context& ctx,
                                                              y,
                                                              src_index,
                                                              dst_index,
-                                                             compute_type,
-                                                             pool_type,
+                                                             message_op,
+                                                             reduce_op,
                                                              out_size_data[0],
                                                              out,
                                                              dst_count);
@@ -273,8 +273,8 @@ void GraphSendUERecvKernel(const Context& ctx,
                                                              y,
                                                              src_index,
                                                              dst_index,
-                                                             compute_type,
-                                                             pool_type,
+                                                             message_op,
+                                                             reduce_op,
                                                              out_size_data[0],
                                                              out,
                                                              dst_count);

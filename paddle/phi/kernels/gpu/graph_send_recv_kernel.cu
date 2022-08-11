@@ -32,7 +32,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                            const DenseTensor& x,
                                            const DenseTensor& src_index,
                                            const DenseTensor& dst_index,
-                                           const std::string& pool_type,
+                                           const std::string& reduce_op,
                                            int64_t out_size,
                                            DenseTensor* out,
                                            DenseTensor* dst_count = nullptr) {
@@ -59,19 +59,19 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
   ctx.template Alloc<T>(out);
   T* p_output = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
-  if (pool_type == "SUM" || pool_type == "MEAN") {
+  if (reduce_op == "SUM" || reduce_op == "MEAN") {
 #ifdef PADDLE_WITH_HIP
     hipMemset(p_output, 0, memset_bytes);
 #else
     cudaMemset(p_output, 0, memset_bytes);
 #endif
-  } else if (pool_type == "MAX") {
+  } else if (reduce_op == "MAX") {
     thrust::device_ptr<T> p_output_ptr(p_output);
     thrust::fill(thrust::device,
                  p_output_ptr,
                  p_output_ptr + memset_size,
                  std::numeric_limits<T>::lowest());
-  } else if (pool_type == "MIN") {
+  } else if (reduce_op == "MIN") {
     thrust::device_ptr<T> p_output_ptr(p_output);
     thrust::fill(thrust::device,
                  p_output_ptr,
@@ -99,12 +99,12 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
   int64_t grid_tmp = (n + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   int64_t input_size = out_size <= 0 ? src_dims[0] : out_size;
-  if (pool_type == "SUM") {
+  if (reduce_op == "SUM") {
     GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
     GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
         <<<grid, block, 0, ctx.stream()>>>(
             p_src, s_index, d_index, p_output, index_size, slice_size, functor);
-  } else if (pool_type == "MAX") {
+  } else if (reduce_op == "MAX") {
     GraphSendRecvMaxCUDAFunctor<T, IndexT> functor;
     GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvMaxCUDAFunctor<T, IndexT>>
         <<<grid, block, 0, ctx.stream()>>>(
@@ -115,7 +115,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
         grid_max_tmp < max_grid_dimx ? grid_max_tmp : max_grid_dimx;
     InputResetMaxCUDAKernel<T><<<grid_max, block, 0, ctx.stream()>>>(
         p_output, input_size, slice_size);
-  } else if (pool_type == "MIN") {
+  } else if (reduce_op == "MIN") {
     GraphSendRecvMinCUDAFunctor<T, IndexT> functor;
     GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvMinCUDAFunctor<T, IndexT>>
         <<<grid, block, 0, ctx.stream()>>>(
@@ -126,7 +126,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
         grid_min_tmp < max_grid_dimx ? grid_min_tmp : max_grid_dimx;
     InputResetMinCUDAKernel<T><<<grid_min, block, 0, ctx.stream()>>>(
         p_output, input_size, slice_size);
-  } else if (pool_type == "MEAN") {
+  } else if (reduce_op == "MEAN") {
     GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
     GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
         <<<grid, block, 0, ctx.stream()>>>(
@@ -158,7 +158,7 @@ void GraphSendRecvKernel(const Context& ctx,
                          const DenseTensor& x,
                          const DenseTensor& src_index,
                          const DenseTensor& dst_index,
-                         const std::string& pool_type,
+                         const std::string& reduce_op,
                          const IntArray& out_size,
                          DenseTensor* out,
                          DenseTensor* dst_count) {
@@ -169,7 +169,7 @@ void GraphSendRecvKernel(const Context& ctx,
                                                                x,
                                                                src_index,
                                                                dst_index,
-                                                               pool_type,
+                                                               reduce_op,
                                                                out_size_data[0],
                                                                out,
                                                                dst_count);
@@ -178,7 +178,7 @@ void GraphSendRecvKernel(const Context& ctx,
                                                                x,
                                                                src_index,
                                                                dst_index,
-                                                               pool_type,
+                                                               reduce_op,
                                                                out_size_data[0],
                                                                out,
                                                                dst_count);

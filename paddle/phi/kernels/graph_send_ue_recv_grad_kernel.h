@@ -29,8 +29,8 @@ void GraphSendUERecvGradKernel(const Context& ctx,
                                const paddle::optional<DenseTensor>& out,
                                const paddle::optional<DenseTensor>& dst_count,
                                const DenseTensor& out_grad,
-                               const std::string& compute_type,
-                               const std::string& pool_type,
+                               const std::string& message_op,
+                               const std::string& reduce_op,
                                DenseTensor* x_grad,
                                DenseTensor* y_grad);
 }  // namespace phi

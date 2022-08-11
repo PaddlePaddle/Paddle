@@ -64,9 +64,9 @@ class GraphSendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("Out", "Output tensor of graph_send_recv op.");
     AddOutput("Dst_count",
-              "Count tensor of Dst_index, mainly for MEAN pool_type.")
+              "Count tensor of Dst_index, mainly for MEAN reduce_op.")
         .AsIntermediate();
-    AddAttr<std::string>("pool_type",
+    AddAttr<std::string>("reduce_op",
                          "(string, default 'SUM')"
                          "Define different pool types to receive the result "
                          "tensors of Dst_index.")
@@ -81,7 +81,7 @@ class GraphSendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Graph Learning Send_Recv combine operator.
 
-$Out = Recv(Send(X, Src_index), Dst_index, pool_type)$
+$Out = Recv(Send(X, Src_index), Dst_index, reduce_op)$
 
 This operator is mainly used in Graph Learning domain, and the main purpose is to reduce 
 intermediate memory consumption in the process of message passing. 
@@ -105,12 +105,12 @@ class GraphSendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Dst_index", this->Input("Dst_index"));
     op->SetInput("X", this->Input("X"));
 
-    if (PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MEAN") {
       op->SetInput("Dst_count", this->Output("Dst_count"));
     }
 
-    if (PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
-        PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MIN" ||
+        PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MAX") {
       op->SetInput("Out", this->Output("Out"));
     }
 

@@ -119,7 +119,7 @@ def send_u_recv(x,
     if _in_legacy_dygraph():
         out_size = convert_out_size_to_list(out_size)
         out, tmp = _C_ops.graph_send_recv(x, src_index,
-                                          dst_index, None, 'pool_type',
+                                          dst_index, None, 'reduce_op',
                                           reduce_op.upper(), 'out_size',
                                           out_size)
         return out
@@ -148,7 +148,7 @@ def send_u_recv(x,
                                                           stop_gradient=True)
 
     inputs = {"X": x, "Src_index": src_index, "Dst_index": dst_index}
-    attrs = {"pool_type": reduce_op.upper()}
+    attrs = {"reduce_op": reduce_op.upper()}
     get_out_size_tensor_inputs(inputs=inputs,
                                attrs=attrs,
                                out_size=out_size,
@@ -178,8 +178,8 @@ def send_ue_recv(x,
 
     This api is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory 
     consumption in the process of message passing. Take `x` as the input tensor, we first use `src_index`
-    to gather the corresponding data, after computing with `y` in different compute types like add/sub/mul/div, then use `dst_index` to 
-    update the corresponding position of output tensor in different pooling types, like sum, mean, max, or min. 
+    to gather the corresponding data, after computing with `y` in different message ops like add/sub/mul/div, then use `dst_index` to 
+    update the corresponding position of output tensor in different reduce ops, like sum, mean, max, or min. 
     Besides, we can use `out_size` to set necessary output shape.
 
     .. code-block:: text
@@ -215,8 +215,8 @@ def send_ue_recv(x,
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64.
-        message_op (str): Different compute types for x and e, including `add`, `sub`, `mul`, `div`.
-        reduce_op (str): Different pooling types, including `sum`, `mean`, `max`, `min`.
+        message_op (str): Different message ops for x and e, including `add`, `sub`, `mul`, `div`.
+        reduce_op (str): Different reduce ops, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
         out_size (int|Tensor|None): We can set `out_size` to get necessary output shape. If not set or
                                     out_size is smaller or equal to 0, then this input will not be used.
@@ -287,8 +287,8 @@ def send_ue_recv(x,
     if _in_legacy_dygraph():
         out_size = convert_out_size_to_list(out_size)
         out, tmp = _C_ops.graph_send_ue_recv(x, y, src_index, dst_index,
-                                             None, 'compute_type',
-                                             message_op.upper(), 'pool_type',
+                                             None, 'message_op',
+                                             message_op.upper(), 'reduce_op',
                                              reduce_op.upper(), 'out_size',
                                              out_size)
         return out
@@ -322,7 +322,7 @@ def send_ue_recv(x,
                                                           stop_gradient=True)
 
     inputs = {"X": x, "Y": y, "Src_index": src_index, "Dst_index": dst_index}
-    attrs = {"compute_type": message_op.upper(), "pool_type": reduce_op.upper()}
+    attrs = {"message_op": message_op.upper(), "reduce_op": reduce_op.upper()}
     get_out_size_tensor_inputs(inputs=inputs,
                                attrs=attrs,
                                out_size=out_size,

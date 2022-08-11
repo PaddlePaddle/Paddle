@@ -39,8 +39,8 @@ void CalculateXGrad(const Context& ctx,
                     const phi::DDim& e_dims,
                     const IndexT* s_index,
                     const IndexT* d_index,
-                    const std::string& compute_type,
-                    const std::string& pool_type,
+                    const std::string& message_op,
+                    const std::string& reduce_op,
                     int64_t index_size,
                     T* x_grad,
                     const DenseTensor& out_grad_tensor,
@@ -50,8 +50,8 @@ void CalculateXGrad(const Context& ctx,
   std::vector<int64_t> reduce_idx;
   bool reduce = ReduceGrad(out_grad_dims, x_dims, reduce_idx);
 
-  if (pool_type == "SUM") {
-    if (compute_type == "ADD") {
+  if (reduce_op == "SUM") {
+    if (message_op == "ADD") {
       GraphSendRecvSumFunctor<T> sum_functor;
       if (!reduce) {
         for (int64_t i = 0; i < index_size; i++) {
@@ -78,7 +78,7 @@ void CalculateXGrad(const Context& ctx,
             true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
-    } else if (compute_type == "MUL") {
+    } else if (message_op == "MUL") {
       const auto& bcast = phi::CalcBCastInfo(out_grad_dims, e_dims);
       if (!reduce) {
 #ifdef PADDLE_WITH_MKLML
@@ -137,9 +137,9 @@ void CalculateXGrad(const Context& ctx,
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     }
-  } else if (pool_type == "MEAN") {
+  } else if (reduce_op == "MEAN") {
     const int* s_count = dst_count->data<int>();
-    if (compute_type == "ADD") {
+    if (message_op == "ADD") {
       if (!reduce) {
         for (int64_t i = 0; i < index_size; i++) {
           IndexT src = s_index[i];
@@ -171,7 +171,7 @@ void CalculateXGrad(const Context& ctx,
             true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
-    } else if (compute_type == "MUL") {
+    } else if (message_op == "MUL") {
       const auto& bcast = phi::CalcBCastInfo(out_grad_dims, e_dims);
       if (!reduce) {
 #ifdef PADDLE_WITH_MKLML
@@ -237,13 +237,13 @@ void CalculateEGrad(const T* out_grad_data,
                     const phi::DDim& e_dims,
                     const IndexT* s_index,
                     const IndexT* d_index,
-                    const std::string& compute_type,
-                    const std::string& pool_type,
+                    const std::string& message_op,
+                    const std::string& reduce_op,
                     int64_t index_size,
                     T* e_grad,
                     const DenseTensor* dst_count = nullptr) {
   const auto& bcast = phi::CalcBCastInfo(x_dims, e_dims);
-  if (pool_type == "SUM") {
+  if (reduce_op == "SUM") {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
@@ -256,12 +256,12 @@ void CalculateEGrad(const T* out_grad_data,
       for (int64_t j = 0; j < bcast.out_len; j++) {
         int64_t x_add = bcast.use_bcast ? bcast.l_offset[j] : j;
         int64_t e_add = bcast.use_bcast ? bcast.r_offset[j] : j;
-        if (compute_type == "ADD") {
+        if (message_op == "ADD") {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp atomic
 #endif
           e_grad_off[e_add] += out_grad_off[j];
-        } else if (compute_type == "MUL") {
+        } else if (message_op == "MUL") {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp atomic
 #endif
@@ -269,7 +269,7 @@ void CalculateEGrad(const T* out_grad_data,
         }
       }
     }
-  } else if (pool_type == "MEAN") {
+  } else if (reduce_op == "MEAN") {
     const int* s_count = dst_count->data<int>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -283,12 +283,12 @@ void CalculateEGrad(const T* out_grad_data,
       for (int64_t j = 0; j < bcast.out_len; j++) {
         int64_t x_add = bcast.use_bcast ? bcast.l_offset[j] : j;
         int64_t e_add = bcast.use_bcast ? bcast.r_offset[j] : j;
-        if (compute_type == "ADD") {
+        if (message_op == "ADD") {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp atomic
 #endif
           e_grad_off[e_add] += (out_grad_off[j] / s_count[dst]);
-        } else if (compute_type == "MUL") {
+        } else if (message_op == "MUL") {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp atomic
 #endif
@@ -307,8 +307,8 @@ void CalculateXEGradForMinMax(const T* out_grad,
                               const phi::DDim& e_dims,
                               const IndexT* s_index,
                               const IndexT* d_index,
-                              const std::string& compute_type,
-                              const std::string& pool_type,
+                              const std::string& message_op,
+                              const std::string& reduce_op,
                               int64_t index_size,
                               T* x_grad,
                               T* e_grad,
@@ -330,14 +330,14 @@ void CalculateXEGradForMinMax(const T* out_grad,
     for (int64_t j = 0; j < bcast.out_len; j++) {
       int64_t x_add = bcast.use_bcast ? bcast.l_offset[j] : j;
       int64_t e_add = bcast.use_bcast ? bcast.r_offset[j] : j;
-      if (compute_type == "ADD") {
+      if (message_op == "ADD") {
         T val = x_off[x_add] + e_off[e_add];
 #ifdef PADDLE_WITH_MKLML
 #pragma omp critical
 #endif
         x_grad_off[x_add] += (out_grad_off[j] * (val == out_off[j]));
         e_grad_off[e_add] += (out_grad_off[j] * (val == out_off[j]));
-      } else if (compute_type == "MUL") {
+      } else if (message_op == "MUL") {
         T val = x_off[x_add] * e_off[e_add];
 #ifdef PADDLE_WITH_MKLML
 #pragma omp critical
@@ -359,8 +359,8 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
     const DenseTensor& y,
     const DenseTensor& src_index,
     const DenseTensor& dst_index,
-    const std::string& compute_type,
-    const std::string& pool_type,
+    const std::string& message_op,
+    const std::string& reduce_op,
     DenseTensor* x_grad,
     DenseTensor* y_grad,
     const DenseTensor* dst_count = nullptr,
@@ -395,7 +395,7 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
 
-  if (pool_type == "SUM" || pool_type == "MEAN") {
+  if (reduce_op == "SUM" || reduce_op == "MEAN") {
     CalculateXGrad<Context, T, IndexT>(ctx,
                                        out_grad_data,
                                        x_data,
@@ -405,8 +405,8 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
                                        y_dims,
                                        d_index,
                                        s_index,
-                                       compute_type,
-                                       pool_type,
+                                       message_op,
+                                       reduce_op,
                                        index_size,
                                        x_grad_data,
                                        out_grad,
@@ -420,12 +420,12 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
                               y_dims,
                               s_index,
                               d_index,
-                              compute_type,
-                              pool_type,
+                              message_op,
+                              reduce_op,
                               index_size,
                               y_grad_data,
                               dst_count);
-  } else if (pool_type == "MIN" || pool_type == "MAX") {
+  } else if (reduce_op == "MIN" || reduce_op == "MAX") {
     CalculateXEGradForMinMax<T, IndexT>(out_grad_data,
                                         x_data,
                                         y_data,
@@ -433,8 +433,8 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
                                         y_dims,
                                         d_index,
                                         s_index,
-                                        compute_type,
-                                        pool_type,
+                                        message_op,
+                                        reduce_op,
                                         index_size,
                                         x_grad_data,
                                         y_grad_data,
@@ -451,8 +451,8 @@ void GraphSendUERecvGradKernel(const Context& ctx,
                                const paddle::optional<DenseTensor>& out,
                                const paddle::optional<DenseTensor>& dst_count,
                                const DenseTensor& out_grad,
-                               const std::string& compute_type,
-                               const std::string& pool_type,
+                               const std::string& message_op,
+                               const std::string& reduce_op,
                                DenseTensor* x_grad,
                                DenseTensor* y_grad) {
   auto index_type = src_index.dtype();
@@ -464,8 +464,8 @@ void GraphSendUERecvGradKernel(const Context& ctx,
         y,
         src_index,
         dst_index,
-        compute_type,
-        pool_type,
+        message_op,
+        reduce_op,
         x_grad,
         y_grad,
         dst_count.get_ptr(),
@@ -478,8 +478,8 @@ void GraphSendUERecvGradKernel(const Context& ctx,
         y,
         src_index,
         dst_index,
-        compute_type,
-        pool_type,
+        message_op,
+        reduce_op,
         x_grad,
         y_grad,
         dst_count.get_ptr(),
