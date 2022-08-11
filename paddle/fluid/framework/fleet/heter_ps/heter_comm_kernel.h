@@ -133,6 +133,13 @@ void convert_feature_push_value_as_float(
     bool to_float,
     const StreamType& stream);
 
+template <typename GradType, typename StreamType>
+void sum_fidseq_add_grad(
+    GradType* all_device_fidseq_grad_ptr,
+    uint32_t all_device_fidseq_grad_len,
+    const StreamType& stream,
+    uint32_t bucket_num,
+    GradType* out_fidseq_grad_compress_ptr);
 #endif
 
  private:

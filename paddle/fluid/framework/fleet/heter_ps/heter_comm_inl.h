@@ -956,7 +956,6 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 }
 
 #elif defined(PADDLE_WITH_XPU_KP)
-
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
                                                         KeyType* d_keys,
@@ -972,11 +971,11 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
 
-  //platform::Timer timeline;
-  //std::stringstream time_ss;
-  //time_ss << "dev:" << dev_num << ",key_len:" << len;
-  //double total_time = 0.0;
-  //timeline.Start();
+  // platform::Timer timeline;
+  // std::stringstream time_ss;
+  // time_ss << "dev:" << dev_num << ",key_len:" << len;
+  // double total_time = 0.0;
+  // timeline.Start();
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
 
@@ -1022,51 +1021,50 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   //total_time += timeline.ElapsedSec();
   //time_ss << ",merge_grad:" << timeline.ElapsedSec();
 
-  // allreduce
+  // all_gather
   //timeline.Start();
   auto d_all_grads = memory::Alloc(place, all_fidseq_bucket_len * sizeof(GradType));
   GradType* d_all_grads_ptr = reinterpret_cast<GradType*>(d_all_grads->ptr());
-  reset_xpu_memory(place, d_all_grads_ptr, all_fidseq_bucket_len * sizeof(GradType), 0, stream);
-  //timeline.Pause();
-  //total_time += timeline.ElapsedSec();
-  //time_ss << ",prepare_allreduce:" << timeline.ElapsedSec();
 
-  //timeline.Start();
+  // sync_stream(stream);
+  // timeline.Start();
+
+  auto d_all_grads_after_gather = memory::Alloc(place,
+      all_fidseq_bucket_len * resource_->total_device() * sizeof(GradType));
+  GradType* d_all_grads_after_gather_ptr =
+      reinterpret_cast<GradType*>(d_all_grads_after_gather->ptr());
+
   if (resource_->total_device() > 1) {
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
-    heter_comm_kernel_->convert_feature_push_value_as_float(d_all_fidseq_bucket_grads_ptr, all_fidseq_bucket_len, true, stream);
-    bkcl_all_reduce(comm->comm(), d_all_fidseq_bucket_grads_ptr, d_all_grads_ptr,
+    VLOG(3) << "heter comm inl push sparse all gather start";
+    bkcl_all_gather(comm->comm(), d_all_fidseq_bucket_grads_ptr,
         all_fidseq_bucket_len * sizeof(GradType) / sizeof(float),
-        BKCL_FLOAT, BKCL_ADD, stream);
-    heter_comm_kernel_->convert_feature_push_value_as_float(d_all_grads_ptr, all_fidseq_bucket_len, false, stream);
-    VLOG(3) << "heter comm inl push sparse all reduce finish";
+        d_all_grads_after_gather_ptr, BKCL_FLOAT, stream);
+    VLOG(3) << "heter comm inl push sparse all gather finish";
+
+    heter_comm_kernel_->sum_fidseq_add_grad(d_all_grads_after_gather_ptr,
+        all_fidseq_bucket_len, stream,
+        resource_->total_device(), d_all_grads_ptr);
   } else {
-    VLOG(3) << "heter comm inl push sparse unnecessary all reduce";
+    VLOG(3) << "heter comm inl push sparse unnecessary all gather";
     d_all_grads_ptr = d_all_fidseq_bucket_grads_ptr;
   }
-  //timeline.Pause();
-  //total_time += timeline.ElapsedSec();
-  //time_ss << ",allreduce:" << timeline.ElapsedSec();
-  //VLOG(0) << "push-allreduce dev:" << dev_num << ", size:" << all_fidseq_bucket_len << "*" << sizeof(GradType);
 
   // update
   //timeline.Start();
-  int fidseq_len = 0;
-  FidType* d_fidseq_ptr = nullptr;
-  cache_mgr_->get_device_all_fidseq(dev_id, &d_fidseq_ptr, &fidseq_len);
-  cache_mgr_->compress_bucket<GradType>(dev_id, d_all_grads_ptr, all_fidseq_bucket_len, stream);
-  cache_mgr_->compress_bucket<uint32_t>(dev_id, d_all_fidseq_bucket_ptr, all_fidseq_bucket_len, stream);
+  int bucket_mean_len = cache_mgr_->get_device_bucket_mean_len();
+  int bucket_size = cache_mgr_->get_host_all_fidseq_bucket_sizes()[dev_num];
+  tables_[dev_num]->update(place, d_all_fidseq_bucket_ptr + dev_num * bucket_mean_len,
+      d_all_grads_ptr + dev_num * bucket_mean_len, bucket_size, stream);
 
-  tables_[dev_num]->update(place, d_all_fidseq_bucket_ptr, d_all_grads_ptr, fidseq_len, stream);
   VLOG(3) << "heter comm inl push sparse update finish";
   sync_stream(stream);
-  //timeline.Pause();
-  //total_time += timeline.ElapsedSec();
-  //time_ss << ",update:" << timeline.ElapsedSec();
+  // timeline.Pause();
+  // total_time += timeline.ElapsedSec();
+  // time_ss << ",update:" << timeline.ElapsedSec();
 
-  //VLOG(0) << "push_sparse time cost:" << total_time
+  // VLOG(0) << "push_sparse time cost:" << total_time
   //        << " sec, detail:" << time_ss.str();
-
 #else
   int total_device = resource_->total_device();
 
