@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#include "paddle/fluid/platform/device_context.h"
+
 namespace paddle {
 namespace operators {
 

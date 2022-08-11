@@ -16,8 +16,6 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/platform/device_context.h"
-
 namespace paddle {
 namespace framework {
 class InferShapeContext;
