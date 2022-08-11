@@ -25,19 +25,10 @@ from paddle.distribution import (constraint, distribution,
                                  transformed_distribution, variable)
 
 __all__ = [  # noqa
-    'Transform',
-    'AbsTransform',
-    'AffineTransform',
-    'ChainTransform',
-    'ExpTransform',
-    'IndependentTransform',
-    'PowerTransform',
-    'ReshapeTransform',
-    'SigmoidTransform',
-    'SoftmaxTransform',
-    'StackTransform',
-    'StickBreakingTransform',
-    'TanhTransform'
+    'Transform', 'AbsTransform', 'AffineTransform', 'ChainTransform',
+    'ExpTransform', 'IndependentTransform', 'PowerTransform',
+    'ReshapeTransform', 'SigmoidTransform', 'SoftmaxTransform',
+    'StackTransform', 'StickBreakingTransform', 'TanhTransform'
 ]
 
 
@@ -113,7 +104,7 @@ class Transform(object):
 
         * _forward_shape
         * _inverse_shape
-        
+
     """
     _type = Type.INJECTION
 
@@ -147,8 +138,8 @@ class Transform(object):
             [Tensor|TransformedDistribution|ChainTransform]: The return value.
         """
         if isinstance(input, distribution.Distribution):
-            return transformed_distribution.TransformedDistribution(input,
-                                                                    [self])
+            return transformed_distribution.TransformedDistribution(
+                input, [self])
         if isinstance(input, Transform):
             return ChainTransform([self, input])
         return self.forward(x)
@@ -207,8 +198,8 @@ class Transform(object):
         if not isinstance(x, paddle.fluid.framework.Variable):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(x)}.")
-        if isinstance(x, paddle.fluid.framework.Variable) and x.dim(
-        ) < self._domain.event_rank:
+        if isinstance(x, paddle.fluid.framework.Variable
+                      ) and x.dim() < self._domain.event_rank:
             raise ValueError(
                 f'The dimensions of x({x.dim()}) should be '
                 f'grater than or equal to {self._domain.event_rank}')
@@ -536,9 +527,8 @@ class ChainTransform(Transform):
         value = 0.
         event_rank = self._domain.event_rank
         for t in self.transforms:
-            value += self._sum_rightmost(
-                t.forward_log_det_jacobian(x),
-                event_rank - t._domain.event_rank)
+            value += self._sum_rightmost(t.forward_log_det_jacobian(x),
+                                         event_rank - t._domain.event_rank)
             x = t.forward(x)
             event_rank += t._codomain.event_rank - t._domain.event_rank
         return value
@@ -600,7 +590,7 @@ class ChainTransform(Transform):
 class ExpTransform(Transform):
     r"""Exponent transformation with mapping :math:`y = \exp(x)`.
 
-    Exapmles:
+    Examples:
 
         .. code-block:: python
 
@@ -669,7 +659,7 @@ class IndependentTransform(Transform):
         base (Transform): The base transformation.
         reinterpreted_batch_rank (int): The num of rightmost batch rank that 
             will be reinterpreted as event rank.
-    
+
     Examples:
 
         .. code-block:: python
@@ -743,7 +733,7 @@ class PowerTransform(Transform):
 
     Args:
         power (Tensor): The power parameter.
-    
+
     Examples:
 
         .. code-block:: python
@@ -1017,7 +1007,7 @@ class StackTransform(Transform):
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
 
 
@@ -1141,7 +1131,8 @@ class StickBreakingTransform(Transform):
         offset = x.shape[-1] + 1 - paddle.ones([x.shape[-1]]).cumsum(-1)
         z = F.sigmoid(x - offset.log())
         z_cumprod = (1 - z).cumprod(-1)
-        return F.pad(z, [0, 1], value=1) * F.pad(z_cumprod, [1, 0], value=1)
+        return F.pad(z, [0]*2*(len(x.shape)-1) + [0, 1], value=1) * \
+            F.pad(z_cumprod, [0]*2*(len(x.shape)-1) + [1, 0], value=1)
 
     def _inverse(self, y):
         y_crop = y[..., :-1]
@@ -1178,7 +1169,7 @@ class StickBreakingTransform(Transform):
 class TanhTransform(Transform):
     r"""Tanh transformation with mapping :math:`y = \tanh(x)`.
 
-    Examples
+    Examples:
 
         .. code-block:: python
 

@@ -17,12 +17,12 @@ import unittest
 import numpy as np
 import paddle
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+from paddle.jit import to_static
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, IPUD2STest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -30,90 +30,57 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_op_attrs()
 
+    @property
+    def fp16_enabled(self):
+        return False
+
     def set_data_feed(self):
-        self.feed = {
-            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float32'),
-        }
+        data = np.random.uniform(size=[1, 3, 3, 3]).astype('float32')
+        self.feed_fp32 = {"x": data.astype(np.float32)}
+        self.feed_fp16 = {"x": data.astype(np.float16)}
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed.values()]
-        self.feed_list = list(self.feed.keys())
-        self.feed_dtype = [x.dtype for x in self.feed.values()]
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
         self.attrs = {}
 
-    def _test_base(self, run_ipu=True):
-        scope = paddle.static.Scope()
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        main_prog.random_seed = self.SEED
-        startup_prog.random_seed = self.SEED
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype=self.feed_dtype[0])
+        out = paddle.fluid.layers.conv2d(x, num_filters=3, filter_size=3)
+        out = paddle.fluid.layers.Print(out, **self.attrs)
 
-        with paddle.static.scope_guard(scope):
-            with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.static.data(
-                    name=self.feed_list[0],
-                    shape=self.feed_shape[0],
-                    dtype=self.feed_dtype[0])
-                out = paddle.fluid.layers.conv2d(
-                    x, num_filters=3, filter_size=3)
-                out = paddle.fluid.layers.Print(out, **self.attrs)
+        if self.is_training:
+            loss = paddle.mean(out)
+            adam = paddle.optimizer.Adam(learning_rate=1e-2)
+            adam.minimize(loss)
+            self.fetch_list = [loss.name]
+        else:
+            self.fetch_list = [out.name]
 
-                if self.is_training:
-                    loss = paddle.mean(out)
-                    adam = paddle.optimizer.Adam(learning_rate=1e-2)
-                    adam.minimize(loss)
-                    fetch_list = [loss.name]
-                else:
-                    fetch_list = [out.name]
-
-            if run_ipu:
-                place = paddle.IPUPlace()
-            else:
-                place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(startup_prog)
-
-            if run_ipu:
-                feed_list = self.feed_list
-                ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.set_graph_config(is_training=self.is_training)
-                program = paddle.static.IpuCompiledProgram(
-                    main_prog,
-                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
-            else:
-                program = main_prog
-
-            if self.is_training:
-                result = []
-                for _ in range(self.epoch):
-                    loss_res = exe.run(program,
-                                       feed=self.feed,
-                                       fetch_list=fetch_list)
-                    result.append(loss_res[0])
-                return np.array(result)
-            else:
-                result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
-                return result[0]
+    def run_model(self, exec_mode):
+        self.run_op_test(exec_mode)
 
     def test(self):
-        res0 = self._test_base(False)
-        res1 = self._test_base(True)
-
-        self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
-
-        self.assertTrue(res0.shape == res1.shape)
+        for m in IPUOpTest.ExecutionMode:
+            if not self.skip_mode(m):
+                self.build_model()
+                self.run_model(m)
 
 
 class TestCase1(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {"message": "input_data"}
 
 
 class TestTrainCase1(TestBase):
+
     def set_op_attrs(self):
         # "forward" : print forward
         # "backward" : print forward and backward
@@ -127,6 +94,7 @@ class TestTrainCase1(TestBase):
 
 @unittest.skip("attrs are not supported")
 class TestCase2(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {
             "first_n": 10,
@@ -137,6 +105,74 @@ class TestCase2(TestBase):
             "print_tensor_layout": True,
             "print_tensor_lod": True
         }
+
+
+class SimpleLayer(paddle.nn.Layer):
+
+    def __init__(self):
+        super(SimpleLayer, self).__init__()
+        self.conv = paddle.nn.Conv2D(in_channels=3,
+                                     out_channels=1,
+                                     kernel_size=2,
+                                     stride=1)
+
+    @to_static()
+    def forward(self, x, target=None):
+        x = self.conv(x)
+        print(x)
+        x = paddle.fluid.layers.flatten(x, axis=1)
+        if target is not None:
+            x = paddle.fluid.layers.softmax(x)
+            loss = paddle.fluid.layers.cross_entropy(x, target)
+            loss = paddle.incubate.identity_loss(loss, 1)
+            return x, loss
+        return x
+
+
+class TestD2S(IPUD2STest):
+
+    def setUp(self):
+        self.set_data_feed()
+
+    def set_data_feed(self):
+        self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
+        self.label = paddle.randint(0, 10, shape=[8], dtype='int64')
+
+    def _test(self, use_ipu=False):
+        paddle.seed(self.SEED)
+        np.random.seed(self.SEED)
+        model = SimpleLayer()
+        optim = paddle.optimizer.Adam(learning_rate=0.01,
+                                      parameters=model.parameters())
+
+        if use_ipu:
+            paddle.set_device('ipu')
+            ipu_strategy = paddle.static.IpuStrategy()
+            ipu_strategy.set_graph_config(num_ipus=1,
+                                          is_training=True,
+                                          micro_batch_size=1,
+                                          enable_manual_shard=False)
+            ipu_strategy.set_optimizer(optim)
+
+        result = []
+        for _ in range(2):
+            # ipu only needs call model() to do forward/backward/grad_update
+            pred, loss = model(self.data, self.label)
+            if not use_ipu:
+                loss.backward()
+                optim.step()
+                optim.clear_grad()
+            result.append(loss)
+
+        if use_ipu:
+            ipu_strategy.release_patch()
+
+        return np.array(result)
+
+    def test_training(self):
+        ipu_loss = self._test(True).flatten()
+        cpu_loss = self._test(False).flatten()
+        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-4))
 
 
 if __name__ == "__main__":

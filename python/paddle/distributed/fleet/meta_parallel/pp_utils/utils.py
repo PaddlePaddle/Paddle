@@ -19,8 +19,9 @@ from paddle.fluid import core
 from paddle import _C_ops
 from paddle.autograd import PyLayer
 from paddle.fluid import framework
-from ...utils.recompute import check_recompute_necessary, detach_variable
+from ...utils.recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
 from ..parallel_layers.random import get_rng_state_tracker
+from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
 
@@ -150,20 +151,6 @@ def _merge_activation(tensor):
     return _all_gather(tensor, group=mp_group)
 
 
-@contextlib.contextmanager
-def _swith_rng_state_tracker(rng_state, tracker):
-    orig_cuda_rng_state = paddle.get_cuda_rng_state()
-    orig_cuda_rng_tracker = get_rng_state_tracker().get_states_tracker()
-
-    paddle.set_cuda_rng_state(rng_state)
-    get_rng_state_tracker().set_states_tracker(tracker)
-    try:
-        yield
-    finally:
-        paddle.set_cuda_rng_state(orig_cuda_rng_state)
-        get_rng_state_tracker().set_states_tracker(orig_cuda_rng_tracker)
-
-
 class _HPRecomputeFunction(PyLayer):
     """
     Compared with paddle.distributed.fleet.utils.recompute, there are the following differences:
@@ -177,7 +164,7 @@ class _HPRecomputeFunction(PyLayer):
     def forward(ctx, run_function, all_outputs, *args):
         check_recompute_necessary(args)
 
-        # store for recomputing 
+        # store for recomputing
         ctx.run_function = run_function
 
         # store the rng states
@@ -250,8 +237,8 @@ class _HPRecomputeFunction(PyLayer):
             for i, idx in enumerate(tensor_indices):
                 if _recompute_partition:
                     state = tensors[i].stop_gradient
-                    tensors[i] = _merge_activation(tensors[i]).detach(
-                    ).reshape_(tensor_shapes[i])
+                    tensors[i] = _merge_activation(
+                        tensors[i]).detach().reshape_(tensor_shapes[i])
                     tensors[i].stop_gradient = state
                 inputs[idx] = tensors[i].cuda(
                     device_id) if _recompute_offload else tensors[i]
@@ -260,17 +247,16 @@ class _HPRecomputeFunction(PyLayer):
             tracer._has_grad = True
 
             # need restore auto_cast state as well as w/b list
-            with _swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
-                                          ctx.fwd_cuda_rng_state_tracker):
-                with paddle.amp.auto_cast(
-                        enable=ctx.is_fw_autocast,
-                        custom_white_list=ctx.amp_white_list,
-                        custom_black_list=ctx.amp_black_list,
-                        level=ctx.amp_level):
+            with swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
+                                         ctx.fwd_cuda_rng_state_tracker):
+                with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
+                                          custom_white_list=ctx.amp_white_list,
+                                          custom_black_list=ctx.amp_black_list,
+                                          level=ctx.amp_level):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 
-            if isinstance(outputs, core.VarBase):
+            if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
                 outputs = (outputs, )
             assert len(outputs) == len(args)
 
@@ -278,8 +264,10 @@ class _HPRecomputeFunction(PyLayer):
             backward_inputs = []
 
             for i in range(len(outputs)):
-                if isinstance(outputs[i],
-                              core.VarBase) and not outputs[i].stop_gradient:
+                if isinstance(
+                        outputs[i],
+                    (core.VarBase,
+                     core.eager.Tensor)) and not outputs[i].stop_gradient:
                     forward_outputs_with_grad.append(outputs[i])
                     backward_inputs.append(args[i])
 
@@ -288,15 +276,15 @@ class _HPRecomputeFunction(PyLayer):
                     "none of output has stop_gradient=False, this recompute() is not necessary"
                 )
 
-            # actually backward            
+            # actually backward
             paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
-            grads = list(inp._grad_ivar() for inp in detached_inputs
-                         if isinstance(inp, core.VarBase))
+            grads = tuple(inp._grad_ivar() for inp in detached_inputs
+                          if isinstance(inp, (core.VarBase, core.eager.Tensor)))
             return grads
 
 
 def _hp_recompute(function, *args):
-    # NODTE(shenliang03)The current hybrid parallel recompute has limitations. 
+    # NODTE(shenliang03)The current hybrid parallel recompute has limitations.
     # It cannot handle the following situations:
     # 1. The calculation output of recompute, there are tensors that do not require gradients.
     # 2. The forward output tensor has no gradient. This problem can be solved temporarily by detach().

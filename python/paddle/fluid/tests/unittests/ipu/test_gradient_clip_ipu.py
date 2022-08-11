@@ -20,27 +20,33 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
         self.set_feed_attr()
         self.set_attrs()
+        self.set_training()
+
+    @property
+    def fp16_enabled(self):
+        return False
 
     def set_atol(self):
+        super().set_atol()
         self.atol = 1e-6
+        self.rtol = 1e-5
 
     def set_data_feed(self):
-        self.feed = {
+        self.feed_fp32 = {
             "image": np.random.uniform(size=[1, 3, 10, 10]).astype('float32'),
         }
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed.values()]
-        self.feed_list = list(self.feed.keys())
-        self.feed_dtype = [x.dtype for x in self.feed.values()]
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_attrs(self):
         self.attrs = {
@@ -48,79 +54,55 @@ class TestBase(IPUOpTest):
             "weight_decay": 0.0,
         }
 
-    def _test_optimizer(self, run_ipu=True):
-        scope = paddle.static.Scope()
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        main_prog.random_seed = self.SEED
-        startup_prog.random_seed = self.SEED
-        np.random.seed(self.SEED)
+    def set_training(self):
+        self.is_training = True
+        self.epoch = 100
 
-        with paddle.static.scope_guard(scope):
-            with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(
-                    name='image', shape=[1, 3, 10, 10], dtype='float32')
-                conv1 = paddle.static.nn.conv2d(
-                    image, num_filters=3, filter_size=3, bias_attr=False)
-                loss = paddle.mean(conv1)
+    @IPUOpTest.static_graph
+    def build_model(self):
+        image = paddle.static.data(name=self.feed_list[0],
+                                   shape=self.feed_shape[0],
+                                   dtype='float32')
+        conv1 = paddle.static.nn.conv2d(image,
+                                        num_filters=3,
+                                        filter_size=3,
+                                        bias_attr=False)
+        loss = paddle.mean(conv1)
+        self.fetch_list = [loss.name]
 
-                weight_decay = self.attrs['weight_decay']
-                # Only support ClipGradByGlobalNorm
-                clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-                if self.attrs['optimizer'] == 'sgd':
-                    opt = paddle.optimizer.SGD(learning_rate=1e-1,
-                                               weight_decay=weight_decay,
-                                               grad_clip=clip)
-                elif self.attrs['optimizer'] == 'adam':
-                    opt = paddle.optimizer.Adam(
-                        learning_rate=1e-1,
-                        weight_decay=weight_decay,
-                        grad_clip=clip)
-                elif self.attrs['optimizer'] == 'lamb':
-                    opt = paddle.optimizer.Lamb(
-                        learning_rate=1e-1,
-                        lamb_weight_decay=weight_decay,
-                        grad_clip=clip)
-                else:
-                    raise ValueError(
-                        f"Not supported optimizer {self.attrs['optimizer']} for test"
-                    )
-                opt.minimize(loss)
+        weight_decay = self.attrs['weight_decay']
+        # Only support ClipGradByGlobalNorm
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+        if self.attrs['optimizer'] == 'sgd':
+            opt = paddle.optimizer.SGD(learning_rate=1e-1,
+                                       weight_decay=weight_decay,
+                                       grad_clip=clip)
+        elif self.attrs['optimizer'] == 'adam':
+            opt = paddle.optimizer.Adam(learning_rate=1e-1,
+                                        weight_decay=weight_decay,
+                                        grad_clip=clip)
+        elif self.attrs['optimizer'] == 'lamb':
+            opt = paddle.optimizer.Lamb(learning_rate=1e-1,
+                                        lamb_weight_decay=weight_decay,
+                                        grad_clip=clip)
+        else:
+            raise ValueError(
+                f"Not supported optimizer {self.attrs['optimizer']} for test")
+        opt.minimize(loss)
 
-            if run_ipu:
-                place = paddle.IPUPlace()
-            else:
-                place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(startup_prog)
-
-            if run_ipu:
-                feed_list = [image.name]
-                fetch_list = [loss.name]
-                ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.set_graph_config(is_training=True)
-                program = paddle.static.IpuCompiledProgram(
-                    main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
-                                                                  fetch_list)
-            else:
-                program = main_prog
-
-            result = []
-            for epoch in range(100):
-                loss_res = exe.run(program, feed=self.feed, fetch_list=[loss])
-                result.append(loss_res)
-
-            return np.array(result)
+    def run_model(self, exec_mode):
+        self.run_op_test(exec_mode)
 
     def test(self):
-        # cpu and ipu dimenstion mismatch, cpu:(100, 1, 1), ipu:(100, 1)
-        ipu_loss = self._test_optimizer(True).flatten()
-        cpu_loss = self._test_optimizer(False).flatten()
-
-        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=self.atol))
+        for m in IPUOpTest.ExecutionMode:
+            if not self.skip_mode(m):
+                self.build_model()
+                self.run_model(m)
+        self.check()
 
 
 class TestAdam(TestBase):
+
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'adam',
@@ -129,6 +111,7 @@ class TestAdam(TestBase):
 
 
 class TestLamb(TestBase):
+
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'lamb',

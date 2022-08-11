@@ -20,7 +20,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -28,32 +30,13 @@ limitations under the License. */
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-#include "paddle/fluid/platform/stream/cuda_stream.h"
-
 namespace paddle {
 namespace experimental {
-namespace detail {
-static Place GetCorrectPlaceByPlaceType(const Place &place_type) {
-  auto alloc_type = place_type.GetType();
-  switch (alloc_type) {
-    case AllocationType::CPU:
-      return place_type;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case AllocationType::GPU:
-      return phi::Place(AllocationType::GPU,
-                        phi::backends::gpu::GetCurrentDeviceId());
-#endif
-    default:
-      PADDLE_THROW(phi::errors::Unavailable(
-          "The PlaceType is a legacy design, only supports CPU and GPU, "
-          "and will not support other place types in the future."));
-  }
-}
-}  // namespace detail
 
 /////// Tensor Methods ////////
 
@@ -67,14 +50,15 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
 }
 
 Tensor::Tensor(const Place &place) {
-  LOG(WARNING) << "The Tensor(place) constructor is deprecated since version "
-                  "2.3, and will be removed in version 2.4! Please use "
-                  "`paddle::empty/full` method to create a new "
-                  "Tensor instead. "
-                  "Reason: A legal tensor cannot be constructed only based on "
-                  "the `place`, and datatype, shape, layout, etc. is also "
-                  "required.";
-  DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
+  LOG_FIRST_N(WARNING, 1)
+      << "The Tensor(place) constructor is deprecated since version "
+         "2.3, and will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor instead. "
+         "Reason: A legal tensor cannot be constructed only based on "
+         "the `place`, and datatype, shape, layout, etc. is also "
+         "required.";
+  DefaultAllocator alloc(place);
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
       std::move(phi::DenseTensorMeta(
@@ -82,14 +66,15 @@ Tensor::Tensor(const Place &place) {
 }
 
 Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
-  LOG(WARNING) << "The Tensor(place, shape) constructor is deprecated since "
-                  "version 2.3, and will be removed in version 2.4! Please use "
-                  "`paddle::empty/full` method to create a new "
-                  "Tensor instead. "
-                  "Reason: A legal tensor cannot be constructed only based on "
-                  "the `place` and `shape`, and datatype, layout, etc. is also "
-                  "required.";
-  DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
+  LOG_FIRST_N(WARNING, 1)
+      << "The Tensor(place, shape) constructor is deprecated since "
+         "version 2.3, and will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor instead. "
+         "Reason: A legal tensor cannot be constructed only based on "
+         "the `place` and `shape`, and datatype, layout, etc. is also "
+         "required.";
+  DefaultAllocator alloc(place);
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
       std::move(phi::DenseTensorMeta(phi::DataType::FLOAT32,
@@ -107,25 +92,23 @@ int64_t Tensor::numel() const { return impl_->numel(); }
 
 int64_t Tensor::size() const { return impl_->numel(); }
 
-phi::DDim Tensor::dims() const { return impl_->dims(); }
+const phi::DDim &Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
   auto dims = impl_->dims();
-  if (dims.size() == 1 && dims.at(0) == 0) {
-    return {};
-  }
   return phi::vectorize<int64_t>(dims);
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
-  LOG(WARNING) << "The function of resetting the shape of the uninitialized "
-                  "Tensor of the `reshape` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4, please use "
-                  "`paddle::empty/full` method to create a new Tensor "
-                  "instead. "
-                  "reason: `reshape` means changing the tensor shape without "
-                  "touching underlying data, this requires the total size of "
-                  "the tensor to remain constant.";
+  LOG_FIRST_N(WARNING, 1)
+      << "The function of resetting the shape of the uninitialized "
+         "Tensor of the `reshape` method is deprecated since version "
+         "2.3, and will be removed in version 2.4, please use "
+         "`paddle::empty/full` method to create a new Tensor "
+         "instead. "
+         "reason: `reshape` means changing the tensor shape without "
+         "touching underlying data, this requires the total size of "
+         "the tensor to remain constant.";
   if (is_dense_tensor()) {
     static_cast<phi::DenseTensor *>(impl_.get())->Resize(phi::make_ddim(shape));
   } else {
@@ -152,9 +135,12 @@ bool Tensor::is_sparse_coo_tensor() const {
 bool Tensor::is_sparse_csr_tensor() const {
   return phi::SparseCsrTensor::classof(impl_.get());
 }
+bool Tensor::is_string_tensor() const {
+  return phi::StringTensor::classof(impl_.get());
+}
 /* Part 3: Device and Backend methods */
 
-Place Tensor::place() const {
+const Place &Tensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
       impl_,
       phi::errors::PermissionDenied(
@@ -171,19 +157,24 @@ bool Tensor::is_gpu_pinned() const {
   return paddle::platform::is_cuda_pinned_place(place());
 }
 
+bool Tensor::is_custom_device() const {
+  return paddle::platform::is_custom_place(place());
+}
+
 /* Part 4: Data Access methods */
 
 template <typename T>
 T *Tensor::mutable_data() {
-  LOG(WARNING) << "Allocating memory through `mutable_data` method is "
-                  "deprecated since version 2.3, and `mutable_data` method "
-                  "will be removed in version 2.4! Please use "
-                  "`paddle::empty/full` method to create a new "
-                  "Tensor with allocated memory, and use data<T>() method "
-                  "to get the memory pointer of tensor instead. "
-                  "Reason: When calling `mutable_data` to allocate memory, "
-                  "the place, datatype, and data layout of tensor may be in "
-                  "an illegal state.";
+  LOG_FIRST_N(WARNING, 1)
+      << "Allocating memory through `mutable_data` method is "
+         "deprecated since version 2.3, and `mutable_data` method "
+         "will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor with allocated memory, and use data<T>() method "
+         "to get the memory pointer of tensor instead. "
+         "Reason: When calling `mutable_data` to allocate memory, "
+         "the place, datatype, and data layout of tensor may be in "
+         "an illegal state.";
   if (is_dense_tensor()) {
     return static_cast<phi::DenseTensor *>(impl_.get())
         ->mutable_data<T>(place());
@@ -208,15 +199,16 @@ Tensor::mutable_data<phi::dtype::float16>();
 
 template <typename T>
 T *Tensor::mutable_data(const Place &place) {
-  LOG(WARNING) << "Allocating memory through `mutable_data` method is "
-                  "deprecated since version 2.3, and `mutable_data` method "
-                  "will be removed in version 2.4! Please use "
-                  "`paddle::empty/full` method to create a new "
-                  "Tensor with allocated memory, and use data<T>() method "
-                  "to get the memory pointer of tensor instead. "
-                  "Reason: When calling `mutable_data` to allocate memory, "
-                  "the datatype, and data layout of tensor may be in "
-                  "an illegal state.";
+  LOG_FIRST_N(WARNING, 1)
+      << "Allocating memory through `mutable_data` method is "
+         "deprecated since version 2.3, and `mutable_data` method "
+         "will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor with allocated memory, and use data<T>() method "
+         "to get the memory pointer of tensor instead. "
+         "Reason: When calling `mutable_data` to allocate memory, "
+         "the datatype, and data layout of tensor may be in "
+         "an illegal state.";
   if (is_dense_tensor()) {
     return static_cast<phi::DenseTensor *>(impl_.get())->mutable_data<T>(place);
   }
@@ -317,7 +309,10 @@ void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 gpuStream_t Tensor::stream() const {
-  return platform::stream::get_current_stream(-1)->raw_stream();
+  int device_id = phi::backends::gpu::GetCurrentDeviceId();
+  auto *gpu_context = DeviceContextPool::Instance().Get<AllocationType::GPU>(
+      GPUPlace(device_id));
+  return gpu_context->stream();
 }
 #endif
 
@@ -328,13 +323,18 @@ bool Tensor::defined() const { return impl_ != nullptr; }
 bool Tensor::initialized() const { return defined() && impl_->initialized(); }
 
 bool Tensor::is_initialized() const {
-  LOG(WARNING) << "The `is_initialized` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4! "
-                  "Please use `initialized` method instead.";
+  LOG_FIRST_N(WARNING, 1)
+      << "The `is_initialized` method is deprecated since version "
+         "2.3, and will be removed in version 2.4! "
+         "Please use `initialized` method instead.";
   return defined() && impl_->initialized();
 }
 
-void Tensor::reset() { impl_.reset(); }
+void Tensor::reset() {
+  impl_.reset();
+  autograd_meta_.reset();
+  name_ = "";
+}
 
 /* Part 6: Operator overloading */
 
@@ -383,8 +383,8 @@ uint32_t Tensor::current_inplace_version() {
         static_cast<phi::DenseTensor *>(impl_.get())->InplaceVersionCounter();
     return inplace_version_counter.CurrentVersion();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "current_inplace_version is only supported on DenseTensor now."));
+    LOG_FIRST_N(WARNING, 1)
+        << "current_inplace_version is only supported on DenseTensor now.";
   }
   return 0;
 }

@@ -37,6 +37,13 @@ extern PyTypeObject* p_tensor_type;
 
 PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_TRY
+  // NOTE(dev): [why not use egr::Controller::Instance::GernerateUniqueName()?]
+  // Beacause Controller must holder a tracer, but 'tensor.name' maybe called
+  // everywhere such as static mode in @to_static, which means tracer is None.
+  static egr::UniqueNameGenerator name_generator;
+  if (self->tensor.name().empty()) {
+    self->tensor.set_name(name_generator.Generate());
+  }
   return ToPyObject(self->tensor.name());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -51,9 +58,12 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
     return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
   } else if (self->tensor.is_selected_rows()) {
     return ToPyObject(paddle::framework::proto::VarType::SELECTED_ROWS);
+  } else if (egr::IsVariableCompatTensor(self->tensor)) {
+    return ToPyObject(static_cast<paddle::framework::proto::VarType::Type>(
+        static_cast<const egr::VariableCompatTensor*>(self->tensor.impl().get())
+            ->Type()));
   } else {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -64,7 +74,8 @@ PyObject* tensor_properties_is_leaf(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int tensor_properties_set_name(TensorObject* self, PyObject* value,
+int tensor_properties_set_name(TensorObject* self,
+                               PyObject* value,
                                void* closure) {
   EAGER_TRY
   self->tensor.set_name(CastPyArg2AttrString(value, 0));
@@ -84,16 +95,17 @@ PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_TRY
   VLOG(6) << "Get grad for tensor: " << self->tensor.name();
   auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
+  VLOG(6) << meta << " initialized: " << meta->Grad().initialized();
   if (meta && meta->Grad().initialized()) {
     return ToPyObject(meta->Grad());
   } else {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int tensor_properties_set_grad(TensorObject* self, PyObject* value,
+int tensor_properties_set_grad(TensorObject* self,
+                               PyObject* value,
                                void* closure) {
   EAGER_TRY
   auto src = CastPyArg2Tensor(value, 0);
@@ -113,7 +125,8 @@ int tensor_properties_set_grad(TensorObject* self, PyObject* value,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-int tensor_properties_set_stop_gradient(TensorObject* self, PyObject* value,
+int tensor_properties_set_stop_gradient(TensorObject* self,
+                                        PyObject* value,
                                         void* closure) {
   EAGER_TRY
   auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
@@ -132,7 +145,8 @@ PyObject* tensor_properties_get_persistable(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int tensor_properties_set_persistable(TensorObject* self, PyObject* value,
+int tensor_properties_set_persistable(TensorObject* self,
+                                      PyObject* value,
                                       void* closure) {
   EAGER_TRY
   auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
@@ -147,11 +161,27 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   if (!self->tensor.defined()) {
     return ToPyObject(value);
   }
-  auto ddim = self->tensor.shape();
-  size_t rank = static_cast<size_t>(ddim.size());
-  value.resize(rank);
-  for (size_t i = 0; i < rank; i++) {
-    value[i] = ddim[i];
+  if (egr::IsVariableCompatTensor(self->tensor)) {
+    auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
+        self->tensor.impl().get());
+    if (var_tensor->IsType<paddle::framework::Vocab>()) {
+      value.emplace_back(static_cast<int64_t>(
+          var_tensor->Get<paddle::framework::Vocab>().size()));
+    } else if (var_tensor->IsType<paddle::framework::Strings>()) {
+      value.emplace_back(static_cast<int64_t>(
+          var_tensor->Get<paddle::framework::Strings>().size()));
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Unavailable(
+          "VariableCompatTensor only support get shape from Vocab or "
+          "Strings."));
+    }
+  } else {
+    auto ddim = self->tensor.shape();
+    size_t rank = static_cast<size_t>(ddim.size());
+    value.resize(rank);
+    for (size_t i = 0; i < rank; i++) {
+      value[i] = ddim[i];
+    }
   }
 
   return ToPyObject(value);
@@ -178,30 +208,75 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
     // be same to old dygraph
     return ToPyObject(framework::proto::VarType::FP32);
   }
-  return ToPyObject(
-      paddle::framework::TransToProtoVarType(self->tensor.type()));
+  if (egr::IsVariableCompatTensor(self->tensor)) {
+    auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
+        self->tensor.impl().get());
+    if (var_tensor->IsType<paddle::framework::Vocab>()) {
+      return ToPyObject(framework::proto::VarType::RAW);
+    } else if (var_tensor->IsType<paddle::framework::Strings>()) {
+      return ToPyObject(framework::proto::VarType::STRING);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Unavailable(
+          "VariableCompatTensor only support get shape from Vocab or "
+          "Strings."));
+    }
+  } else {
+    return ToPyObject(
+        paddle::framework::TransToProtoVarType(self->tensor.type()));
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 struct PyGetSetDef variable_properties[] = {
-    {"grad", (getter)tensor_properties_get_grad,
-     (setter)tensor_properties_set_grad, nullptr, nullptr},
-    {"name", (getter)tensor_properties_get_name,
-     (setter)tensor_properties_set_name, nullptr, nullptr},
-    {"stop_gradient", (getter)tensor_properties_get_stop_gradient,
-     (setter)tensor_properties_set_stop_gradient, nullptr, nullptr},
-    {"persistable", (getter)tensor_properties_get_persistable,
-     (setter)tensor_properties_set_persistable, nullptr, nullptr},
+    {"grad",
+     (getter)tensor_properties_get_grad,
+     (setter)tensor_properties_set_grad,
+     nullptr,
+     nullptr},
+    {"name",
+     (getter)tensor_properties_get_name,
+     (setter)tensor_properties_set_name,
+     nullptr,
+     nullptr},
+    {"stop_gradient",
+     (getter)tensor_properties_get_stop_gradient,
+     (setter)tensor_properties_set_stop_gradient,
+     nullptr,
+     nullptr},
+    {"persistable",
+     (getter)tensor_properties_get_persistable,
+     (setter)tensor_properties_set_persistable,
+     nullptr,
+     nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
     // {"is_leaf", (getter)tensor_properties_get_is_leaf, nullptr,
     // nullptr,
     //  nullptr},
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
-    {"_place_str", (getter)tensor_properties_get_place_str, nullptr, nullptr,
+    {"_place_str",
+     (getter)tensor_properties_get_place_str,
+     nullptr,
+     nullptr,
      nullptr},
     {"dtype", (getter)tensor_properties_get_dtype, nullptr, nullptr, nullptr},
     {"type", (getter)tensor_properties_get_type, nullptr, nullptr, nullptr},
     {"is_leaf", (getter)tensor_properties_is_leaf, nullptr, nullptr, nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr}};
+
+// variable_properties for core.eager.StringTensor
+struct PyGetSetDef string_tensor_variable_properties[] = {
+    {"name",
+     (getter)tensor_properties_get_name,
+     (setter)tensor_properties_set_name,
+     nullptr,
+     nullptr},
+    {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
+    {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
+    {"_place_str",
+     (getter)tensor_properties_get_place_str,
+     nullptr,
+     nullptr,
+     nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 }  // namespace pybind

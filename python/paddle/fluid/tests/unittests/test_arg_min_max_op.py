@@ -24,6 +24,7 @@ from paddle.fluid import Program, program_guard
 
 
 class BaseTestCase(OpTest):
+
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4, 5)
@@ -45,6 +46,7 @@ class BaseTestCase(OpTest):
 
 
 class TestCase0(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -53,6 +55,7 @@ class TestCase0(BaseTestCase):
 
 
 class TestCase1(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (3, 4)
@@ -61,6 +64,7 @@ class TestCase1(BaseTestCase):
 
 
 class TestCase2(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -68,7 +72,30 @@ class TestCase2(BaseTestCase):
         self.axis = 0
 
 
+@unittest.skipIf(not paddle.is_compiled_with_cuda(),
+                 "FP16 test runs only on GPU")
+class TestCase0FP16(BaseTestCase):
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (3, 4, 5)
+        self.dtype = np.float16
+        self.axis = 0
+
+
+@unittest.skipIf(not paddle.is_compiled_with_cuda(),
+                 "FP16 test runs only on GPU")
+class TestCase1FP16(BaseTestCase):
+
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.dims = (3, 4)
+        self.dtype = np.float16
+        self.axis = 1
+
+
 class TestCase2_1(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -77,6 +104,7 @@ class TestCase2_1(BaseTestCase):
 
 
 class TestCase3(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, )
@@ -85,6 +113,7 @@ class TestCase3(BaseTestCase):
 
 
 class TestCase4(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (1, )
@@ -93,6 +122,7 @@ class TestCase4(BaseTestCase):
 
 
 class TestCase3_(BaseTestCase):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, )
@@ -100,6 +130,7 @@ class TestCase3_(BaseTestCase):
 
 
 class BaseTestComplex1_1(OpTest):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (4, 5, 6)
@@ -114,17 +145,16 @@ class BaseTestComplex1_1(OpTest):
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         if self.op_type == "arg_min":
             self.outputs = {
-                'Out': np.argmin(
-                    self.x, axis=self.axis).asdtype("int32")
+                'Out': np.argmin(self.x, axis=self.axis).asdtype("int32")
             }
         else:
             self.outputs = {
-                'Out': np.argmax(
-                    self.x, axis=self.axis).asdtype("int32")
+                'Out': np.argmax(self.x, axis=self.axis).asdtype("int32")
             }
 
 
 class BaseTestComplex1_2(OpTest):
+
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (4, 5, 6)
@@ -139,17 +169,16 @@ class BaseTestComplex1_2(OpTest):
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         if self.op_type == "arg_min":
             self.outputs = {
-                'Out': np.argmin(
-                    self.x, axis=self.axis).asdtype("int32")
+                'Out': np.argmin(self.x, axis=self.axis).asdtype("int32")
             }
         else:
             self.outputs = {
-                'Out': np.argmax(
-                    self.x, axis=self.axis).asdtype("int32")
+                'Out': np.argmax(self.x, axis=self.axis).asdtype("int32")
             }
 
 
 class BaseTestComplex2_1(OpTest):
+
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (4, 5, 6)
@@ -165,17 +194,20 @@ class BaseTestComplex2_1(OpTest):
         self.attrs = {'keep_dims': True}
         if self.op_type == "arg_min":
             self.outputs = {
-                'Out': np.argmin(
-                    self.x, axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+                'Out':
+                np.argmin(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
             }
         else:
             self.outputs = {
-                'Out': np.argmax(
-                    self.x, axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+                'Out':
+                np.argmax(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
             }
 
 
 class BaseTestComplex2_2(OpTest):
+
     def initTestCase(self):
         self.op_type = 'arg_min'
         self.dims = (4, 5, 6)
@@ -191,15 +223,18 @@ class BaseTestComplex2_2(OpTest):
         self.attrs = {'keep_dims': True}
         if self.op_type == "arg_min":
             self.outputs = {
-                'Out': np.argmin(
-                    self.x, axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+                'Out':
+                np.argmin(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
             }
         else:
             self.outputs = {
-                'Out': np.argmax(
-                    self.x, axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+                'Out':
+                np.argmax(self.x,
+                          axis=self.axis).asdtype("int32").reshape(4, 5, 1)
             }
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

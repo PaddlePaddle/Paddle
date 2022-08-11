@@ -14,6 +14,10 @@
 
 #include "paddle/phi/kernels/autotune/cache.h"
 
+#include <iomanip>
+
+#include "glog/logging.h"
+
 namespace phi {
 namespace autotune {
 
@@ -30,6 +34,48 @@ size_t ConvKey(const std::vector<int64_t>& x_dims,
                 paddings,
                 dilations,
                 static_cast<int64_t>(dtype));
+}
+
+size_t TransposeKey(const std::vector<int64_t>& x_dims,
+                    const std::vector<int32_t>& perm,
+                    phi::DataType dtype) {
+  const auto rank = perm.size();
+  return GetKey(x_dims, perm, rank, static_cast<int64_t>(dtype));
+}
+
+std::string AlgorithmTypeString(int64_t algo_type) {
+  if (algo_type == static_cast<int64_t>(AlgorithmType::kConvForward)) {
+    return "conv_forward";
+  } else if (algo_type ==
+             static_cast<int64_t>(AlgorithmType::kConvBackwardData)) {
+    return "conv_backward_data";
+  } else if (algo_type ==
+             static_cast<int64_t>(AlgorithmType::kConvBackwardFilter)) {
+    return "conv_backward_filter";
+  }
+  return std::to_string(algo_type);
+}
+
+void AutoTuneCache::UpdateStatus() {
+  int64_t size = 0;
+  int64_t cache_hits = 0;
+  int64_t cache_misses = 0;
+  int name_width = 24;
+  std::cout.setf(std::ios::left);
+  for (auto& v : auto_tune_map_) {
+    VLOG(4) << "AlgoType: " << std::setfill(' ') << std::setw(name_width)
+            << AlgorithmTypeString(v.first)
+            << " Cache Size: " << v.second.Size()
+            << " Hits: " << v.second.CacheHits()
+            << " Misses: " << v.second.CacheMisses()
+            << " Hit Rate: " << v.second.CacheHitRate();
+    size += v.second.Size();
+    cache_hits += v.second.CacheHits();
+    cache_misses += v.second.CacheMisses();
+  }
+  total_size_ = size;
+  total_cache_hits_ = cache_hits;
+  total_cache_misses_ = cache_misses;
 }
 
 }  // namespace autotune

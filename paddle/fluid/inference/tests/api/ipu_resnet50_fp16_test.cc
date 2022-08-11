@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <cmath>
 
 #include "gflags/gflags.h"
@@ -77,8 +78,8 @@ TEST(Analyzer_Resnet50_ipu, compare_results_1_batch) {
   float* fp32_data = reinterpret_cast<float*>(output.data.data());
 
   for (size_t j = 0; j < outputs_size; j += 10) {
-    EXPECT_NEAR((fp32_data[j] - truth_values[j / 10]) / truth_values[j / 10],
-                0., 9e-2);
+    EXPECT_NEAR(
+        (fp32_data[j] - truth_values[j / 10]) / truth_values[j / 10], 0., 9e-2);
   }
 }
 

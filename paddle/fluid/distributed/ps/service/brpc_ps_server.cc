@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
+
 #include <thread>  // NOLINT
+
 #include "butil/object_pool.h"
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/ps/table/depends/sparse_utils.h"
@@ -27,6 +29,16 @@ class Closure;
 class RpcController;
 }  // namespace protobuf
 }  // namespace google
+
+DEFINE_int32(pserver_timeout_ms_s2s,
+             10000,
+             "pserver request server timeout_ms");
+DEFINE_int32(pserver_connect_timeout_ms_s2s,
+             10000,
+             "pserver connect server timeout_ms");
+DEFINE_string(pserver_connection_type_s2s,
+              "pooled",
+              "pserver connection_type[pooled:single]");
 
 namespace paddle {
 namespace distributed {
@@ -93,6 +105,85 @@ uint64_t BrpcPsServer::Start(const std::string &ip, uint32_t port) {
   return host.rank;
 }
 
+int32_t BrpcPsServer::StartS2S() {
+  brpc::ChannelOptions options;
+  options.protocol = "baidu_std";
+  options.timeout_ms = FLAGS_pserver_timeout_ms_s2s;
+  options.connection_type = FLAGS_pserver_connection_type_s2s;
+  options.connect_timeout_ms = FLAGS_pserver_connect_timeout_ms_s2s;
+  options.max_retry = 3;
+
+  std::vector<PSHost> pserver_list = _environment->GetPsServers();
+  _pserver_channels.resize(pserver_list.size());
+  VLOG(2) << "pserver start s2s server_list size: " << _pserver_channels.size();
+
+  std::ostringstream os;
+  std::string server_ip_port;
+
+  for (size_t i = 0; i < pserver_list.size(); ++i) {
+    server_ip_port.assign(pserver_list[i].ip.c_str());
+    server_ip_port.append(":");
+    server_ip_port.append(std::to_string(pserver_list[i].port));
+    _pserver_channels[i].reset(new brpc::Channel());
+    if (_pserver_channels[i]->Init(server_ip_port.c_str(), "", &options) != 0) {
+      LOG(ERROR) << "pserver connect to pserver:" << server_ip_port
+                 << " Failed!";
+    }
+    os << server_ip_port << ",";
+  }
+  LOG(INFO) << "pserver connect success: " << os.str();
+  return 0;
+}
+
+std::future<int32_t> BrpcPsServer::SendPServer2PServerMsg(
+    int msg_type, int to_pserver_id, const std::string &msg) {
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  std::future<int> fut = promise->get_future();
+  if (static_cast<size_t>(to_pserver_id) >= _pserver_channels.size()) {
+    LOG(FATAL) << "to_pserver_id is out of range pservers, which size is "
+               << _pserver_channels.size();
+    promise->set_value(-1);
+    return fut;
+  }
+  auto *closure = new DownpourPServerBrpcClosure(1, [msg_type](void *done) {
+    auto *closure = reinterpret_cast<DownpourPServerBrpcClosure *>(done);
+    int32_t ret = closure->check_response(0, msg_type + 1000);
+    closure->set_promise_value(ret);
+  });
+
+  closure->add_promise(promise);
+  closure->request(0)->set_cmd_id(101);
+  closure->request(0)->set_client_id(_rank);
+  closure->request(0)->set_table_id(0);
+  closure->request(0)->set_data(msg);
+  PsService_Stub rpc_stub(_pserver_channels[to_pserver_id].get());
+  rpc_stub.service(
+      closure->cntl(0), closure->request(0), closure->response(0), closure);
+  return fut;
+}
+
+int32_t BrpcPsServer::ReceiveFromPServer(int msg_type,
+                                         int pserver_id,
+                                         const std::string &msg) {
+  if (msg.length() == 0) {
+    LOG(WARNING) << "SERVER>>RESPONSE>>msg = 0 Finish S2S Response";
+    return 0;
+  }
+  paddle::framework::BinaryArchive ar;
+  ar.SetReadBuffer(const_cast<char *>(msg.c_str()), msg.length(), nullptr);
+  if (ar.Cursor() == ar.Finish()) {
+    LOG(WARNING) << "SERVER>>RESPONSE ar = 0>> Finish S2S Response";
+    return 0;
+  }
+  std::vector<std::pair<uint64_t, std::string>> data;
+  while (ar.Cursor() < ar.Finish()) {
+    data.push_back(ar.Get<std::pair<uint64_t, std::string>>());
+  }
+  CHECK(ar.Cursor() == ar.Finish());
+  this->_shuffled_ins->Write(std::move(data));
+  return 0;
+}
+
 int32_t BrpcPsServer::Port() { return _server.listen_address().port; }
 
 int32_t BrpcPsService::Initialize() {
@@ -117,6 +208,17 @@ int32_t BrpcPsService::Initialize() {
   _service_handler_map[PS_START_PROFILER] = &BrpcPsService::StartProfiler;
   _service_handler_map[PS_STOP_PROFILER] = &BrpcPsService::StopProfiler;
   _service_handler_map[PS_PUSH_GLOBAL_STEP] = &BrpcPsService::PushGlobalStep;
+  // for save cache
+  _service_handler_map[PS_SAVE_ONE_CACHE_TABLE] =
+      &BrpcPsService::SaveCacheTable;
+  _service_handler_map[PS_GET_CACHE_THRESHOLD] =
+      &BrpcPsService::GetCacheThreshold;
+  _service_handler_map[PS_CACHE_SHUFFLE] = &BrpcPsService::CacheShuffle;
+
+  _service_handler_map[PS_REVERT] = &BrpcPsService::Revert;
+  _service_handler_map[PS_CHECK_SAVE_PRE_PATCH_DONE] =
+      &BrpcPsService::CheckSavePrePatchDone;
+
   auto &profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_server_pull_dense");
   profiler.register_profiler("pserver_server_push_dense");
@@ -168,23 +270,34 @@ void BrpcPsService::service(google::protobuf::RpcController *cntl_base,
   response->set_err_msg("");
   auto *table = _server->GetTable(request->table_id());
   brpc::Controller *cntl = static_cast<brpc::Controller *>(cntl_base);
-  auto itr = _service_handler_map.find(request->cmd_id());
-  if (itr == _service_handler_map.end()) {
-    std::string err_msg(
-        "undefined cmd_id, should match PsCmdID in ps.proto, cmd_id:");
-    err_msg.append(std::to_string(request->cmd_id()));
-    set_response_code(*response, -1, err_msg.c_str());
-    return;
-  }
-  serviceHandlerFunc handler_func = itr->second;
-  int service_ret = (this->*handler_func)(table, *request, *response, cntl);
-  if (service_ret != 0) {
-    response->set_err_code(service_ret);
-    response->set_err_msg("server internal error");
+
+  if (request->cmd_id() < 100) {
+    auto itr = _service_handler_map.find(request->cmd_id());
+    if (itr == _service_handler_map.end()) {
+      std::string err_msg(
+          "undefined cmd_id, should match PsCmdID in ps.proto, cmd_id:");
+      err_msg.append(std::to_string(request->cmd_id()));
+      set_response_code(*response, -1, err_msg.c_str());
+      return;
+    }
+    serviceHandlerFunc handler_func = itr->second;
+    int service_ret = (this->*handler_func)(table, *request, *response, cntl);
+    if (service_ret != 0) {
+      response->set_err_code(service_ret);
+      response->set_err_msg("server internal error");
+    }
+  } else {
+    int service_ret = _server->HandlePServer2PServerMsg(
+        request->cmd_id(), request->client_id(), request->data());
+    if (service_ret != 0) {
+      response->set_err_code(-1);
+      response->set_err_msg("handle_pserver2pserver_msg failed");
+    }
   }
 }
 
-int32_t BrpcPsService::PullDense(Table *table, const PsRequestMessage &request,
+int32_t BrpcPsService::PullDense(Table *table,
+                                 const PsRequestMessage &request,
                                  PsResponseMessage &response,
                                  brpc::Controller *cntl) {
   platform::RecordEvent record_event(
@@ -192,17 +305,13 @@ int32_t BrpcPsService::PullDense(Table *table, const PsRequestMessage &request,
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 1) {
     set_response_code(
-        response, -1,
+        response,
+        -1,
         "PsRequestMessage.datas is requeired at least 1 for num of dense");
     return 0;
   }
   CostTimer timer("pserver_server_pull_dense");
   uint32_t num = *(const uint32_t *)request.params(0).c_str();
-  if (num < 0) {
-    set_response_code(response, -1,
-                      "PsRequestMessage.datas[0] is invalid, num must >= 0");
-    return 0;
-  }
 
   auto res_data = butil::get_object<std::vector<float>>();
   res_data->resize(num * table->ValueAccesor()->GetAccessorInfo().select_size /
@@ -213,9 +322,8 @@ int32_t BrpcPsService::PullDense(Table *table, const PsRequestMessage &request,
   table_context.pull_context.values = res_data->data();
   table_context.num = num;
   table->Pull(table_context);
-  // table->PullDense(res_data->data(), num);
 
-  cntl->response_attachment().append((char *)(res_data->data()),
+  cntl->response_attachment().append(reinterpret_cast<char *>(res_data->data()),
                                      res_data->size() * sizeof(float));
   butil::return_object(res_data);
 
@@ -250,14 +358,14 @@ int32_t BrpcPsService::PushDenseParam(Table *table,
   table_context.push_context.is_param = true;
   table_context.num = num;
 
-  //  if (table->PushDenseParam(values, num) != 0) {
   if (table->Push(table_context) != 0) {
     set_response_code(response, -1, "PushDenseParam failed");
   }
   return 0;
 }
 
-int32_t BrpcPsService::PushDense(Table *table, const PsRequestMessage &request,
+int32_t BrpcPsService::PushDense(Table *table,
+                                 const PsRequestMessage &request,
                                  PsResponseMessage &response,
                                  brpc::Controller *cntl) {
   platform::RecordEvent record_event(
@@ -291,13 +399,15 @@ int32_t BrpcPsService::PushDense(Table *table, const PsRequestMessage &request,
   return 0;
 }
 
-int32_t BrpcPsService::Barrier(Table *table, const PsRequestMessage &request,
+int32_t BrpcPsService::Barrier(Table *table,
+                               const PsRequestMessage &request,
                                PsResponseMessage &response,
                                brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
 
   if (request.params_size() < 1) {
-    set_response_code(response, -1,
+    set_response_code(response,
+                      -1,
                       "PsRequestMessage.params is requeired at "
                       "least 1 for num of sparse_key");
     return 0;
@@ -323,12 +433,14 @@ int32_t BrpcPsService::PushSparseParam(Table *table,
     return 0;
   }
   if (request.params_size() < 1) {
-    set_response_code(response, -1,
+    set_response_code(response,
+                      -1,
                       "PsRequestMessage.params is requeired at "
                       "least 1 for num of sparse_key");
     return 0;
   }
-  uint32_t num = *(uint32_t *)(request.params(0).c_str());
+  const uint32_t num =
+      *(reinterpret_cast<const uint32_t *>(request.params(0).c_str()));
   /*
   Push Content:
   |---keysData---|---valuesData---|
@@ -374,15 +486,17 @@ int32_t BrpcPsService::PullGeoParam(Table *table,
   //  table->PullGeoParam(trainer_id, &values, &ids);
 
   uint32_t num = ids.size();
-  cntl->response_attachment().append((char *)(&num), sizeof(uint32_t));
-  cntl->response_attachment().append((char *)ids.data(),
+  cntl->response_attachment().append(reinterpret_cast<char *>(&num),
+                                     sizeof(uint32_t));
+  cntl->response_attachment().append(reinterpret_cast<char *>(ids.data()),
                                      ids.size() * sizeof(uint64_t));
-  cntl->response_attachment().append((char *)values.data(),
+  cntl->response_attachment().append(reinterpret_cast<char *>(values.data()),
                                      values.size() * sizeof(float));
   return 0;
 }
 
-int32_t BrpcPsService::PullSparse(Table *table, const PsRequestMessage &request,
+int32_t BrpcPsService::PullSparse(Table *table,
+                                  const PsRequestMessage &request,
                                   PsResponseMessage &response,
                                   brpc::Controller *cntl) {
   platform::RecordEvent record_event(
@@ -398,14 +512,16 @@ int32_t BrpcPsService::PullSparse(Table *table, const PsRequestMessage &request,
   }
 
   if (request.params_size() < 1) {
-    set_response_code(response, -1,
+    set_response_code(response,
+                      -1,
                       "PsRequestMessage.params is requeired at "
                       "least 1 for num of sparse_key");
     return 0;
   }
 
   CostTimer timer("pserver_server_pull_sparse");
-  uint32_t num = *(uint32_t *)(request.params(0).c_str());
+  const uint32_t num =
+      *(reinterpret_cast<const uint32_t *>(request.params(0).c_str()));
   auto dim = table->ValueAccesor()->GetAccessorInfo().select_dim;
 
   thread_local std::string req_buffer;
@@ -427,13 +543,14 @@ int32_t BrpcPsService::PullSparse(Table *table, const PsRequestMessage &request,
   table->Pull(table_context);
   // table->PullSparse(res_data->data(), value);
 
-  cntl->response_attachment().append((char *)(res_data->data()),
+  cntl->response_attachment().append(reinterpret_cast<char *>(res_data->data()),
                                      res_data->size() * sizeof(float));
   butil::return_object(res_data);
   return 0;
 }
 
-int32_t BrpcPsService::PushSparse(Table *table, const PsRequestMessage &request,
+int32_t BrpcPsService::PushSparse(Table *table,
+                                  const PsRequestMessage &request,
                                   PsResponseMessage &response,
                                   brpc::Controller *cntl) {
   platform::RecordEvent record_event(
@@ -445,13 +562,15 @@ int32_t BrpcPsService::PushSparse(Table *table, const PsRequestMessage &request,
     return 0;
   }
   if (request.params_size() < 1) {
-    set_response_code(response, -1,
+    set_response_code(response,
+                      -1,
                       "PsRequestMessage.params is requeired at "
                       "least 1 for num of sparse_key");
     return 0;
   }
   CostTimer timer("pserver_server_push_sparse");
-  uint32_t num = *(uint32_t *)(request.params(0).c_str());
+  const uint32_t num =
+      *(reinterpret_cast<const uint32_t *>(request.params(0).c_str()));
   /*
   Push Content:
   |---keysData---|---valuesData---|
@@ -494,7 +613,8 @@ int32_t BrpcPsService::LoadOneTable(Table *table,
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
     set_response_code(
-        response, -1,
+        response,
+        -1,
         "PsRequestMessage.datas is requeired at least 2 for path & load_param");
     return -1;
   }
@@ -526,7 +646,8 @@ int32_t BrpcPsService::SaveOneTable(Table *table,
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
     set_response_code(
-        response, -1,
+        response,
+        -1,
         "PsRequestMessage.datas is requeired at least 2, path&mode");
     return -1;
   }
@@ -548,7 +669,6 @@ int32_t BrpcPsService::SaveAllTable(Table *table,
                                     PsResponseMessage &response,
                                     brpc::Controller *cntl) {
   auto &table_map = *(_server->GetTable());
-  int32_t all_feasign_size = 0;
   int32_t feasign_size = 0;
 
   for (auto &itr : table_map) {
@@ -561,6 +681,120 @@ int32_t BrpcPsService::SaveAllTable(Table *table,
   return 0;
 }
 
+int32_t BrpcPsService::SaveCacheTable(Table *table,
+                                      const PsRequestMessage &request,
+                                      PsResponseMessage &response,
+                                      brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response)
+  if (request.params_size() < 2) {
+    set_response_code(
+        response,
+        -1,
+        "PsRequestMessage.datas is requeired at least 3, path&mode");
+    return -1;
+  }
+  table->Flush();
+  int32_t feasign_size = 0;
+  // if (_server->_shuffled_ins->size() <= 0) {
+  //    LOG(WARNING) << "shuffled ins size <= 0";
+  //}
+  feasign_size = table->SaveCache(
+      request.params(0), request.params(1), _server->_shuffled_ins);
+  if (feasign_size < 0) {
+    set_response_code(response, -1, "table save failed");
+    return -1;
+  }
+  return feasign_size;
+}
+
+int32_t BrpcPsService::CacheShuffle(Table *table,
+                                    const PsRequestMessage &request,
+                                    PsResponseMessage &response,
+                                    brpc::Controller *cntl) {
+  // start cache shuffle
+  CHECK_TABLE_EXIST(table, request, response)
+  if (request.params_size() < 3) {
+    set_response_code(response,
+                      -1,
+                      "PsRequestMessage.datas is requeired at least 3, "
+                      "path&mode&cache_threshold");
+    return -1;
+  }
+  table->Flush();
+  double cache_threshold = std::stod(request.params(2));
+  LOG(INFO) << "cache threshold for cache shuffle: " << cache_threshold;
+  //    auto shuffled_ins = paddle::ps::make_channel<std::pair<uint64_t,
+  //    std::string>>();
+  //    shuffled_ins->set_block_size(80000);
+  _server->StartS2S();
+  std::function<std::future<int32_t>(
+      int msg_type, int to_pserver_id, const std::string &msg)>
+      send_msg_func = [this](int msg_type,
+                             int to_pserver_id,
+                             const std::string &msg) -> std::future<int32_t> {
+    return this->_server->SendPServer2PServerMsg(msg_type, to_pserver_id, msg);
+  };
+
+  std::vector<Table *> table_ptrs;
+  for (int i = 3; i < request.params_size(); ++i) {
+    int table_id = std::stoi(request.params(i));
+    Table *table_ptr = _server->GetTable(table_id);
+    table_ptrs.push_back(table_ptr);
+  }
+  if (table_ptrs.empty()) {
+    table_ptrs.push_back(table);
+  }
+
+  table->CacheShuffle(request.params(0),
+                      request.params(1),
+                      cache_threshold,
+                      send_msg_func,
+                      _server->_shuffled_ins,
+                      table_ptrs);
+  return 0;
+}
+
+int32_t BrpcPsService::GetCacheThreshold(Table *table,
+                                         const PsRequestMessage &request,
+                                         PsResponseMessage &response,
+                                         brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response)
+  table->Flush();
+  double cache_threshold = 0.0;
+  cache_threshold = table->GetCacheThreshold();
+  if (cache_threshold < 0) {
+    LOG(WARNING) << "wrong threshold: " << cache_threshold;
+  }
+  std::stringstream ss;
+  ss << std::setprecision(15) << cache_threshold;
+  std::string cache_threshold_str = ss.str();
+  response.set_data(cache_threshold_str);
+  return 0;
+}
+
+int32_t BrpcPsService::Revert(Table *table,
+                              const PsRequestMessage &request,
+                              PsResponseMessage &response,
+                              brpc::Controller *cntl) {
+  auto &table_map = *(_server->GetTable());
+  for (auto &itr : table_map) {
+    itr.second->Flush();
+    itr.second->Revert();
+  }
+  return 0;
+}
+
+int32_t BrpcPsService::CheckSavePrePatchDone(Table *table,
+                                             const PsRequestMessage &request,
+                                             PsResponseMessage &response,
+                                             brpc::Controller *cntl) {
+  auto &table_map = *(_server->GetTable());
+  for (auto &itr : table_map) {
+    itr.second->CheckSavePrePatchDone();
+  }
+  return 0;
+}
+
 int32_t BrpcPsService::ShrinkTable(Table *table,
                                    const PsRequestMessage &request,
                                    PsResponseMessage &response,
@@ -568,7 +802,8 @@ int32_t BrpcPsService::ShrinkTable(Table *table,
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 1) {
     set_response_code(
-        response, -1,
+        response,
+        -1,
         "PsRequestMessage.datas is requeired at least 1, threshold");
     return -1;
   }
@@ -604,7 +839,8 @@ int32_t BrpcPsService::ClearAllTable(Table *table,
   return 0;
 }
 
-int32_t BrpcPsService::StopServer(Table *table, const PsRequestMessage &request,
+int32_t BrpcPsService::StopServer(Table *table,
+                                  const PsRequestMessage &request,
                                   PsResponseMessage &response,
                                   brpc::Controller *cntl) {
   auto *p_server = _server;
@@ -643,7 +879,6 @@ int32_t BrpcPsService::PushGlobalStep(Table *table,
     set_response_code(response, 0, "run_program data is empty");
     return 0;
   }
-  uint32_t num = *(const uint32_t *)(request.data().data());
   const int64_t *values =
       (const int64_t *)(request.data().data() + sizeof(uint32_t));
   auto trainer_id = request.client_id();

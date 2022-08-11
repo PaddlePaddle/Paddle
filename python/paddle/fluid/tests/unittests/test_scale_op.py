@@ -25,6 +25,7 @@ from paddle.static import Program, program_guard
 
 
 class TestScaleOp(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -47,6 +48,7 @@ class TestScaleOp(OpTest):
 
 
 class TestScaleOpScaleVariable(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -71,6 +73,7 @@ class TestScaleOpScaleVariable(OpTest):
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
+
     def init_dtype_type(self):
         pass
 
@@ -129,7 +132,9 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 class TestScaleRaiseError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.scale([10])
 
@@ -140,6 +145,7 @@ class TestScaleRaiseError(unittest.TestCase):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestScaleFp16Op(TestScaleOp):
+
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -151,11 +157,14 @@ class TestScaleFp16Op(TestScaleOp):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ["X"], "Out", max_relative_error=0.05, check_eager=True)
+            self.check_grad_with_place(place, ["X"],
+                                       "Out",
+                                       max_relative_error=0.05,
+                                       check_eager=True)
 
 
 class TestScaleBF16Op(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -176,6 +185,7 @@ class TestScaleBF16Op(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
+
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -191,6 +201,7 @@ class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
 
 
 class TestScaleApiStatic(unittest.TestCase):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -204,15 +215,17 @@ class TestScaleApiStatic(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
         out = exe.run(main_prog, feed={"x": input}, fetch_list=[out])
-        self.assertEqual(np.array_equal(out[0], input * 2.0 + 3.0), True)
+        np.testing.assert_array_equal(out[0], input * 2.0 + 3.0)
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 
 
 class TestScaleApiDygraph(unittest.TestCase):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -221,11 +234,12 @@ class TestScaleApiDygraph(unittest.TestCase):
         input = np.random.random([2, 25]).astype("float32")
         x = paddle.to_tensor(input)
         out = self._executed_api(x, scale=2.0, bias=3.0)
-        self.assertEqual(np.array_equal(out.numpy(), input * 2.0 + 3.0), True)
+        np.testing.assert_array_equal(out.numpy(), input * 2.0 + 3.0)
         paddle.enable_static()
 
 
 class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 

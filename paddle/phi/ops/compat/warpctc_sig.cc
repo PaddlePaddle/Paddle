@@ -20,16 +20,15 @@ KernelSignature WarpctcOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("warpctc",
                          {"Logits", "Label", "LogitsLength", "LabelLength"},
                          {"blank", "norm_by_times"},
-                         {"WarpCTCGrad", "Loss"});
+                         {"Loss", "WarpCTCGrad"});
 }
 
 KernelSignature WarpctcGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "warpctc_grad",
-      {"WarpCTCGrad", "Logits", GradVarName("Loss"), "LogitsLength"},
-      {"blank", "norm_by_times"},
-      {GradVarName("Logits")});
+  return KernelSignature("warpctc_grad",
+                         {"Logits", "LogitsLength", "WarpCTCGrad", "Loss@GRAD"},
+                         {"blank", "norm_by_times"},
+                         {"Logits@GRAD"});
 }
 
 }  // namespace phi

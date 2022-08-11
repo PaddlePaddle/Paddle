@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <functional>
+
 #include "glog/logging.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"

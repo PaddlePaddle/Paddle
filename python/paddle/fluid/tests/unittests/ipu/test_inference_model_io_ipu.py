@@ -21,9 +21,8 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
@@ -66,16 +65,14 @@ class TestBase(IPUOpTest):
         with paddle.fluid.unique_name.guard(generator):
             with paddle.static.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
-                    x = paddle.static.data(
-                        name=self.feed_list[0],
-                        shape=self.feed_shape[0],
-                        dtype='float32')
-                    conv1 = paddle.static.nn.conv2d(
-                        x,
-                        num_filters=3,
-                        filter_size=3,
-                        bias_attr=False,
-                        name='conv2d')
+                    x = paddle.static.data(name=self.feed_list[0],
+                                           shape=self.feed_shape[0],
+                                           dtype='float32')
+                    conv1 = paddle.static.nn.conv2d(x,
+                                                    num_filters=3,
+                                                    filter_size=3,
+                                                    bias_attr=False,
+                                                    name='conv2d')
                     loss = paddle.mean(conv1)
 
                     if self.attrs['is_training']:
@@ -98,8 +95,9 @@ class TestBase(IPUOpTest):
                 ipu_strategy.set_graph_config(
                     is_training=self.attrs['is_training'])
                 program = paddle.static.IpuCompiledProgram(
-                    main_prog, ipu_strategy=ipu_strategy).compile(
-                        self.feed_list, fetch_list)
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(self.feed_list,
+                                                       fetch_list)
 
                 result = []
                 for i in range(self.attrs['steps']):
@@ -108,8 +106,11 @@ class TestBase(IPUOpTest):
                                   fetch_list=fetch_list)
                     result.append(tmp)
 
-                paddle.static.save_inference_model(
-                    self.full_name, x, loss, exe, program=program.org_program)
+                paddle.static.save_inference_model(self.full_name,
+                                                   x,
+                                                   loss,
+                                                   exe,
+                                                   program=program.org_program)
 
     def _test_load(self, run_ipu):
         if run_ipu:
@@ -118,8 +119,8 @@ class TestBase(IPUOpTest):
             place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
-        [inference_program, feed_target_names, fetch_targets] = (
-            paddle.static.load_inference_model(self.full_name, exe))
+        [inference_program, feed_target_names, fetch_targets
+         ] = (paddle.static.load_inference_model(self.full_name, exe))
 
         if run_ipu:
             feed_list = feed_target_names
@@ -146,6 +147,7 @@ class TestBase(IPUOpTest):
 
 
 class TestAdam(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100
@@ -156,6 +158,7 @@ class TestAdam(TestBase):
 
 
 class TestLamb(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100

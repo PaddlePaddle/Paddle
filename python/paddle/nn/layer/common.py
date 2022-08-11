@@ -155,21 +155,21 @@ class Linear(Layer):
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
-        self.weight = self.create_parameter(
-            shape=[in_features, out_features],
-            attr=self._weight_attr,
-            dtype=self._dtype,
-            is_bias=False)
-        self.bias = self.create_parameter(
-            shape=[out_features],
-            attr=self._bias_attr,
-            dtype=self._dtype,
-            is_bias=True)
+        self.weight = self.create_parameter(shape=[in_features, out_features],
+                                            attr=self._weight_attr,
+                                            dtype=self._dtype,
+                                            is_bias=False)
+        self.bias = self.create_parameter(shape=[out_features],
+                                          attr=self._bias_attr,
+                                          dtype=self._dtype,
+                                          is_bias=True)
         self.name = name
 
     def forward(self, input):
-        out = F.linear(
-            x=input, weight=self.weight, bias=self.bias, name=self.name)
+        out = F.linear(x=input,
+                       weight=self.weight,
+                       bias=self.bias,
+                       name=self.name)
         return out
 
     def extra_repr(self):
@@ -406,15 +406,14 @@ class Upsample(Layer):
         self.name = name
 
     def forward(self, x):
-        out = F.interpolate(
-            x,
-            size=self.size,
-            scale_factor=self.scale_factor,
-            mode=self.mode,
-            align_corners=self.align_corners,
-            align_mode=self.align_mode,
-            data_format=self.data_format,
-            name=self.name)
+        out = F.interpolate(x,
+                            size=self.size,
+                            scale_factor=self.scale_factor,
+                            mode=self.mode,
+                            align_corners=self.align_corners,
+                            align_mode=self.align_mode,
+                            data_format=self.data_format,
+                            name=self.name)
 
         return out
 
@@ -492,15 +491,14 @@ class UpsamplingNearest2D(Layer):
         self.name = name
 
     def forward(self, x):
-        out = F.interpolate(
-            x,
-            size=self.size,
-            scale_factor=self.scale_factor,
-            mode='nearest',
-            align_corners=False,
-            align_mode=0,
-            data_format=self.data_format,
-            name=self.name)
+        out = F.interpolate(x,
+                            size=self.size,
+                            scale_factor=self.scale_factor,
+                            mode='nearest',
+                            align_corners=False,
+                            align_mode=0,
+                            data_format=self.data_format,
+                            name=self.name)
 
         return out
 
@@ -578,15 +576,14 @@ class UpsamplingBilinear2D(Layer):
         self.name = name
 
     def forward(self, x):
-        out = F.interpolate(
-            x,
-            size=self.size,
-            scale_factor=self.scale_factor,
-            mode='bilinear',
-            align_corners=True,
-            align_mode=0,
-            data_format=self.data_format,
-            name=self.name)
+        out = F.interpolate(x,
+                            size=self.size,
+                            scale_factor=self.scale_factor,
+                            mode='bilinear',
+                            align_corners=True,
+                            align_mode=0,
+                            data_format=self.data_format,
+                            name=self.name)
 
         return out
 
@@ -673,17 +670,15 @@ class Bilinear(Layer):
         weight_shape = [
             self._out_features, self._in1_features, self._in2_features
         ]
-        self.weight = self.create_parameter(
-            attr=self._weight_attr,
-            shape=weight_shape,
-            dtype=self._dtype,
-            is_bias=False)
+        self.weight = self.create_parameter(attr=self._weight_attr,
+                                            shape=weight_shape,
+                                            dtype=self._dtype,
+                                            is_bias=False)
         bias_shape = [1, self._out_features]
-        self.bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=bias_shape,
-            dtype=self._dtype,
-            is_bias=True)
+        self.bias = self.create_parameter(attr=self._bias_attr,
+                                          shape=bias_shape,
+                                          dtype=self._dtype,
+                                          is_bias=True)
 
     def forward(self, x1, x2):
         return F.bilinear(x1, x2, self.weight, self.bias, self._name)
@@ -754,13 +749,12 @@ class Dropout(Layer):
         self.name = name
 
     def forward(self, input):
-        out = F.dropout(
-            input,
-            p=self.p,
-            axis=self.axis,
-            training=self.training,
-            mode=self.mode,
-            name=self.name)
+        out = F.dropout(input,
+                        p=self.p,
+                        axis=self.axis,
+                        training=self.training,
+                        mode=self.mode,
+                        name=self.name)
         return out
 
     def extra_repr(self):
@@ -816,12 +810,11 @@ class Dropout2D(Layer):
         self.name = name
 
     def forward(self, input):
-        out = F.dropout2d(
-            input,
-            p=self.p,
-            training=self.training,
-            data_format=self.data_format,
-            name=self.name)
+        out = F.dropout2d(input,
+                          p=self.p,
+                          training=self.training,
+                          data_format=self.data_format,
+                          name=self.name)
         return out
 
     def extra_repr(self):
@@ -877,12 +870,11 @@ class Dropout3D(Layer):
         self.name = name
 
     def forward(self, input):
-        out = F.dropout3d(
-            input,
-            p=self.p,
-            training=self.training,
-            data_format=self.data_format,
-            name=self.name)
+        out = F.dropout3d(input,
+                          p=self.p,
+                          training=self.training,
+                          data_format=self.data_format,
+                          name=self.name)
         return out
 
     def extra_repr(self):
@@ -935,8 +927,10 @@ class AlphaDropout(Layer):
         self.name = name
 
     def forward(self, input):
-        out = F.alpha_dropout(
-            input, p=self.p, training=self.training, name=self.name)
+        out = F.alpha_dropout(input,
+                              p=self.p,
+                              training=self.training,
+                              name=self.name)
         return out
 
     def extra_repr(self):
@@ -1171,8 +1165,9 @@ class ZeroPad2D(Layer):
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'padding={}, data_format={}{}'.format(
-            self._pad, self._data_format, name_str)
+        return 'padding={}, data_format={}{}'.format(self._pad,
+                                                     self._data_format,
+                                                     name_str)
 
 
 class Pad3D(Layer):
@@ -1450,23 +1445,21 @@ class Embedding(Layer):
         self._weight_attr = weight_attr
         self._remote_prefetch = False
         self._name = name
-        self.weight = self.create_parameter(
-            attr=self._weight_attr,
-            shape=self._size,
-            dtype=self._dtype,
-            is_bias=False)
+        self.weight = self.create_parameter(attr=self._weight_attr,
+                                            shape=self._size,
+                                            dtype=self._dtype,
+                                            is_bias=False)
 
         if in_dynamic_mode() and padding_idx != -1:
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 
     def forward(self, x):
-        return F.embedding(
-            x,
-            weight=self.weight,
-            padding_idx=self._padding_idx,
-            sparse=self._sparse,
-            name=self._name)
+        return F.embedding(x,
+                           weight=self.weight,
+                           padding_idx=self._padding_idx,
+                           sparse=self._sparse,
+                           name=self._name)
 
     def extra_repr(self):
         main_str = '{_num_embeddings}, {_embedding_dim}'
@@ -1539,13 +1532,12 @@ class Unfold(Layer):
         self.name = name
 
     def forward(self, input):
-        return F.unfold(
-            input,
-            kernel_sizes=self.kernel_sizes,
-            strides=self.strides,
-            paddings=self.paddings,
-            dilations=self.dilations,
-            name=self.name)
+        return F.unfold(input,
+                        kernel_sizes=self.kernel_sizes,
+                        strides=self.strides,
+                        paddings=self.paddings,
+                        dilations=self.dilations,
+                        name=self.name)
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
@@ -1626,14 +1618,13 @@ class Fold(Layer):
         self.name = name
 
     def forward(self, input):
-        return F.fold(
-            input,
-            output_sizes=self.output_sizes,
-            kernel_sizes=self.kernel_sizes,
-            strides=self.strides,
-            paddings=self.paddings,
-            dilations=self.dilations,
-            name=self.name)
+        return F.fold(input,
+                      output_sizes=self.output_sizes,
+                      kernel_sizes=self.kernel_sizes,
+                      strides=self.strides,
+                      paddings=self.paddings,
+                      dilations=self.dilations,
+                      name=self.name)
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''

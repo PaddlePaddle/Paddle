@@ -28,8 +28,10 @@ class Scope;
 
 class NOP : public OperatorBase {
  public:
-  NOP(const std::string& type, const VariableNameMap& inputs,
-      const VariableNameMap& outputs, const AttributeMap& attrs)
+  NOP(const std::string& type,
+      const VariableNameMap& inputs,
+      const VariableNameMap& outputs,
+      const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
@@ -61,9 +63,12 @@ class SumOpVarTypeInference : public VarTypeInference {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OPERATOR(sum, paddle::framework::NOP, paddle::framework::SumOpMaker,
+REGISTER_OPERATOR(sum,
+                  paddle::framework::NOP,
+                  paddle::framework::SumOpMaker,
                   paddle::framework::SumOpVarTypeInference);
-REGISTER_OPERATOR(sum_without_infer_var_type, paddle::framework::NOP,
+REGISTER_OPERATOR(sum_without_infer_var_type,
+                  paddle::framework::NOP,
                   paddle::framework::SumOpMaker);
 
 namespace paddle {
@@ -92,7 +97,8 @@ class TestStaticGraphVarTypeInference : public StaticGraphVarTypeInference {
     return StaticGraphVarTypeInference::GetType(ctx, name);
   }
 
-  void SetType(InferVarTypeContext* ctx, const std::string& name,
+  void SetType(InferVarTypeContext* ctx,
+               const std::string& name,
                proto::VarType::Type type) const {
     StaticGraphVarTypeInference::SetType(ctx, name, type);
   }
@@ -102,7 +108,8 @@ class TestStaticGraphVarTypeInference : public StaticGraphVarTypeInference {
     return StaticGraphVarTypeInference::GetDataType(ctx, name);
   }
 
-  void SetDataType(InferVarTypeContext* ctx, const std::string& name,
+  void SetDataType(InferVarTypeContext* ctx,
+                   const std::string& name,
                    proto::VarType::Type type) const {
     StaticGraphVarTypeInference::SetDataType(ctx, name, type);
   }
@@ -113,10 +120,11 @@ class TestStaticGraphVarTypeInference : public StaticGraphVarTypeInference {
   }
 
   void SetDataTypes(
-      InferVarTypeContext* ctx, const std::string& name,
+      InferVarTypeContext* ctx,
+      const std::string& name,
       const std::vector<proto::VarType::Type>& multiple_data_type) {
-    return StaticGraphVarTypeInference::SetDataTypes(ctx, name,
-                                                     multiple_data_type);
+    return StaticGraphVarTypeInference::SetDataTypes(
+        ctx, name, multiple_data_type);
   }
 
   std::vector<int64_t> GetShape(InferVarTypeContext* ctx,
@@ -124,7 +132,8 @@ class TestStaticGraphVarTypeInference : public StaticGraphVarTypeInference {
     return StaticGraphVarTypeInference::GetShape(ctx, name);
   }
 
-  void SetShape(InferVarTypeContext* ctx, const std::string& name,
+  void SetShape(InferVarTypeContext* ctx,
+                const std::string& name,
                 const std::vector<int64_t>& dims) const {
     StaticGraphVarTypeInference::SetShape(ctx, name, dims);
   }
@@ -133,7 +142,8 @@ class TestStaticGraphVarTypeInference : public StaticGraphVarTypeInference {
     return StaticGraphVarTypeInference::GetLoDLevel(ctx, name);
   }
 
-  void SetLoDLevel(InferVarTypeContext* ctx, const std::string& name,
+  void SetLoDLevel(InferVarTypeContext* ctx,
+                   const std::string& name,
                    int32_t lod_level) const {
     StaticGraphVarTypeInference::SetLoDLevel(ctx, name, lod_level);
   }
@@ -245,9 +255,13 @@ TEST(InferVarType, multiple_api) {
   ASSERT_ANY_THROW(infer.SetDataTypes(&ctx, "test2_a_out", {}));
 
   ASSERT_EQ(0u, infer.GetShape(&ctx, "test2_a_out").size());
-  infer.SetShape(&ctx, "test2_a_out", {
-                                          1, 3, 3,
-                                      });
+  infer.SetShape(&ctx,
+                 "test2_a_out",
+                 {
+                     1,
+                     3,
+                     3,
+                 });
   ASSERT_EQ(3u, infer.GetShape(&ctx, "test2_a_out").size());
 
   ASSERT_EQ(0, infer.GetLoDLevel(&ctx, "test2_a_out"));

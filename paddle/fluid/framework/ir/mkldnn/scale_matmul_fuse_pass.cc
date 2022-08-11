@@ -91,15 +91,21 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, scale_matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, scale_matmul_pattern);
 
+    if ((scale_out->outputs).size() != 1) {
+      return;
+    }
+
     if (scale_op->Op()->GetAttrIfExists<float>("bias") == 0.0) {
       auto matmul_alpha = matmul_op->Op()->GetAttrIfExists<float>("alpha");
       auto scale_scale = scale_op->Op()->GetAttrIfExists<float>("scale");
       PADDLE_ENFORCE_GT(
-          matmul_alpha, 0.0f,
+          matmul_alpha,
+          0.0f,
           platform::errors::InvalidArgument(
               "Alpha(%f) of matmul op should have positive value.",
               matmul_alpha));
-      PADDLE_ENFORCE_GT(scale_scale, 0.0f,
+      PADDLE_ENFORCE_GT(scale_scale,
+                        0.0f,
                         platform::errors::InvalidArgument(
                             "Scale(%f) of scale op should have positive value.",
                             scale_scale));
@@ -110,7 +116,8 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
           if (input_name == scale_out->Name()) matmul_op_input_name = name;
 
       PADDLE_ENFORCE_NE(
-          matmul_op_input_name.empty(), true,
+          matmul_op_input_name.empty(),
+          true,
           platform::errors::NotFound("Operator after scale operator(%s) "
                                      "should have scale output as input.",
                                      scale_out->Name()));

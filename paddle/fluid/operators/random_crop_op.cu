@@ -16,6 +16,10 @@
 
 namespace ops = paddle::operators;
 template <typename T>
-using Kernel = ops::RandomCropKernel<paddle::platform::CUDADeviceContext, T>;
-REGISTER_OP_CUDA_KERNEL(random_crop, Kernel<float>, Kernel<int>, Kernel<double>,
-                        Kernel<uint8_t>, Kernel<int16_t>);
+using Kernel = ops::RandomCropKernel<phi::GPUContext, T>;
+REGISTER_OP_CUDA_KERNEL(random_crop,
+                        Kernel<float>,
+                        Kernel<int>,
+                        Kernel<double>,
+                        Kernel<uint8_t>,
+                        Kernel<int16_t>);

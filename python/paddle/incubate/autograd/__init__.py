@@ -11,8 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paddle.autograd.functional import Hessian, Jacobian, jvp, vjp
+from .functional import Hessian, Jacobian, jvp, vjp
+from .primapi import forward_grad, grad
+from .primx import prim2orig
+from .utils import disable_prim, enable_prim, prim_enabled
 
 __all__ = [  # noqa
-    'vjp', 'jvp', 'Jacobian', 'Hessian'
+    'vjp', 'jvp', 'Jacobian', 'Hessian', 'enable_prim', 'disable_prim',
+    'forward_grad', 'grad'
 ]

@@ -37,6 +37,7 @@ namespace framework {
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
 std::shared_ptr<FleetWrapper> FleetWrapper::s_instance_ = NULL;
 bool FleetWrapper::is_initialized_ = false;
+std::mutex FleetWrapper::ins_mutex;
 
 #ifdef PADDLE_WITH_PSLIB
 std::shared_ptr<paddle::distributed::PSlib> FleetWrapper::pslib_ptr_ = NULL;
@@ -66,15 +67,17 @@ void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
 
 void FleetWrapper::InitWorker(const std::string& dist_desc,
                               const std::vector<uint64_t>& host_sign_list,
-                              int node_num, int index) {
+                              int node_num,
+                              int index) {
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
-    VLOG(3) << "Going to init worker";
+    VLOG(0) << "Going to init worker";
     pslib_ptr_ = std::shared_ptr<paddle::distributed::PSlib>(
         new paddle::distributed::PSlib());
     pslib_ptr_->init_worker(dist_desc,
                             const_cast<uint64_t*>(host_sign_list.data()),
-                            node_num, index);
+                            node_num,
+                            index);
     is_initialized_ = true;
   } else {
     VLOG(3) << "Worker can be initialized only once";
@@ -126,7 +129,7 @@ void FleetWrapper::GatherServers(const std::vector<uint64_t>& host_sign_list,
 
 void FleetWrapper::GatherClients(const std::vector<uint64_t>& host_sign_list) {
 #ifdef PADDLE_WITH_PSLIB
-  VLOG(3) << "Going to gather client ips";
+  VLOG(0) << "Going to gather client ips";
   size_t len = host_sign_list.size();
   pslib_ptr_->gather_clients(const_cast<uint64_t*>(host_sign_list.data()), len);
 #endif
@@ -142,7 +145,7 @@ std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
 
 void FleetWrapper::CreateClient2ClientConnection() {
 #ifdef PADDLE_WITH_PSLIB
-  VLOG(3) << "Going to create client2client connection";
+  VLOG(0) << "Going to create client2client connection";
   pslib_ptr_->create_client2client_connection(client2client_request_timeout_ms_,
                                               client2client_connect_timeout_ms_,
                                               client2client_max_retry_);
@@ -151,8 +154,11 @@ void FleetWrapper::CreateClient2ClientConnection() {
 
 #ifdef PADDLE_WITH_PSLIB
 void FleetWrapper::HeterPullSparseVars(
-    int workerid, std::shared_ptr<HeterTask> task, const uint64_t table_id,
-    const std::vector<std::string>& var_names, int fea_value_dim,
+    int workerid,
+    std::shared_ptr<HeterTask> task,
+    const uint64_t table_id,
+    const std::vector<std::string>& var_names,
+    int fea_value_dim,
     const std::vector<std::string>& var_emb_names) {
   std::vector<::std::future<int32_t>> pull_sparse_status;
   pull_sparse_status.resize(0);
@@ -193,9 +199,13 @@ void FleetWrapper::HeterPullSparseVars(
   for (auto& t : fea_values) {
     pull_result_ptr.push_back(t.data());
   }
-  auto status = pslib_ptr_->_worker_ptr->heter_pull_sparse(
-      workerid, pull_result_ptr.data(), table_id, fea_keys.data(),
-      fea_keys.size(), task->taskid_);
+  auto status =
+      pslib_ptr_->_worker_ptr->heter_pull_sparse(workerid,
+                                                 pull_result_ptr.data(),
+                                                 table_id,
+                                                 fea_keys.data(),
+                                                 fea_keys.size(),
+                                                 task->taskid_);
   pull_sparse_status.push_back(std::move(status));
   for (auto& t : pull_sparse_status) {
     t.wait();
@@ -209,11 +219,16 @@ void FleetWrapper::HeterPullSparseVars(
 }
 
 void FleetWrapper::HeterPushSparseVars(
-    std::shared_ptr<HeterTask> task, const Scope& scope,
-    const uint64_t table_id, const std::vector<std::string>& sparse_key_names,
-    const std::vector<std::string>& sparse_grad_names, const int emb_dim,
-    std::vector<::std::future<int32_t>>* push_sparse_status, const bool use_cvm,
-    const bool dump_slot, const bool no_cvm) {
+    std::shared_ptr<HeterTask> task,
+    const Scope& scope,
+    const uint64_t table_id,
+    const std::vector<std::string>& sparse_key_names,
+    const std::vector<std::string>& sparse_grad_names,
+    const int emb_dim,
+    std::vector<::std::future<int32_t>>* push_sparse_status,
+    const bool use_cvm,
+    const bool dump_slot,
+    const bool no_cvm) {
   int batch_size = task->cur_batch_;
   int offset = 2;
   int slot_offset = 0;
@@ -248,7 +263,8 @@ void FleetWrapper::HeterPushSparseVars(
   }
   uint64_t fea_idx = 0u;
   for (size_t i = 0;
-       i < sparse_key_names.size() && i < sparse_grad_names.size(); ++i) {
+       i < sparse_key_names.size() && i < sparse_grad_names.size();
+       ++i) {
     Variable* var = scope.FindVar(sparse_key_names[i]);
     if (var == nullptr) {
       continue;
@@ -291,11 +307,13 @@ void FleetWrapper::HeterPushSparseVars(
       CHECK(fea_idx < push_values.size());
 
       if (use_cvm || no_cvm) {
-        memcpy(push_values[fea_idx].data() + offset + slot_offset, g,
+        memcpy(push_values[fea_idx].data() + offset + slot_offset,
+               g,
                sizeof(float) * emb_dim);
       } else {
         CHECK(fea_idx < fea_labels.size());
-        memcpy(push_values[fea_idx].data() + offset + slot_offset, g,
+        memcpy(push_values[fea_idx].data() + offset + slot_offset,
+               g,
                sizeof(float) * emb_dim);
         push_values[fea_idx][show_index] = 1.0f;
         push_values[fea_idx][click_index] =
@@ -341,9 +359,11 @@ void FleetWrapper::HeterPushSparseVars(
   for (auto i = 0u; i < sparse_push_keys.size(); ++i) {
     push_g_vec.push_back(push_values[i].data());
   }
-  auto status = pslib_ptr_->_worker_ptr->push_sparse(
-      table_id, sparse_push_keys.data(), (const float**)push_g_vec.data(),
-      sparse_push_keys.size());
+  auto status =
+      pslib_ptr_->_worker_ptr->push_sparse(table_id,
+                                           sparse_push_keys.data(),
+                                           (const float**)push_g_vec.data(),
+                                           sparse_push_keys.size());
   push_sparse_status->push_back(std::move(status));
 }
 #endif
@@ -409,9 +429,12 @@ void FleetWrapper::PullSparseToLocal(const uint64_t table_id,
 }
 
 void FleetWrapper::PullSparseVarsFromLocal(
-    const Scope& scope, const uint64_t table_id,
-    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
-    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
+    const Scope& scope,
+    const uint64_t table_id,
+    const std::vector<std::string>& var_names,
+    std::vector<uint64_t>* fea_keys,
+    std::vector<std::vector<float>>* fea_values,
+    int fea_value_dim) {
 #ifdef PADDLE_WITH_PSLIB
   fea_keys->clear();
   fea_keys->resize(0);
@@ -442,16 +465,16 @@ void FleetWrapper::PullSparseVarsFromLocal(
   task_futures.reserve(key_length / local_step + 1);
   for (size_t i = 0; i < key_length; i += local_step) {
     size_t end = i + local_step < key_length ? i + local_step : key_length;
-    auto pull_local_task = [this, i, end, &fea_values, &fea_keys,
-                            &fea_value_dim] {
-      for (size_t j = i; j < end; j++) {
-        std::memcpy((*fea_values)[j].data(),
-                    local_tables_[(*fea_keys)[j] % local_table_shard_num_]
-                                 [(*fea_keys)[j]]
-                                     .data(),
-                    fea_value_dim * sizeof(float));
-      }
-    };
+    auto pull_local_task =
+        [this, i, end, &fea_values, &fea_keys, &fea_value_dim] {
+          for (size_t j = i; j < end; j++) {
+            std::memcpy((*fea_values)[j].data(),
+                        local_tables_[(*fea_keys)[j] % local_table_shard_num_]
+                                     [(*fea_keys)[j]]
+                                         .data(),
+                        fea_value_dim * sizeof(float));
+          }
+        };
     task_futures.emplace_back(
         local_pull_pool_->enqueue(std::move(pull_local_task)));
   }
@@ -470,9 +493,12 @@ void FleetWrapper::ClearLocalTable() {
 }
 
 std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
-    const Scope& scope, const uint64_t table_id,
-    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
-    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
+    const Scope& scope,
+    const uint64_t table_id,
+    const std::vector<std::string>& var_names,
+    std::vector<uint64_t>* fea_keys,
+    std::vector<std::vector<float>>* fea_values,
+    int fea_value_dim) {
 #ifdef PADDLE_WITH_PSLIB
   fea_keys->clear();
   fea_keys->resize(0);
@@ -508,9 +534,12 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
 }
 
 void FleetWrapper::PullSparseVarsSync(
-    const Scope& scope, const uint64_t table_id,
-    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
-    std::vector<std::vector<float>>* fea_values, int fea_value_dim,
+    const Scope& scope,
+    const uint64_t table_id,
+    const std::vector<std::string>& var_names,
+    std::vector<uint64_t>* fea_keys,
+    std::vector<std::vector<float>>* fea_values,
+    int fea_value_dim,
     const std::vector<std::string>& var_emb_names) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<::std::future<int32_t>> pull_sparse_status;
@@ -586,7 +615,8 @@ void FleetWrapper::PullSparseVarsSync(
 #endif
 }
 
-void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
+void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id,
+                                          int fea_dim,
                                           uint64_t padding_id,
                                           platform::Place place,
                                           std::vector<const LoDTensor*>* inputs,
@@ -617,7 +647,8 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
       }
       uint64_t real_id = static_cast<uint64_t>(ids[i]);
       if (real_id == padding_id) {
-        memcpy(output_data + output_len, init_value.data(),
+        memcpy(output_data + output_len,
+               init_value.data(),
                sizeof(float) * fea_dim);
         continue;
       }
@@ -640,7 +671,8 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
     size_t len = tensor->numel();
     std::vector<float> init_data(fea_dim, 0);
     for (size_t i = 0; i < len; ++i) {
-      memcpy(outputs->at(index)->mutable_data<float>(place), init_data.data(),
+      memcpy(outputs->at(index)->mutable_data<float>(place),
+             init_data.data(),
              fea_dim);
     }
   }
@@ -648,9 +680,11 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
 }
 
 void FleetWrapper::PullDenseVarsAsync(
-    const Scope& scope, const uint64_t tid,
+    const Scope& scope,
+    const uint64_t tid,
     const std::vector<std::string>& var_names,
-    std::vector<::std::future<int32_t>>* pull_dense_status, bool in_cpu) {
+    std::vector<::std::future<int32_t>>* pull_dense_status,
+    bool in_cpu) {
 #ifdef PADDLE_WITH_PSLIB
   auto& regions = _regions[tid];
   regions.clear();
@@ -673,7 +707,8 @@ void FleetWrapper::PullDenseVarsAsync(
 }
 
 void FleetWrapper::PullDenseVarsSync(
-    const Scope& scope, const uint64_t tid,
+    const Scope& scope,
+    const uint64_t tid,
     const std::vector<std::string>& var_names) {
 #ifdef PADDLE_WITH_PSLIB
   auto& regions = _regions[tid];
@@ -689,8 +724,8 @@ void FleetWrapper::PullDenseVarsSync(
   int32_t status = -1;
   int32_t cnt = 0;
   while (true) {
-    auto tt = pslib_ptr_->_worker_ptr->pull_dense(regions.data(),
-                                                  regions.size(), tid);
+    auto tt = pslib_ptr_->_worker_ptr->pull_dense(
+        regions.data(), regions.size(), tid);
     bool flag = true;
 
     tt.wait();
@@ -720,7 +755,8 @@ void FleetWrapper::PullDenseVarsSync(
 }
 
 void FleetWrapper::PushDenseParamSync(
-    const Scope& scope, const uint64_t table_id,
+    const Scope& scope,
+    const uint64_t table_id,
     const std::vector<std::string>& var_names) {
 #ifdef PADDLE_WITH_PSLIB
   auto place = platform::CPUPlace();
@@ -742,17 +778,22 @@ void FleetWrapper::PushDenseParamSync(
 }
 
 void FleetWrapper::PushDenseVarsSync(
-    Scope* scope, const uint64_t table_id,
+    Scope* scope,
+    const uint64_t table_id,
     const std::vector<std::string>& var_names) {}
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined PADDLE_WITH_PSLIB)
 void FleetWrapper::PushDenseVarsAsync(
-    const Scope& scope, const uint64_t table_id,
+    const Scope& scope,
+    const uint64_t table_id,
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* push_sparse_status,
-    float scale_datanorm, int batch_size, const paddle::platform::Place& place,
-    gpuStream_t stream, gpuEvent_t event) {
+    float scale_datanorm,
+    int batch_size,
+    const paddle::platform::Place& place,
+    gpuStream_t stream,
+    gpuEvent_t event) {
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
@@ -764,8 +805,12 @@ void FleetWrapper::PushDenseVarsAsync(
     LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
     float* pin_g = pin_tensor->mutable_data<float>(tensor->dims(),
                                                    platform::CUDAPinnedPlace());
-    memory::Copy(platform::CUDAPinnedPlace(), pin_g, place, g_data,
-                 sizeof(float) * count, stream);
+    memory::Copy(platform::CUDAPinnedPlace(),
+                 pin_g,
+                 place,
+                 g_data,
+                 sizeof(float) * count,
+                 stream);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, stream));
     hipEventSynchronize(event);
@@ -793,8 +838,8 @@ void FleetWrapper::PushDenseVarsAsync(
     regions.emplace_back(std::move(reg));
   }
 
-  auto status = pslib_ptr_->_worker_ptr->push_dense(regions.data(),
-                                                    regions.size(), table_id);
+  auto status = pslib_ptr_->_worker_ptr->push_dense(
+      regions.data(), regions.size(), table_id);
   if (push_sparse_status) {
     push_sparse_status->push_back(std::move(status));
   }
@@ -803,10 +848,12 @@ void FleetWrapper::PushDenseVarsAsync(
 
 #ifdef PADDLE_WITH_XPU
 void FleetWrapper::PushDenseVarsAsync(
-    const Scope& scope, const uint64_t table_id,
+    const Scope& scope,
+    const uint64_t table_id,
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* push_sparse_status,
-    float scale_datanorm, int batch_size,
+    float scale_datanorm,
+    int batch_size,
     const paddle::platform::Place& place) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
@@ -820,8 +867,8 @@ void FleetWrapper::PushDenseVarsAsync(
     LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
     float* pin_g =
         pin_tensor->mutable_data<float>(tensor->dims(), platform::CPUPlace());
-    memory::Copy(platform::CPUPlace(), pin_g, place, g_data,
-                 sizeof(float) * count);
+    memory::Copy(
+        platform::CPUPlace(), pin_g, place, g_data, sizeof(float) * count);
 
     float* g = pin_g;
     if (scale_datanorm >= 0) {
@@ -842,8 +889,8 @@ void FleetWrapper::PushDenseVarsAsync(
     regions.emplace_back(std::move(reg));
   }
 
-  auto status = pslib_ptr_->_worker_ptr->push_dense(regions.data(),
-                                                    regions.size(), table_id);
+  auto status = pslib_ptr_->_worker_ptr->push_dense(
+      regions.data(), regions.size(), table_id);
   if (push_sparse_status) {
     push_sparse_status->push_back(std::move(status));
   }
@@ -851,10 +898,12 @@ void FleetWrapper::PushDenseVarsAsync(
 }
 #endif
 void FleetWrapper::PushDenseVarsAsync(
-    const Scope& scope, const uint64_t table_id,
+    const Scope& scope,
+    const uint64_t table_id,
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* push_sparse_status,
-    float scale_datanorm, int batch_size) {
+    float scale_datanorm,
+    int batch_size) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
@@ -880,8 +929,8 @@ void FleetWrapper::PushDenseVarsAsync(
     regions.emplace_back(std::move(reg));
   }
 
-  auto status = pslib_ptr_->_worker_ptr->push_dense(regions.data(),
-                                                    regions.size(), table_id);
+  auto status = pslib_ptr_->_worker_ptr->push_dense(
+      regions.data(), regions.size(), table_id);
   if (push_sparse_status) {
     push_sparse_status->push_back(std::move(status));
   }
@@ -889,14 +938,20 @@ void FleetWrapper::PushDenseVarsAsync(
 }
 
 void FleetWrapper::PushSparseVarsWithLabelAsync(
-    const Scope& scope, const uint64_t table_id,
-    const std::vector<uint64_t>& fea_keys, const std::vector<float>& fea_labels,
+    const Scope& scope,
+    const uint64_t table_id,
+    const std::vector<uint64_t>& fea_keys,
+    const std::vector<float>& fea_labels,
     const std::vector<std::string>& sparse_key_names,
-    const std::vector<std::string>& sparse_grad_names, const int emb_dim,
+    const std::vector<std::string>& sparse_grad_names,
+    const int emb_dim,
     std::vector<std::vector<float>>* push_values,
     std::vector<::std::future<int32_t>>* push_sparse_status,
-    const int batch_size, const bool use_cvm, const bool dump_slot,
-    std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
+    const int batch_size,
+    const bool use_cvm,
+    const bool dump_slot,
+    std::vector<uint64_t>* sparse_push_keys,
+    const bool no_cvm,
     const bool scale_sparse_gradient_with_batch_size) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
@@ -927,7 +982,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   }
   uint64_t fea_idx = 0u;
   for (size_t i = 0;
-       i < sparse_key_names.size() && i < sparse_grad_names.size(); ++i) {
+       i < sparse_key_names.size() && i < sparse_grad_names.size();
+       ++i) {
     Variable* var = scope.FindVar(sparse_key_names[i]);
     if (var == nullptr) {
       continue;
@@ -982,11 +1038,13 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       CHECK(fea_idx < (*push_values).size());
 
       if (use_cvm || no_cvm) {
-        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset,
+               g,
                sizeof(float) * emb_dim);
       } else {
         CHECK(fea_idx < fea_labels.size());
-        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset,
+               g,
                sizeof(float) * emb_dim);
         (*push_values)[fea_idx][show_index] = 1.0f;
         (*push_values)[fea_idx][click_index] =
@@ -1032,17 +1090,24 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   for (auto i = 0u; i < sparse_push_keys->size(); ++i) {
     push_g_vec.push_back((*push_values)[i].data());
   }
-  auto status = pslib_ptr_->_worker_ptr->push_sparse(
-      table_id, sparse_push_keys->data(), (const float**)push_g_vec.data(),
-      sparse_push_keys->size());
+  auto status =
+      pslib_ptr_->_worker_ptr->push_sparse(table_id,
+                                           sparse_push_keys->data(),
+                                           (const float**)push_g_vec.data(),
+                                           sparse_push_keys->size());
   push_sparse_status->push_back(std::move(status));
 #endif
 }
 
 void FleetWrapper::PushSparseFromTensorWithLabelAsync(
-    const Scope& scope, const uint64_t table_id, int fea_dim,
-    uint64_t padding_id, bool scale_sparse, const std::string& accesor,
-    const std::string& click_name, platform::Place place,
+    const Scope& scope,
+    const uint64_t table_id,
+    int fea_dim,
+    uint64_t padding_id,
+    bool scale_sparse,
+    const std::string& accesor,
+    const std::string& click_name,
+    platform::Place place,
     const std::vector<std::string>& input_names,
     std::vector<const LoDTensor*>* inputs,
     std::vector<const LoDTensor*>* outputs) {
@@ -1054,7 +1119,8 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   int slot_offset = 0;
   int grad_dim = 0;
   // don't worry, user do not have to care about all these flags
-  if (accesor == "DownpourCtrAccessor") {
+  if (accesor == "DownpourCtrAccessor" ||
+      accesor == "DownpourCtrDymfAccessor") {
     dump_slot = true;
     slot_offset = 1;
     grad_dim = fea_dim - 2;
@@ -1113,9 +1179,10 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
       const int64_t* ids = tensor->data<int64_t>();
       size_t fea_idx = 0;
       for (size_t lod_idx = 1; lod_idx < tensor->lod()[0].size(); ++lod_idx) {
-        size_t cur =
-            GetAbsoluteSum(tensor->lod()[0][lod_idx - 1],
-                           tensor->lod()[0][lod_idx], 0, tensor->lod());
+        size_t cur = GetAbsoluteSum(tensor->lod()[0][lod_idx - 1],
+                                    tensor->lod()[0][lod_idx],
+                                    0,
+                                    tensor->lod());
         for (size_t i = 0; i < cur; ++i, ++fea_idx) {
           if (static_cast<uint64_t>(ids[fea_idx]) == padding_id) {
             continue;
@@ -1144,10 +1211,11 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
       push_values.emplace_back(fea_dim + slot_offset);
       float* data = push_values.back().data();
       if (!var) {
-        memcpy(data + slot_offset, g.data() + output_len,
-               sizeof(float) * fea_dim);
+        memcpy(
+            data + slot_offset, g.data() + output_len, sizeof(float) * fea_dim);
       } else {
-        memcpy(data + slot_offset, g.data() + output_len,
+        memcpy(data + slot_offset,
+               g.data() + output_len,
                sizeof(float) * grad_dim);
         data[show_index] = 1.0f;
         data[click_index] = static_cast<float>(fea_labels.at(input_idx));
@@ -1169,13 +1237,16 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   for (auto i = 0u; i < push_keys.size(); ++i) {
     push_g_vec[i] = push_values.at(i).data();
   }
-  auto status = pslib_ptr_->_worker_ptr->push_sparse(
-      table_id, push_keys.data(), (const float**)push_g_vec.data(),
-      push_keys.size());
+  auto status =
+      pslib_ptr_->_worker_ptr->push_sparse(table_id,
+                                           push_keys.data(),
+                                           (const float**)push_g_vec.data(),
+                                           push_keys.size());
 #endif
 }
 
-void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
+void FleetWrapper::LoadFromPaddleModel(Scope& scope,
+                                       const uint64_t table_id,
                                        std::vector<std::string> var_list,
                                        std::string model_path,
                                        std::string model_proto_file,
@@ -1266,7 +1337,8 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 }
 
 void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
-                                     const std::string& path, const int mode) {
+                                     const std::string& path,
+                                     const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret =
       pslib_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
@@ -1282,10 +1354,11 @@ void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
 }
 
 void FleetWrapper::LoadWithWhitelist(const uint64_t table_id,
-                                     const std::string& path, const int mode) {
+                                     const std::string& path,
+                                     const int mode) {
 #ifdef PADDLE_WITH_PSLIB
-  auto ret = pslib_ptr_->_worker_ptr->load_with_whitelist(table_id, path,
-                                                          std::to_string(mode));
+  auto ret = pslib_ptr_->_worker_ptr->load_with_whitelist(
+      table_id, path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model of table id: " << table_id
@@ -1331,7 +1404,8 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 }
 
 void FleetWrapper::SaveModelOneTable(const uint64_t table_id,
-                                     const std::string& path, const int mode) {
+                                     const std::string& path,
+                                     const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret =
       pslib_ptr_->_worker_ptr->save(table_id, path, std::to_string(mode));
@@ -1351,8 +1425,8 @@ void FleetWrapper::SaveModelOneTablePrefix(const uint64_t table_id,
                                            const int mode,
                                            const std::string& prefix) {
 #ifdef PADDLE_WITH_PSLIB
-  auto ret = pslib_ptr_->_worker_ptr->save(table_id, path, std::to_string(mode),
-                                           prefix);
+  auto ret = pslib_ptr_->_worker_ptr->save(
+      table_id, path, std::to_string(mode), prefix);
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "save model (with prefix) of table id: " << table_id
@@ -1434,8 +1508,10 @@ double FleetWrapper::GetCacheThreshold(int table_id) {
 #endif
 }
 
-void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
-                                const int mode, const double cache_threshold) {
+void FleetWrapper::CacheShuffle(int table_id,
+                                const std::string& path,
+                                const int mode,
+                                const double cache_threshold) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->cache_shuffle(
       table_id, path, std::to_string(mode), std::to_string(cache_threshold));
@@ -1451,7 +1527,8 @@ void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
 #endif
 }
 
-int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
+int32_t FleetWrapper::SaveCache(int table_id,
+                                const std::string& path,
                                 const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret =
@@ -1470,7 +1547,8 @@ int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
 #endif
 }
 
-int32_t FleetWrapper::SaveWithWhitelist(int table_id, const std::string& path,
+int32_t FleetWrapper::SaveWithWhitelist(int table_id,
+                                        const std::string& path,
                                         const int mode,
                                         const std::string& whitelist_path) {
 #ifdef PADDLE_WITH_PSLIB
@@ -1530,9 +1608,11 @@ void FleetWrapper::ClearOneTable(const uint64_t table_id) {
 #endif
 }
 
-void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
+void FleetWrapper::ShrinkDenseTable(int table_id,
+                                    Scope* scope,
                                     std::vector<std::string> var_list,
-                                    float decay, int emb_dim) {
+                                    float decay,
+                                    int emb_dim) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (std::string& name : var_list) {
@@ -1545,8 +1625,8 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
 
       // show_batch_sum += N * log(decay)
       std::string size_name = name;
-      size_name.replace(size_name.find("batch_sum"), size_name.length(),
-                        "batch_size");
+      size_name.replace(
+          size_name.find("batch_sum"), size_name.length(), "batch_size");
       Variable* var_size = scope->FindVar(size_name);
       CHECK(var_size != nullptr) << "var[" << size_name << "] not found";
       VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
@@ -1612,8 +1692,8 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
 std::future<int32_t> FleetWrapper::SendClientToClientMsg(
     int msg_type, int to_client_id, const std::string& msg) {
 #ifdef PADDLE_WITH_PSLIB
-  return pslib_ptr_->_worker_ptr->send_client2client_msg(msg_type, to_client_id,
-                                                         msg);
+  return pslib_ptr_->_worker_ptr->send_client2client_msg(
+      msg_type, to_client_id, msg);
 #else
   VLOG(0) << "FleetWrapper::SendClientToClientMsg"
           << " does nothing when no pslib";
@@ -1680,7 +1760,8 @@ void FleetWrapper::Revert() {
 }
 
 int32_t FleetWrapper::CopyTableByFeasign(
-    const uint64_t src_table_id, const uint64_t dest_table_id,
+    const uint64_t src_table_id,
+    const uint64_t dest_table_id,
     const std::vector<uint64_t>& feasign_list) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->copy_table_by_feasign(
@@ -1699,7 +1780,9 @@ int32_t FleetWrapper::CopyTableByFeasign(
 #endif
 }
 
-size_t FleetWrapper::GetAbsoluteSum(size_t start, size_t end, size_t level,
+size_t FleetWrapper::GetAbsoluteSum(size_t start,
+                                    size_t end,
+                                    size_t level,
                                     const framework::LoD& lod) {
   if (level >= lod.size() - 1) {
     return end - start;

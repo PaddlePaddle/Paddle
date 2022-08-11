@@ -106,19 +106,18 @@ class TestFcFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X of mul
         x_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=4))
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=4))
         # 2. Generate attr:x_num_col_dims/y_num_col_dims of mul
         x_num_col_dims = draw(
-            st.integers(
-                min_value=1, max_value=len(x_shape) - 1))
+            st.integers(min_value=1, max_value=len(x_shape) - 1))
         y_num_col_dims = 1
         # 3. Generate legal shape of input:Y of mul
         y_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=8), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=2,
+                     max_size=2))
         y_shape[0] = int(np.prod(x_shape[x_num_col_dims:]))
         # 4. Generate legal attr:axis of elementwise_add
         mul_out_shape = x_shape[:x_num_col_dims] + y_shape[1:]
@@ -131,8 +130,7 @@ class TestFcFusePass(PassAutoScanTest):
         else:
             max_bias_rank = 1
             bias_rank = draw(
-                st.integers(
-                    min_value=1, max_value=len(mul_out_shape)))
+                st.integers(min_value=1, max_value=len(mul_out_shape)))
             bias_shape = mul_out_shape[-1 * bias_rank:]
         # 6. Random choose if use broadcast for elementwise_add, e.g [3, 4] -> [1, 4]
         if draw(st.booleans()):
@@ -153,23 +151,28 @@ class TestFcFusePass(PassAutoScanTest):
         # Use function `add_skip_pass_case` to ignore the programs even if they cause bug while runing
         mul_op = OpConfig(
             "mul",
-            inputs={"X": ["mul_x"],
-                    "Y": ["mul_y"]},
+            inputs={
+                "X": ["mul_x"],
+                "Y": ["mul_y"]
+            },
             outputs={"Out": ["mul_out"]},
             x_num_col_dims=x_num_col_dims,
-            y_num_col_dims=y_num_col_dims, )
+            y_num_col_dims=y_num_col_dims,
+        )
         add_op = OpConfig(
             "elementwise_add",
-            inputs={"X": ["mul_out"],
-                    "Y": ["bias"]},
+            inputs={
+                "X": ["mul_out"],
+                "Y": ["bias"]
+            },
             outputs={"Out": ["add_out"]},
-            axis=axis, )
+            axis=axis,
+        )
         ops = [mul_op, add_op]
         if has_relu:
-            relu_op = OpConfig(
-                "relu",
-                inputs={"X": ["add_out"]},
-                outputs={"Out": ["relu_out"]})
+            relu_op = OpConfig("relu",
+                               inputs={"X": ["add_out"]},
+                               outputs={"Out": ["relu_out"]})
             ops.append(relu_op)
         program_config = ProgramConfig(
             ops=ops,
@@ -177,13 +180,17 @@ class TestFcFusePass(PassAutoScanTest):
                 "mul_y": TensorConfig(shape=y_shape),
                 "bias": TensorConfig(shape=bias_shape),
             },
-            inputs={"mul_x": TensorConfig(shape=x_shape), },
-            outputs=ops[-1].outputs["Out"], )
+            inputs={
+                "mul_x": TensorConfig(shape=x_shape),
+            },
+            outputs=ops[-1].outputs["Out"],
+        )
         return program_config
 
     def test(self):
-        self.run_and_statis(
-            quant=False, max_examples=500, passes=["fc_fuse_pass"])
+        self.run_and_statis(quant=False,
+                            max_examples=500,
+                            passes=["fc_fuse_pass"])
 
 
 if __name__ == "__main__":

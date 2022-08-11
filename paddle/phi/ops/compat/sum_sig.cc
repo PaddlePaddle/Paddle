@@ -18,7 +18,7 @@
 namespace phi {
 
 KernelSignature SumOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsDenseTensorInput("X")) {
+  if (ctx.IsDenseTensorInputs("X")) {
     return KernelSignature("add_n", {"X"}, {}, {"Out"});
   }
   return KernelSignature("unregistered", {}, {}, {});

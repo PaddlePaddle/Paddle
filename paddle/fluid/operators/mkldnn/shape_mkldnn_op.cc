@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -32,6 +32,16 @@ class ShapeMKLDNNKernel : public framework::OpKernel<T> {
       in_dims = in_var->Get<phi::SelectedRows>().value().dims();
     } else {
       in_dims = in_var->Get<LoDTensor>().dims();
+      // Output of shape op is often fed as input to fill_constant ops
+      // and we need to rotate a shape otherwise Tensors of wrong shape may be
+      // allocated
+      if (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+              framework::DataLayout::kNHWC &&
+          in_dims.size() >= 3) {
+        auto rdims = phi::vectorize<int>(in_dims);
+        std::rotate(rdims.begin() + 1, rdims.begin() + 2, rdims.end());
+        in_dims = phi::make_ddim(rdims);
+      }
     }
     auto* out_t = ctx.Output<Tensor>("Out");
     out_t->Resize({in_dims.size()});
@@ -40,16 +50,22 @@ class ShapeMKLDNNKernel : public framework::OpKernel<T> {
       out_data[i] = in_dims[i];
     }
 
-    auto* out = ctx.Output<Tensor>("Out");
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetPlainMKLDNNFormat(out->dims().size()));
+    dnnl::memory::desc out_mem_desc(
+        phi::vectorize(out_t->dims()),
+        framework::ToMKLDNNDataType(
+            framework::TransToProtoVarType(out_t->dtype())),
+        platform::GetPlainMKLDNNFormat(out_t->dims().size()));
+
+    out_t->set_mem_desc(out_mem_desc);
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(shape, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(shape,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::ShapeMKLDNNKernel<float>,
                    ops::ShapeMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::ShapeMKLDNNKernel<int8_t>,

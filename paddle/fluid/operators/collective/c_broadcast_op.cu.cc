@@ -54,7 +54,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
@@ -62,22 +62,31 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     int root = ctx.Attr<int>("root");
     if (root == comm->rank()) {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
-          reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
-          root, comm->comm(), stream));
+          reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
+          numel,
+          dtype,
+          root,
+          comm->comm(),
+          stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
               << x->numel();
 
       if (out != x) {
         framework::TensorCopy(
-            *static_cast<const framework::Tensor*>(x), place,
+            *static_cast<const framework::Tensor*>(x),
+            place,
             *platform::DeviceContextPool::Instance().Get(place),
             static_cast<framework::Tensor*>(out));
       }
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclBcast(out->mutable_data<T>(place), numel,
-                                       dtype, root, comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+          platform::dynload::ncclBcast(out->mutable_data<T>(place),
+                                       numel,
+                                       dtype,
+                                       root,
+                                       comm->comm(),
+                                       stream));
+      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
               << phi::product(out->dims());
     }
 
@@ -96,8 +105,12 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(c_broadcast, ops::CBroadcastOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(c_broadcast,
+                        ops::CBroadcastOpCUDAKernel<float>,
                         ops::CBroadcastOpCUDAKernel<double>,
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+                        ops::CBroadcastOpCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CBroadcastOpCUDAKernel<int>,
                         ops::CBroadcastOpCUDAKernel<int64_t>,
                         ops::CBroadcastOpCUDAKernel<plat::float16>);

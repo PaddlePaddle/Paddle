@@ -20,11 +20,11 @@ limitations under the License. */
 namespace phi {
 std::ostream& operator<<(std::ostream& os, KernelSignature signature) {
   os << "Kernel Signature - name: " << signature.name << "; inputs: "
-     << paddle::string::join_strings(std::get<0>(signature.args), ", ")
+     << paddle::string::join_strings(signature.input_names, ", ")
      << "; attributes: "
-     << paddle::string::join_strings(std::get<1>(signature.args), ", ")
+     << paddle::string::join_strings(signature.attr_names, ", ")
      << "; outputs: "
-     << paddle::string::join_strings(std::get<2>(signature.args), ", ");
+     << paddle::string::join_strings(signature.output_names, ", ");
   return os;
 }
 

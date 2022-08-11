@@ -15,11 +15,9 @@
 #pragma once
 
 #include "glog/logging.h"
-
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -53,8 +51,9 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
       kernel_data_type = kernel_key.dtype();
     }
   }
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "scale", {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << "scale API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "scale API kernel: " << kernel;
@@ -69,10 +68,7 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
   kernel_context.EmplaceBackAttr(bias);
   kernel_context.EmplaceBackAttr(bias_after_scale);
 
-  auto dense_out = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(kernel_backend)),
-      phi::DenseTensorMeta());
+  auto dense_out = std::make_shared<phi::DenseTensor>();
   phi::MetaTensor meta_out(dense_out.get());
   phi::UnchangedInferMeta(*dense_x, &meta_out);
   kernel_context.EmplaceBackOutput(dense_out.get());
@@ -226,8 +222,9 @@ Tensor scale_switch_case(const Tensor& x,
       kernel_data_type = kernel_key.dtype();
     }
   }
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "scale", {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << "scale API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "scale API kernel: " << kernel;
@@ -236,10 +233,7 @@ Tensor scale_switch_case(const Tensor& x,
 
   auto dense_x = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
 
-  auto dense_out = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(kernel_backend)),
-      phi::DenseTensorMeta());
+  auto dense_out = std::make_shared<phi::DenseTensor>();
   phi::MetaTensor meta_out(dense_out.get());
   phi::UnchangedInferMeta(*dense_x, &meta_out);
 

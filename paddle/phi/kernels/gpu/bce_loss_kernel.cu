@@ -38,7 +38,7 @@ struct BCELossFunctor {
   HOSTDEVICE inline T operator()(const T x, const T label) const {
     PADDLE_ENFORCE(
         (x >= static_cast<T>(0)) && (x <= one),
-        "Input is expected to be within the interval [0, 1], but recieved %f.",
+        "Input is expected to be within the interval [0, 1], but received %f.",
         x);
     T term1 = max(phi::kps::details::Log(x), neg_100);
     T term2 = max(phi::kps::details::Log(one - x), neg_100);

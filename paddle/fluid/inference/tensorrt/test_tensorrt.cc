@@ -15,6 +15,7 @@ limitations under the License. */
 #include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include "NvInfer.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/platform/dynload/tensorrt.h"
@@ -82,8 +83,8 @@ nvinfer1::IHostMemory* CreateNetwork() {
 
   nvinfer1::INetworkDefinition* network = builder->createNetworkV2(0U);
   // Add the input
-  auto input = network->addInput(kInputTensor, nvinfer1::DataType::kFLOAT,
-                                 nvinfer1::Dims3{1, 1, 1});
+  auto input = network->addInput(
+      kInputTensor, nvinfer1::DataType::kFLOAT, nvinfer1::Dims3{1, 1, 1});
   EXPECT_NE(input, nullptr);
   // Add the hidden layer.
   auto layer = network->addFullyConnected(*input, 1, weights.get(), bias.get());
@@ -105,7 +106,8 @@ nvinfer1::IHostMemory* CreateNetwork() {
   return model;
 }
 
-void Execute(nvinfer1::IExecutionContext* context, const float* input,
+void Execute(nvinfer1::IExecutionContext* context,
+             const float* input,
              float* output) {
   const nvinfer1::ICudaEngine& engine = context->getEngine();
   // Two binds, input and output
@@ -119,11 +121,19 @@ void Execute(nvinfer1::IExecutionContext* context, const float* input,
   cudaStream_t stream;
   ASSERT_EQ(0, cudaStreamCreate(&stream));
   // Copy the input to the GPU, execute the network, and copy the output back.
-  ASSERT_EQ(0, cudaMemcpyAsync(buffers[input_index], input, sizeof(float),
-                               cudaMemcpyHostToDevice, stream));
+  ASSERT_EQ(0,
+            cudaMemcpyAsync(buffers[input_index],
+                            input,
+                            sizeof(float),
+                            cudaMemcpyHostToDevice,
+                            stream));
   context->enqueue(1, buffers, stream, nullptr);
-  ASSERT_EQ(0, cudaMemcpyAsync(output, buffers[output_index], sizeof(float),
-                               cudaMemcpyDeviceToHost, stream));
+  ASSERT_EQ(0,
+            cudaMemcpyAsync(output,
+                            buffers[output_index],
+                            sizeof(float),
+                            cudaMemcpyDeviceToHost,
+                            stream));
   cudaStreamSynchronize(stream);
 
   // Release the stream and the buffers

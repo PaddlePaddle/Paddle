@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <thrust/random.h>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -54,26 +55,20 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    bool seed_flag = false;
-    if (seed == 0) {
-      std::random_device rd;
-      seed = rd();
-      seed_flag = true;
-    }
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
     int64_t size = tensor->numel();
 
     int device_id = context.GetPlace().GetDeviceId();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
-    auto& dev_cxt =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
+    auto& dev_cxt = context.template device_context<phi::GPUContext>();
 
-    if (gen_cuda->GetIsInitPy() && seed_flag) {
+    if (seed == 0) {
+      // use global Generator seed
       auto seed_offset = gen_cuda->IncrementOffset(1);
-      int64_t gen_offset = size * seed_offset.second;
-      auto func = GaussianGenerator<T>(mean, std, seed_offset.first,
-                                       seed_offset.second);
+      uint64_t seed = seed_offset.first;
+      uint64_t offset = seed_offset.second;
+      auto func = GaussianGenerator<T>(mean, std, seed, size * offset);
       phi::IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
     } else {
       auto func = GaussianGenerator<T>(mean, std, seed);

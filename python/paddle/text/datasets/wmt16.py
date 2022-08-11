@@ -120,16 +120,17 @@ class WMT16(Dataset):
         self.data_file = data_file
         if self.data_file is None:
             assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(
-                data_file, DATA_URL, DATA_MD5, 'wmt16', download)
+            self.data_file = _check_exists_and_download(data_file, DATA_URL,
+                                                        DATA_MD5, 'wmt16',
+                                                        download)
 
         self.lang = lang
         assert src_dict_size > 0, "dict_size should be set as positive number"
         assert trg_dict_size > 0, "dict_size should be set as positive number"
-        self.src_dict_size = min(src_dict_size, (TOTAL_EN_WORDS if lang == "en"
-                                                 else TOTAL_DE_WORDS))
-        self.trg_dict_size = min(trg_dict_size, (TOTAL_DE_WORDS if lang == "en"
-                                                 else TOTAL_EN_WORDS))
+        self.src_dict_size = min(
+            src_dict_size, (TOTAL_EN_WORDS if lang == "en" else TOTAL_DE_WORDS))
+        self.trg_dict_size = min(
+            trg_dict_size, (TOTAL_DE_WORDS if lang == "en" else TOTAL_EN_WORDS))
 
         # load source and target word dict
         self.src_dict = self._load_dict(lang, src_dict_size)
@@ -173,10 +174,9 @@ class WMT16(Dataset):
             fout.write(
                 cpt.to_bytes("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)))
             for idx, word in enumerate(
-                    sorted(
-                        six.iteritems(word_dict),
-                        key=lambda x: x[1],
-                        reverse=True)):
+                    sorted(six.iteritems(word_dict),
+                           key=lambda x: x[1],
+                           reverse=True)):
                 if idx + 3 == dict_size: break
                 fout.write(cpt.to_bytes(word[0]))
                 fout.write(cpt.to_bytes('\n'))

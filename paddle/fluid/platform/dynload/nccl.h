@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <nccl.h>
+
 #include <mutex>  // NOLINT
 
 #include "paddle/phi/backends/dynload/nccl.h"

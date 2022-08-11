@@ -60,16 +60,15 @@ class Normal(NormalInitializer):
 
 
 class TruncatedNormal(TruncatedNormalInitializer):
-    """The Random TruncatedNormal (Gaussian) distribution initializer.
+    """The truncated normal distribution (Gaussian distribution) initializer.
 
     Args:
-        mean (float, optional): mean of the normal distribution. The default value is 0.0.
-        std (float, optional): standard deviation of the normal distribution. The default value is 1.0.
-        name(str, optional): The default value is None. Normally there is no need for user to set this
-            property. For more information, please refer to :ref:`api_guide_Name`.
+        mean (float, optional): Mean of the normal distribution. The default value is :math:`0.0`.
+        std (float, optional): Standard deviation of the normal distribution. The default value is :math:`1.0`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A parameter initialized by Random TruncatedNormal (Gaussian) distribution.
+        A parameter initialized by truncated normal distribution (Gaussian distribution).
 
     Examples:
         .. code-block:: python

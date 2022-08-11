@@ -13,25 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <memory>
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/kernels/flatten_kernel.h"
+#include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
-#endif
-
-#ifdef PADDLE_WITH_XPU
-PD_DECLARE_KERNEL(copy, XPU, ALL_LAYOUT);
-#endif
+#include "paddle/phi/kernels/flatten_kernel.h"
 
 namespace phi {
 namespace tests {
@@ -62,7 +52,6 @@ TEST(DEV_API, flatten) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx.Init();
 
   // 2. test API
   auto out = phi::Flatten<float>(dev_ctx, dense_x, start_axis, stop_axis);

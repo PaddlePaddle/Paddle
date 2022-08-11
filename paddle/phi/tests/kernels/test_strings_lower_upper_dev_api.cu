@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <stdio.h>
+
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -40,8 +41,8 @@ namespace tests {
 namespace framework = paddle::framework;
 using DDim = phi::DDim;
 using pstring = ::phi::dtype::pstring;
-using phi::GPUPlace;
 using phi::CPUPlace;
+using phi::GPUPlace;
 
 TEST(DEV_API, strings_cast_convert) {
   auto gpu0 = GPUPlace();

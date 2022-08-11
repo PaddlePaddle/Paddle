@@ -23,7 +23,9 @@ import paddle.fluid.layers as layers
 import contextlib
 import math
 import sys
+import os
 import unittest
+import tempfile
 from paddle.fluid.executor import Executor
 import paddle
 
@@ -46,18 +48,16 @@ def bi_lstm_encoder(input_seq, hidden_size):
     input_forward_proj = fluid.layers.fc(input=input_seq,
                                          size=hidden_size * 4,
                                          bias_attr=True)
-    forward, _ = fluid.layers.dynamic_lstm(
-        input=input_forward_proj,
-        size=hidden_size * 4,
-        use_peepholes=USE_PEEPHOLES)
+    forward, _ = fluid.layers.dynamic_lstm(input=input_forward_proj,
+                                           size=hidden_size * 4,
+                                           use_peepholes=USE_PEEPHOLES)
     input_backward_proj = fluid.layers.fc(input=input_seq,
                                           size=hidden_size * 4,
                                           bias_attr=True)
-    backward, _ = fluid.layers.dynamic_lstm(
-        input=input_backward_proj,
-        size=hidden_size * 4,
-        is_reverse=True,
-        use_peepholes=USE_PEEPHOLES)
+    backward, _ = fluid.layers.dynamic_lstm(input=input_backward_proj,
+                                            size=hidden_size * 4,
+                                            is_reverse=True,
+                                            use_peepholes=USE_PEEPHOLES)
 
     forward_last = fluid.layers.sequence_last_step(input=forward)
     backward_first = fluid.layers.sequence_first_step(input=backward)
@@ -67,6 +67,7 @@ def bi_lstm_encoder(input_seq, hidden_size):
 
 # FIXME(peterzhang2029): Replace this function with the lstm_unit_op.
 def lstm_step(x_t, hidden_t_prev, cell_t_prev, size):
+
     def linear(inputs):
         return fluid.layers.fc(input=inputs, size=size, bias_attr=True)
 
@@ -76,13 +77,12 @@ def lstm_step(x_t, hidden_t_prev, cell_t_prev, size):
     cell_tilde = fluid.layers.tanh(x=linear([hidden_t_prev, x_t]))
 
     cell_t = fluid.layers.sums(input=[
-        fluid.layers.elementwise_mul(
-            x=forget_gate, y=cell_t_prev), fluid.layers.elementwise_mul(
-                x=input_gate, y=cell_tilde)
+        fluid.layers.elementwise_mul(x=forget_gate, y=cell_t_prev),
+        fluid.layers.elementwise_mul(x=input_gate, y=cell_tilde)
     ])
 
-    hidden_t = fluid.layers.elementwise_mul(
-        x=output_gate, y=fluid.layers.tanh(x=cell_t))
+    hidden_t = fluid.layers.elementwise_mul(x=output_gate,
+                                            y=fluid.layers.tanh(x=cell_t))
 
     return hidden_t, cell_t
 
@@ -104,8 +104,8 @@ def lstm_decoder_without_attention(target_embedding, decoder_boot, context,
 
         hidden_mem = rnn.memory(init=decoder_boot, need_reorder=True)
         cell_mem = rnn.memory(init=cell_init)
-        decoder_inputs = fluid.layers.concat(
-            input=[context, current_word], axis=1)
+        decoder_inputs = fluid.layers.concat(input=[context, current_word],
+                                             axis=1)
         h, c = lstm_step(decoder_inputs, hidden_mem, cell_mem, decoder_size)
         rnn.update_memory(hidden_mem, h)
         rnn.update_memory(cell_mem, c)
@@ -120,8 +120,10 @@ def lstm_decoder_without_attention(target_embedding, decoder_boot, context,
 def seq_to_seq_net():
     """Construct a seq2seq network."""
 
-    src_word_idx = fluid.layers.data(
-        name='source_sequence', shape=[1], dtype='int64', lod_level=1)
+    src_word_idx = fluid.layers.data(name='source_sequence',
+                                     shape=[1],
+                                     dtype='int64',
+                                     lod_level=1)
 
     src_embedding = fluid.layers.embedding(
         input=src_word_idx,
@@ -139,8 +141,10 @@ def seq_to_seq_net():
                                    bias_attr=False,
                                    act='tanh')
 
-    trg_word_idx = fluid.layers.data(
-        name='target_sequence', shape=[1], dtype='int64', lod_level=1)
+    trg_word_idx = fluid.layers.data(name='target_sequence',
+                                     shape=[1],
+                                     dtype='int64',
+                                     lod_level=1)
 
     trg_embedding = fluid.layers.embedding(
         input=trg_word_idx,
@@ -149,10 +153,12 @@ def seq_to_seq_net():
 
     prediction = lstm_decoder_without_attention(trg_embedding, decoder_boot,
                                                 encoded_vector, decoder_size)
-    label = fluid.layers.data(
-        name='label_sequence', shape=[1], dtype='int64', lod_level=1)
+    label = fluid.layers.data(name='label_sequence',
+                              shape=[1],
+                              dtype='int64',
+                              lod_level=1)
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
 
     return avg_cost, prediction
 
@@ -163,10 +169,9 @@ def train(use_cuda, save_dirname=None):
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
     optimizer.minimize(avg_cost)
 
-    train_data = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.wmt14.train(dict_size), buf_size=1000),
-        batch_size=batch_size)
+    train_data = paddle.batch(paddle.reader.shuffle(
+        paddle.dataset.wmt14.train(dict_size), buf_size=1000),
+                              batch_size=batch_size)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = Executor(place)
@@ -194,8 +199,8 @@ def train(use_cuda, save_dirname=None):
             if batch_id > 3:
                 if save_dirname is not None:
                     fluid.io.save_inference_model(
-                        save_dirname, ['source_sequence',
-                                       'target_sequence'], [prediction], exe)
+                        save_dirname, ['source_sequence', 'target_sequence'],
+                        [prediction], exe)
                 return
 
             batch_id += 1
@@ -230,10 +235,16 @@ def infer(use_cuda, save_dirname=None):
         recursive_seq_lens = [[4, 6]]
         base_shape = [1]
         # The range of random integers is [low, high]
-        word_data = fluid.create_random_int_lodtensor(
-            recursive_seq_lens, base_shape, place, low=0, high=1)
-        trg_word = fluid.create_random_int_lodtensor(
-            recursive_seq_lens, base_shape, place, low=0, high=1)
+        word_data = fluid.create_random_int_lodtensor(recursive_seq_lens,
+                                                      base_shape,
+                                                      place,
+                                                      low=0,
+                                                      high=1)
+        trg_word = fluid.create_random_int_lodtensor(recursive_seq_lens,
+                                                     base_shape,
+                                                     place,
+                                                     low=0,
+                                                     high=1)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
@@ -257,13 +268,17 @@ def main(use_cuda):
         return
 
     # Directory for saving the trained model
-    save_dirname = "rnn_encoder_decoder.inference.model"
+    temp_dir = tempfile.TemporaryDirectory()
+    save_dirname = os.path.join(temp_dir.name,
+                                "rnn_encoder_decoder.inference.model")
 
     train(use_cuda, save_dirname)
     infer(use_cuda, save_dirname)
+    temp_dir.cleanup()
 
 
 class TestRnnEncoderDecoder(unittest.TestCase):
+
     def test_cuda(self):
         with self.scope_prog_guard():
             main(use_cuda=True)

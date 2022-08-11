@@ -14,9 +14,8 @@
 
 #include "paddle/phi/kernels/conv_kernel.h"
 
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -41,8 +40,8 @@ void ConvInferKernel(const Context& dev_ctx,
                          dilations,
                          data_format,
                          /*use_addto=*/false,
-                         /*workspace_size_MB=*/paddle::platform::
-                             GetDefaultConvWorkspaceSizeLimitMB(),
+                         /*workspace_size_MB=*/
+                         paddle::platform::GetDefaultConvWorkspaceSizeLimitMB(),
                          /*exhaustive_search=*/false,
                          out);
 }

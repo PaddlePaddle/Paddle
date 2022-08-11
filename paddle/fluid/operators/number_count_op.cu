@@ -11,9 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// The file has been adapted from the two files:
+//     https://github.com/laekov/fastmoe/blob/master/cuda/local_exchange.cu
+//     https://github.com/laekov/fastmoe/blob/master/cuda/local_exchange.cuh
+//     Git commit hash: 295a615aacce7e54a37e7935274ba15e901c78e4
+// We retain the following license from the original files:
+//     Copyright 2021, Jiaao He. All rights reserved.
+//  Licensed under the Apache License, Version 2.0 (the "License").
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/number_count_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -38,8 +46,10 @@ __global__ void initialize_zero_kernel(T* data, const int length) {
 }
 
 template <typename T>
-__global__ void NumberCount(const T* numbers, T* number_count,
-                            int64_t batch_size, int upper_range) {
+__global__ void NumberCount(const T* numbers,
+                            T* number_count,
+                            int64_t batch_size,
+                            int upper_range) {
   int res_tmp[PERTHREAD_EXPERTS] = {0};
   int expert_min = blockIdx.x * PERTHREAD_EXPERTS;
   int expert_max = expert_min + PERTHREAD_EXPERTS;
@@ -82,20 +92,19 @@ class NumberCountOpCUDAKernel : public framework::OpKernel<T> {
 
     int64_t batch_size = numbers->numel();
     auto place = context.GetPlace();
-    const auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    const auto& dev_ctx = context.template device_context<phi::GPUContext>();
 
     framework::DDim out_dims = phi::make_ddim({upper_range});
     auto out_data = number_count->mutable_data<T>(out_dims, place);
     const T* gate_data = numbers->data<T>();
 
-    initialize_zero_kernel<
-        T><<<GET_BLOCKS(upper_range), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
-        out_data, upper_range);
+    initialize_zero_kernel<T>
+        <<<GET_BLOCKS(upper_range), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
+            out_data, upper_range);
 
-    NumberCount<
-        T><<<CEIL(upper_range, PERTHREAD_EXPERTS), 256, 0, dev_ctx.stream()>>>(
-        gate_data, out_data, batch_size, upper_range);
+    NumberCount<T>
+        <<<CEIL(upper_range, PERTHREAD_EXPERTS), 256, 0, dev_ctx.stream()>>>(
+            gate_data, out_data, batch_size, upper_range);
   }
 };
 

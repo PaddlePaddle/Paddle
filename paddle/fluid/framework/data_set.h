@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ThreadPool.h>
+
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -26,6 +27,7 @@
 #include <vector>
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -53,7 +55,8 @@ class Dataset {
                          const std::string tree_path,
                          const std::vector<uint16_t> tdm_layer_counts,
                          const uint16_t start_sample_layer,
-                         const bool with_hierachy, const uint16_t seed_,
+                         const bool with_hierachy,
+                         const uint16_t seed_,
                          const uint16_t sample_slot) {}
   // set file list
   virtual void SetFileList(const std::vector<std::string>& filelist) = 0;
@@ -141,7 +144,8 @@ class Dataset {
   virtual void PostprocessInstance() = 0;
   // only for untest
   virtual void SetCurrentPhase(int current_phase) = 0;
-  virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
+  virtual void GenerateLocalTablesUnlock(int table_id,
+                                         int feadim,
                                          int read_thread_num,
                                          int consume_thread_num,
                                          int shard_num) = 0;
@@ -159,8 +163,14 @@ class Dataset {
   // set fleet send sleep seconds
   virtual void SetFleetSendSleepSeconds(int seconds) = 0;
 
+  virtual std::vector<std::string> GetSlots() = 0;
+
+  virtual void SetGpuGraphMode(int is_graph_mode) = 0;
+  virtual int GetGpuGraphMode() = 0;
+
  protected:
-  virtual int ReceiveFromClient(int msg_type, int client_id,
+  virtual int ReceiveFromClient(int msg_type,
+                                int client_id,
                                 const std::string& msg) = 0;
 };
 
@@ -206,6 +216,8 @@ class DatasetImpl : public Dataset {
   virtual std::pair<std::string, std::string> GetHdfsConfig() {
     return std::make_pair(fs_name_, fs_ugi_);
   }
+  virtual void SetGpuGraphMode(int is_graph_mode);
+  virtual int GetGpuGraphMode();
   virtual std::string GetDownloadCmd();
   virtual const paddle::framework::DataFeedDesc& GetDataFeedDesc() {
     return data_feed_desc_;
@@ -234,7 +246,8 @@ class DatasetImpl : public Dataset {
   virtual void PreprocessInstance() {}
   virtual void PostprocessInstance() {}
   virtual void SetCurrentPhase(int current_phase) {}
-  virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
+  virtual void GenerateLocalTablesUnlock(int table_id,
+                                         int feadim,
                                          int read_thread_num,
                                          int consume_thread_num,
                                          int shard_num) {}
@@ -246,6 +259,7 @@ class DatasetImpl : public Dataset {
                                        bool discard_remaining_ins = false);
   virtual void DynamicAdjustReadersNum(int thread_num);
   virtual void SetFleetSendSleepSeconds(int seconds);
+  virtual std::vector<std::string> GetSlots();
   /* for enable_heterps_
   virtual void EnableHeterps(bool enable_heterps) {
     enable_heterps_ = enable_heterps;
@@ -263,11 +277,14 @@ class DatasetImpl : public Dataset {
       return multi_consume_channel_;
     }
   }
-
+  std::vector<uint64_t>& GetGpuGraphTotalKeys() {
+    return gpu_graph_total_keys_;
+  }
   Channel<T>& GetInputChannelRef() { return input_channel_; }
 
  protected:
-  virtual int ReceiveFromClient(int msg_type, int client_id,
+  virtual int ReceiveFromClient(int msg_type,
+                                int client_id,
                                 const std::string& msg) {
     // TODO(yaoxuefeng) for SlotRecordDataset
     return -1;
@@ -321,7 +338,12 @@ class DatasetImpl : public Dataset {
   int64_t global_index_ = 0;
   std::vector<std::shared_ptr<ThreadPool>> consume_task_pool_;
   std::vector<T> input_records_;  // only for paddleboxdatafeed
+  std::vector<std::string> use_slots_;
   bool enable_heterps_ = false;
+  int gpu_graph_mode_ = 0;
+  // std::vector<std::vector<int64_t>> gpu_graph_device_keys_;
+  std::vector<std::vector<std::vector<uint64_t>>> graph_all_type_total_keys_;
+  std::vector<uint64_t> gpu_graph_total_keys_;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
@@ -332,15 +354,18 @@ class MultiSlotDataset : public DatasetImpl<Record> {
                          const std::string tree_path,
                          const std::vector<uint16_t> tdm_layer_counts,
                          const uint16_t start_sample_layer,
-                         const bool with_hierachy, const uint16_t seed_,
+                         const bool with_hierachy,
+                         const uint16_t seed_,
                          const uint16_t sample_slot);
   virtual void MergeByInsId();
   virtual void PreprocessInstance();
   virtual void PostprocessInstance();
   virtual void SetCurrentPhase(int current_phase);
-  virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
+  virtual void GenerateLocalTablesUnlock(int table_id,
+                                         int feadim,
                                          int read_thread_num,
-                                         int consume_thread_num, int shard_num);
+                                         int consume_thread_num,
+                                         int shard_num);
   virtual void ClearLocalTables() {
     for (auto& t : local_tables_) {
       t.clear();
@@ -361,7 +386,8 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual void PrepareTrain();
 
  protected:
-  virtual int ReceiveFromClient(int msg_type, int client_id,
+  virtual int ReceiveFromClient(int msg_type,
+                                int client_id,
                                 const std::string& msg);
 };
 class SlotRecordDataset : public DatasetImpl<SlotRecord> {

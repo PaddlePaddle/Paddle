@@ -19,31 +19,33 @@
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/abs_kernel.h"
-#include "paddle/phi/kernels/elementwise_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
-#include "paddle/phi/kernels/reduce_kernel.h"
+#include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
 template <typename T>
-void GesvdjBatched(const phi::GPUContext& dev_ctx,
-                   int batchSize,
-                   int m,
-                   int n,
-                   int k,
-                   T* A,
-                   T* U,
-                   T* V,
-                   T* S,
-                   int* info,
-                   int thin_UV = 1);
+static void GesvdjBatched(const phi::GPUContext& dev_ctx,
+                          int batchSize,
+                          int m,
+                          int n,
+                          int k,
+                          T* A,
+                          T* U,
+                          T* V,
+                          T* S,
+                          int* info,
+                          int thin_UV = 1);
 
 template <typename T>
 void SyevjBatched(const phi::GPUContext& dev_ctx,

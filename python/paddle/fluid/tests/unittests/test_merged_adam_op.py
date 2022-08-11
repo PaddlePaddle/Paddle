@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -83,6 +83,7 @@ def run_adam_op(params,
 
 
 class TestMergedAdam(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
         self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
@@ -110,21 +111,20 @@ class TestMergedAdam(unittest.TestCase):
             self.shapes, multi_precision, self.seed, place)
 
         def run_op(use_merged):
-            return run_adam_op(
-                params=params,
-                grads=grads,
-                lrs=lrs,
-                moment1s=moment1s,
-                moment2s=moment2s,
-                beta1_pows=beta1_pows,
-                beta2_pows=beta2_pows,
-                master_params=master_params,
-                epsilon=0.9,
-                beta1=0.9,
-                beta2=0.99,
-                place=place,
-                multi_precision=multi_precision,
-                use_merged=use_merged)
+            return run_adam_op(params=params,
+                               grads=grads,
+                               lrs=lrs,
+                               moment1s=moment1s,
+                               moment2s=moment2s,
+                               beta1_pows=beta1_pows,
+                               beta2_pows=beta2_pows,
+                               master_params=master_params,
+                               epsilon=0.9,
+                               beta1=0.9,
+                               beta2=0.99,
+                               place=place,
+                               multi_precision=multi_precision,
+                               use_merged=use_merged)
 
         outs1 = run_op(True)
         outs2 = run_op(False)
@@ -135,11 +135,10 @@ class TestMergedAdam(unittest.TestCase):
             value2 = outs2[key]
             for i in range(len(value1)):
                 if place == 'gpu':
-                    self.assertTrue(np.array_equal(value1[i], value2[i]))
+                    np.testing.assert_array_equal(value1[i], value2[i])
                 else:
-                    self.assertTrue(
-                        np.allclose(
-                            value1[i], value2[i], atol=1e-7))
+                    self.assertTrue(np.allclose(value1[i], value2[i],
+                                                atol=1e-7))
 
     def get_places(self):
         places = ['cpu']

@@ -14,12 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/pool_kernel.h"
 
-#include "paddle/phi/kernels/gpudnn/pool_gpudnn.h"
-
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+#include "paddle/phi/kernels/gpudnn/pool_gpudnn.h"
 
 namespace phi {
 

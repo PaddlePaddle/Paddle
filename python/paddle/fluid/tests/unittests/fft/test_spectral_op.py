@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,12 +20,14 @@ import paddle
 
 import re
 import sys
-from spectral_op_np import fft_c2c, fft_r2c, fft_c2r
+from spectral_op_np import fft_c2c, fft_r2c, fft_c2r, fft_c2c_backward, fft_r2c_backward, fft_c2r_backward
 import paddle.fluid.core as core
 import paddle.fluid.dygraph as dg
 import paddle.static as static
 from numpy.random import random as rand
 from paddle.fluid import Program, program_guard
+from paddle import _C_ops
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -72,26 +74,38 @@ def class_name(cls, num, params_dict):
     return "{}_{}{}".format(cls.__name__, num, suffix and "_" + suffix)
 
 
-@parameterize((TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward'), [
-    ('test_axes_is_sqe_type', (np.random.random(
-        (12, 14)) + 1j * np.random.random((12, 14))).astype(np.complex128),
-     [0, 1], 'forward', True), ('test_axis_not_last', (np.random.random(
-         (4, 4, 4)) + 1j * np.random.random((4, 4, 4))).astype(np.complex128),
-                                (0, 1), "backward", False),
-    ('test_norm_forward', (np.random.random((12, 14)) + 1j * np.random.random(
-        (12, 14))).astype(np.complex128), (0, ), "forward",
-     False), ('test_norm_backward', (np.random.random(
-         (12, 14)) + 1j * np.random.random((12, 14))).astype(np.complex128),
-              (0, ), "backward", True), ('test_norm_ortho', (np.random.random(
-                  (12, 14)) + 1j * np.random.random(
-                      (12, 14))).astype(np.complex128), (1, ), "ortho", True)
-])
+def fft_c2c_python_api(x, axes, norm, forward):
+    return _C_ops.final_state_fft_c2c(x, axes, norm, forward)
+
+
+def fft_r2c_python_api(x, axes, norm, forward, onesided):
+    return _C_ops.final_state_fft_r2c(x, axes, norm, forward, onesided)
+
+
+def fft_c2r_python_api(x, axes, norm, forward, last_dim_size=0):
+    return _C_ops.final_state_fft_c2r(x, axes, norm, forward, last_dim_size)
+
+
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward'),
+    [('test_axes_is_sqe_type', (np.random.random(
+        (12, 14)) + 1j * np.random.random(
+            (12, 14))).astype(np.complex128), [0, 1], 'forward', True),
+     ('test_axis_not_last', (np.random.random(
+         (4, 8, 4)) + 1j * np.random.random(
+             (4, 8, 4))).astype(np.complex128), (0, 1), "backward", False),
+     ('test_norm_forward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "forward", False),
+     ('test_norm_backward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "backward", True),
+     ('test_norm_ortho', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (1, ), "ortho", True)])
 class TestFFTC2COp(OpTest):
-    # Because framwork not support complex numerial gradient, we skip gradient check. 
-    no_need_check_grad = True
 
     def setUp(self):
         self.op_type = "fft_c2c"
+        self.dtype = self.x.dtype
+        self.python_api = fft_c2c_python_api
 
         out = fft_c2c(self.x, self.axes, self.norm, self.forward)
 
@@ -103,30 +117,43 @@ class TestFFTC2COp(OpTest):
         }
         self.outputs = {'Out': out}
 
+        self.out_grad = (np.random.random(self.x.shape) +
+                         1j * np.random.random(self.x.shape)).astype(
+                             self.x.dtype)
+        self.x_grad = fft_c2c_backward(self.out_grad, self.axes, self.norm,
+                                       self.forward)
+
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad("X",
+                        "Out",
+                        user_defined_grads=[self.x_grad],
+                        user_defined_grad_outputs=[self.out_grad],
+                        check_eager=True)
 
 
 @parameterize(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward', 'last_dim_size'),
     [('test_axes_is_sqe_type', (np.random.random(
-        (12, 14)) + 1j * np.random.random((12, 14))).astype(np.complex128),
-      [0, 1], 'forward', True, 26), ('test_axis_not_last', (np.random.random(
-          (4, 4, 4)) + 1j * np.random.random((4, 4, 4))).astype(np.complex128),
-                                     (0, 1), "backward", False, None),
+        (12, 14)) + 1j * np.random.random(
+            (12, 14))).astype(np.complex128), [0, 1], 'forward', True, 26),
+     ('test_axis_not_last', (np.random.random(
+         (4, 7, 4)) + 1j * np.random.random((4, 7, 4))).astype(np.complex128),
+      (0, 1), "backward", False, None),
      ('test_norm_forward', (np.random.random((12, 14)) + 1j * np.random.random(
          (12, 14))).astype(np.complex128), (0, ), "forward", False, 22),
      ('test_norm_backward', (np.random.random((12, 14)) + 1j * np.random.random(
-         (12, 14))).astype(np.complex128), (0, ), "backward", True,
-      22), ('test_norm_ortho', (np.random.random(
-          (12, 14)) + 1j * np.random.random((12, 14))).astype(np.complex128),
-            (1, ), "ortho", True, 26)])
+         (12, 14))).astype(np.complex128), (0, ), "backward", True, 22),
+     ('test_norm_ortho', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (1, ), "ortho", True, 26)])
 class TestFFTC2ROp(OpTest):
-    # Because framwork not support complex numerial gradient, we skip gradient check. 
-    no_need_check_grad = True
 
     def setUp(self):
         self.op_type = "fft_c2r"
+        self.dtype = self.x.dtype
+        self.python_api = fft_c2r_python_api
 
         out = fft_c2r(self.x, self.axes, self.norm, self.forward,
                       self.last_dim_size)
@@ -140,28 +167,40 @@ class TestFFTC2ROp(OpTest):
         }
         self.outputs = {'Out': out}
 
+        self.out_grad = np.random.random(out.shape).astype(out.dtype)
+        self.x_grad = fft_c2r_backward(self.x, self.out_grad, self.axes,
+                                       self.norm, self.forward,
+                                       self.last_dim_size)
+
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(["X"],
+                        "Out",
+                        user_defined_grads=[self.x_grad],
+                        user_defined_grad_outputs=[self.out_grad],
+                        check_eager=True)
 
 
 @parameterize(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward', 'onesided'),
-    [('test_axes_is_sqe_type', np.random.randn(12, 14).astype(np.float64),
-      (0, 1), 'forward', True,
-      True), ('test_axis_not_last', np.random.randn(4, 4, 4).astype(np.float64),
-              (0, 1), "backward", False, True),
-     ('test_norm_forward', np.random.randn(12, 14).astype(np.float64), (0, 1),
-      "forward", False, False),
-     ('test_norm_backward', np.random.randn(12, 14).astype(np.float64), (0, ),
-      "backward", True, False), ('test_norm_ortho',
-                                 np.random.randn(12, 14).astype(np.float64),
-                                 (1, ), "ortho", True, False)])
+    [('test_axes_is_sqe_type', np.random.randn(12, 18).astype(np.float64),
+      (0, 1), 'forward', True, True),
+     ('test_axis_not_last', np.random.randn(4, 8, 4).astype(np.float64),
+      (0, 1), "backward", False, True),
+     ('test_norm_forward', np.random.randn(12, 18).astype(np.float64),
+      (0, 1), "forward", False, False),
+     ('test_norm_backward', np.random.randn(12, 18).astype(np.float64),
+      (0, ), "backward", True, False),
+     ('test_norm_ortho', np.random.randn(12, 18).astype(np.float64),
+      (1, ), "ortho", True, False)])
 class TestFFTR2COp(OpTest):
-    # Because framwork not support complex numerial gradient, we skip gradient check. 
-    no_need_check_grad = True
 
     def setUp(self):
         self.op_type = "fft_r2c"
+        self.dtype = self.x.dtype
+        self.python_api = fft_r2c_python_api
 
         out = fft_r2c(self.x, self.axes, self.norm, self.forward, self.onesided)
 
@@ -174,5 +213,16 @@ class TestFFTR2COp(OpTest):
         }
         self.outputs = {'Out': out}
 
+        self.out_grad = np.random.random(out.shape).astype(out.dtype)
+        self.x_grad = fft_r2c_backward(self.x, self.out_grad, self.axes,
+                                       self.norm, self.forward, self.onesided)
+
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad("X",
+                        "Out",
+                        user_defined_grads=[self.x_grad],
+                        user_defined_grad_outputs=[self.out_grad],
+                        check_eager=True)

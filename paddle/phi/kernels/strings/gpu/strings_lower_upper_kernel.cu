@@ -44,9 +44,8 @@ struct AsciiCaseConverter<phi::GPUContext, CharConverter> {
     dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
     dim3 grid_size =
         dim3((num + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-    StringCaseConvertCUDAKernel<
-        CharConverter><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-        out, in, num);
+    StringCaseConvertCUDAKernel<CharConverter>
+        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(out, in, num);
   }
 };
 

@@ -25,6 +25,7 @@ from paddle import _C_ops
 
 
 class TestTracedLayer(fluid.dygraph.Layer):
+
     def __init__(self, name_scope):
         super(TestTracedLayer, self).__init__(name_scope)
 
@@ -33,6 +34,7 @@ class TestTracedLayer(fluid.dygraph.Layer):
 
 
 class TestVariable(unittest.TestCase):
+
     def setUp(self):
         self.shape = [512, 768]
         self.dtype = np.float32
@@ -49,7 +51,7 @@ class TestVariable(unittest.TestCase):
             res1 = layers.elementwise_add(x, y)
             res2 = _C_ops.elementwise_add(x, y)
 
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_elementwise_mul(self):
         with fluid.dygraph.guard():
@@ -61,7 +63,7 @@ class TestVariable(unittest.TestCase):
             res1 = layers.elementwise_mul(x, y)
             res2 = _C_ops.elementwise_mul(x, y)
 
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_relu(self):
         with fluid.dygraph.guard():
@@ -71,9 +73,10 @@ class TestVariable(unittest.TestCase):
             res1 = layers.relu(x)
             res2 = _C_ops.relu(x)
 
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_trace_backward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with fluid.dygraph.guard():
             a = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
             b = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -88,8 +91,9 @@ class TestVariable(unittest.TestCase):
             x_grad = x.gradient()
             y_grad = y.gradient()
 
-            self.assertTrue(np.array_equal(x_grad, loss.gradient() * b))
-            self.assertTrue(np.array_equal(y_grad, loss.gradient() * a))
+            np.testing.assert_array_equal(x_grad, loss.gradient() * b)
+            np.testing.assert_array_equal(y_grad, loss.gradient() * a)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_traced_layer(self):
         if in_dygraph_mode():
@@ -102,8 +106,7 @@ class TestVariable(unittest.TestCase):
                 layer, inputs=x)  # dygraph out
             res_static_graph = static_layer([x])[0]
 
-            self.assertTrue(
-                np.array_equal(res_dygraph.numpy(), res_static_graph))
+            np.testing.assert_array_equal(res_dygraph.numpy(), res_static_graph)
 
 
 if __name__ == '__main__':

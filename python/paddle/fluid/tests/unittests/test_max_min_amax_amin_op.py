@@ -26,11 +26,12 @@ paddle.enable_static()
 
 
 class TestMaxMinAmaxAminAPI(unittest.TestCase):
+
     def setUp(self):
         self.init_case()
         self.cal_np_out_and_gradient()
-        self.place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
 
     def init_case(self):
         self.x_np = np.array([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]])
@@ -40,9 +41,10 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
         self.keepdim = False
 
     # If there are multiple minimum or maximum elements, max/min/amax/amin is non-derivable,
-    # its gradient check is not supported by unittest framework, 
+    # its gradient check is not supported by unittest framework,
     # thus we calculate the gradient by numpy function.
     def cal_np_out_and_gradient(self):
+
         def _cal_np_out_and_gradient(func):
             if func is 'amax':
                 out = np.amax(self.x_np, axis=self.axis, keepdims=self.keepdim)
@@ -88,6 +90,7 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
 
     # We check the output between paddle API and numpy in static graph.
     def test_static_graph(self):
+
         def _test_static_graph(func):
             startup_program = fluid.Program()
             train_program = fluid.Program()
@@ -107,13 +110,15 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
         _test_static_graph('max')
         _test_static_graph('min')
 
-    # As dygraph is easy to compute gradient, we check the gradient between 
+    # As dygraph is easy to compute gradient, we check the gradient between
     # paddle API and numpy in dygraph.
     def test_dygraph(self):
+
         def _test_dygraph(func):
             paddle.disable_static()
-            x = paddle.to_tensor(
-                self.x_np, dtype=self.dtype, stop_gradient=False)
+            x = paddle.to_tensor(self.x_np,
+                                 dtype=self.dtype,
+                                 stop_gradient=False)
             out = self._choose_paddle_func(func, x)
             grad_tensor = paddle.ones_like(x)
             paddle.autograd.backward([out], [grad_tensor], True)
@@ -130,6 +135,7 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
 
     # test two minimum or maximum elements
 class TestMaxMinAmaxAminAPI2(TestMaxMinAmaxAminAPI):
+
     def init_case(self):
         self.x_np = np.array([[0.2, 0.3, 0.9, 0.9], [0.1, 0.1, 0.6, 0.7]])
         self.shape = [2, 4]
@@ -140,6 +146,7 @@ class TestMaxMinAmaxAminAPI2(TestMaxMinAmaxAminAPI):
 
 # test different axis
 class TestMaxMinAmaxAminAPI3(TestMaxMinAmaxAminAPI):
+
     def init_case(self):
         self.x_np = np.array([[0.2, 0.3, 0.9, 0.9], [0.1, 0.1, 0.6, 0.7]])
         self.shape = [2, 4]
@@ -150,6 +157,7 @@ class TestMaxMinAmaxAminAPI3(TestMaxMinAmaxAminAPI):
 
 # test keepdim = True
 class TestMaxMinAmaxAminAPI4(TestMaxMinAmaxAminAPI):
+
     def init_case(self):
         self.x_np = np.array([[0.2, 0.3, 0.9, 0.9], [0.1, 0.1, 0.6, 0.7]])
         self.shape = [2, 4]
@@ -160,9 +168,10 @@ class TestMaxMinAmaxAminAPI4(TestMaxMinAmaxAminAPI):
 
 # test axis is tuple
 class TestMaxMinAmaxAminAPI5(TestMaxMinAmaxAminAPI):
+
     def init_case(self):
-        self.x_np = np.array(
-            [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]).astype(np.int32)
+        self.x_np = np.array([[[1, 2], [3, 4]], [[5, 6], [7,
+                                                          8]]]).astype(np.int32)
         self.shape = [2, 2, 2]
         self.dtype = 'int32'
         self.axis = (0, 1)
@@ -171,9 +180,14 @@ class TestMaxMinAmaxAminAPI5(TestMaxMinAmaxAminAPI):
 
 # test multiple minimum or maximum elements
 class TestMaxMinAmaxAminAPI6(TestMaxMinAmaxAminAPI):
+
     def init_case(self):
         self.x_np = np.array([[0.2, 0.9, 0.9, 0.9], [0.9, 0.9, 0.2, 0.2]])
         self.shape = [2, 4]
         self.dtype = 'float64'
         self.axis = None
         self.keepdim = False
+
+
+if __name__ == '__main__':
+    unittest.main()

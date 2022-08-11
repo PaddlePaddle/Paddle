@@ -16,7 +16,7 @@ from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
-from .common import find_best_compatible_distributed_operator_impl
+from .common import find_compatible_distributed_operator_impls
 from . import dist_embedding
 from . import dist_matmul
 from . import dist_reshape
@@ -28,3 +28,8 @@ from . import dist_check_finite_and_unscale
 from . import dist_update_loss_scaling
 from . import dist_split
 from . import dist_fill_constant_batch_size_like
+from . import dist_pnorm
+from . import dist_slice
+from . import dist_fused_feedforward
+from . import dist_fused_attention
+from . import dist_reduce_p

@@ -44,7 +44,8 @@ struct LoDTensorToArrayFunctorImpl {
   void apply();
 };
 
-struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
+struct LoDTensorToArrayFunctor
+    : public std::unary_function<platform::Place, void> {
   std::vector<const framework::Tensor *> ref_inputs_;
   mutable std::vector<framework::Tensor *> outputs_;
   const framework::Tensor &input_;
@@ -62,10 +63,10 @@ struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
     auto &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx = pool.Get(place);
     if (std::is_same<Place, platform::CPUPlace>::value) {
-      Apply(static_cast<platform::CPUDeviceContext *>(dev_ctx));
+      Apply(static_cast<phi::CPUContext *>(dev_ctx));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      Apply(static_cast<platform::CUDADeviceContext *>(dev_ctx));
+      Apply(static_cast<phi::GPUContext *>(dev_ctx));
 #else
       PADDLE_THROW(
           platform::errors::Unavailable("Paddle is not compiled with CUDA."));
@@ -87,7 +88,10 @@ template <typename DeviceContext>
 template <typename T>
 void LoDTensorToArrayFunctorImpl<DeviceContext>::apply() {
   math::SplitFunctor<DeviceContext, T> func;
-  func(*dev_ctx_, prev_functor_->input_, prev_functor_->ref_inputs_, 0,
+  func(*dev_ctx_,
+       prev_functor_->input_,
+       prev_functor_->ref_inputs_,
+       0,
        &prev_functor_->outputs_);
 }
 
@@ -102,25 +106,30 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    auto &x = GET_DATA_SAFELY(scope.FindVar(Input("X")), "Input", "X",
-                              "LoDTensorToArray")
+    auto &x = GET_DATA_SAFELY(
+                  scope.FindVar(Input("X")), "Input", "X", "LoDTensorToArray")
                   .Get<framework::LoDTensor>();
     auto &rank_table = GET_DATA_SAFELY(scope.FindVar(Input("RankTable")),
-                                       "Input", "RankTable", "LoDTensorToArray")
+                                       "Input",
+                                       "RankTable",
+                                       "LoDTensorToArray")
                            .Get<framework::LoDRankTable>();
-    auto &out = *(GET_DATA_SAFELY(scope.FindVar(Output("Out")), "Output", "Out",
-                                  "LoDTensorToArray")
-                      .GetMutable<framework::LoDTensorArray>());
+    auto &out =
+        *(GET_DATA_SAFELY(
+              scope.FindVar(Output("Out")), "Output", "Out", "LoDTensorToArray")
+              .GetMutable<framework::LoDTensorArray>());
     auto &items = rank_table.items();
     auto max_seq_len = items[0].length;
     auto rank_level = rank_table.level();
 
     PADDLE_ENFORCE_LT(
-        rank_level, x.lod().size(),
+        rank_level,
+        x.lod().size(),
         platform::errors::InvalidArgument(
             "Input should be a LoDTensor, and its lod_level should be at "
             "least %d, but given is %d.",
-            rank_level + 1, x.lod().size()));
+            rank_level + 1,
+            x.lod().size()));
     out.resize(max_seq_len);
     std::vector<std::vector<CopyRange>> copy_ranges(max_seq_len);
 
@@ -148,8 +157,9 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
     for (size_t i = 0; i < max_seq_len; ++i) {
       auto &ranges = copy_ranges[i];
       size_t height = std::accumulate(
-          ranges.begin(), ranges.end(), 0UL,
-          [](size_t a, const CopyRange &b) { return a + b.end - b.begin; });
+          ranges.begin(), ranges.end(), 0UL, [](size_t a, const CopyRange &b) {
+            return a + b.end - b.begin;
+          });
       auto x_dim = x.dims();
       x_dim[0] = static_cast<int64_t>(height);
       out[i].Resize(x_dim);
@@ -201,16 +211,19 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
-        context->HasInput("X"), true,
+        context->HasInput("X"),
+        true,
         platform::errors::NotFound(
             "Input(X) of LoDTensorToArrayOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        context->HasInput("RankTable"), true,
+        context->HasInput("RankTable"),
+        true,
         platform::errors::NotFound(
             "Input(RankTable) of LoDTensorToArrayOp should not be null."));
 
     PADDLE_ENFORCE_EQ(
-        context->HasOutput("Out"), true,
+        context->HasOutput("Out"),
+        true,
         platform::errors::NotFound(
             "Output(Out) of LoDTensorToArrayOp should not be null."));
 
@@ -236,7 +249,8 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
 class LoDTensorToArrayInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR_ARRAY,
+    ctx->SetOutputType("Out",
+                       framework::proto::VarType::LOD_TENSOR_ARRAY,
                        framework::ALL_ELEMENTS);
   }
 };
@@ -260,7 +274,8 @@ class LoDTensorToArrayGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lod_tensor_to_array, ops::LoDTensorToArrayOp,
+REGISTER_OPERATOR(lod_tensor_to_array,
+                  ops::LoDTensorToArrayOp,
                   ops::LoDTensorToArrayOpProtoMaker,
                   ops::LoDTensorToArrayInferShape,
                   ops::LoDTensorToArrayInferVarType,

@@ -15,6 +15,7 @@
 #include "paddle/utils/string/piece.h"
 
 #include <string.h>
+
 #include <algorithm>
 #define CHAR_POINTER_CMP(a, b) \
   do {                         \
@@ -71,8 +72,9 @@ bool operator<=(Piece x, Piece y) { return Compare(x, y) <= 0; }
 bool operator>=(Piece x, Piece y) { return Compare(x, y) >= 0; }
 
 bool HasPrefix(Piece s, Piece x) {
-  return !x.len() ? true : ((s.len() >= x.len()) &&
-                            (memcmp(s.data(), x.data(), x.len()) == 0));
+  return !x.len() ? true
+                  : ((s.len() >= x.len()) &&
+                     (memcmp(s.data(), x.data(), x.len()) == 0));
 }
 
 bool HasSuffix(Piece s, Piece x) {

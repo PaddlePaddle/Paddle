@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/callback_manager.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/enforce.h"
 
 #include <ThreadPool.h>
+
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/device_guard.h"
 
 namespace phi {
 
@@ -32,12 +34,13 @@ void CallbackManager::AddCallback(std::function<void()> callback) const {
       (*callback_func)();
     });
   });
-
+  phi::DeviceGuard guard(stream_->GetPlace());
   phi::DeviceManager::GetDeviceWithPlace(stream_->GetPlace())
       ->AddCallback(stream_, func);
 }
 
 void CallbackManager::Wait() const {
+  phi::DeviceGuard guard(stream_->GetPlace());
   phi::DeviceManager::GetDeviceWithPlace(stream_->GetPlace())
       ->SynchronizeStream(stream_);
 

@@ -17,6 +17,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 
 #include <ThreadPool.h>
+
 #include <algorithm>
 #include <map>
 #include <unordered_map>
@@ -80,7 +81,6 @@ class HeterContext {
   std::vector<std::vector<FeatureValue>> device_values_;
   std::vector<std::vector<FeatureKey>> device_keys_;
   std::vector<std::vector<std::vector<FeatureKey>>> device_dim_keys_;
-  std::vector<std::vector<std::vector<FeatureValue>>> device_dim_values_;
   std::vector<std::mutex*> mutex_;
   std::vector<std::vector<std::mutex*>> dim_mutex_;
   int multi_mf_dim_ = 0;
@@ -95,24 +95,6 @@ class HeterContext {
   }
   void SetShardNum(uint32_t shard_num) { shard_num_ = shard_num; }
   uint32_t ShardNum() { return shard_num_; }
-  void init(int shard_num, int device_num) {
-    shard_num_ = shard_num;
-    feature_keys_.resize(shard_num_);
-    value_ptr_.resize(shard_num_);
-    device_task_ptr_.resize(shard_num_);
-    device_task_keys_.resize(shard_num_);
-    for (size_t i = 0; i < device_task_ptr_.size(); i++) {
-      device_task_ptr_[i].resize(device_num);
-      device_task_keys_[i].resize(device_num);
-    }
-
-    device_values_.resize(device_num);
-    device_keys_.resize(device_num);
-    mutex_.resize(device_num);
-    for (size_t i = 0; i < mutex_.size(); ++i) {
-      mutex_[i] = new std::mutex();
-    }
-  }
 
   void init(int shard_num, int device_num, int dim_num) {
     shard_num_ = shard_num;
@@ -129,14 +111,8 @@ class HeterContext {
     for (size_t i = 0; i < feature_dim_keys_.size(); i++) {
       feature_dim_keys_[i].resize(dim_num);
       value_dim_ptr_[i].resize(dim_num);
-      if (i == 0) {
-        for (int j = 0; j < dim_num; j++) {
-          feature_dim_keys_[i][j].push_back(0);
-        }
-      }
     }
     device_values_.resize(device_num);
-    device_dim_values_.resize(device_num);
     device_keys_.resize(device_num);
 
     device_dim_keys_.resize(device_num);
@@ -208,7 +184,8 @@ class HeterContext {
       int idx = 0;
       idx = feature_keys_[i].size();
       feature_keys_[i].resize(feature_keys_[i].size() + thread_keys[i].size());
-      std::copy(thread_keys[i].begin(), thread_keys[i].end(),
+      std::copy(thread_keys[i].begin(),
+                thread_keys[i].end(),
                 feature_keys_[i].begin() + idx);
     }
   }
@@ -218,16 +195,19 @@ class HeterContext {
     int idx = feature_keys_[shard_num].size();
     feature_keys_[shard_num].resize(feature_keys_[shard_num].size() +
                                     shard_keys.size());
-    std::copy(shard_keys.begin(), shard_keys.end(),
+    std::copy(shard_keys.begin(),
+              shard_keys.end(),
               feature_keys_[shard_num].begin() + idx);
   }
 
-  void batch_add_keys(int shard_num, int dim_id,
+  void batch_add_keys(int shard_num,
+                      int dim_id,
                       const robin_hood::unordered_set<uint64_t>& shard_keys) {
     int idx = feature_dim_keys_[shard_num][dim_id].size();
     feature_dim_keys_[shard_num][dim_id].resize(
         feature_dim_keys_[shard_num][dim_id].size() + shard_keys.size());
-    std::copy(shard_keys.begin(), shard_keys.end(),
+    std::copy(shard_keys.begin(),
+              shard_keys.end(),
               feature_dim_keys_[shard_num][dim_id].begin() + idx);
   }
 

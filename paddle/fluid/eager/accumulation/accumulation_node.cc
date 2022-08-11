@@ -13,35 +13,82 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
-
-#include "paddle/phi/api/all.h"
-#include "paddle/phi/core/dense_tensor.h"
-
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 
-#include "glog/logging.h"
-DECLARE_bool(retain_grad_for_all_tensor);
 namespace egr {
 
 static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
-                            const paddle::experimental::Tensor& t) {
-  if (!tensor->defined() || !tensor->initialized()) {
-    // Simply copy tensor->impl
+                            const paddle::experimental::Tensor& t,
+                            bool is_fake_empty) {
+  if (is_fake_empty) {
     *tensor = t;
   } else {
-    // Accumulation
-    paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t, tensor);
+    if (!tensor->defined() || !tensor->initialized()) {
+      // Simply copy tensor->impl
+      *tensor = t;
+    } else {
+      // Accumulation
+      if (LIKELY(t.is_dense_tensor())) {
+        if (LIKELY(tensor->is_dense_tensor())) {
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t,
+                                                                      tensor);
+        } else {
+          // TODO(jiabin): Support Other TensorBase later
+          // TODO(zhanlve): Replace SelectedRowsAddTensor with
+          // add_dygraph_function once it's supported
+          paddle::experimental::Tensor new_buffer(
+              std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
+          paddle::imperative::SelectedRowsAddTensor(*tensor, t, &new_buffer);
+          tensor->set_impl(new_buffer.impl());
+        }
+      } else if (LIKELY(t.is_sparse_coo_tensor())) {
+        // In fact, the gradient of SparseTensor is still a SparseTensor
+        if (LIKELY(tensor->is_sparse_coo_tensor())) {
+          auto t_sparse =
+              std::dynamic_pointer_cast<phi::SparseCooTensor>(t.impl());
+          paddle::experimental::Tensor t_values(
+              std::make_shared<phi::DenseTensor>(
+                  t_sparse->non_zero_elements()));
+          auto tensor_sparse =
+              std::dynamic_pointer_cast<phi::SparseCooTensor>(tensor->impl());
+          paddle::experimental::Tensor tensor_values(
+              std::make_shared<phi::DenseTensor>(
+                  tensor_sparse->non_zero_elements()));
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
+              t_values, &tensor_values);
+        }
+      } else {
+        // TODO(jiabin): Support Other TensorBase later
+        // TODO(zhanlve): Replace SelectedRowsAddTensor with
+        // add_dygraph_function
+        // once it's supported
+        if (tensor->is_dense_tensor()) {
+          paddle::imperative::SelectedRowsAddToTensor(t, tensor);
+        } else {
+          *tensor = std::move(*paddle::imperative::SelectedRowsMerge<
+                              paddle::experimental::Tensor>(t, *tensor));
+        }
+      }
+    }
   }
 }
 
-std::vector<std::vector<paddle::experimental::Tensor>> GradNodeAccumulation::
-operator()(
-    std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-    bool create_graph) {
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     kSlotSmallVectorSize>
+GradNodeAccumulation::operator()(
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>& grads,  // NOLINT
+    bool create_graph,
+    bool is_new_grad) {
   VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
@@ -52,20 +99,23 @@ operator()(
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
                      "However received: %d in slot %d .",
-                     grads[0].size(), 0));
+                     grads[0].size(),
+                     0));
   // Apply Gradient Hooks
   paddle::experimental::Tensor grad_out;
   if (GradientHooksRegistered()) {
-    std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
-        ApplyGradientHooks(grads);
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>
+        hooked_grads = ApplyGradientHooks(grads);
     grad_out = hooked_grads[0][0];
   } else {
     grad_out = grads[0][0];
   }
 
-  if (!weak_grad_.expired() && FLAGS_retain_grad_for_all_tensor) {
+  if (!weak_grad_.expired() && !is_new_grad) {
     auto grad = weak_grad_.lock();
-    CopyOrAddTensor(grad.get(), grad_out);
+    CopyOrAddTensor(grad.get(), grad_out, is_fake_empty_);
+    is_fake_empty_ = false;
   }
 
   // Apply Reduce Hooks
@@ -77,7 +127,7 @@ operator()(
 }
 
 void GradNodeAccumulation::RegisterReduceHook(
-    std::shared_ptr<TensorVoidHook>&& hook) {
+    std::shared_ptr<VoidHook>&& hook) {
   reduce_hooks_.emplace_back(std::move(hook));
 }
 

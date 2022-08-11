@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/inference/lite/op_teller.h"
 
@@ -29,7 +30,7 @@ void AppendLiteSubBlocks(const std::vector<framework::OpDesc*>& subgraph_ops,
                          framework::ProgramDesc* engine_program,
                          framework::ProgramDesc* host_program,
                          const int32_t host_sub_id);
-}
+}  // namespace lite
 
 TEST(LiteSubgraphPass, basic) {
   framework::ProgramDesc host_program;
@@ -48,8 +49,8 @@ TEST(LiteSubgraphPass, basic) {
   CHECK(inference::lite::OpTeller::Global().Tell("while", *host_while_op))
       << "Lite operator teller test failed.";
 
-  lite::AppendLiteSubBlocks({host_while_op}, &engine_program, &host_program,
-                            host_sub_block->ID());
+  lite::AppendLiteSubBlocks(
+      {host_while_op}, &engine_program, &host_program, host_sub_block->ID());
   lite::ModifyHostSubgraphOps(&host_program, host_sub_block, {host_while_op});
   lite::StrToBinaryFile("./", "test");
 }

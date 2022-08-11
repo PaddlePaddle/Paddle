@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,8 +23,11 @@ from paddle.fluid import layers
 
 from test_distribution import DistributionNumpy
 
+np.random.seed(2022)
+
 
 class CategoricalNumpy(DistributionNumpy):
+
     def __init__(self, logits):
         self.logits = np.array(logits).astype('float32')
 
@@ -51,6 +54,7 @@ class CategoricalNumpy(DistributionNumpy):
 
 
 class CategoricalTest(unittest.TestCase):
+
     def setUp(self, use_gpu=False, batch_size=3, dims=5):
         self.use_gpu = use_gpu
         if not use_gpu:
@@ -100,12 +104,15 @@ class CategoricalTest(unittest.TestCase):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.logits_static = fluid.data(
-                name='logits', shape=self.logits_shape, dtype='float32')
-            self.other_logits_static = fluid.data(
-                name='other_logits', shape=self.logits_shape, dtype='float32')
-            self.value_static = fluid.data(
-                name='value', shape=self.value_shape, dtype='int64')
+            self.logits_static = fluid.data(name='logits',
+                                            shape=self.logits_shape,
+                                            dtype='float32')
+            self.other_logits_static = fluid.data(name='other_logits',
+                                                  shape=self.logits_shape,
+                                                  dtype='float32')
+            self.value_static = fluid.data(name='value',
+                                           shape=self.value_shape,
+                                           dtype='int64')
 
     def get_numpy_selected_probs(self, probability):
         np_probs = np.zeros(self.dist_shape + self.value_shape)
@@ -126,20 +133,28 @@ class CategoricalTest(unittest.TestCase):
         np_entropy = np_categorical.entropy()
         np_kl = np_categorical.kl_divergence(np_other_categorical)
 
-        np.testing.assert_allclose(
-            entropy, np_entropy, rtol=log_tolerance, atol=log_tolerance)
-        np.testing.assert_allclose(
-            kl, np_kl, rtol=log_tolerance, atol=log_tolerance)
+        np.testing.assert_allclose(entropy,
+                                   np_entropy,
+                                   rtol=log_tolerance,
+                                   atol=log_tolerance)
+        np.testing.assert_allclose(kl,
+                                   np_kl,
+                                   rtol=log_tolerance,
+                                   atol=log_tolerance)
 
         sum_dist = np.sum(self.logits_np, axis=-1, keepdims=True)
         probability = self.logits_np / sum_dist
         np_probs = self.get_numpy_selected_probs(probability)
         np_log_prob = np.log(np_probs)
 
-        np.testing.assert_allclose(
-            probs, np_probs, rtol=tolerance, atol=tolerance)
-        np.testing.assert_allclose(
-            log_prob, np_log_prob, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(probs,
+                                   np_probs,
+                                   rtol=tolerance,
+                                   atol=tolerance)
+        np.testing.assert_allclose(log_prob,
+                                   np_log_prob,
+                                   rtol=tolerance,
+                                   atol=tolerance)
 
     def test_categorical_distribution_dygraph(self, tolerance=1e-6):
         paddle.disable_static(self.place)
@@ -184,6 +199,7 @@ class CategoricalTest(unittest.TestCase):
 
 
 class CategoricalTest2(CategoricalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # input logtis is 2-D Tensor with dtype Float64
         # value used in probs and log_prob method is 1-D Tensor
@@ -199,15 +215,19 @@ class CategoricalTest2(CategoricalTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.logits_static = fluid.data(
-                name='logits', shape=self.logits_shape, dtype='float64')
-            self.other_logits_static = fluid.data(
-                name='other_logits', shape=self.logits_shape, dtype='float64')
-            self.value_static = fluid.data(
-                name='value', shape=self.value_shape, dtype='int64')
+            self.logits_static = fluid.data(name='logits',
+                                            shape=self.logits_shape,
+                                            dtype='float64')
+            self.other_logits_static = fluid.data(name='other_logits',
+                                                  shape=self.logits_shape,
+                                                  dtype='float64')
+            self.value_static = fluid.data(name='value',
+                                           shape=self.value_shape,
+                                           dtype='int64')
 
 
 class CategoricalTest3(CategoricalTest):
+
     def init_dynamic_data(self, batch_size, dims):
         # input logtis is 2-D numpy.ndarray with dtype Float32
         # value used in probs and log_prob method is 1-D Tensor
@@ -219,11 +239,13 @@ class CategoricalTest3(CategoricalTest):
         with fluid.program_guard(self.test_program):
             self.logits_static = self.logits_np
             self.other_logits_static = self.other_logits_np
-            self.value_static = fluid.data(
-                name='value', shape=self.value_shape, dtype='int64')
+            self.value_static = fluid.data(name='value',
+                                           shape=self.value_shape,
+                                           dtype='int64')
 
 
 class CategoricalTest4(CategoricalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # input logtis is 2-D numpy.ndarray with dtype Float64
         # value used in probs and log_prob method is 1-D Tensor
@@ -246,12 +268,14 @@ class CategoricalTest4(CategoricalTest):
         with fluid.program_guard(self.test_program):
             self.logits_static = self.logits_np
             self.other_logits_static = self.other_logits_np
-            self.value_static = fluid.data(
-                name='value', shape=self.value_shape, dtype='int64')
+            self.value_static = fluid.data(name='value',
+                                           shape=self.value_shape,
+                                           dtype='int64')
 
 
 # test shape of logits and value used in probs and log_prob method
 class CategoricalTest5(CategoricalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # input logtis is 1-D Tensor
         # value used in probs and log_prob method is 1-D Tensor
@@ -272,6 +296,7 @@ class CategoricalTest5(CategoricalTest):
 
 
 class CategoricalTest6(CategoricalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # input logtis is 2-D Tensor
         # value used in probs and log_prob method has the same number of batches with input
@@ -293,6 +318,7 @@ class CategoricalTest6(CategoricalTest):
 
 
 class CategoricalTest7(CategoricalTest):
+
     def init_numpy_data(self, batch_size, dims):
         # input logtis is 3-D Tensor
         # value used in probs and log_prob method has the same number of distribuions with input
@@ -315,6 +341,7 @@ class CategoricalTest7(CategoricalTest):
 
 
 class CategoricalTest8(CategoricalTest):
+
     def init_dynamic_data(self, batch_size, dims):
         # input logtis is 2-D list
         # value used in probs and log_prob method is 1-D Tensor
@@ -326,11 +353,13 @@ class CategoricalTest8(CategoricalTest):
         with fluid.program_guard(self.test_program):
             self.logits_static = self.logits_np.tolist()
             self.other_logits_static = self.other_logits_np.tolist()
-            self.value_static = fluid.data(
-                name='value', shape=self.value_shape, dtype='int64')
+            self.value_static = fluid.data(name='value',
+                                           shape=self.value_shape,
+                                           dtype='int64')
 
 
 class CategoricalTest9(CategoricalTest):
+
     def init_dynamic_data(self, batch_size, dims):
         # input logtis is 2-D tuple
         # value used in probs and log_prob method is 1-D Tensor
@@ -342,11 +371,13 @@ class CategoricalTest9(CategoricalTest):
         with fluid.program_guard(self.test_program):
             self.logits_static = tuple(self.logits_np.tolist())
             self.other_logits_static = tuple(self.other_logits_np.tolist())
-            self.value_static = fluid.data(
-                name='value', shape=self.value_shape, dtype='int64')
+            self.value_static = fluid.data(name='value',
+                                           shape=self.value_shape,
+                                           dtype='int64')
 
 
 class DistributionTestError(unittest.TestCase):
+
     def test_distribution_error(self):
         distribution = Distribution()
 

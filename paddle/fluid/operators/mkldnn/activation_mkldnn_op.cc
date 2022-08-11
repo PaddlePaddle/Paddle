@@ -21,20 +21,13 @@ class DenseTensor;
 }  // namespace phi
 
 namespace paddle {
-namespace framework {}  // namespace framework
-namespace platform {
-class MKLDNNDeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
-using framework::Tensor;
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::stream;
+using framework::DataLayout;
+using framework::Tensor;
 using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
@@ -44,14 +37,6 @@ class MKLDNNActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *x = ctx.Input<Tensor>("X");
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor"));
-    PADDLE_ENFORCE_NE(
-        x->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for X tensor"));
-
     Functor functor;
     functor(ctx);
   }
@@ -62,14 +47,6 @@ class MKLDNNActivationGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(diff_y->layout(), DataLayout::kMKLDNN,
-                      platform::errors::InvalidArgument(
-                          "Wrong layout set for Input OutGrad tensor"));
-    PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Wrong format set for Input OutGrad tensor"));
-
     Functor functor;
     functor(ctx);
   }
@@ -78,7 +55,8 @@ class MKLDNNActivationGradKernel
 template <typename T>
 void eltwise_forward(const framework::ExecutionContext &ctx,
                      dnnl::algorithm algorithm) {
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
+                    true,
                     paddle::platform::errors::PreconditionNotMet(
                         "Operator DNNL eletwise_forward must use CPUPlace"));
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
@@ -89,8 +67,8 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   bool is_inplaced = x->IsSharedBufferWith(*out);
 
-  platform::ActivationMKLDNNHandler<T> handler(algorithm, ctx, mkldnn_engine,
-                                               ctx.GetPlace(), x);
+  platform::ActivationMKLDNNHandler<T> handler(
+      algorithm, ctx, mkldnn_engine, ctx.GetPlace(), x);
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
   std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
@@ -107,8 +85,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
       astream, {{DNNL_ARG_FROM, *src_memory_p}, {DNNL_ARG_TO, *dst_memory_p}});
   astream.wait();
 
-  out->set_layout(DataLayout::kMKLDNN);
-  out->set_format(GetMKLDNNFormat(*dst_memory_p));
+  out->set_mem_desc(dst_memory_p->get_desc());
 }
 
 template <typename T>
@@ -121,8 +98,8 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-  platform::ActivationMKLDNNHandler<T> handler(algorithm, ctx, mkldnn_engine,
-                                               ctx.GetPlace(), x, dout);
+  platform::ActivationMKLDNNHandler<T> handler(
+      algorithm, ctx, mkldnn_engine, ctx.GetPlace(), x, dout);
 
   auto src_memory_p = handler.AcquireBackwardSrcMemory(x);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(dout);
@@ -136,8 +113,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
                                   {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
   astream.wait();
 
-  dx->set_layout(DataLayout::kMKLDNN);
-  dx->set_format(GetMKLDNNFormat(*diff_src_memory_p));
+  dx->set_mem_desc(diff_src_memory_p->get_desc());
 }
 
 template <typename T>
@@ -150,8 +126,8 @@ void eltwise_grad_use_out(const framework::ExecutionContext &ctx,
   const auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-  platform::ActivationMKLDNNHandler<T> handler(algorithm, ctx, mkldnn_engine,
-                                               ctx.GetPlace(), out, dout);
+  platform::ActivationMKLDNNHandler<T> handler(
+      algorithm, ctx, mkldnn_engine, ctx.GetPlace(), out, dout);
 
   auto dst_memory_p = handler.AcquireBackwardSrcMemory(out);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(dout);
@@ -165,8 +141,7 @@ void eltwise_grad_use_out(const framework::ExecutionContext &ctx,
                                   {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
   astream.wait();
 
-  dx->set_layout(DataLayout::kMKLDNN);
-  dx->set_format(GetMKLDNNFormat(*diff_src_memory_p));
+  dx->set_mem_desc(diff_src_memory_p->get_desc());
 }
 
 template <typename T, dnnl::algorithm algorithm>
@@ -222,93 +197,19 @@ struct SoftplusMKLDNNFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-using ReluMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_relu>;
-
-template <typename T>
 using Relu6MKLDNNFunctor =
     MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
 
 template <typename T>
-using SwishMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_swish>;
-
-template <typename T>
-using HardSwishMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_hardswish>;
-
-template <typename T>
-using MishMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_mish>;
-
-template <typename T>
-using SigmoidMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_logistic>;
-
-template <typename T>
-using TanhMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_tanh>;
-
-template <typename T>
-using SqrtMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_sqrt>;
-
-template <typename T>
 using AbsMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_abs>;
-
-template <typename T>
-using EluMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_elu>;
-
-template <typename T>
-using ExpMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_exp>;
-
-template <typename T>
-using RoundMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_round>;
-
-template <typename T>
-using ReluMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_relu>;
 
 template <typename T>
 using Relu6MKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
 
 template <typename T>
-using SwishMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_swish>;
-
-template <typename T>
-using HardSwishMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_hardswish>;
-
-template <typename T>
-using MishMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_mish>;
-
-template <typename T>
-using SigmoidMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T, dnnl::algorithm::eltwise_logistic_use_dst_for_bwd>;
-
-template <typename T>
-using TanhMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T, dnnl::algorithm::eltwise_tanh_use_dst_for_bwd>;
-
-template <typename T>
-using SqrtMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T, dnnl::algorithm::eltwise_sqrt_use_dst_for_bwd>;
-
-template <typename T>
 using AbsMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_abs>;
-
-template <typename T>
-using EluMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T, dnnl::algorithm::eltwise_elu_use_dst_for_bwd>;
-
-template <typename T>
-using ExpMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T, dnnl::algorithm::eltwise_exp_use_dst_for_bwd>;
 
 }  // namespace operators
 }  // namespace paddle
@@ -317,41 +218,37 @@ namespace ops = paddle::operators;
 
 #define REGISTER_ACTIVATION_MKLDNN_KERNEL(act_type, functor, grad_functor)    \
   REGISTER_OP_KERNEL(                                                         \
-      act_type, MKLDNN, ::paddle::platform::CPUPlace,                         \
+      act_type,                                                               \
+      MKLDNN,                                                                 \
+      ::paddle::platform::CPUPlace,                                           \
       ops::MKLDNNActivationKernel<ops::functor<float>>,                       \
       ops::MKLDNNActivationKernel<ops::functor<paddle::platform::bfloat16>>); \
   REGISTER_OP_KERNEL(                                                         \
-      act_type##_grad, MKLDNN, ::paddle::platform::CPUPlace,                  \
+      act_type##_grad,                                                        \
+      MKLDNN,                                                                 \
+      ::paddle::platform::CPUPlace,                                           \
       ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>,              \
       ops::MKLDNNActivationGradKernel<                                        \
           ops::grad_functor<paddle::platform::bfloat16>>);
 
 #define REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(act_type, functor) \
-  REGISTER_OP_KERNEL(act_type, MKLDNN, ::paddle::platform::CPUPlace,  \
+  REGISTER_OP_KERNEL(act_type,                                        \
+                     MKLDNN,                                          \
+                     ::paddle::platform::CPUPlace,                    \
                      ops::MKLDNNActivationKernel<ops::functor<float>>);
 
-#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                            \
-  __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);                    \
-  __macro(elu, EluMKLDNNFunctor, EluMKLDNNGradUseOutFunctor);              \
-  __macro(exp, ExpMKLDNNFunctor, ExpMKLDNNGradUseOutFunctor);              \
-  __macro(gelu, GeluMKLDNNFunctor, GeluMKLDNNGradFunctor);                 \
-  __macro(hard_swish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor); \
-  __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);           \
-  __macro(mish, MishMKLDNNFunctor, MishMKLDNNGradFunctor);                 \
-  __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);                 \
-  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);              \
-  __macro(sigmoid, SigmoidMKLDNNFunctor, SigmoidMKLDNNGradUseOutFunctor);  \
-  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradUseOutFunctor);           \
-  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);              \
-  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradUseOutFunctor);
+#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)            \
+  __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);    \
+  __macro(gelu, GeluMKLDNNFunctor, GeluMKLDNNGradFunctor); \
+  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
 
-REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(round, RoundMKLDNNFunctor);
-
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(
-    softplus, MKLDNN, paddle::platform::CPUPlace,
+    softplus,
+    MKLDNN,
+    paddle::platform::CPUPlace,
     ops::MKLDNNActivationKernel<ops::SoftplusMKLDNNFunctor<float>>,
     ops::MKLDNNActivationKernel<
         ops::SoftplusMKLDNNFunctor<paddle::platform::bfloat16>>);

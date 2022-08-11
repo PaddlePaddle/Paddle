@@ -22,8 +22,7 @@ KernelSignature MultiplexOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature MultiplexGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "multiplex_grad", {"Ids", GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("multiplex_grad", {"Ids", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi

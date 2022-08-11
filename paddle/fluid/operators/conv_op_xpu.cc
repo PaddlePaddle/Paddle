@@ -8,11 +8,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/conv_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #ifdef PADDLE_WITH_XPU
 namespace paddle {
 namespace operators {
@@ -38,37 +40,74 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         context.Attr<std::string>("padding_algorithm");
 
-    PADDLE_ENFORCE_EQ(data_format == "NHWC" || data_format == "NDHWC", false,
-                      platform::errors::InvalidArgument(
-                          ("XPU do support data_format is NCHW in conv op.")));
+    PADDLE_ENFORCE_EQ(
+        data_format == "NDHWC",
+        false,
+        platform::errors::InvalidArgument(
+            ("XPU does not support data_format is NDHWC in conv op.")));
 
     framework::DDim in_data_dims =
         phi::slice_ddim(input->dims(), 2, input->dims().size());
     framework::DDim filter_data_dims =
         phi::slice_ddim(filter.dims(), 2, filter.dims().size());
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
+    UpdatePaddingAndDilation(
+        &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-    const int batch_size = static_cast<int>(input->dims()[0]);
-    const int img_c = static_cast<int>(input->dims()[1]);
-    const int img_h = static_cast<int>(input->dims()[2]);
-    const int img_w = static_cast<int>(input->dims()[3]);
-    const int f = static_cast<int>(filter.dims()[0]);
+    int batch_size = static_cast<int>(input->dims()[0]);
+    int img_c = static_cast<int>(input->dims()[1]);
+    int img_h = static_cast<int>(input->dims()[2]);
+    int img_w = static_cast<int>(input->dims()[3]);
+    int f = static_cast<int>(filter.dims()[0]);
+    bool is_nchw = true;
+    if (data_format == "NHWC") {
+      img_c = static_cast<int>(input->dims()[3]);
+      img_h = static_cast<int>(input->dims()[1]);
+      img_w = static_cast<int>(input->dims()[2]);
+      is_nchw = false;
+    }
 
     const XPUT *input_data = reinterpret_cast<const XPUT *>(input->data<T>());
     const XPUT *filter_data = reinterpret_cast<const XPUT *>(filter.data<T>());
     XPUT *output_data = reinterpret_cast<XPUT *>(output->data<T>());
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::conv2d<XPUT, XPUT, XPUT, int16_t>(
-        dev_ctx.x_context(), input_data, filter_data, output_data, batch_size,
-        img_c, img_h, img_w, f, ksize, strides, paddings, dilations, groups,
-        nullptr, nullptr, nullptr, true);
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU conv kernel return wrong value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+
+    XPUT *filter_data_tmp;
+    const XPUT *filter_data_ptr = filter_data;
+    if (data_format == "NHWC") {
+      filter_data_tmp = RAII_GUARD.alloc<XPUT>(filter.numel());
+      PADDLE_ENFORCE_XDNN_NOT_NULL(filter_data_tmp);
+      std::vector<int> filter_shape = phi::vectorize<int>(filter.dims());
+      int r = xpu::transpose<XPUT>(dev_ctx.x_context(),
+                                   filter_data,
+                                   filter_data_tmp,
+                                   filter_shape,
+                                   {0, 2, 3, 1});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+      filter_data_ptr = reinterpret_cast<const XPUT *>(filter_data_tmp);
+    }
+
+    int r = xpu::conv2d<XPUT, XPUT, XPUT, int16_t>(dev_ctx.x_context(),
+                                                   input_data,
+                                                   filter_data_ptr,
+                                                   output_data,
+                                                   batch_size,
+                                                   img_c,
+                                                   img_h,
+                                                   img_w,
+                                                   f,
+                                                   ksize,
+                                                   strides,
+                                                   paddings,
+                                                   dilations,
+                                                   groups,
+                                                   nullptr,
+                                                   nullptr,
+                                                   nullptr,
+                                                   is_nchw);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d");
   }
 };
 
@@ -99,23 +138,32 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
         context.Attr<std::string>("padding_algorithm");
 
     PADDLE_ENFORCE_EQ(
-        data_format == "NHWC" || data_format == "NDHWC", false,
+        data_format == "NDHWC",
+        false,
         platform::errors::InvalidArgument(
-            ("XPU do support data_format is NCHW in conv grad op.")));
+            ("XPU doesn't support data_format is NDHWC in conv grad op.")));
 
     framework::DDim in_data_dims =
         phi::slice_ddim(input->dims(), 2, input->dims().size());
     framework::DDim filter_data_dims =
         phi::slice_ddim(filter.dims(), 2, filter.dims().size());
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
+    std::vector<int> filter_shape = phi::vectorize<int>(filter.dims());
+    UpdatePaddingAndDilation(
+        &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-    const int batch_size = static_cast<int>(input->dims()[0]);
-    const int img_c = static_cast<int>(input->dims()[1]);
-    const int img_h = static_cast<int>(input->dims()[2]);
-    const int img_w = static_cast<int>(input->dims()[3]);
-    const int f = static_cast<int>(filter.dims()[0]);
+    int batch_size = static_cast<int>(input->dims()[0]);
+    int img_c = static_cast<int>(input->dims()[1]);
+    int img_h = static_cast<int>(input->dims()[2]);
+    int img_w = static_cast<int>(input->dims()[3]);
+    int f = static_cast<int>(filter.dims()[0]);
+    bool is_nchw = true;
+    if (data_format == "NHWC") {
+      img_c = static_cast<int>(input->dims()[3]);
+      img_h = static_cast<int>(input->dims()[1]);
+      img_w = static_cast<int>(input->dims()[2]);
+      is_nchw = false;
+    }
 
     const XPUT *input_data = reinterpret_cast<const XPUT *>(input->data<T>());
     const XPUT *filter_data = reinterpret_cast<const XPUT *>(filter.data<T>());
@@ -132,22 +180,71 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
       filter_grad_data = reinterpret_cast<XPUT *>(filter_grad->data<T>());
     }
     auto &dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::conv2d_grad<XPUT, XPUT, XPUT, int16_t>(
-        dev_ctx.x_context(), input_data, filter_data, output_grad_data,
-        input_grad_data, filter_grad_data, batch_size, img_c, img_h, img_w, f,
-        ksize, strides, paddings, dilations, groups, nullptr, nullptr, nullptr,
-        nullptr, nullptr, true);
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU conv kernel return wrong value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+
+    XPUT *filter_data_tmp;
+    XPUT *filter_grad_data_tmp;
+    const XPUT *filter_data_ptr = filter_data;
+    XPUT *filter_grad_data_ptr = filter_grad_data;
+    if (data_format == "NHWC") {
+      filter_data_tmp = RAII_GUARD.alloc<XPUT>(filter.numel());
+      PADDLE_ENFORCE_XDNN_NOT_NULL(filter_data_tmp);
+      int r = xpu::transpose<XPUT>(dev_ctx.x_context(),
+                                   filter_data,
+                                   filter_data_tmp,
+                                   filter_shape,
+                                   {0, 2, 3, 1});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+      filter_data_ptr = reinterpret_cast<const XPUT *>(filter_data_tmp);
+
+      if (filter_grad_data != nullptr) {
+        filter_grad_data_tmp = RAII_GUARD.alloc<XPUT>(filter.numel());
+        PADDLE_ENFORCE_XDNN_NOT_NULL(filter_grad_data_tmp);
+        filter_grad_data_ptr = filter_grad_data_tmp;
+      }
+    }
+    int r = xpu::conv2d_grad<XPUT, XPUT, XPUT, int16_t>(dev_ctx.x_context(),
+                                                        input_data,
+                                                        filter_data_ptr,
+                                                        output_grad_data,
+                                                        input_grad_data,
+                                                        filter_grad_data_ptr,
+                                                        batch_size,
+                                                        img_c,
+                                                        img_h,
+                                                        img_w,
+                                                        f,
+                                                        ksize,
+                                                        strides,
+                                                        paddings,
+                                                        dilations,
+                                                        groups,
+                                                        nullptr,
+                                                        nullptr,
+                                                        nullptr,
+                                                        nullptr,
+                                                        nullptr,
+                                                        is_nchw);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_grad");
+
+    if ((filter_grad_data_ptr != nullptr) && (data_format == "NHWC")) {
+      std::vector<int> filter_shape_fhwc = {
+          filter_shape[0], filter_shape[2], filter_shape[3], filter_shape[1]};
+      int r = xpu::transpose<XPUT>(dev_ctx.x_context(),
+                                   filter_grad_data_ptr,
+                                   filter_grad_data,
+                                   filter_shape_fhwc,
+                                   {0, 3, 1, 2});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+    }
   }
 };
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    conv2d, ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    conv2d,
+    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext,
                            paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
@@ -157,12 +254,8 @@ REGISTER_OP_XPU_KERNEL(
                                paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
     depthwise_conv2d,
-    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext,
-                           paddle::platform::float16>);
+    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>);
 REGISTER_OP_XPU_KERNEL(
     depthwise_conv2d_grad,
-    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext,
-                               paddle::platform::float16>);
+    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 #endif

@@ -13,16 +13,16 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/kernels/graph_send_recv_kernel.h"
-
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
+
 #include <algorithm>
 #include <vector>
 
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/graph_send_recv_kernel.h"
 
 namespace phi {
 
@@ -81,7 +81,7 @@ __global__ void InputResetMaxCUDAKernel(T* output,
                                         size_t input_size,
                                         size_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, input_size * slice_size, int64_t) {
-    if (*(output + i) == std::numeric_limits<T>::min()) {
+    if (*(output + i) == std::numeric_limits<T>::lowest()) {
       *(output + i) = 0;
     }
   }

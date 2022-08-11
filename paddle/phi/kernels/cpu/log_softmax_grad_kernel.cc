@@ -55,10 +55,9 @@ struct LogSoftmaxGradFunctor {
     Eigen::DSizes<int, 2> one_axis(1, axis_dim);
 
     dx.device(*context.eigen_device()) =
-        dy -
-        (y.exp()) * (dy.reshape(batch_axis_remain)
-                         .sum(along_class)
-                         .broadcast(one_axis));
+        dy - (y.exp()) * (dy.reshape(batch_axis_remain)
+                              .sum(along_class)
+                              .broadcast(one_axis));
   }
 };
 

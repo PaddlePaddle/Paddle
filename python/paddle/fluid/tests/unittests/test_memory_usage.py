@@ -29,7 +29,7 @@ def train_simulator(test_batch_size=10):
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
     cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
@@ -43,6 +43,7 @@ def train_simulator(test_batch_size=10):
 
 
 class TestMemoryUsage(unittest.TestCase):
+
     def test_with_unit_B(self):
         with self.program_scope_guard():
             train_simulator()

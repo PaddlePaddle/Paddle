@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
+
 #include <condition_variable>  // NOLINT
 #include <thread>              // NOLINT
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/malloc.h"
 
@@ -74,14 +76,15 @@ TEST(ThreadLocalAllocator, cross_scope_release) {
 
   for (auto &addresses : allocator_addresses) {
     std::sort(addresses.begin(), addresses.end());
-    ASSERT_EQ(std::adjacent_find(addresses.begin(), addresses.end(),
-                                 std::equal_to<void *>()),
+    ASSERT_EQ(std::adjacent_find(
+                  addresses.begin(), addresses.end(), std::equal_to<void *>()),
               addresses.end());
   }
 
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   ASSERT_EXIT(([&]() { thread_allocations.clear(); }(), exit(0)),
-              ::testing::ExitedWithCode(0), ".*");
+              ::testing::ExitedWithCode(0),
+              ".*");
 }
 
 }  // namespace allocation

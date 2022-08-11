@@ -24,6 +24,7 @@ import numpy as np
 import threading
 import multiprocessing
 import os
+
 os.environ['CPU_NUM'] = str(4)
 
 
@@ -114,13 +115,12 @@ def simple_fc_net(in_size,
             hidden,
             size=hidden_size,
             act='tanh',
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)))
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=1.0)))
 
     predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
-    loss = fluid.layers.mean(
-        fluid.layers.cross_entropy(
-            input=predict_label, label=label))
+    loss = paddle.mean(
+        fluid.layers.cross_entropy(input=predict_label, label=label))
 
     optimizer = fluid.optimizer.Adam()
     optimizer.minimize(loss)
@@ -128,6 +128,7 @@ def simple_fc_net(in_size,
 
 
 class TestPyReaderUsingExecutor(unittest.TestCase):
+
     def setUp(self):
         self.in_size = 1000
         self.hidden_sizes = [50, 30, 20]
@@ -145,10 +146,14 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                         for use_decorate_paddle_reader in [False, True]:
                             print('Test Parameters:'),
                             print({
-                                'use_cuda': use_cuda,
-                                'use_parallel_executor': use_parallel_executor,
-                                'use_double_buffer': use_double_buffer,
-                                'use_feed_list': use_feed_list,
+                                'use_cuda':
+                                use_cuda,
+                                'use_parallel_executor':
+                                use_parallel_executor,
+                                'use_double_buffer':
+                                use_double_buffer,
+                                'use_feed_list':
+                                use_feed_list,
                                 'use_decorate_paddle_reader':
                                 use_decorate_paddle_reader
                             })
@@ -157,13 +162,15 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                                       use_decorate_paddle_reader)
 
     def tensor_reader(self, use_decorate_paddle_reader):
+
         def reader():
             for sample_id in range(self.batch_size * self.iterations *
                                    self.batch_size_times):
                 in_data = np.random.uniform(
                     low=0, high=1, size=(self.in_size, )).astype('float32')
-                label = np.random.random_integers(
-                    low=0, high=self.class_num - 1, size=(1, )).astype('int64')
+                label = np.random.random_integers(low=0,
+                                                  high=self.class_num - 1,
+                                                  size=(1, )).astype('int64')
 
                 reshaped_in_data = np.reshape(in_data, [1, -1])
                 reshaped_label = np.reshape(label, [1, -1])
@@ -239,8 +246,8 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                     py_reader.decorate_sample_list_generator(batch_reader)
                 py_reader.start()
             else:
-                thread = threading.Thread(
-                    target=feed_data, args=(feed_queue, batch_reader))
+                thread = threading.Thread(target=feed_data,
+                                          args=(feed_queue, batch_reader))
                 thread.daemon = True
                 thread.start()
 

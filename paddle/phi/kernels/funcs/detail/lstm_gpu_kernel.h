@@ -243,33 +243,31 @@ void gpu_lstm_forward(const paddle::platform::DeviceContext& context,
     grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
-  auto stream =
-      reinterpret_cast<const paddle::platform::CUDADeviceContext&>(context)
-          .stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(context).stream();
   if (batch_size == 1) {
     KeLstmForward<T,
                   Op,
-                  /* is_batch= */ false><<<grid, threads, 0, stream>>>(
-        op,
-        value,
-        frame_size,
-        batch_size,
-        cell_clip,
-        active_node,
-        active_gate,
-        active_state);
+                  /* is_batch= */ false>
+        <<<grid, threads, 0, stream>>>(op,
+                                       value,
+                                       frame_size,
+                                       batch_size,
+                                       cell_clip,
+                                       active_node,
+                                       active_gate,
+                                       active_state);
   } else {
     KeLstmForward<T,
                   Op,
-                  /* is_batch= */ true><<<grid, threads, 0, stream>>>(
-        op,
-        value,
-        frame_size,
-        batch_size,
-        cell_clip,
-        active_node,
-        active_gate,
-        active_state);
+                  /* is_batch= */ true>
+        <<<grid, threads, 0, stream>>>(op,
+                                       value,
+                                       frame_size,
+                                       batch_size,
+                                       cell_clip,
+                                       active_node,
+                                       active_gate,
+                                       active_state);
   }
 }
 
@@ -297,35 +295,33 @@ void gpu_lstm_backward(const paddle::platform::DeviceContext& context,
     grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
-  auto stream =
-      reinterpret_cast<const paddle::platform::CUDADeviceContext&>(context)
-          .stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(context).stream();
   if (batch_size == 1) {
     KeLstmBackward<T,
                    Op,
-                   /* is_batch= */ false><<<grid, threads, 0, stream>>>(
-        op,
-        value,
-        grad,
-        frame_size,
-        batch_size,
-        cell_clip,
-        active_node,
-        active_gate,
-        active_state);
+                   /* is_batch= */ false>
+        <<<grid, threads, 0, stream>>>(op,
+                                       value,
+                                       grad,
+                                       frame_size,
+                                       batch_size,
+                                       cell_clip,
+                                       active_node,
+                                       active_gate,
+                                       active_state);
   } else {
     KeLstmBackward<T,
                    Op,
-                   /* is_batch= */ true><<<grid, threads, 0, stream>>>(
-        op,
-        value,
-        grad,
-        frame_size,
-        batch_size,
-        cell_clip,
-        active_node,
-        active_gate,
-        active_state);
+                   /* is_batch= */ true>
+        <<<grid, threads, 0, stream>>>(op,
+                                       value,
+                                       grad,
+                                       frame_size,
+                                       batch_size,
+                                       cell_clip,
+                                       active_node,
+                                       active_gate,
+                                       active_state);
   }
 }
 

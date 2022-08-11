@@ -41,12 +41,12 @@ class EmbeddingLayer(object):
         """
         # TODO(huihuangzheng): The original code set the is_sparse=True, but it
         # causes crush in dy2stat. Set it to True after fixing it.
-        emb = Embedding(
-            size=[self.dict_size, self.emb_dim],
-            is_sparse=True,
-            padding_idx=self.padding_idx,
-            param_attr=attr.ParamAttr(
-                name=self.name, initializer=fluid.initializer.Xavier()))
+        emb = Embedding(size=[self.dict_size, self.emb_dim],
+                        is_sparse=True,
+                        padding_idx=self.padding_idx,
+                        param_attr=attr.ParamAttr(
+                            name=self.name,
+                            initializer=fluid.initializer.Xavier()))
 
         return emb
 
@@ -327,8 +327,8 @@ class FC(Layer):
 
     def _build_once(self, input):
         i = 0
-        for inp, param in self._helper.iter_inputs_and_params(input,
-                                                              self._param_attr):
+        for inp, param in self._helper.iter_inputs_and_params(
+                input, self._param_attr):
             input_shape = inp.shape
 
             param_shape = [
@@ -338,16 +338,17 @@ class FC(Layer):
             self.__w.append(
                 self.add_parameter(
                     '_w%d' % i,
-                    self.create_parameter(
-                        attr=param,
-                        shape=param_shape,
-                        dtype=self._dtype,
-                        is_bias=False)))
+                    self.create_parameter(attr=param,
+                                          shape=param_shape,
+                                          dtype=self._dtype,
+                                          is_bias=False)))
             i += 1
 
         size = list([self._size])
-        self._b = self.create_parameter(
-            attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True)
+        self._b = self.create_parameter(attr=self._bias_attr,
+                                        shape=size,
+                                        dtype=self._dtype,
+                                        is_bias=True)
 
     # TODO(songyouwei): We should remove _w property
     @property
@@ -382,18 +383,19 @@ class FC(Layer):
     def forward(self, input):
         mul_results = list()
         i = 0
-        for inp, param in self._helper.iter_inputs_and_params(input,
-                                                              self._param_attr):
+        for inp, param in self._helper.iter_inputs_and_params(
+                input, self._param_attr):
             tmp = self._helper.create_variable_for_type_inference(self._dtype)
-            self._helper.append_op(
-                type="mul",
-                inputs={"X": inp,
-                        "Y": self.__w[i]},
-                outputs={"Out": tmp},
-                attrs={
-                    "x_num_col_dims": self._num_flatten_dims,
-                    "y_num_col_dims": 1
-                })
+            self._helper.append_op(type="mul",
+                                   inputs={
+                                       "X": inp,
+                                       "Y": self.__w[i]
+                                   },
+                                   outputs={"Out": tmp},
+                                   attrs={
+                                       "x_num_col_dims": self._num_flatten_dims,
+                                       "y_num_col_dims": 1
+                                   })
             i += 1
             mul_results.append(tmp)
 
@@ -402,21 +404,21 @@ class FC(Layer):
         else:
             pre_bias = self._helper.create_variable_for_type_inference(
                 self._dtype)
-            self._helper.append_op(
-                type="sum",
-                inputs={"X": mul_results},
-                outputs={"Out": pre_bias},
-                attrs={"use_mkldnn": False})
+            self._helper.append_op(type="sum",
+                                   inputs={"X": mul_results},
+                                   outputs={"Out": pre_bias},
+                                   attrs={"use_mkldnn": False})
 
         if self._b is not None:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
-            self._helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [pre_bias],
-                        'Y': [self._b]},
-                outputs={'Out': [pre_activation]},
-                attrs={'axis': self._num_flatten_dims})
+            self._helper.append_op(type='elementwise_add',
+                                   inputs={
+                                       'X': [pre_bias],
+                                       'Y': [self._b]
+                                   },
+                                   outputs={'Out': [pre_activation]},
+                                   attrs={'axis': self._num_flatten_dims})
         else:
             pre_activation = pre_bias
         # Currently, we don't support inplace in dygraph mode
@@ -482,10 +484,10 @@ class BOW(Layer):
         # embedding layer
         left_emb = self.emb_layer(left)
         right_emb = self.emb_layer(right)
-        left_emb = fluid.layers.reshape(
-            left_emb, shape=[-1, self.seq_len, self.bow_dim])
-        right_emb = fluid.layers.reshape(
-            right_emb, shape=[-1, self.seq_len, self.bow_dim])
+        left_emb = fluid.layers.reshape(left_emb,
+                                        shape=[-1, self.seq_len, self.bow_dim])
+        right_emb = fluid.layers.reshape(right_emb,
+                                         shape=[-1, self.seq_len, self.bow_dim])
 
         bow_left = fluid.layers.reduce_sum(left_emb, dim=1)
         bow_right = fluid.layers.reduce_sum(right_emb, dim=1)

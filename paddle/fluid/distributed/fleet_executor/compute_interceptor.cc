@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/compute_interceptor.h"
-#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
@@ -43,7 +43,8 @@ void ComputeInterceptor::PrepareDeps() {
   // source compute node, should we add a new SourceInterceptor?
   if (upstream.empty()) {
     is_source_ = true;
-    PADDLE_ENFORCE_GT(node_->max_run_times(), 0,
+    PADDLE_ENFORCE_GT(node_->max_run_times(),
+                      0,
                       platform::errors::InvalidArgument(
                           "Source ComputeInterceptor must run at least one "
                           "times, but now max_run_times=%ld",
@@ -60,7 +61,8 @@ void ComputeInterceptor::PrepareDeps() {
 
 void ComputeInterceptor::IncreaseReady(int64_t up_id) {
   auto it = in_readys_.find(up_id);
-  PADDLE_ENFORCE_NE(it, in_readys_.end(),
+  PADDLE_ENFORCE_NE(it,
+                    in_readys_.end(),
                     platform::errors::NotFound(
                         "Cannot find upstream=%lld in in_readys.", up_id));
 
@@ -73,26 +75,32 @@ void ComputeInterceptor::IncreaseReady(int64_t up_id) {
   auto max_ready_size = it->second.first;
   auto ready_size = it->second.second;
   ready_size += 1;
-  PADDLE_ENFORCE_LE(ready_size, max_ready_size,
+  PADDLE_ENFORCE_LE(ready_size,
+                    max_ready_size,
                     platform::errors::OutOfRange(
                         "upstream=%lld ready_size must <= max_ready_size, but "
                         "now ready_size=%lld, max_ready_size=%lld",
-                        up_id, ready_size, max_ready_size));
+                        up_id,
+                        ready_size,
+                        max_ready_size));
   it->second.second = ready_size;
 }
 
 void ComputeInterceptor::DecreaseBuff(int64_t down_id) {
   auto it = out_buffs_.find(down_id);
-  PADDLE_ENFORCE_NE(it, out_buffs_.end(),
+  PADDLE_ENFORCE_NE(it,
+                    out_buffs_.end(),
                     platform::errors::NotFound(
                         "Cannot find downstream=%lld in out_buffs.", down_id));
   auto used_size = it->second.second;
   used_size -= 1;
   PADDLE_ENFORCE_GE(
-      used_size, 0,
+      used_size,
+      0,
       platform::errors::OutOfRange(
           "downstream=%lld used buff size must >= 0, but now equal %lld",
-          down_id, used_size));
+          down_id,
+          used_size));
   it->second.second = used_size;
 }
 
@@ -130,11 +138,14 @@ void ComputeInterceptor::SendDataReadyToDownStream() {
     auto used_size = outs.second.second;
     used_size += 1;
     PADDLE_ENFORCE_LE(
-        used_size, max_buff_size,
+        used_size,
+        max_buff_size,
         platform::errors::OutOfRange("downstream=%lld used buff size must <= "
                                      "max_buff_size, but now used_size=%lld, "
                                      "max_buff_size=%lld",
-                                     down_id, used_size, max_buff_size));
+                                     down_id,
+                                     used_size,
+                                     max_buff_size));
     outs.second.second = used_size;
 
     InterceptorMessage ready_msg;
@@ -152,16 +163,18 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
     auto ready_size = ins.second.second;
     ready_size -= 1;
     PADDLE_ENFORCE_GE(
-        ready_size, 0,
+        ready_size,
+        0,
         platform::errors::OutOfRange(
-            "upstream=%lld ready_size must >= 0, but now got %lld", up_id,
+            "upstream=%lld ready_size must >= 0, but now got %lld",
+            up_id,
             ready_size));
     ins.second.second = ready_size;
 
     VLOG(3) << "ComputeInterceptor " << interceptor_id_
             << " Reply data_is_useless msg to " << up_id
             << " for step: " << step_;
-    if (up_id == -1) return;
+    if (is_source_ && up_id == -1) return;
 
     InterceptorMessage reply_msg;
     reply_msg.set_message_type(DATA_IS_USELESS);
@@ -176,8 +189,10 @@ void ComputeInterceptor::RunOps() {
     op->Run(*microbatch_scopes_[step_ % node_->max_run_times()], place_);
     if (gc_) {
       framework::DeleteUnusedTensors(
-          *microbatch_scopes_[step_ % node_->max_run_times()], op,
-          node_->unused_vars(), gc_.get());
+          *microbatch_scopes_[step_ % node_->max_run_times()],
+          op,
+          node_->unused_vars(),
+          gc_.get());
     }
   }
 }
@@ -210,11 +225,13 @@ void ComputeInterceptor::ReceivedStop(int64_t up_id) {
   if (is_source_ && up_id == -1) return;
 
   auto it = in_stops_.find(up_id);
-  PADDLE_ENFORCE_NE(it, in_stops_.end(),
+  PADDLE_ENFORCE_NE(it,
+                    in_stops_.end(),
                     platform::errors::NotFound(
                         "Cannot find upstream=%lld in in_stops.", up_id));
   PADDLE_ENFORCE_EQ(
-      it->second, false,
+      it->second,
+      false,
       platform::errors::AlreadyExists("Already received stop from %lld, stop "
                                       "cannot be send more than once."));
   it->second = true;

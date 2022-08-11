@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/core/meta_tensor.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -147,5 +149,7 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
         "Unsupported sharing dims for `%s`.", tensor_->type_info().name()));
   }
 }
+
+bool MetaTensor::initialized() const { return tensor_ != nullptr; }
 
 }  // namespace phi

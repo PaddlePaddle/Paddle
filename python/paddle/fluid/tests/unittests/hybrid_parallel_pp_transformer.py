@@ -45,15 +45,15 @@ dim_feedforward = 4 * d_model
 
 
 class EmbeddingNet(Layer):
+
     def __init__(self):
         super(EmbeddingNet, self).__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
         self.position_embeddings = nn.Embedding(vocab_size, hidden_size)
 
     def forward(self, x):
-        attention_mask = paddle.tensor.triu(
-            (paddle.ones(
-                (length, length), dtype="float32") * -1e9), 1)
+        attention_mask = paddle.tensor.triu((paddle.ones(
+            (length, length), dtype="float32") * -1e9), 1)
 
         no_used = paddle.ones((3, 3), dtype="int32")
 
@@ -68,6 +68,7 @@ class EmbeddingNet(Layer):
 
 
 class TransformerNet(Layer):
+
     def __init__(self):
         super(TransformerNet, self).__init__()
         self.linear1 = nn.Linear(d_model, dim_feedforward)
@@ -98,11 +99,13 @@ class TransformerNet(Layer):
 
 
 class EmbeddingPipe(EmbeddingNet):
+
     def forward(self, x):
         return super().forward(x)
 
 
 class TransformerNetPipe(TransformerNet):
+
     def forward(self, args):
         x, mask, no_used, p_emb = args[0], args[1], args[2], args[3]
 
@@ -113,6 +116,7 @@ class TransformerNetPipe(TransformerNet):
 
 
 class CriterionPipe(Layer):
+
     def __init__(self):
         super(CriterionPipe, self).__init__()
 
@@ -122,6 +126,7 @@ class CriterionPipe(Layer):
 
 
 class ModelPipe(PipelineLayer):
+
     def __init__(self, topology):
         self.descs = []
         self.descs.append(LayerDesc(EmbeddingPipe))
@@ -131,14 +136,14 @@ class ModelPipe(PipelineLayer):
 
         self.descs.append(lambda x: x[0])
 
-        super().__init__(
-            layers=self.descs,
-            loss_fn=CriterionPipe(),
-            topology=topology,
-            seg_method="layer:TransformerNetPipe")
+        super().__init__(layers=self.descs,
+                         loss_fn=CriterionPipe(),
+                         topology=topology,
+                         seg_method="layer:TransformerNetPipe")
 
 
 class TestDistPPTraning(unittest.TestCase):
+
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -165,8 +170,9 @@ class TestDistPPTraning(unittest.TestCase):
         set_random_seed(1024, dp_id, rank_id)
 
         model = ModelPipe(topology)
-        scheduler = paddle.optimizer.lr.PiecewiseDecay(
-            boundaries=[2], values=[0.001, 0.002], verbose=True)
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
+                                                       values=[0.001, 0.002],
+                                                       verbose=True)
         optimizer = paddle.optimizer.SGD(learning_rate=scheduler,
                                          parameters=model.parameters())
 

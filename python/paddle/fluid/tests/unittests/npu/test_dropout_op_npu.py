@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
@@ -29,6 +30,7 @@ EPOCH = 100
 
 
 class TestDropoutOp(OpTest):
+
     def setUp(self):
         self.op_type = "dropout"
         self.set_npu()
@@ -164,6 +166,7 @@ class TestDropoutOpInference(OpTest):
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
 class TestDropoutOpInference2(TestDropoutOpInference):
+
     def setUp(self):
         self.op_type = "dropout"
         self.set_npu()
@@ -185,8 +188,7 @@ class TestDropoutOpWithSeed(TestDropoutOp):
         self.init_dtype()
         self.inputs = {
             "X": np.random.random((32, 64)).astype(self.dtype),
-            "Seed": np.asarray(
-                [125], dtype="int32")
+            "Seed": np.asarray([125], dtype="int32")
         }
         self.attrs = {
             'dropout_prob': 0.0,
@@ -211,6 +213,7 @@ class TestDropoutOpFp16(TestDropoutOp):
 
 
 class TestDropoutAPI(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace(), paddle.NPUPlace(0)]
@@ -218,36 +221,43 @@ class TestDropoutAPI(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[40, 40], dtype="float32")
-            res1 = paddle.nn.functional.dropout(
-                x=input, p=0., training=False, mode='upscale_in_train')
-            res2 = paddle.nn.functional.dropout(
-                x=input, p=0., axis=0, training=True, mode='upscale_in_train')
-            res3 = paddle.nn.functional.dropout(
-                x=input, p=0., axis=0, training=False, mode='upscale_in_train')
-            res4 = paddle.nn.functional.dropout(
-                x=input,
-                p=0.,
-                axis=[0, 1],
-                training=True,
-                mode='upscale_in_train')
-            res5 = paddle.nn.functional.dropout(
-                x=input,
-                p=0.,
-                axis=[0, 1],
-                training=False,
-                mode='upscale_in_train')
-            res6 = paddle.nn.functional.dropout(
-                x=input, p=1., training=True, mode='upscale_in_train')
+            res1 = paddle.nn.functional.dropout(x=input,
+                                                p=0.,
+                                                training=False,
+                                                mode='upscale_in_train')
+            res2 = paddle.nn.functional.dropout(x=input,
+                                                p=0.,
+                                                axis=0,
+                                                training=True,
+                                                mode='upscale_in_train')
+            res3 = paddle.nn.functional.dropout(x=input,
+                                                p=0.,
+                                                axis=0,
+                                                training=False,
+                                                mode='upscale_in_train')
+            res4 = paddle.nn.functional.dropout(x=input,
+                                                p=0.,
+                                                axis=[0, 1],
+                                                training=True,
+                                                mode='upscale_in_train')
+            res5 = paddle.nn.functional.dropout(x=input,
+                                                p=0.,
+                                                axis=[0, 1],
+                                                training=False,
+                                                mode='upscale_in_train')
+            res6 = paddle.nn.functional.dropout(x=input,
+                                                p=1.,
+                                                training=True,
+                                                mode='upscale_in_train')
             res7 = paddle.fluid.layers.dropout(
                 x=input,
                 dropout_prob=0.,
                 dropout_implementation='upscale_in_train')
-            res8 = paddle.nn.functional.dropout(
-                x=input,
-                p=0.,
-                axis=(0, 1),
-                training=False,
-                mode='upscale_in_train')
+            res8 = paddle.nn.functional.dropout(x=input,
+                                                p=0.,
+                                                axis=(0, 1),
+                                                training=False,
+                                                mode='upscale_in_train')
 
             in_np = np.random.random([40, 40]).astype("float32")
             res_np = in_np
@@ -259,11 +269,11 @@ class TestDropoutAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"input": in_np},
                                   fetch_list=[res])
-                self.assertTrue(np.allclose(fetches[0], res_np))
+                np.testing.assert_allclose(fetches[0], res_np)
             fetches2 = exe.run(fluid.default_main_program(),
                                feed={"input": in_np},
                                fetch_list=[res6])
-            self.assertTrue(np.allclose(fetches2[0], res_np2))
+            np.testing.assert_allclose(fetches2[0], res_np2)
 
     def test_static(self):
         for place in self.places:

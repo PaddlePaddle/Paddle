@@ -88,7 +88,7 @@ If you want to install paddlepaddle-gpu with cuda version of 9.0 ,10.0 ,10.1 ,or
 
 After the installation is complete, you can use `python` or `python3` to enter the Python interpreter and then use `import paddle.fluid` and `fluid.install_check.run_check()`
 
-If `Your Paddle Fluid is installed succesfully!` appears, to verify that the installation was successful.
+If `Your Paddle Fluid is installed successfully!` appears, to verify that the installation was successful.
 
 
 

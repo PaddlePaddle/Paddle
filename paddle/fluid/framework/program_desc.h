@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -83,6 +84,8 @@ class ProgramDesc {
   // referenced as fetch_holder.
   // This function is used to change or unify the fetch_holder variables' name.
   void SetFetchHolderName(const std::string &fetch_holder_name);
+
+  bool NeedUpdate() const;
 
  private:
   void InitFromProto();

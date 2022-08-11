@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 
 namespace phi {
@@ -22,7 +22,6 @@ template <typename T, typename Context>
 void UnsqueezeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
-                     DenseTensor* xshape,
                      DenseTensor* out) {
   auto x_dims = x.dims();
   auto out_dims = out->dims();
@@ -38,5 +37,14 @@ void UnsqueezeKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);  // copy will reset the dims.
+}
+
+template <typename T, typename Context>
+void UnsqueezeWithXShapeKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const IntArray& axes,
+                               DenseTensor* out,
+                               DenseTensor* xshape) {
+  UnsqueezeKernel<T, Context>(dev_ctx, x, axes, out);
 }
 }  // namespace phi

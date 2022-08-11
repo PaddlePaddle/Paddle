@@ -54,6 +54,10 @@ DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
       .End()
       .AddAttr("quant_axis")
       .IsType<int>()
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
+      .IsType<int>()
       .End();
   AddOpCompat(OpCompat("dequantize_linear"))
       .AddInput("X")
@@ -73,6 +77,10 @@ DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
       .IsType<int>()
       .End()
       .AddAttr("quant_axis")
+      .IsType<int>()
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
       .IsType<int>()
       .End();
 }
@@ -105,14 +113,15 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     */
     std::unordered_set<const Node*> nodes2rm = {};
     int bit_length =
-        BOOST_GET_CONST(int, quantize_linear_op->Op()->GetAttr("bit_length"));
+        PADDLE_GET_CONST(int, quantize_linear_op->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
 
     // Get input scale from tensor
     const LoDTensor& input_scale_tensor =
         scope->GetVar(quantize_linear_op_scale->Name())->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(input_scale_tensor.place()), true,
+        paddle::platform::is_cpu_place(input_scale_tensor.place()),
+        true,
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();

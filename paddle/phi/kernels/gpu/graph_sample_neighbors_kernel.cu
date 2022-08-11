@@ -27,20 +27,23 @@
 #include <curand_kernel.h>
 #endif
 
-#include "paddle/phi/kernels/graph_sample_neighbors_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/graph_sample_neighbors_kernel.h"
 
 namespace phi {
 
 template <typename T>
 struct DegreeFunctor {
   const T* col_ptr;
-  HOSTDEVICE explicit inline DegreeFunctor(const T* x) { this->col_ptr = x; }
+  int64_t len_col_ptr;
+  HOSTDEVICE explicit inline DegreeFunctor(const T* x, int64_t len_col_ptr) {
+    this->col_ptr = x;
+    this->len_col_ptr = len_col_ptr;
+  }
   HOSTDEVICE inline int operator()(T i) const {
-    return col_ptr[i + 1] - col_ptr[i];
+    return i > len_col_ptr - 1 ? 0 : col_ptr[i + 1] - col_ptr[i];
   }
 };
 
@@ -59,12 +62,15 @@ template <typename T, int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
 __global__ void SampleKernel(const uint64_t rand_seed,
                              int k,
                              const int64_t num_nodes,
+                             const int64_t len_col_ptr,
                              const T* nodes,
                              const T* row,
                              const T* col_ptr,
+                             const T* eids,
                              T* output,
+                             T* output_eids,
                              int* output_ptr,
-                             int* output_idxs) {
+                             bool return_eids) {
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
@@ -87,6 +93,10 @@ __global__ void SampleKernel(const uint64_t rand_seed,
 
   while (out_row < last_row) {
     T node = nodes[out_row];
+    if (node > len_col_ptr - 1) {
+      out_row += BLOCK_WARPS;
+      continue;
+    }
     T in_row_start = col_ptr[node];
     int deg = col_ptr[node + 1] - in_row_start;
     int out_row_start = output_ptr[out_row];
@@ -94,10 +104,13 @@ __global__ void SampleKernel(const uint64_t rand_seed,
     if (deg <= k) {
       for (int idx = threadIdx.x; idx < deg; idx += WARP_SIZE) {
         output[out_row_start + idx] = row[in_row_start + idx];
+        if (return_eids) {
+          output_eids[out_row_start + idx] = eids[in_row_start + idx];
+        }
       }
     } else {
       for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
-        output_idxs[out_row_start + idx] = idx;
+        output[out_row_start + idx] = idx;
       }
 #ifdef PADDLE_WITH_CUDA
       __syncwarp();
@@ -111,7 +124,7 @@ __global__ void SampleKernel(const uint64_t rand_seed,
 #endif
         if (num < k) {
           atomicMax(reinterpret_cast<unsigned int*>(  // NOLINT
-                        output_idxs + out_row_start + num),
+                        output + out_row_start + num),
                     static_cast<unsigned int>(idx));  // NOLINT
         }
       }
@@ -120,8 +133,11 @@ __global__ void SampleKernel(const uint64_t rand_seed,
 #endif
 
       for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
-        T perm_idx = output_idxs[out_row_start + idx] + in_row_start;
+        T perm_idx = output[out_row_start + idx] + in_row_start;
         output[out_row_start + idx] = row[perm_idx];
+        if (return_eids) {
+          output_eids[out_row_start + idx] = eids[perm_idx];
+        }
       }
     }
 
@@ -132,10 +148,12 @@ __global__ void SampleKernel(const uint64_t rand_seed,
 template <typename T, typename Context>
 int GetTotalSampleNum(const thrust::device_ptr<const T> input,
                       const T* col_ptr,
+                      int64_t len_col_ptr,
                       thrust::device_ptr<int> output_count,
                       int sample_size,
                       int bs) {
-  thrust::transform(input, input + bs, output_count, DegreeFunctor<T>(col_ptr));
+  thrust::transform(
+      input, input + bs, output_count, DegreeFunctor<T>(col_ptr, len_col_ptr));
   if (sample_size >= 0) {
     thrust::transform(
         output_count, output_count + bs, output_count, MaxFunctor(sample_size));
@@ -148,16 +166,18 @@ template <typename T, typename Context>
 void SampleNeighbors(const Context& dev_ctx,
                      const T* row,
                      const T* col_ptr,
+                     const T* eids,
                      const thrust::device_ptr<const T> input,
                      thrust::device_ptr<T> output,
                      thrust::device_ptr<int> output_count,
+                     thrust::device_ptr<T> output_eids,
                      int sample_size,
                      int bs,
-                     int total_sample_num) {
+                     int total_sample_num,
+                     int64_t len_col_ptr,
+                     bool return_eids) {
   thrust::device_vector<int> output_ptr;
-  thrust::device_vector<int> output_idxs;
   output_ptr.resize(bs);
-  output_idxs.resize(total_sample_num);
   thrust::exclusive_scan(
       output_count, output_count + bs, output_ptr.begin(), 0);
 
@@ -166,28 +186,36 @@ void SampleNeighbors(const Context& dev_ctx,
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
   const dim3 block(WARP_SIZE, BLOCK_WARPS);
   const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
-  SampleKernel<T,
-               WARP_SIZE,
-               BLOCK_WARPS,
-               TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
-      0,
-      sample_size,
-      bs,
-      thrust::raw_pointer_cast(input),
-      row,
-      col_ptr,
-      thrust::raw_pointer_cast(output),
-      thrust::raw_pointer_cast(output_ptr.data()),
-      thrust::raw_pointer_cast(output_idxs.data()));
+  SampleKernel<T, WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
+      <<<grid, block, 0, dev_ctx.stream()>>>(
+          0,
+          sample_size,
+          bs,
+          len_col_ptr,
+          thrust::raw_pointer_cast(input),
+          row,
+          col_ptr,
+          eids,
+          thrust::raw_pointer_cast(output),
+          thrust::raw_pointer_cast(output_eids),
+          thrust::raw_pointer_cast(output_ptr.data()),
+          return_eids);
 }
 
-template <typename T>
+template <typename T, int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
 __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
                                         int k,
                                         const int64_t num_rows,
+                                        const int64_t len_col_ptr,
                                         const T* in_rows,
                                         T* src,
                                         const T* dst_count) {
+  assert(blockDim.x == WARP_SIZE);
+  assert(blockDim.y == BLOCK_WARPS);
+
+  int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
+  const int64_t last_row =
+      min(static_cast<int64_t>(blockIdx.x + 1) * TILE_SIZE, num_rows);
 #ifdef PADDLE_WITH_HIP
   hiprandState rng;
   hiprand_init(
@@ -197,20 +225,23 @@ __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
   curand_init(
       rand_seed * gridDim.x + blockIdx.x, threadIdx.y + threadIdx.x, 0, &rng);
 #endif
-  CUDA_KERNEL_LOOP(out_row, num_rows) {
+
+  while (out_row < last_row) {
     const T row = in_rows[out_row];
+    if (row > len_col_ptr - 1) {
+      out_row += BLOCK_WARPS;
+      continue;
+    }
     const T in_row_start = dst_count[row];
     const int deg = dst_count[row + 1] - in_row_start;
     int split;
-    T tmp;
-
     if (k < deg) {
       if (deg < 2 * k) {
         split = k;
       } else {
         split = deg - k;
       }
-      for (int idx = deg - 1; idx >= split; idx--) {
+      for (int idx = split + threadIdx.x; idx <= deg - 1; idx += WARP_SIZE) {
 #ifdef PADDLE_WITH_HIP
         const int num = hiprand(&rng) % (idx + 1);
 #else
@@ -222,7 +253,11 @@ __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
                        static_cast<unsigned long long int>(  //  NOLINT
                            src[in_row_start + idx])));
       }
+#ifdef PADDLE_WITH_CUDA
+      __syncwarp();
+#endif
     }
+    out_row += BLOCK_WARPS;
   }
 }
 
@@ -232,9 +267,12 @@ __global__ void GatherEdge(int k,
                            const T* in_rows,
                            const T* src,
                            const T* dst_count,
+                           const T* eids,
                            T* outputs,
+                           T* output_eids,
                            int* output_ptr,
-                           T* perm_data) {
+                           T* perm_data,
+                           bool return_eids) {
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
@@ -250,8 +288,10 @@ __global__ void GatherEdge(int k,
 
     if (deg <= k) {
       for (int idx = threadIdx.x; idx < deg; idx += WARP_SIZE) {
-        const T in_idx = in_row_start + idx;
-        outputs[out_row_start + idx] = src[in_idx];
+        outputs[out_row_start + idx] = src[in_row_start + idx];
+        if (return_eids) {
+          output_eids[out_row_start + idx] = eids[in_row_start + idx];
+        }
       }
     } else {
       int split = k;
@@ -267,6 +307,10 @@ __global__ void GatherEdge(int k,
       for (int idx = begin + threadIdx.x; idx < end; idx += WARP_SIZE) {
         outputs[out_row_start + idx - begin] =
             src[perm_data[in_row_start + idx]];
+        if (return_eids) {
+          output_eids[out_row_start + idx - begin] =
+              eids[perm_data[in_row_start + idx]];
+        }
       }
     }
     out_row += BLOCK_WARPS;
@@ -277,49 +321,50 @@ template <typename T, typename Context>
 void FisherYatesSampleNeighbors(const Context& dev_ctx,
                                 const T* row,
                                 const T* col_ptr,
+                                const T* eids,
                                 T* perm_data,
                                 const thrust::device_ptr<const T> input,
                                 thrust::device_ptr<T> output,
                                 thrust::device_ptr<int> output_count,
+                                thrust::device_ptr<T> output_eids,
                                 int sample_size,
                                 int bs,
-                                int total_sample_num) {
+                                int total_sample_num,
+                                int64_t len_col_ptr,
+                                bool return_eids) {
   thrust::device_vector<int> output_ptr;
   output_ptr.resize(bs);
   thrust::exclusive_scan(
       output_count, output_count + bs, output_ptr.begin(), 0);
 
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
-  int block = 1024;
-#endif
-  int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int grid_tmp = (bs + block - 1) / block;
-  int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
+  constexpr int WARP_SIZE = 32;
+  constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
+  constexpr int TILE_SIZE = BLOCK_WARPS * 16;
+  const dim3 block(WARP_SIZE, BLOCK_WARPS);
+  const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
 
-  FisherYatesSampleKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
-      0, sample_size, bs, thrust::raw_pointer_cast(input), perm_data, col_ptr);
+  FisherYatesSampleKernel<T, WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
+      <<<grid, block, 0, dev_ctx.stream()>>>(0,
+                                             sample_size,
+                                             bs,
+                                             len_col_ptr,
+                                             thrust::raw_pointer_cast(input),
+                                             perm_data,
+                                             col_ptr);
 
-  constexpr int GATHER_WARP_SIZE = 32;
-  constexpr int GATHER_BLOCK_WARPS = 128 / GATHER_WARP_SIZE;
-  constexpr int GATHER_TILE_SIZE = GATHER_BLOCK_WARPS * 16;
-  const dim3 gather_block(GATHER_WARP_SIZE, GATHER_BLOCK_WARPS);
-  const dim3 gather_grid((bs + GATHER_TILE_SIZE - 1) / GATHER_TILE_SIZE);
-
-  GatherEdge<
-      T,
-      GATHER_WARP_SIZE,
-      GATHER_BLOCK_WARPS,
-      GATHER_TILE_SIZE><<<gather_grid, gather_block, 0, dev_ctx.stream()>>>(
-      sample_size,
-      bs,
-      thrust::raw_pointer_cast(input),
-      row,
-      col_ptr,
-      thrust::raw_pointer_cast(output),
-      thrust::raw_pointer_cast(output_ptr.data()),
-      perm_data);
+  GatherEdge<T, WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
+      <<<grid, block, 0, dev_ctx.stream()>>>(
+          sample_size,
+          bs,
+          thrust::raw_pointer_cast(input),
+          row,
+          col_ptr,
+          eids,
+          thrust::raw_pointer_cast(output),
+          thrust::raw_pointer_cast(output_eids),
+          thrust::raw_pointer_cast(output_ptr.data()),
+          perm_data,
+          return_eids);
 }
 
 template <typename T, typename Context>
@@ -328,8 +373,8 @@ void GraphSampleNeighborsKernel(
     const DenseTensor& row,
     const DenseTensor& col_ptr,
     const DenseTensor& x,
-    paddle::optional<const DenseTensor&> eids,
-    paddle::optional<const DenseTensor&> perm_buffer,
+    const paddle::optional<DenseTensor>& eids,
+    const paddle::optional<DenseTensor>& perm_buffer,
     int sample_size,
     bool return_eids,
     bool flag_perm_buffer,
@@ -340,6 +385,7 @@ void GraphSampleNeighborsKernel(
   auto* col_ptr_data = col_ptr.data<T>();
   auto* x_data = x.data<T>();
   int bs = x.dims()[0];
+  int64_t len_col_ptr = col_ptr.dims()[0];
 
   const thrust::device_ptr<const T> input(x_data);
 
@@ -348,38 +394,88 @@ void GraphSampleNeighborsKernel(
   thrust::device_ptr<int> output_count(out_count_data);
 
   int total_sample_size = GetTotalSampleNum<T, Context>(
-      input, col_ptr_data, output_count, sample_size, bs);
+      input, col_ptr_data, len_col_ptr, output_count, sample_size, bs);
 
   out->Resize({static_cast<int>(total_sample_size)});
   T* out_data = dev_ctx.template Alloc<T>(out);
   thrust::device_ptr<T> output(out_data);
 
-  if (!flag_perm_buffer) {
-    SampleNeighbors<T, Context>(dev_ctx,
-                                row_data,
-                                col_ptr_data,
-                                input,
-                                output,
-                                output_count,
-                                sample_size,
-                                bs,
-                                total_sample_size);
+  if (return_eids) {
+    auto* eids_data = eids.get_ptr()->data<T>();
+    out_eids->Resize({static_cast<int>(total_sample_size)});
+    T* out_eids_data = dev_ctx.template Alloc<T>(out_eids);
+    thrust::device_ptr<T> output_eids(out_eids_data);
+    if (!flag_perm_buffer) {
+      SampleNeighbors<T, Context>(dev_ctx,
+                                  row_data,
+                                  col_ptr_data,
+                                  eids_data,
+                                  input,
+                                  output,
+                                  output_count,
+                                  output_eids,
+                                  sample_size,
+                                  bs,
+                                  total_sample_size,
+                                  len_col_ptr,
+                                  return_eids);
+    } else {
+      DenseTensor perm_buffer_out(perm_buffer->type());
+      const auto* p_perm_buffer = perm_buffer.get_ptr();
+      perm_buffer_out.ShareDataWith(*p_perm_buffer);
+      T* perm_buffer_out_data = perm_buffer_out.template data<T>();
+      FisherYatesSampleNeighbors<T, Context>(dev_ctx,
+                                             row_data,
+                                             col_ptr_data,
+                                             eids_data,
+                                             perm_buffer_out_data,
+                                             input,
+                                             output,
+                                             output_count,
+                                             output_eids,
+                                             sample_size,
+                                             bs,
+                                             total_sample_size,
+                                             len_col_ptr,
+                                             return_eids);
+    }
   } else {
-    DenseTensor perm_buffer_out(perm_buffer->type());
-    const auto* p_perm_buffer = perm_buffer.get_ptr();
-    perm_buffer_out.ShareDataWith(*p_perm_buffer);
-    T* perm_buffer_out_data =
-        perm_buffer_out.mutable_data<T>(dev_ctx.GetPlace());
-    FisherYatesSampleNeighbors<T, Context>(dev_ctx,
-                                           row_data,
-                                           col_ptr_data,
-                                           perm_buffer_out_data,
-                                           input,
-                                           output,
-                                           output_count,
-                                           sample_size,
-                                           bs,
-                                           total_sample_size);
+    // How to set null value for output_eids(thrust::device_ptr<T>)?
+    // We use `output` to fill the position of unused output_eids.
+    if (!flag_perm_buffer) {
+      SampleNeighbors<T, Context>(dev_ctx,
+                                  row_data,
+                                  col_ptr_data,
+                                  nullptr,
+                                  input,
+                                  output,
+                                  output_count,
+                                  output,
+                                  sample_size,
+                                  bs,
+                                  total_sample_size,
+                                  len_col_ptr,
+                                  return_eids);
+    } else {
+      DenseTensor perm_buffer_out(perm_buffer->type());
+      const auto* p_perm_buffer = perm_buffer.get_ptr();
+      perm_buffer_out.ShareDataWith(*p_perm_buffer);
+      T* perm_buffer_out_data = perm_buffer_out.template data<T>();
+      FisherYatesSampleNeighbors<T, Context>(dev_ctx,
+                                             row_data,
+                                             col_ptr_data,
+                                             nullptr,
+                                             perm_buffer_out_data,
+                                             input,
+                                             output,
+                                             output_count,
+                                             output,
+                                             sample_size,
+                                             bs,
+                                             total_sample_size,
+                                             len_col_ptr,
+                                             return_eids);
+    }
   }
 }
 

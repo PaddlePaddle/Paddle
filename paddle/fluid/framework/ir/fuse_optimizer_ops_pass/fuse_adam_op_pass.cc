@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include <sys/types.h>
+
 #include <string>
 
 #include "glog/logging.h"
@@ -39,13 +40,15 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       const std::unordered_map<std::string, std::vector<std::string>>
           &aux_var_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
-      const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const {
+      const std::vector<ir::Node *> &adam_ops,
+      ir::Graph *graph) const {
     auto fused_adam_node =
         FuseAdamOps(aux_var_set, fused_vars_name, adam_ops, graph);
     return fused_adam_node;
   }
 
-  void RemoveCycleDepsBetweenOpNodes(Graph *graph, const Node *fused_scale1,
+  void RemoveCycleDepsBetweenOpNodes(Graph *graph,
+                                     const Node *fused_scale1,
                                      const Node *fused_scale2) const {
     std::unordered_set<Node *> not_need_ctrl_var_nodes;
     std::unordered_set<Node *> fused_scale2_in_nodes;
@@ -53,7 +56,8 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
                                  fused_scale2->inputs.end());
     for (auto &out_node : fused_scale1->outputs) {
       if (fused_scale2_in_nodes.count(out_node)) {
-        PADDLE_ENFORCE_EQ(out_node->IsCtrlVar(), true,
+        PADDLE_ENFORCE_EQ(out_node->IsCtrlVar(),
+                          true,
                           platform::errors::PreconditionNotMet(
                               "In adam op pass, the dependency var(%s) only "
                               "should be ctrl var.",
@@ -65,26 +69,30 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     for (auto &node : not_need_ctrl_var_nodes) {
       // remove this node from the input op node.
       PADDLE_ENFORCE_EQ(
-          node->inputs.empty(), false,
+          node->inputs.empty(),
+          false,
           platform::errors::PreconditionNotMet(
               "Node(%s)'s input should not be empty here.", node->Name()));
       auto op_node = node->inputs.front();
-      PADDLE_ENFORCE_EQ(op_node->IsOp(), true,
+      PADDLE_ENFORCE_EQ(op_node->IsOp(),
+                        true,
                         platform::errors::PreconditionNotMet(
                             "Node(%s) should be an OP node.", op_node->Name()));
-      op_node->outputs.erase(
-          remove_if(
-              op_node->outputs.begin(), op_node->outputs.end(),
-              [&node](const Node *op_out_node) { return op_out_node == node; }),
-          op_node->outputs.end());
+      op_node->outputs.erase(remove_if(op_node->outputs.begin(),
+                                       op_node->outputs.end(),
+                                       [&node](const Node *op_out_node) {
+                                         return op_out_node == node;
+                                       }),
+                             op_node->outputs.end());
 
       // remove this node from the output op nodes.
       for (auto &out_op_node : node->outputs) {
-        out_op_node->inputs.erase(
-            remove_if(
-                out_op_node->inputs.begin(), out_op_node->inputs.end(),
-                [&node](const Node *op_in_node) { return op_in_node == node; }),
-            out_op_node->inputs.end());
+        out_op_node->inputs.erase(remove_if(out_op_node->inputs.begin(),
+                                            out_op_node->inputs.end(),
+                                            [&node](const Node *op_in_node) {
+                                              return op_in_node == node;
+                                            }),
+                                  out_op_node->inputs.end());
       }
 
       graph->RemoveNode(node);
@@ -94,78 +102,88 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
   ir::Node *FuseAdamOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
-      const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const {
+      const std::vector<ir::Node *> &adam_ops,
+      ir::Graph *graph) const {
     PADDLE_ENFORCE_GT(
-        adam_ops.size(), static_cast<size_t>(0),
+        adam_ops.size(),
+        static_cast<size_t>(0),
         platform::errors::InvalidArgument("No adam op in the graph."));
 
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
-    int op_role = BOOST_GET_CONST(
+    int op_role = PADDLE_GET_CONST(
         int,
         adam_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float beta1 = BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta1"));
-    float beta2 = BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta2"));
+    float beta1 = PADDLE_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta1"));
+    float beta2 = PADDLE_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta2"));
     float epsilon =
-        BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("epsilon"));
+        PADDLE_GET_CONST(float, adam_ops[0]->Op()->GetAttr("epsilon"));
     bool lazy_mode =
-        BOOST_GET_CONST(bool, adam_ops[0]->Op()->GetAttr("lazy_mode"));
-    int64_t min_row_size_to_use_multithread = BOOST_GET_CONST(
+        PADDLE_GET_CONST(bool, adam_ops[0]->Op()->GetAttr("lazy_mode"));
+    int64_t min_row_size_to_use_multithread = PADDLE_GET_CONST(
         int64_t, adam_ops[0]->Op()->GetAttr("min_row_size_to_use_multithread"));
     for (auto &adam_op : adam_ops) {
       PADDLE_ENFORCE_EQ(
-          beta1, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta1")),
+          beta1,
+          PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("beta1")),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(beta1) must be same, but there are two "
               "different "
               "value: %f, %f.",
-              beta1, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta1"))));
+              beta1,
+              PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("beta1"))));
       PADDLE_ENFORCE_EQ(
-          beta2, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta2")),
+          beta2,
+          PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("beta2")),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(beta2) must be same, but there are two "
               "different "
               "value: %f, %f.",
-              beta2, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta2"))));
+              beta2,
+              PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("beta2"))));
       PADDLE_ENFORCE_EQ(
-          epsilon, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("epsilon")),
+          epsilon,
+          PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("epsilon")),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(epsilon) must be same, but there are two "
               "different "
               "value: %f, %f.",
               epsilon,
-              BOOST_GET_CONST(float, adam_op->Op()->GetAttr("epsilon"))));
+              PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("epsilon"))));
       PADDLE_ENFORCE_EQ(
-          lazy_mode, BOOST_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode")),
+          lazy_mode,
+          PADDLE_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode")),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(lazy_mode) must be same, but there are two "
               "different "
               "value: %d, %d.",
               lazy_mode,
-              BOOST_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode"))));
+              PADDLE_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode"))));
       PADDLE_ENFORCE_EQ(
           min_row_size_to_use_multithread,
-          BOOST_GET_CONST(int64_t, adam_op->Op()->GetAttr(
-                                       "min_row_size_to_use_multithread")),
+          PADDLE_GET_CONST(
+              int64_t,
+              adam_op->Op()->GetAttr("min_row_size_to_use_multithread")),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(min_row_size_to_use_multithread) must be "
               "same, but there are two different value: %I64, %I64.",
               min_row_size_to_use_multithread,
-              BOOST_GET_CONST(
+              PADDLE_GET_CONST(
                   int64_t,
                   adam_op->Op()->GetAttr("min_row_size_to_use_multithread"))));
       PADDLE_ENFORCE_EQ(
           op_role,
-          BOOST_GET_CONST(int, adam_op->Op()->GetAttr(
-                                   OpProtoAndCheckerMaker::OpRoleAttrName())),
+          PADDLE_GET_CONST(
+              int,
+              adam_op->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(op_role) must be same, but there are two "
               "different "
               "value: %d, %d.",
               op_role,
-              BOOST_GET_CONST(int,
-                              adam_op->Op()->GetAttr(
-                                  OpProtoAndCheckerMaker::OpRoleAttrName()))));
+              PADDLE_GET_CONST(int,
+                               adam_op->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName()))));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
@@ -202,10 +220,12 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
                          const std::string &fused_var_name,
                          const std::vector<ir::Node *> &adam_ops,
                          ir::Graph *graph) const {
-    PADDLE_ENFORCE_EQ(beta_name.size(), adam_ops.size(),
+    PADDLE_ENFORCE_EQ(beta_name.size(),
+                      adam_ops.size(),
                       platform::errors::InvalidArgument(
                           "Beta name size(%d) must equal to adam op size(%d).",
-                          beta_name.size(), adam_ops.size()));
+                          beta_name.size(),
+                          adam_ops.size()));
     const std::string scale_op_name = "scale";
 
     // Get the scale_ops of dealing the adam's beta var.
@@ -214,79 +234,90 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     for (size_t i = 0; i < adam_ops.size(); ++i) {
       auto &beta_1_pow_name = beta_name[i];
       auto beta_pow_iter = std::find_if(
-          adam_ops[i]->inputs.begin(), adam_ops[i]->inputs.end(),
+          adam_ops[i]->inputs.begin(),
+          adam_ops[i]->inputs.end(),
           [&beta_name, &beta_1_pow_name](ir::Node *var_node) -> bool {
             return var_node->Var() &&
                    var_node->Var()->Name() == beta_1_pow_name;
           });
-      PADDLE_ENFORCE_NE(beta_pow_iter, adam_ops[i]->inputs.end(),
+      PADDLE_ENFORCE_NE(beta_pow_iter,
+                        adam_ops[i]->inputs.end(),
                         platform::errors::NotFound(
                             "Can not find %s in adam ops.", beta_1_pow_name));
 
       auto beta_pow_node = *beta_pow_iter;
       auto scale_op_iter = std::find_if(
-          beta_pow_node->outputs.begin(), beta_pow_node->outputs.end(),
+          beta_pow_node->outputs.begin(),
+          beta_pow_node->outputs.end(),
           [&scale_op_name](ir::Node *op_node) -> bool {
             return op_node->Op() && op_node->Op()->Type() == scale_op_name;
           });
       PADDLE_ENFORCE_NE(
-          scale_op_iter, beta_pow_node->outputs.end(),
+          scale_op_iter,
+          beta_pow_node->outputs.end(),
           platform::errors::NotFound("Can not find %s in beta pow node.",
                                      scale_op_name));
 
       scale_ops.emplace_back(*scale_op_iter);
     }
     PADDLE_ENFORCE_EQ(
-        scale_ops.size(), beta_name.size(),
+        scale_ops.size(),
+        beta_name.size(),
         platform::errors::PreconditionNotMet(
             "Beta name size(%d) must equal to scale ops size(%d).",
-            beta_name.size(), scale_ops.size()));
+            beta_name.size(),
+            scale_ops.size()));
     VLOG(6) << "The number of scale op is " << scale_ops.size() << ".";
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
-    int op_role = BOOST_GET_CONST(
+    int op_role = PADDLE_GET_CONST(
         int,
         scale_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float scale = BOOST_GET_CONST(float, scale_ops[0]->Op()->GetAttr("scale"));
-    float bias = BOOST_GET_CONST(float, scale_ops[0]->Op()->GetAttr("bias"));
+    float scale = PADDLE_GET_CONST(float, scale_ops[0]->Op()->GetAttr("scale"));
+    float bias = PADDLE_GET_CONST(float, scale_ops[0]->Op()->GetAttr("bias"));
     bool bias_after_scale =
-        BOOST_GET_CONST(bool, scale_ops[0]->Op()->GetAttr("bias_after_scale"));
+        PADDLE_GET_CONST(bool, scale_ops[0]->Op()->GetAttr("bias_after_scale"));
     for (auto &scale_op : scale_ops) {
       PADDLE_ENFORCE_EQ(
-          scale, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale")),
+          scale,
+          PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale")),
           platform::errors::PreconditionNotMet(
               "All scale Op's attr(scale) must be same, but there are two "
               "different "
               "value: %f, %f.",
-              scale, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale"))));
+              scale,
+              PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale"))));
       PADDLE_ENFORCE_EQ(
-          bias, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias")),
+          bias,
+          PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias")),
           platform::errors::PreconditionNotMet(
               "All scale Op's attr(bias) must be same, but there are two "
               "different "
               "value: %f, %f.",
-              bias, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias"))));
+              bias,
+              PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias"))));
       PADDLE_ENFORCE_EQ(
           bias_after_scale,
-          BOOST_GET_CONST(bool, scale_op->Op()->GetAttr("bias_after_scale")),
+          PADDLE_GET_CONST(bool, scale_op->Op()->GetAttr("bias_after_scale")),
           platform::errors::PreconditionNotMet(
               "All scale Op's attr(bias_after_scale) must be same, but there "
               "are two different value: %d, %d.",
               bias_after_scale,
-              BOOST_GET_CONST(bool,
-                              scale_op->Op()->GetAttr("bias_after_scale"))));
+              PADDLE_GET_CONST(bool,
+                               scale_op->Op()->GetAttr("bias_after_scale"))));
       PADDLE_ENFORCE_EQ(
           op_role,
-          BOOST_GET_CONST(int, scale_op->Op()->GetAttr(
-                                   OpProtoAndCheckerMaker::OpRoleAttrName())),
+          PADDLE_GET_CONST(int,
+                           scale_op->Op()->GetAttr(
+                               OpProtoAndCheckerMaker::OpRoleAttrName())),
           platform::errors::PreconditionNotMet(
               "All scale Op's attr(op_role) must be same, but there are two "
               "different "
               "value: %d, %d.",
               op_role,
-              BOOST_GET_CONST(int,
-                              scale_op->Op()->GetAttr(
-                                  OpProtoAndCheckerMaker::OpRoleAttrName()))));
+              PADDLE_GET_CONST(int,
+                               scale_op->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName()))));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have

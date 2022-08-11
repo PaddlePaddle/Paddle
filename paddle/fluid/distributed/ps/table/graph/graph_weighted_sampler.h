@@ -18,6 +18,7 @@
 #include <random>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/distributed/ps/table/graph/graph_edge.h"
 namespace paddle {
 namespace distributed {

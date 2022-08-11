@@ -21,14 +21,7 @@ from .datasets import UCIHousing  # noqa: F401
 from .datasets import WMT14  # noqa: F401
 from .datasets import WMT16  # noqa: F401
 
-__all__ = [ #noqa
-           'Conll05st',
-           'Imdb',
-           'Imikolov',
-           'Movielens',
-           'UCIHousing',
-           'WMT14',
-           'WMT16',
-           'ViterbiDecoder',
-           'viterbi_decode'
+__all__ = [  #noqa
+    'Conll05st', 'Imdb', 'Imikolov', 'Movielens', 'UCIHousing', 'WMT14',
+    'WMT16', 'ViterbiDecoder', 'viterbi_decode'
 ]

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -24,11 +25,21 @@ namespace operators {
 namespace math {
 
 template <class T>
-__global__ void im2col(const T* data_im, int num_outs, int im_height,
-                       int im_width, int dilation_h, int dilation_w,
-                       int filter_height, int filter_width, int stride_height,
-                       int stride_width, int padding_height, int padding_width,
-                       int col_height, int col_width, T* data_col,
+__global__ void im2col(const T* data_im,
+                       int num_outs,
+                       int im_height,
+                       int im_width,
+                       int dilation_h,
+                       int dilation_w,
+                       int filter_height,
+                       int filter_width,
+                       int stride_height,
+                       int stride_width,
+                       int padding_height,
+                       int padding_width,
+                       int col_height,
+                       int col_width,
+                       T* data_col,
                        const DataLayout data_layout) {
   int input_channels = num_outs / col_height / col_width;
   int channels_col = input_channels * filter_height * filter_width;
@@ -75,20 +86,25 @@ __global__ void im2col(const T* data_im, int num_outs, int im_height,
  *   [input_channels, filter_height, filter_width, output_height, output_width]
  */
 template <class DeviceContext, class T>
-class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, DeviceContext,
+class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+                    DeviceContext,
                     T> {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& im,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* col,
+                  const std::vector<int>& padding,
+                  framework::Tensor* col,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im.dims().size(), 3,
+    PADDLE_ENFORCE_EQ(im.dims().size(),
+                      3,
                       platform::errors::InvalidArgument(
                           "The dimension of tensor 'im' should be 3. But got "
                           "the dims of tensor 'im' is [%s].",
                           im.dims()));
-    PADDLE_ENFORCE_EQ(col->dims().size(), 5,
+    PADDLE_ENFORCE_EQ(col->dims().size(),
+                      5,
                       platform::errors::InvalidArgument(
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
@@ -115,20 +131,41 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, DeviceContext,
     int block_y = (blocks + 512 - 1) / 512;
     dim3 threads(num_thread, 1);
     dim3 grid(block_x, block_y);
-    im2col<T><<<grid, threads, 0, context.stream()>>>(
-        im.data<T>(), num_outputs, im_height, im_width, dilation[0],
-        dilation[1], filter_height, filter_width, stride[0], stride[1],
-        padding[0], padding[1], col_height, col_width, col->data<T>(),
-        data_layout);
+    im2col<T><<<grid, threads, 0, context.stream()>>>(im.data<T>(),
+                                                      num_outputs,
+                                                      im_height,
+                                                      im_width,
+                                                      dilation[0],
+                                                      dilation[1],
+                                                      filter_height,
+                                                      filter_width,
+                                                      stride[0],
+                                                      stride[1],
+                                                      padding[0],
+                                                      padding[1],
+                                                      col_height,
+                                                      col_width,
+                                                      col->data<T>(),
+                                                      data_layout);
   }
 };
 
 template <class T>
-__global__ void col2im(int n, const T* data_col, int im_height, int im_width,
-                       int dilation_h, int dilation_w, int filter_height,
-                       int filter_width, int stride_height, int stride_width,
-                       int padding_height, int padding_width, int col_height,
-                       int col_width, T* data_im,
+__global__ void col2im(int n,
+                       const T* data_col,
+                       int im_height,
+                       int im_width,
+                       int dilation_h,
+                       int dilation_w,
+                       int filter_height,
+                       int filter_width,
+                       int stride_height,
+                       int stride_width,
+                       int padding_height,
+                       int padding_width,
+                       int col_height,
+                       int col_width,
+                       T* data_im,
                        const DataLayout data_layout) {
   const int index =
       (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
@@ -186,20 +223,25 @@ __global__ void col2im(int n, const T* data_col, int im_height, int im_width,
  *   [input_channels, filter_height, filter_width, output_height, output_width]
  */
 template <class DeviceContext, class T>
-class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, DeviceContext,
+class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
+                    DeviceContext,
                     T> {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& col,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* im,
+                  const std::vector<int>& padding,
+                  framework::Tensor* im,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im->dims().size(), 3,
+    PADDLE_ENFORCE_EQ(im->dims().size(),
+                      3,
                       platform::errors::InvalidArgument(
                           "The dimension of tensor 'im' should be 3. But got "
                           "the dims of tensor 'im' is [%s].",
                           im->dims()));
-    PADDLE_ENFORCE_EQ(col.dims().size(), 5,
+    PADDLE_ENFORCE_EQ(col.dims().size(),
+                      5,
                       platform::errors::InvalidArgument(
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
@@ -220,16 +262,18 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, DeviceContext,
                        (dilation[0] * (filter_height - 1) + 1)) /
                               stride[0] +
                           1,
-                      col_height, platform::errors::InvalidArgument(
-                                      "Output_height and padding(padding_up, "
-                                      "padding_down) are inconsistent."));
-    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
-                       (dilation[1] * (filter_width - 1) + 1)) /
-                              stride[1] +
-                          1,
-                      col_width, platform::errors::InvalidArgument(
-                                     "col_width and padding(padding_left, "
-                                     "padding_right) are inconsistent."));
+                      col_height,
+                      platform::errors::InvalidArgument(
+                          "Output_height and padding(padding_up, "
+                          "padding_down) are inconsistent."));
+    PADDLE_ENFORCE_EQ(
+        (im_width + padding[1] + padding[3] -
+         (dilation[1] * (filter_width - 1) + 1)) /
+                stride[1] +
+            1,
+        col_width,
+        platform::errors::InvalidArgument("col_width and padding(padding_left, "
+                                          "padding_right) are inconsistent."));
 
     size_t num_kernels = im_channels * im_height * im_width;
 
@@ -245,37 +289,52 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, DeviceContext,
 
     // To avoid involving atomic operations, we will launch one kernel per
     // bottom dimension, and then in the kernel add up the top dimensions.
-    col2im<T><<<grid, threads, 0, context.stream()>>>(
-        num_kernels, col.data<T>(), im_height, im_width, dilation[0],
-        dilation[1], filter_height, filter_width, stride[0], stride[1],
-        padding[0], padding[1], col_height, col_width, im->data<T>(),
-        data_layout);
+    col2im<T><<<grid, threads, 0, context.stream()>>>(num_kernels,
+                                                      col.data<T>(),
+                                                      im_height,
+                                                      im_width,
+                                                      dilation[0],
+                                                      dilation[1],
+                                                      filter_height,
+                                                      filter_width,
+                                                      stride[0],
+                                                      stride[1],
+                                                      padding[0],
+                                                      padding[1],
+                                                      col_height,
+                                                      col_width,
+                                                      im->data<T>(),
+                                                      data_layout);
   }
 };
 
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CUDADeviceContext, float>;
+                             phi::GPUContext,
+                             float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CUDADeviceContext, double>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             phi::GPUContext, float>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             phi::GPUContext, double>;
+                             phi::GPUContext,
+                             double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CUDADeviceContext, float>;
+                             phi::GPUContext,
+                             float>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CUDADeviceContext, double>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             phi::GPUContext, float>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             phi::GPUContext, double>;
+                             phi::GPUContext,
+                             double>;
 
 template <class T>
-__global__ void im2colOCF(const T* im_data, int im_channels, int im_height,
-                          int im_width, int filter_height, int filter_width,
-                          int stride_height, int stride_width,
-                          int padding_height, int padding_width, int col_height,
-                          int col_width, T* col_data) {
+__global__ void im2colOCF(const T* im_data,
+                          int im_channels,
+                          int im_height,
+                          int im_width,
+                          int filter_height,
+                          int filter_width,
+                          int stride_height,
+                          int stride_width,
+                          int padding_height,
+                          int padding_width,
+                          int col_height,
+                          int col_width,
+                          T* col_data) {
   int swid = blockIdx.x;
   int shid = blockIdx.y;
   for (int channelid = threadIdx.z; channelid < im_channels;
@@ -308,20 +367,25 @@ __global__ void im2colOCF(const T* im_data, int im_channels, int im_height,
  *   [output_height, output_width, input_channels, filter_height, filter_width]
  */
 template <class DeviceContext, class T>
-class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF, DeviceContext,
+class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
+                    DeviceContext,
                     T> {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& im,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* col,
+                  const std::vector<int>& padding,
+                  framework::Tensor* col,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im.dims().size(), 3,
+    PADDLE_ENFORCE_EQ(im.dims().size(),
+                      3,
                       platform::errors::InvalidArgument(
                           "The dimension of tensor 'im' should be 3. But got "
                           "the dims of tensor 'im' is [%s].",
                           im.dims()));
-    PADDLE_ENFORCE_EQ(col->dims().size(), 5,
+    PADDLE_ENFORCE_EQ(col->dims().size(),
+                      5,
                       platform::errors::InvalidArgument(
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
@@ -354,19 +418,36 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF, DeviceContext,
     int block_dim_z = 1024 / block_dim_x / block_dim_y;
     dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
     dim3 grid(col_width, col_height);
-    im2colOCF<T><<<grid, threads, 0, context.stream()>>>(
-        im.data<T>(), im_channels, im_height, im_width, filter_height,
-        filter_width, stride[0], stride[1], padding[0], padding[1], col_height,
-        col_width, col->data<T>());
+    im2colOCF<T><<<grid, threads, 0, context.stream()>>>(im.data<T>(),
+                                                         im_channels,
+                                                         im_height,
+                                                         im_width,
+                                                         filter_height,
+                                                         filter_width,
+                                                         stride[0],
+                                                         stride[1],
+                                                         padding[0],
+                                                         padding[1],
+                                                         col_height,
+                                                         col_width,
+                                                         col->data<T>());
   }
 };
 
 template <class T>
-__global__ void col2imOCF(const T* col_data, int im_channels, int im_height,
-                          int im_width, int filter_height, int filter_width,
-                          int stride_height, int stride_width,
-                          int padding_height, int padding_width, int col_height,
-                          int col_width, T* im_data) {
+__global__ void col2imOCF(const T* col_data,
+                          int im_channels,
+                          int im_height,
+                          int im_width,
+                          int filter_height,
+                          int filter_width,
+                          int stride_height,
+                          int stride_width,
+                          int padding_height,
+                          int padding_width,
+                          int col_height,
+                          int col_width,
+                          T* im_data) {
   int swid = blockIdx.x;
   int shid = blockIdx.y;
   for (int channelid = threadIdx.z; channelid < im_channels;
@@ -399,20 +480,25 @@ __global__ void col2imOCF(const T* col_data, int im_channels, int im_height,
  *   [output_height, output_width, input_channels, filter_height, filter_width]
  */
 template <class DeviceContext, class T>
-class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF, DeviceContext,
+class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
+                    DeviceContext,
                     T> {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& col,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* im,
+                  const std::vector<int>& padding,
+                  framework::Tensor* im,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im->dims().size(), 3,
+    PADDLE_ENFORCE_EQ(im->dims().size(),
+                      3,
                       platform::errors::InvalidArgument(
                           "The dimension of tensor 'im' should be 3. But got "
                           "the dims of tensor 'im' is [%s].",
                           im->dims()));
-    PADDLE_ENFORCE_EQ(col.dims().size(), 5,
+    PADDLE_ENFORCE_EQ(col.dims().size(),
+                      5,
                       platform::errors::InvalidArgument(
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
@@ -430,16 +516,18 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF, DeviceContext,
                        (dilation[0] * (filter_height - 1) + 1)) /
                               stride[0] +
                           1,
-                      col_height, platform::errors::InvalidArgument(
-                                      "Output_height and padding(padding_up, "
-                                      "padding_down) are inconsistent."));
-    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
-                       (dilation[1] * (filter_width - 1) + 1)) /
-                              stride[1] +
-                          1,
-                      col_width, platform::errors::InvalidArgument(
-                                     "col_width and padding(padding_left, "
-                                     "padding_right) are inconsistent."));
+                      col_height,
+                      platform::errors::InvalidArgument(
+                          "Output_height and padding(padding_up, "
+                          "padding_down) are inconsistent."));
+    PADDLE_ENFORCE_EQ(
+        (im_width + padding[1] + padding[3] -
+         (dilation[1] * (filter_width - 1) + 1)) /
+                stride[1] +
+            1,
+        col_width,
+        platform::errors::InvalidArgument("col_width and padding(padding_left, "
+                                          "padding_right) are inconsistent."));
 
     int block_dim_x = 0;
     int block_dim_y = 0;
@@ -460,30 +548,35 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF, DeviceContext,
     int block_dim_z = 1024 / block_dim_x / block_dim_y;
     dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
     dim3 grid(col_width, col_height);
-    col2imOCF<T><<<grid, threads, 0, context.stream()>>>(
-        col.data<T>(), im_channels, im_height, im_width, filter_height,
-        filter_width, stride[0], stride[1], padding[0], padding[1], col_height,
-        col_width, im->data<T>());
+    col2imOCF<T><<<grid, threads, 0, context.stream()>>>(col.data<T>(),
+                                                         im_channels,
+                                                         im_height,
+                                                         im_width,
+                                                         filter_height,
+                                                         filter_width,
+                                                         stride[0],
+                                                         stride[1],
+                                                         padding[0],
+                                                         padding[1],
+                                                         col_height,
+                                                         col_width,
+                                                         im->data<T>());
   }
 };
 
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CUDADeviceContext, float>;
+                             phi::GPUContext,
+                             float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CUDADeviceContext, double>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             phi::GPUContext, float>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             phi::GPUContext, double>;
+                             phi::GPUContext,
+                             double>;
 
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CUDADeviceContext, float>;
+                             phi::GPUContext,
+                             float>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CUDADeviceContext, double>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             phi::GPUContext, float>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             phi::GPUContext, double>;
+                             phi::GPUContext,
+                             double>;
 
 }  // namespace math
 }  // namespace operators

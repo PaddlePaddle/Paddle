@@ -17,13 +17,11 @@
 namespace phi {
 
 KernelSignature EighGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("eigh_grad",
-                         {"Eigenvalues",
-                          "Eigenvectors",
-                          GradVarName("Eigenvalues"),
-                          GradVarName("Eigenvectors")},
-                         {},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "eigh_grad",
+      {"Eigenvalues", "Eigenvectors", "Eigenvalues@GRAD", "Eigenvectors@GRAD"},
+      {},
+      {"X@GRAD"});
 }
 
 }  // namespace phi

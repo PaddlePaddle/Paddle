@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/details/build_strategy.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -23,8 +25,6 @@
 #include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
 #include "gtest/gtest_pred_impl.h"
-
-#include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
@@ -59,7 +59,8 @@ class SumOpWithKernel : public OperatorWithKernel {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(sum, paddle::framework::SumOpWithKernel,
+REGISTER_OP_WITHOUT_GRADIENT(sum,
+                             paddle::framework::SumOpWithKernel,
                              paddle::framework::SumOpMaker);
 
 namespace paddle {
@@ -93,11 +94,17 @@ void BuildStrategyApply(BuildStrategy *build_strategy, ir::Graph *graph) {
   platform::BKCLCommunicator ctxs;
 #endif
 
-  build_strategy->Apply(graph, places, loss_name, scopes, 1,
+  build_strategy->Apply(graph,
+                        places,
+                        loss_name,
+                        scopes,
+                        1,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-                        device, &ctxs);
+                        device,
+                        &ctxs);
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-                        device, &ctxs);
+                        device,
+                        &ctxs);
 #else
                         device);
 #endif

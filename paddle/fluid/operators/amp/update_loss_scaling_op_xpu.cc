@@ -13,12 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include <cstring>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -36,15 +37,18 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
     const auto xs = ctx.MultiInput<framework::Tensor>("X");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
     const auto* found_inf = ctx.Input<Tensor>("FoundInfinite");
-    PADDLE_ENFORCE_EQ(found_inf->numel(), 1,
+    PADDLE_ENFORCE_EQ(found_inf->numel(),
+                      1,
                       platform::errors::InvalidArgument(
                           "FoundInfinite must has only one element."));
     const bool* found_inf_data = found_inf->data<bool>();
     bool cpu_found_inf_data = false;
     if (platform::is_xpu_place(found_inf->place())) {
       memory::Copy(platform::CPUPlace(),
-                   static_cast<void*>(&cpu_found_inf_data), found_inf->place(),
-                   static_cast<const void*>(found_inf_data), sizeof(bool));
+                   static_cast<void*>(&cpu_found_inf_data),
+                   found_inf->place(),
+                   static_cast<const void*>(found_inf_data),
+                   sizeof(bool));
     } else {
       cpu_found_inf_data = (*found_inf_data);
     }
@@ -57,12 +61,16 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
         VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
         int r = 0;
         r = xpu::constant(dev_ctx.x_context(),
-                          reinterpret_cast<XPUTyp*>(out_data), num,
+                          reinterpret_cast<XPUTyp*>(out_data),
+                          num,
                           XPUTyp(0.0));
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(constant) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_EQ(
+            r,
+            XPU_SUCCESS,
+            platform::errors::External("XPU API(constant) return wrong "
+                                       "value[%d %s]",
+                                       r,
+                                       XPUAPIErrorMsg[r]));
       }
     }
     const bool stop_update = ctx.Attr<bool>("stop_update");
@@ -95,26 +103,31 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
     int cpu_good_in_data;
     MPDType cpu_pre_loss_scaling_data;
     if (platform::is_xpu_place(bad_in->place())) {
-      memory::Copy(platform::CPUPlace(), static_cast<void*>(&cpu_bad_in_data),
-                   bad_in->place(), static_cast<const void*>(bad_in_data),
+      memory::Copy(platform::CPUPlace(),
+                   static_cast<void*>(&cpu_bad_in_data),
+                   bad_in->place(),
+                   static_cast<const void*>(bad_in_data),
                    sizeof(int));
     } else {
       cpu_bad_in_data = (*bad_in_data);
     }
 
     if (platform::is_xpu_place(good_in->place())) {
-      memory::Copy(platform::CPUPlace(), static_cast<void*>(&cpu_good_in_data),
-                   good_in->place(), static_cast<const void*>(good_in_data),
+      memory::Copy(platform::CPUPlace(),
+                   static_cast<void*>(&cpu_good_in_data),
+                   good_in->place(),
+                   static_cast<const void*>(good_in_data),
                    sizeof(int));
     } else {
       cpu_good_in_data = (*good_in_data);
     }
 
     if (platform::is_xpu_place(pre_loss_scaling->place())) {
-      memory::Copy(
-          platform::CPUPlace(), static_cast<void*>(&cpu_pre_loss_scaling_data),
-          pre_loss_scaling->place(),
-          static_cast<const void*>(pre_loss_scaling_data), sizeof(MPDType));
+      memory::Copy(platform::CPUPlace(),
+                   static_cast<void*>(&cpu_pre_loss_scaling_data),
+                   pre_loss_scaling->place(),
+                   static_cast<const void*>(pre_loss_scaling_data),
+                   sizeof(MPDType));
     } else {
       cpu_pre_loss_scaling_data = (*pre_loss_scaling_data);
     }
@@ -145,12 +158,20 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
       }
     }
     // copy to device
-    memory::Copy(dev_ctx.GetPlace(), bad_out_data, platform::CPUPlace(),
-                 &cpu_bad_out_data, sizeof(int));
-    memory::Copy(dev_ctx.GetPlace(), good_out_data, platform::CPUPlace(),
-                 &cpu_good_out_data, sizeof(int));
-    memory::Copy(dev_ctx.GetPlace(), updated_loss_scaling_data,
-                 platform::CPUPlace(), &cpu_updated_loss_scaling_data,
+    memory::Copy(dev_ctx.GetPlace(),
+                 bad_out_data,
+                 platform::CPUPlace(),
+                 &cpu_bad_out_data,
+                 sizeof(int));
+    memory::Copy(dev_ctx.GetPlace(),
+                 good_out_data,
+                 platform::CPUPlace(),
+                 &cpu_good_out_data,
+                 sizeof(int));
+    memory::Copy(dev_ctx.GetPlace(),
+                 updated_loss_scaling_data,
+                 platform::CPUPlace(),
+                 &cpu_updated_loss_scaling_data,
                  sizeof(MPDType));
   }
 };

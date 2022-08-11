@@ -173,7 +173,13 @@ def pure_fp16_initialize(models):
                             paddle.nn.BatchNorm2D, paddle.nn.BatchNorm3D,
                             paddle.nn.LayerNorm, paddle.nn.SyncBatchNorm)):
                 continue
-            layer._to_impl(dtype='float16', include_sublayers=False)
+            if isinstance(layer, (paddle.incubate.nn.FusedFeedForward,
+                                  paddle.incubate.nn.FusedMultiHeadAttention)):
+                layer._amp_decorate(dtype='float16')
+                continue
+            layer._to_impl(dtype='float16',
+                           include_sublayers=False,
+                           floating_only=True)
     return models
 
 
@@ -181,8 +187,8 @@ def check_models(models):
     for model in models:
         if not isinstance(model, paddle.nn.Layer):
             raise RuntimeError(
-                "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}.".
-                format(type(model)))
+                "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}."
+                .format(type(model)))
         if isinstance(model, paddle.DataParallel):
             raise RuntimeError(
                 "For distributed AMP training, you should first use paddle.amp.decorate() to decotate origin model, and then call paddle.DataParallel get distributed model."
@@ -191,11 +197,12 @@ def check_models(models):
 
 def check_optimizers(optimizers):
     for optimizer in optimizers:
-        if not isinstance(optimizer, (paddle.optimizer.Optimizer,
-                                      paddle.fluid.optimizer.Optimizer)):
+        if not isinstance(
+                optimizer,
+            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
             raise RuntimeError(
-                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}.".
-                format(type(optimizer)))
+                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}."
+                .format(type(optimizer)))
 
 
 @signature_safe_contextmanager
@@ -273,12 +280,13 @@ def amp_guard(enable=True,
     # check device_type:
     # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, mlu for float16, npu for float16.
     # Maybe we will support cpu for bfloat16.
-    if enable and not (tracer._expected_place.is_gpu_place() or
-                       tracer._expected_place.is_xpu_place() or
-                       tracer._expected_place.is_mlu_place() or
-                       tracer._expected_place.is_npu_place()):
+    if enable and not (tracer._expected_place.is_gpu_place()
+                       or tracer._expected_place.is_xpu_place()
+                       or tracer._expected_place.is_mlu_place()
+                       or tracer._expected_place.is_npu_place()
+                       or tracer._expected_place.is_custom_place()):
         warnings.warn(
-            'amp_guard can only be enabled on CUDAPlace, XPUPlace, MLUPlace, and NPUPlace, current place is %s, so it makes no effect.'
+            'amp_guard can only be enabled on CUDAPlace, XPUPlace, MLUPlace, NPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place)
         enable = False
     # For npu:
@@ -292,6 +300,10 @@ def amp_guard(enable=True,
     # For mlu:
     if tracer._expected_place.is_mlu_place() and (dtype == 'bfloat16'):
         warnings.warn('MLUPlace only support float16 amp.')
+        enable = False
+    # For custom device:
+    if tracer._expected_place.is_custom_place() and (dtype == 'bfloat16'):
+        warnings.warn('CustomPlace only support float16 amp.')
         enable = False
     # For gpu float16: Compute Capability should >= 7.
     # For gpu bfloat16: Compute Capability should >= 8 & CUDA Version should >= 11.
@@ -379,6 +391,7 @@ def amp_guard(enable=True,
 
 
 class StateDictHook(object):
+
     def __init__(self, save_dtype):
         self._save_dtype = save_dtype
 
@@ -386,9 +399,10 @@ class StateDictHook(object):
         for key in state_dict:
             param = state_dict[key]
             with paddle.fluid.dygraph.guard():
-                param_applied = paddle.cast(param, self._save_dtype)
-                param_applied.name = param.name
-                state_dict[key] = param_applied
+                if paddle.is_floating_point(param):
+                    param_applied = paddle.cast(param, self._save_dtype)
+                    param_applied.name = param.name
+                    state_dict[key] = param_applied
 
 
 @dygraph_only
@@ -487,8 +501,9 @@ def amp_decorate(models,
     if optimizers is not None:
         # check optimizers
         optimizers_is_list = False
-        if isinstance(optimizers, (paddle.optimizer.Optimizer,
-                                   paddle.fluid.optimizer.Optimizer)):
+        if isinstance(
+                optimizers,
+            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
             optimizers_is_list = False
             optimizers = [optimizers]
             check_optimizers(optimizers)
@@ -499,7 +514,7 @@ def amp_decorate(models,
             raise TypeError(
                 "optimizers must be either a single optimizer or a list of optimizers."
             )
-        # supprot master_weight    
+        # supprot master_weight
         for idx_opt in range(len(optimizers)):
             if hasattr(optimizers[idx_opt], '_multi_precision'):
                 if master_weight is False:

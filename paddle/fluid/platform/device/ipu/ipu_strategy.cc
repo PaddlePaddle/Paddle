@@ -19,7 +19,8 @@ namespace {
 template <typename Value, typename Lambda>
 void RegisterSetter(
     std::map<std::string, std::function<void(Value)>>& options,  // NOLINT
-    const std::string& name, Lambda setter) {
+    const std::string& name,
+    Lambda setter) {
   options[name] = setter;
 }
 
@@ -27,10 +28,26 @@ template <typename Value, typename Lambda>
 void RegisterGetter(
     std::map<std::string, std::function<Value()>>& options,  // NOLINT
     std::map<std::string, std::string>& options_type,        // NOLINT
-    const std::string& name, const std::string& type_str, Lambda getter) {
+    const std::string& name,
+    const std::string& type_str,
+    Lambda getter) {
   options[name] = getter;
   options_type[name] = type_str;
 }
+
+struct DefaultCompilationProgressLogger {
+  void operator()(int progress, int total) {
+    if (progress != progress_ && progress % log_interval_ == 0) {
+      progress_ = progress;
+      VLOG(1) << "Graph compile progress: " << progress << "%";
+    }
+  }
+
+  int log_interval_ = 10;
+  int progress_ = 0;
+  // default total progress
+  int total_ = 100;
+};
 
 }  // namespace
 
@@ -41,30 +58,32 @@ namespace ipu {
 IpuStrategy::IpuStrategy() {
 #define ADD_BOOL_OPTION(name)                                             \
   RegisterSetter(bool_options, #name, [&](bool value) { name = value; }); \
-  RegisterGetter(options_getter, options_type, #name, "bool",             \
-                 [&]() { return std::to_string(name); })
+  RegisterGetter(options_getter, options_type, #name, "bool", [&]() {     \
+    return std::to_string(name);                                          \
+  })
 
-#define ADD_UINT64_OPTION(name)                                 \
-  RegisterSetter(uint64_options, #name,                         \
-                 [&](std::uint64_t value) { name = value; });   \
-  RegisterGetter(options_getter, options_type, #name, "uint64", \
-                 [&]() { return std::to_string(name); })
+#define ADD_UINT64_OPTION(name)                                           \
+  RegisterSetter(                                                         \
+      uint64_options, #name, [&](std::uint64_t value) { name = value; }); \
+  RegisterGetter(options_getter, options_type, #name, "uint64", [&]() {   \
+    return std::to_string(name);                                          \
+  })
 
 #define ADD_DOUBLE_OPTION(name)                                               \
   RegisterSetter(double_options, #name, [&](double value) { name = value; }); \
-  RegisterGetter(options_getter, options_type, #name, "double",               \
-                 [&]() { return std::to_string(name); })
+  RegisterGetter(options_getter, options_type, #name, "double", [&]() {       \
+    return std::to_string(name);                                              \
+  })
 
-#define ADD_STRING_OPTION(name)                                    \
-  RegisterSetter(string_options, #name,                            \
-                 [&](const std::string& value) { name = value; }); \
-  RegisterGetter(options_getter, options_type, #name, "string",    \
-                 [&]() { return name; })
+#define ADD_STRING_OPTION(name)                                                \
+  RegisterSetter(                                                              \
+      string_options, #name, [&](const std::string& value) { name = value; }); \
+  RegisterGetter(                                                              \
+      options_getter, options_type, #name, "string", [&]() { return name; })
 
   ADD_BOOL_OPTION(is_training);
   ADD_BOOL_OPTION(need_avg_shard);
   ADD_BOOL_OPTION(enable_fp16);
-  ADD_BOOL_OPTION(transfer_cast_op);
   ADD_BOOL_OPTION(use_no_bias_optimizer);
   ADD_BOOL_OPTION(enable_distribution);
   ADD_BOOL_OPTION(scaled_optimizer_state);
@@ -72,6 +91,7 @@ IpuStrategy::IpuStrategy() {
   ADD_UINT64_OPTION(batches_per_step);
   ADD_UINT64_OPTION(micro_batch_size);
   ADD_UINT64_OPTION(random_seed);
+  ADD_UINT64_OPTION(tiles_per_ipu);
   ADD_DOUBLE_OPTION(available_memory_proportion);
   ADD_DOUBLE_OPTION(loss_scaling);
   ADD_DOUBLE_OPTION(max_weight_norm);
@@ -81,16 +101,21 @@ IpuStrategy::IpuStrategy() {
   ADD_STRING_OPTION(onnx_dump_path);
   ADD_STRING_OPTION(weight_decay_mode);
 
+  // dy2static support
+  ADD_DOUBLE_OPTION(lr);
+  ADD_BOOL_OPTION(is_dynamic);
+
 #undef ADD_STRING_OPTION
 #undef ADD_DOUBLE_OPTION
 #undef ADD_UINT64_OPTION
 #undef ADD_BOOL_OPTION
 
-#define ADD_RUNTIME_BOOL_OPTION(name, aliased_name)                          \
-  RegisterSetter(bool_options, #name,                                        \
-                 [&](bool value) { runtime_options.aliased_name = value; }); \
-  RegisterGetter(options_getter, options_type, #name, "bool", [&]() {        \
-    return std::to_string(runtime_options.aliased_name);                     \
+#define ADD_RUNTIME_BOOL_OPTION(name, aliased_name)                   \
+  RegisterSetter(bool_options, #name, [&](bool value) {               \
+    runtime_options.aliased_name = value;                             \
+  });                                                                 \
+  RegisterGetter(options_getter, options_type, #name, "bool", [&]() { \
+    return std::to_string(runtime_options.aliased_name);              \
   })
 
   ADD_RUNTIME_BOOL_OPTION(runtime_options.enable_eval, enable_eval);
@@ -100,7 +125,8 @@ IpuStrategy::IpuStrategy() {
 #define ADD_POPART_ENUM_OPTION_ALIAS(name, aliased_name, EnumType)        \
   RegisterSetter(uint64_options, #name, [&](std::uint64_t value) {        \
     PADDLE_ENFORCE_LT(                                                    \
-        value, static_cast<std::uint64_t>(popart::EnumType::N),           \
+        value,                                                            \
+        static_cast<std::uint64_t>(popart::EnumType::N),                  \
         errors::InvalidArgument("Value for %s out of range", #EnumType)); \
     popart_options.aliased_name = static_cast<popart::EnumType>(value);   \
   });                                                                     \
@@ -109,11 +135,12 @@ IpuStrategy::IpuStrategy() {
         static_cast<std::uint64_t>(popart_options.aliased_name));         \
   })
 
-#define ADD_POPART_BOOL_OPTION_ALIAS(name, aliased_name)                    \
-  RegisterSetter(bool_options, #name,                                       \
-                 [&](bool value) { popart_options.aliased_name = value; }); \
-  RegisterGetter(options_getter, options_type, #name, "bool", [&]() {       \
-    return std::to_string(popart_options.aliased_name);                     \
+#define ADD_POPART_BOOL_OPTION_ALIAS(name, aliased_name)              \
+  RegisterSetter(bool_options, #name, [&](bool value) {               \
+    popart_options.aliased_name = value;                              \
+  });                                                                 \
+  RegisterGetter(options_getter, options_type, #name, "bool", [&]() { \
+    return std::to_string(popart_options.aliased_name);               \
   })
 
 #define ADD_POPART_UINT64_OPTION_ALIAS(name, aliased_name)              \
@@ -124,19 +151,21 @@ IpuStrategy::IpuStrategy() {
     return std::to_string(popart_options.aliased_name);                 \
   })
 
-#define ADD_POPART_DOUBLE_OPTION_ALIAS(name, aliased_name)                    \
-  RegisterSetter(double_options, #name,                                       \
-                 [&](double value) { popart_options.aliased_name = value; }); \
-  RegisterGetter(options_getter, options_type, #name, "double", [&]() {       \
-    return std::to_string(popart_options.aliased_name);                       \
+#define ADD_POPART_DOUBLE_OPTION_ALIAS(name, aliased_name)              \
+  RegisterSetter(double_options, #name, [&](double value) {             \
+    popart_options.aliased_name = value;                                \
+  });                                                                   \
+  RegisterGetter(options_getter, options_type, #name, "double", [&]() { \
+    return std::to_string(popart_options.aliased_name);                 \
   })
 
 #define ADD_POPART_STRING_OPTION_ALIAS(name, aliased_name)              \
   RegisterSetter(string_options, #name, [&](const std::string& value) { \
     popart_options.aliased_name = value;                                \
   });                                                                   \
-  RegisterGetter(options_getter, options_type, #name, "string",         \
-                 [&]() { return popart_options.aliased_name; })
+  RegisterGetter(options_getter, options_type, #name, "string", [&]() { \
+    return popart_options.aliased_name;                                 \
+  })
 
   ADD_POPART_ENUM_OPTION_ALIAS(autodiff_settings.stitch_strategy,
                                autodiffSettings.stitchStrategy,
@@ -150,14 +179,14 @@ IpuStrategy::IpuStrategy() {
   ADD_POPART_ENUM_OPTION_ALIAS(batch_serialization_settings.batch_schedule,
                                batchSerializationSettings.batchSchedule,
                                BatchSerializationBatchSchedule);
-  ADD_POPART_ENUM_OPTION_ALIAS(auto_recomputation, autoRecomputation,
-                               RecomputationType);
-  ADD_POPART_ENUM_OPTION_ALIAS(merge_var_update, mergeVarUpdate,
-                               MergeVarUpdateType);
-  ADD_POPART_ENUM_OPTION_ALIAS(virtual_graph_mode, virtualGraphMode,
-                               VirtualGraphMode);
-  ADD_POPART_ENUM_OPTION_ALIAS(synthetic_data_mode, syntheticDataMode,
-                               SyntheticDataMode);
+  ADD_POPART_ENUM_OPTION_ALIAS(
+      auto_recomputation, autoRecomputation, RecomputationType);
+  ADD_POPART_ENUM_OPTION_ALIAS(
+      merge_var_update, mergeVarUpdate, MergeVarUpdateType);
+  ADD_POPART_ENUM_OPTION_ALIAS(
+      virtual_graph_mode, virtualGraphMode, VirtualGraphMode);
+  ADD_POPART_ENUM_OPTION_ALIAS(
+      synthetic_data_mode, syntheticDataMode, SyntheticDataMode);
   ADD_POPART_ENUM_OPTION_ALIAS(subgraph_copying_strategy,
                                subgraphCopyingStrategy,
                                SubgraphCopyingStrategy);
@@ -166,7 +195,8 @@ IpuStrategy::IpuStrategy() {
                                ReductionType);
   ADD_POPART_ENUM_OPTION_ALIAS(
       mean_accumulation_and_replication_reduction_strategy,
-      meanAccumulationAndReplicationReductionStrategy, MeanReductionStrategy);
+      meanAccumulationAndReplicationReductionStrategy,
+      MeanReductionStrategy);
 
   ADD_POPART_STRING_OPTION_ALIAS(log_dir, logDir);
   ADD_POPART_STRING_OPTION_ALIAS(cache_path, cachePath);
@@ -290,14 +320,14 @@ IpuStrategy::IpuStrategy() {
 #undef ADD_POPART_BOOL_OPTION_ALIAS
 #undef ADD_POPART_ENUM_OPTION_ALIAS
 
-  RegisterGetter(vector_options_getter, options_type, "custom_ops", "vector",
-                 [&]() {
-                   std::vector<std::string> res;
-                   for (auto x : custom_ops) {
-                     res.push_back(x.repr());
-                   }
-                   return res;
-                 });
+  RegisterGetter(
+      vector_options_getter, options_type, "custom_ops", "vector", [&]() {
+        std::vector<std::string> res;
+        for (auto x : custom_ops) {
+          res.push_back(x.repr());
+        }
+        return res;
+      });
 
   RegisterSetter(bool_options, "enable_manual_shard", [&](bool value) {
     if (value) {
@@ -307,17 +337,19 @@ IpuStrategy::IpuStrategy() {
     }
   });
 
-  RegisterGetter(options_getter, options_type, "enable_manual_shard", "bool",
-                 [&]() {
-                   return std::to_string(popart_options.virtualGraphMode ==
-                                         popart::VirtualGraphMode::Manual);
-                 });
+  RegisterGetter(
+      options_getter, options_type, "enable_manual_shard", "bool", [&]() {
+        return std::to_string(popart_options.virtualGraphMode ==
+                              popart::VirtualGraphMode::Manual);
+      });
 
   RegisterSetter(bool_options, "enable_half_partial", [&](bool value) {
     if (value) {
       popart_options.partialsTypeMatMuls = "half";
+      popart_options.convolutionOptions.insert({{"partialsType", "half"}});
     } else {
       popart_options.partialsTypeMatMuls = "float";
+      popart_options.convolutionOptions.insert({{"partialsType", "float"}});
     }
   });
 
@@ -326,23 +358,30 @@ IpuStrategy::IpuStrategy() {
         return std::to_string(popart_options.partialsTypeMatMuls == "half");
       });
 
-  RegisterSetter(
-      container_options, "dot_checks",
-      [&](const std::pair<std::string, std::string>& p) {
-        std::uint64_t value = std::stoul(p.first);
-        popart_options.dotChecks.insert(static_cast<popart::DotCheck>(value));
-      });
+  RegisterSetter(container_options,
+                 "dot_checks",
+                 [&](const std::pair<std::string, std::string>& p) {
+                   std::vector<std::string> valid_dot{
+                       "Fwd0", "Fwd1", "Bwd0", "PreAlias", "Final"};
+                   if (std::find(valid_dot.begin(), valid_dot.end(), p.first) ==
+                       valid_dot.end()) {
+                     PADDLE_THROW(platform::errors::InvalidArgument(
+                         "Unknown dot check: %s", p.first));
+                   }
+                   popart_options.dotChecks.insert(p.first);
+                 });
 
   RegisterGetter(
       vector_options_getter, options_type, "dot_checks", "vector", [&]() {
         std::vector<std::string> res;
         for (auto x : popart_options.dotChecks) {
-          res.push_back(std::to_string(static_cast<std::uint64_t>(x)));
+          res.push_back(x);
         }
         return res;
       });
 
-  RegisterSetter(container_options, "hardware_instrumentations",
+  RegisterSetter(container_options,
+                 "hardware_instrumentations",
                  [&](const std::pair<std::string, std::string>& p) {
                    std::uint64_t value = std::stoul(p.first);
                    popart_options.hardwareInstrumentations.insert(
@@ -350,8 +389,11 @@ IpuStrategy::IpuStrategy() {
                  });
 
   RegisterGetter(
-      vector_options_getter, options_type, "hardware_instrumentations",
-      "vector", [&]() {
+      vector_options_getter,
+      options_type,
+      "hardware_instrumentations",
+      "vector",
+      [&]() {
         std::vector<std::string> res;
         for (auto x : popart_options.hardwareInstrumentations) {
           res.push_back(std::to_string(static_cast<std::uint64_t>(x)));
@@ -359,59 +401,79 @@ IpuStrategy::IpuStrategy() {
         return res;
       });
 
-  RegisterSetter(container_options, "custom_codelets",
+  RegisterSetter(container_options,
+                 "custom_codelets",
                  [&](const std::pair<std::string, std::string>& p) {
                    popart_options.customCodelets.push_back(p.first);
                  });
 
-  RegisterGetter(vector_options_getter, options_type, "custom_codelets",
-                 "vector", [&]() {
-                   std::vector<std::string> res;
-                   for (auto x : popart_options.customCodelets) {
-                     res.push_back(x);
-                   }
-                   return res;
-                 });
+  RegisterGetter(
+      vector_options_getter, options_type, "custom_codelets", "vector", [&]() {
+        std::vector<std::string> res;
+        for (auto x : popart_options.customCodelets) {
+          res.push_back(x);
+        }
+        return res;
+      });
 
-  RegisterSetter(container_options, "engine_options",
+  RegisterSetter(container_options,
+                 "engine_options",
                  [&](const std::pair<std::string, std::string>& p) {
                    popart_options.engineOptions.emplace(p);
                  });
 
-  RegisterGetter(map_options_getter, options_type, "engine_options", "map",
-                 [&]() { return popart_options.engineOptions; });
+  RegisterGetter(
+      map_options_getter, options_type, "engine_options", "map", [&]() {
+        return popart_options.engineOptions;
+      });
 
-  RegisterSetter(container_options, "report_options",
+  RegisterSetter(container_options,
+                 "report_options",
                  [&](const std::pair<std::string, std::string>& p) {
                    popart_options.reportOptions.emplace(p);
                  });
 
-  RegisterGetter(map_options_getter, options_type, "report_options", "map",
-                 [&]() { return popart_options.reportOptions; });
+  RegisterGetter(
+      map_options_getter, options_type, "report_options", "map", [&]() {
+        return popart_options.reportOptions;
+      });
 
-  RegisterSetter(container_options, "convolution_options",
+  RegisterSetter(container_options,
+                 "convolution_options",
                  [&](const std::pair<std::string, std::string>& p) {
                    popart_options.convolutionOptions.emplace(p);
                  });
 
-  RegisterGetter(map_options_getter, options_type, "convolution_options", "map",
-                 [&]() { return popart_options.convolutionOptions; });
+  RegisterGetter(
+      map_options_getter, options_type, "convolution_options", "map", [&]() {
+        return popart_options.convolutionOptions;
+      });
 
-  RegisterSetter(container_options, "lstm_options",
+  RegisterSetter(container_options,
+                 "lstm_options",
                  [&](const std::pair<std::string, std::string>& p) {
                    popart_options.lstmOptions.emplace(p);
                  });
 
-  RegisterGetter(map_options_getter, options_type, "lstm_options", "map",
-                 [&]() { return popart_options.lstmOptions; });
+  RegisterGetter(
+      map_options_getter, options_type, "lstm_options", "map", [&]() {
+        return popart_options.lstmOptions;
+      });
 
-  RegisterSetter(container_options, "gcl_options",
+  RegisterSetter(container_options,
+                 "gcl_options",
                  [&](const std::pair<std::string, std::string>& p) {
                    popart_options.gclOptions.emplace(p);
                  });
 
-  RegisterGetter(map_options_getter, options_type, "gcl_options", "map",
-                 [&]() { return popart_options.gclOptions; });
+  RegisterGetter(map_options_getter, options_type, "gcl_options", "map", [&]() {
+    return popart_options.gclOptions;
+  });
+
+  // Default options
+
+  // Can also be set as a custom logger in python, like using tqdm
+  popart_options.compilationProgressLogger = DefaultCompilationProgressLogger();
 }
 
 void IpuStrategy::AddBoolOption(const std::string& option, bool value) {
@@ -434,15 +496,19 @@ void IpuStrategy::AddStringOption(const std::string& option,
 
 void IpuStrategy::InsertStringOption(const std::string& option,
                                      const std::string& value) {
-  set(option, std::pair<std::string, std::string>(value, ""), container_options,
+  set(option,
+      std::pair<std::string, std::string>(value, ""),
+      container_options,
       "vector");
 }
 
 void IpuStrategy::InsertStringPairOption(const std::string& option,
                                          const std::string& key,
                                          const std::string& value) {
-  set(option, std::pair<std::string, std::string>(key, value),
-      container_options, "map");
+  set(option,
+      std::pair<std::string, std::string>(key, value),
+      container_options,
+      "map");
 }
 
 void IpuStrategy::SetTensorLocation(const std::string& tensor,
@@ -496,6 +562,21 @@ void IpuStrategy::SetTensorLocation(const std::string& tensor,
   }
 }
 
+void IpuStrategy::SetReplicatedCollectivesSettings(const std::string& opt,
+                                                   bool value) {
+  VLOG(10) << "Set Replica Setting " << opt << " to " << value;
+  if (opt == "prepare_schedule_for_merging_collectives") {
+    popart_options.replicatedCollectivesSettings
+        .prepareScheduleForMergingCollectives = value;
+  } else if (opt == "merge_all_reduce_collectives") {
+    popart_options.replicatedCollectivesSettings.mergeAllReduceCollectives =
+        value;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Unknown option ' %s' for replicated collectives settings", opt));
+  }
+}
+
 void IpuStrategy::SetAccumulateOuterFragmentSettings(
     const std::uint64_t& schedule, const std::vector<int>& values) {
   VLOG(10) << "SetAccumulateOuterFragmentSettings schedule:" << schedule;
@@ -507,10 +588,16 @@ void IpuStrategy::SetAccumulateOuterFragmentSettings(
 
 void IpuStrategy::AddCustomOp(const std::string& paddle_op,
                               const std::string& popart_op,
-                              const std::string& domain, int version) {
+                              const std::string& domain,
+                              int version) {
   LOG(INFO) << "IpuStrategy add custom op: " << paddle_op;
   custom_ops.push_back(
       IpuCustomOpIdentifier(paddle_op, popart_op, domain, version));
+}
+
+void IpuStrategy::SetCompilationProgressLogger(
+    const std::function<void(int, int)>& logger) {
+  popart_options.compilationProgressLogger = logger;
 }
 
 std::string IpuStrategy::GetOption(const std::string& option) {

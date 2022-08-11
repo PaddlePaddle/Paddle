@@ -19,6 +19,8 @@ import numpy as np
 from op_test import OpTest, randomize_probability
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import os
+import tempfile
 
 
 class TestLoadOp(unittest.TestCase):
@@ -26,6 +28,7 @@ class TestLoadOp(unittest.TestCase):
     """
 
     def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
         self.ones = np.ones((4, 4)).astype('float32')
         main_prog = fluid.Program()
         start_prog = fluid.Program()
@@ -40,20 +43,26 @@ class TestLoadOp(unittest.TestCase):
                         self.ones)))
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
-        fluid.io.save_persistables(
-            exe, dirname="./model", main_program=main_prog)
+        fluid.io.save_persistables(exe,
+                                   dirname=os.path.join(self.temp_dir.name,
+                                                        "./model"),
+                                   main_program=main_prog)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_load(self):
         main_prog = fluid.Program()
         start_prog = fluid.Program()
         with fluid.program_guard(main_prog, start_prog):
             var = layers.create_tensor(dtype='float32')
-            layers.load(var, file_path='./model/w')
+            layers.load(var,
+                        file_path=os.path.join(self.temp_dir.name, './model/w'))
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
         ret = exe.run(main_prog, fetch_list=[var.name])
-        self.assertTrue(np.array_equal(self.ones, ret[0]))
+        np.testing.assert_array_equal(self.ones, ret[0])
 
 
 if __name__ == "__main__":

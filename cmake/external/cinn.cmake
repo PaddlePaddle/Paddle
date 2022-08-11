@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (NOT WITH_CINN)
+if(NOT WITH_CINN)
   return()
 endif()
+
+if(NOT CINN_GIT_TAG)
+  set(CINN_GIT_TAG release/v0.2)
+endif()
+
+message(STATUS "CINN version: " ${CINN_GIT_TAG})
 
 # TODO(zhhsplendid): CINN has lots of warnings during early development.
 # They will be treated as errors under paddle. We set no-error now and we will
@@ -26,36 +32,32 @@ add_definitions(-w)
 ######################################
 include(ExternalProject)
 set(CINN_PREFIX_DIR ${THIRD_PARTY_PATH}/CINN)
-set(CINN_GIT_TAG 1fd85187b6c18da4dd51f22619d093ef08d61b01)
-set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION}
-                       -DWITH_CUDA=${WITH_GPU}
-                       -DWITH_CUDNN=${WITH_GPU}
-                       -DWITH_MKL_CBLAS=${WITH_MKL}
-                       -DWITH_MKLDNN=${WITH_MKL}
-                       -DPUBLISH_LIBS=ON
-                       -DWITH_TESTING=ON
-)
+set(CINN_OPTIONAL_ARGS
+    -DPY_VERSION=${PY_VERSION}
+    -DWITH_CUDA=${WITH_GPU}
+    -DWITH_CUDNN=${WITH_GPU}
+    -DWITH_MKL_CBLAS=${WITH_MKL}
+    -DWITH_MKLDNN=${WITH_MKL}
+    -DPUBLISH_LIBS=ON
+    -DWITH_TESTING=ON)
 set(CINN_BUILD_COMMAND $(MAKE) cinnapi -j)
 ExternalProject_Add(
   external_cinn
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  GIT_REPOSITORY   "${GIT_URL}/PaddlePaddle/CINN.git"
-  GIT_TAG          ${CINN_GIT_TAG}
-  PREFIX           ${CINN_PREFIX_DIR}
-  BUILD_COMMAND    ${CINN_BUILD_COMMAND}
-  INSTALL_COMMAND  ""
-  CMAKE_ARGS       ${CINN_OPTIONAL_ARGS})
+  GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/CINN.git"
+  GIT_TAG ${CINN_GIT_TAG}
+  PREFIX ${CINN_PREFIX_DIR}
+  BUILD_COMMAND ${CINN_BUILD_COMMAND}
+  INSTALL_COMMAND ""
+  CMAKE_ARGS ${CINN_OPTIONAL_ARGS})
 
-
-
-ExternalProject_Get_property(external_cinn BINARY_DIR)
-ExternalProject_Get_property(external_cinn SOURCE_DIR)
+ExternalProject_Get_Property(external_cinn BINARY_DIR)
+ExternalProject_Get_Property(external_cinn SOURCE_DIR)
 set(CINN_BINARY_DIR ${BINARY_DIR})
 set(CINN_SOURCE_DIR ${SOURCE_DIR})
 
 message(STATUS "CINN BINARY_DIR: ${CINN_BINARY_DIR}")
 message(STATUS "CINN SOURCE_DIR: ${CINN_SOURCE_DIR}")
-
 
 ######################################
 # Add CINN's dependencies header files
@@ -82,7 +84,7 @@ set(CINN_LIB_LOCATION "${CINN_BINARY_DIR}/dist/cinn/lib")
 set(CINN_INCLUDE_DIR "${CINN_BINARY_DIR}/dist/cinn/include")
 
 add_library(cinn SHARED IMPORTED GLOBAL)
-set_target_properties(cinn PROPERTIES IMPORTED_LOCATION "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
+set_target_properties(cinn PROPERTIES IMPORTED_LOCATION
+                                      "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
 include_directories(${CINN_INCLUDE_DIR})
 add_dependencies(cinn external_cinn)
-

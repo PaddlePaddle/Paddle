@@ -12,24 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fake_quantize_op.cu.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
+#include "paddle/fluid/operators/fake_quantize_op.cu.h"
 
 namespace ops = paddle::operators;
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 using float16 = paddle::platform::float16;
 REGISTER_OP_CUDA_KERNEL(fake_quantize_abs_max,
-                        ops::FakeQuantizeAbsMaxKernel<CUDA, float>);
+                        ops::FakeQuantizeAbsMaxKernel<CUDA, float>,
+                        ops::FakeQuantizeAbsMaxKernel<CUDA, float16>);
 REGISTER_OP_CUDA_KERNEL(fake_quantize_dequantize_abs_max,
                         ops::FakeQuantizeDequantizeAbsMaxKernel<CUDA, float>,
                         ops::FakeQuantizeDequantizeAbsMaxKernel<CUDA, float16>);
-REGISTER_OP_CUDA_KERNEL(fake_channel_wise_quantize_abs_max,
-                        ops::FakeChannelWiseQuantizeAbsMaxKernel<CUDA, float>);
+REGISTER_OP_CUDA_KERNEL(
+    fake_channel_wise_quantize_abs_max,
+    ops::FakeChannelWiseQuantizeAbsMaxKernel<CUDA, float>,
+    ops::FakeChannelWiseQuantizeAbsMaxKernel<CUDA, float16>);
 REGISTER_OP_CUDA_KERNEL(fake_quantize_range_abs_max,
-                        ops::FakeQuantizeRangeAbsMaxKernel<CUDA, float>);
+                        ops::FakeQuantizeRangeAbsMaxKernel<CUDA, float>,
+                        ops::FakeQuantizeRangeAbsMaxKernel<CUDA, float16>);
 REGISTER_OP_CUDA_KERNEL(
     fake_quantize_moving_average_abs_max,
-    ops::FakeQuantizeMovingAverageAbsMaxKernel<CUDA, float>);
+    ops::FakeQuantizeMovingAverageAbsMaxKernel<CUDA, float>,
+    ops::FakeQuantizeMovingAverageAbsMaxKernel<CUDA, float16>);
 REGISTER_OP_CUDA_KERNEL(moving_average_abs_max_scale,
                         ops::MovingAverageAbsMaxScaleKernel<CUDA, float>,
                         ops::MovingAverageAbsMaxScaleKernel<CUDA, float16>);

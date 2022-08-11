@@ -80,13 +80,12 @@ class Test_Forward_Hook(unittest.TestCase):
                 input1 = base.to_variable(input_word1)
                 y = base.to_variable(y_data)
 
-                simplenet = SimpleNet(
-                    hidden_size=20,
-                    vocab_size=32,
-                    num_steps=3,
-                    init_scale=0.1,
-                    is_sparse=False,
-                    dtype="float32")
+                simplenet = SimpleNet(hidden_size=20,
+                                      vocab_size=32,
+                                      num_steps=3,
+                                      init_scale=0.1,
+                                      is_sparse=False,
+                                      dtype="float32")
 
                 # origin, don't register any hook
                 outs_origin = simplenet(input, y)
@@ -96,29 +95,27 @@ class Test_Forward_Hook(unittest.TestCase):
                 forward_pre_hook_handle1 = simplenet.register_forward_pre_hook(
                     forward_pre_hook1)
                 outs_pre_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_pre_hook.numpy(), outs_origin1.numpy()))
+                np.testing.assert_array_equal(outs_pre_hook.numpy(),
+                                              outs_origin1.numpy())
 
                 # remove forward_pre_hook
                 forward_pre_hook_handle1.remove()
                 outs_pre_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_pre_hook.numpy(), outs_origin.numpy()))
+                np.testing.assert_array_equal(outs_pre_hook.numpy(),
+                                              outs_origin.numpy())
 
                 # register forward_posst_hook
                 forward_post_hook_handle1 = simplenet.register_forward_post_hook(
                     forward_post_hook1)
                 outs_forward_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_forward_hook.numpy(),
-                                   outs_origin.numpy() * 2))
+                np.testing.assert_array_equal(outs_forward_hook.numpy(),
+                                              outs_origin.numpy() * 2)
 
                 # remove forward_post_hook
                 forward_post_hook_handle1.remove()
                 outs_forward_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_forward_hook.numpy(),
-                                   outs_origin.numpy()))
+                np.testing.assert_array_equal(outs_forward_hook.numpy(),
+                                              outs_origin.numpy())
 
     # test forward_pre_hook and forward_post_hook that don't have return value
     def func_forward_hook(self):
@@ -149,13 +146,12 @@ class Test_Forward_Hook(unittest.TestCase):
                 input = base.to_variable(input_word)
                 y = base.to_variable(y_data)
 
-                simplenet = SimpleNet(
-                    hidden_size=20,
-                    vocab_size=32,
-                    num_steps=3,
-                    init_scale=0.1,
-                    is_sparse=False,
-                    dtype="float32")
+                simplenet = SimpleNet(hidden_size=20,
+                                      vocab_size=32,
+                                      num_steps=3,
+                                      init_scale=0.1,
+                                      is_sparse=False,
+                                      dtype="float32")
 
                 # origin, don't register any hook
                 outs_origin = simplenet(input, y)

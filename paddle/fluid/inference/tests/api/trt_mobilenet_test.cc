@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
@@ -23,6 +23,11 @@ namespace inference {
 
 TEST(TensorRT_mobilenet, compare) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
+  AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(model_dir);
+  config.DisableGlogInfo();
+  auto predictor = CreatePaddlePredictor(config);
   compare(model_dir, /* use_tensorrt */ true);
   // Open it when need.
   // profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
@@ -83,8 +88,10 @@ TEST(PredictorPool, use_gpu) {
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputHandle(input_names[0]);
   std::vector<int> in_shape = {1, 3, 224, 224};
-  int in_num = std::accumulate(in_shape.begin(), in_shape.end(), 1,
-                               [](int &a, int &b) { return a * b; });
+  int in_num =
+      std::accumulate(in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
+        return a * b;
+      });
 
   std::vector<float> input(in_num, 0);
   input_t->Reshape(in_shape);

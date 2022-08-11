@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <thrust/binary_search.h>
 #include <thrust/execution_policy.h>
 #include <thrust/remove.h>
 #include <thrust/sort.h>
@@ -22,10 +23,12 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
-#include "paddle/phi/kernels/sparse/convolution_kernel.h"
+#include "paddle/phi/kernels/sparse/conv_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -42,7 +45,7 @@ using Dims4D = phi::funcs::sparse::Dims4D;
  * output: the outputs
  * index_size: the size of indices
  * slice_size: slice size corresponding to each index, here is the channel size
-**/
+ **/
 template <typename T, typename IndexT = int>
 __global__ void GatherKernel(const T* params,
                              const IndexT* indices,
@@ -55,46 +58,6 @@ __global__ void GatherKernel(const T* params,
     IndexT gather_i = indices[indices_i];
     int64_t params_i = gather_i * slice_size + slice_i;
     *(output + i) = *(params + params_i);
-  }
-}
-
-/**
- * brief: scatter add
- * input: the inputs
- * unique_value: refer to UpdateIndexKernel notes
- * out_index: the output feature index
- * non_zero_num: the number of output features
- * rulebook_len: the length of rulebook
- * channels: the output channel size
- * out: the outputs
-**/
-template <typename T>
-__global__ void ScatterKernel(const T* input,
-                              const int* unique_value,
-                              const int* out_index,
-                              const int non_zero_num,
-                              const int rulebook_len,
-                              const int channels,
-                              T* out,
-                              const bool subm = false) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  for (int i = tid; i < non_zero_num * channels; i += gridDim.x * blockDim.x) {
-    int indices_i = i / channels;
-    int channels_i = i - indices_i * channels;
-
-    int start = unique_value[indices_i];
-    int end = indices_i == non_zero_num - 1 ? rulebook_len
-                                            : unique_value[indices_i + 1];
-    // max(end-start) = kernel_size
-    T sum = static_cast<T>(0);
-    if (subm) {
-      sum = out[indices_i * channels + channels_i];
-    }
-    for (int j = start; j < end; j++) {
-      const int out_feature_i = out_index[j];
-      sum += input[out_feature_i * channels + channels_i];
-    }
-    out[indices_i * channels + channels_i] = sum;
   }
 }
 
@@ -143,35 +106,6 @@ inline IntT* SortedAndUniqueIndex(const Context& dev_ctx,
   return new_end.first;
 }
 
-template <typename T>
-__global__ void SetFlagAndUpdateCounterKernel(const int* indexs,
-                                              const int n,
-                                              const int rulebook_len,
-                                              const int kernel_size,
-                                              T* rulebook_ptr,
-                                              int* counter_ptr) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  extern __shared__ int cache_count[];  // kernel_size
-  for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
-    cache_count[i] = 0;
-  }
-  __syncthreads();
-
-  for (int i = tid; i < n; i += gridDim.x * blockDim.x) {
-    int index = indexs[i];
-    T kernel_index = rulebook_ptr[index];
-    rulebook_ptr[index + rulebook_len] = -1;
-    rulebook_ptr[index + 2 * rulebook_len] = -1;
-    rulebook_ptr[index] = -1;
-    atomicAdd(&cache_count[kernel_index], 1);
-  }
-  __syncthreads();
-
-  for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
-    atomicSub(&counter_ptr[i], cache_count[i]);
-  }
-}
-
 /**
  * @brief: update the out index and indices
  * unique_keys: save the index of the output feature list
@@ -181,7 +115,7 @@ __global__ void SetFlagAndUpdateCounterKernel(const int* indexs,
  * out_dims: indicates the output dims
  * out_indices: the indices of output, out_indices = IndexToPoint(unique_keys)
  * rulebook_out_indexs: the output index in rulebook
-**/
+ **/
 template <typename T>
 __global__ void UpdateIndexKernel(const T* unique_keys,
                                   const int* unique_values,
@@ -213,11 +147,39 @@ __global__ void UpdateIndexKernel(const T* unique_keys,
   }
 }
 
-// brief: calculation the distance between start and end
-template <typename T>
-__global__ void DistanceKernel(const T* start, const T* end, T* distance) {
-  if (threadIdx.x == 0) {
-    *distance = end - start;
+template <typename IntT>
+__global__ void UpdateOutIndexAndCounterAfterLowerBound(
+    const IntT* x_indexs,
+    const IntT* bound_out,
+    const int rulebook_len,
+    const int kernel_size,
+    const int64_t non_zero_num,
+    IntT* rulebook_ptr,
+    IntT* out_indexs,
+    int* counter_ptr) {
+  extern __shared__ int cache_count[];
+  for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
+    cache_count[i] = 0;
+  }
+  __syncthreads();
+
+  CUDA_KERNEL_LOOP_TYPE(i, rulebook_len, int64_t) {
+    int j = bound_out[i];
+    if (j >= 0 && j < non_zero_num && out_indexs[i] == x_indexs[j]) {
+      out_indexs[i] = j;
+    } else {
+      // mask this position will be remove
+      int kernel_index = rulebook_ptr[i];
+      rulebook_ptr[i + rulebook_len] = -1;
+      rulebook_ptr[i + 2 * rulebook_len] = -1;
+      rulebook_ptr[i] = -1;
+      atomicAdd(&cache_count[kernel_index], 1);
+    }
+  }
+  __syncthreads();
+
+  for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
+    atomicSub(&counter_ptr[i], cache_count[i]);
   }
 }
 
@@ -236,7 +198,7 @@ __global__ void DistanceKernel(const T* start, const T* end, T* distance) {
  * rulebook: the rulebook to save the kernel index, input index and output index
  * counter: save the number of times each location in the kernel participates in
  *the caculation
-**/
+ **/
 template <typename T>
 __global__ void ProductRuleBookKernel(const T* x_indices,
                                       const Dims4D x_dims,
@@ -338,7 +300,6 @@ int ProductRuleBook(const Context& dev_ctx,
                     SparseCooTensor* out,
                     std::vector<int>* h_counter,
                     std::vector<int>* h_offsets) {
-  // TODO(zhangkaihuo): use PD_VISIT_INTEGRAL_TYPES for secondary dispatch
   auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
   const int64_t non_zero_num = x.nnz();
   const auto& non_zero_indices = x.non_zero_indices();
@@ -362,7 +323,6 @@ int ProductRuleBook(const Context& dev_ctx,
   Dims4D d_paddings(1, paddings[2], paddings[1], paddings[0]);
   Dims4D d_strides(1, strides[2], strides[1], strides[0]);
   Dims4D d_dilations(1, dilations[2], dilations[1], dilations[0]);
-
   // 1. product rule book
   phi::funcs::SetConstant<Context, int> set_zero;
   set_zero(dev_ctx, counter_per_kernel, 0);
@@ -395,7 +355,7 @@ int ProductRuleBook(const Context& dev_ctx,
                               rulebook_ptr + rulebook_rows * rulebook_cols,
                               -1);
 
-  DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
+  phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
       rulebook_ptr, last, rulebook_ptr + 3 * kernel_size * non_zero_num - 1);
   IntT rulebook_len = 0;
   phi::backends::gpu::GpuMemcpyAsync(
@@ -408,8 +368,8 @@ int ProductRuleBook(const Context& dev_ctx,
       cudaMemcpyDeviceToHost,
 #endif
       dev_ctx.stream());
-  rulebook_len /= 3;
   dev_ctx.Wait();
+  rulebook_len /= 3;
 
   if (subm) {
     // At present, hashtable is not used to map the input and output indexes.
@@ -417,96 +377,41 @@ int ProductRuleBook(const Context& dev_ctx,
     // convolution,
     // and then the intermediate output index is subtracted from the input index
     // to obain the rulebook.
-    // get difference
-    IntT* A_key_ptr = rulebook_ptr + 2 * rulebook_len;
-    IntT* B_key_ptr = in_indexs.data<IntT>();
-    DenseTensorMeta val_meta(DataType::INT32, {rulebook_len}, DataLayout::NCHW);
-    DenseTensor A_val = phi::Empty<Context>(dev_ctx, std::move(val_meta));
-    DenseTensor B_val = phi::Empty<Context>(
-        dev_ctx, DenseTensorMeta(DataType::INT32, {x.nnz()}, DataLayout::NCHW));
-    phi::IndexKernel<int, kps::IdentityFunctor<int>>(
-        dev_ctx, &A_val, kps::IdentityFunctor<int>());
-    phi::IndexKernel<int, kps::IdentityFunctor<int>>(
-        dev_ctx, &B_val, kps::IdentityFunctor<int>());
-    DenseTensor key_result = phi::Empty<Context>(
+
+    // call lower_bound to get the real index of out_index
+    const IntT* in_indexs_ptr = in_indexs.data<IntT>();
+    IntT* out_indexs_ptr = rulebook_ptr + 2 * rulebook_len;
+    DenseTensor bound = phi::Empty(
         dev_ctx,
-        DenseTensorMeta(indices_dtype, {rulebook_len + 1}, DataLayout::NCHW));
-    DenseTensor val_result = phi::Empty<Context>(dev_ctx, std::move(val_meta));
+        DenseTensorMeta(
+            indices_dtype, {static_cast<int>(rulebook_len)}, DataLayout::NCHW));
+    IntT* bound_ptr = bound.data<IntT>();
+#ifdef PADDLE_WITH_HIP
+    thrust::lower_bound(thrust::hip::par.on(dev_ctx.stream()),
+#else
+    thrust::lower_bound(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
+                        in_indexs_ptr,
+                        in_indexs_ptr + in_indexs.numel(),
+                        out_indexs_ptr,
+                        out_indexs_ptr + rulebook_len,
+                        bound_ptr);
 
-#ifdef PADDLE_WITH_HIP
-    thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
-#else
-    thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
-#endif
-                           counter_ptr,
-                           counter_ptr + kernel_size,
-                           offsets_ptr);
-    std::vector<int> offsets(kernel_size, 0);
-    // TODO(zhangkaihuo): used unified memcpy interface
-    phi::backends::gpu::GpuMemcpyAsync(offsets.data(),
-                                       offsets_ptr,
-                                       kernel_size * sizeof(int),
-#ifdef PADDLE_WITH_HIP
-                                       hipMemcpyDeviceToHost,
-#else
-                                       cudaMemcpyDeviceToHost,
-#endif
-                                       dev_ctx.stream());
-    dev_ctx.Wait();
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
 
-    thrust::pair<IntT*, int*> end;
-    // Because set_diff does not support duplicate data, set_diff is performed
-    // separately for each segment of data.
-    // TODO(zhangkaihuo): Using hashtable here may get better performance,
-    // further tests ared needed.
-    for (int i = 0; i < kernel_size; i++) {
-      int start = offsets[i];
-      int stop = i == kernel_size - 1 ? rulebook_len : offsets[i + 1];
-      IntT* key_result_start = (i == 0 ? key_result.data<IntT>() : end.first);
-      int* val_result_start = i == 0 ? val_result.data<int>() : end.second;
-      end =
-#ifdef PADDLE_WITH_HIP
-          thrust::set_difference_by_key(thrust::hip::par.on(dev_ctx.stream()),
-#else
-          thrust::set_difference_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-#endif
-                                        A_key_ptr + start,
-                                        A_key_ptr + stop,
-                                        B_key_ptr,
-                                        B_key_ptr + x.nnz(),
-                                        A_val.data<int>() + start,
-                                        B_val.data<int>(),
-                                        key_result_start,
-                                        val_result_start);
-    }
-
-    DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
-        key_result.data<IntT>(),
-        end.first,
-        key_result.data<IntT>() + rulebook_len);
-    IntT len = 0;
-    phi::backends::gpu::GpuMemcpyAsync(&len,
-                                       key_result.data<IntT>() + rulebook_len,
-                                       sizeof(IntT),
-#ifdef PADDLE_WITH_HIP
-                                       hipMemcpyDeviceToHost,
-#else
-                                       cudaMemcpyDeviceToHost,
-#endif
-                                       dev_ctx.stream());
-    dev_ctx.Wait();
-    // set the diff value = -1, and update counter
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, len, 1);
-    SetFlagAndUpdateCounterKernel<IntT><<<config.block_per_grid.x,
-                                          config.thread_per_block,
-                                          kernel_size * sizeof(int),
-                                          dev_ctx.stream()>>>(
-        val_result.data<int>(),
-        len,
+    UpdateOutIndexAndCounterAfterLowerBound<<<config.block_per_grid,
+                                              config.thread_per_block,
+                                              kernel_size * sizeof(int),
+                                              dev_ctx.stream()>>>(
+        in_indexs_ptr,
+        bound.data<IntT>(),
         rulebook_len,
         kernel_size,
+        x.nnz(),
         rulebook_ptr,
+        out_indexs_ptr,
         counter_ptr);
+
 // remove -1
 #ifdef PADDLE_WITH_HIP
     IntT* last = thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
@@ -516,10 +421,10 @@ int ProductRuleBook(const Context& dev_ctx,
                                 rulebook_ptr,
                                 rulebook_ptr + 3 * rulebook_len,
                                 -1);
-    DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
-        rulebook_ptr, last, key_result.data<IntT>() + rulebook_len);
+    phi::funcs::sparse::DistanceKernel<IntT>
+        <<<1, 1, 0, dev_ctx.stream()>>>(rulebook_ptr, last, bound_ptr);
     phi::backends::gpu::GpuMemcpyAsync(&rulebook_len,
-                                       key_result.data<IntT>() + rulebook_len,
+                                       bound_ptr,
                                        sizeof(IntT),
 #ifdef PADDLE_WITH_HIP
                                        hipMemcpyDeviceToHost,
@@ -540,102 +445,111 @@ int ProductRuleBook(const Context& dev_ctx,
                          counter_ptr + kernel_size,
                          offsets_ptr);
 
+  phi::backends::gpu::GpuMemcpyAsync(&(*h_counter)[0],
+                                     counter_ptr,
+                                     kernel_size * sizeof(int),
 #ifdef PADDLE_WITH_HIP
-  phi::backends::gpu::GpuMemcpyAsync(&(*h_counter)[0],
-                                     counter_ptr,
-                                     kernel_size * sizeof(int),
                                      hipMemcpyDeviceToHost,
-                                     dev_ctx.stream());
-  phi::backends::gpu::GpuMemcpyAsync(&(*h_offsets)[0],
-                                     offsets_ptr,
-                                     kernel_size * sizeof(int),
-                                     hipMemcpyDeviceToHost,
-                                     dev_ctx.stream());
 #else
-  phi::backends::gpu::GpuMemcpyAsync(&(*h_counter)[0],
-                                     counter_ptr,
-                                     kernel_size * sizeof(int),
                                      cudaMemcpyDeviceToHost,
+#endif
                                      dev_ctx.stream());
+
   phi::backends::gpu::GpuMemcpyAsync(&(*h_offsets)[0],
                                      offsets_ptr,
                                      kernel_size * sizeof(int),
+#ifdef PADDLE_WITH_HIP
+                                     hipMemcpyDeviceToHost,
+#else
                                      cudaMemcpyDeviceToHost,
-                                     dev_ctx.stream());
 #endif
+                                     dev_ctx.stream());
+
   rulebook->Resize({rulebook_rows, static_cast<int>(rulebook_len)});
 
-  // 3. sorted or merge the out index
-  out_index->ResizeAndAllocate({static_cast<int>(rulebook_len)});
-  unique_value->ResizeAndAllocate({static_cast<int>(rulebook_len)});
-  DenseTensor unique_key = phi::Empty(
-      dev_ctx,
-      DenseTensorMeta(paddle::experimental::CppTypeToDataType<IntT>::Type(),
-                      {static_cast<int>(rulebook_len)},
-                      DataLayout::NCHW));
-  int* out_index_ptr = out_index->data<int>();
-  int* unique_value_ptr = unique_value->data<int>();
-  IntT* unique_key_ptr = unique_key.data<IntT>();
+  if (!subm) {
+    // 3. sorted or merge the out index
+    out_index->ResizeAndAllocate({static_cast<int>(rulebook_len)});
+    unique_value->ResizeAndAllocate({static_cast<int>(rulebook_len)});
+    DenseTensor unique_key = phi::Empty(
+        dev_ctx,
+        DenseTensorMeta(
+            indices_dtype, {static_cast<int>(rulebook_len)}, DataLayout::NCHW));
+    int* out_index_ptr = out_index->data<int>();
+    int* unique_value_ptr = unique_value->data<int>();
+    IntT* unique_key_ptr = unique_key.data<IntT>();
 
-  IntT* new_end =
-      SortedAndUniqueIndex<Context, IntT>(dev_ctx,
-                                          rulebook_ptr + 2 * rulebook_len,
-                                          rulebook_len,
-                                          out_index,
-                                          &unique_key,
-                                          unique_value);
-  // thrust::distance doesn't support stream parameters
-  // const int out_non_zero_num = thrust::distance(unique_key_ptr,
-  // new_end.first);
-  DistanceKernel<IntT><<<1, 1>>>(
-      unique_key_ptr,
-      new_end,
-      rulebook_ptr + rulebook_rows * rulebook_cols - 1);
-  IntT out_non_zero_num = 0;
+    IntT* new_end =
+        SortedAndUniqueIndex<Context, IntT>(dev_ctx,
+                                            rulebook_ptr + 2 * rulebook_len,
+                                            rulebook_len,
+                                            out_index,
+                                            &unique_key,
+                                            unique_value);
+    // thrust::distance doesn't support stream parameters
+    // const int out_non_zero_num = thrust::distance(unique_key_ptr,
+    // new_end.first);
+    phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
+        unique_key_ptr,
+        new_end,
+        rulebook_ptr + rulebook_rows * rulebook_cols - 1);
+    IntT out_non_zero_num = 0;
 #ifdef PADDLE_WITH_HIP
-  phi::backends::gpu::GpuMemcpyAsync(
-      &out_non_zero_num,
-      rulebook_ptr + rulebook_rows * rulebook_cols - 1,
-      sizeof(IntT),
-      hipMemcpyDeviceToHost,
-      dev_ctx.stream());
+    phi::backends::gpu::GpuMemcpyAsync(
+        &out_non_zero_num,
+        rulebook_ptr + rulebook_rows * rulebook_cols - 1,
+        sizeof(IntT),
+        hipMemcpyDeviceToHost,
+        dev_ctx.stream());
 #else
-  phi::backends::gpu::GpuMemcpyAsync(
-      &out_non_zero_num,
-      rulebook_ptr + rulebook_rows * rulebook_cols - 1,
-      sizeof(IntT),
-      cudaMemcpyDeviceToHost,
-      dev_ctx.stream());
+    phi::backends::gpu::GpuMemcpyAsync(
+        &out_non_zero_num,
+        rulebook_ptr + rulebook_rows * rulebook_cols - 1,
+        sizeof(IntT),
+        cudaMemcpyDeviceToHost,
+        dev_ctx.stream());
 #endif
-  dev_ctx.Wait();
+    dev_ctx.Wait();
 
-  // 5. update out_indices and rulebook by unique_value_ptr
-  const int64_t sparse_dim = 4;
-  DenseTensorMeta indices_meta(
-      indices_dtype, {sparse_dim, out_non_zero_num}, DataLayout::NCHW);
-  DenseTensorMeta values_meta(x.dtype(),
-                              {out_non_zero_num, kernel_sizes[4]},
-                              x.non_zero_elements().layout());
-  phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
-  phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
+    // 5. update out_indices and rulebook by unique_value_ptr
+    const int64_t sparse_dim = 4;
+    DenseTensorMeta indices_meta(
+        indices_dtype, {sparse_dim, out_non_zero_num}, DataLayout::NCHW);
+    DenseTensorMeta values_meta(x.dtype(),
+                                {out_non_zero_num, kernel_sizes[4]},
+                                x.non_zero_elements().layout());
+    phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
+    phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 
-  IntT* out_indices_ptr = out_indices.data<IntT>();
+    IntT* out_indices_ptr = out_indices.data<IntT>();
 
-  config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_non_zero_num, 1);
-  UpdateIndexKernel<IntT><<<config.block_per_grid.x,
-                            config.thread_per_block.x,
-                            0,
-                            dev_ctx.stream()>>>(
-      unique_key_ptr,
-      unique_value_ptr,
-      out_index_ptr,
-      out_non_zero_num,
-      rulebook_len,
-      d_out_dims,
-      out_indices_ptr,
-      rulebook_ptr + 2 * rulebook_len);
-  out->SetMember(out_indices, out_values, out_dims, true);
+    config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_non_zero_num, 1);
+    UpdateIndexKernel<IntT>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(unique_key_ptr,
+                               unique_value_ptr,
+                               out_index_ptr,
+                               out_non_zero_num,
+                               rulebook_len,
+                               d_out_dims,
+                               out_indices_ptr,
+                               rulebook_ptr + 2 * rulebook_len);
+    out->SetMember(out_indices, out_values, out_dims, true);
+  } else {
+    DenseTensor out_indices =
+        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+    DenseTensor out_values =
+        phi::Empty(dev_ctx,
+                   DenseTensorMeta(x.dtype(),
+                                   {x.nnz(), kernel_sizes[4]},
+                                   x.non_zero_elements().layout()));
+    phi::Copy(
+        dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
+    out->SetMember(out_indices, out_values, out_dims, true);
+  }
   return rulebook_len;
 }
 

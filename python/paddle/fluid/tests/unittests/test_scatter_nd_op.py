@@ -117,9 +117,8 @@ class TestScatterNdAddWithHighRankSame(OpTest):
         self.python_api = paddle.scatter_nd_add
         shape = (3, 2, 2, 1, 10)
         ref_np = np.random.rand(*shape).astype("float64")
-        index_np = np.vstack(
-            [np.random.randint(
-                0, s, size=100) for s in shape]).T.astype("int32")
+        index_np = np.vstack([np.random.randint(0, s, size=100)
+                              for s in shape]).T.astype("int32")
         update_shape = judge_update_shape(ref_np, index_np)
         updates_np = np.random.rand(*update_shape).astype("float64")
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
@@ -167,70 +166,64 @@ class TestScatterNdOpAPI(unittest.TestCase):
     """
 
     def testcase1(self):
-        ref1 = fluid.layers.data(
-            name='ref1',
-            shape=[10, 9, 8, 1, 3],
-            dtype='float32',
-            append_batch_size=False)
-        index1 = fluid.layers.data(
-            name='index1',
-            shape=[5, 5, 8, 5],
-            dtype='int32',
-            append_batch_size=False)
-        updates1 = fluid.layers.data(
-            name='update1',
-            shape=[5, 5, 8],
-            dtype='float32',
-            append_batch_size=False)
+        ref1 = fluid.layers.data(name='ref1',
+                                 shape=[10, 9, 8, 1, 3],
+                                 dtype='float32',
+                                 append_batch_size=False)
+        index1 = fluid.layers.data(name='index1',
+                                   shape=[5, 5, 8, 5],
+                                   dtype='int32',
+                                   append_batch_size=False)
+        updates1 = fluid.layers.data(name='update1',
+                                     shape=[5, 5, 8],
+                                     dtype='float32',
+                                     append_batch_size=False)
         output1 = fluid.layers.scatter_nd_add(ref1, index1, updates1)
 
     def testcase2(self):
-        ref2 = fluid.layers.data(
-            name='ref2',
-            shape=[10, 9, 8, 1, 3],
-            dtype='double',
-            append_batch_size=False)
-        index2 = fluid.layers.data(
-            name='index2',
-            shape=[5, 8, 5],
-            dtype='int32',
-            append_batch_size=False)
-        updates2 = fluid.layers.data(
-            name='update2',
-            shape=[5, 8],
-            dtype='double',
-            append_batch_size=False)
-        output2 = fluid.layers.scatter_nd_add(
-            ref2, index2, updates2, name="scatter_nd_add")
+        ref2 = fluid.layers.data(name='ref2',
+                                 shape=[10, 9, 8, 1, 3],
+                                 dtype='double',
+                                 append_batch_size=False)
+        index2 = fluid.layers.data(name='index2',
+                                   shape=[5, 8, 5],
+                                   dtype='int32',
+                                   append_batch_size=False)
+        updates2 = fluid.layers.data(name='update2',
+                                     shape=[5, 8],
+                                     dtype='double',
+                                     append_batch_size=False)
+        output2 = fluid.layers.scatter_nd_add(ref2,
+                                              index2,
+                                              updates2,
+                                              name="scatter_nd_add")
 
     def testcase3(self):
         shape3 = [10, 9, 8, 1, 3]
-        index3 = fluid.layers.data(
-            name='index3',
-            shape=[5, 5, 8, 5],
-            dtype='int32',
-            append_batch_size=False)
-        updates3 = fluid.layers.data(
-            name='update3',
-            shape=[5, 5, 8],
-            dtype='float32',
-            append_batch_size=False)
+        index3 = fluid.layers.data(name='index3',
+                                   shape=[5, 5, 8, 5],
+                                   dtype='int32',
+                                   append_batch_size=False)
+        updates3 = fluid.layers.data(name='update3',
+                                     shape=[5, 5, 8],
+                                     dtype='float32',
+                                     append_batch_size=False)
         output3 = fluid.layers.scatter_nd(index3, updates3, shape3)
 
     def testcase4(self):
         shape4 = [10, 9, 8, 1, 3]
-        index4 = fluid.layers.data(
-            name='index4',
-            shape=[5, 5, 8, 5],
-            dtype='int32',
-            append_batch_size=False)
-        updates4 = fluid.layers.data(
-            name='update4',
-            shape=[5, 5, 8],
-            dtype='double',
-            append_batch_size=False)
-        output4 = fluid.layers.scatter_nd(
-            index4, updates4, shape4, name='scatter_nd')
+        index4 = fluid.layers.data(name='index4',
+                                   shape=[5, 5, 8, 5],
+                                   dtype='int32',
+                                   append_batch_size=False)
+        updates4 = fluid.layers.data(name='update4',
+                                     shape=[5, 5, 8],
+                                     dtype='double',
+                                     append_batch_size=False)
+        output4 = fluid.layers.scatter_nd(index4,
+                                          updates4,
+                                          shape4,
+                                          name='scatter_nd')
 
     def testcase5(self):
         if not fluid.core.is_compiled_with_cuda():
@@ -244,15 +237,14 @@ class TestScatterNdOpAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             device = paddle.get_device()
             paddle.set_device('gpu')
-            gpu_value = paddle.scatter_nd_add(
-                paddle.to_tensor(x),
-                paddle.to_tensor(index), paddle.to_tensor(val))
+            gpu_value = paddle.scatter_nd_add(paddle.to_tensor(x),
+                                              paddle.to_tensor(index),
+                                              paddle.to_tensor(val))
             paddle.set_device('cpu')
-            cpu_value = paddle.scatter_nd_add(
-                paddle.to_tensor(x),
-                paddle.to_tensor(index), paddle.to_tensor(val))
-            self.assertTrue(
-                np.array_equal(gpu_value.numpy(), cpu_value.numpy()))
+            cpu_value = paddle.scatter_nd_add(paddle.to_tensor(x),
+                                              paddle.to_tensor(index),
+                                              paddle.to_tensor(val))
+            np.testing.assert_array_equal(gpu_value.numpy(), cpu_value.numpy())
             paddle.set_device(device)
 
         @switch_to_static_graph
@@ -260,10 +252,12 @@ class TestScatterNdOpAPI(unittest.TestCase):
             with paddle.static.program_guard(paddle.static.Program(),
                                              paddle.static.Program()):
                 x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
-                index_t = paddle.static.data(
-                    name="index", dtype=index.dtype, shape=index.shape)
-                val_t = paddle.static.data(
-                    name="val", dtype=val.dtype, shape=val.shape)
+                index_t = paddle.static.data(name="index",
+                                             dtype=index.dtype,
+                                             shape=index.shape)
+                val_t = paddle.static.data(name="val",
+                                           dtype=val.dtype,
+                                           shape=val.shape)
                 out_t = paddle.scatter_nd_add(x_t, index_t, val_t)
                 feed = {x_t.name: x, index_t.name: index, val_t.name: val}
                 fetch = [out_t]
@@ -272,22 +266,27 @@ class TestScatterNdOpAPI(unittest.TestCase):
                 gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
                 cpu_exe = paddle.static.Executor(paddle.CPUPlace())
                 cpu_value = cpu_exe.run(feed=feed, fetch_list=fetch)[0]
-                self.assertTrue(np.array_equal(gpu_value, cpu_value))
+                np.testing.assert_array_equal(gpu_value, cpu_value)
 
         test_static_graph()
 
 
 #Test Raise Error
 class TestScatterNdOpRaise(unittest.TestCase):
+
     def test_check_raise(self):
+
         def check_raise_is_test():
             try:
-                ref5 = fluid.layers.data(
-                    name='ref5', shape=[3, 4, 5], dtype='float32')
-                index5 = fluid.layers.data(
-                    name='index5', shape=[2, 10], dtype='int32')
-                updates5 = fluid.layers.data(
-                    name='updates5', shape=[2, 10], dtype='float32')
+                ref5 = fluid.layers.data(name='ref5',
+                                         shape=[3, 4, 5],
+                                         dtype='float32')
+                index5 = fluid.layers.data(name='index5',
+                                           shape=[2, 10],
+                                           dtype='int32')
+                updates5 = fluid.layers.data(name='updates5',
+                                             shape=[2, 10],
+                                             dtype='float32')
                 output5 = fluid.layers.scatter_nd_add(ref5, index5, updates5)
             except Exception as e:
                 t = \
@@ -299,31 +298,31 @@ class TestScatterNdOpRaise(unittest.TestCase):
 
     def test_check_raise2(self):
         with self.assertRaises(ValueError):
-            ref6 = fluid.layers.data(
-                name='ref6',
-                shape=[10, 9, 8, 1, 3],
-                dtype='double',
-                append_batch_size=False)
-            index6 = fluid.layers.data(
-                name='index6',
-                shape=[5, 8, 5],
-                dtype='int32',
-                append_batch_size=False)
-            updates6 = fluid.layers.data(
-                name='update6',
-                shape=[5, 8],
-                dtype='float32',
-                append_batch_size=False)
+            ref6 = fluid.layers.data(name='ref6',
+                                     shape=[10, 9, 8, 1, 3],
+                                     dtype='double',
+                                     append_batch_size=False)
+            index6 = fluid.layers.data(name='index6',
+                                       shape=[5, 8, 5],
+                                       dtype='int32',
+                                       append_batch_size=False)
+            updates6 = fluid.layers.data(name='update6',
+                                         shape=[5, 8],
+                                         dtype='float32',
+                                         append_batch_size=False)
             output6 = fluid.layers.scatter_nd_add(ref6, index6, updates6)
 
     def test_check_raise3(self):
+
         def check_raise_is_test():
             try:
                 shape = [3, 4, 5]
-                index7 = fluid.layers.data(
-                    name='index7', shape=[2, 1], dtype='int32')
-                updates7 = fluid.layers.data(
-                    name='updates7', shape=[2, 4, 5, 20], dtype='float32')
+                index7 = fluid.layers.data(name='index7',
+                                           shape=[2, 1],
+                                           dtype='int32')
+                updates7 = fluid.layers.data(name='updates7',
+                                             shape=[2, 4, 5, 20],
+                                             dtype='float32')
                 output7 = fluid.layers.scatter_nd(index7, updates7, shape)
             except Exception as e:
                 t = \
@@ -335,6 +334,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
 
 
 class TestDygraph(unittest.TestCase):
+
     def test_dygraph(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             index_data = np.array([[1, 1], [0, 1], [1, 3]]).astype(np.int64)

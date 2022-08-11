@@ -15,18 +15,20 @@
 #pragma once
 #include <stdint.h>
 #include <stdio.h>
+
 #include <vector>
+
 #include "paddle/fluid/distributed/common/registerer.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
 
-class DownpourCtrDoubleAccessor : public ValueAccessor {
+class CtrDoubleAccessor : public ValueAccessor {
  public:
-  struct DownpourCtrDoubleFeatureValue {
+  struct CtrDoubleFeatureValue {
     /*
     float unseen_days;
     float delta_score;
@@ -45,60 +47,56 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
     }
     static int UnseenDaysIndex() { return 0; }
     static int DeltaScoreIndex() {
-      return DownpourCtrDoubleFeatureValue::UnseenDaysIndex() + 1;
+      return CtrDoubleFeatureValue::UnseenDaysIndex() + 1;
     }
     static int ShowIndex() {
-      return DownpourCtrDoubleFeatureValue::DeltaScoreIndex() + 1;
+      return CtrDoubleFeatureValue::DeltaScoreIndex() + 1;
     }
     // show is double
-    static int ClickIndex() {
-      return DownpourCtrDoubleFeatureValue::ShowIndex() + 2;
-    }
+    static int ClickIndex() { return CtrDoubleFeatureValue::ShowIndex() + 2; }
     // click is double
-    static int EmbedWIndex() {
-      return DownpourCtrDoubleFeatureValue::ClickIndex() + 2;
-    }
+    static int EmbedWIndex() { return CtrDoubleFeatureValue::ClickIndex() + 2; }
     static int EmbedG2SumIndex() {
-      return DownpourCtrDoubleFeatureValue::EmbedWIndex() + 1;
+      return CtrDoubleFeatureValue::EmbedWIndex() + 1;
     }
     static int SlotIndex() {
-      return DownpourCtrDoubleFeatureValue::EmbedG2SumIndex() + 1;
+      return CtrDoubleFeatureValue::EmbedG2SumIndex() + 1;
     }
     static int EmbedxG2SumIndex() {
-      return DownpourCtrDoubleFeatureValue::SlotIndex() + 1;
+      return CtrDoubleFeatureValue::SlotIndex() + 1;
     }
     static int EmbedxWIndex() {
-      return DownpourCtrDoubleFeatureValue::EmbedxG2SumIndex() + 1;
+      return CtrDoubleFeatureValue::EmbedxG2SumIndex() + 1;
     }
     static float& UnseenDays(float* val) {
-      return val[DownpourCtrDoubleFeatureValue::UnseenDaysIndex()];
+      return val[CtrDoubleFeatureValue::UnseenDaysIndex()];
     }
     static float& DeltaScore(float* val) {
-      return val[DownpourCtrDoubleFeatureValue::DeltaScoreIndex()];
+      return val[CtrDoubleFeatureValue::DeltaScoreIndex()];
     }
     static double& Show(float* val) {
-      return ((double*)(val + DownpourCtrDoubleFeatureValue::ShowIndex()))[0];
+      return ((double*)(val + CtrDoubleFeatureValue::ShowIndex()))[0];
     }
     static double& Click(float* val) {
-      return ((double*)(val + DownpourCtrDoubleFeatureValue::ClickIndex()))[0];
+      return ((double*)(val + CtrDoubleFeatureValue::ClickIndex()))[0];
     }
     static float& Slot(float* val) {
-      return val[DownpourCtrDoubleFeatureValue::SlotIndex()];
+      return val[CtrDoubleFeatureValue::SlotIndex()];
     }
     static float& EmbedW(float* val) {
-      return val[DownpourCtrDoubleFeatureValue::EmbedWIndex()];
+      return val[CtrDoubleFeatureValue::EmbedWIndex()];
     }
     static float& EmbedG2Sum(float* val) {
-      return val[DownpourCtrDoubleFeatureValue::EmbedG2SumIndex()];
+      return val[CtrDoubleFeatureValue::EmbedG2SumIndex()];
     }
     static float& EmbedxG2Sum(float* val) {
-      return val[DownpourCtrDoubleFeatureValue::EmbedxG2SumIndex()];
+      return val[CtrDoubleFeatureValue::EmbedxG2SumIndex()];
     }
     static float* EmbedxW(float* val) {
-      return (val + DownpourCtrDoubleFeatureValue::EmbedxWIndex());
+      return (val + CtrDoubleFeatureValue::EmbedxWIndex());
     }
   };
-  struct DownpourCtrDoublePushValue {
+  struct CtrDoublePushValue {
     /*
     float slot;
     float show;
@@ -110,35 +108,27 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
     static int DimSize(int dim, int embedx_dim) { return sizeof(float); }
     static int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
     static int SlotIndex() { return 0; }
-    static int ShowIndex() {
-      return DownpourCtrDoublePushValue::SlotIndex() + 1;
-    }
-    static int ClickIndex() {
-      return DownpourCtrDoublePushValue::ShowIndex() + 1;
-    }
-    static int EmbedGIndex() {
-      return DownpourCtrDoublePushValue::ClickIndex() + 1;
-    }
-    static int EmbedxGIndex() {
-      return DownpourCtrDoublePushValue::EmbedGIndex() + 1;
-    }
+    static int ShowIndex() { return CtrDoublePushValue::SlotIndex() + 1; }
+    static int ClickIndex() { return CtrDoublePushValue::ShowIndex() + 1; }
+    static int EmbedGIndex() { return CtrDoublePushValue::ClickIndex() + 1; }
+    static int EmbedxGIndex() { return CtrDoublePushValue::EmbedGIndex() + 1; }
     static float& Slot(float* val) {
-      return val[DownpourCtrDoublePushValue::SlotIndex()];
+      return val[CtrDoublePushValue::SlotIndex()];
     }
     static float& Show(float* val) {
-      return val[DownpourCtrDoublePushValue::ShowIndex()];
+      return val[CtrDoublePushValue::ShowIndex()];
     }
     static float& Click(float* val) {
-      return val[DownpourCtrDoublePushValue::ClickIndex()];
+      return val[CtrDoublePushValue::ClickIndex()];
     }
     static float& EmbedG(float* val) {
-      return val[DownpourCtrDoublePushValue::EmbedGIndex()];
+      return val[CtrDoublePushValue::EmbedGIndex()];
     }
     static float* EmbedxG(float* val) {
-      return val + DownpourCtrDoublePushValue::EmbedxGIndex();
+      return val + CtrDoublePushValue::EmbedxGIndex();
     }
   };
-  struct DownpourCtrDoublePullValue {
+  struct CtrDoublePullValue {
     /*
     float show;
     float click;
@@ -153,20 +143,20 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
     static int EmbedWIndex() { return 2; }
     static int EmbedxWIndex() { return 3; }
     static float& Show(float* val) {
-      return val[DownpourCtrDoublePullValue::ShowIndex()];
+      return val[CtrDoublePullValue::ShowIndex()];
     }
     static float& Click(float* val) {
-      return val[DownpourCtrDoublePullValue::ClickIndex()];
+      return val[CtrDoublePullValue::ClickIndex()];
     }
     static float& EmbedW(float* val) {
-      return val[DownpourCtrDoublePullValue::EmbedWIndex()];
+      return val[CtrDoublePullValue::EmbedWIndex()];
     }
     static float* EmbedxW(float* val) {
-      return val + DownpourCtrDoublePullValue::EmbedxWIndex();
+      return val + CtrDoublePullValue::EmbedxWIndex();
     }
   };
-  DownpourCtrDoubleAccessor() {}
-  virtual ~DownpourCtrDoubleAccessor() {}
+  CtrDoubleAccessor() {}
+  virtual ~CtrDoubleAccessor() {}
   virtual int Initialize();
   // 初始化AccessorInfo
   virtual void InitAccessorInfo();
@@ -179,25 +169,31 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
   // param = 1, save delta feature
   // param = 3, save all feature with time decay
   virtual bool Save(float* value, int param) override;
+  bool SaveCache(float* value,
+                 int param,
+                 double global_cache_threshold) override;
   // update delta_score and unseen_days after save
   virtual void UpdateStatAfterSave(float* value, int param) override;
   // 判断该value是否保存到ssd
-  virtual bool save_ssd(float* value);
+  virtual bool SaveSSD(float* value);
   // virtual bool save_cache(float* value, int param, double
   // global_cache_threshold) override;
   // keys不存在时，为values生成随机值
   // 要求value的内存由外部调用者分配完毕
   virtual int32_t Create(float** value, size_t num);
   // 从values中选取到select_values中
-  virtual int32_t Select(float** select_values, const float** values,
+  virtual int32_t Select(float** select_values,
+                         const float** values,
                          size_t num);
   // 将update_values聚合到一起
   virtual int32_t Merge(float** update_values,
-                        const float** other_update_values, size_t num);
+                        const float** other_update_values,
+                        size_t num);
   // 将update_values聚合到一起，通过it.next判定是否进入下一个key
   // virtual int32_t Merge(float** update_values, iterator it);
   // 将update_values更新应用到values中
-  virtual int32_t Update(float** values, const float** update_values,
+  virtual int32_t Update(float** values,
+                         const float** update_values,
                          size_t num);
   virtual std::string ParseToString(const float* value, int param) override;
   virtual int32_t ParseFromString(const std::string& str, float* v) override;
@@ -206,14 +202,14 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
   virtual float GetField(float* value, const std::string& name) override {
     CHECK(name == "show");
     if (name == "show") {
-      return (float)DownpourCtrDoubleFeatureValue::Show(value);
+      return (float)CtrDoubleFeatureValue::Show(value);
     }
     return 0.0;
   }
-  // DEFINE_GET_INDEX(DownpourCtrDoubleFeatureValue, show)
-  // DEFINE_GET_INDEX(DownpourCtrDoubleFeatureValue, click)
-  // DEFINE_GET_INDEX(DownpourCtrDoubleFeatureValue, embed_w)
-  // DEFINE_GET_INDEX(DownpourCtrDoubleFeatureValue, embedx_w)
+  // DEFINE_GET_INDEX(CtrDoubleFeatureValue, show)
+  // DEFINE_GET_INDEX(CtrDoubleFeatureValue, click)
+  // DEFINE_GET_INDEX(CtrDoubleFeatureValue, embed_w)
+  // DEFINE_GET_INDEX(CtrDoubleFeatureValue, embedx_w)
  private:
   double ShowClickScore(double show, double click);
 
@@ -222,6 +218,7 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
   SparseValueSGDRule* _embedx_sgd_rule;
   float _show_click_decay_rate;
   int32_t _ssd_unseenday_threshold;
+  bool _show_scale = false;
 };
 }  // namespace distributed
 }  // namespace paddle

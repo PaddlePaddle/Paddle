@@ -33,8 +33,8 @@ inline std::vector<T> RepeatedToVector(
     const google::protobuf::RepeatedField<T> &repeated_field) {
   std::vector<T> ret;
   ret.reserve(repeated_field.size());
-  std::copy(repeated_field.begin(), repeated_field.end(),
-            std::back_inserter(ret));
+  std::copy(
+      repeated_field.begin(), repeated_field.end(), std::back_inserter(ret));
   return ret;
 }
 
@@ -65,23 +65,39 @@ class VarDesc {
     desc_.set_name(name);
     // TODO(paddle-dev): Why default to lodtensor.
     desc_.mutable_type()->set_type(proto::VarType::LOD_TENSOR);
+    need_updated_ = true;
   }
 
-  explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {}
+  explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {
+    // need_updated_ = true;
+  }
 
   // Explicitly implement the copy constructor for auto parallel
   VarDesc(const VarDesc &other)
       : desc_(other.desc_),
         attrs_(other.attrs_),
         original_id_(other.original_id_) {}
+  VarDesc &operator=(const VarDesc &other) {
+    desc_ = other.desc_;
+    attrs_ = other.attrs_;
+    original_id_ = other.original_id_;
+    need_updated_ = true;
+    return *this;
+  }
 
-  proto::VarDesc *Proto() { return &desc_; }
+  proto::VarDesc *Proto() {
+    return &desc_;
+    need_updated_ = true;
+  }
 
   const proto::VarDesc *Proto() const { return &desc_; }
 
   std::string Name() const { return desc_.name(); }
 
-  void SetName(std::string name) { desc_.set_name(name); }
+  void SetName(std::string name) {
+    desc_.set_name(name);
+    need_updated_ = true;
+  }
 
   void SetTensorDescNum(size_t num);
 
@@ -120,15 +136,22 @@ class VarDesc {
 
   bool Persistable() const { return desc_.persistable(); }
 
-  void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
+  void SetPersistable(bool persistable) {
+    desc_.set_persistable(persistable);
+    need_updated_ = true;
+  }
 
   bool IsParameter() const { return desc_.is_parameter(); }
 
   void SetIsParameter(bool is_parameter) {
     desc_.set_is_parameter(is_parameter);
+    need_updated_ = true;
   }
 
-  void ClearIsParameter() { desc_.clear_is_parameter(); }
+  void ClearIsParameter() {
+    desc_.clear_is_parameter();
+    need_updated_ = true;
+  }
 
   bool HasIsParameter() const { return desc_.has_is_parameter(); }
 
@@ -136,9 +159,13 @@ class VarDesc {
 
   void SetStopGradient(bool stop_gradient) {
     desc_.set_stop_gradient(stop_gradient);
+    need_updated_ = true;
   }
 
-  void ClearStopGradient() { desc_.clear_stop_gradient(); }
+  void ClearStopGradient() {
+    desc_.clear_stop_gradient();
+    need_updated_ = true;
+  }
 
   bool HasStopGradient() const { return desc_.has_stop_gradient(); }
 
@@ -146,6 +173,7 @@ class VarDesc {
 
   void SetNeedCheckFeed(bool need_check_feed) {
     desc_.set_need_check_feed(need_check_feed);
+    need_updated_ = true;
   }
 
   bool HasAttr(const std::string &name) const {
@@ -162,7 +190,13 @@ class VarDesc {
   // The Id() and OriginalId() are only used for auto parallel.
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
-  void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
+  void SetOriginalId(uint64_t original_id) {
+    original_id_ = original_id;
+    need_updated_ = true;
+  }
+
+  bool NeedUpdate() const { return need_updated_; }
+  void SetNeedUpdate(bool need) { need_updated_ = need; }
 
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
@@ -177,8 +211,11 @@ class VarDesc {
     return ++uid;
   }
 
+  // it it really needed? or just mantain a ptr from block?
   proto::VarDesc desc_;
   AttributeMap attrs_;
+
+  bool need_updated_{false};
 
   // Note: the id_ is unique for all VarDesc (only for auto parallel).
   uint64_t id_ = GenerateId();

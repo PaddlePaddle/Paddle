@@ -26,10 +26,10 @@ import hypothesis.strategies as st
 
 
 class TestShuffleChannelDetectPass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         if attrs[0]['input_shape'] != attrs[2]['shape']:
@@ -49,31 +49,34 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
         def generate_reshape2_Input():
             return np.random.random(x_shape).astype(np.float32)
 
-        reshape2_op1 = OpConfig(
-            "reshape2",
-            inputs={"X": ["reshape2_input1"], },
-            outputs={
-                "Out": ["reshape2_output1"],
-                "XShape": ["reshape2_xshape1"]
-            },
-            shape=shape,
-            input_shape=x_shape)
-        transpose2_op = OpConfig(
-            "transpose2",
-            inputs={"X": ["reshape2_output1"], },
-            outputs={
-                "Out": ["transpose2_ouput"],
-                "XShape": ["transpose2_xshape"]
-            },
-            axis=axis_v)
-        reshape2_op2 = OpConfig(
-            "reshape2",
-            inputs={"X": ["transpose2_ouput"], },
-            outputs={
-                "Out": ["reshape2_output2"],
-                "XShape": ["reshape2_xshape2"]
-            },
-            shape=x_shape)
+        reshape2_op1 = OpConfig("reshape2",
+                                inputs={
+                                    "X": ["reshape2_input1"],
+                                },
+                                outputs={
+                                    "Out": ["reshape2_output1"],
+                                    "XShape": ["reshape2_xshape1"]
+                                },
+                                shape=shape,
+                                input_shape=x_shape)
+        transpose2_op = OpConfig("transpose2",
+                                 inputs={
+                                     "X": ["reshape2_output1"],
+                                 },
+                                 outputs={
+                                     "Out": ["transpose2_output"],
+                                     "XShape": ["transpose2_xshape"]
+                                 },
+                                 axis=axis_v)
+        reshape2_op2 = OpConfig("reshape2",
+                                inputs={
+                                    "X": ["transpose2_output"],
+                                },
+                                outputs={
+                                    "Out": ["reshape2_output2"],
+                                    "XShape": ["reshape2_xshape2"]
+                                },
+                                shape=x_shape)
         ops = [reshape2_op1, transpose2_op, reshape2_op2]
 
         program_config = ProgramConfig(
@@ -100,7 +103,8 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            passes=["shuffle_channel_detect_pass"], )
+            passes=["shuffle_channel_detect_pass"],
+        )
 
 
 if __name__ == "__main__":

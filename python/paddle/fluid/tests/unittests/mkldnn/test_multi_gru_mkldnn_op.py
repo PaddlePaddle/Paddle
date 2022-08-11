@@ -42,6 +42,7 @@ def multi_gru(
 
 
 class TestMultiGruMkldnnOp(OpTest):
+
     def set_confs(self):
         pass
 
@@ -96,9 +97,8 @@ class TestMultiGruMkldnnOp(OpTest):
                 wx.append(np.random.rand(IC, 3 * OC).astype('float32'))
                 wh.append(np.random.rand(OC, 3 * OC).astype('float32'))
                 bias.append(
-                    np.random.rand(1, 3 * OC).astype('float32')
-                    if self.with_bias else np.zeros(
-                        (1, 3 * OC), dtype='float32'))
+                    np.random.rand(1, 3 * OC).astype('float32') if self.
+                    with_bias else np.zeros((1, 3 * OC), dtype='float32'))
                 h0.append(np.zeros((N, OC), dtype='float32'))
 
         self.inputs['WeightX'] = [('wx' + str(i), wx[i])
@@ -116,20 +116,20 @@ class TestMultiGruMkldnnOp(OpTest):
                 OC = self.OCs[layer]
                 for j in range(2):
                     scale_ur = s8_max / np.max(np.abs(
-                        np.concatenate(
-                            [
-                                wx[2 * layer + j][:, :2 * OC], wh[2 * layer + j]
-                                .flatten()[:2 * OC * OC].reshape(OC, 2 * OC)
-                            ],
-                            axis=0)),
+                        np.concatenate([
+                            wx[2 * layer + j][:, :2 * OC],
+                            wh[2 * layer + j].flatten()[:2 * OC * OC].reshape(
+                                OC, 2 * OC)
+                        ],
+                                       axis=0)),
                                                axis=0)
                     scale_o = s8_max / np.max(np.abs(
-                        np.concatenate(
-                            [
-                                wx[2 * layer + j][:, 2 * OC:], wh[2 * layer + j]
-                                .flatten()[2 * OC * OC:].reshape(OC, OC)
-                            ],
-                            axis=0)),
+                        np.concatenate([
+                            wx[2 * layer + j][:, 2 * OC:],
+                            wh[2 * layer + j].flatten()[2 * OC * OC:].reshape(
+                                OC, OC)
+                        ],
+                                       axis=0)),
                                               axis=0)
 
                     scale_weights.append(
@@ -167,11 +167,13 @@ class TestMultiGruMkldnnOp(OpTest):
 
 
 class TestMultiGruMkldnnOpNoBias(TestMultiGruMkldnnOp):
+
     def set_confs(self):
         self.with_bias = False
 
 
 class TestMultiGruMkldnnOpLayers2(TestMultiGruMkldnnOp):
+
     def set_confs(self):
         self.layers = 2
         self.ICs = [2, 6]
@@ -179,6 +181,7 @@ class TestMultiGruMkldnnOpLayers2(TestMultiGruMkldnnOp):
 
 
 class TestMultiGruMkldnnOpLayers3(TestMultiGruMkldnnOp):
+
     def set_confs(self):
         self.layers = 3
         self.ICs = [2, 6, 12]
@@ -186,60 +189,71 @@ class TestMultiGruMkldnnOpLayers3(TestMultiGruMkldnnOp):
 
 
 class TestMultiGruMkldnnOpOriginMode(TestMultiGruMkldnnOp):
+
     def set_confs(self):
         self.origin_mode = True
 
 
 class TestMultiGruMkldnnInt8Op(TestMultiGruMkldnnOp):
+
     def set_dtype(self):
         self.dtype = 'int8'
 
 
 class TestMultiGruMkldnnInt8OpForceFP32Output(TestMultiGruMkldnnInt8Op):
+
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
 class TestMultiGruMkldnnInt8OpNoBias(TestMultiGruMkldnnOpNoBias):
+
     def set_dtype(self):
         self.dtype = 'int8'
 
 
 class TestMultiGruMkldnnInt8OpNoBiasForceFP32Output(
         TestMultiGruMkldnnInt8OpNoBias):
+
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
 class TestMultiGruMkldnnInt8OpLayers2(TestMultiGruMkldnnOpLayers2):
+
     def set_dtype(self):
         self.dtype = 'int8'
 
 
 class TestMultiGruMkldnnInt8OpLayers2ForceFP32Output(
         TestMultiGruMkldnnInt8OpLayers2):
+
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
 class TestMultiGruMkldnnInt8OpLayers3(TestMultiGruMkldnnOpLayers3):
+
     def set_dtype(self):
         self.dtype = 'int8'
 
 
 class TestMultiGruMkldnnInt8OpLayers3ForceFP32Output(
         TestMultiGruMkldnnInt8OpLayers3):
+
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
 class TestMultiGruMkldnnInt8OpOriginMode(TestMultiGruMkldnnOpOriginMode):
+
     def set_dtype(self):
         self.dtype = 'int8'
 
 
 class TestMultiGruMkldnnInt8OpOriginModeForceFP32Output(
         TestMultiGruMkldnnInt8OpOriginMode):
+
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 

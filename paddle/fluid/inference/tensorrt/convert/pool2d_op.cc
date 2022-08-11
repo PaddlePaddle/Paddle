@@ -30,9 +30,12 @@ namespace inference {
 namespace tensorrt {
 
 inline void DealCeilMode(const nvinfer1::Dims &input_shape,
-                         std::vector<int> ksize, std::vector<int> strides,
-                         std::vector<int> paddings, nvinfer1::DimsHW *pre_pad,
-                         nvinfer1::DimsHW *post_pad, int input_dims) {
+                         std::vector<int> ksize,
+                         std::vector<int> strides,
+                         std::vector<int> paddings,
+                         nvinfer1::DimsHW *pre_pad,
+                         nvinfer1::DimsHW *post_pad,
+                         int input_dims) {
   int input_height = input_shape.d[input_dims - 2];
   int input_width = input_shape.d[input_dims - 1];
   int floor_h_output_size =
@@ -62,7 +65,8 @@ inline void DealCeilMode(const nvinfer1::Dims &input_shape,
 class Pool2dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc &op,
-                  const framework::Scope &scope, bool test_mode) override {
+                  const framework::Scope &scope,
+                  bool test_mode) override {
     VLOG(4)
         << "convert a fluid pool2d op to tensorrt pool2d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
@@ -71,26 +75,26 @@ class Pool2dOpConverter : public OpConverter {
     int input_dims = input_shape.nbDims;
 
     bool global_pooling =
-        BOOST_GET_CONST(bool, op_desc.GetAttr("global_pooling"));
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("global_pooling"));
     std::string pool_type =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("pooling_type"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("pooling_type"));
     std::vector<int> ksize =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ksize"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("ksize"));
     std::vector<int> strides =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
     std::vector<int> paddings =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
     bool exclusive = op_desc.HasAttr("exclusive")
-                         ? BOOST_GET_CONST(bool, op_desc.GetAttr("exclusive"))
+                         ? PADDLE_GET_CONST(bool, op_desc.GetAttr("exclusive"))
                          : true;
-    bool ceil_mode = BOOST_GET_CONST(bool, op_desc.GetAttr("ceil_mode"));
+    bool ceil_mode = PADDLE_GET_CONST(bool, op_desc.GetAttr("ceil_mode"));
     bool adaptive = false;
     if (op_desc.HasAttr("adaptive"))
-      adaptive = BOOST_GET_CONST(bool, op_desc.GetAttr("adaptive"));
+      adaptive = PADDLE_GET_CONST(bool, op_desc.GetAttr("adaptive"));
     std::string padding_algorithm = "EXPLICIT";
     if (op_desc.HasAttr("padding_algorithm"))
       padding_algorithm =
-          BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+          PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
 
     nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
     nvinfer1::ReduceOperation reduce_operation =
@@ -134,7 +138,7 @@ class Pool2dOpConverter : public OpConverter {
     if (op_desc.HasAttr("enable_int8")) {
       CHECK(op_desc.HasAttr("Input_scale"));
       float input_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+          PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input1, input_scale);
     }
 
@@ -185,17 +189,18 @@ class Pool2dOpConverter : public OpConverter {
         if ((padding_algorithm != "SAME") &&
             ((g_post_pad.w() > 0 && input_shape.d[input_dims - 2] > 0) ||
              (g_post_pad.h() > 0 && input_shape.d[input_dims - 1] > 0))) {
-          auto *pad_layer = TRT_ENGINE_ADD_LAYER(engine_, Padding, *input1,
-                                                 g_pre_pad, g_post_pad);
+          auto *pad_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Padding, *input1, g_pre_pad, g_post_pad);
           PADDLE_ENFORCE_NOT_NULL(
-              pad_layer, platform::errors::Fatal(
-                             "Pad layer in poolOp converter could not be "
-                             "created. The pointer to pad layer is `NULL`."));
+              pad_layer,
+              platform::errors::Fatal(
+                  "Pad layer in poolOp converter could not be "
+                  "created. The pointer to pad layer is `NULL`."));
           input1 = pad_layer->getOutput(0);
         }
 
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
-                                                nv_pool_type, nv_ksize);
+        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Pooling, *input1, nv_pool_type, nv_ksize);
         pool_layer->setStride(nv_strides);
         pool_layer->setPadding(nv_paddings);
         pool_layer->setAverageCountExcludesPadding(exclusive);
@@ -204,8 +209,8 @@ class Pool2dOpConverter : public OpConverter {
         }
         layer = pool_layer;
       } else if (!adaptive && !global_pooling && ceil_mode) {
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
-                                                nv_pool_type, nv_ksize);
+        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Pooling, *input1, nv_pool_type, nv_ksize);
         pool_layer->setStride(nv_strides);
         pool_layer->setPadding(nv_paddings);
         pool_layer->setAverageCountExcludesPadding(exclusive);
@@ -216,14 +221,20 @@ class Pool2dOpConverter : public OpConverter {
         }
         layer = pool_layer;
       } else if (global_pooling && !adaptive) {
-        auto *reduce_layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *input1,
-                                                  reduce_operation, 12, true);
+        auto *reduce_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Reduce, *input1, reduce_operation, 12, true);
         layer = reduce_layer;
       } else {
 #if IS_TRT_VERSION_GE(6000)
-        plugin::PoolPluginDynamic *plugin = new plugin::PoolPluginDynamic(
-            ceil_mode, pool_type, adaptive, exclusive, ksize, strides, paddings,
-            global_pooling);
+        plugin::PoolPluginDynamic *plugin =
+            new plugin::PoolPluginDynamic(ceil_mode,
+                                          pool_type,
+                                          adaptive,
+                                          exclusive,
+                                          ksize,
+                                          strides,
+                                          paddings,
+                                          global_pooling);
         layer = engine_->AddDynamicPlugin(&input1, 1, plugin);
 #endif
       }
@@ -238,11 +249,12 @@ class Pool2dOpConverter : public OpConverter {
     }
 
     if (global_pooling == true && adaptive == false) {
-      auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
-                                              nv_pool_type, nv_ksize);
+      auto *pool_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Pooling, *input1, nv_pool_type, nv_ksize);
       PADDLE_ENFORCE_NOT_NULL(
-          pool_layer, platform::errors::Fatal(
-                          "trt pool layer in converter could not be created."));
+          pool_layer,
+          platform::errors::Fatal(
+              "trt pool layer in converter could not be created."));
       auto output_name = op_desc.Output("Out")[0];
       pool_layer->setName(("pool2d (Output: " + output_name + ")").c_str());
       pool_layer->getOutput(0)->setName(output_name.c_str());
@@ -256,19 +268,63 @@ class Pool2dOpConverter : public OpConverter {
 
     if (!adaptive) {
       if (ceil_mode) {
-        std::vector<int> input_shape_v;
-        for (int i = 0; i < input_dims; i++) {
-          input_shape_v.push_back(input_shape.d[i]);
+        if (nv_ksize.d[0] % nv_strides.d[0] == 0 &&
+            nv_ksize.d[1] % nv_strides.d[1] == 0) {
+          nvinfer1::DimsHW pre_pad(0, 0);
+          nvinfer1::DimsHW post_pad(0, 0);
+          // If ceil mode is true, we will pad the appropriate size to the
+          // input.
+          DealCeilMode(input_shape,
+                       ksize,
+                       strides,
+                       paddings,
+                       &pre_pad,
+                       &post_pad,
+                       input_dims);
+          auto *pad_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Padding, *input1, pre_pad, post_pad);
+
+          PADDLE_ENFORCE_NOT_NULL(
+              pad_layer,
+              platform::errors::Fatal(
+                  "Pad layer in poolOp converter could not be "
+                  "created. The pointer to pad layer is `NULL`."));
+          input1 = pad_layer->getOutput(0);
+
+          auto *pool_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Pooling, *input1, nv_pool_type, nv_ksize);
+          PADDLE_ENFORCE_NOT_NULL(
+              pool_layer,
+              platform::errors::Fatal(
+                  "trt pool layer in converter could not be created."));
+          pool_layer->setStride(nv_strides);
+          pool_layer->setPadding(nv_paddings);
+          if (padding_algorithm == "SAME") {
+            pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
+          }
+          pool_layer->setAverageCountExcludesPadding(exclusive);
+          layer = pool_layer;
+        } else {
+          std::vector<int> input_shape_v;
+          for (int i = 0; i < input_dims; i++) {
+            input_shape_v.push_back(input_shape.d[i]);
+          }
+          plugin::PoolPlugin *plugin = new plugin::PoolPlugin(ceil_mode,
+                                                              plugin_pool_type,
+                                                              adaptive,
+                                                              exclusive,
+                                                              ksize,
+                                                              strides,
+                                                              paddings,
+                                                              input_shape_v,
+                                                              real_paddings);
+          auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
+          PADDLE_ENFORCE_NOT_NULL(
+              pool_layer,
+              platform::errors::Fatal(
+                  "trt pool plugin layer in converter could not be created."));
+          layer = pool_layer;
         }
-        plugin::PoolPlugin *plugin = new plugin::PoolPlugin(
-            ceil_mode, plugin_pool_type, adaptive, exclusive, ksize, strides,
-            paddings, input_shape_v, real_paddings);
-        auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
-        PADDLE_ENFORCE_NOT_NULL(
-            pool_layer,
-            platform::errors::Fatal(
-                "trt pool plugin layer in converter could not be created."));
-        layer = pool_layer;
       } else {
 #if IS_TRT_VERSION_GE(8000)
         // Exclude padding pixels from the average mean is not supported well by
@@ -276,17 +332,18 @@ class Pool2dOpConverter : public OpConverter {
         // so enable padding for trt8.0 above.
         if ((g_post_pad.w() > 0 || g_post_pad.h() > 0) &&
             (padding_algorithm != "SAME") && !ceil_mode) {
-          auto *pad_layer = TRT_ENGINE_ADD_LAYER(engine_, Padding, *input1,
-                                                 g_pre_pad, g_post_pad);
+          auto *pad_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Padding, *input1, g_pre_pad, g_post_pad);
           PADDLE_ENFORCE_NOT_NULL(
-              pad_layer, platform::errors::Fatal(
-                             "Pad layer in poolOp converter could not be "
-                             "created. The pointer to pad layer is `NULL`."));
+              pad_layer,
+              platform::errors::Fatal(
+                  "Pad layer in poolOp converter could not be "
+                  "created. The pointer to pad layer is `NULL`."));
           input1 = pad_layer->getOutput(0);
         }
 #endif
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
-                                                nv_pool_type, nv_ksize);
+        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Pooling, *input1, nv_pool_type, nv_ksize);
         PADDLE_ENFORCE_NOT_NULL(
             pool_layer,
             platform::errors::Fatal(
@@ -299,7 +356,6 @@ class Pool2dOpConverter : public OpConverter {
         pool_layer->setAverageCountExcludesPadding(exclusive);
         layer = pool_layer;
       }
-
     } else {
       // Average pooling needs to exclude the padding pixels from the average
       // mean.
@@ -308,9 +364,15 @@ class Pool2dOpConverter : public OpConverter {
       for (int i = 0; i < input_dims; i++) {
         input_shape_v.push_back(input_shape.d[i]);
       }
-      plugin::PoolPlugin *plugin = new plugin::PoolPlugin(
-          ceil_mode, plugin_pool_type, adaptive, exclusive, ksize, strides,
-          paddings, input_shape_v, real_paddings);
+      plugin::PoolPlugin *plugin = new plugin::PoolPlugin(ceil_mode,
+                                                          plugin_pool_type,
+                                                          adaptive,
+                                                          exclusive,
+                                                          ksize,
+                                                          strides,
+                                                          paddings,
+                                                          input_shape_v,
+                                                          real_paddings);
       auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
       PADDLE_ENFORCE_NOT_NULL(
           pool_layer,
@@ -327,5 +389,4 @@ class Pool2dOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP_ITSELF(pool2d);
 REGISTER_TRT_OP_CONVERTER(pool2d, Pool2dOpConverter);

@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 #include <cassert>
-
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -28,8 +28,11 @@ namespace plugin {
 
 class MatmulPlugin : public nvinfer1::IPluginV2IOExt {
  public:
-  MatmulPlugin(nvinfer1::Dims const& dims_x, nvinfer1::Dims const& dims_y,
-               bool transA, bool transB, float alpha)
+  MatmulPlugin(nvinfer1::Dims const& dims_x,
+               nvinfer1::Dims const& dims_y,
+               bool transA,
+               bool transB,
+               float alpha)
       : dims_x_(dims_x),
         dims_y_(dims_y),
         transB_(transA),
@@ -65,9 +68,10 @@ class MatmulPlugin : public nvinfer1::IPluginV2IOExt {
     DeserializeValue(&serial_data, &serial_length, &matmulDesc_);
   }
 
-  virtual bool isOutputBroadcastAcrossBatch(
-      int32_t output_index, const bool* input_is_broadcasted,
-      int32_t nb_inputs) const TRT_NOEXCEPT {
+  virtual bool isOutputBroadcastAcrossBatch(int32_t output_index,
+                                            const bool* input_is_broadcasted,
+                                            int32_t nb_inputs) const
+      TRT_NOEXCEPT {
     return false;
   }
 
@@ -120,9 +124,10 @@ class MatmulPlugin : public nvinfer1::IPluginV2IOExt {
     return "matmul_int8_plugin";
   }
 
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* input_types,
-      int nb_inputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) const
+      TRT_NOEXCEPT override;
 
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
 
@@ -135,7 +140,8 @@ class MatmulPlugin : public nvinfer1::IPluginV2IOExt {
                                  int32_t nbInputs,
                                  int32_t nbOutputs) const TRT_NOEXCEPT override;
 
-  void configurePlugin(const nvinfer1::PluginTensorDesc* in, int32_t nbInputs,
+  void configurePlugin(const nvinfer1::PluginTensorDesc* in,
+                       int32_t nbInputs,
                        const nvinfer1::PluginTensorDesc* out,
                        int32_t nbOutputs) TRT_NOEXCEPT override;
 
@@ -147,14 +153,20 @@ class MatmulPlugin : public nvinfer1::IPluginV2IOExt {
   void terminate() TRT_NOEXCEPT;
 
 #if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batch_size, const void* const* inputs, void** outputs,
+  int enqueue(int batch_size,
+              const void* const* inputs,
+              void** outputs,
 #else
-  int enqueue(int batch_size, const void* const* inputs, void* const* outputs,
+  int enqueue(int batch_size,
+              const void* const* inputs,
+              void* const* outputs,
 #endif
-              void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override { delete this; }
-  void attachToContext(cudnnContext* cudnnContext, cublasContext* cublasContext,
+  void attachToContext(cudnnContext* cudnnContext,
+                       cublasContext* cublasContext,
                        nvinfer1::IGpuAllocator* gpuAllocator)
       TRT_NOEXCEPT override;
   void detachFromContext() TRT_NOEXCEPT override;
@@ -245,9 +257,10 @@ class MatmulPluginCreator : public nvinfer1::IPluginCreator {
     return nullptr;
   }
 
-  nvinfer1::IPluginV2IOExt* deserializePlugin(
-      const char* name, void const* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2IOExt* deserializePlugin(const char* name,
+                                              void const* serial_data,
+                                              size_t serial_length)
+      TRT_NOEXCEPT override {
     MatmulPlugin* obj = new MatmulPlugin(serial_data, serial_length);
     obj->setPluginNamespace(name);
     return obj;
@@ -312,9 +325,11 @@ class MatmulPluginDynamic : public DynamicPluginTensorRT {
 
   int initialize() TRT_NOEXCEPT { return 0; }
   void terminate() TRT_NOEXCEPT;
-  nvinfer1::DimsExprs getOutputDimensions(
-      int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
-      nvinfer1::IExprBuilder& exprBuilder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int outputIndex,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nbInputs,
+                                          nvinfer1::IExprBuilder& exprBuilder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
@@ -333,7 +348,8 @@ class MatmulPluginDynamic : public DynamicPluginTensorRT {
     return 0;
   }
 
-  void attachToContext(cudnnContext* cudnnContext, cublasContext* cublasContext,
+  void attachToContext(cudnnContext* cudnnContext,
+                       cublasContext* cublasContext,
                        nvinfer1::IGpuAllocator* gpuAllocator)
       TRT_NOEXCEPT override;
 
@@ -341,11 +357,14 @@ class MatmulPluginDynamic : public DynamicPluginTensorRT {
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* inputTypes,
-      int nbInputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const
+      TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override { delete this; }
 
@@ -401,9 +420,10 @@ class MatmulPluginDynamicCreator : public nvinfer1::IPluginCreator {
     return nullptr;
   }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, void const* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         void const* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     MatmulPluginDynamic* obj =
         new MatmulPluginDynamic(serial_data, serial_length);
     obj->setPluginNamespace(name);
