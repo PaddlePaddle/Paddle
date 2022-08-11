@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -26,5 +27,22 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                  const DenseTensor& scale,
                                  std::vector<DenseTensor*> outs,
                                  DenseTensor* found_infinite);
+
+template <typename T, typename Context>
+void UpdateLossScalingKernel(const Context& dev_ctx,
+                             const std::vector<const DenseTensor*>& xs,
+                             const DenseTensor& found_infinite,
+                             const DenseTensor& prev_loss_scaling,
+                             const DenseTensor& in_good_steps,
+                             const DenseTensor& in_bad_steps,
+                             int incr_every_n_steps,
+                             int decr_every_n_nan_or_inf,
+                             float incr_ratio,
+                             float decr_ratio,
+                             const Scalar& stop_update,
+                             std::vector<DenseTensor*> outs,
+                             DenseTensor* loss_scaling,
+                             DenseTensor* out_good_steps,
+                             DenseTensor* out_bad_steps);
 
 }  // namespace phi

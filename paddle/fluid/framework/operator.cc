@@ -2743,6 +2743,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
               phi_kernel_context->EmplaceBackAttr(std::move(phi::Scalar(
                   PADDLE_GET_CONST(std::string, attr_iter->second))));
               break;
+            case proto::AttrType::BOOLEAN:
+              phi_kernel_context->EmplaceBackAttr(std::move(
+                  phi::Scalar(PADDLE_GET_CONST(bool, attr_iter->second))));
+              break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
