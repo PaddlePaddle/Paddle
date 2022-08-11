@@ -103,9 +103,8 @@ class DataParallelOptimizationPass(PassBase):
         scaled_grads = []
 
         for op in ops:
-            grad_name = op.output_arg_names[0]
-
             if is_data_parallel_reduce_op(op):
+                grad_name = op.output_arg_names[0]
                 if grad_name in self._grad_name_to_group_map:
                     continue
                 assert op.has_attr(
@@ -124,6 +123,7 @@ class DataParallelOptimizationPass(PassBase):
                     self._group_to_grad_name_map[group].append(grad_name)
 
             elif is_data_parallel_scale_op(op):
+                grad_name = op.output_arg_names[0]
                 scaled_grads.append(grad_name)
 
             # TODO support multiple optimizers in on network in future.
