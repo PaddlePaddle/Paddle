@@ -40,8 +40,8 @@ void SetConstant<DeviceContext, T>::operator()(
 #ifndef PADDLE_WITH_XPU
     auto t = paddle::framework::EigenVector<T>::Flatten(*tensor);
     t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
-  }
 #endif
+  }
 }
 
 template <typename DeviceContext, typename T, int Rank>
