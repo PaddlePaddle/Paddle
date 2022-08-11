@@ -58,7 +58,6 @@ class Variable {
               "The Variable type must be %s, but the type it holds is %s.",
               ToTypeName(VarTypeTrait<T>::kId),
               ToTypeName(holder_->Type())));
-      VLOG(2) << "holder is not null done.";
     }
     return static_cast<T*>(holder_->Ptr());
   }

@@ -370,11 +370,25 @@ class _ProgramHolder(object):
         if end_op_index > 0:
             return self._add_build_strategy_for(whole_program, 0, end_op_index)
         else:
-            return paddle.static.Program()
+            return whole_program
 
     @LazyInitialized
     def _forward_program_desc(self):
         return self._create_forward_train_program().desc
+
+    # forward:
+    @switch_to_static_graph
+    def _create_forward_infer_program(self):
+        whole_program = _build_program_by_desc(self._infer_program_desc)
+        end_op_index = self._infer_program_desc.block(0).op_size()
+        if end_op_index > 0:
+            return self._add_build_strategy_for(whole_program, 0, end_op_index)
+        else:
+            return whole_program
+
+    @LazyInitialized
+    def _forward_infer_program_desc(self):
+        return self._create_forward_infer_program().desc
 
     # backward
     @switch_to_static_graph
@@ -404,6 +418,10 @@ class _ProgramHolder(object):
     @property
     def forward_program(self):
         return self._forward_program_desc
+
+    @property
+    def infer_forward_program(self):
+        return self._forward_infer_program_desc
 
     @property
     def backward_program(self):
@@ -929,7 +947,7 @@ def _run_dygraph(instance, input, program_holder):
 
     # 2. run program by op
     trace_program = program_holder.infer_program if instance._is_test else program_holder.train_program
-    forward_program = program_holder.infer_program if instance._is_test else program_holder.forward_program
+    forward_program = program_holder.infer_forward_program if instance._is_test else program_holder.forward_program
     end_op_index = program_holder.infer_program.block(0).op_size()
 
     attrs = [
