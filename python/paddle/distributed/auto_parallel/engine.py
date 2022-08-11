@@ -52,7 +52,7 @@ from .dist_context import DistributedContext, get_default_distributed_context
 
 
 def _prepare_cinn_if_enabled(main_program, startup_program):
-    if core.globals()['FLAGS_use_cinn']:
+    if 'FLAGS_use_cinn' in core.globals() and core.globals()['FLAGS_use_cinn']:
         from paddle.distributed.passes import new_pass, PassManager
         pass_manager = PassManager([new_pass("build_cinn")])
         pass_manager.apply([main_program], [startup_program])
