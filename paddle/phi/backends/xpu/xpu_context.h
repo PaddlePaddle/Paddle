@@ -34,8 +34,6 @@ class XPUContext : public DeviceContext {
 
   virtual ~XPUContext();
 
-  Eigen::DefaultDevice* eigen_device() const;
-
   const Place& GetPlace() const override;
 
   backends::xpu::XPUVersion xpu_version() const;
@@ -64,9 +62,6 @@ class XPUContext : public DeviceContext {
   void SetL3Cache(int l3_size = 14155776);
 
   void SetXPUStream(XPUStream stream);
-
- protected:
-  void SetEigenDevice(Eigen::DefaultDevice* device);
 
  private:
   struct Impl;

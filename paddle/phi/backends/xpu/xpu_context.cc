@@ -22,8 +22,6 @@
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"
 
-#include "unsupported/Eigen/CXX11/Tensor"
-
 namespace xpu = baidu::xpu::api;
 
 namespace phi {
@@ -64,17 +62,6 @@ struct XPUContext::Impl {
       xpu::destroy_context(context_);
       context_ = nullptr;
     }
-    if (owned_) {
-      delete eigen_device_;
-    }
-  }
-
-  Eigen::DefaultDevice* GetEigenDevice() const {
-    PADDLE_ENFORCE_NE(
-        eigen_device_,
-        nullptr,
-        phi::errors::Unavailable("the xpu eigen_device is nullptr."));
-    return eigen_device_;
   }
 
   const Place& GetPlace() const { return place_; }
@@ -99,7 +86,6 @@ struct XPUContext::Impl {
 
   void Init() {
     owned_ = true;
-    eigen_device_ = new Eigen::DefaultDevice();
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     LOG_FIRST_N(WARNING, 1)
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
@@ -113,7 +99,6 @@ struct XPUContext::Impl {
   void SetBkclContext(xpu::BKCLContext_t context) { bkcl_context_ = context; }
 
   bool owned_{false};
-  Eigen::DefaultDevice* eigen_device_{nullptr};
   Place place_;
   backends::xpu::XPUVersion xpu_version_;
   xpu::Context* context_{nullptr};
@@ -157,13 +142,5 @@ void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
 }
 
 void XPUContext::Init() { impl_->Init(); }
-
-Eigen::DefaultDevice* XPUContext::eigen_device() const {
-  return impl_->GetEigenDevice();
-}
-
-void XPUContext::SetEigenDevice(Eigen::DefaultDevice* device) {
-  impl_->eigen_device_ = device;
-}
 
 }  // namespace phi
