@@ -594,7 +594,10 @@ def interpolate(x,
         dy_attr = tuple(attr_list)
 
         if resample_type == "linear":
-            out = _C_ops.linear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_linear_interp_v2(x, *dy_attr)
+            else:
+                out = _C_ops.linear_interp_v2(x, *dy_attr)
         elif resample_type == "bilinear":
             out = _C_ops.bilinear_interp_v2(x, *dy_attr)
         elif resample_type == "trilinear":
@@ -1554,7 +1557,7 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         name(str, optional): The default value is None. Normally there is no need for user
             to set this property.
 
-    Returns：Tensor，padded with 0 according to pad and data type is same as input.
+    Returns: Tensor，padded with 0 according to pad and data type is same as input.
 
     Examples:
         .. code-block:: python

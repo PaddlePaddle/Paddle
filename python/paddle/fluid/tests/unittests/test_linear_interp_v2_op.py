@@ -22,6 +22,34 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.nn.functional import interpolate
+from paddle._C_ops import final_state_linear_interp_v2
+
+
+def linear_interp_v2_test(x,
+                          OutSize=None,
+                          SizeTensor=None,
+                          Scale=None,
+                          data_layout='NCHW',
+                          out_d=-1,
+                          out_h=-1,
+                          out_w=-1,
+                          scale=0.0,
+                          interp_method='linear',
+                          align_corners=False,
+                          align_mode=1):
+    if isinstance(scale, float) or isinstance(scale, int):
+        scale_list = []
+        for _ in range(len(x.shape) - 2):
+            scale_list.append(scale)
+        scale = list(map(float, scale_list))
+    elif isinstance(scale, list) or isinstance(scale, tuple):
+        scale = list(map(float, scale))
+    if SizeTensor is not None:
+        SizeTensor = [SizeTensor]
+    return final_state_linear_interp_v2(x, OutSize, SizeTensor, Scale,
+                                        data_layout, out_d, out_h, out_w, scale,
+                                        interp_method, align_corners,
+                                        align_mode)
 
 
 def linear_interp_np(input,
@@ -79,6 +107,7 @@ def linear_interp_np(input,
 class TestLinearInterpOp(OpTest):
 
     def setUp(self):
+        self.python_api = linear_interp_v2_test
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
@@ -125,18 +154,18 @@ class TestLinearInterpOp(OpTest):
 
     def test_check_output(self):
         if platform.system() == "Linux":
-            self.check_output(atol=1e-7)
+            self.check_output(atol=1e-7, check_eager=True)
         else:
-            self.check_output(atol=1e-5)
+            self.check_output(atol=1e-5, check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_eager=True)
 
     def init_test_case(self):
         self.interp_method = 'linear'
         self.input_shape = [1, 3, 100]
         self.out_w = 50
-        self.scale = 0.
+        self.scale = 0.5
         self.out_size = np.array([
             50,
         ]).astype("int32")
@@ -148,9 +177,9 @@ class TestLinearInterpOpDataLayout(TestLinearInterpOp):
 
     def init_test_case(self):
         self.interp_method = 'linear'
-        self.input_shape = [1, 3, 100]
+        self.input_shape = [1, 100, 3]
         self.out_w = 50
-        self.scale = 0.
+        self.scale = 0.5
         self.out_size = np.array([
             50,
         ]).astype("int32")
@@ -165,7 +194,7 @@ class TestLinearInterpOpAlignMode(TestLinearInterpOp):
         self.interp_method = 'linear'
         self.input_shape = [1, 3, 100]
         self.out_w = 50
-        self.scale = 0.
+        self.scale = 0.5
         self.out_size = np.array([
             50,
         ]).astype("int32")
@@ -179,7 +208,7 @@ class TestLinearInterpOpScale(TestLinearInterpOp):
         self.interp_method = 'linear'
         self.input_shape = [1, 3, 100]
         self.out_w = 50
-        self.scale = 0.5
+        self.scale = 0.8
         self.out_size = np.array([
             50,
         ]).astype("int32")
@@ -190,6 +219,7 @@ class TestLinearInterpOpScale(TestLinearInterpOp):
 class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
 
     def setUp(self):
+        self.python_api = linear_interp_v2_test
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
