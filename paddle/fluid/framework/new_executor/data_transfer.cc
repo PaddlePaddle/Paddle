@@ -139,29 +139,15 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
       phi::KernelFactory::Instance().SelectKernelMap(op_with_kernel->Type());
   if (phi_kernel_map.size() > 0) {
     auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
-    auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
-
     VLOG(6) << "phi_kernel_key " << phi_kernel_key << "\n";
 
-    if (op_with_kernel->PhiKernel()->IsValid()) {
-      run_phi_kernel = true;
-    } else {
-      if (!op_with_kernel->SupportsKernelType(expected_kernel_key)) {
-        auto phi_cpu_kernel_key =
-            FallBackToCpu(expected_kernel_key, phi_kernel_key, *op_with_kernel);
-        op_with_kernel->ResetPhiKernel(
-            new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-                phi_kernel_name, phi_cpu_kernel_key)));
-        if (op_with_kernel->PhiKernel()->IsValid()) {
-          VLOG(6) << "Static mode PrepareImpl - kernel name: "
-                  << phi_kernel_name << " | kernel key: " << phi_cpu_kernel_key
-                  << " | kernel: " << *(op_with_kernel->PhiKernel());
-          op_with_kernel->ResetKernelType(new OpKernelType(
-              TransPhiKernelKeyToOpKernelType(phi_cpu_kernel_key)));
-          run_phi_kernel = true;
-        }
-      }
-    }
+    PADDLE_ENFORCE_EQ(op_with_kernel->PhiKernel()->IsValid(),
+                      true,
+                      platform::errors::PreconditionNotMet(
+                          "this function was expected to construct"
+                          "data transfer op, but %s was passed.",
+                          op_with_kernel->Type()));
+    run_phi_kernel = true;
   }
 
   // 3. Execute transfer op and construct OpFuncNode

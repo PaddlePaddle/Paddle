@@ -15,12 +15,10 @@
 #include "paddle/phi/kernels/memcpy_h2d_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
+// #include "paddle/fluid/platform/device_context.h"
+// #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/stream.h"
 
 namespace phi {
 
@@ -29,25 +27,19 @@ void MemcpyH2DKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {
-  switch (dst_place_type) {
-    case 0:
-      Copy(dev_ctx, x, GPUPlace(), false, out);
-      break;
-    case 1:
-      Copy(dev_ctx, x, NPUPlace(), false, out);
-      break;
-    case 2:
-      Copy(dev_ctx, x, XPUPlace(), false, out);
-      break;
-    case 3:
-      Copy(dev_ctx, x, IPUPlace(), false, out);
-      break;
+  PADDLE_ENFORCE_GE(
+      dst_place_type,
+      0,
+      paddle::platform::errors::OutOfRange(
+          "dst_place_type only support 0-3 now: %d", dst_place_type));
+  PADDLE_ENFORCE_LE(
+      dst_place_type,
+      3,
+      paddle::platform::errors::OutOfRange(
+          "dst_place_type only support 0-3 now: %d", dst_place_type));
 
-    default:
-      PADDLE_THROW(errors::Unimplemented(
-          "memcpy dst_place: %d is not supported yet.", dst_place_type));
-      break;
-  }
+  // Copy will set the stream of the tensor while setting blocking to false
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 }
 
 }  // namespace phi
