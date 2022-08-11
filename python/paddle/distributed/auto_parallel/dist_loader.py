@@ -84,8 +84,8 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                  places,
                  batch_size=1,
                  epochs=1,
-                 collate_fn=None,
                  steps_per_epoch=None,
+                 collate_fn=None,
                  data_parallel_world_size=None,
                  data_parallel_rank=None,
                  drop_last=False):

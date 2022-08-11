@@ -307,6 +307,7 @@ class Engine:
             mode].dist_startup_programs
         self._feed_vars[mode] = self._dist_contexts[mode].serial_feed_vars
         self._fetch_vars[mode] = self._dist_contexts[mode].serial_fetch_vars
+        self._optimizer = self._dist_contexts[mode].serial_optimizer
 
         if self._nranks > 1:
             # Traverse different rank programs and traverse each op of them,
@@ -419,12 +420,13 @@ class Engine:
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
         train_dataloader = self._create_dataloader(train_data, batch_size,
-                                                   epochs, collate_fn,
-                                                   steps_per_epoch)
+                                                   epochs, steps_per_epoch,
+                                                   collate_fn)
 
         usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
         fetch_list, fetch_map = self._fetch_map(fetch_loss, usr_fetch)
+        lr_scheduler = self.get_lr_scheduler(self.main_program)
 
         for epoch in range(epochs):
             train_logs = {"epoch": epoch}
@@ -433,6 +435,9 @@ class Engine:
                                           fetch_list=fetch_list,
                                           use_program_cache=use_cache,
                                           return_numpy=return_numpy)
+                if lr_scheduler is not None:
+                    lr_scheduler.step()
+                    train_logs["lr"] = self._optimizer.get_lr()
                 train_logs["step"] = step
                 # inner fetches
                 if fetch_loss:
@@ -531,8 +536,8 @@ class Engine:
                            dataset,
                            batch_size,
                            epochs=1,
-                           collate_fn=None,
-                           steps_per_epoch=None):
+                           steps_per_epoch=None,
+                           collate_fn=None):
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
         dist_context = self._dist_contexts[self.mode]
@@ -564,8 +569,8 @@ class Engine:
                 places,
                 batch_size,
                 epochs,
-                collate_fn,
                 steps_per_epoch,
+                collate_fn,
                 data_parallel_world_size=self._input_split_size,
                 data_parallel_rank=self._input_split_rank)
 
@@ -709,6 +714,15 @@ class Engine:
         dist_context = self._dist_contexts[mode]
         self._saver.load(path, dist_main_prog, dist_context, strict,
                          load_optimizer)
+
+    @staticmethod
+    def get_lr_scheduler(program):
+        lr_sheduler = None
+        if hasattr(program, 'lr_sheduler'):
+            from paddle.optimizer.lr import LRScheduler
+            lr_sheduler = program.lr_sheduler
+            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
+        return lr_sheduler
 
     @property
     def mode(self):
