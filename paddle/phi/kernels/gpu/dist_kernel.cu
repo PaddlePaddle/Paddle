@@ -18,10 +18,11 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+
+namespace phi {
 
 #define FULL_MASK 0xffffffff
-#define HALF_WARP_SIZE 16
-#define WARP_SIZE 32
 
 __device__ __forceinline__ float inline_abs(float x) { return abs(x); }
 __device__ __forceinline__ double inline_abs(double x) { return abs(x); }
@@ -33,97 +34,13 @@ __device__ __forceinline__ double inline_pow(double base, double exponent) {
 }
 
 template <typename T>
-__forceinline__ __device__ T warpReduceSum(T val) {
-#pragma unroll
-  for (int offset = HALF_WARP_SIZE; offset > 0; offset /= 2) {
-#ifdef __HIPCC__
-    val += __shfl_down(val, offset);
-#else
-    val += __shfl_down_sync(FULL_MASK, val, offset);
-#endif
-  }
-  return val;
-}
-
-template <typename T>
-__forceinline__ __device__ T warpReduceMax(T val) {
-#pragma unroll
-  for (int offset = HALF_WARP_SIZE; offset > 0; offset /= 2) {
-#ifdef __HIPCC__
-    val = max(val, __shfl_xor(val, offset));
-#else
-    val = max(val, __shfl_xor_sync(FULL_MASK, val, offset));
-#endif
-  }
-  return val;
-}
-
-template <typename T>
-__forceinline__ __device__ T warpReduceMin(T val) {
-#pragma unroll
-  for (int offset = HALF_WARP_SIZE; offset > 0; offset /= 2) {
-#ifdef __HIPCC__
-    val = min(val, __shfl_xor(val, offset));
-#else
-    val = min(val, __shfl_xor_sync(FULL_MASK, val, offset));
-#endif
-  }
-  return val;
-}
-
-template <typename T>
-__inline__ __device__ T blockReduceSum(T val) {
-  static __shared__ T shared[32];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-  val = warpReduceSum<T>(val);
-  __syncthreads();
-  if (lane == 0) shared[wid] = val;
-  __syncthreads();
-  int block_span = blockDim.x >> 5;
-  val = (threadIdx.x < block_span) ? shared[lane] : static_cast<T>(0.0f);
-  if (wid == 0) val = warpReduceSum<T>(val);
-  return val;
-}
-
-template <typename T>
-__inline__ __device__ T blockReduceMax(T val) {
-  static __shared__ T shared[32];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-  val = warpReduceMax<T>(val);
-  __syncthreads();
-  if (lane == 0) shared[wid] = val;
-  __syncthreads();
-  int block_span = blockDim.x >> 5;
-  val = (threadIdx.x < block_span) ? shared[lane] : -1e10f;
-  if (wid == 0) val = warpReduceMax<T>(val);
-  return val;
-}
-
-template <typename T>
-__inline__ __device__ T blockReduceMin(T val) {
-  static __shared__ T shared[32];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-  val = warpReduceMax<T>(val);
-  __syncthreads();
-  if (lane == 0) shared[wid] = val;
-  __syncthreads();
-  int block_span = blockDim.x >> 5;
-  val = (threadIdx.x < block_span) ? shared[lane] : 1e10f;
-  if (wid == 0) val = warpReduceMax<T>(val);
-  return val;
-}
-
-template <typename T>
 __global__ void deviceReduceSumZero(const T* x, T* out, int64_t N) {
   T sum_val = 0;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x)
     sum_val += static_cast<T>(static_cast<double>(x[i]) != 0);
   __syncthreads();
-  sum_val = blockReduceSum(sum_val);
+  sum_val = phi::funcs::blockReduceSum<T>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) out[blockIdx.x] = sum_val;
 }
 
@@ -138,7 +55,7 @@ __global__ void deviceReduceSumZeroWithSubstract(const T* x,
     sum_val +=
         inline_abs(static_cast<T>(static_cast<double>(x[i] - y[i]) != 0));
   __syncthreads();
-  sum_val = blockReduceSum(sum_val);
+  sum_val = phi::funcs::blockReduceSum<T>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) out[blockIdx.x] = sum_val;
 }
 
@@ -149,7 +66,7 @@ __global__ void deviceReduceSumZeroFinal(const T* x, T* out, int64_t N) {
        i += blockDim.x * gridDim.x)
     sum_val += x[i];
   __syncthreads();
-  sum_val = blockReduceSum(sum_val);
+  sum_val = phi::funcs::blockReduceSum<T>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) out[blockIdx.x] = sum_val;
 }
 
@@ -160,7 +77,7 @@ __global__ void deviceReduceMax(const T* x, T* out, int64_t N) {
        i += blockDim.x * gridDim.x)
     max_val = max(max_val, inline_abs(x[i]));
   __syncthreads();
-  max_val = blockReduceMax(max_val);
+  max_val = phi::funcs::blockReduceMax<T>(max_val, FULL_MASK);
   if (threadIdx.x == 0) out[blockIdx.x] = max_val;
 }
 
@@ -174,7 +91,7 @@ __global__ void deviceReduceMaxWithSubstract(const T* x,
        i += blockDim.x * gridDim.x)
     max_val = max(max_val, inline_abs(x[i] - y[i]));
   __syncthreads();
-  max_val = blockReduceMax(max_val);
+  max_val = phi::funcs::blockReduceMax<T>(max_val, FULL_MASK);
   if (threadIdx.x == 0) out[blockIdx.x] = max_val;
 }
 
@@ -185,7 +102,7 @@ __global__ void deviceReduceMin(const T* x, T* out, int64_t N) {
        i += blockDim.x * gridDim.x)
     min_val = min(min_val, inline_abs(x[i]));
   __syncthreads();
-  min_val = blockReduceMin(min_val);
+  min_val = phi::funcs::blockReduceMin(min_val, FULL_MASK);
   if (threadIdx.x == 0) out[blockIdx.x] = min_val;
 }
 
@@ -199,7 +116,7 @@ __global__ void deviceReduceMinWithSubstract(const T* x,
        i += blockDim.x * gridDim.x)
     min_val = min(min_val, inline_abs(x[i] - y[i]));
   __syncthreads();
-  min_val = blockReduceMin(min_val);
+  min_val = phi::funcs::blockReduceMin(min_val, FULL_MASK);
   if (threadIdx.x == 0) out[blockIdx.x] = min_val;
 }
 
@@ -210,7 +127,7 @@ __global__ void deviceReduceSumOrder(const T* x, T* out, T p_order, int64_t N) {
        i += blockDim.x * gridDim.x)
     sum_val += static_cast<T>(inline_pow(inline_abs(x[i]), p_order));
   __syncthreads();
-  sum_val = blockReduceSum(sum_val);
+  sum_val = phi::funcs::blockReduceSum<T>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) out[blockIdx.x] = sum_val;
 }
 
@@ -222,7 +139,7 @@ __global__ void deviceReduceSumOrderWithSubstract(
        i += blockDim.x * gridDim.x)
     sum_val += static_cast<T>(inline_pow(inline_abs(x[i] - y[i]), p_order));
   __syncthreads();
-  sum_val = blockReduceSum(sum_val);
+  sum_val = phi::funcs::blockReduceSum<T>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) out[blockIdx.x] = sum_val;
 }
 
@@ -236,11 +153,9 @@ __global__ void deviceReduceSumOrderFinal(const T* x,
        i += blockDim.x * gridDim.x)
     sum_val += x[i];
   __syncthreads();
-  sum_val = blockReduceSum(sum_val);
+  sum_val = phi::funcs::blockReduceSum<T>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) out[blockIdx.x] = inline_pow(sum_val, (1 / p_order));
 }
-
-namespace phi {
 
 template <typename T, typename Context>
 void DistKernel(const Context& dev_ctx,
