@@ -688,7 +688,6 @@ class MatMulOp : public framework::OperatorWithKernel {
       ddim_out = ddim_out.transpose(axis).reshape(shape);
     }
 #endif
-
     context->SetOutputDim("Out", ddim_out);
     context->ShareLoD("X", "Out");
   }

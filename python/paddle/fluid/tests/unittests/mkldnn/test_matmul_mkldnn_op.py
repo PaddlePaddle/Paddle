@@ -549,10 +549,8 @@ class TestMatMulOpTransposeReshapeOtherDimFloat(
 
     def generate_data(self):
         self.bs = 11
-        self.x = np.random.random(
-            [self.bs, 12, 14, 18]).astype(self.data_type_)
-        self.y = np.random.random(
-            [self.bs, 12, 18, 13]).astype(self.data_type_)
+        self.x = np.random.random([self.bs, 12, 14, 18]).astype(self.data_type_)
+        self.y = np.random.random([self.bs, 12, 18, 13]).astype(self.data_type_)
 
 
 class TestMatMulOpTransposeReshapeOtherDimInt(

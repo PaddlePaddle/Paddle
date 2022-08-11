@@ -104,9 +104,9 @@ static paddle::framework::DDim ColumnMatrixDimsFromVector(
 }
 
 phi::DDim GetDimForInput(const ExecutionContext &ctx, std::string input_name) {
-  auto input_dims = ctx.Input<Tensor>(input_name)->dims();
   auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
   auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
+  auto input_dims = ctx.Input<Tensor>(input_name)->dims();
   if (!shape.empty() && !axis.empty()) {
     return input_dims.reshape(shape).transpose(axis);
   }
