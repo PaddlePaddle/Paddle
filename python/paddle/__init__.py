@@ -279,6 +279,7 @@ from .tensor.math import inner  # noqa: F401
 from .tensor.math import outer  # noqa: F401
 from .tensor.math import heaviside  # noqa: F401
 from .tensor.math import frac  # noqa: F401
+from .tensor.math import sgn  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -654,4 +655,5 @@ __all__ = [  # noqa
     'tril_indices',
     'index_add',
     "index_add_",
+    'sgn',
 ]

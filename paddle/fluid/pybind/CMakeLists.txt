@@ -44,7 +44,6 @@ set(PYBIND_DEPS
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
-  set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
   if(WITH_HETERPS)
     set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
   endif()
@@ -200,7 +199,7 @@ if(WITH_PSCORE)
   endif()
   set_source_files_properties(
     fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  list(APPEND PYBIND_DEPS fleet communicator index_wrapper index_sampler)
+  list(APPEND PYBIND_DEPS fleet index_wrapper index_sampler)
   list(APPEND PYBIND_SRCS)
   set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
 endif()
