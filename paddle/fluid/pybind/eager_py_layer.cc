@@ -108,26 +108,17 @@ PyObject* pylayer_method_name(PyObject* self, PyObject* noargs) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* tensor_detach(paddle::experimental::Tensor* tensor) {
-  PADDLE_ENFORCE_EQ(tensor->initialized(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Tensor %s has not been initialized!", tensor->name()));
-
+PyObject* tensor_view(paddle::experimental::Tensor* tensor) {
   PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
     new (&(v->tensor)) paddle::experimental::Tensor();
     v->tensor.set_impl(tensor->impl());
     v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
-    auto autograd_meta_src = egr::EagerUtils::autograd_meta(tensor);
-    auto autograd_meta = egr::EagerUtils::autograd_meta(&(v->tensor));
-    autograd_meta->SetPersistable(autograd_meta_src->Persistable());
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "tp_alloc return null, can not new a PyObject."));
   }
-
   return obj;
 }
 
@@ -174,7 +165,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   inputs_tensor.reserve(inputs_size);
   ctx->forward_input_tensor_is_duplicable.clear();
   ctx->forward_input_tensor_is_duplicable.reserve(inputs_size);
-  std::set<phi::TensorBase*> tensor_pyobjs;
+  std::set<phi::TensorBase*> input_tensor_pyobjs;
   for (size_t i = 0; i < inputs_size; i++) {
     PyObject* obj = nullptr;
     if (i >= args_size) {
@@ -183,7 +174,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       obj = PyTuple_GET_ITEM(args, i);
     }
     if (IsEagerTensor(obj)) {
-      tensor_pyobjs.insert(
+      input_tensor_pyobjs.insert(
           reinterpret_cast<TensorObject*>(obj)->tensor.impl().get());
       auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(
           reinterpret_cast<TensorObject*>(obj)->tensor);
@@ -202,7 +193,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
         if (IsEagerTensor(o)) {
-          tensor_pyobjs.insert(
+          input_tensor_pyobjs.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
         }
@@ -225,7 +216,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
         if (IsEagerTensor(o)) {
-          tensor_pyobjs.insert(
+          input_tensor_pyobjs.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
         }
@@ -281,6 +272,12 @@ PyObject* pylayer_method_apply(PyObject* cls,
     PyTuple_SET_ITEM(outputs_tuple, 0, outputs);
   }
 
+  std::set<phi::TensorBase*> dirty_tensor_pyobjs;
+  auto dirty_tensors = GetTensorsFromPyObject(ctx->dirty_tensors);
+  for (auto it : dirty_tensors) {
+    dirty_tensor_pyobjs.insert(it->impl().get());
+  }
+
   auto outputs_size = PyTuple_GET_SIZE(outputs_tuple);
   std::vector<std::vector<paddle::experimental::Tensor*>> outputs_tensor;
   outputs_tensor.reserve(outputs_size);
@@ -296,12 +293,14 @@ PyObject* pylayer_method_apply(PyObject* cls,
       outputs_autograd_meta.push_back({egr::EagerUtils::autograd_meta(
           &(reinterpret_cast<TensorObject*>(obj)->tensor))});
       ctx->forward_output_tensor_is_duplicable.push_back(false);
-      if (tensor_pyobjs.count(
+      if (input_tensor_pyobjs.count(
+              reinterpret_cast<TensorObject*>(obj)->tensor.impl().get()) &&
+          !dirty_tensor_pyobjs.count(
               reinterpret_cast<TensorObject*>(obj)->tensor.impl().get())) {
         PyTuple_SET_ITEM(
             outputs_tuple,
             i,
-            tensor_detach(&(reinterpret_cast<TensorObject*>(obj)->tensor)));
+            tensor_view(&(reinterpret_cast<TensorObject*>(obj)->tensor)));
       }
     } else if (PyList_Check(obj)) {
       std::vector<paddle::experimental::Tensor*> tensors;
@@ -310,12 +309,14 @@ PyObject* pylayer_method_apply(PyObject* cls,
         PyObject* o = PyList_GetItem(obj, j);
         if (IsEagerTensor(o)) {
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
-          if (tensor_pyobjs.count(
+          if (input_tensor_pyobjs.count(
+                  reinterpret_cast<TensorObject*>(o)->tensor.impl().get()) &&
+              !dirty_tensor_pyobjs.count(
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
             PyList_SetItem(
                 obj,
                 j,
-                tensor_detach(&(reinterpret_cast<TensorObject*>(o)->tensor)));
+                tensor_view(&(reinterpret_cast<TensorObject*>(o)->tensor)));
           }
         }
       }
@@ -332,12 +333,14 @@ PyObject* pylayer_method_apply(PyObject* cls,
         PyObject* o = PyTuple_GetItem(obj, j);
         if (IsEagerTensor(o)) {
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
-          if (tensor_pyobjs.count(
+          if (input_tensor_pyobjs.count(
+                  reinterpret_cast<TensorObject*>(o)->tensor.impl().get()) &&
+              !dirty_tensor_pyobjs.count(
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
             PyTuple_SetItem(
                 obj,
                 j,
-                tensor_detach(&(reinterpret_cast<TensorObject*>(o)->tensor)));
+                tensor_view(&(reinterpret_cast<TensorObject*>(o)->tensor)));
           }
         }
       }
@@ -369,8 +372,6 @@ PyObject* pylayer_method_apply(PyObject* cls,
       }
     }
 
-    // add inplace strategy, inplaced tensor is ctx->dirty_tensors
-    auto dirty_tensors = GetTensorsFromPyObject(ctx->dirty_tensors);
     for (auto it = dirty_tensors.begin(); it != dirty_tensors.end(); ++it) {
       auto dirty_tensor = *it;
       auto dirty_tensor_autograd_meta =

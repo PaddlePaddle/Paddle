@@ -468,6 +468,7 @@ class TestPyLayer(unittest.TestCase):
 
             @staticmethod
             def forward(ctx, x):
+                ctx.mark_dirty(x)
                 return x
 
             @staticmethod
