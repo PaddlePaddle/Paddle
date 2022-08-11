@@ -31,12 +31,12 @@ void MemcpyH2DKernel(const Context& dev_ctx,
       dst_place_type,
       0,
       paddle::platform::errors::OutOfRange(
-          "dst_place_type only support 0-3 now: %d", dst_place_type));
+          "dst_place_type only support 0-3, but got: %d", dst_place_type));
   PADDLE_ENFORCE_LE(
       dst_place_type,
       3,
       paddle::platform::errors::OutOfRange(
-          "dst_place_type only support 0-3 now: %d", dst_place_type));
+          "dst_place_type only support 0-3, but got: %d", dst_place_type));
 
   // Copy will set the stream of the tensor while setting blocking to false
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
