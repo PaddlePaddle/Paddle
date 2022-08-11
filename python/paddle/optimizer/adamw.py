@@ -443,7 +443,7 @@ class AdamW(Optimizer):
 
             if framework.in_dygraph_mode():
                 found_inf = self._get_auxiliary_var('found_inf')
-                _, _, _, _, _, _ = _C_ops.final_state_adamw(
+                _, _, _, _, _, _ = _C_ops.final_state_adamw_(
                     param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                     beta1_pow_acc, beta2_pow_acc, master_weight, found_inf,
                     _beta1, _beta2, self._epsilon, lr_ratio_,
