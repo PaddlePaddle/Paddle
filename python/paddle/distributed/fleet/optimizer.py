@@ -49,13 +49,6 @@ def distributed_optimizer(optimizer, strategy=None):
         """
     fleet.user_defined_optimizer = optimizer
 
-    fleet.step = optimizer.step
-    fleet.clear_grad = optimizer.clear_grad
-    fleet.set_lr = optimizer.set_lr
-    fleet.get_lr = optimizer.get_lr
-    fleet.state_dict = optimizer.state_dict
-    fleet.set_state_dict = optimizer.set_state_dict
-
     fleet_env = fleet.fleet
     if strategy is not None:
         if fleet_env._is_collective:
