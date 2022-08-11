@@ -27,7 +27,7 @@ std::shared_ptr<BaseEngine> CompilationUnit::GetEngine(
       engine_map_.count(name),
       1,
       phi::errors::InvalidArgument(
-          "Funciton named %s is not exist in engine_map_.", name));
+          "Funciton named %s is not existed in engine_map_.", name));
   return engine_map_.at(name);
 }
 
@@ -36,7 +36,7 @@ void CompilationUnit::SetEngine(const std::string &name,
   engine_map_[name] = engine;
 }
 
-const Name2EngineMap &CompilationUnit::EngineMap() const { return engine_map_; }
+const jit::EngineMap &CompilationUnit::EngineMap() const { return engine_map_; }
 
 }  // namespace jit
 }  // namespace paddle

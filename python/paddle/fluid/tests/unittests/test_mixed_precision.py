@@ -117,9 +117,9 @@ class AMPTest(unittest.TestCase):
                       found_inf)
                 if i % 2:
                     self.assertTrue(found_inf)
-                    self.assertTrue(np.array_equal(weight_, pre_weight_))
-                    self.assertTrue(np.array_equal(moment1_, pre_moment1_))
-                    self.assertTrue(np.array_equal(beta_pow1_, pre_beta_pow1_))
+                    np.testing.assert_array_equal(weight_, pre_weight_)
+                    np.testing.assert_array_equal(moment1_, pre_moment1_)
+                    np.testing.assert_array_equal(beta_pow1_, pre_beta_pow1_)
                 else:
                     self.assertFalse(found_inf)
                     self.assertFalse(np.array_equal(weight_, pre_weight_))

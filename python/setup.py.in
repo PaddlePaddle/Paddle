@@ -401,6 +401,8 @@ packages=['paddle',
           'paddle.device.cuda',
           'paddle.version',
           'paddle.profiler',
+          'paddle.geometric',
+          'paddle.geometric.message_passing',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
