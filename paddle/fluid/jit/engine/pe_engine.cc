@@ -58,7 +58,7 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
 }
 
 PEEngine::PEEngine(const std::shared_ptr<FunctionInfo> &info,
-                   const Name2VariableMap &params_dict,
+                   const VariableMap &params_dict,
                    const phi::Place &place)
     : info_(info), place_(place) {
   info_->RemoveDescFeedFetch();

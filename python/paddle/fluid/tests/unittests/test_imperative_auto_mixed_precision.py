@@ -324,8 +324,8 @@ class TestAmpScaler(unittest.TestCase):
 
             for param in model.parameters():
                 # param not update when tensor contains nan or inf
-                self.assertTrue(
-                    np.array_equal(param.numpy(), params_init[param.name]))
+                np.testing.assert_array_equal(param.numpy(),
+                                              params_init[param.name])
 
     def test_nan_inf(self):
         self.nan_inf()
@@ -974,7 +974,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
                           fetch_list=fetch_targets)
         print("pred.numpy()", pred.numpy())
         print("result", results[0])
-        self.assertTrue(np.array_equal(pred.numpy(), results[0]))
+        np.testing.assert_array_equal(pred.numpy(), results[0])
         paddle.disable_static()
 
     def test_inference_save_load(self):

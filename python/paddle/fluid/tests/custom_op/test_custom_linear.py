@@ -97,9 +97,10 @@ class TestCustomLinearJit(unittest.TestCase):
         self.np_bias = np.ones([4], dtype="float32")
 
     def check_output(self, out, pd_out, name):
-        self.assertTrue(
-            np.array_equal(out, pd_out),
-            "custom op {}: {},\n paddle api {}: {}".format(
+        np.testing.assert_array_equal(
+            out,
+            pd_out,
+            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
                 name, out, name, pd_out))
 
     def test_static(self):

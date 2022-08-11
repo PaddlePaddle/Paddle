@@ -1930,7 +1930,19 @@ def margin_cross_entropy(logits,
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        softmax, loss = _C_ops.final_state_margin_cross_entropy(
+            logits, label, return_softmax, ring_id, rank, nranks, margin1,
+            margin2, margin3, scale)
+        if reduction == 'mean':
+            loss = paddle.mean(loss)
+        elif reduction == 'sum':
+            loss = paddle.sum(loss)
+        if not return_softmax:
+            return loss
+        else:
+            return loss, softmax
+    elif paddle.in_dynamic_mode():
         softmax, loss = _C_ops.margin_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks,
             'margin1', margin1, 'margin2', margin2, 'margin3', margin3, 'scale',
@@ -2601,15 +2613,21 @@ def sigmoid_focal_loss(logit,
                 .format(normalizer_dims))
 
     if _non_static_mode():
-        one = _varbase_creator(dtype=logit.dtype)
-        _C_ops.fill_constant(one, 'value', float(1.0), 'force_cpu', False,
-                             'dtype', one.dtype, 'str_value', '1.0', 'shape',
-                             logit.shape)
         if in_dygraph_mode():
+            place = _current_expected_place()
+            one = _C_ops.final_state_full(logit.shape, float(1.0), logit.dtype,
+                                          place)
+
             loss = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
                 logit, label, False, -100)
-        else:
+
+        elif _in_legacy_dygraph():
+            one = _varbase_creator(dtype=logit.dtype)
+            _C_ops.fill_constant(one, 'value', float(1.0), 'force_cpu', False,
+                                 'dtype', one.dtype, 'str_value', '1.0',
+                                 'shape', logit.shape)
             loss = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+
         pred = _C_ops.sigmoid(logit)
         p_t = _C_ops.elementwise_add(
             _C_ops.elementwise_mul(pred, label),

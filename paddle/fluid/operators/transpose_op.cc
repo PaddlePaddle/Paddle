@@ -80,7 +80,7 @@ class TransposeOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     // Here we need to match dims to paddle layout
     // as we are producing non-oneDNN result
-    if ((x_dims.size() >= 3) &&
+    if (ctx->IsRunMKLDNNKernel() && (x_dims.size() >= 3) &&
         (paddle::platform::MKLDNNDeviceContext::tls()
              .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC)) {
       auto dims = phi::vectorize<int>(x_dims);

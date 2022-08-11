@@ -159,7 +159,7 @@ def group_sharded_parallel(model,
                                    sync_comm=sync_comm)
     else:
         raise ValueError("Please enter the correct level.")
-    if params_fp16 and isinstance(scaler, paddle.amp.GradScaler):
+    if isinstance(scaler, paddle.amp.GradScaler):
         if in_dygraph_mode():
             scaler = GroupShardedScaler(scaler)
         else:

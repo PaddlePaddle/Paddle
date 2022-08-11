@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/class_center_sample_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,30 +24,6 @@ namespace operators {
 class ClassCenterSampleOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(
-        ctx->HasInput("Label"), "Input", "Label", "ClassCenterSample");
-    OP_INOUT_CHECK(ctx->HasOutput("RemappedLabel"),
-                   "Output",
-                   "RemappedLabel",
-                   "ClassCenterSample");
-    OP_INOUT_CHECK(ctx->HasOutput("SampledLocalClassCenter"),
-                   "Output",
-                   "SampledLocalClassCenter",
-                   "ClassCenterSample");
-
-    auto x_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims.size(),
-                      1,
-                      platform::errors::InvalidArgument(
-                          "Rank of Input(Label) should be equal to 1, "
-                          "but the value given is %d.",
-                          x_dims.size()));
-
-    ctx->SetOutputDim("RemappedLabel", x_dims);
-    auto num_samples = ctx->Attrs().Get<int>("num_samples");
-    ctx->SetOutputDim("SampledLocalClassCenter", phi::make_ddim({num_samples}));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -143,10 +123,10 @@ class ClassCenterSampleOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+DECLARE_INFER_SHAPE_FUNCTOR(class_center_sample,
+                            ClassCenterSampleInferShapeFunctor,
+                            PD_INFER_META(phi::ClassCenterSampleInferMeta));
 REGISTER_OP_WITHOUT_GRADIENT(class_center_sample,
                              ops::ClassCenterSampleOp,
-                             ops::ClassCenterSampleOpMaker);
-REGISTER_OP_CPU_KERNEL(class_center_sample,
-                       ops::ClassCenterSampleCPUKernel<int64_t>,
-                       ops::ClassCenterSampleCPUKernel<int>);
+                             ops::ClassCenterSampleOpMaker,
+                             ClassCenterSampleInferShapeFunctor);

@@ -455,6 +455,14 @@
     func : celu
   backward : celu_grad
 
+- api : class_center_sample
+  args : (Tensor label, int num_classes, int num_samples, int ring_id, int rank, int nranks, bool fix_seed, int seed)
+  output : Tensor(remapped_label), Tensor(sampled_local_class_center)
+  infer_meta :
+    func : ClassCenterSampleInferMeta 
+  kernel :
+    func : class_center_sample 
+
 - api : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
   output : Tensor(out)
@@ -667,7 +675,7 @@
   backward : divide_grad
 
 - api : dropout
-  args : (Tensor x, Tensor seed_tensor, float p, bool is_test, str mode, int seed, bool fix_seed)
+  args : (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed)
   output : Tensor(out), Tensor(mask)
   infer_meta :
     func : DropoutInferMeta
@@ -789,16 +797,6 @@
     func : CompareAllInferMeta
   kernel :
     func : equal_all
-
-- api : erfinv
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : erfinv
-  inplace : (x -> out)
-  backward : erfinv_grad
 
 # exp
 - api : exp
@@ -985,6 +983,20 @@
     data_type : dtype
     backend : place
 
+# full
+- api : full_
+  args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  output : Tensor(out)
+  inplace : (output -> out)
+  infer_meta :
+    func : CreateInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : full
+    param : [shape, value, dtype]
+    data_type : dtype
+    backend : place
+
 - api : full_batch_size_like
   args : (Tensor input, int[] shape, DataType dtype, Scalar value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
   output: Tensor
@@ -1070,7 +1082,7 @@
     func : generate_proposals_v2
 
 - api : graph_send_recv
-  args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0)
+  args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", IntArray out_size = {0})
   output : Tensor(out), Tensor(dst_count)
   infer_meta :
     func : GraphSendRecvInferMeta
@@ -1563,6 +1575,16 @@
     func : lu_unpack
     data_type : x
   backward : lu_unpack_grad
+
+- api : margin_cross_entropy
+  args : (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
+  output : Tensor(softmax), Tensor(loss)
+  infer_meta :
+    func : MarginCrossEntropyInferMeta
+  kernel :
+    func : margin_cross_entropy
+    data_type : logits
+  backward : margin_cross_entropy_grad
 
 # masked_select
 - api : masked_select
