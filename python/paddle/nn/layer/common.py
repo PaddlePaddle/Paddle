@@ -969,8 +969,9 @@ class Pad1D(Layer):
     Returns:
         None
 
-    Code Examples:
+    Examples:
         .. code-block:: python
+         :name: code-example1
 
             import paddle
             import paddle.nn as nn
@@ -1039,8 +1040,9 @@ class Pad2D(Layer):
     Returns:
         None
 
-    Code Examples:
+    Examples:
         .. code-block:: python
+         :name: code-example1
 
             import paddle
             import paddle.nn as nn
@@ -1178,8 +1180,9 @@ class Pad3D(Layer):
     Returns:
         None
 
-    Code Examples:
+    Examples:
         .. code-block:: python
+         :name: code-example1
 
             import paddle
             import paddle.nn as nn
