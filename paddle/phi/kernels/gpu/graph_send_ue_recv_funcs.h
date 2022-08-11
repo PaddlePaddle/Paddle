@@ -23,8 +23,6 @@
 
 namespace phi {
 
-#define CUDA_MAX_NUM_THREADS 1024
-
 inline void CopyBCastOff(const BroadCastInfo& bcast_info,
                          thrust::device_vector<int64_t>& l_bcastoff,
                          thrust::device_vector<int64_t>& r_bcastoff) {
@@ -51,7 +49,7 @@ inline void CopyBCastOff(const BroadCastInfo& bcast_info,
 #endif
 }
 
-inline int FindNumThreads(int dim, int max_num_threads = CUDA_MAX_NUM_THREADS) {
+inline int FindNumThreads(int dim, int max_num_threads) {
   PADDLE_ENFORCE_GE(dim,
                     0,
                     phi::errors::PreconditionNotMet(
@@ -61,6 +59,7 @@ inline int FindNumThreads(int dim, int max_num_threads = CUDA_MAX_NUM_THREADS) {
   while (res > dim) {
     res = res >> 1;
   }
+  res = res <= 32 ? 32 : res;
   return res;
 }
 

@@ -61,6 +61,7 @@ def send_u_recv(x,
 
     Args:
         x (Tensor): The input tensor, and the available data type is float32, float64, int32, int64.
+                    And we support float16 in gpu version.
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64. 
@@ -127,8 +128,9 @@ def send_u_recv(x,
         return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
                                                   pool_type.upper(), out_size)
 
-    check_variable_and_dtype(x, "X", ("float32", "float64", "int32", "int64"),
-                             "graph_send_recv")
+    check_variable_and_dtype(
+        x, "X", ("float32", "float64", "int32", "int64", "float16"),
+        "graph_send_recv")
     check_variable_and_dtype(src_index, "Src_index", ("int32", "int64"),
                              "graph_send_recv")
     check_variable_and_dtype(dst_index, "Dst_index", ("int32", "int64"),
@@ -207,7 +209,9 @@ def send_ue_recv(x,
                   [2, 5, 6]]
     Args:
         x (Tensor): The input node feature tensor, and the available data type is float32, float64, int32, int64.
+                    And we support float16 in gpu version.
         y (Tensor): The input edge feature tensor, and the available data type is float32, float64, int32, int64.
+                    And we support float16 in gpu version.
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64.

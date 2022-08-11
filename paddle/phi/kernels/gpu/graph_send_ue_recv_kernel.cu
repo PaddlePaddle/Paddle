@@ -92,8 +92,8 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
   }
 
   int64_t out_len = bcast_info.out_len;
-  const int ntx = FindNumThreads(out_len);  // 一个block包含的Thread数
-  const int nty = CUDA_MAX_NUM_THREADS / ntx;
+  const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
+  const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
   const int nbx = (out_len + ntx - 1) / ntx;
   const int nby = (index_size + nty - 1) / nty;
   const dim3 grid(nbx, nby);

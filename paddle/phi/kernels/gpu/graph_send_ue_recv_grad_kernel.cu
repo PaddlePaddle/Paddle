@@ -49,8 +49,8 @@ void CalculateXEGradForMinMax(const Context& ctx,
   }
 
   int64_t out_len = bcast_info.out_len;
-  const int ntx = FindNumThreads(out_len);
-  const int nty = CUDA_MAX_NUM_THREADS / ntx;
+  const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
+  const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
   const int nbx = (out_len + ntx - 1) / ntx;
   const int nby = (index_size + nty - 1) / nty;
   const dim3 grid(nbx, nby);
@@ -180,8 +180,8 @@ void CalculateXGrad(const Context& ctx,
         CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
       }
       int64_t out_len = bcast_info.out_len;
-      const int ntx = FindNumThreads(out_len);
-      const int nty = CUDA_MAX_NUM_THREADS / ntx;
+      const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
+      const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
       const int nbx = (out_len + ntx - 1) / ntx;
       const int nby = (index_size + nty - 1) / nty;
       const dim3 grid_(nbx, nby);
@@ -303,8 +303,8 @@ void CalculateXGrad(const Context& ctx,
         CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
       }
       int64_t out_len = bcast_info.out_len;
-      const int ntx = FindNumThreads(out_len);
-      const int nty = CUDA_MAX_NUM_THREADS / ntx;
+      const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
+      const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
       const int nbx = (out_len + ntx - 1) / ntx;
       const int nby = (index_size + nty - 1) / nty;
       const dim3 grid_(nbx, nby);
@@ -389,8 +389,8 @@ void CalculateEGrad(const Context& ctx,
     CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
   }
   int64_t out_len = bcast_info.out_len;
-  const int ntx = FindNumThreads(out_len);
-  const int nty = CUDA_MAX_NUM_THREADS / ntx;
+  const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
+  const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
   const int nbx = (out_len + ntx - 1) / ntx;
   const int nby = (index_size + nty - 1) / nty;
   const dim3 grid(nbx, nby);
