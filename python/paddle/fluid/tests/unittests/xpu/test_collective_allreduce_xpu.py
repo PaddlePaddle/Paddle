@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 import paddle
+from paddle.fluid import core
 
 from test_collective_base_xpu import TestDistBase
 
@@ -45,7 +46,10 @@ class XPUTestCAllreduceOP(XPUOpTestWrapper):
 
 support_types = get_xpu_op_support_types('c_allreduce_sum')
 for stype in support_types:
-    create_test_class(globals(), XPUTestCAllreduceOP, stype)
+    create_test_class(globals(),
+                      XPUTestCAllreduceOP,
+                      stype,
+                      ignore_device_version=[core.XPUVersion.XPU1])
 
 if __name__ == '__main__':
     unittest.main()
