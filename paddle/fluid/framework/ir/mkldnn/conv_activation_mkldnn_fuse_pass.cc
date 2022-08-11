@@ -156,7 +156,7 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
   gpd(graph, handler);
   AddStatis(found_conv_concat_activation_count);
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
-      found_conv_activation_count > 0) {
+      found_conv_concat_activation_count > 0) {
     PrettyLogDetail("---    fused %d conv_concat with %s activation",
                     found_conv_concat_activation_count,
                     act_type);
