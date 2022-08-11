@@ -71,7 +71,6 @@ class TestDataParallelPassWithScale1(AutoPallelPassTestBase):
             loss
         ], gen_data = self.get_gpt_model('dp', place, batch_size, sequence_len,
                                          vocab_size)
-        suffix = ""
         if self._apply_pass:
             config = {}
             config["dist_context"] = get_default_distributed_context()
@@ -79,12 +78,6 @@ class TestDataParallelPassWithScale1(AutoPallelPassTestBase):
             dp_pass = new_pass("auto_parallel_data_parallel_optimization",
                                config)
             dp_pass.apply([dist_main_prog], [dist_startup_prog], PassContext())
-            suffix = "apply"
-
-        with open(
-                "./1data_parall_" + suffix + "_." +
-                str(paddle.distributed.get_rank()), "w+") as f:
-            f.write(str(dist_main_prog))
 
         return dist_main_prog, dist_startup_prog, data_holder, [loss], gen_data
 
@@ -102,7 +95,6 @@ class TestDataParallelPassWithScale2(TestDataParallelPassWithScale1):
                                          sequence_len,
                                          vocab_size,
                                          optimizer='LarsMomentum')
-        suffix = ""
         if self._apply_pass:
             config = {}
             config["dist_context"] = get_default_distributed_context()
@@ -110,12 +102,6 @@ class TestDataParallelPassWithScale2(TestDataParallelPassWithScale1):
             dp_pass = new_pass("auto_parallel_data_parallel_optimization",
                                config)
             dp_pass.apply([dist_main_prog], [dist_startup_prog], PassContext())
-            suffix = "apply"
-
-        with open(
-                "./2data_parall_" + suffix + "_." +
-                str(paddle.distributed.get_rank()), "w+") as f:
-            f.write(str(dist_main_prog))
 
         return dist_main_prog, dist_startup_prog, data_holder, [loss], gen_data
 
