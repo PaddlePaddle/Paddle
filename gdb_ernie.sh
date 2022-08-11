@@ -22,13 +22,11 @@ export LD_LIBRARY_PATH=/work/Develop/CINN/build/:${LD_LIBRARY_PATH}
 
 model_path=${1:-'./linjianhe_ernie'}
 input_file=${2:-'./paddle_debug.txt'}
-# ernie_bin=./build/paddle/fluid/inference/tests/api/ernie_debug_tool
-ernie_bin=./build_rel/paddle/fluid/inference/tests/api/ernie_debug_tool
+ernie_bin=./build/paddle/fluid/inference/tests/api/ernie_debug_tool
 
 # export GLOG_vmodule=build_cinn_pass=4
-# export GLOG_v=4
 
-export FLAGS_allow_cinn_ops="dropout;elementwise_add;mul;relu;reshape2;scale;sigmoid;slice;softmax;transpose2;matmul;tanh"
+export FLAGS_allow_cinn_ops="dropout;elementwise_add;mul;relu;reshape2;sigmoid;slice;softmax;transpose2"
 export FLAGS_cinn_use_new_fusion_pass=1
 export FLAGS_enable_pe_launch_cinn=0
 
@@ -36,8 +34,7 @@ export FLAGS_enable_pe_launch_cinn=0
 # export runtime_include_dir=/work/Develop/Paddle/build/third_party/CINN/src/external_cinn/cinn/runtime/cuda
 export runtime_include_dir=/work/Develop/CINN/cinn/runtime/cuda
 
-# LD_DEBUG=libs
-${ernie_bin}                         \
+gdb --args ${ernie_bin}              \
     --model_dir=${model_path}        \
     --input_file=${input_file}       \
     --req_with_batch=true            \

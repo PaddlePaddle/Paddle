@@ -1376,3 +1376,5 @@ cc_binary(
   gflags
   glog)
 target_compile_options(ernie_debug_tool PRIVATE -Wno-error=sign-compare)
+target_link_options(ernie_debug_tool PRIVATE -Wl,--enable-new-dtags)
+
