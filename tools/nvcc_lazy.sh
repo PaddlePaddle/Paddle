@@ -39,11 +39,11 @@ echo "# set cicc PATH for Centos" >> $1
 echo "export PATH=\$PATH:$2/nvvm/bin" >> $1
 echo -e >> $1
 echo "# check nvcc version, if nvcc >= 11.7, just run nvcc itself" >> $1
-echo "CUDA_VERSION=\$(nvcc --version | grep -oP '(?<=V)\d*\.\d*')" >> $1
+echo "CUDA_VERSION=\$($2/bin/nvcc --version | grep -oP '(?<=V)\d*\.\d*')" >> $1
 echo "CUDA_VERSION_MAJOR=\${CUDA_VERSION%.*}" >> $1
 echo "CUDA_VERSION_MINOR=\${CUDA_VERSION#*.}" >> $1
 echo "if (( CUDA_VERSION_MAJOR > 11 || (CUDA_VERSION_MAJOR == 11 && CUDA_VERSION_MINOR >= 7) )); then" >> $1
-echo "  nvcc \"\$@\"" >> $1
+echo "  $2/bin/nvcc \"\$@\"" >> $1
 echo "  exit" >> $1
 echo "fi" >> $1
 echo -e >> $1
