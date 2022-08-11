@@ -44,7 +44,6 @@ set(PYBIND_DEPS
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
-  #  set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
   if(WITH_HETERPS)
     set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
   endif()

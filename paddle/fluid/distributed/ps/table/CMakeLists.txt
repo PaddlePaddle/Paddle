@@ -53,10 +53,6 @@ cc_library(
 set_source_files_properties(
   tensor_accessor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
-#cc_library(
-#  tensor_accessor
-#  SRCS tensor_accessor.cc
-#  DEPS ${TABLE_DEPS} eigen3 ps_framework_proto device_context)
 cc_library(
   tensor_table
   SRCS
@@ -88,26 +84,6 @@ set_source_files_properties(
   memory_sparse_geo_table.cc PROPERTIES COMPILE_FLAGS
                                         ${DISTRIBUTE_COMPILE_FLAGS})
 
-#cc_library(
-#  sparse_sgd_rule
-#  SRCS sparse_sgd_rule.cc
-#  DEPS ${TABLE_DEPS} ps_framework_proto)
-#cc_library(
-#  ctr_accessor
-#  SRCS sparse_sgd_rule.cc ctr_accessor.cc ctr_double_accessor.cc
-#       sparse_accessor.cc ctr_dymf_accessor.cc tensor_accessor.cc
-#  DEPS ${TABLE_DEPS} ps_framework_proto eigen3)
-#cc_library(
-#  sparse_table
-#  SRCS memory_sparse_table.cc ssd_sparse_table.cc memory_sparse_geo_table.cc
-#  DEPS ps_framework_proto
-#       ${TABLE_DEPS}
-#       fs
-#       afs_wrapper
-#       ctr_accessor
-#       common_table
-#       rocksdb)
-
 cc_library(
   table
   SRCS sparse_sgd_rule.cc
@@ -122,7 +98,6 @@ cc_library(
        table.cc
   DEPS ${TABLE_DEPS}
        common_table
-       #       tensor_accessor
        tensor_table
        ps_framework_proto
        string_helper
@@ -131,7 +106,6 @@ cc_library(
        glog
        fs
        afs_wrapper
-       #ctr_accessor
        rocksdb
        eigen3)
 

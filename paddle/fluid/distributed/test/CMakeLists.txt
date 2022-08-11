@@ -47,7 +47,6 @@ set_source_files_properties(
 cc_test(
   graph_node_test
   SRCS graph_node_test.cc
-  #  DEPS graph_py_service
   DEPS scope ps_service table ps_framework_proto ${COMMON_DEPS})
 
 set_source_files_properties(
@@ -55,7 +54,6 @@ set_source_files_properties(
 cc_test(
   graph_node_split_test
   SRCS graph_node_split_test.cc
-  #  DEPS graph_py_service
   DEPS scope ps_service table ps_framework_proto ${COMMON_DEPS})
 
 set_source_files_properties(
