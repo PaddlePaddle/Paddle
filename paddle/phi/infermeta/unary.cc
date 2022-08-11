@@ -2614,17 +2614,6 @@ void ReduceMinInferMetaBase(const MetaTensor& x,
     ReduceInferMetaBase(x, vec_axis, keep_dim, reduce_all, out);
   } else {
     auto x_rank = static_cast<size_t>(x.dims().size());
-
-    // PADDLE_ENFORCE_LE(
-    //   vec_axis.size(),
-    //   x_rank,
-    //   errors::InvalidArgument(
-    //       "The length of axis should be less than or equal to "
-    //       "x_rank. But received the length of axis = %d, "
-    //       "x_rank = %d",
-    //       vec_axis.size(),
-    //       x_rank));
-
     std::vector<int64_t> vec_dim;
     if (vec_axis.size() >= x_rank) {
       vec_dim = {-1};
