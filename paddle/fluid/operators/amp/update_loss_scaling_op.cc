@@ -16,7 +16,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,55 +27,6 @@ namespace operators {
 class UpdateLossScalingOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("FoundInfinite"),
-                   "Input",
-                   "FoundInfinite",
-                   "update_loss_scaling");
-    OP_INOUT_CHECK(ctx->HasInput("PrevLossScaling"),
-                   "Input",
-                   "PrevLossScaling",
-                   "update_loss_scaling");
-    OP_INOUT_CHECK(ctx->HasInput("InGoodSteps"),
-                   "Input",
-                   "InGoodSteps",
-                   "update_loss_scaling");
-    OP_INOUT_CHECK(ctx->HasInput("InBadSteps"),
-                   "Input",
-                   "InBadSteps",
-                   "update_loss_scaling");
-    OP_INOUT_CHECK(ctx->HasOutput("LossScaling"),
-                   "Output",
-                   "LossScaling",
-                   "update_loss_scaling");
-    OP_INOUT_CHECK(ctx->HasOutput("OutGoodSteps"),
-                   "Output",
-                   "OutGoodSteps",
-                   "update_loss_scaling");
-    OP_INOUT_CHECK(ctx->HasOutput("OutBadSteps"),
-                   "Output",
-                   "OutBadSteps",
-                   "update_loss_scaling");
-
-    if (ctx->HasInputs("X") || ctx->HasOutputs("Out")) {
-      PADDLE_ENFORCE_EQ(
-          ctx->Inputs("X").size(),
-          ctx->Outputs("Out").size(),
-          platform::errors::InvalidArgument(
-              "The input(X) and output(Out) should have same size in "
-              "Operator(update_loss_scaling), size of input(X) is %d "
-              "and size of output(Out) is %d.",
-              ctx->Inputs("X").size(),
-              ctx->Outputs("Out").size()));
-      auto x_dims = ctx->GetInputsDim("X");
-      ctx->SetOutputsDim("Out", x_dims);
-    }
-
-    ctx->SetOutputDim("LossScaling", {1});
-    ctx->SetOutputDim("OutGoodSteps", {1});
-    ctx->SetOutputDim("OutBadSteps", {1});
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -172,9 +126,13 @@ decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 namespace ops = paddle::operators;
 using CPU = phi::CPUContext;
 
+DECLARE_INFER_SHAPE_FUNCTOR(update_loss_scaling,
+                            UpdateLossScalingInferShapeFunctor,
+                            PD_INFER_META(phi::UpdateLossScalingInferMeta));
 REGISTER_OPERATOR(
     update_loss_scaling,
     ops::UpdateLossScalingOp,
     ops::UpdateLossScalingOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    UpdateLossScalingInferShapeFunctor);

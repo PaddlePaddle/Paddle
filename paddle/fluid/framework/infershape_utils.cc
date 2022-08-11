@@ -471,6 +471,10 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(std::string, attr)));
               break;
+            case framework::proto::AttrType::BOOLEAN:
+              infer_meta_context.EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(bool, attr)));
+              break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
