@@ -388,9 +388,14 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 inplace_args_pos_map[name] = pos
             is_optional = (name in optional_inputs)
             if IsVectorTensorType(ttype):
-                get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
-                    name, "GetTensorListFromArgs", forward_api_name, name, pos,
-                    "false")
+                if is_optional:
+                    get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                        name, "GetOptionalTensorListFromArgs", forward_api_name,
+                        name, pos, "true")
+                else:
+                    get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                        name, "GetTensorListFromArgs", forward_api_name, name,
+                        pos, "false")
             else:
                 if is_optional:
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
