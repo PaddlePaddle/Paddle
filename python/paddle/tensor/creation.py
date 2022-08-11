@@ -418,9 +418,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         output = assign(data)
         if dtype is not None:
             output = output.astype(dtype)
-
         return output
-
 
 
 def full_like(x, fill_value, dtype=None, name=None):
