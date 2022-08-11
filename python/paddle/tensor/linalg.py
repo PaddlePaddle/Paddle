@@ -421,15 +421,15 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                  asvector=False,
                  name=None):
         if in_dygraph_mode():
-            out = _C_ops.final_state_abs(x)
+            out = _C_ops.final_state_abs(input)
             reduce_all = True if axis == None or axis == [] or asvector == True else False
             axis = axis if axis != None and axis != [] else [0]
             if reduce_all:
                 assert (axis == []) or (axis is None)
             if porder == np.float64('inf'):
-                return _C_ops.final_state_max(x, axis, keepdim)
+                return _C_ops.final_state_max(out, axis, keepdim)
             else:
-                return _C_ops.final_state_min(x, axis, keepdim)
+                return _C_ops.final_state_min(out, axis, keepdim)
 
         helper = LayerHelper('inf_norm', **locals())
         out = helper.create_variable_for_type_inference(
