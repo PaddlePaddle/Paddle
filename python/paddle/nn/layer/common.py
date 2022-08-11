@@ -954,14 +954,14 @@ class Pad1D(Layer):
         padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
             same padding in both dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
-        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
+        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
             Default is 'constant'.
-        value (float32): The value to fill the padded areas. Default is 0.0
-        data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
+        value (float32, optional): The value to fill the padded areas. Default is 0.0
+        data_format (str, optional): An string from: "NCL", "NLC". Specify the data format of the input data.
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
@@ -969,28 +969,16 @@ class Pad1D(Layer):
     Returns:
         None
 
-    Examples:
-        .. code-block:: text
-
-            x = [[[1., 2., 3.],
-                  [4., 5., 6.]]]
-            padding = [1, 2],
-            mode = "constant"
-            value = 0.0
-            Out = [[[0. 1. 2. 3. 0. 0.]
-                    [0. 4. 5. 6. 0. 0.]]]
-
     Code Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
             input_shape = (1, 2, 3)
             pad = [1, 2]
             mode = "constant"
-            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad1D(padding=pad, mode=mode)
             result = my_pad(data)
             print(result)
@@ -1036,14 +1024,14 @@ class Pad2D(Layer):
         padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded. 
             The pad has the form (pad_left, pad_right, pad_top, pad_bottom). 
-        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
+        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
             Default is 'constant'.
-        value (float32): The value to fill the padded areas. Default is 0.0
-        data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
+        value (float32, optional): The value to fill the padded areas. Default is 0.0
+        data_format (str, optional): An string from: "NCHW", "NHWC". Specify the data format of the input data.
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
@@ -1051,27 +1039,16 @@ class Pad2D(Layer):
     Returns:
         None
 
-    Examples:
-        .. code-block:: text
-
-            x = [[[[1., 2., 3.],
-                   [4., 5., 6.]]]]
-            padding = [1, 1, 0, 0]
-            mode = "constant"
-            value = 0.0
-            Out = [[[[0. 1. 2. 3. 0.]
-                     [0. 4. 5. 6. 0.]]]]
-
     Code Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
+
             input_shape = (1, 1, 2, 3)
             pad = [1, 0, 1, 2]
             mode = "constant"
-            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad2D(padding=pad, mode=mode)
             result = my_pad(data)
             print(result)
@@ -1186,14 +1163,14 @@ class Pad3D(Layer):
         padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
+        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
             Default is 'constant'.
-        value (float32): The value to fill the padded areas. Default is 0.0
-        data_format (str): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
+        value (float32, optional): The value to fill the padded areas. Default is 0.0
+        data_format (str, optional): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
            Default is  "NCDHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
@@ -1201,27 +1178,16 @@ class Pad3D(Layer):
     Returns:
         None
 
-    Examples:
-        .. code-block:: text
-
-            x = [[[[[1., 2., 3.],
-                    [4., 5., 6.]]]]]
-            padding = [1, 2, 0, 0, 0, 0]
-            mode = "constant"
-            value = 0.0
-            Out = [[[[[0. 1. 2. 3. 0. 0.]
-                      [0. 4. 5. 6. 0. 0.]]]]]
-
     Code Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
+
             input_shape = (1, 1, 1, 2, 3)
             pad = [1, 0, 1, 2, 0, 0]
             mode = "constant"
-            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad3D(padding=pad, mode=mode)
             result = my_pad(data)
             print(result)
