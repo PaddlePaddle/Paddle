@@ -318,7 +318,7 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         paddle.disable_static()
 
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     ###soft_label test 2
@@ -404,7 +404,7 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         paddle.disable_static()
 
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     ###soft_label test 3
@@ -479,7 +479,7 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         paddle.disable_static()
 
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     ###soft_label test 4
@@ -555,7 +555,7 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         paddle.disable_static()
 
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     ###soft_label test 5
@@ -634,8 +634,8 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         paddle.disable_static()
 
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     ###soft_label test 6
@@ -715,8 +715,8 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         paddle.disable_static()
 
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     ###soft_label test end
@@ -753,8 +753,8 @@ class CrossEntropyLoss(unittest.TestCase):
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
         expected = cross_entropy_loss_1d(input_np, label_np, ignore_index=0)[0]
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_cross_entropy_loss_1d_with_mean_ignore_negative(self):
@@ -791,8 +791,8 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(dy_ret_value)
         expected = cross_entropy_loss_1d(input_np, label_np, ignore_index=-1)[0]
 
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_cross_entropy_loss_1d_with_weight_mean_ignore(self):
@@ -839,8 +839,8 @@ class CrossEntropyLoss(unittest.TestCase):
                                          weight=weight_np,
                                          ignore_index=0)[0]
 
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_cross_entropy_loss_1d_with_weight_mean_ignore_exceedlabel(self):
@@ -903,8 +903,8 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(dy_ret_value)
         expected = cross_entropy_loss_1d(input_np, label_np,
                                          weight=weight_np)[0]
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_cross_entropy_loss_1d_with_weight_sum(self):
@@ -944,8 +944,8 @@ class CrossEntropyLoss(unittest.TestCase):
                                          label_np,
                                          weight=weight_np,
                                          reduction='sum')[0]
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_cross_entropy_loss_1d_with_weight_none(self):
@@ -1066,8 +1066,8 @@ class CrossEntropyLoss(unittest.TestCase):
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
         expected = cross_entropy_loss_1d(input_np, label_np)[0]
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_cross_entropy_loss_1d_sum(self):
@@ -1100,8 +1100,8 @@ class CrossEntropyLoss(unittest.TestCase):
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
         expected = cross_entropy_loss_1d(input_np, label_np, reduction='sum')[0]
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_cross_entropy_loss_1d_none(self):
@@ -1232,8 +1232,8 @@ class CrossEntropyLoss(unittest.TestCase):
                                          label_np,
                                          weight=weight_np,
                                          reduction='mean')[0]
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_cross_entropy_loss_2d_with_weight_mean_ignore_exceedlabel(self):
@@ -1298,8 +1298,8 @@ class CrossEntropyLoss(unittest.TestCase):
                                          label_np,
                                          weight=weight_np,
                                          reduction='mean')[0]
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_cross_entropy_loss_2d_with_weight_sum(self):
@@ -1343,8 +1343,8 @@ class CrossEntropyLoss(unittest.TestCase):
                                          label_np,
                                          weight=weight_np,
                                          reduction='sum')[0]
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_cross_entropy_loss_2d_none(self):
@@ -1421,8 +1421,8 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(dy_ret_value)
         expected = cross_entropy_loss_2d(input_np, label_np,
                                          reduction='mean')[0]
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_cross_entropy_loss_2d_sum(self):
@@ -1459,8 +1459,8 @@ class CrossEntropyLoss(unittest.TestCase):
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
         expected = cross_entropy_loss_2d(input_np, label_np, reduction='sum')[0]
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_soft_1d_dygraph_final_state_api(self):

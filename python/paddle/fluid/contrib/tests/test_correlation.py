@@ -114,7 +114,7 @@ class TestCorrelationOp(unittest.TestCase):
         },
                       fetch_list=[out.name, loss.name])
 
-        np.testing.assert_allclose(res[0], out_np, rtol=1e-05)
+        np.testing.assert_allclose(res[0], out_np, rtol=1e-05, atol=1e-8)
 
 
 class Net(fluid.dygraph.Layer):
@@ -159,7 +159,7 @@ class TestCorrelationOpDyGraph(unittest.TestCase):
             corr_pd = Net('corr_pd')
             y = corr_pd(x1, x2)
             out = y.numpy()
-            np.testing.assert_allclose(out, out_np, rtol=1e-05)
+            np.testing.assert_allclose(out, out_np, rtol=1e-05, atol=1e-8)
 
 
 if __name__ == '__main__':

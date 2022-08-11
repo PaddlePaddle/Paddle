@@ -241,28 +241,28 @@ class TestDistBase(unittest.TestCase):
         input2 = np.random.random((10, 1000))
         if col_type == "allgather":
             need_result = np.vstack((input1, input2))
-            np.testing.assert_allclose(tr0_out, need_result, rtol=1e-05)
-            np.testing.assert_allclose(tr1_out, need_result, rtol=1e-05)
+            np.testing.assert_allclose(tr0_out[0], need_result, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result, rtol=1e-05)
         elif col_type == "broadcast":
             need_result = input2
-            np.testing.assert_allclose(tr0_out, need_result, rtol=1e-05)
-            np.testing.assert_allclose(tr1_out, need_result, rtol=1e-05)
+            np.testing.assert_allclose(tr0_out[0], need_result, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result, rtol=1e-05)
         elif col_type == "reduce":
             need_result = input1 + input2
-            np.testing.assert_allclose(tr1_out, need_result, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result, rtol=1e-05)
         elif col_type == "scatter":
             need_result = input2
             need_result1 = need_result[0:need_result.shape[0] // 2]
             need_result2 = need_result[need_result.shape[0] // 2:]
-            np.testing.assert_allclose(tr0_out, need_result1, rtol=1e-05)
-            np.testing.assert_allclose(tr1_out, need_result2, rtol=1e-05)
+            np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
         elif col_type == "allreduce":
             need_result = input1 + input2
-            np.testing.assert_allclose(tr0_out,
+            np.testing.assert_allclose(tr0_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
-            np.testing.assert_allclose(tr1_out,
+            np.testing.assert_allclose(tr1_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
@@ -270,25 +270,25 @@ class TestDistBase(unittest.TestCase):
             tmp = input1 + input2
             need_result1 = tmp[0:tmp.shape[0] // 2]
             need_result2 = tmp[tmp.shape[0] // 2:]
-            np.testing.assert_allclose(tr0_out,
+            np.testing.assert_allclose(tr0_out[0],
                                        need_result1,
                                        rtol=1e-05,
                                        atol=1e-05)
-            np.testing.assert_allclose(tr1_out,
+            np.testing.assert_allclose(tr1_out[0],
                                        need_result2,
                                        rtol=1e-05,
                                        atol=1e-05)
         elif col_type == "sendrecv":
             need_result = input1
-            np.testing.assert_allclose(tr1_out,
+            np.testing.assert_allclose(tr1_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
         elif col_type == "identity":
             need_result1 = input1
             need_result2 = input2
-            np.testing.assert_allclose(tr0_out, need_result1, rtol=0, atol=0)
-            np.testing.assert_allclose(tr1_out, need_result2, rtol=0, atol=0)
+            np.testing.assert_allclose(tr0_out[0], need_result1, rtol=0, atol=0)
+            np.testing.assert_allclose(tr1_out[0], need_result2, rtol=0, atol=0)
         elif col_type == "reduce_slicegather":
             slicesize = input1.shape[0] // 2
             tmp10 = input1[0:slicesize]
@@ -301,22 +301,22 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(tr1_out, need_result2, rtol=1e-05)
         elif col_type == "concat":
             need_result = np.concatenate((input1, input2), axis=1)
-            np.testing.assert_allclose(tr0_out,
+            np.testing.assert_allclose(tr0_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
-            np.testing.assert_allclose(tr1_out,
+            np.testing.assert_allclose(tr1_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
         elif col_type == "split":
             need_result1 = np.split(input1, 2, axis=1)[0]
             need_result2 = np.split(input2, 2, axis=1)[1]
-            np.testing.assert_allclose(tr0_out,
+            np.testing.assert_allclose(tr0_out[0],
                                        need_result1,
                                        rtol=1e-05,
                                        atol=1e-05)
-            np.testing.assert_allclose(tr1_out,
+            np.testing.assert_allclose(tr1_out[0],
                                        need_result2,
                                        rtol=1e-05,
                                        atol=1e-05)

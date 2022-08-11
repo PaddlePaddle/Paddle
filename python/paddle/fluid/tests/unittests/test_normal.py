@@ -138,8 +138,8 @@ class TestNormalAPI(unittest.TestCase):
                 if isinstance(self.mean, np.ndarray) else self.mean
             std_ref=self.std.reshape([1, -1]) \
                 if isinstance(self.std, np.ndarray) else self.std
-            np.testing.assert_allclose(mean_ref, mean, rtol=0.2, atol=0.2)
-            np.testing.assert_allclose(std_ref, std, rtol=0.2, atol=0.2)
+            self.assertTrue(np.allclose(mean_ref, mean, 0.2, 0.2))
+            self.assertTrue(np.allclose(std_ref, std, 0.2, 0.2))
 
 
 class TestNormalAPI_mean_is_tensor(TestNormalAPI):

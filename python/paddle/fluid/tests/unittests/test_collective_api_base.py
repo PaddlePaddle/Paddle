@@ -324,24 +324,24 @@ class TestDistBase(unittest.TestCase):
             self.assertEqual(need_result, tr1_out)
         elif col_type == "broadcast":
             need_result = input2
-            np.testing.assert_allclose(tr0_out, need_result, rtol=1e-05)
-            np.testing.assert_allclose(tr1_out, need_result, rtol=1e-05)
+            np.testing.assert_allclose(tr0_out[0], need_result, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result, rtol=1e-05)
         elif col_type == "reduce":
             need_result = input1 + input2
-            np.testing.assert_allclose(tr0_out, need_result, rtol=1e-05)
+            np.testing.assert_allclose(tr0_out[0], need_result, rtol=1e-05)
         elif col_type == "scatter":
             need_result = input2
             need_result1 = need_result[0:need_result.shape[0] // 2]
             need_result2 = need_result[need_result.shape[0] // 2:]
-            np.testing.assert_allclose(tr0_out, need_result1, rtol=1e-05)
-            np.testing.assert_allclose(tr1_out, need_result2, rtol=1e-05)
+            np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
         elif col_type == "allreduce":
             need_result = input1 + input2
-            np.testing.assert_allclose(tr0_out,
+            np.testing.assert_allclose(tr0_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
-            np.testing.assert_allclose(tr1_out,
+            np.testing.assert_allclose(tr1_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
