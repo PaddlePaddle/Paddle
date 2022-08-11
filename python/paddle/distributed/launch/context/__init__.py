@@ -51,23 +51,13 @@ class Context(object):
         if self.args.legacy:
             return True
 
+        if self.args.master:
+            return False
+
         if len(self.unknown_args) > 0:
             self.logger.warning("Compatible mode enable with args {}".format(
                 self.unknown_args))
             return True
-
-        legacy_env_list = [
-            'FLAGS_START_PORT',
-        ]
-
-        for env in legacy_env_list:
-            if env in self.envs:
-                self.logger.warning(
-                    "ENV {} is deprecated, legacy launch enable".format(env))
-                return True
-
-        if self.args.master:
-            return False
 
         return False
 

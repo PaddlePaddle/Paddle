@@ -774,43 +774,49 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             attrs['str_value'] = str(float(value))
             attrs['value'] = float(value)
 
-    if _non_static_mode():
-        if out is None and in_dygraph_mode():
-            #Currently, final state mode don't support out is None.
-            place = _current_expected_place()
-            if force_cpu:
-                place = core.CPUPlace()
-            if isinstance(shape, (list, tuple)):
-                for item in shape:
-                    if not isinstance(item, Variable):
-                        shape = list(
-                            map(
-                                lambda x: x.numpy().flat[0]
-                                if isinstance(x, Variable) else x, shape))
-                        break
+    if in_dygraph_mode():
+        place = _current_expected_place()
+        if force_cpu:
+            place = core.CPUPlace()
+        if isinstance(shape, (list, tuple)):
+            for item in shape:
+                if not isinstance(item, Variable):
+                    shape = list(
+                        map(
+                            lambda x: x.numpy().flat[0]
+                            if isinstance(x, Variable) else x, shape))
+                    break
 
-            if not isinstance(dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+
+        if out is None:
             out = _C_ops.final_state_full(shape, float(value), dtype, place)
             out.stop_gradient = True
             return out
 
-        else:
-            shape = utils.convert_shape_to_list(shape)
-            if out is None:
-                out = _varbase_creator(dtype=dtype)
-
-            if isinstance(value, Variable):
-                if dtype in ['uint8', 'int16', 'int32', 'int64']:
-                    attrs['str_value'] = str(int(value.numpy().item(0)))
-                else:
-                    attrs['str_value'] = str(float(value.numpy().item(0)))
-
-            _C_ops.fill_constant(out, 'value', float(value), 'force_cpu',
-                                 force_cpu, 'dtype', out.dtype, 'str_value',
-                                 attrs['str_value'], 'shape', shape)
+        if out is not None:
+            # final state mode is support out is not None.
+            _C_ops.final_state_full_(out, shape, float(value), dtype, place)
             out.stop_gradient = True
             return out
+
+    if _in_legacy_dygraph():
+        shape = utils.convert_shape_to_list(shape)
+        if out is None:
+            out = _varbase_creator(dtype=dtype)
+
+        if isinstance(value, Variable):
+            if dtype in ['uint8', 'int16', 'int32', 'int64']:
+                attrs['str_value'] = str(int(value.numpy().item(0)))
+            else:
+                attrs['str_value'] = str(float(value.numpy().item(0)))
+
+        _C_ops.fill_constant(out, 'value', float(value), 'force_cpu', force_cpu,
+                             'dtype', out.dtype, 'str_value',
+                             attrs['str_value'], 'shape', shape)
+        out.stop_gradient = True
+        return out
 
     helper = LayerHelper("fill_constant", **locals())
     inputs = {}
