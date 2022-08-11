@@ -290,6 +290,8 @@ option(WITH_RECORD_BUILDTIME
        "Compile PaddlePaddle with record all targets build time" OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 
+include(experimental) # experimental build options
+
 if(WITH_RECORD_BUILDTIME)
   set_property(
     GLOBAL PROPERTY RULE_LAUNCH_COMPILE
@@ -399,7 +401,6 @@ if(WITH_GPU)
   # lite subgraph compilation depends on CUDNN_ROOT,
   # so include(cudnn) needs to be in front of include(third_party/lite)
   include(cudnn) # set cudnn libraries, must before configure
-  include(experimental) # experimental build options
   include(tensorrt)
   # there is no official support of nccl, cupti in windows
   if(NOT WIN32)
