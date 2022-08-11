@@ -80,6 +80,16 @@ struct CustomOpAttrVisitor {
         "Unsupported calling method for `paddle::blank` type when extracting "
         "custom operator attributes."));
   }
+  void operator()(framework::VarDesc*) const {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported calling method for `VarDesc*` type when extracting "
+        "custom operator attributes."));
+  }
+  void operator()(const std::vector<framework::VarDesc*>&) const {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported calling method for `std::vector<framework::VarDesc*>` "
+        "type when extracting custom operator attributes."));
+  }
 };
 
 struct ConstantOpAttrVisitor {
@@ -131,6 +141,10 @@ struct ConstantOpAttrVisitor {
   void operator()(const std::vector<BlockDesc*>& v) const { RAISE_ERROR; }
   void operator()(int64_t v) const { RAISE_ERROR; }
   void operator()(paddle::blank) const { RAISE_ERROR; }
+  void operator()(framework::VarDesc*) const { RAISE_ERROR; }
+  void operator()(const std::vector<framework::VarDesc*>&) const {
+    RAISE_ERROR;
+  }
 #undef RAISE_ERROR
 };
 
