@@ -2712,5 +2712,4 @@ void Unpool3dInferMeta(const MetaTensor& x,
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
-PD_REGISTER_INFER_META_FN(conv2d, phi::ConvInferMeta);
 PD_REGISTER_INFER_META_FN(conv2d_infer, phi::ConvInferInferMeta);
