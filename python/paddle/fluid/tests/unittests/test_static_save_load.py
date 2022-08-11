@@ -1655,6 +1655,64 @@ class TestSaveLoadInferenceModel(unittest.TestCase):
             self.assertEqual(ops, ['feed', 'elementwise_add', 'scale', 'fetch'])
 
 
+class TestNormalizeProgram(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(self.temp_dir.name, "normalize_program")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_normalize_program_and_save_inference_model(self):
+
+        def _generate_reload_program():
+            startup_program = framework.Program()
+            main_program = framework.Program()
+            with paddle.utils.unique_name.guard():
+                with framework.program_guard(main_program, startup_program):
+                    x = paddle.static.data(name='x', shape=[3, 2, 1])
+                    out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
+
+                    exe = paddle.static.Executor(paddle.CPUPlace())
+                    exe.run(startup_program)
+
+                    paddle.static.save_inference_model(self.model_path, [x],
+                                                       [out],
+                                                       exe,
+                                                       clip_extra=True)
+                    [infer_program, feed_target_names,
+                     fetch_targets] = paddle.static.load_inference_model(
+                         self.model_path, exe)
+
+                return infer_program
+
+        def _generate_norm_program():
+            startup_program = framework.Program()
+            main_program = framework.Program()
+            with paddle.utils.unique_name.guard():
+                with framework.program_guard(main_program, startup_program):
+                    x = paddle.static.data(name='x', shape=[3, 2, 1])
+                    out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
+
+                    exe = paddle.static.Executor(paddle.CPUPlace())
+                    exe.run(startup_program)
+
+                    norm_program = paddle.static.normalize_program(
+                        main_program, [x], [out], clip_extra=True)
+
+            return norm_program
+
+        infer_program = _generate_reload_program()
+        norm_program = _generate_norm_program()
+
+        # We don't have a way to accurately compare whether two programs are the same
+        self.assertEqual(len(list(infer_program.list_vars())),
+                         len(list(norm_program.list_vars())))
+        self.assertEqual(len(infer_program.global_block().ops),
+                         len(norm_program.global_block().ops))
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

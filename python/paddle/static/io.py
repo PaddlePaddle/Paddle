@@ -118,7 +118,7 @@ def _clone_var_in_block(block, var):
                                 persistable=True)
 
 
-def normalize_program(program, feed_vars, fetch_vars):
+def normalize_program(program, feed_vars, fetch_vars, **kwargs):
     """
     :api_attr: Static Graph
 
@@ -128,6 +128,8 @@ def normalize_program(program, feed_vars, fetch_vars):
         program(Program): Specify a program you want to optimize.
         feed_vars(Variable | list[Variable]): Variables needed by inference.
         fetch_vars(Variable | list[Variable]): Variables returned by inference.
+        kwargs: Supported keys including "clip_extra". Attention please, kwargs is used for backward compatibility mainly.
+            - clip_extra(bool): set to True if you want to clip extra information for every operator.
 
     Returns:
         Program: Normalized/Optimized program.
@@ -219,7 +221,9 @@ def normalize_program(program, feed_vars, fetch_vars):
     prepend_feed_ops(copy_program, feed_var_names)
     append_fetch_ops(copy_program, fetch_var_names)
     copy_program.desc._set_version()
-    return copy_program
+
+    clip_extra = kwargs.get('clip_extra', False)
+    return copy_program._remove_training_info(clip_extra=clip_extra)
 
 
 def is_persistable(var):
@@ -260,8 +264,9 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
     Args:
         feed_vars(Variable | list[Variable]): Variables needed by inference.
         fetch_vars(Variable | list[Variable]): Variables returned by inference.
-        kwargs: Supported keys including 'program'.Attention please, kwargs is used for backward compatibility mainly.
+        kwargs: Supported keys including 'program' and 'clip_extra'. Attention please, kwargs is used for backward compatibility mainly.
           - program(Program): specify a program if you don't want to use default main program.
+          - clip_extra(bool): set to True if you want to clip extra information for every operator.
 
     Returns:
         bytes: serialized program.
@@ -302,7 +307,11 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
     _check_vars('fetch_vars', fetch_vars)
 
     program = _get_valid_program(kwargs.get('program', None))
-    program = normalize_program(program, feed_vars, fetch_vars)
+    clip_extra = kwargs.get('clip_extra', False)
+    program = normalize_program(program,
+                                feed_vars,
+                                fetch_vars,
+                                clip_extra=clip_extra)
     return _serialize_program(program)
 
 
@@ -535,10 +544,12 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
 
     program = _get_valid_program(kwargs.get('program', None))
     clip_extra = kwargs.get('clip_extra', False)
-    program = normalize_program(program, feed_vars, fetch_vars)
+    program = normalize_program(program,
+                                feed_vars,
+                                fetch_vars,
+                                clip_extra=clip_extra)
     # serialize and save program
-    program_bytes = _serialize_program(
-        program._remove_training_info(clip_extra=clip_extra))
+    program_bytes = _serialize_program(program)
     save_to_file(model_path, program_bytes)
     # serialize and save params
     params_bytes = _serialize_persistables(program, executor)
