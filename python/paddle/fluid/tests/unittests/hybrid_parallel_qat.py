@@ -206,8 +206,6 @@ class TestDistMPTraning(unittest.TestCase):
             "pp_degree": 1
         }
         fleet.init(is_collective=True, strategy=strategy)
-        self.weight_quantize_type = 'abs_max'
-        self.activation_quantize_type = 'moving_average_abs_max'
         self.onnx_format = False
         self.check_export_model_accuracy = True
         self.diff_threshold = 0.01
@@ -226,15 +224,16 @@ class TestDistMPTraning(unittest.TestCase):
                                          parameters=model.parameters())
         return optimizer
 
-    def build_model_optimizer(self):
+    def build_model_optimizer(self, weight_quantize_type,
+                              activation_quantize_type):
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
         mp_id = hcg.get_model_parallel_rank()
         dp_id = hcg.get_data_parallel_rank()
         rank_id = dist.get_rank()
         imperative_qat = ImperativeQuantAware(
-            weight_quantize_type=self.weight_quantize_type,
-            activation_quantize_type=self.activation_quantize_type,
+            weight_quantize_type=weight_quantize_type,
+            activation_quantize_type=activation_quantize_type,
             fuse_conv_bn=self.fuse_conv_bn)
         set_random_seed(1024, dp_id, rank_id)
 
@@ -257,16 +256,7 @@ class TestDistMPTraning(unittest.TestCase):
 
         return model_a, optimizer_a, model_b, optimizer_b
 
-    def test_mp_model(self):
-        if not fluid.core.is_compiled_with_cuda(
-        ) or fluid.core.get_cuda_device_count() == 0:
-            return
-        selected_gpus = get_gpus('0,1')
-        cluster = None
-        pod = None
-
-        model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
-        )
+    def train(self, model_a, optimizer_a, model_b, optimizer_b):
 
         for epoch in range(5):
 
@@ -281,6 +271,32 @@ class TestDistMPTraning(unittest.TestCase):
             np.testing.assert_allclose(loss_a.numpy(),
                                        loss_b.numpy(),
                                        rtol=1e-6)
+
+    def test_mp_model_1(self):
+        if not fluid.core.is_compiled_with_cuda(
+        ) or fluid.core.get_cuda_device_count() == 0:
+            return
+        selected_gpus = get_gpus('0,1')
+        cluster = None
+        pod = None
+
+        model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
+            weight_quantize_type='abs_max',
+            activation_quantize_type='moving_average_abs_max')
+        self.train(model_a, optimizer_a, model_b, optimizer_b)
+
+    def test_mp_model_2(self):
+        if not fluid.core.is_compiled_with_cuda(
+        ) or fluid.core.get_cuda_device_count() == 0:
+            return
+        selected_gpus = get_gpus('0,1')
+        cluster = None
+        pod = None
+
+        model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
+            weight_quantize_type='channel_wise_abs_max',
+            activation_quantize_type='moving_average_abs_max')
+        self.train(model_a, optimizer_a, model_b, optimizer_b)
 
 
 if __name__ == "__main__":
