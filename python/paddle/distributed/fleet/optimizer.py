@@ -23,8 +23,10 @@ from .meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle.fluid import core
 from paddle.distributed import fleet
 
+fleet_env = fleet.fleet
 
-def distributed_optimizer(optimizer, strategy=None):
+
+def _dygraph_distributed_optimizer(optimizer, strategy=None):
     """
         Optimizer for distributed training.
         For the distributed training, this method would rebuild a new instance of DistributedOptimizer.
@@ -47,9 +49,8 @@ def distributed_optimizer(optimizer, strategy=None):
                 optimizer = paddle.optimizer.SGD(learning_rate=0.001)
                 optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         """
-    fleet.user_defined_optimizer = optimizer
+    fleet_env.user_defined_optimizer = optimizer
 
-    fleet_env = fleet.fleet
     if strategy is not None:
         if fleet_env._is_collective:
             warnings.warn(
@@ -71,3 +72,10 @@ def distributed_optimizer(optimizer, strategy=None):
                                           fleet_env._user_defined_strategy)
     else:
         return optimizer
+
+
+def disributed_optimizer(*args, **kwargs):
+    if paddle.fluid.framework._non_static_mode():
+        return _dygraph_distributed_optimizer(*args, **kwargs)
+    else:
+        return fleet_env.distributed_optimizer(*args, **kwargs)
