@@ -438,7 +438,12 @@
   forward : conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(out)
   args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
   output : Tensor(input_grad), Tensor(filter_grad)
-  invoke : conv2d_grad_impl(input, filter, out_grad,  strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search, input_grad, filter_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [input, filter]
+  kernel :
+    func : conv2d_grad
+    use_gpudnn : true
   backward : conv2d_grad_grad
 
 - backward_api : conv2d_grad_grad
@@ -478,7 +483,12 @@
   forward : conv3d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(out)
   args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
   output : Tensor(input_grad), Tensor(filter_grad)
-  invoke : conv3d_grad_impl(input, filter, out_grad,  strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search, input_grad, filter_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [input, filter]
+  kernel :
+    func : conv3d_grad
+    use_gpudnn : true
   backward : conv3d_grad_grad
 
 - backward_api : conv3d_grad_grad
