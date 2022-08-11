@@ -201,6 +201,8 @@ class TestIndexAdOpCase5(TestIndexAddOp):
         self.add_value_shape = (10, 4)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestIndexAdOpGPU(TestIndexAddOp):
 
     def setPlace(self):
