@@ -447,7 +447,7 @@ OperatorBase::OperatorBase(const std::string& type,
     GenerateTemporaryNames();
     CheckAllInputOutputSet();
   }
-  // In OperatorBase level, all attribute with VarDesc type will be considered
+  // In OperatorBase level, all attributes with VarDesc type will be considered
   // as Input.
   for (auto& attr : FilterAttrVar(attrs)) {
     VLOG(3) << "found Attribute with Variable type: " << attr.first;

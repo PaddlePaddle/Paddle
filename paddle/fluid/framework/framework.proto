@@ -109,6 +109,7 @@ message OpProto {
     optional bool generated = 4 [ default = false ];
     optional bool extra = 5 [ default = false ];
     optional bool quant = 6 [ default = false ];
+    optional bool support_tensor = 7 [ default = false];
   }
 
   required string type = 1;

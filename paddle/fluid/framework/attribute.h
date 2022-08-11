@@ -393,6 +393,11 @@ class TypedAttrChecker {
     return *this;
   }
 
+  TypedAttrChecker& SupportTensor() {
+    attr_->set_support_tensor(true);
+    return *this
+  }
+
   TypedAttrChecker& InEnum(const std::unordered_set<T>& range) {
     value_checkers_.push_back(EnumInContainer<T>(range));
     return *this;
@@ -436,11 +441,17 @@ class TypedAttrChecker {
       }
       return;
     }
-    // If attribute is VarDesc(s), we should verify it's dtype and shape.
+    // If attribute is VarDesc(s), we should verify it's supported in OpMaker
     auto it = attr_map->find(attr_name_);
     if (it != attr_map->end() && HasAttrVar(it->second)) {
-      VLOG(1) << "Found Attribute " << attr_name_
-              << " with Variable, skip attr_checker.";
+      PADDLE_ENFOCE_EQ(attr_->support_tensor(),
+                       true,
+                       platform::errors::InvalidArgument(
+                           "Found Attribute('%s') with type(Variable), but it "
+                           "doesn't support Tensor type.",
+                           attr_name_));
+
+      VLOG(1) << "Found Attribute " << attr_name_ << " with type(Variable).";
       return;
     }
 
