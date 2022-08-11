@@ -44,6 +44,7 @@ from .binary import multiply
 from .binary import subtract
 
 from .multiary import addmm
+from .multiary import is_same_shape
 
 from . import nn
 
@@ -77,4 +78,5 @@ __all__ = [
     'multiply',
     'divide',
     'coalesce',
+    'is_same_shape',
 ]

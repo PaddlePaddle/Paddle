@@ -1543,6 +1543,15 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_is_same_shape(TensorObject* self,
+                                             PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  auto other = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  return ToPyObject(self->tensor.shape() == other.shape());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__inplace_version(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -1932,6 +1941,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"is_sparse_csr",
      (PyCFunction)(void (*)(void))tensor_method_is_sparse_csr,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"is_same_shape",
+     (PyCFunction)(void (*)(void))tensor_method_is_same_shape,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"to_sparse_csr",
