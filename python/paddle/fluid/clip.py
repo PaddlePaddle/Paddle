@@ -271,7 +271,7 @@ class ClipGradByValue(ClipGradBase):
             if getattr(p, 'need_clip', True) is False:
                 params_and_grads.append((p, g))
                 continue
-            new_grad = layers.clip(x=g, min=self.min, max=self.max)
+            new_grad = paddle.clip(x=g, min=self.min, max=self.max)
             params_and_grads.append((p, new_grad))
         return params_and_grads
 
@@ -555,7 +555,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             if need_clip:
                 clip_input = (clip_var.astype('float16') if g.dtype
                               == core.VarDesc.VarType.FP16 else clip_var)
-                new_grad = _C_ops.elementwise_mul(g, clip_input)
+                new_grad = layers.elementwise_mul(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
                 params_and_grads.append((p, g))

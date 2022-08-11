@@ -252,6 +252,9 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             decay = block.create_var(dtype=param.dtype,
                                      shape=param.shape,
                                      lod_level=param.lod_level)
+        if in_dygraph_mode():
+            sign = _C_ops.final_state_sign(param)
+            return _C_ops.final_state_scale(sign, self._regularization_coeff)
 
         # Append sign op
         block.append_op(type='sign', inputs={"X": param}, outputs={"Out": sign})

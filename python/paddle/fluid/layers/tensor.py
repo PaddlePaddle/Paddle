@@ -329,8 +329,7 @@ def concat(input, axis=0, name=None):
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
-        out = _varbase_creator()
-        _C_ops.concat(input, out, 'axis', axis)
+        out = _C_ops.concat(input, axis)
         return out
 
     if _in_legacy_dygraph():

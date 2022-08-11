@@ -205,6 +205,7 @@ OP_NAMEMAPPING = {
     'elementwise_sub': 'final_state_subtract',
     'elementwise_mul': 'final_state_multiply',
     'elementwise_div': 'final_state_divide',
+    'elementwise_mod': 'final_state_modulo',
 }
 
 
@@ -1445,6 +1446,9 @@ def softmax(input, use_cudnn=True, name=None, axis=-1):
             #   [0.72747517, 0.72747517, 0.72747517, 0.72747517]]]
 
     """
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_softmax(outs_cast, axis)
 
     if _non_static_mode():
         return _C_ops.softmax(input, 'axis', axis, 'use_cudnn', use_cudnn)

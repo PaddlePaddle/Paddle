@@ -35,6 +35,10 @@ def _append_activation_in_dygraph(input,
     if act is None:
         return input
 
+    if in_dygraph_mode():
+        act_op = getattr(_C_ops, "final_state_", act)
+        return act_op(input)
+
     attrs = ()
     if use_cudnn:
         attrs = ('use_cudnn', use_cudnn)

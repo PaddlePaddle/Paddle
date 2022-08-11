@@ -4461,7 +4461,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             has_pend = True
         if has_pend:
             new_input = _varbase_creator()
-            _C_ops.concat(input_list, new_input, 'axis', axis)
+            paddle.concat(input_list, new_input, 'axis', axis)
         else:
             new_input = x
 

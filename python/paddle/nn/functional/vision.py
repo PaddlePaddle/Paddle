@@ -333,8 +333,10 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
             "But recevie Attr(data_format): {} ".format(data_format))
+    if in_dygraph_mode():
+        return _C_ops.final_state_pixel_shuffle(x, upscale_factor, data_format)
 
-    if in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.pixel_shuffle(x, "upscale_factor", upscale_factor,
                                     "data_format", data_format)
 

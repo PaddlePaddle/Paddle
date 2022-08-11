@@ -1549,6 +1549,9 @@ def increment(x, value=1.0, in_place=True):
           counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
           fluid.layers.increment(counter) # [1.]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_increment(x, value)
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'increment')
     helper = LayerHelper("increment", **locals())
@@ -1968,6 +1971,10 @@ def equal(x, y, cond=None, name=None):
           out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
+    if in_dygraph_mode():
+        default_axis = -1
+        return _C_ops.final_state_equal(x, y, default_axis)
+
     check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
                              "equal")
     check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
