@@ -54,8 +54,8 @@ inline int FindNumThreads(int dim, int max_num_threads) {
                     0,
                     phi::errors::PreconditionNotMet(
                         "Required dim >= 0, but received dim = %d", dim));
-  if (dim == 0) return 1;
   int res = max_num_threads;
+  if (dim == 0) res = 1;
   while (res > dim) {
     res = res >> 1;
   }
