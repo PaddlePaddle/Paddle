@@ -871,12 +871,6 @@ void ConvertToMixedPrecision(const std::string& model_file,
   FindVarsInMultiBlock(program_desc.get(),
                        &vars_in_multi_block_map,
                        &vars_appear_multi_in_one_block);
-  for (size_t i = 0; i < vars_appear_multi_in_one_block.size(); ++i) {
-    LOG(INFO) << "vars_appear_multi_in_one_block " << i;
-    for (auto x : vars_appear_multi_in_one_block[i]) {
-      LOG(INFO) << "   " << x;
-    }
-  }
 
   std::vector<framework::ir::Graph*> graphes;
   for (size_t i = 0; i < main_graph->SubGraphsSize(); ++i) {
