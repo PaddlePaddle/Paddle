@@ -345,6 +345,33 @@ void CumInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void CummaxInferMeta(const MetaTensor& x,
+                     int axis,
+                     bool flatten,
+                     bool exclusive,
+                     bool reverse,
+                    //  MetaTensor* out_values,
+                    //  MetaTensor* out_indices
+                     MetaTensor* out) {
+  auto x_dims = x.dims();
+  if (flatten) {
+    // out_values->set_dims(phi::make_ddim({phi::product(x_dims)}));
+    // out_indices->set_dims(phi::make_ddim({phi::product(x_dims)}));
+    out->set_dims(phi::make_ddim({phi::product(x_dims)}));
+  } else {
+    // out_values->set_dims(x_dims);
+    // out_indices->set_dims(x_dims);
+    out->set_dims(x_dims);
+  }
+  // out_values->set_dtype(x.dtype());
+  // out_indices->set_dtype(DataType::INT64);
+  out->set_dtype(x.dtype());
+
+  // out_values->share_lod(x);
+  // out_indices->share_lod(x);
+  out->share_lod(x);
+}
+
 void CropTensorInferMeta(const MetaTensor& x,
                          const IntArray& shape,
                          const IntArray& offsets,

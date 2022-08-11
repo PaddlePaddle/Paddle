@@ -28,6 +28,15 @@ void CumsumKernel(const Context& dev_ctx,
                   DenseTensor* out);
 
 template <typename T, typename Context>
+void CummaxKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int axis,
+                  bool flatten,
+                  bool exclusive,
+                  bool reverse,
+                  DenseTensor* out);
+
+template <typename T, typename Context>
 void LogcumsumexpKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         int axis,

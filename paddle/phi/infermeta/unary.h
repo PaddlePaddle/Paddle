@@ -84,6 +84,15 @@ void CumInferMeta(const MetaTensor& x,
                   bool reverse,
                   MetaTensor* out);
 
+void CummaxInferMeta(const MetaTensor& x,
+                     int axis,
+                     bool flatten,
+                     bool exclusive,
+                     bool reverse,
+                    //  MetaTensor* out_values,
+                    //  MetaTensor* out_indices);
+                     MetaTensor* out);
+
 void DecodeJpegInferMeta(const MetaTensor& x,
                          const std::string& mode,
                          MetaTensor* out);

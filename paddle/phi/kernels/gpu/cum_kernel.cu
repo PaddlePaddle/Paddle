@@ -139,6 +139,14 @@ struct LogAddExp {
   }
 };
 
+struct Max {
+  template <typename T>
+  __host__ __device__ __forceinline__ T operator()(const T& a,
+                                                   const T& b) const {
+    return std::max(a, b);
+  }
+};
+
 template <typename T, typename op>
 struct Identity;
 
@@ -365,6 +373,20 @@ void CumsumKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void CummaxKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int axis,
+                  bool flatten,
+                  bool exclusive,
+                  bool reverse,
+                  DenseTensor* out) {
+  using Op = Max;
+  auto op = Op();
+  ScanKernel<T, Context, Op>(
+      dev_ctx, x, axis, flatten, exclusive, reverse, op, out);
+}
+
+template <typename T, typename Context>
 void LogcumsumexpKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         int axis,
@@ -390,5 +412,19 @@ PD_REGISTER_KERNEL(cumsum,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(
-    logcumsumexp, GPU, ALL_LAYOUT, phi::LogcumsumexpKernel, float, double) {}
+PD_REGISTER_KERNEL(cummax,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CummaxKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(logcumsumexp, 
+                   GPU, 
+                   ALL_LAYOUT, 
+                   phi::LogcumsumexpKernel, 
+                   float, 
+                   double) {}

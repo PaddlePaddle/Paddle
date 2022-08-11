@@ -39,6 +39,15 @@
     func : cross_grad
     data_type : out_grad
 
+- backward_api : cummax_grad
+  forward : cummax(Tensor x, int axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  args : (Tensor out_grad, int axis, bool flatten, bool exclusive, bool reverse)
+  output : Tensor(x_grad)
+  invoke : cummax(out_grad, axis, flatten, exclusive, !reverse)
+
 - backward_api : diag_grad
   forward : diag (Tensor x, int offset, float padding_value) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int offset)
