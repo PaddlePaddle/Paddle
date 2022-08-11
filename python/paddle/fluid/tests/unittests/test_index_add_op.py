@@ -174,6 +174,7 @@ class TestIndexAdOpCase2(TestIndexAddOp):
         self.add_value_shape = (100, 20, 5)
 
 
+@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAdOpCase3(TestIndexAddOp):
 
     def config(self):

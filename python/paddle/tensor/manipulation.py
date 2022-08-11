@@ -4393,6 +4393,7 @@ def index_add(x, index, add_value, axis=0, name=None):
     Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
 
             input_tensor = paddle.ones((3, 3))
@@ -4403,11 +4404,6 @@ def index_add(x, index, add_value, axis=0, name=None):
             # [[2 2 2]
             #  [1 1 1]
             #  [2 2 2]]
-            inplace_res = paddle.index_add_(input_tensor, index, add_value, axis=1)
-            print(inplace_res.numpy())
-            # [[2, 1, 2]
-            #  [2, 1, 2]
-            #  [2, 1, 2]]
     """
     _index_add_params_check(x, index, add_value, axis)
 
@@ -4448,6 +4444,20 @@ def index_add_(x, index, add_value, axis=0, name=None):
     """
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_index_add`.
+    Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+
+            input_tensor = paddle.ones((3, 3))
+            index = paddle.to_tensor([0, 2])
+            add_value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]])
+            inplace_res = paddle.index_add_(input_tensor, index, add_value, axis=1)
+            print(inplace_res.numpy())
+            # [[2, 1, 2]
+            #  [2, 1, 2]
+            #  [2, 1, 2]]
     """
 
     _index_add_params_check(x, index, add_value, axis)
