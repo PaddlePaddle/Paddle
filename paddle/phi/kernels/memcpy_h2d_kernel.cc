@@ -15,8 +15,6 @@
 #include "paddle/phi/kernels/memcpy_h2d_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
-// #include "paddle/fluid/platform/device_context.h"
-// #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 
