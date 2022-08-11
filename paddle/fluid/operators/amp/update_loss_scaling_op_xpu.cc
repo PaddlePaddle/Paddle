@@ -19,7 +19,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {

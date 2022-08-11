@@ -21,12 +21,7 @@ KernelSignature UpdateLossScalingOpArgumentMapping(
   if (ctx.HasInput("StopUpdate")) {
     return KernelSignature(
         "update_loss_scaling",
-        {"X",
-         "FoundInfinite",
-         "PrevLossScaling",
-         "InGoodSteps",
-         "InBadSteps",
-         ""},
+        {"X", "FoundInfinite", "PrevLossScaling", "InGoodSteps", "InBadSteps"},
         {"incr_every_n_steps",
          "decr_every_n_nan_or_inf",
          "incr_ratio",
@@ -36,12 +31,7 @@ KernelSignature UpdateLossScalingOpArgumentMapping(
   } else {
     return KernelSignature(
         "update_loss_scaling",
-        {"X",
-         "FoundInfinite",
-         "PrevLossScaling",
-         "InGoodSteps",
-         "InBadSteps",
-         ""},
+        {"X", "FoundInfinite", "PrevLossScaling", "InGoodSteps", "InBadSteps"},
         {"incr_every_n_steps",
          "decr_every_n_nan_or_inf",
          "incr_ratio",

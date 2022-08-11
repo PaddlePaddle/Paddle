@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/float16.h"

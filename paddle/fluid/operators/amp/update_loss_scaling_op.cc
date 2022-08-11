@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
-
 #include <cstring>
 #include <string>
 #include <vector>
@@ -168,59 +166,6 @@ decr_every_n_nan_or_inf steps and each step some gradients are infinite.
   }
 };
 
-template <typename T, bool IsFoundInfOnCPU>
-class UpdateLossScalingFunctor<phi::CPUContext, T, IsFoundInfOnCPU> {
- public:
-  void operator()(const phi::CPUContext& ctx,
-                  const bool* found_inf_data,
-                  const T* pre_loss_scaling_data,
-                  const int* good_in_data,
-                  const int* bad_in_data,
-                  const int incr_every_n_steps,
-                  const int decr_every_n_nan_or_inf,
-                  const float incr_ratio,
-                  const float decr_ratio,
-                  T* updated_loss_scaling_data,
-                  int* good_out_data,
-                  int* bad_out_data) const {
-    PADDLE_ENFORCE_EQ(
-        IsFoundInfOnCPU,
-        true,
-        platform::errors::InvalidArgument(
-            "The Input(FoundInfinite) should be on the CPUPlace."));
-    Update<T>(found_inf_data,
-              pre_loss_scaling_data,
-              good_in_data,
-              bad_in_data,
-              incr_every_n_steps,
-              decr_every_n_nan_or_inf,
-              incr_ratio,
-              decr_ratio,
-              updated_loss_scaling_data,
-              good_out_data,
-              bad_out_data);
-  }
-};
-
-template <typename T>
-class LazyZeros<phi::CPUContext, T> {
- public:
-  void operator()(const phi::CPUContext& dev_ctx,
-                  const bool* found_inf_data,
-                  const std::vector<const framework::Tensor*>& xs,
-                  const std::vector<framework::Tensor*>& outs) const {
-    for (size_t i = 0; i < xs.size(); ++i) {
-      auto* out = outs[i];
-      T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
-      int num = out->numel();
-      if (*found_inf_data) {
-        VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
-        std::memset(out_data, 0, num * sizeof(T));
-      }
-    }
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -233,7 +178,3 @@ REGISTER_OPERATOR(
     ops::UpdateLossScalingOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(update_loss_scaling,
-                       ops::UpdateLossScalingKernel<CPU, float>,
-                       ops::UpdateLossScalingKernel<CPU, double>);
