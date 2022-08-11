@@ -173,7 +173,7 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
 
         res_1 = run_program(-1)
         res_2 = run_program(2)
-        self.assertTrue(np.array_equal(res_1, res_2))
+        np.testing.assert_array_equal(res_1, res_2)
 
 
 class TestFCOpError(unittest.TestCase):
