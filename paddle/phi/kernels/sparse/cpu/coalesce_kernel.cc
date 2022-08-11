@@ -98,7 +98,7 @@ template <typename T, typename Context>
 void CoalesceKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
                     SparseCooTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "CoalesceCPUKernel", ([&] {
         CoalesceCPUKernel<T, data_t>(dev_ctx, x, out);
       }));

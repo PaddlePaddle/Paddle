@@ -57,11 +57,12 @@ void Merge(const IntT el_len,
            const IntT len_b_max,
            IntT* c_index,
            T* c_values,
-           IntT& nnz,
+           IntT* out_nnz,
            const Functor& functor_org,
            const bool is_divide) {
   IntT a = 0;
   IntT b = 0;
+  IntT& nnz = (*out_nnz);
   nnz = 0;
   const IntT* b_index = nullptr;
   std::vector<IntT> b_full_index;
@@ -94,9 +95,7 @@ void Merge(const IntT el_len,
       }
       ++a;
       ++b;
-    }
-    // coordinate x[a] < coordinate y[b]
-    else if (a_index[a] < b_index[b]) {
+    } else if (a_index[a] < b_index[b]) {  // coordinate x[a] < coordinate y[b]
       if (!functor(a_values + a * el_len,
                    zero.data(),
                    c_values + nnz * el_len,
@@ -105,9 +104,7 @@ void Merge(const IntT el_len,
         ++nnz;
       }
       ++a;
-    }
-    // coordinate x[a] > coordinate y[b]
-    else if (a_index[a] > b_index[b]) {
+    } else if (a_index[a] > b_index[b]) {  // coordinate x[a] > coordinate y[b]
       if (!functor(zero.data(),
                    b_values[b_index[b]],
                    c_values + nnz * el_len,
@@ -292,7 +289,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                     const SparseCsrTensor& x,                 \
                                     const SparseCsrTensor& y,                 \
                                     SparseCsrTensor* out) {                   \
-    PD_VISIT_INTEGRAL_TYPES(                                                  \
+    PD_VISIT_BASE_INTEGRAL_TYPES(                                             \
         x.non_zero_crows().dtype(), "ElementWise##name##CsrCPUKernel", ([&] { \
           ElementWise##name##CsrCPUKernel<T, data_t>(dev_ctx, x, y, out);     \
         }));                                                                  \
@@ -309,18 +306,18 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
         dev_ctx, x, y, out, functor);                                    \
   }
 
-#define DEFINE_COO_ELEMENTWISE_KERNEL(name)                               \
-  template <typename T, typename Context>                                 \
-  void ElementWise##name##CooKernel(const Context& dev_ctx,               \
-                                    const SparseCooTensor& x,             \
-                                    const SparseCooTensor& y,             \
-                                    SparseCooTensor* out) {               \
-    PD_VISIT_INTEGRAL_TYPES(x.non_zero_indices().dtype(),                 \
-                            "ElementWise##name##CooCPUKernel",            \
-                            ([&] {                                        \
-                              ElementWise##name##CooCPUKernel<T, data_t>( \
-                                  dev_ctx, x, y, out);                    \
-                            }));                                          \
+#define DEFINE_COO_ELEMENTWISE_KERNEL(name)                                    \
+  template <typename T, typename Context>                                      \
+  void ElementWise##name##CooKernel(const Context& dev_ctx,                    \
+                                    const SparseCooTensor& x,                  \
+                                    const SparseCooTensor& y,                  \
+                                    SparseCooTensor* out) {                    \
+    PD_VISIT_BASE_INTEGRAL_TYPES(x.non_zero_indices().dtype(),                 \
+                                 "ElementWise##name##CooCPUKernel",            \
+                                 ([&] {                                        \
+                                   ElementWise##name##CooCPUKernel<T, data_t>( \
+                                       dev_ctx, x, y, out);                    \
+                                 }));                                          \
   }
 
 DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(Add)
