@@ -35,7 +35,7 @@ from .trainer_factory import FetchHandlerMonitor
 import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
-from .compiler import _prune_feed_ops
+from .compiler import _prune_feed_ops, BuildStrategy
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -1467,6 +1467,22 @@ class Executor(object):
                         program._compile(scope, self.place)
                         ir_graph = framework.IrGraph(program._graph)
                         inner_program = ir_graph.to_program()
+                        # standalone executor will apply buffer_shared_inplace_pass and
+                        # inplace_addto_op_pass pass to program
+                        if program._build_strategy is not None and (
+                                program._build_strategy.enable_inplace
+                                or program._build_strategy.enable_addto):
+                            from .ir import apply_build_strategy
+                            use_cuda = False
+                            if isinstance(self.place, core.CUDAPlace):
+                                use_cuda = True
+                            build_strategy = BuildStrategy()
+                            build_strategy.fuse_bn_add_act_ops = False
+                            build_strategy.enable_inplace = program._build_strategy.enable_inplace
+                            build_strategy.enable_addto = program._build_strategy.enable_addto
+                            apply_build_strategy(inner_program, Program(),
+                                                 build_strategy,
+                                                 {"use_cuda": use_cuda})
                         # print(f"Program after convert:\n {inner_program}", flush=True)
                         logging.warning(
                             "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
