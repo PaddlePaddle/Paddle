@@ -23,9 +23,12 @@ if(WITH_ROCM)
   list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc hipfft.cc)
 endif()
 
-if (WITH_MPI)
+if(WITH_MPI)
   list(APPEND MPI_SRCS mpi_comm.cc)
-  cc_library(phi_dynload_mpi SRCS ${MPI_SRCS} DEPS phi_dynamic_loader)
+  cc_library(
+    phi_dynload_mpi
+    SRCS ${MPI_SRCS}
+    DEPS phi_dynamic_loader)
 endif()
 
 # There is no macOS version of NCCL.

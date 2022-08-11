@@ -97,7 +97,6 @@ void ProcessGroupMPI::MPIAsyncTask::SetOutputs(
   outputs_ = std::make_shared<std::vector<phi::DenseTensor>>(outputs);
 }
 
-// some global static var
 int ProcessGroupMPI::mpi_thread_support = 0;
 std::mutex ProcessGroupMPI::pg_global_mutex;
 std::once_flag ProcessGroupMPI::onceFlag;

@@ -4,11 +4,13 @@ endif()
 
 if(WITH_MPI)
   find_package(MPI)
+
   if(NOT MPI_CXX_FOUND)
     set(WITH_MPI
         OFF
         CACHE STRING "Disable MPI" FORCE)
     message(WARNING "Not found MPI support in current system")
+
   else()
     message(STATUS "MPI compile flags: " ${MPI_CXX_COMPILE_FLAGS})
     message(STATUS "MPI include path: " ${MPI_CXX_INCLUDE_PATH})
@@ -22,11 +24,17 @@ if(WITH_MPI)
       OMPI_INFO
       NAMES ompi_info
       HINTS ${MPI_CXX_LIBRARIES}/../bin)
+
     if(OMPI_INFO)
+
       execute_process(COMMAND ${OMPI_INFO} OUTPUT_VARIABLE output_)
+
       if(output_ MATCHES "smcuda")
         add_definitions("-DPADDLE_WITH_MPI_AWARE")
       endif()
+
     endif()
+
   endif()
+
 endif()

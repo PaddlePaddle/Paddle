@@ -423,9 +423,11 @@ void BindDistributed(py::module *m) {
             return paddle::distributed::ProcessGroupMPI::CreateProcessGroupMPI(
                 ranks, gid);
           })
-      .def("get_rank", &distributed::ProcessGroup::GetRank,
+      .def("get_rank",
+           &distributed::ProcessGroup::GetRank,
            py::call_guard<py::gil_scoped_release>())
-      .def("get_world_size", &distributed::ProcessGroup::GetSize,
+      .def("get_world_size",
+           &distributed::ProcessGroup::GetSize,
            py::call_guard<py::gil_scoped_release>());
 #endif
 
