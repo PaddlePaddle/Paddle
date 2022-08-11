@@ -40,7 +40,6 @@ set(PYBIND_DEPS
     tcp_store
     new_profiler
     auto_parallel
-    auto_parallel_proto
     jit_layer
     jit_property)
 

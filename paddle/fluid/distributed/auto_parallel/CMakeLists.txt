@@ -36,7 +36,4 @@ cc_test(
   SRCS dist_mapper_test.cc
   DEPS dist_mapper)
 
-cc_library(
-  auto_parallel
-  SRCS device_mesh.cc
-  DEPS process_mesh device_mesh dist_attr dist_mapper)
+cc_library(auto_parallel DEPS device_mesh process_mesh dist_attr dist_mapper)
