@@ -2059,6 +2059,8 @@ def _get_reduce_axis(axis):
     Internal function for max, min, amax and amin. 
     It computes the attribute reduce_all value based on axis.
     """
+    if isinstance(axis, Variable):
+        return False, axis
     if axis is not None and not isinstance(axis, list):
         if isinstance(axis, tuple):
             axis = list(axis)

@@ -1707,10 +1707,10 @@
   backward : meshgrid_grad
 
 - api : min
-  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  args : (Tensor x, IntArray dims, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMeta
+    func : ReduceMinInferMeta
   kernel :
     func : min
   backward : min_grad

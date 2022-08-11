@@ -27,7 +27,7 @@ class ReduceMinOpMaker : public ops::ReduceOpMaker {
 
 DECLARE_INFER_SHAPE_FUNCTOR(reduce_min,
                             ReduceMinInferShapeFunctor,
-                            PD_INFER_META(phi::ReduceInferMetaBase));
+                            PD_INFER_META(phi::ReduceMinInferMetaBase));
 
 REGISTER_OPERATOR(
     reduce_min,

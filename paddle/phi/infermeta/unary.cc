@@ -2603,6 +2603,50 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void ReduceMinInferMetaBase(const MetaTensor& x,
+                            const IntArray& axis,
+                            bool keep_dim,
+                            bool reduce_all,
+                            MetaTensor* out,
+                            MetaConfig config) {
+  std::vector<int64_t> vec_axis = axis.GetData();
+  if (config.is_runtime) {
+    ReduceInferMetaBase(x, vec_axis, keep_dim, reduce_all, out);
+  } else {
+    auto x_rank = static_cast<size_t>(x.dims().size());
+
+    // PADDLE_ENFORCE_LE(
+    //   vec_axis.size(),
+    //   x_rank,
+    //   errors::InvalidArgument(
+    //       "The length of axis should be less than or equal to "
+    //       "x_rank. But received the length of axis = %d, "
+    //       "x_rank = %d",
+    //       vec_axis.size(),
+    //       x_rank));
+
+    std::vector<int64_t> vec_dim;
+    if (vec_axis.size() >= x_rank) {
+      vec_dim = {-1};
+    } else {
+      vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);
+    }
+    DDim out_dim = phi::make_ddim(vec_dim);
+    out->set_dims(out_dim);
+    out->set_dtype(x.dtype());
+    out->set_layout(x.layout());
+  }
+}
+
+void ReduceMinInferMeta(const MetaTensor& x,
+                        const IntArray& axis,
+                        bool keep_dim,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  bool reduce_all = false;
+  ReduceMinInferMetaBase(x, axis, keep_dim, reduce_all, out, config);
+}
+
 void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,
                                int dim,
