@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/beam_search_decode_op.cc"
-#include "paddle/fluid/operators/beam_search_decode_op.h"
+#include "paddle/fluid/operators/beam_search_decode_op_xpu.cc"
 
 #include "gtest/gtest.h"
 
@@ -155,9 +154,9 @@ TEST(BeamSearchDecodeOpXPU, Backtrace) {
   LoDTensor id_tensor_cpu;
   LoDTensor score_tensor_cpu;
 
-  paddle::operators::BeamSearchDecodeFunctor bs(
+  paddle::operators::BeamSearchDecodeXPUFunctor bs_xpu(
       ids, scores, &id_tensor_cpu, &score_tensor_cpu, 2, 1);
-  bs.apply<float>();
+  bs_xpu.apply<float>();
 
   LoD lod = id_tensor_cpu.lod();
   std::vector<size_t> expect_source_lod = {0, 2, 4};
