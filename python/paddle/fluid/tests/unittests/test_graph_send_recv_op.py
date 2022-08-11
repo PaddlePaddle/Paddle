@@ -25,11 +25,11 @@ from op_test import OpTest
 def graph_send_recv_wrapper(x,
                             src_index,
                             dst_index,
-                            pool_type="sum",
+                            reduce_op="sum",
                             out_size=None,
                             name=None):
     return paddle.geometric.send_u_recv(x, src_index, dst_index,
-                                        pool_type.lower(), out_size, name)
+                                        reduce_op.lower(), out_size, name)
 
 
 class TestGraphSendRecvMaxOp(OpTest):

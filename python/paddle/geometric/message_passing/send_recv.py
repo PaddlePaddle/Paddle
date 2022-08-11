@@ -25,7 +25,7 @@ from .utils import convert_out_size_to_list, get_out_size_tensor_inputs, reshape
 def send_u_recv(x,
                 src_index,
                 dst_index,
-                pool_type="sum",
+                reduce_op="sum",
                 out_size=None,
                 name=None):
     """
@@ -35,7 +35,7 @@ def send_u_recv(x,
     This api is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory 
     consumption in the process of message passing. Take `x` as the input tensor, we first use `src_index`
     to gather the corresponding data, and then use `dst_index` to update the corresponding position of output tensor 
-    in different pooling types, like sum, mean, max, or min. Besides, we can use `out_size` to set necessary output shape.
+    in different reduce ops, like sum, mean, max, or min. Besides, we can use `out_size` to set necessary output shape.
 
     .. code-block:: text
 
@@ -49,7 +49,7 @@ def send_u_recv(x,
 
            dst_index = [1, 2, 1, 0]
 
-           pool_type = "sum"
+           reduce_op = "sum"
 
            out_size = None
 
@@ -65,7 +65,7 @@ def send_u_recv(x,
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64. 
-        pool_type (str): Different pooling types, including `sum`, `mean`, `max`, `min`.
+        reduce_op (str): Different reduce ops, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
         out_size (int|Tensor|None): We can set `out_size` to get necessary output shape. If not set or 
                                     out_size is smaller or equal to 0, then this input will not be used.
@@ -89,7 +89,7 @@ def send_u_recv(x,
             indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.geometric.send_u_recv(x, src_index, dst_index, pool_type="sum")
+            out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum")
             # Outputs: [[0., 2., 3.], [2., 8., 10.], [1., 4., 5.]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
@@ -97,22 +97,22 @@ def send_u_recv(x,
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
             out_size = paddle.max(dst_index) + 1
-            out = paddle.geometric.send_u_recv(x, src_index, dst_index, pool_type="sum", out_size=out_size)
+            out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum", out_size=out_size)
             # Outputs: [[0., 2., 3.], [[2., 8., 10.]]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.geometric.send_u_recv(x, src_index, dst_index, pool_type="sum")
+            out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum")
             # Outputs: [[0., 2., 3.], [2., 8., 10.], [0., 0., 0.]]
 
     """
 
-    if pool_type not in ["sum", "mean", "max", "min"]:
+    if reduce_op not in ["sum", "mean", "max", "min"]:
         raise ValueError(
-            "pool_type should be `sum`, `mean`, `max` or `min`, but received %s"
-            % pool_type)
+            "reduce_op should be `sum`, `mean`, `max` or `min`, but received %s"
+            % reduce_op)
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
@@ -120,13 +120,13 @@ def send_u_recv(x,
         out_size = convert_out_size_to_list(out_size)
         out, tmp = _C_ops.graph_send_recv(x, src_index,
                                           dst_index, None, 'pool_type',
-                                          pool_type.upper(), 'out_size',
+                                          reduce_op.upper(), 'out_size',
                                           out_size)
         return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
         return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
-                                                  pool_type.upper(), out_size)
+                                                  reduce_op.upper(), out_size)
 
     check_variable_and_dtype(
         x, "X", ("float32", "float64", "int32", "int64", "float16"),
@@ -148,7 +148,7 @@ def send_u_recv(x,
                                                           stop_gradient=True)
 
     inputs = {"X": x, "Src_index": src_index, "Dst_index": dst_index}
-    attrs = {"pool_type": pool_type.upper()}
+    attrs = {"pool_type": reduce_op.upper()}
     get_out_size_tensor_inputs(inputs=inputs,
                                attrs=attrs,
                                out_size=out_size,
@@ -168,8 +168,8 @@ def send_ue_recv(x,
                  y,
                  src_index,
                  dst_index,
-                 compute_type="add",
-                 pool_type="sum",
+                 message_op="add",
+                 reduce_op="sum",
                  out_size=None,
                  name=None):
     """
@@ -196,9 +196,9 @@ def send_ue_recv(x,
 
            dst_index = [1, 2, 1, 0]
 
-           compute_type = "add"
+           message_op = "add"
 
-           pool_type = "sum"
+           reduce_op = "sum"
 
            out_size = None
 
@@ -215,8 +215,8 @@ def send_ue_recv(x,
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64.
-        compute_type (str): Different compute types for x and e, including `add`, `sub`, `mul`, `div`.
-        pool_type (str): Different pooling types, including `sum`, `mean`, `max`, `min`.
+        message_op (str): Different compute types for x and e, including `add`, `sub`, `mul`, `div`.
+        reduce_op (str): Different pooling types, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
         out_size (int|Tensor|None): We can set `out_size` to get necessary output shape. If not set or
                                     out_size is smaller or equal to 0, then this input will not be used.
@@ -241,7 +241,7 @@ def send_ue_recv(x,
             indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, compute_type="add", pool_type="sum")
+            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum")
             # Outputs: [[1., 3., 4.], [4., 10., 12.], [2., 5., 6.]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
@@ -250,7 +250,7 @@ def send_ue_recv(x,
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
             out_size = paddle.max(dst_index) + 1
-            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, compute_type="add", pool_type="sum", out_size=out_size)
+            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum", out_size=out_size)
             # Outputs: [[1., 3., 4.], [[4., 10., 12.]]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
@@ -258,28 +258,28 @@ def send_ue_recv(x,
             indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, compute_type="add", pool_type="sum")
+            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum")
             # Outputs: [[1., 3., 4.], [4., 10., 12.], [0., 0., 0.]]
 
     """
 
-    if compute_type not in ["add", "sub", "mul", "div"]:
+    if message_op not in ["add", "sub", "mul", "div"]:
         raise ValueError(
-            "compute_type should be `add`, `sub`, `mul`, `div`, but received %s"
-            % compute_type)
+            "message_op should be `add`, `sub`, `mul`, `div`, but received %s" %
+            message_op)
 
-    if pool_type not in ["sum", "mean", "max", "min"]:
+    if reduce_op not in ["sum", "mean", "max", "min"]:
         raise ValueError(
-            "pool_type should be `sum`, `mean`, `max` or `min`, but received %s"
-            % pool_type)
+            "reduce_op should be `sum`, `mean`, `max` or `min`, but received %s"
+            % reduce_op)
 
     x, y = reshape_lhs_rhs(x, y)
 
-    if compute_type == 'sub':
-        compute_type = 'add'
+    if message_op == 'sub':
+        message_op = 'add'
         y = -y
-    if compute_type == "div":
-        compute_type = 'mul'
+    if message_op == "div":
+        message_op = 'mul'
         y = 1. / y
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
@@ -288,15 +288,15 @@ def send_ue_recv(x,
         out_size = convert_out_size_to_list(out_size)
         out, tmp = _C_ops.graph_send_ue_recv(x, y, src_index, dst_index,
                                              None, 'compute_type',
-                                             compute_type.upper(), 'pool_type',
-                                             pool_type.upper(), 'out_size',
+                                             message_op.upper(), 'pool_type',
+                                             reduce_op.upper(), 'out_size',
                                              out_size)
         return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
         return _C_ops.final_state_graph_send_ue_recv(x, y, src_index, dst_index,
-                                                     compute_type.upper(),
-                                                     pool_type.upper(),
+                                                     message_op.upper(),
+                                                     reduce_op.upper(),
                                                      out_size)
 
     check_variable_and_dtype(
@@ -322,10 +322,7 @@ def send_ue_recv(x,
                                                           stop_gradient=True)
 
     inputs = {"X": x, "Y": y, "Src_index": src_index, "Dst_index": dst_index}
-    attrs = {
-        "compute_type": compute_type.upper(),
-        "pool_type": pool_type.upper()
-    }
+    attrs = {"compute_type": message_op.upper(), "pool_type": reduce_op.upper()}
     get_out_size_tensor_inputs(inputs=inputs,
                                attrs=attrs,
                                out_size=out_size,

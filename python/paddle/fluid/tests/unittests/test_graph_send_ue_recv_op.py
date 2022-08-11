@@ -103,7 +103,7 @@ def compute_graph_send_ue_recv_for_sum(inputs, attributes):
     y = inputs['Y']
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
-    compute_type = attributes['compute_type']
+    message_op = attributes['compute_type']
 
     gather_x = x[src_index]
     out_shp = [
@@ -112,9 +112,9 @@ def compute_graph_send_ue_recv_for_sum(inputs, attributes):
     results = np.zeros(out_shp, dtype=x.dtype)
 
     # Calculate forward output.
-    if compute_type == 'ADD':
+    if message_op == 'ADD':
         x_compute_y = gather_x + y
-    elif compute_type == 'MUL':
+    elif message_op == 'MUL':
         x_compute_y = gather_x * y
     for index, s_id in enumerate(dst_index):
         results[s_id, :] += x_compute_y[index, :]
@@ -126,7 +126,7 @@ def compute_graph_send_ue_recv_for_mean(inputs, attributes):
     y = inputs['Y']
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
-    compute_type = attributes['compute_type']
+    message_op = attributes['compute_type']
 
     gather_x = x[src_index]
     out_shp = [
@@ -135,9 +135,9 @@ def compute_graph_send_ue_recv_for_mean(inputs, attributes):
     results = np.zeros(out_shp, dtype=x.dtype)
 
     # Calculate forward output.
-    if compute_type == 'ADD':
+    if message_op == 'ADD':
         x_compute_y = gather_x + y
-    elif compute_type == 'MUL':
+    elif message_op == 'MUL':
         x_compute_y = gather_x * y
     count = np.zeros(out_shp[0], dtype=np.int32)
     for index, s_id in enumerate(dst_index):
@@ -155,8 +155,8 @@ def compute_graph_send_ue_recv_for_max_min(inputs, attributes):
     y = inputs['Y']
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
-    compute_type = attributes['compute_type']
-    pool_type = attributes['pool_type']
+    message_op = attributes['compute_type']
+    reduce_op = attributes['pool_type']
 
     gather_x = x[src_index]
     out_shp = [
@@ -165,13 +165,13 @@ def compute_graph_send_ue_recv_for_max_min(inputs, attributes):
     results = np.zeros(out_shp, dtype=x.dtype)
 
     # Calculate forward output.
-    if compute_type == 'ADD':
+    if message_op == 'ADD':
         x_compute_y = gather_x + y
-    elif compute_type == 'MUL':
+    elif message_op == 'MUL':
         x_compute_y = gather_x * y
 
     first_set = set()
-    if pool_type == 'MAX':
+    if reduce_op == 'MAX':
         for index, s_id in enumerate(dst_index):
             if s_id not in first_set:
                 results[s_id, :] += x_compute_y[index, :]
@@ -179,7 +179,7 @@ def compute_graph_send_ue_recv_for_max_min(inputs, attributes):
             else:
                 results[s_id, :] = np.maximum(results[s_id, :],
                                               x_compute_y[index, :])
-    elif pool_type == 'MIN':
+    elif reduce_op == 'MIN':
         for index, s_id in enumerate(dst_index):
             if s_id not in first_set:
                 results[s_id, :] += x_compute_y[index, :]
@@ -188,7 +188,7 @@ def compute_graph_send_ue_recv_for_max_min(inputs, attributes):
                 results[s_id, :] = np.minimum(results[s_id, :],
                                               x_compute_y[index, :])
     else:
-        raise ValueError("Invalid pool_type, only MAX, MIN supported!")
+        raise ValueError("Invalid reduce_op, only MAX, MIN supported!")
 
     # Calculate backward gradient.
     x_gradient = np.zeros_like(x)
@@ -206,7 +206,7 @@ def compute_graph_send_ue_recv_for_max_min(inputs, attributes):
         for j in range(bcast_info.out_len):
             x_add = bcast_info.lhs_offset[j] if use_broadcast else j
             y_add = bcast_info.rhs_offset[j] if use_broadcast else j
-            if compute_type == 'ADD':
+            if message_op == 'ADD':
                 if len(x_off.shape) == 1 and len(y_off.shape) == 1:
                     val = x_off[x_add] + y_off[y_add]
                     x_grad_off[x_add] += 1 * (val == out_off[j])
@@ -224,7 +224,7 @@ def compute_graph_send_ue_recv_for_max_min(inputs, attributes):
                         val == out_off[out_add_0][out_add_1])
                     y_grad_off[y_add_0][y_add_1] += 1 * (
                         val == out_off[out_add_0][out_add_1])
-            elif compute_type == 'MUL':
+            elif message_op == 'MUL':
                 if len(x_off.shape) == 1 and len(y_off.shape) == 1:
                     val = x_off[x_add] * y_off[y_add]
                     x_grad_off[x_add] += 1 * (val == out_off[j]) * y_off[y_add]
@@ -254,13 +254,13 @@ def graph_send_ue_recv_wrapper(x,
                                y,
                                src_index,
                                dst_index,
-                               compute_type="add",
-                               pool_type="sum",
+                               message_op="add",
+                               reduce_op="sum",
                                out_size=None,
                                name=None):
     return paddle.geometric.send_ue_recv(x, y, src_index, dst_index,
-                                         compute_type.lower(),
-                                         pool_type.lower(), out_size, name)
+                                         message_op.lower(), reduce_op.lower(),
+                                         out_size, name)
 
 
 class TestGraphSendUERecvSumOp(OpTest):
@@ -277,7 +277,7 @@ class TestGraphSendUERecvSumOp(OpTest):
             'Src_index': self.src_index,
             'Dst_index': self.dst_index
         }
-        self.attrs = {'compute_type': self.compute_type, 'pool_type': 'SUM'}
+        self.attrs = {'compute_type': self.message_op, 'pool_type': 'SUM'}
 
         out = compute_graph_send_ue_recv_for_sum(self.inputs, self.attrs)
 
@@ -289,7 +289,7 @@ class TestGraphSendUERecvSumOp(OpTest):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -306,7 +306,7 @@ class TestSumCase1(TestGraphSendUERecvSumOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestSumCase2(TestGraphSendUERecvSumOp):
@@ -317,7 +317,7 @@ class TestSumCase2(TestGraphSendUERecvSumOp):
         index = np.random.randint(0, 10, (150, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestSumCase3(TestGraphSendUERecvSumOp):
@@ -328,7 +328,7 @@ class TestSumCase3(TestGraphSendUERecvSumOp):
         index = np.random.randint(0, 10, (150, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestSumCase4(TestGraphSendUERecvSumOp):
@@ -339,7 +339,7 @@ class TestSumCase4(TestGraphSendUERecvSumOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestSumCase5(TestGraphSendUERecvSumOp):
@@ -350,7 +350,7 @@ class TestSumCase5(TestGraphSendUERecvSumOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestSumCase6(TestGraphSendUERecvSumOp):
@@ -361,7 +361,7 @@ class TestSumCase6(TestGraphSendUERecvSumOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestSumCase7(TestGraphSendUERecvSumOp):
@@ -372,7 +372,7 @@ class TestSumCase7(TestGraphSendUERecvSumOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestGraphSendUERecvMeanOp(OpTest):
@@ -389,7 +389,7 @@ class TestGraphSendUERecvMeanOp(OpTest):
             'Src_index': self.src_index,
             'Dst_index': self.dst_index
         }
-        self.attrs = {'compute_type': self.compute_type, 'pool_type': 'MEAN'}
+        self.attrs = {'compute_type': self.message_op, 'pool_type': 'MEAN'}
 
         out, dst_count = compute_graph_send_ue_recv_for_mean(
             self.inputs, self.attrs)
@@ -402,7 +402,7 @@ class TestGraphSendUERecvMeanOp(OpTest):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -419,7 +419,7 @@ class TestMeanCase1(TestGraphSendUERecvMeanOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestMeanCase2(TestGraphSendUERecvMeanOp):
@@ -430,7 +430,7 @@ class TestMeanCase2(TestGraphSendUERecvMeanOp):
         index = np.random.randint(0, 10, (150, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestMeanCase3(TestGraphSendUERecvMeanOp):
@@ -441,7 +441,7 @@ class TestMeanCase3(TestGraphSendUERecvMeanOp):
         index = np.random.randint(0, 10, (150, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestMeanCase4(TestGraphSendUERecvMeanOp):
@@ -452,7 +452,7 @@ class TestMeanCase4(TestGraphSendUERecvMeanOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestMeanCase5(TestGraphSendUERecvMeanOp):
@@ -463,7 +463,7 @@ class TestMeanCase5(TestGraphSendUERecvMeanOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestMeanCase6(TestGraphSendUERecvMeanOp):
@@ -474,7 +474,7 @@ class TestMeanCase6(TestGraphSendUERecvMeanOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestMeanCase7(TestGraphSendUERecvMeanOp):
@@ -485,7 +485,7 @@ class TestMeanCase7(TestGraphSendUERecvMeanOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestGraphSendUERecvMaxOp(OpTest):
@@ -502,7 +502,7 @@ class TestGraphSendUERecvMaxOp(OpTest):
             'Src_index': self.src_index,
             'Dst_index': self.dst_index
         }
-        self.attrs = {'compute_type': self.compute_type, 'pool_type': 'MAX'}
+        self.attrs = {'compute_type': self.message_op, 'pool_type': 'MAX'}
 
         out, self.gradients = compute_graph_send_ue_recv_for_max_min(
             self.inputs, self.attrs)
@@ -515,7 +515,7 @@ class TestGraphSendUERecvMaxOp(OpTest):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -535,7 +535,7 @@ class TestMaxCase1(TestGraphSendUERecvMaxOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestMaxCase2(TestGraphSendUERecvMaxOp):
@@ -546,7 +546,7 @@ class TestMaxCase2(TestGraphSendUERecvMaxOp):
         index = np.random.randint(0, 10, (150, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestMaxCase3(TestGraphSendUERecvMaxOp):
@@ -557,7 +557,7 @@ class TestMaxCase3(TestGraphSendUERecvMaxOp):
         index = np.random.randint(0, 10, (150, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestMaxCase4(TestGraphSendUERecvMaxOp):
@@ -568,7 +568,7 @@ class TestMaxCase4(TestGraphSendUERecvMaxOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestMaxCase5(TestGraphSendUERecvMaxOp):
@@ -579,7 +579,7 @@ class TestMaxCase5(TestGraphSendUERecvMaxOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestMaxCase6(TestGraphSendUERecvMaxOp):
@@ -590,7 +590,7 @@ class TestMaxCase6(TestGraphSendUERecvMaxOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestMaxCase7(TestGraphSendUERecvMaxOp):
@@ -601,7 +601,7 @@ class TestMaxCase7(TestGraphSendUERecvMaxOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestGraphSendUERecvMinOp(OpTest):
@@ -618,7 +618,7 @@ class TestGraphSendUERecvMinOp(OpTest):
             'Src_index': self.src_index,
             'Dst_index': self.dst_index
         }
-        self.attrs = {'compute_type': self.compute_type, 'pool_type': 'MIN'}
+        self.attrs = {'compute_type': self.message_op, 'pool_type': 'MIN'}
 
         out, self.gradients = compute_graph_send_ue_recv_for_max_min(
             self.inputs, self.attrs)
@@ -631,7 +631,7 @@ class TestGraphSendUERecvMinOp(OpTest):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -651,7 +651,7 @@ class TestMinCase1(TestGraphSendUERecvMinOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestMinCase2(TestGraphSendUERecvMinOp):
@@ -662,7 +662,7 @@ class TestMinCase2(TestGraphSendUERecvMinOp):
         index = np.random.randint(0, 10, (150, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestMinCase3(TestGraphSendUERecvMinOp):
@@ -673,7 +673,7 @@ class TestMinCase3(TestGraphSendUERecvMinOp):
         index = np.random.randint(0, 10, (150, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestMinCase4(TestGraphSendUERecvMinOp):
@@ -684,7 +684,7 @@ class TestMinCase4(TestGraphSendUERecvMinOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestMinCase5(TestGraphSendUERecvMinOp):
@@ -695,7 +695,7 @@ class TestMinCase5(TestGraphSendUERecvMinOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestMinCase6(TestGraphSendUERecvMinOp):
@@ -706,7 +706,7 @@ class TestMinCase6(TestGraphSendUERecvMinOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestMinCase7(TestGraphSendUERecvMinOp):
@@ -717,7 +717,7 @@ class TestMinCase7(TestGraphSendUERecvMinOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class API_GeometricSendUERecvTest(unittest.TestCase):
