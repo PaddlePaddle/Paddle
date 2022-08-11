@@ -445,11 +445,11 @@ class TypedAttrChecker {
     auto it = attr_map->find(attr_name_);
     if (it != attr_map->end() && HasAttrVar(it->second)) {
       PADDLE_ENFORCE_EQ(attr_->support_tensor(),
-                       true,
-                       platform::errors::InvalidArgument(
-                           "Found Attribute('%s') with type(Variable), but it "
-                           "doesn't support Tensor type.",
-                           attr_name_));
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Found Attribute('%s') with type(Variable), but it "
+                            "doesn't support Tensor type.",
+                            attr_name_));
 
       VLOG(1) << "Found Attribute " << attr_name_ << " with type(Variable).";
       return;
