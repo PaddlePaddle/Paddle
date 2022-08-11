@@ -23,8 +23,6 @@ from .meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle.fluid import core
 from paddle.distributed import fleet
 
-fleet_env = fleet.fleet
-
 
 def _dygraph_distributed_optimizer(optimizer, strategy=None):
     """
@@ -49,6 +47,7 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
                 optimizer = paddle.optimizer.SGD(learning_rate=0.001)
                 optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         """
+    fleet_env = fleet.fleet
     fleet_env.user_defined_optimizer = optimizer
 
     if strategy is not None:
@@ -74,8 +73,8 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
         return optimizer
 
 
-def disributed_optimizer(*args, **kwargs):
+def distributed_optimizer(*args, **kwargs):
     if paddle.fluid.framework._non_static_mode():
         return _dygraph_distributed_optimizer(*args, **kwargs)
     else:
-        return fleet_env.distributed_optimizer(*args, **kwargs)
+        return fleet.fleet.distributed_optimizer(*args, **kwargs)
