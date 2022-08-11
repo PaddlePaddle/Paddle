@@ -140,13 +140,13 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
         def sample_data_generator():
             for indices in self.sampler_iter:
                 assert len(indices) % self.dp_world_size == 0, \
-                    "Please set batch_size equal to data parallel size"
+                    "Please set batch_size to be divisible by data parallel size"
                 n = len(indices) // self.dp_world_size
                 cur_indices = [
                     indices[i:i + n] for i in range(0, len(indices), n)
                 ]
                 batch = self.dataset_fetcher.fetch(cur_indices[self.dp_rank])
-                yield batch
+                yield batch[:len(self.feed_list)]
 
         def batch_data_generator():
             for indices in self.sampler_iter:
@@ -154,10 +154,10 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                 batch = self.dataset_fetcher.fetch(indices)
                 for data in batch:
                     assert data.shape[0] % self.dp_world_size == 0, \
-                        "Please padding dataset with data parallel size"
+                        "Please padding dataset's batch_size to be divisible by data parallel size"
                     partial_data.append(
                         np.split(data, self.dp_world_size)[self.dp_rank])
-                yield partial_data
+                yield partial_data[:len(self.feed_list)]
 
         dataloader = paddle.fluid.io.DataLoader.from_generator(
             feed_list=self.feed_list, capacity=70, iterable=False)
