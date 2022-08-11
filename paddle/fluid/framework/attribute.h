@@ -395,7 +395,7 @@ class TypedAttrChecker {
 
   TypedAttrChecker& SupportTensor() {
     attr_->set_support_tensor(true);
-    return *this
+    return *this;
   }
 
   TypedAttrChecker& InEnum(const std::unordered_set<T>& range) {
@@ -444,7 +444,7 @@ class TypedAttrChecker {
     // If attribute is VarDesc(s), we should verify it's supported in OpMaker
     auto it = attr_map->find(attr_name_);
     if (it != attr_map->end() && HasAttrVar(it->second)) {
-      PADDLE_ENFOCE_EQ(attr_->support_tensor(),
+      PADDLE_ENFORCE_EQ(attr_->support_tensor(),
                        true,
                        platform::errors::InvalidArgument(
                            "Found Attribute('%s') with type(Variable), but it "
