@@ -97,8 +97,8 @@ class TestIndexAddOp(unittest.TestCase):
         ref_out = np.reshape(out_np, self.x_shape)
         return ref_out
 
-    def run_imperative(self):
-        paddle.device.set_device(self.place)
+    def run_imperative(self, device):
+        paddle.device.set_device(device)
         input_tensor = paddle.to_tensor(self.x_np)
         index = paddle.to_tensor(self.index_np)
         add_value = paddle.to_tensor(self.add_value_np)
@@ -111,7 +111,7 @@ class TestIndexAddOp(unittest.TestCase):
                                    rtol=self.rtol,
                                    atol=self.atol)
 
-    def run_static(self):
+    def run_static(self, device):
         x = paddle.static.data(name='X', shape=self.x_shape, dtype=self.x_type)
         index = paddle.static.data(name='Index',
                                    shape=self.index_shape,
@@ -122,9 +122,9 @@ class TestIndexAddOp(unittest.TestCase):
 
         out = paddle.index_add(x, index, add_value, self.axis)
 
-        if self.place == "cpu":
+        if device == "cpu":
             place = paddle.CPUPlace()
-        elif self.place == "gpu":
+        elif device == "gpu":
             place = paddle.CUDAPlace(0)
         else:
             raise TypeError(
@@ -145,17 +145,20 @@ class TestIndexAddOp(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        with paddle.static.program_guard(Program()):
-            out = self.run_static()
-        ref_out = self.compute_index_add_ref()
-        np.testing.assert_allclose(ref_out,
-                                   np.array(out[0]),
-                                   rtol=self.rtol,
-                                   atol=self.atol)
+        for device in self.place:
+            with paddle.static.program_guard(Program()):
+                out = self.run_static(device)
+            ref_out = self.compute_index_add_ref()
+            np.testing.assert_allclose(ref_out,
+                                    np.array(out[0]),
+                                    rtol=self.rtol,
+                                    atol=self.atol)
 
     def test_dynamic(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
-        self.run_imperative()
+        #paddle.disable_static(place=paddle.CUDAPlace(0))
+        for device in self.place:
+            self.run_imperative(device)
+
 
 @unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAddOpMoreType(TestIndexAddOp):
@@ -163,6 +166,7 @@ class TestIndexAddOpMoreType(TestIndexAddOp):
     def setType(self):
         self.x_type = np.float16
         self.index_type = np.int64
+
 
 @unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAdOpCase2(TestIndexAddOp):
@@ -183,6 +187,7 @@ class TestIndexAdOpCase3(TestIndexAddOp):
         self.index_size = 20
         self.add_value_shape = (100, 100, 20)
 
+
 @unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAdOpCase4(TestIndexAddOp):
 
@@ -191,6 +196,7 @@ class TestIndexAdOpCase4(TestIndexAddOp):
         self.x_shape = (10, )
         self.index_size = 4
         self.add_value_shape = (4, )
+
 
 @unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestIndexAdOpCase5(TestIndexAddOp):
@@ -201,13 +207,11 @@ class TestIndexAdOpCase5(TestIndexAddOp):
         self.index_size = 4
         self.add_value_shape = (10, 4)
 
-
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestIndexAdOpGPU(TestIndexAddOp):
 
     def setPlace(self):
-        self.place = "gpu"
+        if paddle.is_compiled_with_cuda():
+            self.place.append('gpu')
 
 
 if __name__ == '__main__':
