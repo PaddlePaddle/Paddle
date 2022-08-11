@@ -60,7 +60,6 @@ option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
-include(experimental) # experimental build options
 
 if(WITH_GPU AND WITH_XPU)
   message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
@@ -400,6 +399,7 @@ if(WITH_GPU)
   # lite subgraph compilation depends on CUDNN_ROOT,
   # so include(cudnn) needs to be in front of include(third_party/lite)
   include(cudnn) # set cudnn libraries, must before configure
+  include(experimental) # experimental build options
   include(tensorrt)
   # there is no official support of nccl, cupti in windows
   if(NOT WIN32)
