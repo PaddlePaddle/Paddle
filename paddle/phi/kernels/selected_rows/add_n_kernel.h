@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,22 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
+namespace sr {
 
-KernelSignature SumOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsSelectedRowsInputs("X")) {
-    return KernelSignature("add_n_sr", {"X"}, {}, {"Out"});
-  } else if (ctx.IsDenseTensorVectorInput("X")) {
-    return KernelSignature("add_n_array", {"X"}, {}, {"Out"});
-  } else {
-    return KernelSignature("add_n", {"X"}, {}, {"Out"});
-  }
-}
-
+template <typename T, typename Context>
+void AddNKernel(const Context& dev_ctx,
+                const std::vector<const SelectedRows*>& x,
+                SelectedRows* out);
+}  // namespace sr
 }  // namespace phi
-
-PD_REGISTER_BASE_KERNEL_NAME(sum, add_n);
-
-PD_REGISTER_ARG_MAPPING_FN(sum, phi::SumOpArgumentMapping);

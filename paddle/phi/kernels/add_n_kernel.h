@@ -20,7 +20,12 @@ namespace phi {
 
 template <typename T, typename Context>
 void AddNKernel(const Context& dev_ctx,
-                const std::vector<const DenseTensor*>& x,
+                const std::vector<const TensorBase*>& x,
                 DenseTensor* out);
+
+template <typename T, typename Context>
+void AddNArrayKernel(const Context& dev_ctx,
+                     const std::vector<std::vector<const DenseTensor*>>& x,
+                     std::vector<DenseTensor*> out);
 
 }  // namespace phi
