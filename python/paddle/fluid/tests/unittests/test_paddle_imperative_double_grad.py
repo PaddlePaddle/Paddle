@@ -194,15 +194,13 @@ class TestDygraphDoubleGrad(TestCase):
 
                     if grad_y is not None:
                         self.assertTrue(grad_y.stop_gradient)
-                        self.assertTrue(
-                            np.array_equal(grad_y.numpy(),
-                                           original_random_grad_y))
+                        np.testing.assert_array_equal(grad_y.numpy(),
+                                                      original_random_grad_y)
 
                     if grad_z is not None:
                         self.assertTrue(grad_z.stop_gradient)
-                        self.assertTrue(
-                            np.array_equal(grad_z.numpy(),
-                                           original_random_grad_z))
+                        np.testing.assert_array_equal(grad_z.numpy(),
+                                                      original_random_grad_z)
 
     def test_none_one_initial_gradient(self):
         with _test_eager_guard():

@@ -110,7 +110,7 @@ class TestFillAnyInplace(unittest.TestCase):
             y = 2 * x
             y.fill_(1)
             y.backward()
-            self.assertTrue(np.array_equal(x.grad.numpy(), np.zeros([10, 10])))
+            np.testing.assert_array_equal(x.grad.numpy(), np.zeros([10, 10]))
 
 
 if __name__ == "__main__":

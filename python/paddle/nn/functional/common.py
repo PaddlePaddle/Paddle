@@ -1004,14 +1004,14 @@ def dropout(x,
             print(y_01)
 
     """
-    # fast return for p == 0
-    if p == 0:
-        return x
+    if not isinstance(p, (float, int, Variable)):
+        raise TypeError("p argument should be a number or Variable")
 
-    if not isinstance(p, (float, int)):
-        raise TypeError("p argument should be a number")
-    if p < 0 or p > 1:
-        raise ValueError("p argument should between 0 and 1")
+    if isinstance(p, (int, float)):
+        # fast return for p == 0
+        if p == 0: return x
+        elif p < 0 or p > 1:
+            raise ValueError("p argument should between 0 and 1")
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(
             "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
@@ -1050,6 +1050,12 @@ def dropout(x,
         def get_attrs(prog, dropout_prob, is_test, seed):
             if (seed is None or seed == 0) and prog.random_seed != 0:
                 seed = prog.random_seed
+
+            if isinstance(dropout_prob,
+                          Variable) and not dropout_prob.shape != [1]:
+                raise TypeError(
+                    "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}"
+                    .format(p.shape))
             attrs = {
                 'dropout_prob': dropout_prob,
                 'is_test': is_test,
@@ -1952,7 +1958,11 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_class_center_sample(
+            label, num_classes, num_samples, ring_id, rank, nranks, seed
+            is not None, seed if seed is not None else 0)
+    elif paddle.in_dynamic_mode():
         remapped_label, sampled_class_center = _C_ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed', seed
