@@ -124,7 +124,6 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     }
 
     matmul_desc->SetInput(matmul_input_name, {(reshape_in)->Name()});
-    matmul_desc->SetAttr("is_input_" + matmul_input_name + "_fused", true);
     matmul_desc->SetAttr("fused_reshape_" + matmul_input_name, reshape_shape);
     matmul_desc->SetAttr("fused_transpose_" + matmul_input_name,
                          transpose_axis);

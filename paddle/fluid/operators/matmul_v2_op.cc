@@ -38,7 +38,6 @@ static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
                         "shape of Input(%s) = [%s].",
                         dim));
 
-  // if mkldnn reshape+transpose+matmul fuse activated
   if (!shape.empty() && !axis.empty()) {
     dim = dim.reshape(shape).transpose(axis);
   }
@@ -117,6 +116,16 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     }
 
     auto ddim_out = phi::make_ddim(new_dims);
+
+#ifdef PADDLE_WITH_MKLDNN
+    auto shape = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
+    auto axis = ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
+
+    if (!shape.empty() && !axis.empty()) {
+      ddim_out = ddim_out.transpose(axis).reshape(shape);
+    }
+#endif
+
     ctx->SetOutputDim("Out", ddim_out);
     ctx->ShareLoD("X", "Out");
   }
