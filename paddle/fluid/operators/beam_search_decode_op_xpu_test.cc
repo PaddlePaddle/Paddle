@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/beam_search_decode_op.cc"
 #include "paddle/fluid/operators/beam_search_decode_op.h"
 
 #include "gtest/gtest.h"
