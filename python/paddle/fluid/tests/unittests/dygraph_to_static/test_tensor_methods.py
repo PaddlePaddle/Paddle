@@ -64,41 +64,5 @@ class TestTensorDygraphOnlyMethodError(unittest.TestCase):
             static_res = self._run(to_static=True)
 
 
-@paddle.jit.to_static
-def tensor_badreturn_0(x):
-    a = paddle.to_tensor([1.0, 2.0, 3.0], dtype="int64")
-    return a
-
-@paddle.jit.to_static
-def tensor_badreturn_1(x):
-    paddle.set_default_dtype("float64")
-    a = paddle.to_tensor([1.0, 2.0, 3.0])
-    return a 
-
-
-class TestToTensorReturnVal(unittest.TestCase):
-
-    def _run(self, to_static):
-        prog_trans = paddle.jit.ProgramTranslator()
-        prog_trans.enable(to_static)
-        x = paddle.to_tensor([3])
-        out0 = tensor_badreturn_0(x)
-        out1 = tensor_badreturn_1(x)
-        return out0, out1
-    
-    def test_to_tensor_badreturn(self):
-        dygraph_res = self._run(to_static=False)
-        x = paddle.to_tensor([3])
-        self.assertTrue(dygraph_res[0].dtype == tensor_badreturn_0(x).dtype,
-                        msg='to_static dtype is {}, orig dtype is {}'.format(
-                            dygraph_res[0].dtype, tensor_badreturn_0(x).dtype))
-        self.assertTrue(dygraph_res[1].dtype == tensor_badreturn_1(x).dtype,
-                        msg='to_static dtype is {}, orig dtype is {}'.format(
-                            dygraph_res[0].dtype, tensor_badreturn_1(x).dtype))
-        
-
-
-
-
 if __name__ == '__main__':
     unittest.main()

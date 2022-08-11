@@ -267,6 +267,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     return out
 
 
+@dygraph_only
 def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     r"""
     Constructs a ``paddle.Tensor`` from ``data`` , 
@@ -325,100 +326,92 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         #        [[(1+1j), (2+0j)],
         #         [(3+2j), (4+0j)]])
     """
-    if _non_static_mode():
-        place = _get_paddle_place(place)
-        if place is None:
-            place = _current_expected_place()
-        elif not isinstance(
-                place,
-            (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace,
-            core.NPUPlace, core.XPUPlace, core.MLUPlace, core.CustomPlace)):
-            raise ValueError(
-                "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.MLUPlace, paddle.CustomPlace"
-            )
+    place = _get_paddle_place(place)
+    if place is None:
+        place = _current_expected_place()
+    elif not isinstance(
+            place,
+        (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace,
+        core.NPUPlace, core.XPUPlace, core.MLUPlace, core.CustomPlace)):
+        raise ValueError(
+            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.MLUPlace, paddle.CustomPlace"
+        )
 
-        if not isinstance(data, np.ndarray):
+    if not isinstance(data, np.ndarray):
 
-            def _handle_dtype(data, dtype):
-                if dtype:
-                    if convert_dtype(dtype) != convert_dtype(data.dtype):
-                        return data.astype(convert_dtype(dtype))
-                return data
+        def _handle_dtype(data, dtype):
+            if dtype:
+                if convert_dtype(dtype) != convert_dtype(data.dtype):
+                    return data.astype(convert_dtype(dtype))
+            return data
 
-            if np.isscalar(data) and not isinstance(data, str):
-                data = np.array([data])
-            elif isinstance(data, (list, tuple)):
-                data = np.array(data)
-                if data.dtype == np.object_:
-                    raise ValueError(
-                        "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
-                        "this means the input data contains nested lists with different lengths. "
-                    )
-            elif isinstance(data, paddle.Tensor) and not in_dygraph_mode():
-                data = data._copy_to(place, False)
-                data = _handle_dtype(data, dtype)
-                data.stop_gradient = stop_gradient
-                return data
-            elif isinstance(data, core.eager.Tensor) and in_dygraph_mode():
-                data = data._copy_to(place, False)
-                data = _handle_dtype(data, dtype)
-                data.stop_gradient = stop_gradient
-                return data
-            elif isinstance(data, (core.LoDTensor, core.Tensor)):
-                # should't expose it to users, just for internal use.
-                # convert core.Tensor/core.LoDTensor to VarBase first
-                # Currenly, there is no copy when places are same
-                if in_dygraph_mode():
-                    data = core.eager.Tensor(data)
-                else:
-                    data = paddle.Tensor(data)
-                if not data.place._equals(place):
-                    data = data._copy_to(place, False)
-                data = _handle_dtype(data, dtype)
-                data.stop_gradient = stop_gradient
-                return data
+        if np.isscalar(data) and not isinstance(data, str):
+            data = np.array([data])
+        elif isinstance(data, (list, tuple)):
+            data = np.array(data)
+            if data.dtype == np.object_:
+                raise ValueError(
+                    "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
+                    "this means the input data contains nested lists with different lengths. "
+                )
+        elif isinstance(data, paddle.Tensor) and not in_dygraph_mode():
+            data = data._copy_to(place, False)
+            data = _handle_dtype(data, dtype)
+            data.stop_gradient = stop_gradient
+            return data
+        elif isinstance(data, core.eager.Tensor) and in_dygraph_mode():
+            data = data._copy_to(place, False)
+            data = _handle_dtype(data, dtype)
+            data.stop_gradient = stop_gradient
+            return data
+        elif isinstance(data, (core.LoDTensor, core.Tensor)):
+            # should't expose it to users, just for internal use.
+            # convert core.Tensor/core.LoDTensor to VarBase first
+            # Currenly, there is no copy when places are same
+            if in_dygraph_mode():
+                data = core.eager.Tensor(data)
             else:
-                raise TypeError(
-                    "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor"
-                    .format(type(data)))
-            if not dtype:
-                if data.dtype in [
-                        'float16', 'float32', 'float64', 'complex64', 'complex128'
-                ]:
-                    default_type = paddle.get_default_dtype()
-                    if np.iscomplexobj(data):
-                        default_type = 'complex64' if default_type in [
-                            'float16', 'float32'
-                        ] else 'complex128'
-                    data = data.astype(default_type)
-                # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
-                if data.dtype in ['int32']:
-                    default_type = "int64"
-                    data = data.astype(default_type)
-
-        if dtype and convert_dtype(dtype) != data.dtype:
-            data = data.astype(convert_dtype(dtype))
-
-        if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
-            return core.eager.Tensor(value=data,
-                                    place=place,
-                                    persistable=False,
-                                    zero_copy=False,
-                                    name=None,
-                                    stop_gradient=stop_gradient)
+                data = paddle.Tensor(data)
+            if not data.place._equals(place):
+                data = data._copy_to(place, False)
+            data = _handle_dtype(data, dtype)
+            data.stop_gradient = stop_gradient
+            return data
         else:
-            return paddle.Tensor(value=data,
+            raise TypeError(
+                "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor"
+                .format(type(data)))
+        if not dtype:
+            if data.dtype in [
+                    'float16', 'float32', 'float64', 'complex64', 'complex128'
+            ]:
+                default_type = paddle.get_default_dtype()
+                if np.iscomplexobj(data):
+                    default_type = 'complex64' if default_type in [
+                        'float16', 'float32'
+                    ] else 'complex128'
+                data = data.astype(default_type)
+            # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
+            if data.dtype in ['int32']:
+                default_type = "int64"
+                data = data.astype(default_type)
+
+    if dtype and convert_dtype(dtype) != data.dtype:
+        data = data.astype(convert_dtype(dtype))
+
+    if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
+        return core.eager.Tensor(value=data,
                                 place=place,
                                 persistable=False,
                                 zero_copy=False,
+                                name=None,
                                 stop_gradient=stop_gradient)
-    
-    # call assign instead for static graph
     else:
-        output = assign(data)
-        if dtype is not None:
-            output = output.astype(dtype)
-        return output
+        return paddle.Tensor(value=data,
+                            place=place,
+                            persistable=False,
+                            zero_copy=False,
+                            stop_gradient=stop_gradient)
 
 
 
@@ -1522,7 +1515,6 @@ def assign(x, output=None):
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
-        output_dtype = None
         if in_dygraph_mode():
             if output is None:
                 output = _C_ops.final_state_assign(input)
@@ -1544,7 +1536,6 @@ def assign(x, output=None):
                              inputs={'X': [input]},
                              outputs={'Out': [output]})
     elif isinstance(input, np.ndarray):
-        output_dtype = input.dtype
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
@@ -1624,9 +1615,6 @@ def assign(x, output=None):
 
     if is_inplace and _in_legacy_dygraph():
         output._bump_inplace_version()
-
-    if output_dtype is not None:
-        output = output.astype(output_dtype)
 
     return output
 
