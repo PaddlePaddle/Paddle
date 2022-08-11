@@ -1365,9 +1365,8 @@ class ReduceOnPlateau(LRScheduler):
             tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
         if isinstance(metrics, (tmp, numpy.ndarray)):
-            assert metrics.shape == [], "the metrics.shape should be (), but the current metrics.shape is {}. Maybe that " \
-                                                                      "you should call paddle.mean to process it first.".format(
-                metrics.shape)
+            assert metrics.size == 1, "the metrics.size should be 1, but the current metrics.size is {}. Maybe that you should call paddle.mean to process it first.".format(
+                metrics.size)
         elif not isinstance(metrics,
                             (int, float, numpy.float32, numpy.float64)):
             raise TypeError(

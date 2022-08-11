@@ -27,7 +27,7 @@ import unittest
 os.environ['CPU_NUM'] = str(4)
 np.random.seed(123)
 
-
+paddle.enable_static()
 class TestFeedData(unittest.TestCase):
     '''
         Test paddle.fluid.data feeds with different shape and types.
@@ -93,9 +93,7 @@ class TestFeedData(unittest.TestCase):
                                                         use_parallel_executor)
                 self.assertEqual(
                     str(shape_mismatch_err.exception),
-                    "The fed Variable %r should have dimensions = %r, "
-                    "shape = %r, but received fed shape %r on each device" %
-                    (u'data', len(in_shape_tuple), in_shape_tuple,
+                    "The feed Variable %r should have shape = %r, but received feed shape %r on each device" % (u'data', in_shape_tuple,
                      error_shape_list))
 
                 with self.assertRaises(ValueError) as dtype_mismatch_err:

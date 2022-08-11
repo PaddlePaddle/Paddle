@@ -28,6 +28,7 @@ class TestMathOpPatches(unittest.TestCase):
         paddle.enable_static()
         self.a_shape = [10, 1]
         self.b_shape = [10, 1]
+        self.expect_shape = (10, 1)
 
     @prog_scope()
     def test_add_scalar(self):
@@ -37,10 +38,9 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = numpy.random.random(size=self.a_shape).astype('float32')
         b_np = exe.run(fluid.default_main_program(),
-                                   feed={"a": a_np},
-                                   fetch_list=[b])
+                       feed={"a": a_np},
+                       fetch_list=[b])
         self.assertTrue(np.allclose(a_np + 10, b_np))
-
 
     @prog_scope()
     def test_radd_scalar(self):
@@ -97,7 +97,6 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
-        a_np = np.random.random(size=[10, 1]).astype('float32')
         b_np = exe.run(fluid.default_main_program(),
                        feed={"a": a_np},
                        fetch_list=[b])
@@ -132,6 +131,8 @@ class TestMathOpPatches(unittest.TestCase):
         a = paddle.static.data(name="a", shape=self.a_shape)
         b = paddle.static.data(name="b", shape=self.b_shape)
         c = a / b
+        self.assertEqual(c.shape, self.expect_shape)
+
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
@@ -149,6 +150,8 @@ class TestMathOpPatches(unittest.TestCase):
         a = paddle.static.data(name="a", shape=self.a_shape)
         b = paddle.static.data(name="b", shape=self.b_shape)
         c = a * b
+        self.assertEqual(c.shape, self.expect_shape)
+
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
@@ -166,6 +169,8 @@ class TestMathOpPatches(unittest.TestCase):
         a = paddle.static.data(name="a", shape=self.a_shape)
         b = paddle.static.data(name="b", shape=self.b_shape)
         c = a + b
+        self.assertEqual(c.shape, self.expect_shape)
+
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
@@ -183,6 +188,8 @@ class TestMathOpPatches(unittest.TestCase):
         a = paddle.static.data(name="a", shape=self.a_shape)
         b = paddle.static.data(name="b", shape=self.b_shape)
         c = a - b
+        self.assertEqual(c.shape, self.expect_shape)
+
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
@@ -267,7 +274,9 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_astype(self):
-        a = fluid.layers.data(name="a", shape=self.a_shape, append_batch_size=False)
+        a = fluid.layers.data(name="a",
+                              shape=self.a_shape,
+                              append_batch_size=False)
         b = a.astype('float32')
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -390,12 +399,15 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[c])
         self.assertTrue(np.allclose(a_np @ b_np, c_np))
 
+
 class TestMathOpPatches1(TestMathOpPatches):
 
     def setUp(self):
         paddle.enable_static()
         self.a_shape = []
-        self.b_shape = [10, 1]
+        self.b_shape = []
+        self.expect_shape = ()
+
 
 class TestMathOpPatches2(TestMathOpPatches):
 
@@ -403,13 +415,16 @@ class TestMathOpPatches2(TestMathOpPatches):
         paddle.enable_static()
         self.a_shape = [10, 1]
         self.b_shape = []
+        self.expect_shape = (10, 1)
+
 
 class TestMathOpPatches3(TestMathOpPatches):
 
     def setUp(self):
         paddle.enable_static()
         self.a_shape = []
-        self.b_shape = []
+        self.b_shape = [10, 1]
+        self.expect_shape = (10, 1)
 
     @prog_scope()
     def test_equal(self):

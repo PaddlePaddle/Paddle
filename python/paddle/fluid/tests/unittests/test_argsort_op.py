@@ -165,7 +165,7 @@ class TestArgsortOpCPU(unittest.TestCase):
 
                 f[...] = o
                 dout_dfeed = (y_pos - y_neg) / (delta * 2)
-                g[...] = dout_dfeed[0]
+                g[...] = dout_dfeed
 
         return grad_list
 

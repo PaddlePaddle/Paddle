@@ -917,8 +917,8 @@ class Optimizer(object):
             else:
                 assert (isinstance(callbacks, list))
             program = loss.block.program
-            assert len(loss.shape) == 0 , \
-                "The loss.shape should be [], but the current loss.shape is {}. " \
+            assert loss.shape in [(), (1,)], \
+                "The loss.shape should be (), but the current loss.shape is {}. " \
                 "Maybe that you should call paddle.mean to process the current loss.".format(
                     loss.shape)
             parameter_list = parameter_list if parameter_list \

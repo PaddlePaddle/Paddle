@@ -36,8 +36,11 @@ void Reduce(const KPDevice& dev_ctx,
             DataType out_dtype,
             DenseTensor* out,
             bool is_mean = false) {
+  // 'reduce_dim is []' means reduce_all=True
+  bool empty_dim = (dims.size()==0);
+  reduce_all = (reduce_all || empty_dim);
   std::vector<int> reduce_dims =
-      phi::funcs::details::FormatReduceDim(dims, x.dims().size(), reduce_all);
+      phi::funcs::details::GetReduceDim(dims, x.dims().size(), reduce_all);
 
   int reduce_num = 1;
   for (auto i : reduce_dims) {

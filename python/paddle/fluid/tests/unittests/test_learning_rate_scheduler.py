@@ -201,7 +201,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             adam_test.set_dict(opt_state)
             self.assertEqual(
                 adam_test._learning_rate.best_loss,
-                adam3._learning_rate.best_loss.numpy()[0],
+                adam3._learning_rate.best_loss.numpy(),
                 "best_loss is different before and after set_dict")
             self.assertEqual(
                 adam_test._learning_rate.cooldown_counter,

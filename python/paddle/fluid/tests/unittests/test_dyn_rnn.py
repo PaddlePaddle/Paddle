@@ -76,7 +76,7 @@ class TestDynamicRNN(unittest.TestCase):
 
         if max_iters > 10:
             # loss should be small after 10 mini-batch
-            self.assertLess(loss_i[0], loss_0[0])
+            self.assertLess(loss_i, loss_0)
 
     def test_plain_while_op(self):
         main_program = fluid.Program()

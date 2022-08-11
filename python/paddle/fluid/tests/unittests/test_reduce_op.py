@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
+
 class TestSumOp(OpTest):
 
     def setUp(self):
@@ -1052,33 +1053,37 @@ class TestZeroDimAPI(unittest.TestCase):
     api_list = [
         paddle.sum,
         paddle.mean,
+        paddle.nansum,
+        paddle.nanmean,
         paddle.min,
         paddle.max,
-        paddle.nanmean,
-        paddle.nansum,
         paddle.amin,
         paddle.amax,
         paddle.prod,
+        paddle.logsumexp,
+        paddle.fluid.layers.reduce_sum,
+        paddle.fluid.layers.reduce_mean,
+        paddle.fluid.layers.reduce_max,
+        paddle.fluid.layers.reduce_min,
+        paddle.fluid.layers.reduce_prod,
     ]
 
     def test_dygraph(self):
         paddle.disable_static()
-
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         for api in self.api_list:
-            x = paddle.to_tensor([[1., 1.], [1., 1.]], stop_gradient=False)
+            x = paddle.to_tensor([[1., 1., 0., 2.], [1., 0., 1., 3.]], stop_gradient=False)
             out = api(x, None)
             self.assertEqual(out.shape, [])
             out.backward()
             self.assertEqual(out.grad.shape, [])
 
-            '''
             x = paddle.to_tensor(1., stop_gradient=False)
             out = api(x, None)
             self.assertEqual(out.shape, [])
             out.backward()
             self.assertEqual(out.grad.shape, [])
             self.assertEqual(x.grad.shape, [])
-            '''
 
         paddle.enable_static()
 
@@ -1087,36 +1092,98 @@ class TestZeroDimAPI(unittest.TestCase):
 
         for api in self.api_list:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                x = fluid.data(name="X", shape=[-1, 2])
+                x = fluid.data(name="X", shape=[-1, 4])
+                x.stop_gradient = False
                 out = api(x, None)
-                p_g = fluid.backward.append_backward(out)
+                fluid.backward.append_backward(out)
+                
+                prog = paddle.static.default_main_program()
+                block = prog.global_block()
+                x_grad = block.var(fluid.framework.grad_var_name('X'))
+        
+                x_np = np.array([[1., 1., 0., 2.], [1., 0., 1., 3.]]).astype('float32')
+                exe = fluid.Executor()
+                result = exe.run(prog,
+                                 feed={"X": x_np},
+                                 fetch_list=[out, x_grad])
 
-                x_np = np.array([[1., 1.], [1., 1.]]).astype('float32')
+                self.assertEqual(result[0].shape, ())
+                self.assertEqual(result[1].shape, (2, 4))
+            
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                x = fluid.data(name="X", shape=[])
+                x.stop_gradient = False
+                out = api(x, None)
+                fluid.backward.append_backward(out)
+
+                prog = fluid.default_main_program()
+                block = prog.global_block()
+                x_grad = block.var(fluid.framework.grad_var_name('X'))
+                
+                exe = fluid.Executor()
+                result = exe.run(prog,
+                                feed={"X": 1.},
+                                fetch_list=[out, x_grad])
+
+                self.assertEqual(result[0].shape, ())
+                self.assertEqual(result[1].shape, ())
+            
+        paddle.disable_static()
+
+
+class TestZeroDimBoolAPI(unittest.TestCase):
+    # all/any don't have grad op and no need test backward
+    api_list = [
+        paddle.all,
+        paddle.any,
+        paddle.fluid.layers.reduce_all,
+        paddle.fluid.layers.reduce_any,
+    ]
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        for api in self.api_list:
+            x = paddle.to_tensor([[True, False, True, False], [False, True, True, False]], stop_gradient=False)
+            out = api(x, None)
+            self.assertEqual(out.shape, [])
+
+            x = paddle.to_tensor(True, stop_gradient=False)
+            out = api(x, None)
+            self.assertEqual(out.shape, [])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+
+        for api in self.api_list:
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                x = fluid.data(name="X", shape=[-1, 4], dtype='bool')
+                x.stop_gradient = False
+                out = api(x, None)
+        
+                x_np = np.array([[True, False, True, False], [False, True, True, False]])
                 exe = fluid.Executor()
                 result = exe.run(fluid.default_main_program(),
-                                feed={"X": x_np},
+                                 feed={"X": x_np},
+                                 fetch_list=[out])
+
+                self.assertEqual(result[0].shape, ())
+            
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                x = fluid.data(name="X", shape=[], dtype='bool')
+                x.stop_gradient = False
+                out = api(x, None)
+                
+                exe = fluid.Executor()
+                result = exe.run(fluid.default_main_program(),
+                                feed={"X": False},
                                 fetch_list=[out])
 
                 self.assertEqual(result[0].shape, ())
-
-            '''
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                x = fluid.data(name="X", shape=[], stop_gradient=False)
-                out = api(x, None)
-                _, x_grad = fluid.backward.append_backward(out)
-
-                x_np = np.array(1.)
-                exe = fluid.Executor(place)
-                result = exe.run(fluid.default_main_program(),
-                                feed={"X": x_np},
-                                fetch_list=[out, x_grad])
-
-                self.assertTrue(result[0].shape, ())
-                self.assertTrue(result[1].shape, ())
-            '''
-
+            
         paddle.disable_static()
-
 
 if __name__ == '__main__':
     import paddle

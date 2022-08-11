@@ -493,7 +493,7 @@ class ReduceOp : public framework::OperatorWithKernel {
                         x_rank,
                         platform::errors::InvalidArgument(
                             "The reduce dim index %d should be in the "
-                            "range [-dimension(X), dimension(X)] "
+                            "range [-dimension(X), dimension(X)) "
                             "which dimesion = %d. But received dim index = %d.",
                             i,
                             x_rank,
@@ -502,7 +502,7 @@ class ReduceOp : public framework::OperatorWithKernel {
                         -x_rank,
                         platform::errors::InvalidArgument(
                             "The reduce dim index %d should be in the "
-                            "range [-dimension(X), dimension(X)] "
+                            "range [-dimension(X), dimension(X)) "
                             "which dimesion = %d. But received dim index = %d.",
                             i,
                             x_rank,

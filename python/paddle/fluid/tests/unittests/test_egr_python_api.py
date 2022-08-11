@@ -252,7 +252,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         np.testing.assert_array_equal(egr_tensor12.numpy(), x)
 
         zerodim_param = EagerParamBase(shape=[], dtype="float32")
-        self.assertTrue(zerodim_param.shape, [])
+        self.assertEqual(zerodim_param.shape, [])
 
         with self.assertRaisesRegexp(
                 ValueError, "The shape of Parameter should not be None"):

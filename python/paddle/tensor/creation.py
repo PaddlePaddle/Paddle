@@ -1505,7 +1505,7 @@ def assign(x, output=None):
     is_inplace = True if output is not None else False
 
     if np.isscalar(input) and not isinstance(input, str):
-        input = np.array([input])
+        input = np.array(input)
     elif isinstance(input, (list, tuple)):
         input = np.array(input)
     # NOTE(Aurelius84): Why we judge core.VarBase?

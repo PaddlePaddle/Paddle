@@ -114,7 +114,7 @@ class OptimizerWithMixedPrecision(object):
     def _init_amp_var(self):
         self._loss_scaling = layers.create_global_var(
             name=unique_name.generate("loss_scaling"),
-            shape=[1],
+            shape=[],
             value=self._init_loss_scaling,
             dtype='float32',
             persistable=True)

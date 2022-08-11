@@ -236,6 +236,27 @@ def _elementwise_op_in_dygraph(x,
                                                        act,
                                                        use_mkldnn=use_mkldnn)
 
+def _get_reduce_dim(dim, input):
+    """
+    Internal function for reduce_sum, reduce_mean, reduce_max, reduce_min, reduce_prod. 
+    It computes the attribute reduce_all value based on axis.
+    """
+    if dim is not None and not isinstance(dim, list):
+        if isinstance(dim, (tuple, range)):
+            dim = list(dim)
+        elif isinstance(dim, int):
+            dim= [dim]
+        else:
+            raise TypeError(
+                "The type of dim must be int, list, tuple or range, but received {}".format(type(axis)))
+    if dim is None:
+        dim = []
+    if dim == [] or len(dim) == len(input.shape):
+        reduce_all = True
+    else:
+        reduce_all = False
+
+    return reduce_all, dim
 
 def fc(input,
        size,
@@ -4649,23 +4670,15 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
+    reduce_all, dim = _get_reduce_dim(dim, input)
+    
     if _non_static_mode():
-        reduce_all = True if dim == None or dim == [] or len(dim) == len(
-            input.shape) else False
-        dim = dim if dim != None and dim != [] else [0]
         return _C_ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
                                  'reduce_all', reduce_all)
     attrs = {
-        'dim':
-        dim if dim != None and dim != [] else [0],
-        'keep_dim':
-        keep_dim,
-        'reduce_all':
-        True
-        if dim == None or dim == [] or len(dim) == len(input.shape) else False
+        'dim': dim,
+        'keep_dim': keep_dim,
+        'reduce_all': reduce_all
     }
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -4784,6 +4797,8 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_max(y, dim=[1, 2]) # [4.0, 8.0]
             fluid.layers.reduce_max(y, dim=[0, 1]) # [7.0, 8.0]
     """
+    reduce_all, dim = _get_reduce_dim(dim, input)
+    
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
@@ -4792,13 +4807,9 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
                      inputs={'X': input},
                      outputs={'Out': out},
                      attrs={
-                         'dim':
-                         dim if dim != None and dim != [] else [0],
-                         'keep_dim':
-                         keep_dim,
-                         'reduce_all':
-                         True if dim == None or dim == []
-                         or len(dim) == len(input.shape) else False
+                         'dim': dim,
+                         'keep_dim': keep_dim,
+                         'reduce_all': reduce_all
                      })
     return out
 
@@ -4852,6 +4863,7 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_min(y, dim=[1, 2]) # [1.0, 5.0]
             fluid.layers.reduce_min(y, dim=[0, 1]) # [1.0, 2.0]
     """
+    reduce_all, dim = _get_reduce_dim(dim, input)
     helper = LayerHelper('reduce_min', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
@@ -4860,13 +4872,9 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
                      inputs={'X': input},
                      outputs={'Out': out},
                      attrs={
-                         'dim':
-                         dim if dim != None and dim != [] else [0],
-                         'keep_dim':
-                         keep_dim,
-                         'reduce_all':
-                         True if dim == None or dim == []
-                         or len(dim) == len(input.shape) else False
+                         'dim': dim,
+                         'keep_dim': keep_dim,
+                         'reduce_all': reduce_all
                      })
     return out
 
@@ -4920,20 +4928,9 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
             fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
     """
-
-    if dim is not None and not isinstance(dim, list):
-        if isinstance(dim, tuple):
-            dim = list(dim)
-        elif isinstance(dim, int):
-            dim = [dim]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".
-                format(type(dim)))
+    reduce_all, dim = _get_reduce_dim(dim, input)
     if in_dygraph_mode():
-        return _C_ops.final_state_reduce_prod(
-            input, dim if dim != None and dim != [] else [0], keep_dim, True if
-            dim == None or dim == [] or len(dim) == len(input.shape) else False)
+        return _C_ops.final_state_reduce_prod(input, dim, keep_dim, reduce_all)
 
     helper = LayerHelper('reduce_prod', **locals())
     check_variable_and_dtype(input, 'input',
@@ -4944,13 +4941,9 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
                      inputs={'X': input},
                      outputs={'Out': out},
                      attrs={
-                         'dim':
-                         dim if dim != None and dim != [] else [0],
-                         'keep_dim':
-                         keep_dim,
-                         'reduce_all':
-                         True if dim == None or dim == []
-                         or len(dim) == len(input.shape) else False
+                         'dim': dim,
+                         'keep_dim': keep_dim,
+                         'reduce_all': reduce_all,
                      })
     return out
 
@@ -4999,6 +4992,8 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
+    reduce_all, dim = _get_reduce_dim(dim, input)
+    
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -5008,13 +5003,9 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
                      inputs={'X': input},
                      outputs={'Out': out},
                      attrs={
-                         'dim':
-                         dim if dim != None and dim != [] else [0],
-                         'keep_dim':
-                         keep_dim,
-                         'reduce_all':
-                         True if dim == None or dim == []
-                         or len(dim) == len(input.shape) else False
+                         'dim': dim,
+                         'keep_dim': keep_dim,
+                         'reduce_all': reduce_all
                      })
     return out
 
@@ -5062,6 +5053,8 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
+    reduce_all, dim = _get_reduce_dim(dim, input)
+    
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_any')
     helper = LayerHelper('reduce_any', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -5071,13 +5064,9 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
                      inputs={'X': input},
                      outputs={'Out': out},
                      attrs={
-                         'dim':
-                         dim if dim != None and dim != [] else [0],
-                         'keep_dim':
-                         keep_dim,
-                         'reduce_all':
-                         True if dim == None or dim == []
-                         or len(dim) == len(input.shape) else False
+                         'dim': dim,
+                         'keep_dim': keep_dim,
+                         'reduce_all': reduce_all
                      })
     return out
 

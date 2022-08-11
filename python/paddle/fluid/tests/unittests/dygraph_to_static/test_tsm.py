@@ -315,18 +315,18 @@ def train(args, fake_data_reader, to_static):
                 optimizer.minimize(avg_loss)
                 video_model.clear_gradients()
 
-                total_loss += avg_loss.numpy()[0]
+                total_loss += avg_loss.numpy().item()
                 total_acc1 += acc_top1.numpy()[0]
                 total_acc5 += acc_top5.numpy()[0]
                 total_sample += 1
 
                 print('TRAIN Epoch {}, iter {}, loss = {}, acc1 {}, acc5 {}'.
                       format(epoch, batch_id,
-                             avg_loss.numpy()[0],
+                             avg_loss.numpy().item(),
                              acc_top1.numpy()[0],
                              acc_top5.numpy()[0]))
                 ret.extend([
-                    avg_loss.numpy()[0],
+                    avg_loss.numpy().item(),
                     acc_top1.numpy()[0],
                     acc_top5.numpy()[0]
                 ])

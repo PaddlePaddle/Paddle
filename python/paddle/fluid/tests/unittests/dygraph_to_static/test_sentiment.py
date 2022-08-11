@@ -321,7 +321,7 @@ def train(args, to_static):
 
                 model.train()
                 avg_cost, prediction, acc = model(doc, label)
-                loss_data.append(avg_cost.numpy()[0])
+                loss_data.append(avg_cost.numpy().item())
 
                 avg_cost.backward()
                 sgd_optimizer.minimize(avg_cost)
@@ -334,7 +334,7 @@ def train(args, to_static):
                     if used_time < 1e-5:
                         used_time = 1e-5
                     print("step: %d, ave loss: %f, speed: %f steps/s" %
-                          (batch_id, avg_cost.numpy()[0],
+                          (batch_id, avg_cost.numpy().item(),
                            args.log_step / used_time))
                     time_begin = time.time()
 

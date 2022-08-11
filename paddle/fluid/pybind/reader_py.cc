@@ -54,16 +54,25 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
   auto tensor_shape = tensor.dims();
   auto desc_shape = var_desc.GetShape();
 
-  int64_t rank = tensor_shape.size();
+  size_t rank = tensor_shape.size();
 
   if (UNLIKELY(rank == 0)) {
-    if (desc_shape.size() != 0) {  // Tensor rank = 0 but desc does not match
+    if (desc_shape.size() != 0) {
+      // variable desc rank != 0, feed rank = 0,
       return phi::vectorize<int64_t>(tensor_shape);
     } else {
+      // variable desc rank = 0, feed rank = 0
       return paddle::none;
     }
   }
 
+  // variable desc rank = 0, feed rank != 0, 
+  if (desc_shape.size() == 0) {  
+    return phi::vectorize<int64_t>(tensor_shape);
+  }
+
+  // variable desc rank != 0, feed rank != 0 
+  //// Process the first dimension
   PADDLE_ENFORCE_GE(tensor_shape[0],
                     0,
                     platform::errors::InvalidArgument(
@@ -75,6 +84,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
     int64_t split_size = (tensor_shape[0] + num_places - 1) / num_places;
     int64_t remainder = (split_size == 0 ? 0 : tensor_shape[0] % split_size);
     tensor_shape[0] = split_size;
+
     if (desc_shape[0] >= 0) {  // need check dim 0
       if (tensor_shape[0] != desc_shape[0]) {
         return phi::vectorize<int64_t>(tensor_shape);
@@ -87,7 +97,8 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
     }
   }
 
-  for (int64_t idx = 1; idx < rank; ++idx) {
+  //// Process the second+ dimension
+  for (size_t idx = 1; idx < rank; ++idx) {
     PADDLE_ENFORCE_GE(
         tensor_shape[idx],
         0,

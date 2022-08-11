@@ -237,16 +237,16 @@ def check_feed_shape_type(var, feed, num_places=1):
         diff_shape = core.diff_tensor_shape(feed, var.desc, num_places)
         if diff_shape is not None:
             raise ValueError(
-                'The fed Variable %r should have dimensions = %d, shape = '
-                '%r, but received fed shape %r on each device' %
-                (var.name, len(var.shape), var.shape, diff_shape))
+                'The feed Variable %r should have shape = '
+                '%r, but received feed shape %r on each device' %
+                (var.name, var.shape, diff_shape))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
             var_dtype_format = convert_dtype(var.dtype) if isinstance(
                 var.dtype, core.VarDesc.VarType) else var.dtype
             feed_dtype_format = convert_dtype(feed._dtype()) if isinstance(
                 feed._dtype(), core.VarDesc.VarType) else feed._dtype()
             raise ValueError(
-                'The data type of fed Variable %r must be %r, but received %r' %
+                'The data type of feed Variable %r must be %r, but received %r' %
                 (var.name, var_dtype_format, feed_dtype_format))
     return True
 

@@ -74,7 +74,7 @@ class TestFetchLoDTensorArray(unittest.TestCase):
                 np.array(array_v[0][0]).shape, (batch_size / device_num, 784))
             self.assertEqual(
                 np.array(array_v[0][1]).shape, (batch_size / device_num, 1))
-            self.assertEqual(np.array(array_v[0][2]).shape, (1, ))
+            self.assertEqual(np.array(array_v[0][2]).shape, ())
 
         for _ in range(3):
             loss_v, array_v = exe.run(binary,

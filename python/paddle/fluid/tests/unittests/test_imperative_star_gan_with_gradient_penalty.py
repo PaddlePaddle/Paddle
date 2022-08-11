@@ -585,7 +585,7 @@ class StaticGraphTrainModel(object):
             d_loss_val = self.executor.run(self.dis_program,
                                            feed=feed,
                                            fetch_list=[self.d_loss])[0]
-            return g_loss_val[0], d_loss_val[0]
+            return g_loss_val, d_loss_val
 
 
 class TestStarGANWithGradientPenalty(unittest.TestCase):

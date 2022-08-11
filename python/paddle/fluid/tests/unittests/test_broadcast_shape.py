@@ -15,17 +15,37 @@
 import unittest
 import numpy as np
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestBroadcastShape(unittest.TestCase):
 
-    def test_result(self):
+    def func_test_result(self):
         shape = paddle.broadcast_shape([2, 1, 3], [1, 3, 1])
         self.assertEqual(shape, [2, 3, 3])
 
         shape = paddle.broadcast_shape(
             [-1, 1, 3], [1, 3, 1])  #support compile time infershape
         self.assertEqual(shape, [-1, 3, 3])
+
+        shape = paddle.broadcast_shape([], [])
+        self.assertEqual(shape, [])
+
+        shape = paddle.broadcast_shape([2, 2, 3], [])
+        self.assertEqual(shape, [2, 2, 3])
+
+        shape = paddle.broadcast_shape([], [2, 2, 3])
+        self.assertEqual(shape, [2, 2, 3])
+
+    def test_dygraph_result(self):
+        with _test_eager_guard():
+            self.func_test_result()
+        self.func_test_result()
+
+    def test_static_result(self):
+        paddle.enable_static()
+        self.func_test_result()
+        paddle.disable_static()
 
     def test_error(self):
         self.assertRaises(ValueError, paddle.broadcast_shape, [2, 1, 3],

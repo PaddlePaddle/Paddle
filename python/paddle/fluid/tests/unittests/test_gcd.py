@@ -98,3 +98,7 @@ class TestGcdAPI5(TestGcdAPI):
         self.y_np = -20
         self.x_shape = []
         self.y_shape = []
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -469,7 +469,6 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                                         amp_lists=amp_lists,
                                         init_loss_scaling=8.0,
                                         use_dynamic_loss_scaling=True)
-
                 mp_optimizer.minimize(avg_cost)
 
     def test_non_iterable_dataloader(self):

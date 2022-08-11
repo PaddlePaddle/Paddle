@@ -839,13 +839,6 @@ void ExpandInferMeta(const MetaTensor& x,
                                    "must not be greater than %d.",
                                    expand_shape.size(),
                                    MAX_RANK_SUPPORTED));
-  PADDLE_ENFORCE_GE(
-      expand_shape.size(),
-      1,
-      phi::errors::InvalidArgument("The number of elements (%d) of 'shape' for "
-                                   "must be a positive integer.",
-                                   expand_shape.size()));
-
   auto out_rank =
       std::max(static_cast<size_t>(x_dims.size()), expand_shape.size());
   std::vector<int64_t> out_shape(out_rank);
@@ -1529,7 +1522,6 @@ void LogsumexpInferMeta(const MetaTensor& input,
                         bool keepdim,
                         bool reduce_all,
                         MetaTensor* out) {
-  /*
   auto input_rank = input.dims().size();
   // only supoort 0~4D, due to eigen template compile slow
   PADDLE_ENFORCE_LE(input_rank,
@@ -1541,87 +1533,6 @@ void LogsumexpInferMeta(const MetaTensor& input,
                         input_rank));
 
   ReduceInferMetaBase(input, axis, keepdim, reduce_all, out);
-  */
-
-  auto x_dims = input.dims();
-  auto x_rank = x_dims.size();
-  std::vector<int64_t> formated_axis = axis;
-  PADDLE_ENFORCE_LE(x_rank,
-                    4,
-                    errors::InvalidArgument(
-                        "The input tensor X's dimensions of logsumexp "
-                        "should be less or equal than 4. But received X's "
-                        "dimensions = %d, X's shape = [%s].",
-                        x_rank,
-                        x_dims));
-  PADDLE_ENFORCE_GT(
-      axis.size(),
-      0,
-      errors::InvalidArgument(
-          "The size of axis of logsumexp "
-          "should be greater than 0. But received the size of axis "
-          "of logsumexp is %d.",
-          axis.size()));
-
-  for (size_t i = 0; i < axis.size(); i++) {
-    PADDLE_ENFORCE_LT(axis[i],
-                      x_rank,
-                      errors::InvalidArgument(
-                          "axis[%d] should be in the "
-                          "range [-D, D), where D is the dimensions of X and "
-                          "D is %d. But received axis[%d] = %d.",
-                          i,
-                          x_rank,
-                          i,
-                          axis[i]));
-    PADDLE_ENFORCE_GE(axis[i],
-                      -x_rank,
-                      errors::InvalidArgument(
-                          "axis[%d] should be in the "
-                          "range [-D, D), where D is the dimensions of X and "
-                          "D is %d. But received axis[%d] = %d.",
-                          i,
-                          x_rank,
-                          i,
-                          axis[i]));
-    if (axis[i] < 0) {
-      formated_axis[i] += x_rank;
-    }
-  }
-
-  auto dims_vector = vectorize(x_dims);
-  if (reduce_all) {
-    if (keepdim)
-      out->set_dims(phi::make_ddim(std::vector<int64_t>(x_rank, 1)));
-    else
-      out->set_dims({1});
-  } else {
-    auto dims_vector = vectorize(x_dims);
-    if (keepdim) {
-      for (size_t i = 0; i < formated_axis.size(); ++i) {
-        dims_vector[formated_axis[i]] = 1;
-      }
-    } else {
-      const int kDelFlag = -1;
-      for (size_t i = 0; i < formated_axis.size(); ++i) {
-        dims_vector[formated_axis[i]] = kDelFlag;
-      }
-      dims_vector.erase(
-          std::remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
-          dims_vector.end());
-    }
-    if (!keepdim && dims_vector.size() == 0) {
-      dims_vector.push_back(1);
-    }
-    auto out_dims = phi::make_ddim(dims_vector);
-    out->set_dims(out_dims);
-    if (formated_axis.size() > 0 && formated_axis[0] != 0) {
-      // Only pass LoD when not reducing on the first dim.
-      out->share_lod(input);
-    }
-  }
-  out->set_dtype(input.dtype());
-
 }
 
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
@@ -2562,13 +2473,11 @@ DDim ReduceInferDim(const MetaTensor& x,
                     bool reduce_all) {
   auto x_rank = x.dims().size();
 
-  /*
   PADDLE_ENFORCE_LE(
       axis.size(),
       x_rank,
       errors::InvalidArgument("The number of reduce dim must be less than or "
                               "eaqul to dimensions of x"));
-  */
 
   std::vector<int64_t> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); ++i) {
@@ -2576,7 +2485,7 @@ DDim ReduceInferDim(const MetaTensor& x,
                       x_rank,
                       errors::InvalidArgument(
                           "The reduce dim index %d should be in the "
-                          "range [-dimension(X), dimension(X)] "
+                          "range [-dimension(X), dimension(X)) "
                           "which dimesion = %d. But received dim index = %d.",
                           i,
                           x_rank,
@@ -2585,7 +2494,7 @@ DDim ReduceInferDim(const MetaTensor& x,
                       -x_rank,
                       errors::InvalidArgument(
                           "The reduce dim index %d should be in the "
-                          "range [-dimension(X), dimension(X)] "
+                          "range [-dimension(X), dimension(X)) "
                           "which dimesion = %d. But received dim index = %d.",
                           i,
                           x_rank,
@@ -2624,7 +2533,6 @@ DDim ReduceInferDim(const MetaTensor& x,
       }
     }
   }
-  // VLOG(0) << "out_dim_vector.size: " << out_dim_vector.size();
   DDim out_dim = phi::make_ddim(out_dim_vector);
 
   return out_dim;

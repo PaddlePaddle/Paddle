@@ -28,6 +28,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include <iostream>
 
 namespace paddle {
 namespace operators {
@@ -96,10 +97,10 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                               y_dims.size(),
                               axis));
       }
-      PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim),
+      PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis <= max_dim),
                         true,
                         platform::errors::InvalidArgument(
-                            "The axis range must be [%s, %s), but axis is %s. "
+                            "The axis range must be [%s, %s], but axis is %s. "
                             "Please set the axis again.",
                             -1 * max_dim,
                             max_dim,
@@ -330,7 +331,6 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   using Tensor = framework::Tensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    VLOG(0) << "start InferShape of elementwise_add\n" ;
     auto out_grad_name = framework::GradVarName("Out");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOpGrad");
     OP_INOUT_CHECK(ctx->HasInput(out_grad_name),

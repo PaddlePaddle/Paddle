@@ -23,6 +23,7 @@ from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
 from paddle import _C_ops
+from .math import _get_reduce_axis
 
 __all__ = []
 
@@ -79,18 +80,9 @@ def mean(x, axis=None, keepdim=False, name=None):
             out4 = paddle.mean(x, axis=[0, 2])
             # [ 8.5 12.5 16.5]
     """
-
-    if isinstance(axis, int):
-        axis = [axis]
-    reduce_all = True if axis is None \
-        or len(axis)==0 \
-        or len(axis) == len(x.shape) else False
-    if axis is None or len(axis) == 0:
-        axis = [0]
+    reduce_all, axis = _get_reduce_axis(axis, x)
 
     if in_dygraph_mode():
-        if reduce_all:
-            axis = range(len(x.shape))
         return _C_ops.final_state_mean(x, axis, keepdim)
     if _in_legacy_dygraph():
         return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,

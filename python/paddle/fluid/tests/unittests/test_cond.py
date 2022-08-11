@@ -424,6 +424,8 @@ class TestCondBackward(unittest.TestCase):
                                          fetch_list=[loss.name])
                     multi_device_grad = (loss_delta[0] -
                                          loss_value) / delta / num_devices
+                    print("=============111=============\n", multi_device_grad)
+                    print(type(multi_device_grad))
                     for d in range(num_devices):
                         numerical_grad[d][j] = multi_device_grad[d]
                 else:
@@ -453,6 +455,7 @@ class TestCondBackward(unittest.TestCase):
             label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
             i = fluid.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
+            print(loss.shape)
             optimizer = fluid.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss)
 

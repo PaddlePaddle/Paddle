@@ -27,6 +27,7 @@ import numpy as np
 fluid.default_startup_program().random_seed = 1
 np.random.seed(1)
 
+paddle.enable_static()
 
 class TestDyRnnStaticInput(unittest.TestCase):
 
@@ -73,7 +74,8 @@ class TestDyRnnStaticInput(unittest.TestCase):
     def _lodtensor_to_ndarray(self, lod_tensor):
         dims = lod_tensor.shape()
         ndarray = np.zeros(shape=dims).astype('float32')
-        for i in range(np.product(dims)):
+        numel = int(np.product(dims))
+        for i in range(numel):
             ndarray.ravel()[i] = lod_tensor._get_float_element(i)
         return ndarray, lod_tensor.recursive_sequence_lengths()
 
@@ -199,10 +201,10 @@ class TestDyRnnStaticInput(unittest.TestCase):
             origin = self.static_input_tensor._get_float_element(i)
             x_pos = origin + self._delta
             self.static_input_tensor._set_float_element(i, x_pos)
-            y_pos = self.fetch_value(loss)[0][0]
+            y_pos = self.fetch_value(loss)[0]
             x_neg = origin - self._delta
             self.static_input_tensor._set_float_element(i, x_neg)
-            y_neg = self.fetch_value(loss)[0][0]
+            y_neg = self.fetch_value(loss)[0]
             self.static_input_tensor._set_float_element(i, origin)
             numeric_gradients.ravel()[i] = (y_pos - y_neg) / self._delta / 2
         self.assertTrue(np.allclose(actual_gradients, numeric_gradients, 0.001))

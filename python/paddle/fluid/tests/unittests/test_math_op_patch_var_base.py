@@ -251,7 +251,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             self.assertEqual(res.dtype, fluid.core.VarDesc.VarType.BOOL)
             self.assertTrue(np.array_equal(res.numpy(), a_np == b_np))
 
-
     def test_equal(self):
         with _test_eager_guard():
             self.func_test_equal()
@@ -487,6 +486,7 @@ class TestMathOpPatchesVarBase1(TestMathOpPatchesVarBase):
         self.b_shape = []
         self.dtype = np.float32
 
+
 class TestMathOpPatchesVarBase2(TestMathOpPatchesVarBase):
 
     def setUp(self):
@@ -496,6 +496,7 @@ class TestMathOpPatchesVarBase2(TestMathOpPatchesVarBase):
 
 
 class TestPatchMethodVarBase(unittest.TestCase):
+
     def func_test_tensor_patch_method(self):
         paddle.disable_static()
         x_np = np.random.uniform(-1, 1, [2, 3])
@@ -505,7 +506,6 @@ class TestPatchMethodVarBase(unittest.TestCase):
         x = paddle.to_tensor(x_np)
         y = paddle.to_tensor(y_np)
         z = paddle.to_tensor(z_np)
-        
 
         a = paddle.to_tensor([[1, 1], [2, 2], [3, 3]])
         b = paddle.to_tensor([[1, 1], [2, 2], [3, 3]])
@@ -603,7 +603,7 @@ class TestPatchMethodVarBase(unittest.TestCase):
             x.split(2)[0].numpy(),
             paddle.split(x, 2)[0].numpy())
         m = paddle.to_tensor(
-            np.random.uniform(-1, 1, [1, 6, 1, 1]).astype(self.dtype))
+            np.random.uniform(-1, 1, [1, 6, 1, 1])
         np.testing.assert_array_equal(
             m.squeeze([]).numpy(),
             paddle.squeeze(m, []).numpy())
@@ -767,17 +767,6 @@ class TestPatchMethodVarBase(unittest.TestCase):
             self.func_test_tensor_patch_method()
         self.func_test_tensor_patch_method()
 
-    def func_test_complex_scalar(self):
-        a_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            res = 1J * a
-            np.testing.assert_array_equal(res.numpy(), 1j * a_np)
-
-    def test_complex_scalar(self):
-        with _test_eager_guard():
-            self.func_test_complex_scalar()
-        self.func_test_complex_scalar()
 
 if __name__ == '__main__':
     unittest.main()

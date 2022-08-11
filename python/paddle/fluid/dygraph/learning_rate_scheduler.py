@@ -81,12 +81,11 @@ class LearningRateDecay(object):
             if key not in self.__dict__:
                 continue
             value = self.__dict__[key]
+            # both support Tensor is [] or [1]
             if isinstance(value, Variable):
-                assert value.shape == [
-                    1
-                ], "shape of Variable in state_dict must be [1] {}".format(
-                    value.shape)
-                value = value.numpy()[0]
+                assert value.size == 1, "size of Variable in state_dict must be 1, but is {}".format(
+                    value.size)
+                value = value.numpy().item()
             state_dict[key] = value
 
         return state_dict
@@ -895,9 +894,9 @@ class ReduceLROnPlateau(LearningRateDecay):
 
         # loss must be 1-D Tensor with shape [1]
         check_type(loss, 'loss', Variable, 'ReduceLROnPlateau.step')
-        assert len(loss.shape) == 1 and loss.shape[0] == 1, "the loss.shape " \
-            "should be (1L,), but the current loss.shape is {}. Maybe that "  \
-            "you should call paddle.mean to process it first.".format(loss.shape)
+        assert loss.size == 1, "the loss.size " \
+            "should be 1, but the current loss.size is {}. Maybe that "  \
+            "you should call paddle.mean to process it first.".format(loss.size)
 
         self.epoch_num += 1
         if self.cooldown_counter > 0:

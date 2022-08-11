@@ -47,13 +47,13 @@ class TestDeg2radAPI(unittest.TestCase):
             res = exe.run(fluid.default_main_program(),
                           feed={'input': self.x_np},
                           fetch_list=[out])
-            self.assertTrue((np.array(out[0]) == self.out_np).all())
+            self.assertTrue(np.allclose(res, self.out_np))
 
     def test_dygraph(self):
         paddle.disable_static()
         x1 = paddle.to_tensor([180.0, -180.0, 360.0, -360.0, 90.0, -90.0])
         result1 = paddle.deg2rad(x1)
-        self.assertEqual(np.allclose(self.out_np, result1.numpy()), True)
+        self.assertTrue(np.allclose(self.out_np, result1.numpy()))
 
         paddle.enable_static()
 
@@ -74,3 +74,6 @@ class TestDeg2radAPI2(TestDeg2radAPI):
         self.assertEqual(np.allclose(np.pi, result2.numpy()), True)
 
         paddle.enable_static()
+
+if __name__ == '__main__':
+    unittest.main()

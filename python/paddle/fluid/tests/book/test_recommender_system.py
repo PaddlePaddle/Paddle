@@ -204,7 +204,7 @@ def train(use_cuda, save_dirname, is_local=True):
                         avg_cost_np = exe.run(program=test_program,
                                               feed=feeder.feed(test_data),
                                               fetch_list=[avg_cost])
-                        avg_cost_set.append(avg_cost_np[0])
+                        avg_cost_set.append(avg_cost_np)
                         break  # test only 1 segment for speeding up CI
 
                     # get test avg_cost
@@ -219,7 +219,7 @@ def train(use_cuda, save_dirname, is_local=True):
                                 ], [scale_infer], exe)
                         return
 
-                if math.isnan(float(out[0])):
+                if math.isnan(float(out)):
                     sys.exit("got NaN loss, training failed.")
 
     if is_local:

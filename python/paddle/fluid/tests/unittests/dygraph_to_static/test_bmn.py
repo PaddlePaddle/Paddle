@@ -672,18 +672,18 @@ class TestTrain(unittest.TestCase):
                     bmn.clear_gradients()
                     # log loss data to verify correctness
                     loss_data += [
-                        avg_loss.numpy()[0],
-                        tem_loss.numpy()[0],
-                        pem_reg_loss.numpy()[0],
-                        pem_cls_loss.numpy()[0]
+                        avg_loss.numpy().item(),
+                        tem_loss.numpy().item(),
+                        pem_reg_loss.numpy().item(),
+                        pem_cls_loss.numpy().item()
                     ]
 
                     if args.log_interval > 0 and (batch_id % args.log_interval
                                                   == 0):
                         print('[TRAIN] Epoch {}, iter {} '.format(epoch, batch_id)
                                     + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-                            '%f' % avg_loss.numpy()[0], '%f' % tem_loss.numpy()[0], \
-                            '%f' % pem_reg_loss.numpy()[0], '%f' % pem_cls_loss.numpy()[0]))
+                            '%f' % avg_loss.numpy(), '%f' % tem_loss.numpy(), \
+                            '%f' % pem_reg_loss.numpy(), '%f' % pem_cls_loss.numpy()))
 
                     # validation
                     if batch_id % args.valid_interval == 0 and batch_id > 0:

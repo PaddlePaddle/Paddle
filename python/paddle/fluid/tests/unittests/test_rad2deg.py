@@ -47,7 +47,7 @@ class TestRad2degAPI(unittest.TestCase):
             res = exe.run(fluid.default_main_program(),
                           feed={'input': self.x_np},
                           fetch_list=[out])
-            self.assertTrue((np.array(out[0]) == self.out_np).all())
+            self.assertEqual(np.allclose(res[0], self.out_np), True)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -92,3 +92,7 @@ class TestRad2degAPI3(TestRad2degAPI):
         self.assertEqual(np.allclose(180 / np.pi, result2.numpy()), True)
 
         paddle.enable_static()
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()

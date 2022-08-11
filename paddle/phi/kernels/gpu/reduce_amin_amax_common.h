@@ -43,7 +43,7 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
     reduce_all = true;
   }
   auto reduce_dims =
-      funcs::details::FormatReduceDim(dims, dim_size, reduce_all);
+      funcs::details::GetReduceDim(dims, dim_size, reduce_all);
 
   auto update_dims = vectorize(d_x->dims());
   int reduce_num = 1;
