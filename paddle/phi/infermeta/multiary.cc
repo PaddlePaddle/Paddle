@@ -358,6 +358,7 @@ void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
                   const MetaTensor& stat_neg,
+                  const MetaTensor& ins_tag_weight,
                   const std::string& curve,
                   int num_thresholds,
                   int slide_steps,
@@ -390,6 +391,7 @@ void AucInferMeta(const MetaTensor& input,
           "The Input(Label) has not been initialized properly. The "
           "shape of Input(Label) = [%s], the shape can not involes 0.",
           label_dims));
+
   if (config.is_runtime) {
     PADDLE_ENFORCE_LE(
         predict_width,
@@ -1019,6 +1021,93 @@ void DeformableConvInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void EditDistanceInferMeta(const MetaTensor& hyps,
+                           const MetaTensor& refs,
+                           const MetaTensor& hypslength,
+                           const MetaTensor& refslength,
+                           bool normalized,
+                           MetaTensor* sequencenum,
+                           MetaTensor* out) {
+  auto hyp_dims = hyps.dims();
+  auto ref_dims = refs.dims();
+
+  if (hypslength && refslength) {
+    auto hyp_length_dims = hypslength.dims();
+    auto ref_length_dims = refslength.dims();
+
+    PADDLE_ENFORCE_EQ(
+        hyp_dims.size() == 2 && ref_dims.size() == 2 &&
+            hyp_dims[0] == ref_dims[0],
+        true,
+        errors::InvalidArgument(
+            "Input(hyps) and Input(refs) must be 2-D Tensors with "
+            "identical first dimension. But received Input(Hyps): "
+            "input rank %u, input shape [%s]; received Input(Refs): "
+            "input rank %u, input shape [%s]",
+            hyp_dims.size(),
+            hyp_dims,
+            ref_dims.size(),
+            ref_dims));
+    PADDLE_ENFORCE_EQ(
+        hyp_length_dims[0] == ref_length_dims[0] &&
+            hyp_length_dims[0] == hyp_dims[0],
+        true,
+        errors::InvalidArgument(
+            "Input(hypslength), Input(refslength) and Input(hyps) "
+            "should have identical first dimension. But received "
+            "Input(hypslength): input rank %u, input shape [%s]; "
+            "received Input(refslength): input rank %u, input shape "
+            "[%s]; received Input(hyps): input rank %u, input shape "
+            "[%s].",
+            hyp_length_dims.size(),
+            hyp_length_dims,
+            ref_length_dims.size(),
+            ref_length_dims,
+            hyp_dims.size(),
+            hyp_dims));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        hyp_dims.size() == 2 && hyp_dims[1] == 1,
+        true,
+        errors::InvalidArgument(
+            "Input(Hyps) must be a 2-D LoDTensor with the 2nd dimension "
+            "equal to 1. But received: input rank %u, input shape [%s].",
+            hyp_dims.size(),
+            hyp_dims));
+    PADDLE_ENFORCE_EQ(
+        ref_dims.size() == 2 && ref_dims[1] == 1,
+        true,
+        errors::InvalidArgument(
+            "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
+            "equal to 1. But received: input rank %u, input shape [%s].",
+            ref_dims.size(),
+            ref_dims));
+  }
+
+  out->set_dims(refs.dims());
+  out->set_dtype(DataType::FLOAT32);
+  sequencenum->set_dims(phi::make_ddim({1}));
+  sequencenum->set_dtype(DataType::FLOAT32);
+}
+
+void GenerateProposalsV2InferMeta(const MetaTensor& scores,
+                                  const MetaTensor& bbox_deltas,
+                                  const MetaTensor& im_shape,
+                                  const MetaTensor& anchors,
+                                  const MetaTensor& variances,
+                                  int pre_nms_top_n,
+                                  int post_nms_top_n,
+                                  float nms_thresh,
+                                  float min_size,
+                                  float eta,
+                                  bool pixel_offset,
+                                  MetaTensor* rpn_rois,
+                                  MetaTensor* rpn_roi_probs,
+                                  MetaTensor* rpn_rois_num) {
+  rpn_rois->set_dims(phi::make_ddim({-1, 4}));
+  rpn_roi_probs->set_dims(phi::make_ddim({-1, 1}));
+}
+
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,
@@ -1551,6 +1640,105 @@ void InterpolateInferMeta(
                                  output,
                                  config);
   }
+}
+
+void LambInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& moment1,
+                   const MetaTensor& moment2,
+                   const MetaTensor& beta1_pow,
+                   const MetaTensor& beta2_pow,
+                   const MetaTensor& master_param,
+                   const MetaTensor& skip_update,
+                   float weight_decay,
+                   float beta1,
+                   float beta2,
+                   float epsilon,
+                   bool multi_precision,
+                   MetaTensor* param_out,
+                   MetaTensor* moment1_out,
+                   MetaTensor* moment2_out,
+                   MetaTensor* beta1_pow_out,
+                   MetaTensor* beta2_pow_out,
+                   MetaTensor* master_param_outs) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_NE(
+      phi::product(lr_dims),
+      0,
+      phi::errors::InvalidArgument(
+          "The number of LearningRate shall not be 0, but received %d. Maybe "
+          "the Input variable LearningRate has not "
+          "been initialized. You may need to confirm "
+          "if you put exe.run(startup_program) "
+          "after optimizer.minimize function.",
+          phi::product(lr_dims)));
+  PADDLE_ENFORCE_EQ(
+      phi::product(lr_dims),
+      1,
+      phi::errors::InvalidArgument(
+          "Learning rate should have 1 dimension, but received %d.",
+          phi::product(lr_dims)));
+  auto beta1_pow_dims = beta1_pow.dims();
+  PADDLE_ENFORCE_GE(phi::product(beta1_pow_dims),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The size of Beta1 power accumulator should be "
+                        "greater than 0, but received %d.",
+                        phi::product(beta1_pow_dims)));
+  auto beta2_pow_dims = beta2_pow.dims();
+  PADDLE_ENFORCE_GE(phi::product(beta2_pow_dims),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The size of Beta2 power accumulator should be "
+                        "greater than 0, but received %d.",
+                        phi::product(beta2_pow_dims)));
+
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment1.dims(),
+      phi::errors::InvalidArgument(
+          "Param and Moment1 input of LambOp should have same dimension. But "
+          "received Param dims: [%s], Moment1 dims: [%s].",
+          param_dims,
+          moment1.dims()));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment2.dims(),
+      errors::InvalidArgument(
+          "Param and Moment2 input of AdamOp should have same dimension. But "
+          "received Param dims: [%s], Moment2 dims: [%s].",
+          param_dims,
+          moment2.dims()));
+
+  PADDLE_ENFORCE_NOT_NULL(
+      param_out, errors::NotFound("The output param_out can not be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      moment1_out,
+      errors::NotFound("The output moment1_out can not be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      moment2_out,
+      errors::NotFound("The output moment2_out can not be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      beta1_pow_out,
+      errors::NotFound("The output beta1_pow_out can not be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      beta2_pow_out,
+      errors::NotFound("The output beta2_pow_out can not be nullptr"));
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+
+  moment1_out->set_dims(param_dims);
+  moment1_out->set_dtype(moment1.dtype());
+  moment2_out->set_dims(param_dims);
+  moment2_out->set_dtype(moment2.dtype());
+
+  beta1_pow_out->set_dims(beta1_pow_dims);
+  beta1_pow_out->set_dtype(beta1_pow.dtype());
+  beta2_pow_out->set_dims(beta2_pow_dims);
+  beta2_pow_out->set_dtype(beta2_pow.dtype());
 }
 
 void LogspaceInferMeta(const MetaTensor& start,

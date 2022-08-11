@@ -714,7 +714,11 @@ std::vector<Tensor> split_impl(const Tensor& x,
   // Calculate the number of out tensors
   size_t out_number;
   if (num_or_sections.size() == 1) {
-    out_number = num_or_sections.GetData()[0];
+    if (num_or_sections.GetData()[0] < 0) {
+      out_number = 1;
+    } else {
+      out_number = num_or_sections.GetData()[0];
+    }
   } else {
     out_number = num_or_sections.size();
   }

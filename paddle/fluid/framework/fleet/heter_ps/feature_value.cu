@@ -394,7 +394,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPullDedupImpl(
     const int* slot_dims,
     const uint32_t* gpu_restore_idx,
     int pull_value_size) {
-  auto stream = dynamic_cast<paddle::platform::CUDADeviceContext*>(
+  auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   size_t N = total_length * hidden_size;
@@ -428,7 +428,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
     const int* key2slot,
     const uint32_t* d_restore_idx,
     const size_t grad_value_size) {
-  auto stream = dynamic_cast<paddle::platform::CUDADeviceContext*>(
+  auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   cudaMemsetAsync(
@@ -470,7 +470,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
     const uint32_t* gpu_sort_offset,
     const uint32_t* gpu_sort_lens,
     const size_t grad_value_size) {
-  auto stream = dynamic_cast<paddle::platform::CUDADeviceContext*>(
+  auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   // merge all grad to one

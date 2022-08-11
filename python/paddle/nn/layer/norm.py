@@ -49,7 +49,7 @@ from .. import functional as F
 from paddle import _C_ops
 from .. import Layer
 from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
@@ -411,7 +411,15 @@ class GroupNorm(Layer):
         variance_out = self._helper.create_variable_for_type_inference(
             dtype=input.dtype, stop_gradient=True)
 
-        if _non_static_mode():
+        if in_dygraph_mode():
+            pre_act = _C_ops.final_state_group_norm(input, self.weight,
+                                                    self.bias, self._epsilon,
+                                                    self._num_groups, "NCHW")
+
+            return dygraph_utils._append_activation_in_dygraph(pre_act,
+                                                               act=None)
+
+        elif _in_legacy_dygraph():
             pre_act, _, _ = _C_ops.group_norm(
                 input,
                 self.weight,

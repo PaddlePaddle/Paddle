@@ -36,6 +36,8 @@ enum AttrType {
   BLOCKS = 10;
   LONGS = 11;
   FLOAT64S = 12;
+  VAR = 13;
+  VARS = 14;
 }
 
 message ProcessMeshDesc {
@@ -65,6 +67,8 @@ message OpDesc {
     repeated int32 blocks_idx = 14;
     repeated int64 longs = 15;
     repeated double float64s = 16;
+    optional string var_name = 17;
+    repeated string vars_name = 18;
   };
 
   message Var {

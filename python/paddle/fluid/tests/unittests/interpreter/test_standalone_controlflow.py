@@ -97,9 +97,9 @@ class TestCompatibility(unittest.TestCase):
         for x, y in zip(gt, res):
             if isinstance(x, list):
                 for tx, ty in zip(x, y):
-                    self.assertTrue(np.array_equal(tx, ty))
+                    np.testing.assert_array_equal(tx, ty)
             elif isinstance(x, np.ndarray):
-                self.assertTrue(np.array_equal(tx, ty))
+                np.testing.assert_array_equal(tx, ty)
             else:
                 raise Exception("Not Implement!")
 

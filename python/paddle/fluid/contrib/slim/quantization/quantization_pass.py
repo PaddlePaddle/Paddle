@@ -1792,6 +1792,7 @@ class InsertQuantizeLinear(object):
             equal to 0, it will quantization with per channel, else quantization with per layer.
             Default is -1.
         channel_wise(bool, optional): Whether quantization with per channel or not. Default is False.
+        moving_rate(float): the rate for 'moving average' method.
         is_test(bool, optional): Whether quantization with training or not. Default is True.
     """
 
@@ -1801,6 +1802,7 @@ class InsertQuantizeLinear(object):
                  quant_bits=8,
                  quant_axis=-1,
                  channel_wise=False,
+                 moving_rate=0.9,
                  is_test=True):
         self._place = place
         self._scope = scope
@@ -1808,15 +1810,16 @@ class InsertQuantizeLinear(object):
         self.quant_axis = quant_axis
         self.channel_wise = channel_wise
         self._is_test = is_test
+        self._moving_rate = moving_rate
 
-    def insert_quant_op(self, graph, var_node):
+    def insert_quant_op(self, graph, var_node, var_name=None):
         assert var_node.is_var(), '{} is not a var'.format(var_node.name())
-
-        quant_var_node = graph.create_var_node(name=self._quantized_var_name(
-            var_node.name()),
-                                               var_type=var_node.type(),
-                                               shape=var_node.shape(),
-                                               var_dtype=var_node.dtype())
+        var_name = var_node.name() if not var_name else var_name
+        quant_var_node = graph.create_var_node(
+            name=self._quantized_var_name(var_name),
+            var_type=var_node.type(),
+            shape=var_node.shape(),
+            var_dtype=var_node.dtype())
         data_type = 'float64' if var_node.dtype(
         ) == core.VarDesc.VarType.FP64 else 'float32'
         if self.channel_wise:
@@ -1828,7 +1831,7 @@ class InsertQuantizeLinear(object):
             scale_var_type = var_node.type()
             init_scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_var_node = graph.create_persistable_node(
-            name=self._quantized_scale_name(var_node.name()),
+            name=self._quantized_scale_name(var_name),
             var_type=scale_var_type,
             shape=[scale_var_shape],
             var_dtype=var_node.dtype())
@@ -1851,13 +1854,39 @@ class InsertQuantizeLinear(object):
             inputs["ZeroPoint"] = zero_point_node
 
         attrs = {"quant_axis": self.quant_axis, "bit_length": self.quant_bits}
+        attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
         outputs = {"Y": quant_var_node}
         if not self._is_test:
-            attrs["is_test"] = self._is_test
-            attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
             scale_out_node = graph.create_var_node_from_desc(
                 scale_var_node.var())
+            state_in_node = graph.create_persistable_node(
+                name=unique_name.generate('state'),
+                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_dtype=var_node.dtype(),
+                shape=[1])
+            data_type = 'float64' if var_node.dtype(
+            ) == core.VarDesc.VarType.FP64 else 'float32'
+            _init_var_node(state_in_node, np.ones([1], dtype=data_type),
+                           self._scope, self._place)
+            accum_in_node = graph.create_persistable_node(
+                name=unique_name.generate('accum'),
+                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_dtype=var_node.dtype(),
+                shape=[1])
+            _init_var_node(accum_in_node, np.ones([1], dtype=data_type),
+                           self._scope, self._place)
+            state_out_node = graph.create_var_node_from_desc(
+                state_in_node.var())
+            accum_out_node = graph.create_var_node_from_desc(
+                accum_in_node.var())
+
             outputs["OutScale"] = scale_out_node
+            inputs['InState'] = state_in_node
+            inputs['InAccum'] = accum_in_node
+            outputs['OutState'] = state_out_node
+            outputs['OutAccum'] = accum_out_node
+            attrs["is_test"] = self._is_test
+            attrs['moving_rate'] = self._moving_rate
 
         quant_op_node = graph.create_op_node(op_type="quantize_linear",
                                              attrs=attrs,
@@ -1870,6 +1899,10 @@ class InsertQuantizeLinear(object):
             graph.link_to(zero_point_node, quant_op_node)
         graph.link_to(quant_op_node, quant_var_node)
         if not self._is_test:
+            graph.link_to(state_in_node, quant_op_node)
+            graph.link_to(accum_in_node, quant_op_node)
+            graph.link_to(quant_op_node, state_out_node)
+            graph.link_to(quant_op_node, accum_out_node)
             graph.link_to(quant_op_node, scale_out_node)
         return quant_var_node, scale_var_node
 
@@ -1898,8 +1931,7 @@ class InsertQuantizeLinear(object):
             inputs["ZeroPoint"] = zero_point_node
 
         attrs = {"quant_axis": self.quant_axis, "bit_length": self.quant_bits}
-        if not self._is_test:
-            attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
+        attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
 
         quant_op_node = graph.create_op_node(op_type="dequantize_linear",
                                              attrs=attrs,
@@ -1938,10 +1970,10 @@ class InsertQuantizeLinear(object):
         return "%s@zero_point" % (var_name)
 
 
-class QuantizationTransformPassV2(object):
+class QuantizationTransformPassV2(QuantizationTransformPass):
     """
     Quantize the ops that have weights. Add quant and dequant ops for
-    the quantized ops's inputs.
+    the quantized ops's inputs. It is used in the new format of quantization.
     """
 
     def __init__(self,
@@ -2137,13 +2169,13 @@ class QuantizationTransformPassV2(object):
                 if is_weight and self._weight_quantize_func is not None:
                     target_out_node = self._insert_func(
                         graph, self._weight_quantize_func, var_node, op)
-                    processed_vars.append(name)
+                    self.processed_vars.append(name)
                     continue
                 elif not is_weight and self._act_quantize_func is not None:
                     target_out_node = self._insert_func(graph,
                                                         self._act_quantize_func,
                                                         var_node, op)
-                    processed_vars.append(name)
+                    self.processed_vars.append(name)
                     continue
 
                 quant_bits = self._weight_bits if var_node.name() in self.persistable_vars \
@@ -2162,9 +2194,10 @@ class QuantizationTransformPassV2(object):
                     quant_bits=quant_bits,
                     quant_axis=quant_axis,
                     channel_wise=channel_wise,
+                    moving_rate=self._moving_rate,
                     is_test=self._is_test)
                 quant_var_node, scale_var_node = insert_quant_pass.insert_quant_op(
-                    graph, var_node)
+                    graph, var_node, var_name=name)
                 dequant_var_node = insert_quant_pass.insert_dequant_op(
                     graph, quant_var_node, scale_var_node)
 
@@ -2188,24 +2221,6 @@ class QuantizationTransformPassV2(object):
             if var_node.name() in self.persistable_vars:
                 has_weight = True
         return has_weight
-
-    def _is_skip_quant(self, graph, op_node):
-        """
-        Analyse whether the op node skips quantization.
-        """
-        is_skip = False
-        if op_node.op().has_attr("skip_quant") and \
-            op_node.op().attr("skip_quant"):
-            is_skip = True
-        # if the inputs of mul and matmul are not all persistable, use
-        # AddQuantDequantPassV2 to quantize them.
-        if op_node.name() in ["mul", "matmul", "matmul_v2"] and \
-            _is_input_all_not_persistable(graph, op_node):
-            is_skip = True
-        if op_node.op().has_attr("quantization_type") and \
-            op_node.op().attr("quantization_type") == "qat_without_weight":
-            is_skip = True
-        return is_skip
 
     def apply(self, graph):
         """
@@ -2257,7 +2272,7 @@ class QuantizationTransformPassV2(object):
 class AddQuantDequantPassV2(object):
     """
     Quantize the ops that do not have weights, and add quant_linear and dequant_linear
-    op for the quantized ops's inputs.
+    op for the quantized ops's inputs. It is used in the new format of quantization.
     """
 
     # To be compatible with PaddleSlim, not remove _activation_type for now
@@ -2384,6 +2399,7 @@ class AddQuantDequantPassV2(object):
                                 quant_bits=self._quant_bits,
                                 quant_axis=-1,
                                 channel_wise=False,
+                                moving_rate=self._moving_rate,
                                 is_test=self._is_test)
                             quant_var_node, scale_var_node = insert_quant_pass.insert_quant_op(
                                 graph, in_node)

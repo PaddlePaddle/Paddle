@@ -282,7 +282,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
             result = paddle.where(cond, a, b)
             result = result.numpy()
             expect = np.where(cond, a, b)
-            self.assertTrue(np.array_equal(expect, result))
+            np.testing.assert_array_equal(expect, result)
 
     def test_dygraph_api_broadcast_1(self):
         cond_shape = [2, 4]

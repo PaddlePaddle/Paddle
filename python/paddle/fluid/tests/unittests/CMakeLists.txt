@@ -1752,6 +1752,10 @@ py_test_modules(
 set_tests_properties(test_add_reader_dependency_for_interpretercore
                      PROPERTIES TIMEOUT 120)
 
+py_test_modules(test_renorm_op_without_eager MODULES test_renorm_op ENVS
+                FLAGS_enable_eager_mode=0)
+
+set_tests_properties(test_renorm_op_without_eager PROPERTIES TIMEOUT 120)
 py_test_modules(
   test_eager_deletion_padding_rnn_for_interpretercore MODULES
   test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)

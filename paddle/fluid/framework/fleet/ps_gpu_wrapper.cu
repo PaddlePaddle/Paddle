@@ -128,7 +128,7 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
                             int slot_num,
                             int total_len,
                             int* key2slot) {
-  auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+  auto stream = dynamic_cast<phi::GPUContext*>(
                     platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   CopyKeysKernel2<<<CUDA_BLOCK(total_len), stream>>>(

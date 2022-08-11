@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/auc_kernel.h"
-
+#include <glog/logging.h>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -29,7 +29,8 @@ void statAuc(const DenseTensor &label,
              const int num_thresholds,
              const int slide_steps,
              int64_t *origin_stat_pos,
-             int64_t *origin_stat_neg) {
+             int64_t *origin_stat_neg,
+             const bool is_fake_data) {
   size_t batch_size = predict.dims()[0];
   size_t inference_width = predict.dims()[1];
   const T *inference_data = predict.data<T>();
@@ -97,9 +98,13 @@ void statAuc(const DenseTensor &label,
       origin_stat_neg[cur_step_begin + binIdx] += 1;
     }
   }
-  for (int i = 0; i < bucket_length; ++i) {
-    origin_stat_pos[sum_step_begin + i] += origin_stat_pos[cur_step_begin + i];
-    origin_stat_neg[sum_step_begin + i] += origin_stat_neg[cur_step_begin + i];
+  if (!is_fake_data) {
+    for (int i = 0; i < bucket_length; ++i) {
+      origin_stat_pos[sum_step_begin + i] +=
+          origin_stat_pos[cur_step_begin + i];
+      origin_stat_neg[sum_step_begin + i] +=
+          origin_stat_neg[cur_step_begin + i];
+    }
   }
 }
 
@@ -136,6 +141,7 @@ void AucKernel(const Context &dev_ctx,
                const DenseTensor &label,
                const DenseTensor &stat_pos,
                const DenseTensor &stat_neg,
+               const paddle::optional<DenseTensor> &ins_tag_weight,
                const std::string &curve,
                int num_thresholds,
                int slide_steps,
@@ -153,6 +159,14 @@ void AucKernel(const Context &dev_ctx,
   auto *stat_neg_in_tensor = &stat_neg;
   auto *pos_in_data = stat_pos.data<int64_t>();
   auto *neg_in_data = stat_neg.data<int64_t>();
+  bool is_fake_data = false;
+  if (ins_tag_weight.get_ptr() != nullptr) {
+    const auto *ins_tag_weight_data = ins_tag_weight->data<float>();
+    VLOG(4) << "auc ins_tag_weight = " << ins_tag_weight_data[0];
+    if (ins_tag_weight_data[0] == 0) {
+      is_fake_data = true;
+    }
+  }
   if (stat_pos_in_tensor != stat_pos_out) {
     memcpy(
         origin_stat_pos,
@@ -167,12 +181,18 @@ void AucKernel(const Context &dev_ctx,
         ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) *
             sizeof(int64_t));
   }
+
+  // when calculate global_auc && is fake data, just do nothing
+  if (slide_steps == 0 && is_fake_data) {
+    return;
+  }
   statAuc<T>(label,
              input,
              num_thresholds,
              slide_steps,
              origin_stat_pos,
-             origin_stat_neg);
+             origin_stat_neg,
+             is_fake_data);
 
   int sum_offset = slide_steps * (num_thresholds + 1);
   calcAuc(origin_stat_pos + sum_offset,

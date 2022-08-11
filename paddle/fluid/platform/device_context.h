@@ -113,8 +113,8 @@ bool AllowTF32Cudnn();
 enum DeviceType {
   CPU = 0,
   CUDA = 1,
-  XPU = 2,
-  NPU = 3,
+  NPU = 2,
+  XPU = 3,
   IPU = 4,
   MLU = 5,
 
@@ -268,58 +268,6 @@ struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-class CudnnWorkspaceHandle;
-class EigenCudaStreamDevice;
-
-class CudnnWorkspaceHandle {
- public:
-  inline CudnnWorkspaceHandle(const phi::GPUContext& dev_ctx, std::mutex* mtx)
-      : device_context_(dev_ctx), mtx_(mtx) {}
-
-  template <typename Callback>
-  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_bytes) {
-    if (required_workspace_bytes > WorkspaceSize()) {
-      ReallocWorkspace(required_workspace_bytes);
-    }
-    VLOG(2) << "Cudnn workspace size at RunFunc: "
-            << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
-    {
-      std::lock_guard<std::mutex> guard(*mtx_);
-      cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
-    }
-  }
-
-  /*! \brief Thread which call RunFuncSync() would release gpu memory after
-   *  running the function. Currently this function is only used when cudnn
-   *  exhaustive searching and callers have to guarantee that the input function
-   *  is host blocking */
-  template <typename Callback>
-  inline void RunFuncSync(Callback&& cudnn_func,
-                          size_t required_workspace_bytes) {
-    RunFunc(cudnn_func, required_workspace_bytes);
-    ResetWorkspace();
-  }
-
-  void ReallocWorkspace(size_t required_workspace_bytes);
-
-  inline void ResetWorkspace() { allocation_ = nullptr; }
-
-  inline size_t WorkspaceSize() {
-    if (allocation_ == nullptr) {
-      return 0;
-    }
-    return allocation_->size();
-  }
-
-  CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
-  CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
-
- private:
-  memory::allocation::AllocationPtr allocation_;
-  const phi::GPUContext& device_context_;
-  std::mutex* mtx_;
-};
-
 template <>
 struct DefaultDeviceContextType<platform::CUDAPlace> {
   using TYPE = phi::GPUContext;

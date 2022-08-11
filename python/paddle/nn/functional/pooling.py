@@ -782,7 +782,11 @@ def max_unpool1d(x,
     output_size = _unpool_output_size(x, kernel_size, stride, padding,
                                       output_size)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        output = _C_ops.final_state_unpool(x, indices, kernel_size, stride,
+                                           padding, output_size, data_format)
+        return squeeze(output, [2])
+    elif in_dynamic_mode():
         output = _C_ops.unpool(x, indices, 'unpooling_type', 'max', 'ksize',
                                kernel_size, 'strides', stride, 'paddings',
                                padding, "output_size", output_size,
@@ -838,7 +842,6 @@ def max_unpool2d(x,
             it must contain an integer.
         stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
             it must contain an integer.
-        kernel_size (int|tuple): Size of the max unpooling window.
         padding (int | tuple): Padding that was added to the input.
         output_size(list|tuple, optional): The target output size. If output_size is not specified, 
                            the actual output shape will be automatically calculated by (input_shape,
@@ -898,7 +901,11 @@ def max_unpool2d(x,
     output_size = _unpool_output_size(x, kernel_size, stride, padding,
                                       output_size)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        output = _C_ops.final_state_unpool(x, indices, kernel_size, stride,
+                                           padding, output_size, data_format)
+
+    elif in_dynamic_mode():
         output = _C_ops.unpool(x, indices, 'unpooling_type', 'max', 'ksize',
                                kernel_size, 'strides', stride, 'paddings',
                                padding, "output_size", output_size,
@@ -1011,7 +1018,10 @@ def max_unpool3d(x,
     output_size = _unpool_output_size(x, kernel_size, stride, padding,
                                       output_size)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        output = _C_ops.final_state_unpool3d(x, indices, kernel_size, stride,
+                                             padding, output_size, data_format)
+    elif in_dynamic_mode():
         output = _C_ops.unpool3d(x, indices, 'unpooling_type', 'max', 'ksize',
                                  kernel_size, 'strides', stride, 'paddings',
                                  padding, "output_size", output_size,
@@ -1286,26 +1296,25 @@ def adaptive_avg_pool1d(x, output_size, name=None):
         Tensor: The result of 1D adaptive average pooling. Its data type is same as input.
     Examples:
         .. code-block:: python
-          :name: adaptive_avg_pool1d-example
 
-              # average adaptive pool1d
-              # suppose input data in shape of [N, C, L], `output_size` is m or [m],
-              # output shape is [N, C, m], adaptive pool divide L dimension
-              # of input data into m grids averagely and performs poolings in each
-              # grid to get output.
-              # adaptive max pool performs calculations as follow:
-              #
-              #     for i in range(m):
-              #         lstart = floor(i * L / m)
-              #         lend = ceil((i + 1) * L / m)
-              #         output[:, :, i] = sum(input[:, :, lstart: lend])/(lstart - lend)
-              #
-              import paddle
-              import paddle.nn.functional as F
+            # average adaptive pool1d
+            # suppose input data in shape of [N, C, L], `output_size` is m or [m],
+            # output shape is [N, C, m], adaptive pool divide L dimension
+            # of input data into m grids averagely and performs poolings in each
+            # grid to get output.
+            # adaptive max pool performs calculations as follow:
+            #
+            #     for i in range(m):
+            #         lstart = floor(i * L / m)
+            #         lend = ceil((i + 1) * L / m)
+            #         output[:, :, i] = sum(input[:, :, lstart: lend])/(lstart - lend)
+            #
+            import paddle
+            import paddle.nn.functional as F
 
-              data = paddle.uniform([1, 3, 32])
-              pool_out = F.adaptive_avg_pool1d(data, output_size=16)
-              # pool_out shape: [1, 3, 16])
+            data = paddle.uniform([1, 3, 32])
+            pool_out = F.adaptive_avg_pool1d(data, output_size=16)
+            # pool_out shape: [1, 3, 16])
     """
     pool_type = 'avg'
     if not in_dynamic_mode():

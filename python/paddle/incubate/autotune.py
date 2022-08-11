@@ -54,7 +54,6 @@ def set_config(config=None):
 
     Examples:
         .. code-block:: python
-            :name: auto-tuning
 
             import paddle
             import json

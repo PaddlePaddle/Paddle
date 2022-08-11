@@ -51,3 +51,16 @@ if(WITH_ASCEND_CL)
            eager_api)
   endif()
 endif()
+
+if(WITH_CUSTOM_DEVICE)
+  cc_library(
+    processgroup_custom
+    SRCS ProcessGroupCustom.cc CustomCCLTools.cc Common.cc
+    DEPS phi_backends
+         place
+         enforce
+         collective_helper
+         device_context
+         phi_api
+         eager_api)
+endif()

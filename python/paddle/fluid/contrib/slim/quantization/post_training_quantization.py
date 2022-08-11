@@ -418,8 +418,7 @@ class PostTrainingQuantization(object):
             self._update_program()
 
         # save out_threshold for quantized ops.
-        if not self._onnx_format:
-            self._save_output_threshold()
+        self._save_output_threshold()
 
         if any(op_type in self._quantizable_op_type
                for op_type in self._dynamic_quantize_op_type):
@@ -996,16 +995,23 @@ class PostTrainingQuantization(object):
         '''
         Save output threshold to the quantized op.
         '''
+        self._calibration_scales = {}
 
         def save_info(op_node, out_var_name, threshold_map, out_info_name,
                       quantized_type):
             assert out_var_name in threshold_map, \
                 "The output ({}) of {} node does not have threshold.".format(
                 out_var_name, op_node.type)
-            op_node._set_attr(out_info_name, threshold_map[var_name])
-            op_node._set_attr("with_quant_attr", True)
-            if op_node.type in self._quantizable_op_type:
-                op._set_attr("quantization_type", quantized_type)
+            if self._onnx_format:
+                # For easy extension, every var_node set a dict to save parameters of quant.
+                self._calibration_scales[var_name] = {}
+                self._calibration_scales[var_name]['scale'] = threshold_map[
+                    var_name]
+            else:
+                op_node._set_attr(out_info_name, threshold_map[var_name])
+                op_node._set_attr("with_quant_attr", True)
+                if op_node.type in self._quantizable_op_type:
+                    op._set_attr("quantization_type", quantized_type)
 
         def analysis_and_save_info(op_node, out_var_name):
             argname_index = utils._get_output_name_index(op_node, out_var_name)

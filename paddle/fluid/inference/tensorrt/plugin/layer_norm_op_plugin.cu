@@ -86,10 +86,6 @@ int LayerNormPlugin::enqueue(int batch_size,
                         feature_size,
                         bias_.size()));
 
-  scale_t.Resize(phi::make_ddim({feature_size}));
-  bias_t.Resize(phi::make_ddim({feature_size}));
-  mean_t.Resize(phi::make_ddim(mean_shape_));
-  variance_t.Resize(phi::make_ddim(variance_shape_));
   int device_id;
   cudaGetDevice(&device_id);
   auto input_type = getDataType();
@@ -98,6 +94,10 @@ int LayerNormPlugin::enqueue(int batch_size,
     const float *input = reinterpret_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
 
+    scale_t.Resize(phi::make_ddim({feature_size}));
+    bias_t.Resize(phi::make_ddim({feature_size}));
+    mean_t.Resize(phi::make_ddim(mean_shape_));
+    variance_t.Resize(phi::make_ddim(variance_shape_));
     float *scale_d =
         scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
     float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
@@ -131,28 +131,30 @@ int LayerNormPlugin::enqueue(int batch_size,
     const half *input = reinterpret_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
 
-    half *scale_d =
-          reinterpret_cast<half *>(scale_t.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
-    half *bias_d =
-          reinterpret_cast<half *>(bias_t.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
-    half *mean_d =
-          reinterpret_cast<half *>(variance_t.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
-    half *variance_d =
-          reinterpret_cast<half *>(scale_t.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
-    cudaMemcpyAsync(scale_d,
-                    reinterpret_cast<half *>(scale_.data()),
-                    sizeof(half) * feature_size,
-                    cudaMemcpyHostToDevice,
-                    stream);
-    cudaMemcpyAsync(bias_d,
-                    reinterpret_cast<half *>(bias_.data()),
-                    sizeof(half) * feature_size,
-                    cudaMemcpyHostToDevice,
-                    stream);
+    auto scale_d_ptr = new half[feature_size];
+    for (int i = 0; i < feature_size; i++) {
+      scale_d_ptr[i] = static_cast<half>(scale_.data()[i]);
+    }
+    auto bias_d_ptr = new half[feature_size];
+    for (int i = 0; i < feature_size; i++) {
+      bias_d_ptr[i] = static_cast<half>(bias_.data()[i]);
+    }
+    half *scale_d = nullptr;
+    cudaMalloc(&scale_d, sizeof(half) * feature_size);
+    cudaMemcpy(scale_d,
+               scale_d_ptr,
+               sizeof(half) * feature_size,
+               cudaMemcpyHostToDevice);
+    half *bias_d = nullptr;
+    cudaMalloc(&bias_d, sizeof(half) * feature_size);
+    cudaMemcpy(bias_d,
+               bias_d_ptr,
+               sizeof(half) * feature_size,
+               cudaMemcpyHostToDevice);
+    auto variance_d = new half[variance_shape_[0]];
+    cudaMalloc(&variance_d, sizeof(half) * variance_shape_.data()[0]);
+    auto mean_d = new half[mean_shape_[0]];
+    cudaMalloc(&mean_d, sizeof(half) * mean_shape_.data()[0]);
 
     phi::LayerNormDirectCUDAFunctor<half> layer_norm;
     layer_norm(stream,
@@ -263,10 +265,6 @@ int LayerNormPluginDynamic::enqueue(
                         feature_size,
                         bias_.size()));
 
-  scale_t.Resize(phi::make_ddim({feature_size}));
-  bias_t.Resize(phi::make_ddim({feature_size}));
-  mean_t.Resize(phi::make_ddim(mean_shape_));
-  variance_t.Resize(phi::make_ddim(variance_shape_));
   int device_id;
   cudaGetDevice(&device_id);
   auto input_type = input_desc[0].type;
@@ -275,6 +273,10 @@ int LayerNormPluginDynamic::enqueue(
     const float *input = reinterpret_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
 
+    scale_t.Resize(phi::make_ddim({feature_size}));
+    bias_t.Resize(phi::make_ddim({feature_size}));
+    mean_t.Resize(phi::make_ddim(mean_shape_));
+    variance_t.Resize(phi::make_ddim(variance_shape_));
     float *scale_d =
         scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
     float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
@@ -309,28 +311,30 @@ int LayerNormPluginDynamic::enqueue(
     const half *input = reinterpret_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
 
-    half *scale_d =
-          reinterpret_cast<half *>(scale_t.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
-    half *bias_d =
-          reinterpret_cast<half *>(bias_t.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
-    half *mean_d =
-          reinterpret_cast<half *>(variance_t.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
-    half *variance_d =
-          reinterpret_cast<half *>(scale_t.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
-    cudaMemcpyAsync(scale_d,
-                    reinterpret_cast<half *>(scale_.data()),
-                    sizeof(half) * feature_size,
-                    cudaMemcpyHostToDevice,
-                    stream);
-    cudaMemcpyAsync(bias_d,
-                    reinterpret_cast<half *>(bias_.data()),
-                    sizeof(half) * feature_size,
-                    cudaMemcpyHostToDevice,
-                    stream);
+    auto scale_d_ptr = new half[feature_size];
+    for (int i = 0; i < feature_size; i++) {
+      scale_d_ptr[i] = static_cast<half>(scale_.data()[i]);
+    }
+    auto bias_d_ptr = new half[feature_size];
+    for (int i = 0; i < feature_size; i++) {
+      bias_d_ptr[i] = static_cast<half>(bias_.data()[i]);
+    }
+    half *scale_d = nullptr;
+    cudaMalloc(&scale_d, sizeof(half) * feature_size);
+    cudaMemcpy(scale_d,
+               scale_d_ptr,
+               sizeof(half) * feature_size,
+               cudaMemcpyHostToDevice);
+    half *bias_d = nullptr;
+    cudaMalloc(&bias_d, sizeof(half) * feature_size);
+    cudaMemcpy(bias_d,
+               bias_d_ptr,
+               sizeof(half) * feature_size,
+               cudaMemcpyHostToDevice);
+    auto variance_d = new half[variance_shape_[0]];
+    cudaMalloc(&variance_d, sizeof(half) * variance_shape_.data()[0]);
+    auto mean_d = new half[mean_shape_[0]];
+    cudaMalloc(&mean_d, sizeof(half) * mean_shape_.data()[0]);
 
     phi::LayerNormDirectCUDAFunctor<half> layer_norm;
     layer_norm(stream,

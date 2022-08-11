@@ -591,6 +591,10 @@ class SparseTable(Table):
         table_proto.table_class = self.table_class
         table_proto.type = the_one_ps_pb2.PS_SPARSE_TABLE
         table_proto.shard_num = self.shard_num
+        if table_proto.sparse_table_cache_file_num > len(
+                get_ps_endpoints(self.context['role_maker'])):
+            table_proto.sparse_table_cache_file_num = len(
+                get_ps_endpoints(self.context['role_maker']))
 
         self.common.table_name = self.context['grad_name_to_param_name'][
             ctx.origin_varnames()[0]]
@@ -914,6 +918,7 @@ class TheOnePSRuntime(RuntimeBase):
         self.ps_desc_builder = PsDescBuilder(self.context)
 
     def _init_all_params(self, scopes, send_ctx, recv_map):
+        all_var_names = []
         for name, ctx in send_ctx.items():
             if ctx.is_sparse():
                 continue
@@ -923,8 +928,11 @@ class TheOnePSRuntime(RuntimeBase):
             var_names = recv_map[table_id]
             #print("init params:", idx, table_id, var_names)
             self._worker.push_dense_params(scope, table_id, var_names)
+            all_var_names.extend(var_names)
+        return all_var_names
 
     def _pull_all_dense(self, scopes, send_ctx, recv_map):
+        all_var_names = []
         for name, ctx in send_ctx.items():
             if ctx.is_sparse():
                 continue
@@ -934,8 +942,11 @@ class TheOnePSRuntime(RuntimeBase):
             var_names = recv_map[table_id]
             #print("pull all dense:", idx, table_id, var_names)
             self._worker.pull_dense_params(scope, table_id, var_names)
+            all_var_names.extend(var_names)
+        return all_var_names
 
     def _init_params(self, program, scope, send_ctx, recv_map):
+        all_var_names = []
         for name, ctx in send_ctx.items():
             if ctx.is_sparse():
                 continue
@@ -945,8 +956,11 @@ class TheOnePSRuntime(RuntimeBase):
             var_names = recv_map[table_id]
             # print("init params:", table_id, var_names)
             self._worker.push_dense_params(scope, table_id, var_names)
+            all_var_names.extend(var_names)
+        return all_var_names
 
     def _pull_dense(self, program, scope, send_ctx, recv_map):
+        all_var_names = []
         for name, ctx in send_ctx.items():
             if ctx.is_sparse():
                 continue
@@ -956,6 +970,8 @@ class TheOnePSRuntime(RuntimeBase):
             var_names = recv_map[table_id]
             # print("pull dense:", table_id, var_names)
             self._worker.pull_dense_params(scope, table_id, var_names)
+            all_var_names.extend(var_names)
+        return all_var_names
 
     def _init_worker(self, scopes=None):
         worker_desc = self.ps_desc_builder.build_worker_desc()
@@ -1208,6 +1224,32 @@ class TheOnePSRuntime(RuntimeBase):
             model_path = os.path.join(dirname, "dnn_plugin")
         return model_path
 
+    def _ps_save_dense_params(self,
+                              executor,
+                              dirname,
+                              scope,
+                              program,
+                              var_names=None):
+        dense_map = get_the_one_recv_context(
+            self.context, split_dense_table=self.is_heter_ps_mode)
+        send_ctx = get_the_one_send_context(
+            self.context,
+            split_dense_table=self.is_heter_ps_mode,
+            use_origin_program=self.is_heter_ps_mode,
+            ep_list=self.endpoints)
+        if program is None or len(self.origin_main_programs) == 1:
+            program = self.origin_main_programs[0]
+        dense_var_names = self._pull_dense(program, scope, send_ctx, dense_map)
+        save_var_names = dense_var_names if var_names is None else var_names
+        vars = [program.global_block().var(i) for i in save_var_names]
+        import paddle
+        with paddle.static.scope_guard(scope):
+            paddle.static.save_vars(executor,
+                                    "./",
+                                    program,
+                                    vars=vars,
+                                    filename=dirname)
+
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
         distributed_varnames = get_sparse_tablenames(self.origin_main_programs,
@@ -1230,49 +1272,9 @@ class TheOnePSRuntime(RuntimeBase):
     def _save_distributed_persistables(self,
                                        executor,
                                        dirname,
-                                       main_program,
-                                       mode=0):
-
-        denses = get_the_one_recv_context(
-            self.context,
-            is_dense=True,
-            split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=True)
-        sparses = get_the_one_recv_context(
-            self.context,
-            is_dense=False,
-            split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=True)
-
-        sparse_varnames = self._save_sparse_params(executor, dirname, sparses,
-                                                   main_program, mode)
-
-        recv_dense_varnames = []
-        for id, names in denses.items():
-            recv_dense_varnames.extend(names)
-        self._communicator.pull_dense(denses)
-
-        saved_varnames = sparse_varnames
-
-        remaining_vars = list(
-            filter(TheOnePSRuntime.__exclude_vars(saved_varnames),
-                   main_program.list_vars()))
-
-        import paddle
-        for var in remaining_vars:
-            # if var.name not in recv_dense_varnames:
-            #     continue
-            tensor = var.get_value()
-            paddle.save(tensor,
-                        os.path.join(dirname, var.name),
-                        use_binary_format=True)
-
-    def _ps_inference_save_persistables(self,
-                                        executor,
-                                        dirname,
-                                        main_program=None,
-                                        mode=0,
-                                        **kwargs):
+                                       main_program=None,
+                                       mode=0,
+                                       **kwargs):
         """
         This function filters out all variables with `persistable==True` from the
         give `main_program` and then saves these variables to the folder `dirname`
@@ -1301,9 +1303,6 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        # Todo(MrChengmo): Save optimizer status
-        # self._save_distributed_persistables(executor, dirname, main_program,
-        #                                     mode)
         self._worker.save_all_model(dirname, mode)
 
     def _ps_inference_save_inference_model(self,
@@ -1384,14 +1383,8 @@ class TheOnePSRuntime(RuntimeBase):
                         os.path.join(model_path, var.name),
                         use_binary_format=True)
 
-    def _save_inference_model(self, *args, **kwargs):
-        self._ps_inference_save_inference_model(*args, **kwargs)
-
-    def _save_persistables(self, *args, **kwargs):
-        self._ps_inference_save_persistables(*args, **kwargs)
-
     def _save_cache_model(self, dirname, **kwargs):
-        mode = kwargs.get("mode", 0)
+        mode = kwargs.get("mode", 1)
         table_id = kwargs.get("table_id", 0)
         self._worker.client_flush()
         fleet.util.barrier()
@@ -1413,6 +1406,12 @@ class TheOnePSRuntime(RuntimeBase):
 
         fleet.util.barrier()
         return feasign_num
+
+    def _check_save_pre_patch_done(self):
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            self._worker.check_save_pre_patch_done()
+        fleet.util.barrier()
 
     def _load_sparse_params(self, dirname, context, main_program, mode):
         distributed_varnames = get_sparse_tablenames(self.origin_main_programs,
@@ -1469,10 +1468,7 @@ class TheOnePSRuntime(RuntimeBase):
             filter(TheOnePSRuntime.__exclude_vars(loaded_varnames),
                    main_program.list_vars()))
 
-        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
-            model_path = "./dnn_plugin"
-        else:
-            model_path = os.path.join(dirname, "dnn_plugin")
+        model_path = self._get_inference_model_path(dirname)
         import paddle
         for var in remaining_vars:
             if var.name not in recv_dense_varnames:
@@ -1482,14 +1478,40 @@ class TheOnePSRuntime(RuntimeBase):
 
         self._init_params(main_program, scope, send_ctx, dense_map)
 
-    def _load_distributed_persistables(self, path, mode):
-        self._worker.load_model(path, mode)
+    def _save_one_table(self, table_id, path, mode):
+        if self.role_maker._is_first_worker():
+            self._worker.save_one_model(table_id, path, mode)
+        fleet.util.barrier()
 
-    def load_model(self, path, mode):
-        if mode == 0 or mode == 3:
-            self._load_distributed_persistables(path, mode)
-        else:
+    def _save_dense_params(self, *args, **kwargs):
+        if self.role_maker._is_first_worker():
+            self._ps_save_dense_params(*args, **kwargs)
+        fleet.util.barrier()
+
+    def _save_persistables(self, *args, **kwargs):
+        if self.role_maker._is_first_worker():
+            self._save_distributed_persistables(*args, **kwargs)
+        fleet.util.barrier()
+
+    def _save_inference_model(self, *args, **kwargs):
+        if self.role_maker._is_first_worker():
+            self._ps_inference_save_inference_model(*args, **kwargs)
+        fleet.util.barrier()
+
+    def _load_one_table(self, table_id, path, mode):
+        if self.role_maker._is_first_worker():
+            self._worker.load_one_table(table_id, path, mode)
+        fleet.util.barrier()
+
+    def _load_persistables(self, path, mode):
+        if self.role_maker._is_first_worker():
+            self._worker.load_model(path, mode)
+        fleet.util.barrier()
+
+    def _load_inference_model(self, path, mode):
+        if self.role_maker._is_first_worker():
             self._ps_inference_load_inference_model(path, mode)
+        fleet.util.barrier()
 
     def _shrink(self, threshold=None):
         if threshold is not None:

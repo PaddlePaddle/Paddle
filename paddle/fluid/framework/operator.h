@@ -652,16 +652,16 @@ class OperatorWithKernel : public OperatorBase {
 
   void BuildPhiKernelContext(const RuntimeContext& ctx,
                              platform::DeviceContext* dev_ctx,
-                             phi::KernelContext* pt_kernel_context) const;
+                             phi::KernelContext* phi_kernel_context) const;
 
   phi::KernelSignature* PhiKernelSignature() const {
     return kernel_signature_.get();
   }
 
-  phi::Kernel* PhiKernel() const { return pt_kernel_.get(); }
+  phi::Kernel* PhiKernel() const { return phi_kernel_.get(); }
 
   void ResetPhiKernel(phi::Kernel* kernel) const {
-    return pt_kernel_.reset(kernel);
+    return phi_kernel_.reset(kernel);
   }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
@@ -712,6 +712,7 @@ class OperatorWithKernel : public OperatorBase {
   // used for IndicateOrPromoteVarDataTypes
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
+  void InitOpCache(const Scope& scope, const platform::Place& place) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
@@ -730,7 +731,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool run_phi_kernel_ = false;
   mutable bool run_kp_kernel = false;
   mutable std::unique_ptr<phi::KernelSignature> kernel_signature_;
-  mutable std::unique_ptr<phi::Kernel> pt_kernel_;
+  mutable std::unique_ptr<phi::Kernel> phi_kernel_;
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 
   struct CacheImpl;

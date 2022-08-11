@@ -91,13 +91,14 @@ class TestFoldOp(OpTest):
 
     def setUp(self):
         self.op_type = 'fold'
+        self.python_api = paddle.nn.functional.fold
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Y', check_eager=True)
 
 
 class TestFoldAPI(TestFoldOp):
@@ -106,6 +107,7 @@ class TestFoldAPI(TestFoldOp):
 
     def setUp(self):
         self.op_type = 'fold'
+        self.python_api = paddle.nn.functional.fold
         self.set_data()
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():

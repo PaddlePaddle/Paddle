@@ -137,6 +137,11 @@ def exp(x, out=None):
     return _simple_unop(LayerHelper('exp_p', **locals()))
 
 
+@REGISTER_FN('log_p', 'X', 'Y')
+def log(x, out=None):
+    return _simple_unop(LayerHelper('log_p', **locals()))
+
+
 @REGISTER_FN('reshape_p', 'X', 'Y')
 def reshape(x, shape, out=None):
     return _manipulation_unop(LayerHelper('reshape_p', **locals()))
