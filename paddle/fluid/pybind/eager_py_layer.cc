@@ -108,6 +108,29 @@ PyObject* pylayer_method_name(PyObject* self, PyObject* noargs) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_detach(paddle::experimental::Tensor* tensor) {
+  PADDLE_ENFORCE_EQ(tensor->initialized(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "Tensor %s has not been initialized!", tensor->name()));
+
+  PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
+  if (obj) {
+    auto v = reinterpret_cast<TensorObject*>(obj);
+    new (&(v->tensor)) paddle::experimental::Tensor();
+    v->tensor.set_impl(tensor->impl());
+    v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
+    auto autograd_meta_src = egr::EagerUtils::autograd_meta(tensor);
+    auto autograd_meta = egr::EagerUtils::autograd_meta(&(v->tensor));
+    autograd_meta->SetPersistable(autograd_meta_src->Persistable());
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "tp_alloc return null, can not new a PyObject."));
+  }
+
+  return obj;
+}
+
 PyObject* pylayer_method_apply(PyObject* cls,
                                PyObject* args,
                                PyObject* kwargs) {
@@ -151,6 +174,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   inputs_tensor.reserve(inputs_size);
   ctx->forward_input_tensor_is_duplicable.clear();
   ctx->forward_input_tensor_is_duplicable.reserve(inputs_size);
+  std::set<phi::TensorBase*> tensor_pyobjs;
   for (size_t i = 0; i < inputs_size; i++) {
     PyObject* obj = nullptr;
     if (i >= args_size) {
@@ -159,6 +183,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
       obj = PyTuple_GET_ITEM(args, i);
     }
     if (IsEagerTensor(obj)) {
+      tensor_pyobjs.insert(
+          reinterpret_cast<TensorObject*>(obj)->tensor.impl().get());
       auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(
           reinterpret_cast<TensorObject*>(obj)->tensor);
       inputs_autograd_meta.push_back({autograd_meta});
@@ -173,10 +199,12 @@ PyObject* pylayer_method_apply(PyObject* cls,
     } else if (PyList_Check(obj)) {
       std::vector<paddle::experimental::Tensor*> tensors;
       Py_ssize_t len = PyList_Size(obj);
-      for (Py_ssize_t i = 0; i < len; i++) {
-        if (IsEagerTensor(PyList_GetItem(obj, i))) {
-          tensors.push_back(&(
-              reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))->tensor));
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyList_GetItem(obj, j);
+        if (IsEagerTensor(o)) {
+          tensor_pyobjs.insert(
+              reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
+          tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
         }
       }
       if (!tensors.empty()) {
@@ -194,11 +222,12 @@ PyObject* pylayer_method_apply(PyObject* cls,
     } else if (PyTuple_Check(obj)) {
       std::vector<paddle::experimental::Tensor*> tensors;
       Py_ssize_t len = PyTuple_Size(obj);
-      for (Py_ssize_t i = 0; i < len; i++) {
-        if (IsEagerTensor(PyTuple_GetItem(obj, i))) {
-          tensors.push_back(
-              &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))
-                    ->tensor));
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyTuple_GetItem(obj, j);
+        if (IsEagerTensor(o)) {
+          tensor_pyobjs.insert(
+              reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
+          tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
         }
       }
       if (!tensors.empty()) {
@@ -267,13 +296,27 @@ PyObject* pylayer_method_apply(PyObject* cls,
       outputs_autograd_meta.push_back({egr::EagerUtils::autograd_meta(
           &(reinterpret_cast<TensorObject*>(obj)->tensor))});
       ctx->forward_output_tensor_is_duplicable.push_back(false);
+      if (tensor_pyobjs.count(
+              reinterpret_cast<TensorObject*>(obj)->tensor.impl().get())) {
+        PyTuple_SET_ITEM(
+            outputs_tuple,
+            i,
+            tensor_detach(&(reinterpret_cast<TensorObject*>(obj)->tensor)));
+      }
     } else if (PyList_Check(obj)) {
       std::vector<paddle::experimental::Tensor*> tensors;
       Py_ssize_t len = PyList_Size(obj);
-      for (Py_ssize_t i = 0; i < len; i++) {
-        if (IsEagerTensor(PyList_GetItem(obj, i))) {
-          tensors.push_back(&(
-              reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))->tensor));
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyList_GetItem(obj, j);
+        if (IsEagerTensor(o)) {
+          tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
+          if (tensor_pyobjs.count(
+                  reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
+            PyList_SetItem(
+                obj,
+                j,
+                tensor_detach(&(reinterpret_cast<TensorObject*>(o)->tensor)));
+          }
         }
       }
       if (!tensors.empty()) {
@@ -285,11 +328,17 @@ PyObject* pylayer_method_apply(PyObject* cls,
     } else if (PyTuple_Check(obj)) {
       std::vector<paddle::experimental::Tensor*> tensors;
       Py_ssize_t len = PyTuple_Size(obj);
-      for (Py_ssize_t i = 0; i < len; i++) {
-        if (IsEagerTensor(PyTuple_GetItem(obj, i))) {
-          tensors.push_back(
-              &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))
-                    ->tensor));
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyTuple_GetItem(obj, j);
+        if (IsEagerTensor(o)) {
+          tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
+          if (tensor_pyobjs.count(
+                  reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
+            PyTuple_SetItem(
+                obj,
+                j,
+                tensor_detach(&(reinterpret_cast<TensorObject*>(o)->tensor)));
+          }
         }
       }
       if (!tensors.empty()) {
@@ -376,7 +425,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
     VLOG(6) << "PyLayer construct backward node finish...";
   }
 
-  if (!PyTuple_Check(outputs)) {
+  if (outputs_size == 1) {
+    Py_XDECREF(outputs);
+    outputs = PyTuple_GetItem(outputs_tuple, 0);
     Py_XDECREF(outputs_tuple);
   }
   Py_XDECREF(forward_args);
