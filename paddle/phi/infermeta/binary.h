@@ -143,7 +143,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void DropoutInferMeta(const MetaTensor& x,
                       const MetaTensor& seed_tensor,
-                      float p,
+                      const Scalar& p,
                       bool is_test,
                       const std::string& mode,
                       int seed,
@@ -153,7 +153,7 @@ void DropoutInferMeta(const MetaTensor& x,
 
 void DropoutNdInferMeta(const MetaTensor& x,
                         const MetaTensor& seed_tensor,
-                        float p,
+                        const Scalar& p,
                         bool is_test,
                         const std::string& mode,
                         int seed,
