@@ -126,9 +126,6 @@ void SyncBatchNormKernel(const Context &ctx,
           comm,
           stream));
       VLOG(3) << "Sync result using all reduce";
-    } else {
-      PADDLE_THROW(
-          paddle::platform::errors::Fatal("The GPU NCCL is not initialized."));
     }
 #endif
 
