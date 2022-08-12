@@ -125,14 +125,18 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
 
     auto concat_inputs = concat_op->inputs;
     for (auto node : concat_inputs) {
-      auto prev_op_node = node->inputs;
-      if (prev_op_node.size() != 1) {
+      auto prev_op_nodes = node->inputs;
+      if (prev_op_nodes.size() != 1) {
         LOG(WARNING)
             << "Operator connected to concat can have only one output.";
         return;
       }
-      if (prev_op_node[0]->Op()->Type() != "conv2d") {
-        LOG(WARNING) << "This fuse pass supports only conv2d + activation.";
+
+      bool is_not_conv_mkldnn =
+          !(prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_mkldnn"));
+      if (prev_op_nodes[0]->Op()->Type() != "conv2d" || is_not_conv_mkldnn) {
+        LOG(WARNING)
+            << "This fuse pass supports only conv2d (mkldnn) + activation.";
         return;
       }
     }
