@@ -90,7 +90,23 @@ struct BeamSearchDecodeFunctor {
   }
 
   template <typename T>
-  void apply() const;
+  void apply_mix() const {
+    if (std::is_same<bool, T>::value) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "beam search decode op does not support bool!"));
+
+    } else {
+      BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
+      // Check if the tensor is on GPU or NPU. If so, use the CPU copy instead
+      if (tensor_on_gpu_ || tensor_on_npu_) {
+        beam_search_decoder.Backtrace(
+            step_ids_, step_scores_, id_tensor_, score_tensor_);
+      } else {
+        beam_search_decoder.Backtrace(
+            step_ids_origin_, step_scores_origin_, id_tensor_, score_tensor_);
+      }
+    }
+  }
 
   bool tensor_on_gpu_;
   bool tensor_on_npu_;
@@ -106,25 +122,6 @@ struct BeamSearchDecodeFunctor {
   LoDTensor* id_tensor_;
   LoDTensor* score_tensor_;
 };
-
-template <typename T>
-void BeamSearchDecodeFunctor::apply() const {
-  BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
-  // Check if the tensor is on GPU or NPU. If so, use the CPU copy instead
-  if (tensor_on_gpu_ || tensor_on_npu_) {
-    beam_search_decoder.Backtrace(
-        step_ids_, step_scores_, id_tensor_, score_tensor_);
-  } else {
-    beam_search_decoder.Backtrace(
-        step_ids_origin_, step_scores_origin_, id_tensor_, score_tensor_);
-  }
-}
-
-template <>
-void BeamSearchDecodeFunctor::apply<bool>() const {
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "beam search decode op does not support bool!"));
-}
 
 template <typename DeviceContext, typename T>
 class BeamSearchDecodeOpKernel : public framework::OpKernel<T> {
@@ -172,7 +169,7 @@ class BeamSearchDecodeOpKernel : public framework::OpKernel<T> {
 
     BeamSearchDecodeFunctor bs(
         *ids, *scores, sentenceIds, sentenceScores, beam_size, end_id);
-    bs.apply<T>();
+    bs.apply_mix<T>();
   }
 };
 

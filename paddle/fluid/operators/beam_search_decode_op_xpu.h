@@ -144,7 +144,16 @@ struct BeamSearchDecodeXPUFunctor {
   }
 
   template <typename T>
-  void apply_xpu() const;
+  void apply_xpu() const {
+    if (std::is_same<bool, T>::value) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "beam search decode op does not support bool!"));
+    } else {
+      BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
+      beam_search_decoder.Backtrace(
+          step_ids_, step_scores_, id_tensor_, score_tensor_);
+    }
+  }
 
   size_t beam_size_;
   int end_id_;
@@ -156,20 +165,6 @@ struct BeamSearchDecodeXPUFunctor {
   LoDTensor* id_tensor_;
   LoDTensor* score_tensor_;
 };
-
-template <typename T>
-void BeamSearchDecodeXPUFunctor::apply_xpu() const {
-  BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
-  // Check if the tensor is on GPU or NPU. If so, use the CPU copy instead
-  beam_search_decoder.Backtrace(
-      step_ids_, step_scores_, id_tensor_, score_tensor_);
-}
-
-template <>
-void BeamSearchDecodeXPUFunctor::apply_xpu<bool>() const {
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "beam search decode op does not support bool!"));
-}
 
 }  // namespace operators
 };  // namespace paddle
