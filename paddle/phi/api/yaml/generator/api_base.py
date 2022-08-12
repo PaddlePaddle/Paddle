@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import re
+import collections
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
@@ -569,6 +570,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             kernel_param = input_names + attr_names
 
         input_tensor_code = ""
+        input_name_tensor_map = collections.defaultdict(list)
         for i, input_name in enumerate(input_names):
             # set input code
             if input_name in kernel_param:
@@ -582,17 +584,23 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                             'support_trans_dtype']:
                         trans_flag = "{false, true}"
                     if input_name in self.optional_vars:
+                        input_name_tensor_map[input_name].append(
+                            (f"{PREFIX_TENSOR_NAME}{input_name}", False))
                         input_tensor_code = input_tensor_code + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
 
                     else:
                         if self.inputs['input_info'][
                                 input_name] == "const Tensor&":
+                            input_name_tensor_map[input_name].append(
+                                (f"{PREFIX_TENSOR_NAME}{input_name}", False))
                             input_tensor_code = input_tensor_code + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
 
                         elif self.inputs['input_info'][
                                 input_name] == "const std::vector<Tensor>&":
+                            input_name_tensor_map[input_name].append(
+                                (f"{PREFIX_TENSOR_NAME}{input_name}_vec", True))
                             input_tensor_code = input_tensor_code + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
 {code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
@@ -604,8 +612,11 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                             # do nothing
                             pass
                 else:  # input is selected_rows
+                    input_name_tensor_map[input_name].append(
+                        (f"{PREFIX_TENSOR_NAME}{input_name}", False))
                     input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToSelectedRows({input_name});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToSelectedRows({input_name});
+"""
             else:
                 if input_name in self.infer_meta['param']:
                     if input_name in self.optional_vars:
@@ -621,7 +632,65 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                         else:
                             input_tensor_code = input_tensor_code + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = {input_name}.impl();"""
+        input_tensor_code = input_tensor_code + f"""
+{code_indent}  if(platform::RecordOpInfoSupplement::IsEnabled()){{"""
+        single_tensor_names = []
+        list_tensor_names = []
+        for input_name, input_tensors in input_name_tensor_map.items():
+            has_vector_tensor = False
+            for input_tensor, is_vector in input_tensors:
+                if is_vector is True:
+                    has_vector_tensor = True
+            if has_vector_tensor is False:
+                single_tensor_names.append(input_name)
+            else:
+                list_tensor_names.append(input_name)
+        if not single_tensor_names:
+            input_tensor_code = input_tensor_code + f"""
+{code_indent}     std::vector<std::pair<const char*, std::vector<phi::DDim>>> input_shapes;"""
+        else:
+            input_tensor_code = input_tensor_code + f"""
+{code_indent}     std::vector<std::pair<const char*, std::vector<phi::DDim>>> input_shapes{{"""
+            for input_name in single_tensor_names[:-1]:
+                input_tensors = input_name_tensor_map[input_name]
+                input_tensor_code = input_tensor_code + f"""            
+{code_indent}     {{"{input_name}", {{"""
+                for input_tensor, _ in input_tensors[:-1]:
+                    input_tensor_code = input_tensor_code + f"""            
+{code_indent}     (*{input_tensor}).dims(),"""
+                input_tensor_code = input_tensor_code + f"""            
+{code_indent}     (*{input_tensors[-1][0]}).dims()}}}},"""
+            input_tensors = input_name_tensor_map[single_tensor_names[-1]]
+            input_tensor_code = input_tensor_code + f"""            
+{code_indent}     {{"{single_tensor_names[-1]}", {{"""
+            for input_tensor, _ in input_tensors[:-1]:
+                input_tensor_code = input_tensor_code + f"""            
+{code_indent}     (*{input_tensor}).dims(),"""
+            input_tensor_code = input_tensor_code + f"""            
+{code_indent}     (*{input_tensors[-1][0]}).dims()}}}}}};"""
+        if list_tensor_names:
+            input_tensor_code = input_tensor_code + f"""
+{code_indent}     std::vector<phi::DDim> ddims_vec;"""
+        for input_name in list_tensor_names:
+            input_tensor_code = input_tensor_code + f"""
+{code_indent}     ddims_vec.clear();"""
+            for input_tensor, is_vector in input_name_tensor_map[input_name]:
+                if is_vector:
+                    input_tensor_code = input_tensor_code + f"""
+{code_indent}     ddims_vec.reserve({input_tensor[:-4]}.size());
+{code_indent}     for (size_t i = 0; i < {input_tensor[:-4]}.size(); ++i) {{
+{code_indent}       ddims_vec.emplace_back((*{input_tensor[:-4]}[i]).dims());
+{code_indent}     }}"""
+                else:
+                    input_tensor_code = input_tensor_code + f"""  
+                  ddims_vec.emplace_back((*{input_tensor}).dims());
+{code_indent}     """
+            input_tensor_code = input_tensor_code + f"""
+{code_indent}     input_shapes.emplace_back("{input_name}", ddims_vec);"""
 
+        input_tensor_code = input_tensor_code + f"""
+{code_indent}     platform::RecordOpInfoSupplement("{self.api}", input_shapes);
+{code_indent}  }}"""
         kernel_args = ["*dev_ctx"]
         for param in kernel_param:
             if param in input_names:
@@ -709,17 +778,26 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}{cudnn_args});
 {code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
-
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 {input_tensors}
 {output_create}
+{code_indent}  paddle::platform::RecordEvent *infer_shape_record_event = nullptr;
+{code_indent}  if(paddle::platform::RecordEvent::IsEnabled()){{
+{code_indent}    infer_shape_record_event = new paddle::platform::RecordEvent(\"{self.api} infer_meta\", paddle::platform::TracerEventType::OperatorInner, 1);
+{code_indent}  }}
 {self.gene_infer_meta(kernel_output_names, code_indent)}
-
+{code_indent}  if(infer_shape_record_event != nullptr){{
+{code_indent}    delete infer_shape_record_event;
+{code_indent}  }}
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-{code_indent}  {{
-{code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{kernel_name} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
+{code_indent}  paddle::platform::RecordEvent* kernel_record_event = nullptr;
+{code_indent}  if(paddle::platform::RecordEvent::IsEnabled()){{
+{code_indent}    kernel_record_event = new paddle::platform::RecordEvent(\"{self.api} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
+{code_indent}  }}
 {code_indent}    (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
+{code_indent}  if(kernel_record_event != nullptr){{
+{code_indent}    delete kernel_record_event;
 {code_indent}  }}
 {code_indent}  if (kernel_result.has_fallback_cpu) {{
 {fallback_kernel_output_trans}

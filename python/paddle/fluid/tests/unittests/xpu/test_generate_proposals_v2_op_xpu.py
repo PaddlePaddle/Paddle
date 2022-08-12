@@ -549,7 +549,7 @@ for stype in support_types:
                       XPUGenerateProposalsV2Op,
                       stype,
                       test_grad=False,
-                      ignore_deivce_version=[core.XPUVersion.XPU1])
+                      ignore_device_version=[core.XPUVersion.XPU1])
 
 if __name__ == '__main__':
     unittest.main()
