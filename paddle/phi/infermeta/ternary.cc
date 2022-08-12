@@ -820,7 +820,7 @@ void MultiClassNMSInferMeta(const MetaTensor& bboxes,
 
   out->set_dims(phi::make_ddim({-1, box_dims[2] + 2}));
   out->set_dtype(bboxes.dtype());
-  index->set_dims(phi::make_ddim({-1, box_dims[2] + 2}));
+  index->set_dims(phi::make_ddim({-1, 1}));
   index->set_dtype(DataType::INT32);
   nms_rois_num->set_dims(phi::make_ddim({-1}));
   nms_rois_num->set_dtype(DataType::INT32);
