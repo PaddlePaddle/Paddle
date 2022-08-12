@@ -203,7 +203,7 @@ static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
     default:
       paddle::platform::errors::InvalidArgument(
           "phi::DataType not supported data type %s.", type);
-      break;
+      return nvinfer1::DataType::kFLOAT;
   }
 }
 }  // namespace tensorrt
