@@ -24,7 +24,7 @@ from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator
-from .framework import convert_np_dtype_to_dtype_
+from .framework import convert_np_dtype_to_dtype_, _apply_pass
 
 from . import core
 from . import unique_name
@@ -35,7 +35,7 @@ from .trainer_factory import FetchHandlerMonitor
 import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
-from .compiler import _prune_feed_ops, BuildStrategy
+from .compiler import _prune_feed_ops
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -1437,6 +1437,30 @@ class Executor(object):
                 assert isinstance(program, Program)
                 return True
 
+        def _apply_inplace_addto_pass(program, enable_inplace, enable_addto):
+            use_cuda = False
+            if core.is_compiled_with_cuda():
+                use_cuda = True
+
+            # skip data var
+            data_vars = []
+            for var_name, var in program.global_block().vars.items():
+                if var.is_data:
+                    data_vars.append(var_name)
+
+            attrs = {"use_cuda": use_cuda, "mem_opt_skip_vars": data_vars}
+            attr_types = {"use_cuda": "bool", "mem_opt_skip_vars": "list[str]"}
+
+            empty_startup_program = Program()
+            if enable_inplace:
+                pass_name = "buffer_shared_inplace_pass"
+                _apply_pass(program, empty_startup_program, pass_name, attrs,
+                            attr_types)
+            if enable_addto and use_cuda:
+                pass_name = "inplace_addto_op_pass"
+                _apply_pass(program, empty_startup_program, pass_name, attrs,
+                            attr_types)
+
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
         if return_merged and self._enable_interpreter_core and _can_use_interpreter_core(
@@ -1468,21 +1492,14 @@ class Executor(object):
                         ir_graph = framework.IrGraph(program._graph)
                         inner_program = ir_graph.to_program()
                         # standalone executor will apply buffer_shared_inplace_pass and
-                        # inplace_addto_op_pass pass to program
+                        # inplace_addto_op_pass pass to converted program
                         if program._build_strategy is not None and (
                                 program._build_strategy.enable_inplace
                                 or program._build_strategy.enable_addto):
-                            from .ir import apply_build_strategy
-                            use_cuda = False
-                            if isinstance(self.place, core.CUDAPlace):
-                                use_cuda = True
-                            build_strategy = BuildStrategy()
-                            build_strategy.fuse_bn_add_act_ops = False
-                            build_strategy.enable_inplace = program._build_strategy.enable_inplace
-                            build_strategy.enable_addto = program._build_strategy.enable_addto
-                            apply_build_strategy(inner_program, Program(),
-                                                 build_strategy,
-                                                 {"use_cuda": use_cuda})
+                            _apply_inplace_addto_pass(
+                                inner_program,
+                                program._build_strategy.enable_inplace,
+                                program._build_strategy.enable_addto)
                         # print(f"Program after convert:\n {inner_program}", flush=True)
                         logging.warning(
                             "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
