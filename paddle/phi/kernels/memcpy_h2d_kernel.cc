@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/memcpy_h2d_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -28,13 +27,13 @@ void MemcpyH2DKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GE(
       dst_place_type,
       0,
-      paddle::platform::errors::OutOfRange(
-          "dst_place_type only support 0-3, but got: %d", dst_place_type));
+      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
+                         dst_place_type));
   PADDLE_ENFORCE_LE(
       dst_place_type,
       3,
-      paddle::platform::errors::OutOfRange(
-          "dst_place_type only support 0-3, but got: %d", dst_place_type));
+      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
+                         dst_place_type));
 
   // Copy will set the stream of the tensor while setting blocking to false
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
