@@ -24,6 +24,8 @@ from paddle.fluid.framework import program_guard, Program
 import numpy as np
 
 
+paddle.enable_static()
+
 @paddle.jit.to_static
 def tensor_badreturn_0(x):
     a = paddle.to_tensor([1.0, 2.0, 3.0], dtype="int64")
@@ -103,7 +105,7 @@ class TestDropout(UnittestBase):
             x.stop_gradient = False
             feat = fc(x)
             # p is a Variable
-            p = paddle.randn([1])
+            p = paddle.to_tensor([1])
             out = paddle.nn.functional.dropout(feat, p=p)
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
