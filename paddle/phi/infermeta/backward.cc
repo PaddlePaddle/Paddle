@@ -807,20 +807,6 @@ void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
 void RnnGradInferMeta(const MetaTensor& x,
                       const std::vector<const MetaTensor*>& pre_state,
                       const std::vector<const MetaTensor*>& weight_list,
-                      // const paddle::optional<MetaTensor>& sequence_length,
-                      // const MetaTensor& out,
-                      // const MetaTensor& dropout_state,
-                      // const MetaTensor& reserve,
-                      // const MetaTensor& out_grad,
-                      // const std::vector<const MetaTensor*>& state_grad,
-                      // float dropout_prob,
-                      // bool is_bidirec,
-                      // int input_size,
-                      // int hidden_size,
-                      // int num_layers,
-                      // const std::string& mode,
-                      // int seed,
-                      // bool is_test,
                       MetaTensor* x_grad,
                       std::vector<MetaTensor*> pre_state_grad,
                       std::vector<MetaTensor*> weight_grad_list) {
@@ -829,16 +815,18 @@ void RnnGradInferMeta(const MetaTensor& x,
       0UL,
       phi::errors::InvalidArgument(
           "The input pre_state in RnnGradInferMeta can't be empty."));
+  PADDLE_ENFORCE_GT(
+      weight_grad_list.size(),
+      0UL,
+      phi::errors::InvalidArgument(
+          "The input weight_grad_list in RnnGradInferMeta can't be empty."));
   if (x_grad) {
     UnchangedInferMeta(x, x_grad);
   }
   if (pre_state_grad.size()) {
-    std::cout << "============infer meta for pre states============"
-              << std::endl;
     UnchangedMultiInferMeta(pre_state, pre_state_grad);
   }
   if (weight_grad_list.size()) {
-    std::cout << "============infer meta for weights============" << std::endl;
     UnchangedMultiInferMeta(weight_list, weight_grad_list);
   }
 }

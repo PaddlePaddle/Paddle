@@ -2287,10 +2287,15 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
 
 void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out) {
-  std::cout << "X size: " << x.size() << "\tOut's size: " << out.size()
-            << std::endl;
+  PADDLE_ENFORCE_EQ(
+      x.size(),
+      out.size(),
+      phi::errors::InvalidArgument(
+          "Input's size should be equal to the output's size"
+          "but received input size: (%d) does not equals output_size: (%d)",
+          x.size(),
+          out.size()));
   for (size_t i = 0; i < x.size(); ++i) {
-    std::cout << "X[i]: " << x[i] << "\tOut[I]: " << out[i] << std::endl;
     if (out[i]) {
       out[i]->share_meta(*x[i]);
     }
