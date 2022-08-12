@@ -24,15 +24,21 @@ class TestDeviceMesh(unittest.TestCase):
         name = "my_device_mesh"
         mesh = [[0, 1, 2], [3, 4, 5]]
         device_mesh = DeviceMesh(name, mesh, dim_names=["x", "y"])
+        device_mesh1 = DeviceMesh("another_mesh", [0, 1, 2, 3])
         self.assertEqual(device_mesh.name, "my_device_mesh")
         self.assertEqual(device_mesh.shape, [2, 3])
         self.assertEqual(device_mesh.device_ids, [0, 1, 2, 3, 4, 5])
         self.assertEqual(device_mesh.dim_names, ["x", "y"])
+        self.assertEqual(device_mesh.device_type, "UNKNOWN")
+        self.assertEqual(device_mesh.size, 6)
         self.assertEqual(device_mesh.ndim, 2)
         self.assertEqual(device_mesh.dim_size(0), 2)
         self.assertEqual(device_mesh.dim_size(-1), 3)
         self.assertEqual(device_mesh.dim_size("x"), 2)
         self.assertEqual(device_mesh.dim_size("y"), 3)
+        self.assertEqual(device_mesh.empty(), False)
+        self.assertEqual(device_mesh.contains(0), True)
+        self.assertEqual(device_mesh.contains(6), False)
 
         dev0 = Device(global_id=0, local_id=0, machine_id=0, type="GPU")
         dev1 = Device(global_id=1, local_id=1, machine_id=0, type="GPU")
@@ -55,14 +61,34 @@ class TestDeviceMesh(unittest.TestCase):
 
         link0 = Link(source_id=0, target_id=1, type="NVL")
         link1 = Link(source_id=1, target_id=0, type="NVL")
-        link2 = Link(source_id=1, target_id=2, type="NVL")
-        link3 = Link(source_id=1, target_id=3, type="NVL")
+        link2 = Link(source_id=3, target_id=4, type="NVL")
+        link3 = Link(source_id=4, target_id=5, type="NVL")
         device_mesh.add_link(link0)
         device_mesh.add_link(link1)
         device_mesh.add_link(link2)
         device_mesh.add_link(link3)
+        self.assertEqual(device_mesh.link(0, 1), link0)
+        self.assertEqual(device_mesh.link(1, 0), link1)
+        self.assertEqual(device_mesh.link(3, 4), link2)
+        self.assertEqual(device_mesh.link(4, 5), link3)
 
+        self.assertEqual(device_mesh.machine(0).id, 0)
+        self.assertEqual(device_mesh.machine(0).contains(3), False)
+        self.assertEqual(device_mesh.machine(0).device(2), dev2)
+        self.assertEqual(device_mesh.machine(1).link(3, 4), link2)
+        self.assertEqual(
+            device_mesh.machine(0).devices,
+            device_mesh.machine(0).devices)
+        self.assertEqual(
+            device_mesh.machine(0).links,
+            device_mesh.machine(0).links)
+
+        self.assertEqual(device_mesh.device_type, "GPU")
+        self.assertEqual(device_mesh.devices, device_mesh.devices)
+        self.assertEqual(device_mesh.links, device_mesh.links)
+        self.assertEqual(device_mesh.machines, device_mesh.machines)
         self.assertEqual(device_mesh, device_mesh)
+        self.assertNotEqual(device_mesh, device_mesh1)
         self.assertEqual(str(device_mesh), str(device_mesh))
 
     def test_device(self):

@@ -20,16 +20,23 @@ class TestProcessMesh(unittest.TestCase):
 
     def test_process_mesh(self):
         mesh = [[0, 1, 2], [3, 4, 5]]
+        mesh2 = [[0, 1], [2, 3]]
         process_mesh = ProcessMesh(mesh, dim_names=["x", "y"])
+        process_mesh2 = ProcessMesh(mesh2)
         self.assertEqual(process_mesh.shape, [2, 3])
         self.assertEqual(process_mesh.process_ids, [0, 1, 2, 3, 4, 5])
         self.assertEqual(process_mesh.dim_names, ["x", "y"])
+        self.assertEqual(process_mesh.size, 6)
         self.assertEqual(process_mesh.ndim, 2)
         self.assertEqual(process_mesh.dim_size(0), 2)
         self.assertEqual(process_mesh.dim_size(-1), 3)
         self.assertEqual(process_mesh.dim_size("x"), 2)
         self.assertEqual(process_mesh.dim_size("y"), 3)
+        self.assertEqual(process_mesh.empty(), False)
+        self.assertEqual(process_mesh.contains(0), True)
+        self.assertEqual(process_mesh.contains(6), False)
         self.assertEqual(process_mesh, process_mesh)
+        self.assertNotEqual(process_mesh, process_mesh2)
         self.assertEqual(str(process_mesh), str(process_mesh))
 
 

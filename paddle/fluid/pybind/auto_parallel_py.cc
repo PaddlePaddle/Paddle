@@ -49,9 +49,14 @@ void BindAutoParallel(py::module *m) {
            py::arg("shape"),
            py::arg("process_ids"),
            py::arg("dim_names"))
-      .def_property_readonly("shape", &ProcessMesh::shape)
-      .def_property_readonly("process_ids", &ProcessMesh::process_ids)
-      .def_property_readonly("dim_names", &ProcessMesh::dim_names)
+      .def_property_readonly(
+          "shape", &ProcessMesh::shape, py::return_value_policy::reference)
+      .def_property_readonly("process_ids",
+                             &ProcessMesh::process_ids,
+                             py::return_value_policy::reference)
+      .def_property_readonly("dim_names",
+                             &ProcessMesh::dim_names,
+                             py::return_value_policy::reference)
       .def_property_readonly("size", &ProcessMesh::size)
       .def_property_readonly("ndim", &ProcessMesh::ndim)
       .def("dim_size",
@@ -109,10 +114,14 @@ void BindAutoParallel(py::module *m) {
       .def("__str__", &Link::to_string);
 
   py::class_<Machine>(*m, "Machine")
-      .def(py::init<int64_t>())
       .def_property_readonly("id", &Machine::id)
-      .def("add_device", &Machine::add_device)
-      .def("add_link", &Machine::add_link)
+      .def_property_readonly(
+          "devices", &Machine::devices, py::return_value_policy::reference)
+      .def_property_readonly(
+          "links", &Machine::links, py::return_value_policy::reference)
+      .def("device", &Machine::device)
+      .def("link", &Machine::link)
+      .def("contains", &Machine::contains)
       .def("__str__", &Machine::to_string);
 
   py::class_<DeviceMesh>(*m, "DeviceMesh")
@@ -126,15 +135,24 @@ void BindAutoParallel(py::module *m) {
            py::arg("dim_names"))
       .def_property_readonly("name", &DeviceMesh::name)
       .def_property_readonly("shape", &DeviceMesh::shape)
-      .def_property_readonly("device_ids", &DeviceMesh::device_ids)
-      .def_property_readonly("dim_names", &DeviceMesh::dim_names)
+      .def_property_readonly("device_ids",
+                             &DeviceMesh::device_ids,
+                             py::return_value_policy::reference)
+      .def_property_readonly("dim_names",
+                             &DeviceMesh::dim_names,
+                             py::return_value_policy::reference)
       .def_property_readonly("device_type", &DeviceMesh::device_type)
       .def_property_readonly("size", &DeviceMesh::size)
       .def_property_readonly("ndim", &DeviceMesh::ndim)
-      .def_property_readonly("devices", &DeviceMesh::devices)
-      .def_property_readonly("links", &DeviceMesh::links)
+      .def_property_readonly(
+          "devices", &DeviceMesh::devices, py::return_value_policy::reference)
+      .def_property_readonly(
+          "links", &DeviceMesh::links, py::return_value_policy::reference)
+      .def_property_readonly(
+          "machines", &DeviceMesh::machines, py::return_value_policy::reference)
       .def("device", &DeviceMesh::device)
       .def("link", &DeviceMesh::link)
+      .def("machine", &DeviceMesh::machine)
       .def("empty", &DeviceMesh::empty)
       .def("contains", &DeviceMesh::contains)
       .def("add_device", &DeviceMesh::add_device)

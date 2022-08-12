@@ -113,16 +113,16 @@ class DeviceMesh(core.DeviceMesh):
         return self._mesh
 
 
-class Cluster(object):
-    """
-    The cluster represents the hardware resource.
-    """
+# class Cluster(object):
+#     """
+#     The cluster represents the hardware resource.
+#     """
 
-    def __init__(self):
-        self._device_meshes = {}
+#     def __init__(self):
+#         self._device_meshes = {}
 
-    def device_mesh(self, device_mesh_name):
-        return self._device_meshes[device_mesh_name]
+#     def device_mesh(self, device_mesh_name):
+#         return self._device_meshes[device_mesh_name]
 
-    def add_device_mesh(self, device_mesh):
-        self._device_meshes[device_mesh.name] = device_mesh
+#     def add_device_mesh(self, device_mesh):
+#         self._device_meshes[device_mesh.name] = device_mesh

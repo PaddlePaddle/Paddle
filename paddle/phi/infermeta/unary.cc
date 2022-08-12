@@ -2586,6 +2586,9 @@ void ReduceInferMeta(const MetaTensor& x,
                      bool keep_dim,
                      MetaTensor* out) {
   bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
 }
 
@@ -2947,7 +2950,7 @@ void SplitInferMeta(const MetaTensor& x,
   // step1: get formated sections
   std::vector<int64_t> sections;
   // num_or_sections is a number
-  if (num_or_sections_data.size() == 1) {
+  if (num_or_sections_data.size() == 1 && num_or_sections_data[0] > 0) {
     int num = num_or_sections_data.at(0);
 
     PADDLE_ENFORCE_EQ(input_axis_dim % num,
@@ -3254,6 +3257,9 @@ void SumInferMeta(const MetaTensor& x,
                   bool keep_dim,
                   MetaTensor* out) {
   bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
   SumRawInferMeta(x, axis, keep_dim, reduce_all, dtype, out);
 }
 

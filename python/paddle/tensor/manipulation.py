@@ -599,7 +599,7 @@ def crop(x, shape=None, offsets=None, name=None):
 
     Parameters:
         x (Tensor): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
-        shape (list|tuple|Tensor): The output shape is specified
+        shape (list|tuple|Tensor, optional): The output shape is specified
             by `shape`. Its data type is int32. If a list/tuple, it's length must be
             the same as the dimension size of `x`. If a Tensor, it should be a 1-D Tensor.
             When it is a list, each element can be an integer or a Tensor of shape: [1].
@@ -777,8 +777,11 @@ def fill_(x, value):
         raise TypeError(
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
-    return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
-                            int(value))
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_(x, value)
+    else:
+        return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
+                                int(value))
 
 
 @dygraph_only
@@ -806,7 +809,10 @@ def zero_(x):
             print(tensor.tolist())   #[0, 0, 0, 0, 0]
 
     """
-    return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_(x, 0.)
+    else:
+        return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
 
 
 @dygraph_only

@@ -240,6 +240,20 @@ void LUUnpackInferMeta(const MetaTensor& x,
                        MetaTensor* l,
                        MetaTensor* u);
 
+void MarginCrossEntropyInferMeta(const MetaTensor& logits,
+                                 const MetaTensor& label,
+                                 bool return_softmax,
+                                 int ring_id,
+                                 int rank,
+                                 int nranks,
+                                 float margin1,
+                                 float margin2,
+                                 float margin3,
+                                 float scale,
+                                 MetaTensor* softmax,
+                                 MetaTensor* loss,
+                                 MetaConfig config = MetaConfig());
+
 void MaskedSelectInferMeta(const MetaTensor& x,
                            const MetaTensor& mask,
                            MetaTensor* out);

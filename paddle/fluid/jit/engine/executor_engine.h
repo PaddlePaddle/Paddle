@@ -19,20 +19,20 @@
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/scope.h"
 
-#include "paddle/fluid/jit/function/base_function.h"
+#include "paddle/fluid/jit/engine/base_engine.h"
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/function_utils.h"
 
 namespace paddle {
 namespace jit {
 
-class ExecutorFunction : public BaseFunction {
+class ExecutorEngine : public BaseEngine {
  public:
-  ExecutorFunction(const std::shared_ptr<FunctionInfo> &info,
-                   const Name2VariableMap &params_dict,
-                   const phi::Place &place);
+  ExecutorEngine(const std::shared_ptr<FunctionInfo> &info,
+                 const Name2VariableMap &params_dict,
+                 const phi::Place &place);
 
-  ~ExecutorFunction() noexcept {}
+  ~ExecutorEngine() noexcept {}
 
   std::vector<Tensor> operator()(const std::vector<Tensor> &inputs);
 

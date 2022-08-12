@@ -269,6 +269,27 @@ void InterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config = MetaConfig());
 
+void LambInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& moment1,
+                   const MetaTensor& moment2,
+                   const MetaTensor& beta1_pow,
+                   const MetaTensor& beta2_pow,
+                   const MetaTensor& master_param,
+                   const MetaTensor& skip_update,
+                   float weight_decay,
+                   float beta1,
+                   float beta2,
+                   float epsilon,
+                   bool multi_precision,
+                   MetaTensor* param_out,
+                   MetaTensor* moment1_out,
+                   MetaTensor* moment2_out,
+                   MetaTensor* beta1_pow_out,
+                   MetaTensor* beta2_pow_out,
+                   MetaTensor* master_param_outs);
+
 void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
