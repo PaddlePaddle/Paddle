@@ -32,8 +32,9 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
         axis = draw(st.sampled_from([0]))
         activation_type = draw(
             st.sampled_from([
-                'relu', 'gelu', 'swish', 'mish', 'sqrt', 'hard_swish', 'sigmoid',
-                'abs', 'relu6', 'clip', 'tanh', 'hard_sigmoid', 'leaky_relu'
+                'relu', 'gelu', 'swish', 'mish', 'sqrt', 'hard_swish',
+                'sigmoid', 'abs', 'relu6', 'clip', 'tanh', 'hard_sigmoid',
+                'leaky_relu'
             ]))
 
         def generate_data(input_type):
@@ -42,17 +43,15 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
             elif input_type == 'NHWC':
                 return np.random.random([16, 64, 64, 48]).astype(np.float32)
             elif input_type == 'weights':
-                return np.random.random([16, int(48 / groups), 3, 3]).astype(np.float32)
+                return np.random.random([16, int(48 / groups), 3,
+                                         3]).astype(np.float32)
 
         conv2d_op1 = OpConfig(type='conv2d',
                               inputs={
                                   'Input': ['conv_input_1'],
                                   'Filter': ['conv_weights_1']
-
                               },
-                              outputs={
-                                  'Output': ['conv_output_1']
-                              },
+                              outputs={'Output': ['conv_output_1']},
                               attrs={
                                   'data_format': data_format,
                                   'dilations': dilations,
@@ -66,11 +65,8 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
                               inputs={
                                   'Input': ['conv_input_2'],
                                   'Filter': ['conv_weights_2']
-
                               },
-                              outputs={
-                                  'Output': ['conv_output_2']
-                              },
+                              outputs={'Output': ['conv_output_2']},
                               attrs={
                                   'data_format': data_format,
                                   'dilations': dilations,
@@ -81,14 +77,9 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
                               })
 
         concat_op = OpConfig(type='concat',
-                             inputs={'X': ['conv_output_1', 'conv_output_2']
-                                     },
-                             outputs={
-                                 'Out': ['concat_output']
-                             },
-                             attrs={
-                                 'axis': axis
-                             })
+                             inputs={'X': ['conv_output_1', 'conv_output_2']},
+                             outputs={'Out': ['concat_output']},
+                             attrs={'axis': axis})
 
         if activation_type == 'relu6':
             activation_op = OpConfig(activation_type,
@@ -134,8 +125,10 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
                 TensorConfig(data_gen=partial(generate_data, data_format))
             },
             weights={
-                'conv_weights_1': TensorConfig(data_gen=partial(generate_data, 'weights')),
-                'conv_weights_2': TensorConfig(data_gen=partial(generate_data, 'weights'))
+                'conv_weights_1':
+                TensorConfig(data_gen=partial(generate_data, 'weights')),
+                'conv_weights_2':
+                TensorConfig(data_gen=partial(generate_data, 'weights'))
             },
             outputs=['activation_output'])
 
