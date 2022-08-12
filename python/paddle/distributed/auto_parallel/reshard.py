@@ -1817,7 +1817,7 @@ class Resharder:
 
                     # judge whether union tensor dims_mapping all -1
                     is_union_process_mesh_tensor = False
-                    if dist_tensor.dist_attr.process_mesh not in self.dist_context.process_meshes:
+                    if dist_tensor.dist_attr.process_mesh not in self.dist_context.process_meshes and self.dist_context.process_meshes:
                         is_union_process_mesh_tensor = True
                         assert dist_tensor.dist_attr.dims_mapping.count(
                             -1) == len(dist_tensor.dist_attr.dims_mapping)
