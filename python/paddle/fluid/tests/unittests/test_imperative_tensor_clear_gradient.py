@@ -21,6 +21,7 @@ import numpy as np
 
 
 def _dygraph_guard_(func):
+
     def __impl__(*args, **kwargs):
         if fluid._non_static_mode():
             return func(*args, **kwargs)
@@ -35,6 +36,7 @@ dygraph_guard = wrap_decorator(_dygraph_guard_)
 
 
 class TestDygraphClearGradient(TestCase):
+
     def setUp(self):
         self.input_shape = [10, 2]
 
@@ -63,7 +65,7 @@ class TestDygraphClearGradient(TestCase):
         # default arg set_to_zero is true
         # so, False means real clear gradient
         linear.weight.clear_gradient(False)
-        # before ._gradient_set_empty(False), 
+        # before ._gradient_set_empty(False),
         # the return of ._is_gradient_set_empty() should be True
         if not fluid.framework.in_dygraph_mode():
             self.assertTrue(linear.weight._is_gradient_set_empty())
@@ -73,7 +75,7 @@ class TestDygraphClearGradient(TestCase):
         # reset, because ClearGradient will call SetIsEmpty(True), but this is not our expectation.
         if not fluid.framework.in_dygraph_mode():
             linear.weight._gradient_set_empty(False)
-            # after ._gradient_set_empty(False), 
+            # after ._gradient_set_empty(False),
             # the return of ._is_gradient_set_empty() should be False
             self.assertFalse(linear.weight._is_gradient_set_empty())
 

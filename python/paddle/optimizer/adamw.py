@@ -187,8 +187,8 @@ class AdamW(Optimizer):
             if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
-                    "an iterable of paddle Tensors, but got argument type is `{}`.".
-                    format(type(parameters)))
+                    "an iterable of paddle Tensors, but got argument type is `{}`."
+                    .format(type(parameters)))
             if isinstance(parameters, dict):
                 raise TypeError(
                     "`parameters` argument should not get dict type, "
@@ -327,21 +327,19 @@ class AdamW(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True)
+            var = layers.create_global_var(name=var_name,
+                                           shape=param.shape,
+                                           value=0,
+                                           dtype='float32',
+                                           persistable=True)
             block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32
-                })
+            block.append_op(type="cast",
+                            inputs={"X": [param]},
+                            outputs={"Out": [var]},
+                            attrs={
+                                "in_dtype": param.dtype,
+                                "out_dtype": core.VarDesc.VarType.FP32
+                            })
             self._master_weights[param.name] = var
         return var
 
@@ -359,10 +357,11 @@ class AdamW(Optimizer):
         target_param = self._master_weights[
             param.name] if find_master else param
         target_name = target_param.name
-        if (name not in self._accumulators or
-                target_name not in self._accumulators[name]):
-            raise Exception("Accumulator {} does not exist for parameter {}".
-                            format(name, target_name))
+        if (name not in self._accumulators
+                or target_name not in self._accumulators[name]):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name))
         return self._accumulators[name][target_name]
 
     def _add_moments_pows(self, p):
@@ -487,13 +486,18 @@ class AdamW(Optimizer):
             "Beta2PowOut": [beta2_pow_acc],
         }
         attrs = {
-            "lazy_mode": self._lazy_mode,
-            "min_row_size_to_use_multithread": 1000,
-            "multi_precision": find_master,
-            "with_decay": with_decay,
-            "coeff": self._weight_decay,
-            "lr_ratio": 1.
-            if self._lr_ratio is None else self._lr_ratio(param_and_grad[0])
+            "lazy_mode":
+            self._lazy_mode,
+            "min_row_size_to_use_multithread":
+            1000,
+            "multi_precision":
+            find_master,
+            "with_decay":
+            with_decay,
+            "coeff":
+            self._weight_decay,
+            "lr_ratio":
+            1. if self._lr_ratio is None else self._lr_ratio(param_and_grad[0])
         }
 
         if isinstance(self._beta1, Variable):
@@ -513,12 +517,11 @@ class AdamW(Optimizer):
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 
-        adamw_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True)
+        adamw_op = block.append_op(type=self.type,
+                                   inputs=inputs,
+                                   outputs=outputs,
+                                   attrs=attrs,
+                                   stop_gradient=True)
 
         return adamw_op
 
@@ -564,16 +567,17 @@ class AdamW(Optimizer):
                                 "AdamW don't support weight_decay with sparse parameters, please set it to None."
                             )
                     else:
-                        if hasattr(grad_var,
-                                   "_is_sparse") and grad_var._is_sparse(
-                                   ) and self.regularization is not None:
+                        if hasattr(
+                                grad_var, "_is_sparse") and grad_var._is_sparse(
+                                ) and self.regularization is not None:
                             raise RuntimeError(
                                 "AdamW don't support weight_decay with sparse parameters, please set it to None."
                             )
                     params_grads.append((param, grad_var))
 
-            optimize_ops = self._apply_optimize(
-                loss=None, startup_program=None, params_grads=params_grads)
+            optimize_ops = self._apply_optimize(loss=None,
+                                                startup_program=None,
+                                                params_grads=params_grads)
         else:
             # optimize parameters in groups
             for param_group in self._param_groups:
@@ -601,8 +605,9 @@ class AdamW(Optimizer):
                 params_grads.update(
                     {k: v
                      for k, v in param_group.items() if k != 'params'})
-                self._apply_optimize(
-                    loss=None, startup_program=None, params_grads=params_grads)
+                self._apply_optimize(loss=None,
+                                     startup_program=None,
+                                     params_grads=params_grads)
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])

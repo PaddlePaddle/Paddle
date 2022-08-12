@@ -24,6 +24,7 @@ import random
 
 
 class TestElementwiseModOp(OpTest):
+
     def init_kernel_type(self):
         self.use_mkldnn = False
 
@@ -62,6 +63,7 @@ class TestElementwiseModOp(OpTest):
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
+
     def init_input_output(self):
         scale_x = random.randint(0, 100000000)
         scale_y = random.randint(1, 100000000)
@@ -71,6 +73,7 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
 
 
 class TestElementwiseModOpFloat(TestElementwiseModOp):
+
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -87,11 +90,13 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
+
     def init_dtype(self):
         self.dtype = np.float64
 
 
 class TestRemainderOp(unittest.TestCase):
+
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="int64")

@@ -1,12 +1,12 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 # Copyright (c) 2022 NVIDIA Corporation.  All rights reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,28 +27,33 @@ paddle.enable_static()
 
 
 class TestASPStaticOptimize(unittest.TestCase):
+
     def setUp(self):
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
 
         def build_model():
-            img = fluid.data(
-                name='img', shape=[None, 3, 24, 24], dtype='float32')
+            img = fluid.data(name='img',
+                             shape=[None, 3, 24, 24],
+                             dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            hidden = fluid.layers.conv2d(
-                input=img, num_filters=4, filter_size=3, padding=2, act="relu")
+            hidden = fluid.layers.conv2d(input=img,
+                                         num_filters=4,
+                                         filter_size=3,
+                                         padding=2,
+                                         act="relu")
             hidden = fluid.layers.fc(input=hidden, size=32, act='relu')
             prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
             return img, label, prediction
 
         with fluid.program_guard(self.main_program, self.startup_program):
             self.img, self.label, predict = build_model()
-            self.loss = fluid.layers.mean(
-                fluid.layers.cross_entropy(
-                    input=predict, label=self.label))
+            self.loss = paddle.mean(
+                fluid.layers.cross_entropy(input=predict, label=self.label))
             self.optimizer = fluid.optimizer.SGD(learning_rate=0.01)
 
     def test_get_not_ASP_relevant_vars(self):
+
         def check_params(params, params_from_asp):
             if len(params_from_asp) != len(params):
                 return False
@@ -105,8 +110,8 @@ class TestASPStaticOptimize(unittest.TestCase):
                 ref[i] == ASPHelper._is_supported_layer(program, name))
 
     def test_decorate(self):
-        param_names = self.__get_param_names(self.main_program.global_block()
-                                             .all_parameters())
+        param_names = self.__get_param_names(
+            self.main_program.global_block().all_parameters())
         with fluid.program_guard(self.main_program, self.startup_program):
             self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
             self.optimizer.minimize(self.loss, self.startup_program)
@@ -130,17 +135,26 @@ class TestASPStaticOptimize(unittest.TestCase):
         exe.run(self.startup_program)
         paddle.incubate.asp.prune_model(self.main_program)
 
-        data = (np.random.randn(32, 3, 24, 24), np.random.randint(
-            10, size=(32, 1)))
+        data = (np.random.randn(32, 3, 24,
+                                24), np.random.randint(10, size=(32, 1)))
         exe.run(self.main_program, feed=feeder.feed([data]))
 
         for param in self.main_program.global_block().all_parameters():
             if ASPHelper._is_supported_layer(self.main_program, param.name):
-                mat = np.array(fluid.global_scope().find_var(param.name)
-                               .get_tensor())
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, n=2, m=4))
+                mat = np.array(fluid.global_scope().find_var(
+                    param.name).get_tensor())
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
 
     def test_asp_training_with_amp(self):
         if core.is_compiled_with_cuda():
@@ -152,23 +166,32 @@ class TestASPStaticOptimize(unittest.TestCase):
                 self.optimizer.minimize(self.loss, self.startup_program)
 
             exe = fluid.Executor(place)
-            feeder = fluid.DataFeeder(
-                feed_list=[self.img, self.label], place=place)
+            feeder = fluid.DataFeeder(feed_list=[self.img, self.label],
+                                      place=place)
 
             exe.run(self.startup_program)
             paddle.incubate.asp.prune_model(self.main_program)
 
-            data = (np.random.randn(32, 3, 24, 24), np.random.randint(
-                10, size=(32, 1)))
+            data = (np.random.randn(32, 3, 24,
+                                    24), np.random.randint(10, size=(32, 1)))
             exe.run(self.main_program, feed=feeder.feed([data]))
 
             for param in self.main_program.global_block().all_parameters():
                 if ASPHelper._is_supported_layer(self.main_program, param.name):
-                    mat = np.array(fluid.global_scope().find_var(param.name)
-                                   .get_tensor())
-                    self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4))
+                    mat = np.array(fluid.global_scope().find_var(
+                        param.name).get_tensor())
+                    if (len(param.shape) == 4
+                            and param.shape[1] < 4) or (len(param.shape) == 2
+                                                        and param.shape[0] < 4):
+                        self.assertFalse(
+                            paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                         n=2,
+                                                                         m=4))
+                    else:
+                        self.assertTrue(
+                            paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                         n=2,
+                                                                         m=4))
 
     def __get_param_names(self, params):
         param_names = []

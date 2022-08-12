@@ -43,9 +43,11 @@ class ElementwiseDivGradXPUKernel : public ElemwiseGradKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(elementwise_div, ops::ElementwiseDivXPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(elementwise_div,
+                       ops::ElementwiseDivXPUKernel<float>,
                        ops::ElementwiseDivXPUKernel<paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
-    elementwise_div_grad, ops::ElementwiseDivGradXPUKernel<float>,
+    elementwise_div_grad,
+    ops::ElementwiseDivGradXPUKernel<float>,
     ops::ElementwiseDivGradXPUKernel<paddle::platform::float16>);
 #endif

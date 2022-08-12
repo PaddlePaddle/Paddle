@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/selected_rows/adamw_kernel.h"
 
 #include <math.h>  // for sqrt in CPU and CUDA
+
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
@@ -23,7 +24,7 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
@@ -230,30 +231,30 @@ void AdamwDenseParamSparseGradKernel(
     int ndim = param.numel();
     int blocks = (ndim + threads - 1) / threads;
 
-    SparseAdamWCUDAKernelREG<T,
-                             MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        beta1_,
-        beta2_,
-        epsilon_,
-        coeff_,
-        lr_ratio_,
-        *beta1_pow.data<MPDType>(),
-        *beta2_pow.data<MPDType>(),
-        moment1.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment1_out),
-        moment2.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment2_out),
-        learning_rate.data<MPDType>(),
-        grad_data,
-        param.data<T>(),
-        dev_ctx.template Alloc<T>(param_out),
-        master_in_data,
-        master_out_data,
-        rows,
-        row_numel,
-        grad_merge.rows().size(),
-        lazy_mode,
-        ndim);
+    SparseAdamWCUDAKernelREG<T, MPDType>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(
+            beta1_,
+            beta2_,
+            epsilon_,
+            coeff_,
+            lr_ratio_,
+            *beta1_pow.data<MPDType>(),
+            *beta2_pow.data<MPDType>(),
+            moment1.data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(moment1_out),
+            moment2.data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(moment2_out),
+            learning_rate.data<MPDType>(),
+            grad_data,
+            param.data<T>(),
+            dev_ctx.template Alloc<T>(param_out),
+            master_in_data,
+            master_out_data,
+            rows,
+            row_numel,
+            grad_merge.rows().size(),
+            lazy_mode,
+            ndim);
     if (!use_global_beta_pow) {
       // Update with cpu
       dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =

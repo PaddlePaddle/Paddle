@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,13 +17,16 @@ from __future__ import print_function, division
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
+
 paddle.enable_static()
 
 
 class TestNPUReciprocal(OpTest):
+
     def setUp(self):
         self.op_type = "reciprocal"
         self.set_npu()
@@ -40,8 +43,9 @@ class TestNPUReciprocal(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', max_relative_error=0.01)
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.01)
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -52,6 +56,7 @@ class TestNPUReciprocal(OpTest):
 
 
 class TestNPUReciprocalFp64(TestNPUReciprocal):
+
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
@@ -63,6 +68,7 @@ class TestNPUReciprocalFp64(TestNPUReciprocal):
 @skip_check_grad_ci(
     reason="The backward test is not supported for float16 type on NPU.")
 class TestNPUReciprocalFp16(TestNPUReciprocal):
+
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)

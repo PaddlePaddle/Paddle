@@ -1,12 +1,12 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,10 +23,10 @@ import unittest
 
 
 class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         if attrs[0]['epsilon'] < 0 or attrs[0]['epsilon'] > 0.001:
@@ -35,6 +35,7 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], shape_input):
             return np.random.random(shape_input).astype(np.float32)
 
@@ -65,13 +66,16 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={
-                            "bias_data": TensorConfig(data_gen=partial(
+                            "bias_data":
+                            TensorConfig(data_gen=partial(
                                 generate_input2, dics, shape_input)),
-                            "scale_data": TensorConfig(data_gen=partial(
+                            "scale_data":
+                            TensorConfig(data_gen=partial(
                                 generate_input2, dics, shape_input))
                         },
                         inputs={
-                            "input_data": TensorConfig(data_gen=partial(
+                            "input_data":
+                            TensorConfig(data_gen=partial(
                                 generate_input1, dics, shape_input))
                         },
                         outputs=["y_data"])
@@ -80,6 +84,7 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if self.in_dim == 2:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 4]}
@@ -113,8 +118,7 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
             return 1, 2
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -129,11 +133,11 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
 
     def test(self):
         self.run_test()

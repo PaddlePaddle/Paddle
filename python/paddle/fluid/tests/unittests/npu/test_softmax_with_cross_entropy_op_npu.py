@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -29,6 +30,7 @@ SEED = 2021
 
 
 class TestSoftmaxWithCrossEntropyOp(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -88,14 +90,14 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
 
     def test_check_grad(self):
         # fp32 has low precision, cpu and npu both need to relax the max_relative_error if using fp32
-        self.check_grad_with_place(
-            self.place, ['Logits'],
-            'Loss',
-            numeric_grad_delta=0.001,
-            max_relative_error=0.5)
+        self.check_grad_with_place(self.place, ['Logits'],
+                                   'Loss',
+                                   numeric_grad_delta=0.001,
+                                   max_relative_error=0.5)
 
 
 class TestPowNet(unittest.TestCase):
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -110,8 +112,9 @@ class TestPowNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
 
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
@@ -135,12 +138,13 @@ class TestPowNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(
-                main_prog,
-                feed={"a": a_np,
-                      "b": b_np,
-                      "label": label_np},
-                fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
             if epoch % 10 == 0:
                 print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
                     epoch, pred_res[0], loss_res))
@@ -151,8 +155,8 @@ class TestPowNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-5)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-5)
 
 
 if __name__ == '__main__':

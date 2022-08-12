@@ -20,7 +20,8 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
@@ -59,27 +60,33 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
       size_t label = labels_data[i];
 
       PADDLE_ENFORCE_GE(
-          idx, 0,
+          idx,
+          0,
           platform::errors::InvalidArgument(
               "Class index of each instance should be "
               "greater than or equal to 0, But the index we received is %d",
               idx));
-      PADDLE_ENFORCE_LT(idx, cls_num,
+      PADDLE_ENFORCE_LT(idx,
+                        cls_num,
                         platform::errors::InvalidArgument(
                             "Class index of each instance should be less than "
                             "cls_num = %d, But the index we received is %d",
-                            cls_num, idx));
+                            cls_num,
+                            idx));
 
-      PADDLE_ENFORCE_GE(label, 0,
+      PADDLE_ENFORCE_GE(label,
+                        0,
                         platform::errors::InvalidArgument(
                             "Label of each instance should be greater than or "
                             "equal to 0, But the label we received is %d",
                             label));
-      PADDLE_ENFORCE_LT(label, cls_num,
+      PADDLE_ENFORCE_LT(label,
+                        cls_num,
                         platform::errors::InvalidArgument(
                             "Label of each instance should be less than "
                             "cls_num = %d, But the label we received is %d",
-                            cls_num, label));
+                            cls_num,
+                            label));
 
       T w = weights_data ? weights_data[i] : 1.0;
       if (idx == label) {
@@ -99,8 +106,8 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
       }
     }
 
-    ComputeMetrics(accum_states_data, batch_metrics_data, state_var_num,
-                   cls_num);
+    ComputeMetrics(
+        accum_states_data, batch_metrics_data, state_var_num, cls_num);
 
     if (states_data) {
       for (size_t i = 0; i < cls_num; ++i) {
@@ -111,8 +118,8 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
       }
     }
 
-    ComputeMetrics(accum_states_data, accum_metrics_data, state_var_num,
-                   cls_num);
+    ComputeMetrics(
+        accum_states_data, accum_metrics_data, state_var_num, cls_num);
   }
 
   // expose to be reused
@@ -138,8 +145,10 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
   }
 
  protected:
-  void ComputeMetrics(const T* states_data, double* metrics_data,
-                      size_t state_var_num, size_t cls_num) const {
+  void ComputeMetrics(const T* states_data,
+                      double* metrics_data,
+                      size_t state_var_num,
+                      size_t cls_num) const {
     T total_tp_count = 0;
     T total_fp_count = 0;
     T total_fn_count = 0;

@@ -39,7 +39,8 @@ class CReduceProdOpMaker : public CReduceOpMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_reduce_prod, ops::CReduceOp,
+REGISTER_OP_WITHOUT_GRADIENT(c_reduce_prod,
+                             ops::CReduceOp,
                              ops::CReduceProdOpMaker);
 
 REGISTER_OP_CPU_KERNEL(c_reduce_prod,

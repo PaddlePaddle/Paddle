@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import six
+import os
 
 __all__ = []
 
@@ -25,28 +26,21 @@ def log(ctx):
     ctx.logger.info("--------------------------------------------------")
 
 
-def rewrite_ipu_script(ctx):
-    import paddle.fluid as fluid
-    if fluid.core.is_compiled_with_ipu():
-        import os
-        if ctx.args.training_script != "ipu":
-            raise RuntimeError(
-                "Only support to run the script \'ipu\' for IPU distributed computing."
-            )
-        ctx.args.training_script = os.path.abspath(
-            os.path.join(
-                os.path.dirname(os.path.dirname(__file__)),
-                "utils/ipu_launch.py"))
-
-
 def process_args(ctx):
     # reset device by args
     #argdev = ctx.args.gpus or ctx.args.xpus or ctx.args.npus
     argdev = ctx.args.devices
     if argdev:
         for d in argdev.split(','):
-            assert d in ctx.node.device.labels, 'Device not found {}'.format(
-                argdev)
+            if d not in ctx.node.device.labels:
+                ctx.logger.error(
+                    f'Device not found {d} from {argdev} for setting {ctx.node.device.labels}'
+                )
+
+    if ctx.args.ips:
+        ips = ctx.args.ips.split(',')
+        if '127.0.0.1' in ips and len(ips) != 1:
+            raise "127.0.0.1 in ips is not allowed in multi-nodes."
 
 
 def collective_compatible(ctx):
@@ -55,9 +49,9 @@ def collective_compatible(ctx):
         hosts = set([h.split(':')[0] for h in eps])
         ctx.args.master = eps[0] if ':' in eps[0] else '{}:6768'.format(eps[0])
         ctx.args.nnodes = len(hosts)
-        ctx.logger.info('args reset by env PADDLE_TRAINER_ENDPOINTS\n{}'.format(
-            eps))
-    '''
+        ctx.logger.info(
+            'args reset by env PADDLE_TRAINER_ENDPOINTS\n{}'.format(eps))
+
     if 'DISTRIBUTED_TRAINER_ENDPOINTS' in ctx.envs:
         eps = ctx.envs['DISTRIBUTED_TRAINER_ENDPOINTS'].split(',')
         hosts = set([h.split(':')[0] for h in eps])
@@ -65,7 +59,6 @@ def collective_compatible(ctx):
         ctx.args.nnodes = len(hosts)
         ctx.logger.info(
             'args reset by env DISTRIBUTED_TRAINER_ENDPOINTS\n{}'.format(eps))
-    '''
 
 
 def rewrite_host_ip(ctx):
@@ -74,6 +67,15 @@ def rewrite_host_ip(ctx):
         ctx.node.ip = ctx.args.host
 
 
+def test_mode(ctx):
+    if ctx.args.training_script == 'run_check':
+        ctx.logger.info('Paddle Distributed Test begin...')
+        if int(ctx.args.nnodes) < 2:
+            ctx.args.nnodes = 2
+        ctx.args.training_script = '{}/test.py'.format(
+            os.path.dirname(__file__))
+
+
 enabled_plugins = [
-    collective_compatible, rewrite_host_ip, process_args, rewrite_ipu_script
+    test_mode, collective_compatible, rewrite_host_ip, process_args
 ]

@@ -14,9 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/common/int_array.h"
 
-#include "paddle/phi/common/place.h"
-
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace experimental {

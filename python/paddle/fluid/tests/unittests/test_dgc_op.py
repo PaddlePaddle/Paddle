@@ -25,6 +25,7 @@ g_array_size = 102400
 
 
 class TestDGCOp(unittest.TestCase):
+
     def setup(self, place, array_size=g_array_size):
         size = array_size
         np.random.seed(5)  # fix seed
@@ -59,7 +60,7 @@ class TestDGCOp(unittest.TestCase):
         self.k = np.full((1), 0.0).astype("float32")
         self.gather_buff_name = "GatherBuff"
 
-        # scope data 
+        # scope data
         self.u_tensor = self.scope.var(self.u_name).get_tensor()
         self.u_tensor.set(self.u, place)
 
@@ -90,10 +91,9 @@ class TestDGCOp(unittest.TestCase):
 
     def check(self, actual_t, expect_t, place, out_name, atol=1e-5):
         self.assertTrue(
-            np.allclose(
-                actual_t, expect_t, atol=atol),
-            "Output (" + out_name + ") has diff at " + str(place) + "\nExpect "
-            + str(expect_t) + "\n" + "But Got" + str(actual_t))
+            np.allclose(actual_t, expect_t, atol=atol),
+            "Output (" + out_name + ") has diff at " + str(place) +
+            "\nExpect " + str(expect_t) + "\n" + "But Got" + str(actual_t))
 
     def test_run_and_check(self):
         self.setup(place=core.CUDAPlace(0))

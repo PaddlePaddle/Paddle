@@ -9,7 +9,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+
 #include <unistd.h>
+
 #include <condition_variable>  // NOLINT
 #include <fstream>
 #include <iomanip>
@@ -17,10 +20,9 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <unordered_set>
 #include <vector>
-#include "google/protobuf/text_format.h"
 
+#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
@@ -30,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
 #include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
-#include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -226,32 +228,36 @@ void testFeatureNodeSerializeFloat64() {
 // void testCache();
 void testGraphToBuffer();
 
-std::string edges[] = {
-    std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
-    std::string("37\t112\t0.21"), std::string("96\t48\t1.4"),
-    std::string("96\t247\t0.31"), std::string("96\t111\t1.21"),
-    std::string("59\t45\t0.34"),  std::string("59\t145\t0.31"),
-    std::string("59\t122\t0.21"), std::string("97\t48\t0.34"),
-    std::string("97\t247\t0.31"), std::string("97\t111\t0.21")};
+const char* edges[] = {"37\t45\t0.34",
+                       "37\t145\t0.31",
+                       "37\t112\t0.21",
+                       "96\t48\t1.4",
+                       "96\t247\t0.31",
+                       "96\t111\t1.21",
+                       "59\t45\t0.34",
+                       "59\t145\t0.31",
+                       "59\t122\t0.21",
+                       "97\t48\t0.34",
+                       "97\t247\t0.31",
+                       "97\t111\t0.21"};
 char edge_file_name[] = "edges.txt";
 
-std::string nodes[] = {
-    std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
-    std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
-    std::string("user\t59\ta 0.11\tb 11 14"),
-    std::string("user\t97\ta 0.11\tb 12 11"),
-    std::string("item\t45\ta 0.21"),
-    std::string("item\t145\ta 0.21"),
-    std::string("item\t112\ta 0.21"),
-    std::string("item\t48\ta 0.21"),
-    std::string("item\t247\ta 0.21"),
-    std::string("item\t111\ta 0.21"),
-    std::string("item\t46\ta 0.21"),
-    std::string("item\t146\ta 0.21"),
-    std::string("item\t122\ta 0.21"),
-    std::string("item\t49\ta 0.21"),
-    std::string("item\t248\ta 0.21"),
-    std::string("item\t113\ta 0.21")};
+const char* nodes[] = {"user\t37\ta 0.34\tb 13 14\tc hello\td abc",
+                       "user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd",
+                       "user\t59\ta 0.11\tb 11 14",
+                       "user\t97\ta 0.11\tb 12 11",
+                       "item\t45\ta 0.21",
+                       "item\t145\ta 0.21",
+                       "item\t112\ta 0.21",
+                       "item\t48\ta 0.21",
+                       "item\t247\ta 0.21",
+                       "item\t111\ta 0.21",
+                       "item\t46\ta 0.21",
+                       "item\t146\ta 0.21",
+                       "item\t122\ta 0.21",
+                       "item\t49\ta 0.21",
+                       "item\t248\ta 0.21",
+                       "item\t113\ta 0.21"};
 char node_file_name[] = "nodes.txt";
 
 void prepare_file(char file_name[], bool load_edge) {
@@ -333,7 +339,8 @@ void GetDownpourSparseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
-std::string ip_ = "127.0.0.1", ip2 = "127.0.0.1";
+const char* ip_ = "127.0.0.1";
+const char* ip2 = "127.0.0.1";
 uint32_t port_ = 5209, port2 = 5210;
 
 std::vector<std::string> host_sign_list_;
@@ -380,8 +387,10 @@ void RunServer2() {
 }
 
 void RunClient(
-    std::map<uint64_t, std::vector<paddle::distributed::Region>>& dense_regions,
-    int index, paddle::distributed::PsBaseService* service) {
+    const std::map<uint64_t, std::vector<paddle::distributed::Region>>&
+        dense_regions,
+    int index,
+    paddle::distributed::PsBaseService* service) {
   ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();
@@ -531,8 +540,8 @@ void RunBrpcPushSparse() {
   VLOG(0) << "second bound";
   client1.load_node_file(std::string("user"), std::string(node_file_name));
   client1.load_node_file(std::string("item"), std::string(node_file_name));
-  client1.load_edge_file(std::string("user2item"), std::string(edge_file_name),
-                         0);
+  client1.load_edge_file(
+      std::string("user2item"), std::string(edge_file_name), 0);
   nodes.clear();
   VLOG(0) << "start to pull graph list";
   nodes = client1.pull_graph_list(std::string("user"), 0, 1, 4, 1);
@@ -549,8 +558,8 @@ void RunBrpcPushSparse() {
     std::cout << "check pull graph list by step " << test_step << std::endl;
     for (int server_id = 0; server_id < 2; server_id++) {
       for (int start_step = 0; start_step < test_step; start_step++) {
-        nodes = client1.pull_graph_list(std::string("item"), server_id,
-                                        start_step, 12, test_step);
+        nodes = client1.pull_graph_list(
+            std::string("item"), server_id, start_step, 12, test_step);
         for (auto g : nodes) {
           count_item_nodes.insert(g.get_id());
         }
@@ -568,14 +577,15 @@ void RunBrpcPushSparse() {
   std::vector<int64_t> node_ids;
   node_ids.push_back(96);
   node_ids.push_back(37);
-  res = client1.batch_sample_neighbors(std::string("user2item"), node_ids, 4,
-                                       true, false);
+  res = client1.batch_sample_neighbors(
+      std::string("user2item"), node_ids, 4, true, false);
 
   ASSERT_EQ(res.first[1].size(), 1);
   std::vector<int64_t> nodes_ids = client2.random_sample_nodes("user", 0, 6);
   ASSERT_EQ(nodes_ids.size(), 2);
-  ASSERT_EQ(true, (nodes_ids[0] == 59 && nodes_ids[1] == 37) ||
-                      (nodes_ids[0] == 37 && nodes_ids[1] == 59));
+  ASSERT_EQ(true,
+            (nodes_ids[0] == 59 && nodes_ids[1] == 37) ||
+                (nodes_ids[0] == 37 && nodes_ids[1] == 59));
 
   VLOG(0) << "start to test get node feat";
   // Test get node feat
@@ -596,14 +606,14 @@ void RunBrpcPushSparse() {
 
   node_feat[1][0] = "helloworld";
 
-  client1.set_node_feat(std::string("user"), node_ids, feature_names,
-                        node_feat);
+  client1.set_node_feat(
+      std::string("user"), node_ids, feature_names, node_feat);
 
   // sleep(5);
   node_feat =
       client1.get_node_feat(std::string("user"), node_ids, feature_names);
   VLOG(0) << "get_node_feat: " << node_feat[1][0];
-  ASSERT_TRUE(node_feat[1][0] == "helloworld");
+  ASSERT_EQ(node_feat[1][0], "helloworld");
 
   // Test string
   node_ids.clear();
@@ -696,7 +706,7 @@ void testGraphToBuffer() {
   s.set_feature(0, std::string("hhhh"));
   s.set_id(65);
   int size = s.get_size(true);
-  char str[size];
+  char str[size];  // NOLINT
   s.to_buffer(str, true);
   s1.recover_from_buffer(str);
   ASSERT_EQ(s.get_id(), s1.get_id());

@@ -53,12 +53,14 @@ class SelectOutputOp : public framework::OperatorBase {
 
     const std::vector<std::string> &out_names = Outputs("Out");
     PADDLE_ENFORCE_LT(
-        output_branch, out_names.size(),
+        output_branch,
+        out_names.size(),
         platform::errors::InvalidArgument(
             "Input 'Mask' in SelectOutputOp is invalid. "
             "'Mask' must be less than the size of output vector 'Out'. "
             "But received Mask = %d, Out's size = %d.",
-            output_branch, out_names.size()));
+            output_branch,
+            out_names.size()));
 
     const framework::Variable *x = scope.FindVar(Input("X"));
     framework::Variable *selected_out = scope.FindVar(out_names[output_branch]);
@@ -114,7 +116,9 @@ class SelectOutputGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(select_output, ops::SelectOutputOp,
-                  ops::SelectOutputOpProtoMaker, ops::SelectOutputInferShape,
+REGISTER_OPERATOR(select_output,
+                  ops::SelectOutputOp,
+                  ops::SelectOutputOpProtoMaker,
+                  ops::SelectOutputInferShape,
                   ops::SelectOutputGradMaker<paddle::framework::OpDesc>,
                   ops::SelectOutputGradMaker<paddle::imperative::OpBase>);

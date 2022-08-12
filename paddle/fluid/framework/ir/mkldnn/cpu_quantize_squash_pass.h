@@ -54,7 +54,8 @@ class CPUQuantizeSquashPass : public FusePassBase {
    * When inputs have different sign, concat will assume signed type and
    * elementwise assumes first input type.
    */
-  bool IsDequantizeQuantizeIncompatible(Node* quant_op, Node* dequant_in,
+  bool IsDequantizeQuantizeIncompatible(Node* quant_op,
+                                        Node* dequant_in,
                                         Node* next_op) const;
 
   /*

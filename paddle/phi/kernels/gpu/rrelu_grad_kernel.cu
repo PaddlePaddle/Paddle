@@ -48,9 +48,9 @@ class RReluOpGradFunctor {
                   const T* out_grad,
                   T* x_grad,
                   int numel) {
-    RReluOpGradKernel<
-        T><<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
-        x, noise, out_grad, x_grad, numel);
+    RReluOpGradKernel<T>
+        <<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
+            x, noise, out_grad, x_grad, numel);
   }
 };
 

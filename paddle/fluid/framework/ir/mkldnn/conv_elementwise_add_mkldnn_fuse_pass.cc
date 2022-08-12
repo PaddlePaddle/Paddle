@@ -77,7 +77,8 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
 }
 
 GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
-    const std::string& name_scope, const GraphWithStats& graph_with_stats,
+    const std::string& name_scope,
+    const GraphWithStats& graph_with_stats,
     bool as_x) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
@@ -87,8 +88,10 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
 
   patterns::ResidualElementwise elementwise_pattern{pattern, name_scope, as_x};
   elementwise_pattern(
-      conv_output, pattern->NewNode(elementwise_pattern.residual_data_repr()),
-      "elementwise_add", as_x);
+      conv_output,
+      pattern->NewNode(elementwise_pattern.residual_data_repr()),
+      "elementwise_add",
+      as_x);
   conv_output->AsIntermediate();
 
   int found_conv_count = 0;
@@ -100,20 +103,27 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
     GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_output, conv_output, conv_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
-                              elementwise_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(residual_data, residual_data,
-                              elementwise_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
-                              elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_op, elementwise_op, elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        residual_data, residual_data, elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_out, elementwise_out, elementwise_pattern);
 
     if (FindFuseOption(*conv_op, *elementwise_op) != FUSE_MKLDNN) return;
     if (!IsReachable(g, residual_data, conv_output)) return;
     if (HasFusedActivation(conv_op)) return;
+    if (HasFusedElementwiseAdd(conv_op)) return;
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
           << "conv_elementwise_add_mkldnn_fuse_pass in op compat failed.";
+      return;
+    }
+
+    if (residual_data->Var()->GetShape() != conv_output->Var()->GetShape()) {
+      LOG(WARNING) << "conv_elementwise_add_mkldnn_fuse_pass doesn't support " -
+                          "broadcasting";
       return;
     }
 
@@ -173,10 +183,10 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
     GET_IR_NODE_FROM_SUBGRAPH(conv_y_filter, conv_filter, conv_y_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_y_output, conv_output, conv_y_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
-                              elementwise_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
-                              elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_op, elementwise_op, elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_out, elementwise_out, elementwise_pattern);
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)

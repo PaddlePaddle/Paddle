@@ -26,6 +26,7 @@ import hypothesis.strategies as st
 
 
 class TestConvAffineChannelFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -41,17 +42,17 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         out_channel = groups * out_channel_factor
         batch_size = draw(st.integers(min_value=1, max_value=4))
         dilations = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=2), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=2),
+                     min_size=2,
+                     max_size=2))
         paddings = draw(
-            st.lists(
-                st.integers(
-                    min_value=0, max_value=2), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=0, max_value=2),
+                     min_size=2,
+                     max_size=2))
         strides = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=2), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=2),
+                     min_size=2,
+                     max_size=2))
         has_bias = draw(st.booleans())
 
         x_shape = [
@@ -73,30 +74,28 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         def generate_scale_bias():
             return np.random.random(bias_shape).astype(np.float32)
 
-        conv2d_op = OpConfig(
-            "conv2d",
-            inputs={
-                "Input": ["input_data"],
-                "Filter": ["conv2d_weight"],
-            },
-            outputs={"Output": ["conv_output"]},
-            data_format=data_format,
-            dilations=dilations,
-            padding_algorithm=padding_algorithm,
-            groups=groups,
-            paddings=paddings,
-            strides=strides,
-            has_bias=has_bias,
-            is_test=True)
-        ac_op = OpConfig(
-            "affine_channel",
-            inputs={
-                "X": ["conv_output"],
-                "Scale": ["affine_channel_scale"],
-                "Bias": ["affine_channel_bias"]
-            },
-            outputs={"Out": ["affine_channel_ouput"]},
-            data_layout=data_format)
+        conv2d_op = OpConfig("conv2d",
+                             inputs={
+                                 "Input": ["input_data"],
+                                 "Filter": ["conv2d_weight"],
+                             },
+                             outputs={"Output": ["conv_output"]},
+                             data_format=data_format,
+                             dilations=dilations,
+                             padding_algorithm=padding_algorithm,
+                             groups=groups,
+                             paddings=paddings,
+                             strides=strides,
+                             has_bias=has_bias,
+                             is_test=True)
+        ac_op = OpConfig("affine_channel",
+                         inputs={
+                             "X": ["conv_output"],
+                             "Scale": ["affine_channel_scale"],
+                             "Bias": ["affine_channel_bias"]
+                         },
+                         outputs={"Out": ["affine_channel_ouput"]},
+                         data_layout=data_format)
         if has_bias == True:
             conv2d_op.inputs["Bias"] = ["conv2d_bias"]
         ops = [conv2d_op, ac_op]
@@ -109,7 +108,8 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             weights={
                 "conv2d_weight":
                 TensorConfig(data_gen=partial(generate_weight)),
-                "conv2d_bias": TensorConfig(data_gen=partial(generate_bias)),
+                "conv2d_bias":
+                TensorConfig(data_gen=partial(generate_bias)),
                 "affine_channel_scale":
                 TensorConfig(data_gen=partial(generate_scale_bias)),
                 "affine_channel_bias":
@@ -126,7 +126,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         yield config, ['conv2d', 'elementwise_add'], (1e-4, 1e-4)
 
     def add_ignore_pass_case(self):
-        # If the problem has been fixed, the judgment 
+        # If the problem has been fixed, the judgment
         # in is_program_valid needs to be deleted!!!
         def teller1(program_config, predictor_config):
             if program_config.ops[0].attrs['data_format'] == "NHWC":
@@ -135,8 +135,8 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
 
         # mkldnn Output has diff with bias!
         def teller2(program_config, predictor_config):
-            return predictor_config.mkldnn_enabled() and program_config.ops[
-                0].attrs['has_bias'] == True
+            return predictor_config.mkldnn_enabled(
+            ) and program_config.ops[0].attrs['has_bias'] == True
 
         self.add_ignore_check_case(
             teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
@@ -151,7 +151,8 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            passes=["conv_affine_channel_mkldnn_fuse_pass"], )
+            passes=["conv_affine_channel_mkldnn_fuse_pass"],
+        )
 
 
 if __name__ == "__main__":

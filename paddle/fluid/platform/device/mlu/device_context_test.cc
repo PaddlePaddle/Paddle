@@ -20,9 +20,9 @@ limitations under the License. */
 
 TEST(Device, Init) {
   using paddle::platform::DeviceContext;
+  using paddle::platform::MLUContext;
   using paddle::platform::MLUDeviceContext;
   using paddle::platform::MLUPlace;
-  using paddle::platform::MLUContext;
 
   int count = paddle::platform::GetMLUDeviceCount();
   for (int i = 0; i < count; i++) {
@@ -34,9 +34,9 @@ TEST(Device, Init) {
 }
 
 TEST(Device, MLUDeviceContext) {
+  using paddle::mluCnnlHandle;
   using paddle::platform::MLUDeviceContext;
   using paddle::platform::MLUPlace;
-  using paddle::mluCnnlHandle;
 
   int count = paddle::platform::GetMLUDeviceCount();
   for (int i = 0; i < count; i++) {
@@ -48,9 +48,9 @@ TEST(Device, MLUDeviceContext) {
 }
 
 TEST(Device, MLUStream) {
+  using paddle::mluStream;
   using paddle::platform::MLUDeviceContext;
   using paddle::platform::MLUPlace;
-  using paddle::mluStream;
 
   int count = paddle::platform::GetMLUDeviceCount();
   for (int i = 0; i < count; i++) {
@@ -62,11 +62,11 @@ TEST(Device, MLUStream) {
 }
 
 TEST(Device, DeviceContextPool) {
+  using paddle::platform::CPUPlace;
   using paddle::platform::DeviceContextPool;
   using paddle::platform::MLUDeviceContext;
-  using paddle::platform::Place;
-  using paddle::platform::CPUPlace;
   using paddle::platform::MLUPlace;
+  using paddle::platform::Place;
 
   DeviceContextPool& pool = DeviceContextPool::Instance();
   auto cpu_dev_ctx1 = pool.Get(CPUPlace());

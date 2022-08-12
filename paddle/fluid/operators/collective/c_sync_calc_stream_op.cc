@@ -23,7 +23,6 @@ class CSyncCalcStreamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) Dependency of the variable need to sync");
     AddComment(R"DOC(
 CSyncCalcStream Operator
-
 Call calculation stream synchronization.
 )DOC");
   }
@@ -34,7 +33,8 @@ Call calculation stream synchronization.
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream, ops::CSyncCalcStreamOp,
+REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream,
+                             ops::CSyncCalcStreamOp,
                              ops::CSyncCalcStreamOpMaker);
 
 REGISTER_OP_CUDA_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);

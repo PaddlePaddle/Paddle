@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <ostream>
 #include <string>
+
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 namespace paddle {

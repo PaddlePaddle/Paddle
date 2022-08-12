@@ -29,13 +29,18 @@ namespace framework {
 
 class Scope;
 
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
-                     const std::string& var_name, size_t index);
+void SetFeedVariable(Scope* scope,
+                     const LoDTensor& input,
+                     const std::string& var_name,
+                     size_t index);
 
-void SetFeedVariable(Scope* scope, const Strings& input,
-                     const std::string& var_name, size_t index);
+void SetFeedVariable(Scope* scope,
+                     const Strings& input,
+                     const std::string& var_name,
+                     size_t index);
 
-FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
+FetchType& GetFetchVariable(const Scope& scope,
+                            const std::string& var_name,
                             size_t index);
 
 LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name);

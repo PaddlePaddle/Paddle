@@ -31,6 +31,7 @@ def p_normalize(x, axis=1, p=2, epsilon=1e-12, keepdims=True):
 
 
 class TestNNFunctionalNormalize(unittest.TestCase):
+
     def setUp(self):
         self.input_np = np.random.random(size=(10, 10)).astype(np.float32)
         self.input_np2 = np.array([0.0, 0.0]).astype(np.float32)
@@ -68,10 +69,11 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        static_result = exe.run(
-            feed={"input": self.input_np,
-                  "input2": self.input_np2},
-            fetch_list=[result0, result1, result2, result4])
+        static_result = exe.run(feed={
+            "input": self.input_np,
+            "input2": self.input_np2
+        },
+                                fetch_list=[result0, result1, result2, result4])
 
         self.assertTrue(np.allclose(static_result[0], self.expected0))
         self.assertTrue(np.allclose(static_result[1], self.expected1))

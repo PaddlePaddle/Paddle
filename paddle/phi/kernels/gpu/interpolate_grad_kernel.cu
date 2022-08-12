@@ -1059,21 +1059,21 @@ static void Interpolate2DCUDABwd(
     } else if (!optimize_flag & is_nchw) {
       const int num_kernels = n * c * out_h * out_w;
       const int num_threads = std::min(dev_ctx.GetMaxThreadsPerBlock(), 1024);
-      KeBilinearInterpNCHWBw<
-          T><<<backends::gpu::DivUp(num_kernels, num_threads),
-               num_threads,
-               0,
-               dev_ctx.stream()>>>(input_grad_data,
-                                   in_h,
-                                   in_w,
-                                   out_h,
-                                   out_w,
-                                   n,
-                                   c,
-                                   ratio_h,
-                                   ratio_w,
-                                   output_grad_data,
-                                   align_type_value);
+      KeBilinearInterpNCHWBw<T>
+          <<<backends::gpu::DivUp(num_kernels, num_threads),
+             num_threads,
+             0,
+             dev_ctx.stream()>>>(input_grad_data,
+                                 in_h,
+                                 in_w,
+                                 out_h,
+                                 out_w,
+                                 n,
+                                 c,
+                                 ratio_h,
+                                 ratio_w,
+                                 output_grad_data,
+                                 align_type_value);
     } else {
       int64_t cw = c * out_w;
       auto interp_divmods = funcs::FastDivModForInterpolate(c, out_chw, cw);
@@ -1100,23 +1100,23 @@ static void Interpolate2DCUDABwd(
 #else
     constexpr int thread_per_block = 512;
 #endif
-    KeBicubicInterpBw<
-        T><<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
-        input_grad_data,
-        in_h,
-        in_w,
-        n,
-        in_chw,
-        output_grad_data,
-        out_h,
-        out_w,
-        n,
-        out_chw,
-        c,
-        ratio_h,
-        ratio_w,
-        align_corners,
-        data_layout);
+    KeBicubicInterpBw<T>
+        <<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
+            input_grad_data,
+            in_h,
+            in_w,
+            n,
+            in_chw,
+            output_grad_data,
+            out_h,
+            out_w,
+            n,
+            out_chw,
+            c,
+            ratio_h,
+            ratio_w,
+            align_corners,
+            data_layout);
   }
 }
 
@@ -1574,28 +1574,43 @@ PD_REGISTER_KERNEL(bilinear_interp_v2_grad,
                    ALL_LAYOUT,
                    phi::BilinearInterpGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(nearest_interp_v2_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::NearestInterpGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(trilinear_interp_v2_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::TrilinearInterpGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(linear_interp_v2_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::LinearInterpGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(bicubic_interp_v2_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BicubicInterpGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}

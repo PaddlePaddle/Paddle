@@ -19,6 +19,7 @@ import paddle.fluid as fluid
 
 
 class TestCheckFiniteAndUnscaleOp(OpTest):
+
     def setUp(self):
         self.op_type = "check_finite_and_unscale"
         self.init_dtype()
@@ -39,6 +40,7 @@ class TestCheckFiniteAndUnscaleOp(OpTest):
 
 
 class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
+
     def setUp(self):
         self.op_type = "check_finite_and_unscale"
         self.init_dtype()
@@ -56,12 +58,13 @@ class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        # When input contains nan, do not check the output, 
+        # When input contains nan, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output(no_check_set=['Out'])
 
 
 class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
+
     def setUp(self):
         self.op_type = "check_finite_and_unscale"
         self.init_dtype()
@@ -79,7 +82,7 @@ class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        # When input contains inf, do not check the output, 
+        # When input contains inf, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output(no_check_set=['Out'])
 

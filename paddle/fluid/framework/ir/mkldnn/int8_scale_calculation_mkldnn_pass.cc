@@ -129,17 +129,13 @@ void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
     bool has_activation =
         !conv_op->Op()->GetAttrIfExists<std::string>("fuse_activation").empty();
     float activation_scale =
-        force_fp32_output
-            ? 1.0f
-            : has_activation
-                  ? conv_op->Op()->GetAttrIfExists<float>("Scale_out")
-                  : 1.0f;
+        force_fp32_output ? 1.0f
+        : has_activation  ? conv_op->Op()->GetAttrIfExists<float>("Scale_out")
+                          : 1.0f;
     auto scale_out_data =
-        force_fp32_output
-            ? 1.0f
-            : has_activation
-                  ? 1.0f
-                  : conv_op->Op()->GetAttrIfExists<float>("Scale_out");
+        force_fp32_output ? 1.0f
+        : has_activation  ? 1.0f
+                          : conv_op->Op()->GetAttrIfExists<float>("Scale_out");
     float sum_scale =
         fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
 

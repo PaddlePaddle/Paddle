@@ -27,6 +27,7 @@ from functools import reduce
 
 
 class TestSeqpoolCvmConcatFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -51,76 +52,80 @@ class TestSeqpoolCvmConcatFusePass(PassAutoScanTest):
         def generate_input3():
             return np.random.random([1, 768]).astype(np.float32)
 
-        im2sequence_op = OpConfig(
-            type="im2sequence",
-            inputs={"X": ["input_data1"]},
-            outputs={"Out": ["seq_out"]},
-            attrs={
-                "kernels": [6, 1],
-                "out_stride": [1, 1],
-                "paddings": [0, 0, 0, 0],
-                "strides": [1, 1]
-            })
+        im2sequence_op = OpConfig(type="im2sequence",
+                                  inputs={"X": ["input_data1"]},
+                                  outputs={"Out": ["seq_out"]},
+                                  attrs={
+                                      "kernels": [6, 1],
+                                      "out_stride": [1, 1],
+                                      "paddings": [0, 0, 0, 0],
+                                      "strides": [1, 1]
+                                  })
 
-        sequence_pool_op1 = OpConfig(
-            type="sequence_pool",
-            inputs={"X": ["seq_out"]},
-            outputs={"Out": ["seq_pool1_out"],
-                     "MaxIndex": ["index1_out"]},
-            attrs={
-                "is_test": is_test,
-                "pooltype": pooltype,
-                "pad_value": pad_value1
-            })
+        sequence_pool_op1 = OpConfig(type="sequence_pool",
+                                     inputs={"X": ["seq_out"]},
+                                     outputs={
+                                         "Out": ["seq_pool1_out"],
+                                         "MaxIndex": ["index1_out"]
+                                     },
+                                     attrs={
+                                         "is_test": is_test,
+                                         "pooltype": pooltype,
+                                         "pad_value": pad_value1
+                                     })
 
-        sequence_pool_op2 = OpConfig(
-            type="sequence_pool",
-            inputs={"X": ["seq_out"]},
-            outputs={"Out": ["seq_pool2_out"],
-                     "MaxIndex": ["index2_out"]},
-            attrs={
-                "is_test": is_test,
-                "pooltype": pooltype,
-                "pad_value": pad_value2
-            })
+        sequence_pool_op2 = OpConfig(type="sequence_pool",
+                                     inputs={"X": ["seq_out"]},
+                                     outputs={
+                                         "Out": ["seq_pool2_out"],
+                                         "MaxIndex": ["index2_out"]
+                                     },
+                                     attrs={
+                                         "is_test": is_test,
+                                         "pooltype": pooltype,
+                                         "pad_value": pad_value2
+                                     })
 
-        sequence_pool_op3 = OpConfig(
-            type="sequence_pool",
-            inputs={"X": ["seq_out"]},
-            outputs={"Out": ["seq_pool3_out"],
-                     "MaxIndex": ["index3_out"]},
-            attrs={
-                "is_test": is_test,
-                "pooltype": pooltype,
-                "pad_value": pad_value3
-            })
+        sequence_pool_op3 = OpConfig(type="sequence_pool",
+                                     inputs={"X": ["seq_out"]},
+                                     outputs={
+                                         "Out": ["seq_pool3_out"],
+                                         "MaxIndex": ["index3_out"]
+                                     },
+                                     attrs={
+                                         "is_test": is_test,
+                                         "pooltype": pooltype,
+                                         "pad_value": pad_value3
+                                     })
 
-        cvm_op1 = OpConfig(
-            type="cvm",
-            inputs={"X": ["seq_pool1_out"],
-                    "CVM": ["input_data2"]},
-            outputs={"Y": ["cvm1_out"]},
-            attrs={"use_cvm": use_cvm})
+        cvm_op1 = OpConfig(type="cvm",
+                           inputs={
+                               "X": ["seq_pool1_out"],
+                               "CVM": ["input_data2"]
+                           },
+                           outputs={"Y": ["cvm1_out"]},
+                           attrs={"use_cvm": use_cvm})
 
-        cvm_op2 = OpConfig(
-            type="cvm",
-            inputs={"X": ["seq_pool2_out"],
-                    "CVM": ["input_data2"]},
-            outputs={"Y": ["cvm2_out"]},
-            attrs={"use_cvm": use_cvm})
+        cvm_op2 = OpConfig(type="cvm",
+                           inputs={
+                               "X": ["seq_pool2_out"],
+                               "CVM": ["input_data2"]
+                           },
+                           outputs={"Y": ["cvm2_out"]},
+                           attrs={"use_cvm": use_cvm})
 
-        cvm_op3 = OpConfig(
-            type="cvm",
-            inputs={"X": ["seq_pool3_out"],
-                    "CVM": ["input_data2"]},
-            outputs={"Y": ["cvm3_out"]},
-            attrs={"use_cvm": use_cvm})
+        cvm_op3 = OpConfig(type="cvm",
+                           inputs={
+                               "X": ["seq_pool3_out"],
+                               "CVM": ["input_data2"]
+                           },
+                           outputs={"Y": ["cvm3_out"]},
+                           attrs={"use_cvm": use_cvm})
 
-        concat_op = OpConfig(
-            type="concat",
-            inputs={"X": ["cvm1_out", "cvm2_out", "cvm3_out"]},
-            outputs={"Out": ["concat_output"]},
-            attrs={'axis': axis})
+        concat_op = OpConfig(type="concat",
+                             inputs={"X": ["cvm1_out", "cvm2_out", "cvm3_out"]},
+                             outputs={"Out": ["concat_output"]},
+                             attrs={'axis': axis})
 
         model_net = [
             im2sequence_op, sequence_pool_op1, sequence_pool_op2,
@@ -144,8 +149,8 @@ class TestSeqpoolCvmConcatFusePass(PassAutoScanTest):
         yield config, ["im2sequence", "fusion_seqpool_cvm_concat"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
-            quant=False, passes=["seqpool_cvm_concat_fuse_pass"])
+        self.run_and_statis(quant=False,
+                            passes=["seqpool_cvm_concat_fuse_pass"])
 
 
 if __name__ == "__main__":

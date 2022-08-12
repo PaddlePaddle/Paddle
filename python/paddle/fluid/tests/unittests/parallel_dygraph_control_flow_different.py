@@ -28,14 +28,14 @@ np.random.seed(2021)
 
 
 class SimpleNet(fluid.Layer):
+
     def __init__(self, hidden_size, vocab_size, is_sparse=False):
         super(SimpleNet, self).__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
-        self.embedding = Embedding(
-            size=[self.vocab_size, self.hidden_size],
-            dtype='float32',
-            is_sparse=is_sparse)
+        self.embedding = Embedding(size=[self.vocab_size, self.hidden_size],
+                                   dtype='float32',
+                                   is_sparse=is_sparse)
 
         self.lin_a = paddle.nn.Linear(self.hidden_size, self.vocab_size)
         self.lin_b = paddle.nn.Linear(self.vocab_size, 1)
@@ -60,8 +60,10 @@ class SimpleNet(fluid.Layer):
             projection = paddle.reshape(projection, shape=[-1, 1])
             output = paddle.gather(projection, emb_mask_inds)
             target = paddle.gather(label, emb_mask_inds)
-            loss_box = F.smooth_l1_loss(
-                output, target, reduction='sum', delta=1.0)
+            loss_box = F.smooth_l1_loss(output,
+                                        target,
+                                        reduction='sum',
+                                        delta=1.0)
             loss_box = loss_box / len(conf)
 
         return loss_box
@@ -73,29 +75,33 @@ batch_num = 2000
 hidden_size = 5
 vocab_size = 100
 
-conf_dataset = [[0], [0], [0], [0], [1], [0], [1], [0], [0], [1], [0], [1],
-                [1], [1], [1], [1], [1], [1], [1], [1], [1], [0], [0], [1]]
+conf_dataset = [[0], [0], [0], [0], [1], [0], [1], [0], [0], [1], [0], [1], [1],
+                [1], [1], [1], [1], [1], [1], [1], [1], [0], [0], [1]]
 
 
 def fake_sample_reader():
+
     def __reader__():
         for i in range(batch_num):
             x_data = np.random.randint(0, vocab_size)
             y_data = np.random.random_sample((1, )).astype('float32')
-            conf_data = np.array(conf_dataset[i % len(conf_dataset)]).astype(
-                'int64')
+            conf_data = np.array(
+                conf_dataset[i % len(conf_dataset)]).astype('int64')
             yield x_data, y_data, conf_data
 
     return __reader__
 
 
 class TestSimpleNet(TestParallelDyGraphRunnerBase):
-    def get_model(self):
-        model = SimpleNet(
-            hidden_size=hidden_size, vocab_size=vocab_size, is_sparse=False)
 
-        train_reader = paddle.batch(
-            fake_sample_reader(), batch_size=batch_size, drop_last=True)
+    def get_model(self):
+        model = SimpleNet(hidden_size=hidden_size,
+                          vocab_size=vocab_size,
+                          is_sparse=False)
+
+        train_reader = paddle.batch(fake_sample_reader(),
+                                    batch_size=batch_size,
+                                    drop_last=True)
 
         optimizer = paddle.optimizer.SGD(learning_rate=0.001,
                                          parameters=model.parameters())

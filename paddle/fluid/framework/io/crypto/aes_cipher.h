@@ -55,12 +55,14 @@ class AESCipher : public Cipher {
   std::string Decrypt(const std::string& input,
                       const std::string& key) override;
 
-  void EncryptToFile(const std::string& input, const std::string& key,
+  void EncryptToFile(const std::string& input,
+                     const std::string& key,
                      const std::string& filename) override;
   std::string DecryptFromFile(const std::string& key,
                               const std::string& filename) override;
 
-  void Init(const std::string& cipher_name, const int& iv_size,
+  void Init(const std::string& cipher_name,
+            const int& iv_size,
             const int& tag_size);
 
  private:
@@ -75,7 +77,8 @@ class AESCipher : public Cipher {
                                            const std::string& key);
 
   void BuildCipher(
-      bool for_encrypt, bool* need_iv,
+      bool for_encrypt,
+      bool* need_iv,
       CryptoPP::member_ptr<CryptoPP::SymmetricCipher>* m_cipher,
       CryptoPP::member_ptr<CryptoPP::StreamTransformationFilter>* m_filter);
 

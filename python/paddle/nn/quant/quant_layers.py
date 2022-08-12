@@ -39,8 +39,9 @@ __all__ = [
     'QuantStub',
 ]
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class FakeQuantAbsMax(Layer):
@@ -65,12 +66,12 @@ class FakeQuantAbsMax(Layer):
             name) if name else 'quant_dequant.scale'
         self._scale_name = unique_name.generate(scale_prefix)
         if quant_on_weight:
-            scale_attr = ParamAttr(
-                name=self._scale_name,
-                initializer=Constant(0.001),
-                trainable=False)
-            self._scale = self.create_parameter(
-                shape=[1], attr=scale_attr, dtype=self._dtype)
+            scale_attr = ParamAttr(name=self._scale_name,
+                                   initializer=Constant(0.001),
+                                   trainable=False)
+            self._scale = self.create_parameter(shape=[1],
+                                                attr=scale_attr,
+                                                dtype=self._dtype)
             self._scale.stop_gradient = True
         else:
             self._scale = None
@@ -78,12 +79,12 @@ class FakeQuantAbsMax(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             attrs = ('bit_length', self._quant_bits)
-            quant_out = _varbase_creator(
-                type=input.type,
-                name="{}.quantized.dequantized".format(input.name),
-                shape=input.shape,
-                dtype=input.dtype,
-                persistable=False)
+            quant_out = _varbase_creator(type=input.type,
+                                         name="{}.quantized.dequantized".format(
+                                             input.name),
+                                         shape=input.shape,
+                                         dtype=input.dtype,
+                                         persistable=False)
             out_scale = self._scale
             if not out_scale:
                 out_scale = _varbase_creator(
@@ -93,8 +94,8 @@ class FakeQuantAbsMax(Layer):
                     dtype=self._dtype,
                     persistable=False)
                 out_scale.stop_gradient = True
-            out, _, = _C_ops.fake_quantize_dequantize_abs_max(input, quant_out,
-                                                              out_scale, *attrs)
+            out, _, = _C_ops.fake_quantize_dequantize_abs_max(
+                input, quant_out, out_scale, *attrs)
             return out
 
         check_variable_and_dtype(input, 'input', ['float32'], "FakeQuantAbsMax")
@@ -116,11 +117,10 @@ class FakeQuantAbsMax(Layer):
                 stop_gradient=True)
         outputs = {"Out": [quant_out], "OutScale": [out_scale]}
 
-        self._helper.append_op(
-            type="fake_quantize_dequantize_abs_max",
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs)
+        self._helper.append_op(type="fake_quantize_dequantize_abs_max",
+                               inputs=inputs,
+                               outputs=outputs,
+                               attrs=attrs)
 
         return quant_out
 
@@ -146,44 +146,44 @@ class FakeQuantMovingAverageAbsMax(Layer):
 
         scale_prefix = "{}.scale".format(
             name) if name else 'quant_dequant.scale'
-        scale_attr = ParamAttr(
-            name=unique_name.generate(scale_prefix),
-            initializer=Constant(0.001),
-            trainable=False)
-        self._scale = self.create_parameter(
-            shape=[1], attr=scale_attr, dtype=dtype)
+        scale_attr = ParamAttr(name=unique_name.generate(scale_prefix),
+                               initializer=Constant(0.001),
+                               trainable=False)
+        self._scale = self.create_parameter(shape=[1],
+                                            attr=scale_attr,
+                                            dtype=dtype)
         self._scale.stop_gradient = True
 
         state_prefix = "{}.state".format(
             name) if name else 'quant_dequant.state'
-        state_attr = ParamAttr(
-            name=unique_name.generate(state_prefix),
-            initializer=Constant(1),
-            trainable=False)
-        self._state = self.create_parameter(
-            shape=[1], attr=state_attr, dtype=dtype)
+        state_attr = ParamAttr(name=unique_name.generate(state_prefix),
+                               initializer=Constant(1),
+                               trainable=False)
+        self._state = self.create_parameter(shape=[1],
+                                            attr=state_attr,
+                                            dtype=dtype)
         self._state.stop_gradient = True
 
         accum_prefix = "{}.accum".format(
             name) if name else 'quant_dequant.accum'
-        accum_attr = ParamAttr(
-            name=unique_name.generate(accum_prefix),
-            initializer=Constant(1),
-            trainable=False)
-        self._accum = self.create_parameter(
-            shape=[1], attr=accum_attr, dtype=dtype)
+        accum_attr = ParamAttr(name=unique_name.generate(accum_prefix),
+                               initializer=Constant(1),
+                               trainable=False)
+        self._accum = self.create_parameter(shape=[1],
+                                            attr=accum_attr,
+                                            dtype=dtype)
         self._accum.stop_gradient = True
 
     def forward(self, input):
         if in_dynamic_mode():
             attrs = ('moving_rate', self._moving_rate, 'bit_length',
                      self._quant_bits, 'is_test', not self.training)
-            quant_out = _varbase_creator(
-                type=input.type,
-                name="{}.quantized.dequantized".format(input.name),
-                shape=input.shape,
-                dtype=input.dtype,
-                persistable=False)
+            quant_out = _varbase_creator(type=input.type,
+                                         name="{}.quantized.dequantized".format(
+                                             input.name),
+                                         shape=input.shape,
+                                         dtype=input.dtype,
+                                         persistable=False)
             state = self._state if self.training else None
             accum = self._accum if self.training else None
 
@@ -224,6 +224,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
 
 
 class FakeQuantChannelWiseAbsMax(Layer):
+
     def __init__(self,
                  name=None,
                  channel_num=None,
@@ -242,12 +243,12 @@ class FakeQuantChannelWiseAbsMax(Layer):
             name) if name else 'quant_dequant.scale'
         self._scale_name = unique_name.generate(scale_prefix)
         if quant_on_weight:
-            scale_attr = ParamAttr(
-                name=self._scale_name,
-                initializer=Constant(0.0),
-                trainable=False)
-            self._scale = self.create_parameter(
-                shape=[self._channel_num], attr=scale_attr, dtype=self._dtype)
+            scale_attr = ParamAttr(name=self._scale_name,
+                                   initializer=Constant(0.0),
+                                   trainable=False)
+            self._scale = self.create_parameter(shape=[self._channel_num],
+                                                attr=scale_attr,
+                                                dtype=self._dtype)
             self._scale.stop_gradient = True
         else:
             self._scale = None
@@ -256,12 +257,12 @@ class FakeQuantChannelWiseAbsMax(Layer):
         if in_dynamic_mode():
             attrs = ('bit_length', self._quant_bits, 'quant_axis',
                      self._quant_axis)
-            quant_out = _varbase_creator(
-                type=input.type,
-                name="{}.quantized.dequantized".format(input.name),
-                shape=input.shape,
-                dtype=input.dtype,
-                persistable=False)
+            quant_out = _varbase_creator(type=input.type,
+                                         name="{}.quantized.dequantized".format(
+                                             input.name),
+                                         shape=input.shape,
+                                         dtype=input.dtype,
+                                         persistable=False)
 
             out_scale = self._scale
             if out_scale is None:
@@ -307,6 +308,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
 
 
 class MovingAverageAbsMaxScale(Layer):
+
     def __init__(self, name=None, moving_rate=0.9, dtype='float32'):
         r"""
         MovingAverageMaxScale layer is used to calculating the output quantization
@@ -320,28 +322,30 @@ class MovingAverageAbsMaxScale(Layer):
 
         scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
         scale_name = unique_name.generate(scale_prefix)
-        scale_attr = ParamAttr(
-            name=scale_name, initializer=Constant(0), trainable=False)
-        self._scale = self.create_parameter(
-            shape=[1], attr=scale_attr, dtype=dtype)
+        scale_attr = ParamAttr(name=scale_name,
+                               initializer=Constant(0),
+                               trainable=False)
+        self._scale = self.create_parameter(shape=[1],
+                                            attr=scale_attr,
+                                            dtype=dtype)
         self._scale.stop_gradient = True
 
         state_prefix = "{}.state".format(name) if name else 'outscale.state'
-        state_attr = ParamAttr(
-            name=unique_name.generate(state_prefix),
-            initializer=Constant(0),
-            trainable=False)
-        self._state = self.create_parameter(
-            shape=[1], attr=state_attr, dtype=dtype)
+        state_attr = ParamAttr(name=unique_name.generate(state_prefix),
+                               initializer=Constant(0),
+                               trainable=False)
+        self._state = self.create_parameter(shape=[1],
+                                            attr=state_attr,
+                                            dtype=dtype)
         self._state.stop_gradient = True
 
         accum_prefix = "{}.accum".format(name) if name else 'outscale.accum'
-        accum_attr = ParamAttr(
-            name=unique_name.generate(accum_prefix),
-            initializer=Constant(0),
-            trainable=False)
-        self._accum = self.create_parameter(
-            shape=[1], attr=accum_attr, dtype=dtype)
+        accum_attr = ParamAttr(name=unique_name.generate(accum_prefix),
+                               initializer=Constant(0),
+                               trainable=False)
+        self._accum = self.create_parameter(shape=[1],
+                                            attr=accum_attr,
+                                            dtype=dtype)
         self._accum.stop_gradient = True
 
     def forward(self, input):
@@ -350,12 +354,11 @@ class MovingAverageAbsMaxScale(Layer):
                      not self.training)
             state = self._state if self.training else None
             accum = self._accum if self.training else None
-            quant_out = _varbase_creator(
-                type=input.type,
-                name="{}.tmp".format(input.name),
-                shape=input.shape,
-                dtype=input.dtype,
-                persistable=False)
+            quant_out = _varbase_creator(type=input.type,
+                                         name="{}.tmp".format(input.name),
+                                         shape=input.shape,
+                                         dtype=input.dtype,
+                                         persistable=False)
 
             out, _, _, _ = _C_ops.moving_average_abs_max_scale(
                 input, accum, state, quant_out, self._scale, state, accum,
@@ -381,11 +384,10 @@ class MovingAverageAbsMaxScale(Layer):
             outputs['OutState'] = [self._state]
             outputs['OutAccum'] = [self._accum]
 
-        self._helper.append_op(
-            type="moving_average_abs_max_scale",
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs)
+        self._helper.append_op(type="moving_average_abs_max_scale",
+                               inputs=inputs,
+                               outputs=outputs,
+                               attrs=attrs)
 
         return quant_out
 
@@ -471,15 +473,14 @@ class QuantizedConv2D(Layer):
                                 data_format=self._data_format)
             self._padding = 0
 
-        return F.conv2d(
-            quant_input,
-            quant_weight,
-            bias=self.bias,
-            padding=self._padding,
-            stride=self._stride,
-            dilation=self._dilation,
-            groups=self._groups,
-            data_format=self._data_format)
+        return F.conv2d(quant_input,
+                        quant_weight,
+                        bias=self.bias,
+                        padding=self._padding,
+                        stride=self._stride,
+                        dilation=self._dilation,
+                        groups=self._groups,
+                        data_format=self._data_format)
 
 
 class QuantizedConv2DTranspose(Layer):
@@ -575,17 +576,16 @@ class QuantizedConv2DTranspose(Layer):
         else:
             output_padding = 0
 
-        return F.conv2d_transpose(
-            quant_input,
-            quant_weight,
-            bias=self.bias,
-            padding=self._padding,
-            output_padding=output_padding,
-            stride=self._stride,
-            dilation=self._dilation,
-            groups=self._groups,
-            output_size=output_size,
-            data_format=self._data_format)
+        return F.conv2d_transpose(quant_input,
+                                  quant_weight,
+                                  bias=self.bias,
+                                  padding=self._padding,
+                                  output_padding=output_padding,
+                                  stride=self._stride,
+                                  dilation=self._dilation,
+                                  groups=self._groups,
+                                  output_size=output_size,
+                                  data_format=self._data_format)
 
 
 class QuantizedLinear(Layer):
@@ -652,8 +652,10 @@ class QuantizedLinear(Layer):
             weight = self._weight_preprocess(self.weight)
         quant_weight = self._fake_quant_weight(weight)
 
-        out = F.linear(
-            x=quant_input, weight=quant_weight, bias=self.bias, name=self.name)
+        out = F.linear(x=quant_input,
+                       weight=quant_weight,
+                       bias=self.bias,
+                       name=self.name)
         return out
 
 
@@ -677,8 +679,8 @@ class MAOutputScaleLayer(Layer):
     def forward(self, *inputs, **kwargs):
         out = self._layer(*inputs, **kwargs)
         # TODO (jc): support the ops of several outputs
-        if (isinstance(out, list) or isinstance(out, tuple) or
-                isinstance(out, dict)):
+        if (isinstance(out, list) or isinstance(out, tuple)
+                or isinstance(out, dict)):
             return out
         else:
             return self._ma_output_scale(out)

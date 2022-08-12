@@ -40,6 +40,7 @@ def main_func():
 
 
 class TestConvertGenerator(unittest.TestCase):
+
     def test_raise_error(self):
         with self.assertRaises(Exception):
             to_static(main_func)()

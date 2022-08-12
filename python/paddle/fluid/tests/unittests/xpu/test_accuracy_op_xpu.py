@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle.fluid as fluid
@@ -30,11 +31,13 @@ paddle.enable_static()
 
 
 class XPUTestAccuracyOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'accuracy'
         self.use_dynamic_create_class = False
 
     class TestXPUAccuracyOp(XPUOpTest):
+
         def setUp(self):
             self.op_type = "accuracy"
             self.init_dtype()

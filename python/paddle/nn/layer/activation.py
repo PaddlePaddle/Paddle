@@ -419,12 +419,12 @@ class PReLU(Layer):
         self._name = name
         self._data_format = data_format
 
-        self._weight = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[self._num_parameters],
-            dtype=get_default_dtype(),
-            is_bias=False,
-            default_initializer=Constant(self._init))
+        self._weight = self.create_parameter(attr=self._weight_attr,
+                                             shape=[self._num_parameters],
+                                             dtype=get_default_dtype(),
+                                             is_bias=False,
+                                             default_initializer=Constant(
+                                                 self._init))
 
     def forward(self, x):
         return F.prelu(x, self._weight, data_format=self._data_format)
@@ -486,7 +486,6 @@ class RReLU(Layer):
 
     Examples:
         .. code-block:: python
-            :name: RReLU-example
 
             import paddle
 
@@ -514,8 +513,10 @@ class RReLU(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.rrelu(
-            x, lower=self._lower, upper=self._upper, training=self.training)
+        return F.rrelu(x,
+                       lower=self._lower,
+                       upper=self._upper,
+                       training=self.training)
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''

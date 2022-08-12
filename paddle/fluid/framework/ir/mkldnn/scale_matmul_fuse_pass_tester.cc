@@ -12,16 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/scale_matmul_fuse_pass.h"
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/mkldnn/scale_matmul_fuse_pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
            const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs, float scale = 1.0f,
+           const std::vector<std::string>& outputs,
+           float scale = 1.0f,
            float bias = 0.0f) {
   auto* op = prog->MutableBlock(0)->AppendOp();
 
@@ -55,9 +58,11 @@ ProgramDesc BuildProgramDesc(float scale, float bias, float alpha) {
   return prog;
 }
 
-void MainTest(const ProgramDesc& prog, int removed_nodes_count,
+void MainTest(const ProgramDesc& prog,
+              int removed_nodes_count,
               const std::vector<std::string> scale_in_out,
-              const std::vector<std::string> matmul_in_out, float alpha) {
+              const std::vector<std::string> matmul_in_out,
+              float alpha) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
   int original_nodes_num = graph->Nodes().size();
   auto pass = PassRegistry::Instance().Get("scale_matmul_fuse_pass");
@@ -86,8 +91,11 @@ TEST(ScaleMatmulFusePass, scale_matmul_with_no_bias) {
   auto scale = 2.34f;
   auto alpha = 3.45f;
   int removed_nodes_count = 2;
-  MainTest(BuildProgramDesc(scale, bias, alpha), removed_nodes_count, {},
-           {"a", "c", "d"}, scale * alpha);
+  MainTest(BuildProgramDesc(scale, bias, alpha),
+           removed_nodes_count,
+           {},
+           {"a", "c", "d"},
+           scale * alpha);
 }
 
 TEST(ScaleMatmulFusePass, scale_matmul_with_bias) {
@@ -95,8 +103,11 @@ TEST(ScaleMatmulFusePass, scale_matmul_with_bias) {
   auto scale = 2.34f;
   auto alpha = 3.45f;
   int removed_nodes_count = 0;
-  MainTest(BuildProgramDesc(scale, bias, alpha), removed_nodes_count,
-           {"a", "b"}, {"b", "c", "d"}, alpha);
+  MainTest(BuildProgramDesc(scale, bias, alpha),
+           removed_nodes_count,
+           {"a", "b"},
+           {"b", "c", "d"},
+           alpha);
 }
 
 }  // namespace ir

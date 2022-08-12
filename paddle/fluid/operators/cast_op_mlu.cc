@@ -38,57 +38,36 @@ class CastMLUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(MLUSupportsCast(src_type, dst_type), true,
+    PADDLE_ENFORCE_EQ(MLUSupportsCast(src_type, dst_type),
+                      true,
                       platform::errors::InvalidArgument(
                           "MLU not support cast [%d] to [%d]",
                           framework::DataTypeToString(src_type),
                           framework::DataTypeToString(dst_type)));
 
-    switch (dst_type) {
-      case VT::FP32:
-        output->mutable_data<float>(place);
-        break;
-      case VT::FP16:
-        output->mutable_data<paddle::platform::float16>(place);
-        break;
-      case VT::INT32:
-        output->mutable_data<int32_t>(place);
-        break;
-      case VT::INT16:
-        output->mutable_data<int16_t>(place);
-        break;
-      case VT::INT8:
-        output->mutable_data<int8_t>(place);
-        break;
-      case VT::UINT8:
-        output->mutable_data<uint8_t>(place);
-        break;
-      case VT::BOOL:
-        output->mutable_data<bool>(place);
-        break;
-      case VT::INT64:
-        output->mutable_data<int64_t>(place);
-        break;
-      default:
-        PADDLE_THROW(platform::errors::Unavailable(
-            "Not supported cast %d -> %d",
-            framework::DataTypeToString(src_type),
-            framework::DataTypeToString(dst_type)));
-    }
+    output->mutable_data(place, framework::TransToPhiDataType(dst_type));
 
     MLUCnnlTensorDesc input_desc(*input);
     MLUCnnlTensorDesc output_desc(*output);
     cnnlCastDataType_t cast_type = GetCastDataType(src_type, dst_type);
 
-    MLUCnnl::Cast(ctx, cast_type, input_desc.get(), GetBasePtr(input),
-                  output_desc.get(), GetBasePtr(output));
+    MLUCnnl::Cast(ctx,
+                  cast_type,
+                  input_desc.get(),
+                  GetBasePtr(input),
+                  output_desc.get(),
+                  GetBasePtr(output));
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(cast, ops::CastMLUKernel<float>, ops::CastMLUKernel<int>,
-                       ops::CastMLUKernel<int16_t>, ops::CastMLUKernel<uint8_t>,
-                       ops::CastMLUKernel<bool>, ops::CastMLUKernel<int64_t>,
+REGISTER_OP_MLU_KERNEL(cast,
+                       ops::CastMLUKernel<float>,
+                       ops::CastMLUKernel<int>,
+                       ops::CastMLUKernel<int16_t>,
+                       ops::CastMLUKernel<uint8_t>,
+                       ops::CastMLUKernel<bool>,
+                       ops::CastMLUKernel<int64_t>,
                        ops::CastMLUKernel<paddle::platform::float16>);

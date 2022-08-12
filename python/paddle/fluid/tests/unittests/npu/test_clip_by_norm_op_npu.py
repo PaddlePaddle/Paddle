@@ -20,6 +20,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 
@@ -27,6 +28,7 @@ paddle.enable_static()
 
 
 class TestClipByNormOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.max_relative_error = 0.006
@@ -35,7 +37,9 @@ class TestClipByNormOp(OpTest):
         input = np.random.random(self.shape).astype(self.dtype)
         input[np.abs(input) < self.max_relative_error] = 0.5
         self.op_type = "clip_by_norm"
-        self.inputs = {'X': input, }
+        self.inputs = {
+            'X': input,
+        }
         self.attrs = {}
         self.attrs['max_norm'] = self.max_norm
         norm = np.sqrt(np.sum(np.square(input)))
@@ -61,24 +65,28 @@ class TestClipByNormOp(OpTest):
 
 
 class TestCase1(TestClipByNormOp):
+
     def initTestCase(self):
         self.shape = (100, )
         self.max_norm = 1e20
 
 
 class TestCase2(TestClipByNormOp):
+
     def initTestCase(self):
         self.shape = (16, 16)
         self.max_norm = 0.1
 
 
 class TestCase3(TestClipByNormOp):
+
     def initTestCase(self):
         self.shape = (4, 8, 16)
         self.max_norm = 1.0
 
 
 class TestClipByNormOpFp16(TestClipByNormOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -87,18 +95,21 @@ class TestClipByNormOpFp16(TestClipByNormOp):
 
 
 class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):
+
     def initTestCase(self):
         self.shape = (100, )
         self.max_norm = 1e20
 
 
 class TestClipByNormOpFp16Case2(TestClipByNormOpFp16):
+
     def initTestCase(self):
         self.shape = (16, 16)
         self.max_norm = 0.1
 
 
 class TestClipByNormOpFp16Case3(TestClipByNormOpFp16):
+
     def initTestCase(self):
         self.shape = (4, 8, 16)
         self.max_norm = 1.0

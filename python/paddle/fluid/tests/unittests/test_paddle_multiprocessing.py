@@ -55,6 +55,7 @@ def send_parambase(queue, event, device, dtype):
 
 
 class leak_checker(object):
+
     def __init__(self, test_case):
         self.checked_pids = [os.getpid()]
         self.test_case = test_case
@@ -98,6 +99,7 @@ class leak_checker(object):
 
 
 class TestMultiprocessingBase(unittest.TestCase):
+
     def get_tensor(self, device="cpu"):
         self.device = device.lower()
         place = None
@@ -123,6 +125,7 @@ class TestMultiprocessingBase(unittest.TestCase):
                       dtype="float32",
                       repeat=1,
                       param=False):
+
         def test_fill():
             if param:
                 x = self.get_parameter()
@@ -178,6 +181,7 @@ class TestMultiprocessingBase(unittest.TestCase):
 
 
 class TestMultiprocessingCpu(TestMultiprocessingBase):
+
     def func_test_pass_tensor(self):
         if in_dygraph_mode():
             return
@@ -213,6 +217,7 @@ class TestMultiprocessingCpu(TestMultiprocessingBase):
 
 
 class TestMultiprocessingGpu(TestMultiprocessingBase):
+
     @unittest.skipIf(not paddle.fluid.core.is_compiled_with_cuda(),
                      "core is not compiled with CUDA")
     def func_test_pass_tensor(self):

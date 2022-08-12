@@ -23,6 +23,7 @@ from simple_nets import simple_fc_net_with_inputs, simple_fc_net
 
 
 class TestFetchLoDTensorArray(unittest.TestCase):
+
     def build_program(self, main_program, startup_program):
         with fluid.unique_name.guard():
             with fluid.program_guard(main_program, startup_program):

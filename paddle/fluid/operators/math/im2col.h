@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -85,20 +86,24 @@ enum class ColFormat { kCFO = 0, kOCF = 1 };
 template <ColFormat Format, typename DeviceContext, typename T>
 class Im2ColFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& im,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* col,
+                  const std::vector<int>& padding,
+                  framework::Tensor* col,
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
 template <ColFormat Format, typename DeviceContext, typename T>
 class Col2ImFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& col,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* im,
+                  const std::vector<int>& padding,
+                  framework::Tensor* im,
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 

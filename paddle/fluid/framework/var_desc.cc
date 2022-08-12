@@ -25,10 +25,12 @@ proto::VarType::Type VarDesc::GetType() const { return desc_.type().type(); }
 
 void VarDesc::SetType(proto::VarType::Type type) {
   desc_.mutable_type()->set_type(type);
+  need_updated_ = true;
 }
 
 void VarDesc::SetShape(const std::vector<int64_t> &dims) {
   VectorToRepeated(dims, mutable_tensor_desc()->mutable_dims());
+  need_updated_ = true;
 }
 
 void VarDesc::SetTensorDescNum(size_t num) {
@@ -48,6 +50,7 @@ void VarDesc::SetTensorDescNum(size_t num) {
                                         "supported by the %s type variable.",
                                         this->Name()));
   }
+  need_updated_ = true;
 }
 
 size_t VarDesc::GetTensorDescNum() const {
@@ -76,6 +79,7 @@ void VarDesc::SetShapes(
   for (size_t i = 0; i < multiple_dims.size(); ++i) {
     VectorToRepeated(multiple_dims[i], tensors[i]->mutable_dims());
   }
+  need_updated_ = true;
 }
 
 std::vector<int64_t> VarDesc::GetShape() const {
@@ -94,6 +98,7 @@ std::vector<std::vector<int64_t>> VarDesc::GetShapes() const {
 
 void VarDesc::SetDataType(proto::VarType::Type data_type) {
   mutable_tensor_desc()->set_data_type(data_type);
+  need_updated_ = true;
 }
 
 void VarDesc::SetDataTypes(
@@ -111,6 +116,7 @@ void VarDesc::SetDataTypes(
   for (size_t i = 0; i < multiple_data_type.size(); ++i) {
     tensor_descs[i]->set_data_type(multiple_data_type[i]);
   }
+  need_updated_ = true;
 }
 
 proto::VarType::Type VarDesc::GetDataType() const {
@@ -144,6 +150,7 @@ void VarDesc::SetLoDLevel(int32_t lod_level) {
           "Setting 'lod_level' is not supported by the %s type variable.",
           this->Name()));
   }
+  need_updated_ = true;
 }
 
 void VarDesc::SetLoDLevels(const std::vector<int32_t> &multiple_lod_level) {
@@ -168,6 +175,7 @@ void VarDesc::SetLoDLevels(const std::vector<int32_t> &multiple_lod_level) {
           "Setting 'lod_levels' is not supported by the %s type variable",
           this->Name()));
   }
+  need_updated_ = true;
 }
 
 int32_t VarDesc::GetLoDLevel() const {
@@ -202,10 +210,12 @@ std::vector<int32_t> VarDesc::GetLoDLevels() const {
 
 const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
   PADDLE_ENFORCE_EQ(
-      desc_.has_type(), true,
+      desc_.has_type(),
+      true,
       platform::errors::NotFound("The variable's type was not be set."));
   PADDLE_ENFORCE_EQ(
-      desc_.type().has_type(), true,
+      desc_.type().has_type(),
+      true,
       platform::errors::NotFound("The variable's type was not be set."));
   switch (desc_.type().type()) {
     case proto::VarType::SELECTED_ROWS:
@@ -227,7 +237,8 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
 
 std::vector<proto::VarType::TensorDesc> VarDesc::tensor_descs() const {
   PADDLE_ENFORCE_EQ(
-      desc_.has_type(), true,
+      desc_.has_type(),
+      true,
       platform::errors::NotFound("The variable's type was not be set."));
   std::vector<proto::VarType::TensorDesc> res;
   res.reserve(GetTensorDescNum());
@@ -246,10 +257,12 @@ std::vector<proto::VarType::TensorDesc> VarDesc::tensor_descs() const {
 
 proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
   PADDLE_ENFORCE_EQ(
-      desc_.has_type(), true,
+      desc_.has_type(),
+      true,
       platform::errors::NotFound("The variable's type was not be set."));
   PADDLE_ENFORCE_EQ(
-      desc_.type().has_type(), true,
+      desc_.type().has_type(),
+      true,
       platform::errors::NotFound("The variable's type was not be set."));
   switch (desc_.type().type()) {
     case proto::VarType::SELECTED_ROWS:
@@ -268,14 +281,17 @@ proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
                                         "supported by the %s type variable.",
                                         this->Name()));
   }
+  need_updated_ = true;
 }
 
 std::vector<proto::VarType::TensorDesc *> VarDesc::mutable_tensor_descs() {
   PADDLE_ENFORCE_EQ(
-      desc_.has_type(), true,
+      desc_.has_type(),
+      true,
       platform::errors::NotFound("The variable's type was not be set."));
   PADDLE_ENFORCE_EQ(
-      desc_.type().has_type(), true,
+      desc_.type().has_type(),
+      true,
       platform::errors::NotFound("The variable's type was not be set."));
   std::vector<proto::VarType::TensorDesc *> res;
   res.reserve(GetTensorDescNum());
@@ -291,6 +307,7 @@ std::vector<proto::VarType::TensorDesc *> VarDesc::mutable_tensor_descs() {
           "Getting 'tensor_descs' is not supported by the %s type variable.",
           this->Name()));
   }
+  need_updated_ = true;
 }
 
 std::vector<std::string> VarDesc::AttrNames() const {
@@ -308,9 +325,9 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
   // NOTICE(sandyhouse): pybind11 will take the empty list in python as
   // the std::vector<int> type in C++; so we have to change the attr's type
   // here if we meet this issue
-  proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
+  proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
   if (attr_type == proto::AttrType::INTS &&
-      BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
+      PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
     this->attrs_[name] = std::vector<int>();
     return;
@@ -318,18 +335,22 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
   bool valid = attr_type == proto::AttrType::INT ||
                attr_type == proto::AttrType::STRING ||
                attr_type == proto::AttrType::INTS;
-  PADDLE_ENFORCE_EQ(valid, true, platform::errors::InvalidArgument(
-                                     "The value for attr (%s) must be "
-                                     "one of list or int or string.",
-                                     name));
+  PADDLE_ENFORCE_EQ(
+      valid,
+      true,
+      platform::errors::InvalidArgument("The value for attr (%s) must be "
+                                        "one of list or int or string.",
+                                        name));
 
   this->attrs_[name] = v;
 }
 
 Attribute VarDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
-                                          "Attribute %s is not found.", name));
+  PADDLE_ENFORCE_NE(
+      it,
+      attrs_.end(),
+      platform::errors::NotFound("Attribute %s is not found.", name));
   return it->second;
 }
 

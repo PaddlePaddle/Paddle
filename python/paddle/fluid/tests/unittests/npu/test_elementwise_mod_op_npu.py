@@ -17,6 +17,7 @@ import numpy as np
 import unittest
 
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 
@@ -29,6 +30,7 @@ paddle.enable_static()
 
 
 class TestElementwiseModOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -68,11 +70,13 @@ class TestElementwiseModOp(OpTest):
 
 
 class TestElementwiseModOpInt64(TestElementwiseModOp):
+
     def init_dtype(self):
         self.dtype = np.int64
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
+
     def init_input_output(self):
         scale_x = random.randint(0, 100000000)
         scale_y = random.randint(1, 100000000)
@@ -82,6 +86,7 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
 
 
 class TestElementwiseModOpFloat(TestElementwiseModOp):
+
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -95,6 +100,7 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
+
     def init_dtype(self):
         self.dtype = np.float64
 
@@ -103,6 +109,7 @@ class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
 
 
 class TestElementwiseModOpFP16(TestElementwiseModOpFloat):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -111,6 +118,7 @@ class TestElementwiseModOpFP16(TestElementwiseModOpFloat):
 
 
 class TestElementwiseModOp_broadcast_0(TestElementwiseModOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -121,6 +129,7 @@ class TestElementwiseModOp_broadcast_0(TestElementwiseModOp):
 
 
 class TestElementwiseModOp_broadcast_1(TestElementwiseModOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 100, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -131,6 +140,7 @@ class TestElementwiseModOp_broadcast_1(TestElementwiseModOp):
 
 
 class TestElementwiseModOp_broadcast_2(TestElementwiseModOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -141,6 +151,7 @@ class TestElementwiseModOp_broadcast_2(TestElementwiseModOp):
 
 
 class TestRemainderOp(unittest.TestCase):
+
     def test_name(self):
         paddle.set_device('npu:0')
         with fluid.program_guard(fluid.Program()):

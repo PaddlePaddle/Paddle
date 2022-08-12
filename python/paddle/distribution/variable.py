@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -43,11 +43,13 @@ class Variable(object):
 
 
 class Real(Variable):
+
     def __init__(self, event_rank=0):
         super(Real, self).__init__(False, event_rank, constraint.real)
 
 
 class Positive(Variable):
+
     def __init__(self, event_rank=0):
         super(Positive, self).__init__(False, event_rank, constraint.positive)
 
@@ -64,8 +66,9 @@ class Independent(Variable):
     def __init__(self, base, reinterpreted_batch_rank):
         self._base = base
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
-        super(Independent, self).__init__(
-            base.is_discrete, base.event_rank + reinterpreted_batch_rank)
+        super(Independent,
+              self).__init__(base.is_discrete,
+                             base.event_rank + reinterpreted_batch_rank)
 
     def constraint(self, value):
         ret = self._base.constraint(value)
@@ -73,11 +76,13 @@ class Independent(Variable):
             raise ValueError(
                 "Input dimensions must be equal or grater than  {}".format(
                     self._reinterpreted_batch_rank))
-        return ret.reshape(ret.shape[:ret.dim() - self.reinterpreted_batch_rank]
-                           + (-1, )).all(-1)
+        return ret.reshape(ret.shape[:ret.dim() -
+                                     self.reinterpreted_batch_rank] +
+                           (-1, )).all(-1)
 
 
 class Stack(Variable):
+
     def __init__(self, vars, axis=0):
         self._vars = vars
         self._axis = axis

@@ -45,10 +45,12 @@ class RollGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(X@GRAD) should be not null."));
 
@@ -115,14 +117,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(RollGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(roll, RollInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(roll,
+                            RollInferShapeFunctor,
                             PD_INFER_META(phi::RollInferMeta));
 
-REGISTER_OPERATOR(roll, ops::RollOp, ops::RollOpMaker,
+REGISTER_OPERATOR(roll,
+                  ops::RollOp,
+                  ops::RollOpMaker,
                   ops::RollGradMaker<paddle::framework::OpDesc>,
                   ops::RollGradMaker<paddle::imperative::OpBase>,
                   RollInferShapeFunctor);
-REGISTER_OPERATOR(roll_grad, ops::RollGradOp,
+REGISTER_OPERATOR(roll_grad,
+                  ops::RollGradOp,
                   ops::RollGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_VERSION(roll)

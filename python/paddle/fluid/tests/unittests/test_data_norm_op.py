@@ -43,8 +43,8 @@ def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
             for j in range(0, x_shape[1], slot_dim):
                 if x[i][j] <= -min_precision or x[i][j] >= min_precision:
                     for k in range(0, slot_dim):
-                        y[i][j + k] = (
-                            x[i][j + k] - means_arr[j + k]) * scales_arr[j + k]
+                        y[i][j + k] = (x[i][j + k] -
+                                       means_arr[j + k]) * scales_arr[j + k]
     return y
 
 
@@ -120,11 +120,11 @@ class TestDataNormOpInference(unittest.TestCase):
                                         OpTest.np_dtype_to_fluid_dtype(x_val),
                                         place)
         batch_size_tensor = create_or_get_tensor(
-            scope, "batch_size",
-            OpTest.np_dtype_to_fluid_dtype(batch_size), place)
+            scope, "batch_size", OpTest.np_dtype_to_fluid_dtype(batch_size),
+            place)
         batch_sum_tensor = create_or_get_tensor(
-            scope, "batch_sum",
-            OpTest.np_dtype_to_fluid_dtype(batch_sum), place)
+            scope, "batch_sum", OpTest.np_dtype_to_fluid_dtype(batch_sum),
+            place)
         batch_square_sum_tensor = create_or_get_tensor(
             scope, "batch_square_sum",
             OpTest.np_dtype_to_fluid_dtype(batch_square_sum), place)
@@ -155,8 +155,8 @@ class TestDataNormOpInference(unittest.TestCase):
             scale_w = np.ones(scale_shape).astype(np.float32)
             bias = np.zeros(scale_shape).astype(np.float32)
             scale_w_tensor = create_or_get_tensor(
-                scope, "scale_w",
-                OpTest.np_dtype_to_fluid_dtype(scale_w), place)
+                scope, "scale_w", OpTest.np_dtype_to_fluid_dtype(scale_w),
+                place)
             bias_tensor = create_or_get_tensor(
                 scope, "bias", OpTest.np_dtype_to_fluid_dtype(bias), place)
             data_norm_op = Operator(
@@ -181,13 +181,12 @@ class TestDataNormOpInference(unittest.TestCase):
         data_norm_op.run(scope, place)
 
         # check inference result
-        self.__assert_close(
-            y_tensor,
-            y_out,
-            "inference output are different at " + str(place) + ", " +
-            data_layout + ", " + str(np.dtype(dtype)) +
-            str(np.array(y_tensor)) + str(y_out),
-            atol=1e-3)
+        self.__assert_close(y_tensor,
+                            y_out,
+                            "inference output are different at " + str(place) +
+                            ", " + data_layout + ", " + str(np.dtype(dtype)) +
+                            str(np.array(y_tensor)) + str(y_out),
+                            atol=1e-3)
 
     def test_check_output(self):
         """
@@ -495,12 +494,14 @@ class TestDataNormOpWithSlotDim(OpTest):
 
 
 class TestDataNormOpErrorr(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             x2 = fluid.layers.data(name='x2', shape=[3, 4], dtype="int32")
             #self.assertRaises(TypeError, fluid.data_norm, x2)
-            fluid.layers.data_norm(
-                input=x2, param_attr={}, enable_scale_and_shift=True)
+            fluid.layers.data_norm(input=x2,
+                                   param_attr={},
+                                   enable_scale_and_shift=True)
 
 
 if __name__ == '__main__':

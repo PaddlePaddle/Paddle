@@ -28,6 +28,7 @@
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Support/LogicalResult.h>
 #include <mlir/Transforms/Passes.h>
+
 #include <iostream>
 
 #include "paddle/infrt/common/global.h"
@@ -74,8 +75,8 @@ void printOperation(mlir::Operation *op, int indent) {
   if (!op->getAttrs().empty()) {
     printIndent(indent) << op->getAttrs().size() << " attributes:\n";
     for (mlir::NamedAttribute attr : op->getAttrs()) {
-      printIndent(indent + 1) << "- {" << attr.getName() << " : "
-                              << attr.getValue() << "}\n";
+      printIndent(indent + 1)
+          << "- {" << attr.getName() << " : " << attr.getValue() << "}\n";
     }
   }
 

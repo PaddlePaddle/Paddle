@@ -43,14 +43,15 @@ class TestBincountOpAPI(unittest.TestCase):
             img = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
             w = np.array([0, 1, 1, 2, 2, 1, 0]).astype(np.int64)
             res = exe.run(train_program,
-                          feed={'input': img,
-                                'weights': w},
+                          feed={
+                              'input': img,
+                              'weights': w
+                          },
                           fetch_list=[output])
             actual = np.array(res[0])
             expected = np.bincount(img, weights=w)
-            self.assertTrue(
-                (actual == expected).all(),
-                msg='bincount output is wrong, out =' + str(actual))
+            self.assertTrue((actual == expected).all(),
+                            msg='bincount output is wrong, out =' + str(actual))
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
@@ -153,12 +154,12 @@ class TestCase1(TestBincountOp):
 
     def init_test_case(self):
         self.minlength = 0
-        self.np_weights = np.random.randint(
-            low=0, high=20, size=10).astype(np.float32)
+        self.np_weights = np.random.randint(low=0, high=20,
+                                            size=10).astype(np.float32)
         self.np_input = np.random.randint(low=0, high=20, size=10)
-        self.Out = np.bincount(
-            self.np_input, weights=self.np_weights,
-            minlength=self.minlength).astype(np.float32)
+        self.Out = np.bincount(self.np_input,
+                               weights=self.np_weights,
+                               minlength=self.minlength).astype(np.float32)
 
 
 class TestCase2(TestBincountOp):
@@ -175,8 +176,9 @@ class TestCase2(TestBincountOp):
         self.minlength = 0
         self.np_weights = np.random.randint(low=0, high=20, size=10)
         self.np_input = np.random.randint(low=0, high=20, size=10)
-        self.Out = np.bincount(
-            self.np_input, weights=self.np_weights, minlength=self.minlength)
+        self.Out = np.bincount(self.np_input,
+                               weights=self.np_weights,
+                               minlength=self.minlength)
 
 
 class TestCase3(TestBincountOp):
@@ -191,8 +193,8 @@ class TestCase4(TestBincountOp):
     # with input(INT32)
     def init_test_case(self):
         self.minlength = 0
-        self.np_input = np.random.randint(
-            low=0, high=20, size=10).astype(np.int32)
+        self.np_input = np.random.randint(low=0, high=20,
+                                          size=10).astype(np.int32)
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
 

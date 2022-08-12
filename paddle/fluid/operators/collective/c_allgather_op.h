@@ -25,6 +25,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allgather.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -49,7 +50,8 @@ class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
     T* recv_buff = out->mutable_data<T>(out_dims, place);
 
     PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(), true,
+        gloo->IsInitialized(),
+        true,
         platform::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::AllgatherOptions opts(gloo->GetContext());

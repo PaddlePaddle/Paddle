@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/nanmedian_kernel.h"
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/nanmedian_kernel.h"
+#include "paddle/phi/kernels/impl/nanmedian_kernel_impl.h"
 #include "paddle/phi/kernels/top_k_kernel.h"
 
 namespace phi {
@@ -216,30 +218,30 @@ void ProcessMedianKernel(const Context& dev_ctx,
   T div_factor = static_cast<T>(2.0);
   T nan_val = std::numeric_limits<T>::quiet_NaN();
   if (should_ignore_nan) {
-    CalcNanmedianKernel<
-        T><<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-        sort_out_ptr,
-        sort_indices_ptr,
-        nan_counts_ptr,
-        m_ptr,
-        o_ptr,
-        is_ori_odd,
-        pre_dim,
-        max_valid_num,
-        stride,
-        div_factor,
-        nan_val);
+    CalcNanmedianKernel<T>
+        <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+            sort_out_ptr,
+            sort_indices_ptr,
+            nan_counts_ptr,
+            m_ptr,
+            o_ptr,
+            is_ori_odd,
+            pre_dim,
+            max_valid_num,
+            stride,
+            div_factor,
+            nan_val);
   } else {
-    CalcMedianKernel<
-        T><<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-        sort_out_ptr,
-        sort_indices_ptr,
-        m_ptr,
-        o_ptr,
-        div_factor,
-        is_ori_odd,
-        pre_dim,
-        sort_k);
+    CalcMedianKernel<T>
+        <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+            sort_out_ptr,
+            sort_indices_ptr,
+            m_ptr,
+            o_ptr,
+            div_factor,
+            is_ori_odd,
+            pre_dim,
+            sort_k);
   }
 }
 

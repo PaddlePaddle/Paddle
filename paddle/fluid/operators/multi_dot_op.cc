@@ -55,8 +55,10 @@ class MultiDotOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "multi_dot");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "multi_dot");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "multi_dot");
 
     auto in_x = "X";
     auto out_x_g_n = framework::GradVarName(in_x);
@@ -98,14 +100,18 @@ class MultiDotOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(multi_dot, MultiDotInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(multi_dot,
+                            MultiDotInferShapeFunctor,
                             PD_INFER_META(phi::MultiDotInferMeta));
 
-REGISTER_OPERATOR(multi_dot, ops::MultiDotOp, ops::MultiDotOpMaker,
+REGISTER_OPERATOR(multi_dot,
+                  ops::MultiDotOp,
+                  ops::MultiDotOpMaker,
                   ops::MultiDotOpGradMaker<paddle::framework::OpDesc>,
                   ops::MultiDotOpGradMaker<paddle::imperative::OpBase>,
                   MultiDotInferShapeFunctor);
 
-REGISTER_OPERATOR(multi_dot_grad, ops::MultiDotOpGrad,
+REGISTER_OPERATOR(multi_dot_grad,
+                  ops::MultiDotOpGrad,
                   ops::MultiDotOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MultiDotOpDoubleGradMaker<paddle::imperative::OpBase>);

@@ -29,6 +29,7 @@ paddle.enable_static()
 
 
 class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 
@@ -40,12 +41,15 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
             n_expert = 2
             world_size = 2
             tot_expert = n_expert * world_size
-            local_input_buf = paddle.static.data(
-                name="local_input_buf", shape=[-1, in_feat], dtype="float32")
-            local_expert_count = paddle.static.data(
-                name="local_expert_count", shape=[tot_expert], dtype="int64")
-            global_expert_count = paddle.static.data(
-                name="global_expert_count", shape=[tot_expert], dtype="int64")
+            local_input_buf = paddle.static.data(name="local_input_buf",
+                                                 shape=[-1, in_feat],
+                                                 dtype="float32")
+            local_expert_count = paddle.static.data(name="local_expert_count",
+                                                    shape=[tot_expert],
+                                                    dtype="int64")
+            global_expert_count = paddle.static.data(name="global_expert_count",
+                                                     shape=[tot_expert],
+                                                     dtype="int64")
 
             output = paddle.distributed.utils.global_gather(
                 local_input_buf, local_expert_count, global_expert_count)
@@ -79,13 +83,12 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
         # Call paddle.distributed.alltoall() under legacy dygraph
         _enable_legacy_dygraph()
         np.random.seed(os.getpid())
-        local_expert_count = np.random.randint(
-            1, 4, size=tot_expert).astype("int64")
+        local_expert_count = np.random.randint(1, 4,
+                                               size=tot_expert).astype("int64")
         local_expert_count = paddle.to_tensor(local_expert_count)
         global_expert_count = []
-        paddle.distributed.alltoall(
-            paddle.split(
-                local_expert_count, 2, axis=0), global_expert_count)
+        paddle.distributed.alltoall(paddle.split(local_expert_count, 2, axis=0),
+                                    global_expert_count)
         global_expert_count = paddle.concat(global_expert_count, axis=0)
         global_expert_count = global_expert_count.numpy()
         local_expert_count = local_expert_count.numpy()

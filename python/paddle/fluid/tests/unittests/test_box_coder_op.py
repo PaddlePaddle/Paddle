@@ -19,6 +19,8 @@ import numpy as np
 import sys
 import math
 from op_test import OpTest
+import paddle
+import paddle.fluid.core as core
 
 
 def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
@@ -34,8 +36,9 @@ def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
     pb_y = pb_y.reshape(shape)
 
     if pb_v.ndim == 2:
-        var_shape = (1, pb_v.shape[0], pb_v.shape[1]) if axis == 0 else (
-            pb_v.shape[0], 1, pb_v.shape[1])
+        var_shape = (1, pb_v.shape[0],
+                     pb_v.shape[1]) if axis == 0 else (pb_v.shape[0], 1,
+                                                       pb_v.shape[1])
         pb_v = pb_v.reshape(var_shape)
     if pb_v.ndim == 1:
         tb_x = pb_v[0] * t_box[:, :, 0] * pb_w + pb_x
@@ -102,11 +105,13 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
 
 
 class TestBoxCoderOp(OpTest):
+
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def setUp(self):
         self.op_type = "box_coder"
+        self.python_api = paddle.fluid.layers.box_coder
         lod = [[1, 1, 1, 1, 1]]
         prior_box = np.random.random((81, 4)).astype('float32')
         prior_box_var = np.random.random((81, 4)).astype('float32')
@@ -128,10 +133,12 @@ class TestBoxCoderOp(OpTest):
 
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
+
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def setUp(self):
+        self.python_api = paddle.fluid.layers.box_coder
         self.op_type = "box_coder"
         lod = [[0, 1, 2, 3, 4, 5]]
         prior_box = np.random.random((81, 4)).astype('float32')
@@ -144,6 +151,7 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
 
         self.inputs = {
             'PriorBox': prior_box,
+            'PriorBoxVar': prior_box_var,
             'TargetBox': target_box,
         }
         self.attrs = {
@@ -154,10 +162,12 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
 
 
 class TestBoxCoderOpWithLoD(OpTest):
+
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def setUp(self):
+        self.python_api = paddle.fluid.layers.box_coder
         self.op_type = "box_coder"
         lod = [[10, 20, 20]]
         prior_box = np.random.random((20, 4)).astype('float32')
@@ -178,10 +188,12 @@ class TestBoxCoderOpWithLoD(OpTest):
 
 
 class TestBoxCoderOpWithAxis(OpTest):
+
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def setUp(self):
+        self.python_api = paddle.fluid.layers.box_coder
         self.op_type = "box_coder"
         lod = [[1, 1, 1, 1, 1]]
         prior_box = np.random.random((30, 4)).astype('float32')
@@ -207,6 +219,7 @@ class TestBoxCoderOpWithAxis(OpTest):
 
 
 class TestBoxCoderOpWithVariance(OpTest):
+
     def test_check_output(self):
         self.check_output()
 
@@ -229,10 +242,48 @@ class TestBoxCoderOpWithVariance(OpTest):
         self.attrs = {
             'code_type': 'decode_center_size',
             'box_normalized': False,
-            'variance': prior_box_var.astype(np.float).flatten(),
+            'variance': prior_box_var.astype(np.float64).flatten(),
             'axis': axis
         }
         self.outputs = {'OutputBox': output_box}
+
+
+class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
+
+    def setUp(self):
+        self.lod = [[1, 1, 1, 1, 1]]
+        self.prior_box = np.random.random((30, 4)).astype('float32')
+        self.prior_box_var = np.random.random((4)).astype('float32')
+        self.target_box = np.random.random((30, 81, 4)).astype('float32')
+        self.code_type = "DecodeCenterSize"
+        self.box_normalized = False
+        self.axis = 1
+        self.output_ref = batch_box_coder(self.prior_box, self.prior_box_var,
+                                          self.target_box, self.lod[0],
+                                          self.code_type, self.box_normalized,
+                                          self.axis)
+        self.place = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def test_dygraph_api(self):
+
+        def run(place):
+            paddle.disable_static(place)
+            output_box = paddle.fluid.layers.box_coder(
+                paddle.to_tensor(self.prior_box),
+                self.prior_box_var.tolist(),
+                paddle.to_tensor(self.target_box),
+                "decode_center_size",
+                self.box_normalized,
+                axis=self.axis)
+            self.assertEqual(
+                np.allclose(np.sum(self.output_ref),
+                            np.sum(output_box.numpy())), True)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
 
 
 if __name__ == '__main__':

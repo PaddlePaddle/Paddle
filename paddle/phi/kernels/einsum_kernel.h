@@ -29,6 +29,7 @@ void EinsumKernelRaw(const Context& dev_ctx,
                      const std::vector<const DenseTensor*>& inputs,
                      const std::string& equation,
                      DenseTensor* out,
-                     std::vector<DenseTensor*> cache);
+                     std::vector<DenseTensor*> inner_cache,
+                     std::vector<DenseTensor*> xshape);
 
 }  // namespace phi

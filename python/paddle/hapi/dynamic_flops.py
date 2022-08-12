@@ -1,11 +1,11 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -106,11 +106,10 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
         _, net.forward = unwrap_decorators(net.forward)
 
         inputs = paddle.randn(input_size)
-        return dynamic_flops(
-            net,
-            inputs=inputs,
-            custom_ops=custom_ops,
-            print_detail=print_detail)
+        return dynamic_flops(net,
+                             inputs=inputs,
+                             custom_ops=custom_ops,
+                             print_detail=print_detail)
     elif isinstance(net, paddle.static.Program):
         return static_flops(net, print_detail=print_detail)
     else:
@@ -124,8 +123,8 @@ def count_convNd(m, x, y):
     x = x[0]
     kernel_ops = np.product(m.weight.shape[2:])
     bias_ops = 1 if m.bias is not None else 0
-    total_ops = int(y.numel()) * (
-        x.shape[1] / m._groups * kernel_ops + bias_ops)
+    total_ops = int(
+        y.numel()) * (x.shape[1] / m._groups * kernel_ops + bias_ops)
     m.total_ops += abs(int(total_ops))
 
 
@@ -227,8 +226,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         if m_type in custom_ops:
             flops_fn = custom_ops[m_type]
             if m_type not in types_collection:
-                print("Customize Function has been applied to {}".format(
-                    m_type))
+                print(
+                    "Customize Function has been applied to {}".format(m_type))
         elif m_type in register_hooks:
             flops_fn = register_hooks[m_type]
             if m_type not in types_collection:
@@ -236,8 +235,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         else:
             if m_type not in types_collection:
                 print(
-                    "Cannot find suitable count function for {}. Treat it as zero FLOPs.".
-                    format(m_type))
+                    "Cannot find suitable count function for {}. Treat it as zero FLOPs."
+                    .format(m_type))
 
         if flops_fn is not None:
             flops_handler = m.register_forward_post_hook(flops_fn)
@@ -280,8 +279,10 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         if {'total_ops', 'total_params', 'input_shape',
                 'output_shape'}.issubset(set(list(m._buffers.keys()))):
             table.add_row([
-                m.full_name(), list(m.input_shape.numpy()),
-                list(m.output_shape.numpy()), int(m.total_params),
+                m.full_name(),
+                list(m.input_shape.numpy()),
+                list(m.output_shape.numpy()),
+                int(m.total_params),
                 int(m.total_ops)
             ])
             m._buffers.pop("total_ops")
@@ -290,6 +291,6 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             m._buffers.pop('output_shape')
     if print_detail:
         table.print_table()
-    print('Total Flops: {}     Total Params: {}'.format(
-        int(total_ops), int(total_params)))
+    print('Total Flops: {}     Total Params: {}'.format(int(total_ops),
+                                                        int(total_params)))
     return int(total_ops)

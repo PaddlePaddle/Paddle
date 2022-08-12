@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -130,7 +131,8 @@ inline void TransToChannelFirst(const framework::ExecutionContext& context,
 
 template <typename DeviceContext, typename T>
 inline void TransToChannelLast(const framework::ExecutionContext& context,
-                               const Tensor* input, Tensor* transformed_input) {
+                               const Tensor* input,
+                               Tensor* transformed_input) {
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     auto& dev_ctx = context.template device_context<DeviceContext>();

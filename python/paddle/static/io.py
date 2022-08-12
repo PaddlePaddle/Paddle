@@ -31,7 +31,8 @@ from paddle.fluid import (
     Program,
     layers,
     unique_name,
-    program_guard, )
+    program_guard,
+)
 from paddle.fluid.io import prepend_feed_ops, append_fetch_ops
 from paddle.fluid.framework import static_only, Parameter
 from paddle.fluid.executor import Executor, global_scope
@@ -39,8 +40,9 @@ from paddle.fluid.log_helper import get_logger
 
 __all__ = []
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def _check_args(caller, args, supported_args=None, deprecated_args=None):
@@ -49,12 +51,12 @@ def _check_args(caller, args, supported_args=None, deprecated_args=None):
     for arg in args:
         if arg in deprecated_args:
             raise ValueError(
-                "argument '{}' in function '{}' is deprecated, only {} are supported.".
-                format(arg, caller, supported_args))
+                "argument '{}' in function '{}' is deprecated, only {} are supported."
+                .format(arg, caller, supported_args))
         elif arg not in supported_args:
             raise ValueError(
-                "function '{}' doesn't support argument '{}',\n only {} are supported.".
-                format(caller, arg, supported_args))
+                "function '{}' doesn't support argument '{}',\n only {} are supported."
+                .format(caller, arg, supported_args))
 
 
 def _check_vars(name, var_list):
@@ -102,20 +104,18 @@ def _get_valid_program(program=None):
 def _clone_var_in_block(block, var):
     assert isinstance(var, Variable)
     if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR:
-        return block.create_var(
-            name=var.name,
-            shape=var.shape,
-            dtype=var.dtype,
-            type=var.type,
-            lod_level=var.lod_level,
-            persistable=True)
+        return block.create_var(name=var.name,
+                                shape=var.shape,
+                                dtype=var.dtype,
+                                type=var.type,
+                                lod_level=var.lod_level,
+                                persistable=True)
     else:
-        return block.create_var(
-            name=var.name,
-            shape=var.shape,
-            dtype=var.dtype,
-            type=var.type,
-            persistable=True)
+        return block.create_var(name=var.name,
+                                shape=var.shape,
+                                dtype=var.dtype,
+                                type=var.type,
+                                persistable=True)
 
 
 def normalize_program(program, feed_vars, fetch_vars):
@@ -193,8 +193,9 @@ def normalize_program(program, feed_vars, fetch_vars):
         uniq_fetch_vars = []
         for i, var in enumerate(fetch_vars):
             if var.dtype != paddle.bool:
-                var = layers.scale(
-                    var, 1., name="save_infer_model/scale_{}".format(i))
+                var = layers.scale(var,
+                                   1.,
+                                   name="save_infer_model/scale_{}".format(i))
             uniq_fetch_vars.append(var)
         fetch_vars = uniq_fetch_vars
 
@@ -394,15 +395,16 @@ def _serialize_persistables(program, executor):
         in_vars.append(save_var_map[name])
 
     out_var_name = unique_name.generate("out_var")
-    out_var = save_block.create_var(
-        type=core.VarDesc.VarType.RAW, name=out_var_name)
+    out_var = save_block.create_var(type=core.VarDesc.VarType.RAW,
+                                    name=out_var_name)
     out_var.desc.set_persistable(True)
-    save_block.append_op(
-        type='save_combine',
-        inputs={'X': in_vars},
-        outputs={'Y': out_var},
-        attrs={'file_path': '',
-               'save_to_memory': True})
+    save_block.append_op(type='save_combine',
+                         inputs={'X': in_vars},
+                         outputs={'Y': out_var},
+                         attrs={
+                             'file_path': '',
+                             'save_to_memory': True
+                         })
     # run save_program to save vars
     # NOTE(zhiqiu): save op will add variable kLookupTablePath to save_program.desc,
     # which leads to diff between save_program and its desc. Call _sync_with_cpp
@@ -421,6 +423,25 @@ def save_to_file(path, content):
         content(bytes): Content to write.
     Returns:
         None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            path_prefix = "./infer_model"
+            # 用户自定义网络，此处用 softmax 回归为例。
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            loss = paddle.nn.functional.cross_entropy(predict, label)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            # 序列化参数
+            serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+            # 将序列化之后的参数保存到文件
+            params_path = path_prefix + ".params"
+            paddle.static.save_to_file(params_path, serialized_params)
     """
 
     if not isinstance(content, bytes):
@@ -448,8 +469,11 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
         executor(Executor): The executor that saves the inference model. You can refer
                             to :ref:`api_guide_executor_en` for more details.
         kwargs: Supported keys including 'program' and "clip_extra". Attention please, kwargs is used for backward compatibility mainly.
-          - program(Program): specify a program if you don't want to use default main program.
-          - clip_extra(bool): set to True if you want to clip extra information for every operator.
+
+            - program(Program): specify a program if you don't want to use default main program.
+
+            - clip_extra(bool): set to True if you want to clip extra information for every operator.
+
     Returns:
         None
 
@@ -518,7 +542,9 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
     save_to_file(model_path, program_bytes)
     # serialize and save params
     params_bytes = _serialize_persistables(program, executor)
-    save_to_file(params_path, params_bytes)
+    # program may not contain any parameter and just compute operation
+    if params_bytes is not None:
+        save_to_file(params_path, params_bytes)
 
 
 @static_only
@@ -636,6 +662,12 @@ def deserialize_persistables(program, data, executor):
         check_vars.append(var)
         load_var_map[var_copy.name] = var_copy
 
+    if data is None:
+        assert len(
+            origin_shape_map
+        ) == 0, "Required 'data' shall be not None if program contains parameter, but received 'data' is None."
+        return
+
     # append load_combine op to load parameters,
     load_var_list = []
     for name in sorted(load_var_map.keys()):
@@ -645,8 +677,10 @@ def deserialize_persistables(program, data, executor):
         inputs={},
         outputs={"Out": load_var_list},
         # if load from memory, file_path is data
-        attrs={'file_path': data,
-               'model_from_memory': True})
+        attrs={
+            'file_path': data,
+            'model_from_memory': True
+        })
     executor.run(load_program)
     # check var shape
     for var in check_vars:
@@ -671,6 +705,28 @@ def load_from_file(path):
         path(str): Path of an existed file.
     Returns:
         bytes: Content of file.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            path_prefix = "./infer_model"
+            # 用户自定义网络，此处用 softmax 回归为例。
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            loss = paddle.nn.functional.cross_entropy(predict, label)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            # 序列化参数
+            serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+            # 将序列化之后的参数保存到文件
+            params_path = path_prefix + ".params"
+            paddle.static.save_to_file(params_path, serialized_params)
+            # 从文件加载序列化之后的参数
+            serialized_params_copy = paddle.static.load_from_file(params_path)
     """
     with open(path, 'rb') as f:
         data = f.read()
@@ -801,7 +857,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
         params_filename = os.path.basename(params_path)
         # load params data
         params_path = os.path.join(load_dirname, params_filename)
-        params_bytes = load_from_file(params_path)
+        params_bytes = None
+        if os.path.exists(params_path):
+            params_bytes = load_from_file(params_path)
 
     # deserialize bytes to program
     program = deserialize_program(program_bytes)

@@ -26,6 +26,7 @@ import six
 
 
 class TestPartialSumOp(OpTest):
+
     def setUp(self):
         self.op_type = "partial_sum"
         self.init_kernel_type()
@@ -66,6 +67,7 @@ class TestPartialSumOp(OpTest):
 
 
 class TestPartialSumOp2(TestPartialSumOp):
+
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)
@@ -75,6 +77,7 @@ class TestPartialSumOp2(TestPartialSumOp):
 
 
 class TestPartialSumOp3(TestPartialSumOp):
+
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)
@@ -84,6 +87,7 @@ class TestPartialSumOp3(TestPartialSumOp):
 
 
 class TestPartialSumOp4(TestPartialSumOp):
+
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)

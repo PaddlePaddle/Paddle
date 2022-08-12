@@ -41,6 +41,7 @@ np.random.seed(123)
 
 
 class PlanFilter:
+
     @staticmethod
     def check_dims_mapping_for_tensor(process_mesh_topology, tensor_shape,
                                       dims_mapping):
@@ -82,7 +83,7 @@ class PlanFilter:
 
     @staticmethod
     def check_dims_mapping_for_special_op(op, op_dist_attr, vars):
-        # NOTE: Those ops has some partition limits, and will be solved when corresponding dist op implemented in the future. 
+        # NOTE: Those ops has some partition limits, and will be solved when corresponding dist op implemented in the future.
         if op.type == "elementwise_add" or op.type == 'layer_norm' or op.type == "softmax_with_cross_entropy":
             for name in op.input_arg_names:
                 for item in op_dist_attr.get_input_dims_mapping(name):
@@ -188,8 +189,7 @@ class PlanSpace:
         for var_name in chain(op.input_arg_names, op.output_arg_names):
             visited = [
                 False
-                for _ in range(
-                    len(list(range(-1, len(process_mesh.topology)))))
+                for _ in range(len(list(range(-1, len(process_mesh.topology)))))
             ]
             depth = 0
             path = []
@@ -213,13 +213,12 @@ class PlanSpace:
                     op_dist_attr.set_input_dims_mapping(var_names[idx],
                                                         dims_mapping)
                 elif var_names[idx] in op.output_arg_names:
-                    op_dist_attr.set_output_dims_mapping(var_names[idx],
-                                                         dims_mapping)
+                    op_dist_attr.set_output_dims_mapping(
+                        var_names[idx], dims_mapping)
                 else:
                     raise ValueError(
                         "The {varname} is not input or output of op {op}.".
-                        format(
-                            varname='var_names[idx]', op='op'))
+                        format(varname='var_names[idx]', op='op'))
 
             dist_op = DistributedOperator(op, op_dist_attr)
             if dist_op_impl_container is None:
@@ -339,16 +338,16 @@ class PlanSpace:
                         op_dist_attr.set_input_dims_mapping(var_name, [])
                     else:
                         dims_mapping = [-1 for i in vars[var_name].shape]
-                        op_dist_attr.set_input_dims_mapping(var_name,
-                                                            dims_mapping)
+                        op_dist_attr.set_input_dims_mapping(
+                            var_name, dims_mapping)
 
                 for var_name in op.output_arg_names:
                     if var_name in PlanSpace.special_vars:
                         op_dist_attr.set_output_dims_mapping(var_name, [])
                     else:
                         dims_mapping = [-1 for i in vars[var_name].shape]
-                        op_dist_attr.set_output_dims_mapping(var_name,
-                                                             dims_mapping)
+                        op_dist_attr.set_output_dims_mapping(
+                            var_name, dims_mapping)
                 op_valid_dist_attrs = [op_dist_attr]
                 pipeline_stage = 0 if pipeline_stage != -1 else pipeline_stage
             else:
@@ -357,13 +356,15 @@ class PlanSpace:
 
             assert op_valid_dist_attrs is not None, "Enumerate {} valid distributed attribute failed.".format(
                 op)
-            valid_dist_attr_dict[op.desc.id(
-            )] = [op_valid_dist_attrs, pipeline_stage]
+            valid_dist_attr_dict[op.desc.id()] = [
+                op_valid_dist_attrs, pipeline_stage
+            ]
 
         return valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh
 
 
 class SearchAlgorithm:
+
     def __init__(self, name):
         self._name = name
 
@@ -376,6 +377,7 @@ class SearchAlgorithm:
 
 
 class MCMC(SearchAlgorithm):
+
     def __init__(self, serial_program_info, parallelizer, max_search_times=5):
         super(MCMC, self).__init__("mcmc")
         self._serial_program_info = serial_program_info
@@ -426,7 +428,8 @@ class MCMC(SearchAlgorithm):
                             break
                     if not has_changed:
                         raise ValueError(
-                            "Change softmax_with_cross_entropy dist attr failed")
+                            "Change softmax_with_cross_entropy dist attr failed"
+                        )
 
     def init_program(self, valid_dist_attr_dict, program,
                      pipeline_process_meshes, global_process_mesh):
@@ -443,8 +446,8 @@ class MCMC(SearchAlgorithm):
             for var_name in op.input_arg_names:
                 if var_name == "lod_tensor_blocking_queue_0":
                     continue
-                if new_dist_context.get_tensor_dist_attr_for_program(vars[
-                        var_name]) is None:
+                if new_dist_context.get_tensor_dist_attr_for_program(
+                        vars[var_name]) is None:
                     tensor_dist_attr = TensorDistributedAttribute()
                     tensor_dist_attr.process_mesh = init_op_dist_attr.process_mesh
                     tensor_dist_attr.dims_mapping = init_op_dist_attr.get_input_dims_mapping(
@@ -498,12 +501,11 @@ class MCMC(SearchAlgorithm):
         standalone_cost_data = get_standalone_cost_data(all_dist_main_program)
 
         # cost model does not support cluster argument
-        cost = estimate_cost(
-            all_dist_main_program,
-            cluster=None,
-            pipeline_config=pipeline_config,
-            standalone_cost_data=standalone_cost_data,
-            batch_size=microbatch_size)
+        cost = estimate_cost(all_dist_main_program,
+                             cluster=None,
+                             pipeline_config=pipeline_config,
+                             standalone_cost_data=standalone_cost_data,
+                             batch_size=microbatch_size)
 
         return cost
 
@@ -515,8 +517,8 @@ class MCMC(SearchAlgorithm):
             tensor_dist_attr.process_mesh = process_mesh
             tensor_dist_attr.dims_mapping = op_dist_attr.get_output_dims_mapping(
                 var_name)
-            dist_context.set_tensor_dist_attr_for_program(vars[var_name],
-                                                          tensor_dist_attr)
+            dist_context.set_tensor_dist_attr_for_program(
+                vars[var_name], tensor_dist_attr)
 
         # set input tensor distributed attribute if input is data or parameter
         for var_name in op.input_arg_names:
@@ -526,19 +528,19 @@ class MCMC(SearchAlgorithm):
                 tensor_dist_attr.process_mesh = process_mesh
                 tensor_dist_attr.dims_mapping = op_dist_attr.get_input_dims_mapping(
                     var_name)
-                dist_context.set_tensor_dist_attr_for_program(vars[var_name],
-                                                              tensor_dist_attr)
+                dist_context.set_tensor_dist_attr_for_program(
+                    vars[var_name], tensor_dist_attr)
 
     def change_process_mesh(self, op, changed_process_mesh, vars, dist_context):
         dist_context.get_op_dist_attr_for_program(
             op).process_mesh = changed_process_mesh
         for var_name in op.output_arg_names:
-            dist_context.get_tensor_dist_attr_for_program(vars[
-                var_name]).process_mesh = changed_process_mesh
+            dist_context.get_tensor_dist_attr_for_program(
+                vars[var_name]).process_mesh = changed_process_mesh
         for var_name in op.input_arg_names:
             if vars[var_name].is_parameter or vars[var_name].is_data:
-                dist_context.get_tensor_dist_attr_for_program(vars[
-                    var_name]).process_mesh = changed_process_mesh
+                dist_context.get_tensor_dist_attr_for_program(
+                    vars[var_name]).process_mesh = changed_process_mesh
 
     def search_once(self,
                     program,
@@ -561,8 +563,8 @@ class MCMC(SearchAlgorithm):
         pipeline_stage = valid_dist_attr_dict[selected_op.desc.id()][1]
         random_selected_dist_attr_idx = np.random.randint(
             len(op_valid_dist_attr_list))
-        selected_op_dist_attr = copy.deepcopy(op_valid_dist_attr_list[
-            random_selected_dist_attr_idx])
+        selected_op_dist_attr = copy.deepcopy(
+            op_valid_dist_attr_list[random_selected_dist_attr_idx])
 
         start_idx = ops[0].desc.id()
         if pipeline_stage > -1:
@@ -604,8 +606,8 @@ class MCMC(SearchAlgorithm):
                             selected_op_process_mesh, vars, new_dist_context)
 
                     # change the selected op stage and output dist attr
-                    new_valid_dist_attr_dict[selected_op.desc.id()][
-                        1] = changed_stage
+                    new_valid_dist_attr_dict[
+                        selected_op.desc.id()][1] = changed_stage
                     new_process_mesh = pipeline_process_meshes[changed_stage]
                     selected_op_dist_attr.process_mesh = new_process_mesh
                     for op_dist_attr in new_valid_dist_attr_dict[
@@ -621,17 +623,17 @@ class MCMC(SearchAlgorithm):
                     # change the pre op stage
                     for idx in range(random_selected_op_idx - 1, -1, -1):
                         stage = new_valid_dist_attr_dict[ops[idx].desc.id()][1]
-                        valid_dist_attr_list = new_valid_dist_attr_dict[ops[
-                            idx].desc.id()][0]
+                        valid_dist_attr_list = new_valid_dist_attr_dict[
+                            ops[idx].desc.id()][0]
                         new_process_mesh = pipeline_process_meshes[
                             changed_stage]
                         if stage == changed_stage + 1:
-                            new_valid_dist_attr_dict[ops[idx].desc.id()][
-                                1] = changed_stage
+                            new_valid_dist_attr_dict[
+                                ops[idx].desc.id()][1] = changed_stage
                             for op_dist_attr in valid_dist_attr_list:
                                 op_dist_attr.process_mesh = new_process_mesh
-                            new_dist_context.get_op_dist_attr_for_program(ops[
-                                idx]).process_mesh = new_process_mesh
+                            new_dist_context.get_op_dist_attr_for_program(
+                                ops[idx]).process_mesh = new_process_mesh
                             # change process mesh of the output and input tensor
                             self.change_process_mesh(ops[idx], new_process_mesh,
                                                      vars, new_dist_context)
@@ -665,8 +667,8 @@ class MCMC(SearchAlgorithm):
                             selected_op_process_mesh, vars, new_dist_context)
 
                     # change the selected op stage and output tensor dist attr
-                    new_valid_dist_attr_dict[selected_op.desc.id()][
-                        1] = changed_stage
+                    new_valid_dist_attr_dict[
+                        selected_op.desc.id()][1] = changed_stage
                     new_process_mesh = pipeline_process_meshes[changed_stage]
                     selected_op_dist_attr.process_mesh = new_process_mesh
                     for op_dist_attr in new_valid_dist_attr_dict[
@@ -681,26 +683,26 @@ class MCMC(SearchAlgorithm):
                     # change the next op stage
                     for idx in range(random_selected_op_idx + 1, len(ops)):
                         stage = new_valid_dist_attr_dict[ops[idx].desc.id()][1]
-                        valid_dist_attr_list = new_valid_dist_attr_dict[ops[
-                            idx].desc.id()][0]
+                        valid_dist_attr_list = new_valid_dist_attr_dict[
+                            ops[idx].desc.id()][0]
                         new_process_mesh = pipeline_process_meshes[
                             changed_stage]
                         if stage == changed_stage - 1:
-                            new_valid_dist_attr_dict[ops[idx].desc.id()][
-                                1] = changed_stage
+                            new_valid_dist_attr_dict[
+                                ops[idx].desc.id()][1] = changed_stage
                             for op_dist_attr in valid_dist_attr_list:
                                 op_dist_attr.process_mesh = new_process_mesh
 
-                            new_dist_context.get_op_dist_attr_for_program(ops[
-                                idx]).process_mesh = new_process_mesh
+                            new_dist_context.get_op_dist_attr_for_program(
+                                ops[idx]).process_mesh = new_process_mesh
                             # change the output tensor dist attr
                             self.change_process_mesh(ops[idx], new_process_mesh,
                                                      vars, new_dist_context)
                         else:
                             break
         else:
-            new_dist_context.set_op_dist_attr_for_program(selected_op,
-                                                          selected_op_dist_attr)
+            new_dist_context.set_op_dist_attr_for_program(
+                selected_op, selected_op_dist_attr)
             self.set_tensor_dist_attr(selected_op, selected_op_dist_attr, vars,
                                       new_dist_context)
 
@@ -759,15 +761,16 @@ class MCMC(SearchAlgorithm):
                   format(process_mesh_topology))
             valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
                 train_program, process_mesh_topology, True)
-            init_dist_context = self.init_program(
-                valid_dist_attr_dict, train_program, pipeline_process_meshes,
-                global_process_mesh)
-            best_dist_context, cost = self._search_core(valid_dist_attr_dict,
-                                                        init_dist_context,
-                                                        pipeline_process_meshes)
+            init_dist_context = self.init_program(valid_dist_attr_dict,
+                                                  train_program,
+                                                  pipeline_process_meshes,
+                                                  global_process_mesh)
+            best_dist_context, cost = self._search_core(
+                valid_dist_attr_dict, init_dist_context,
+                pipeline_process_meshes)
             print(
-                "MCMC search: the min cost is {} in the process mesh {} with pipeline mode.".
-                format(cost, process_mesh_topology))
+                "MCMC search: the min cost is {} in the process mesh {} with pipeline mode."
+                .format(cost, process_mesh_topology))
             best_dist_context._dist_op_context = DistributedOperatorContext()
             pipeline_min_cost = cost if pipeline_min_cost is None else pipeline_min_cost
             searched_pipeline_dist_context = best_dist_context if searched_pipeline_dist_context is None else searched_pipeline_dist_context
@@ -785,15 +788,16 @@ class MCMC(SearchAlgorithm):
                   format(process_mesh_topology))
             valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
                 train_program, process_mesh_topology, False)
-            init_dist_context = self.init_program(
-                valid_dist_attr_dict, train_program, pipeline_process_meshes,
-                global_process_mesh)
-            best_dist_context, cost = self._search_core(valid_dist_attr_dict,
-                                                        init_dist_context,
-                                                        pipeline_process_meshes)
+            init_dist_context = self.init_program(valid_dist_attr_dict,
+                                                  train_program,
+                                                  pipeline_process_meshes,
+                                                  global_process_mesh)
+            best_dist_context, cost = self._search_core(
+                valid_dist_attr_dict, init_dist_context,
+                pipeline_process_meshes)
             print(
-                "MCMC search: the min cost is {} in the process mesh {} without pipeline mode.".
-                format(cost, process_mesh_topology))
+                "MCMC search: the min cost is {} in the process mesh {} without pipeline mode."
+                .format(cost, process_mesh_topology))
             best_dist_context._dist_op_context = DistributedOperatorContext()
             non_pipeline_min_cost = cost if non_pipeline_min_cost is None else non_pipeline_min_cost
             searched_non_pipeline_dist_context = best_dist_context if searched_non_pipeline_dist_context is None else searched_non_pipeline_dist_context
@@ -817,13 +821,16 @@ class MCMC(SearchAlgorithm):
             pg0.add_ranks(process_mesh.processes)
         end_time = time.time()
         print(
-            "End MCMC searching: the min cost is {} and the search time is {}s.".
-            format(min_cost, end_time - start_time))
+            "End MCMC searching: the min cost is {} and the search time is {}s."
+            .format(min_cost, end_time - start_time))
         return searched_dist_context, min_cost
 
 
 class Planner:
-    def __init__(self, serial_program_info, parallelizer,
+
+    def __init__(self,
+                 serial_program_info,
+                 parallelizer,
                  algorithm_config=None):
         self._serial_program_info = serial_program_info
         self._parallelizer = parallelizer

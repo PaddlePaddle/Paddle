@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestAutoGradTransformForAdd(unittest.TestCase):
+
     def setUp(self):
         self.main_program = paddle.static.Program()
         self.startup_program = paddle.static.Program()
@@ -36,11 +37,13 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
         self.xs_shape_map = {0: (20, 40), 1: (20, 40)}
         # { output_index: output_shape }
         self.ys_shape_map = {0: (20, 40)}
-        X0 = paddle.static.data(
-            name='X0', shape=self.xs_shape_map[0], dtype='float32')
+        X0 = paddle.static.data(name='X0',
+                                shape=self.xs_shape_map[0],
+                                dtype='float32')
         X0.stop_gradient = False
-        X1 = paddle.static.data(
-            name='X1', shape=self.xs_shape_map[1], dtype='float32')
+        X1 = paddle.static.data(name='X1',
+                                shape=self.xs_shape_map[1],
+                                dtype='float32')
         X1.stop_gradient = False
 
         A = paddle.tanh(X0)
@@ -48,7 +51,9 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
         Y = paddle.add(A, B)
 
         self.orig_xs = [X0, X1]
-        self.orig_ys = [Y, ]
+        self.orig_ys = [
+            Y,
+        ]
 
         self.orig_ops = ['tanh', 'tanh', 'elementwise_add']
         self.orig2prim_ops = ['tanh_p', 'tanh_p', 'add_p']
@@ -82,6 +87,12 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
             # transposed op
             'mul_p',
             'mul_p'
+        ]
+        self.prim2orig_ops_with_blacklist = [
+            'tanh', 'tanh', 'add_p', 'fill_constant', 'fill_constant',
+            'fill_constant', 'elementwise_mul', 'sub_p', 'fill_constant',
+            'elementwise_mul', 'sub_p', 'fill_constant', 'elementwise_mul',
+            'elementwise_mul'
         ]
         self.prim2orig_ops = [
             'tanh', 'tanh', 'elementwise_add', 'fill_constant', 'fill_constant',
@@ -127,6 +138,13 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
             for k, v in self.ys_shape_map.items():
                 self.assertEqual(flatten_ys_bar[k].shape, v)
 
+            # Test prim2orig with blacklist
+            prim2orig(block=self.main_program.block(0),
+                      blacklist=['add_p', 'sub_p'])
+            prim2orig_ops = [op.type for op in self.main_program.block(0).ops]
+            self.assertEqual(sorted(prim2orig_ops),
+                             sorted(self.prim2orig_ops_with_blacklist))
+
             # Test prim2orig
             prim2orig(block=self.main_program.block(0))
             prim2orig_ops = [op.type for op in self.main_program.block(0).ops]
@@ -134,16 +152,19 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
 
 
 class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
+
     def init_data(self):
         # { input_index: input_shape }
         self.xs_shape_map = {0: (100, 2), 1: (5, 2)}
         # { output_index: output_shape }
         self.ys_shape_map = {0: (100, 5)}
-        X0 = paddle.static.data(
-            'X0', shape=self.xs_shape_map[0], dtype='float32')
+        X0 = paddle.static.data('X0',
+                                shape=self.xs_shape_map[0],
+                                dtype='float32')
         X0.stop_gradient = False
-        X1 = paddle.static.data(
-            'X1', shape=self.xs_shape_map[1], dtype='float32')
+        X1 = paddle.static.data('X1',
+                                shape=self.xs_shape_map[1],
+                                dtype='float32')
         X1.stop_gradient = False
 
         A = paddle.reshape(X1, [2, 5])
@@ -151,7 +172,9 @@ class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
         Y = paddle.matmul(X0, B)
 
         self.orig_xs = [X0, X1]
-        self.orig_ys = [Y, ]
+        self.orig_ys = [
+            Y,
+        ]
 
         self.orig_ops = ['reshape2', 'scale', 'matmul_v2']
         self.orig2prim_ops = [
@@ -188,6 +211,26 @@ class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
             'reshape_p',
         ]
 
+        self.prim2orig_ops_with_blacklist = [
+            'reshape2',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'elementwise_mul',
+            'add_p',
+            'matmul_v2',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'elementwise_mul',
+            'transpose2',
+            'matmul_v2',
+            'transpose2',
+            'matmul_v2',
+            # 'elementwise_mul',
+            'reshape2',
+        ]
+
         self.prim2orig_ops = [
             'reshape2',
             'fill_constant',
@@ -210,20 +253,24 @@ class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
 
 
 class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
+
     def init_data(self):
         # { input_index: input_shape }
         self.xs_shape_map = {0: (7, 8, 9), 1: (8, 1), 2: (7, 8, 9), 3: (3, )}
         # { output_index: output_shape }
         self.ys_shape_map = {0: (3, 16, 9)}
 
-        X0 = paddle.static.data(
-            'X0', shape=self.xs_shape_map[0], dtype='float32')
+        X0 = paddle.static.data('X0',
+                                shape=self.xs_shape_map[0],
+                                dtype='float32')
         X0.stop_gradient = False
-        X1 = paddle.static.data(
-            'X1', shape=self.xs_shape_map[1], dtype='float32')
+        X1 = paddle.static.data('X1',
+                                shape=self.xs_shape_map[1],
+                                dtype='float32')
         X1.stop_gradient = False
-        X2 = paddle.static.data(
-            'X2', shape=self.xs_shape_map[2], dtype='float32')
+        X2 = paddle.static.data('X2',
+                                shape=self.xs_shape_map[2],
+                                dtype='float32')
         X2.stop_gradient = False
         X3 = paddle.static.data('X3', shape=self.xs_shape_map[3], dtype='int32')
         X3.stop_gradient = False
@@ -235,7 +282,9 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
         Y = paddle.index_select(D, X3, axis=0)  # (3, 16, 9)
 
         self.orig_xs = [X0, X1, X2, X3]
-        self.orig_ys = [Y, ]
+        self.orig_ys = [
+            Y,
+        ]
         self.orig_ops = [
             'elementwise_add', 'p_norm', 'elementwise_sub', 'concat',
             'index_select'
@@ -294,6 +343,17 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'scatter_add_p',
             'add_p',  # The output of the op is used by multiple subsequent ops
             'add_p',
+        ]
+
+        self.prim2orig_ops_with_blacklist = [
+            'expand_v2', 'add_p', 'reshape2', 'elementwise_mul', 'reduce_sum',
+            'sqrt', 'expand_v2', 'sub_p', 'concat', 'gather', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'elementwise_mul', 'reduce_sum', 'reshape2',
+            'reshape2', 'elementwise_mul', 'elementwise_mul', 'reshape2',
+            'expand_v2', 'elementwise_div', 'reduce_sum', 'reshape2',
+            'fill_constant', 'sub_p', 'split', 'fill_constant', 'fill_any_like',
+            'add_p', 'scatter', 'elementwise_add', 'add_p'
         ]
 
         self.prim2orig_ops = [

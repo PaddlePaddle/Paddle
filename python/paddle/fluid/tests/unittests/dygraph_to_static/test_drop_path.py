@@ -26,6 +26,7 @@ def drop_path(x, training=False):
 
 
 class DropPath(paddle.nn.Layer):
+
     def __init__(self):
         super(DropPath, self).__init__()
 
@@ -35,6 +36,7 @@ class DropPath(paddle.nn.Layer):
 
 
 class TestTrainEval(unittest.TestCase):
+
     def setUp(self):
         self.model = DropPath()
 

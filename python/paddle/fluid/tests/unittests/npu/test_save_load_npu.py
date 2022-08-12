@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import sys
+
 sys.path.append("..")
 import paddle
 import paddle.fluid as fluid
@@ -37,54 +38,62 @@ paddle.enable_static()
 
 
 class TestNPUSaveLoadBase(TestSaveLoadBase):
+
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
 
 
 class TestNPUSaveLoadPartial(TestSaveLoadPartial):
+
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
 
 
 class TestNPUSaveLoadSetStateDict(TestSaveLoadSetStateDict):
+
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
 
 
 class TestNPUProgramStatePartial(TestProgramStatePartial):
+
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
 
 
 class TestNPULoadFromOldInterface(TestLoadFromOldInterface):
+
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
 
 
 class TestNPULoadFromOldInterfaceSingleFile(TestLoadFromOldInterfaceSingleFile):
+
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
 
 
 class TestNPUProgramStateOldSave(TestProgramStateOldSave):
+
     def setUp(self):
         self.test_dygraph = False
 
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
 
 
 class TestNPUProgramStateOldSaveSingleModel(TestProgramStateOldSaveSingleModel):
+
     def set_place(self):
-        return fluid.CPUPlace() if not core.is_compiled_with_npu(
-        ) else paddle.NPUPlace(0)
+        return fluid.CPUPlace(
+        ) if not core.is_compiled_with_npu() else paddle.NPUPlace(0)
 
 
 if __name__ == '__main__':

@@ -21,10 +21,13 @@ import tempfile
 
 
 class LSTMLayer(nn.Layer):
+
     def __init__(self, in_channels, hidden_size):
         super(LSTMLayer, self).__init__()
-        self.cell = nn.LSTM(
-            in_channels, hidden_size, direction='bidirectional', num_layers=2)
+        self.cell = nn.LSTM(in_channels,
+                            hidden_size,
+                            direction='bidirectional',
+                            num_layers=2)
 
     def forward(self, x):
         x, _ = self.cell(x)
@@ -32,6 +35,7 @@ class LSTMLayer(nn.Layer):
 
 
 class Net(nn.Layer):
+
     def __init__(self, in_channels, hidden_size):
         super(Net, self).__init__()
         self.lstm = LSTMLayer(in_channels, hidden_size)
@@ -42,6 +46,7 @@ class Net(nn.Layer):
 
 
 class TestLstm(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -64,10 +69,9 @@ class TestLstm(unittest.TestCase):
     def test_lstm_to_static(self):
         dygraph_out = self.run_lstm(to_static=False)
         static_out = self.run_lstm(to_static=True)
-        self.assertTrue(
-            np.allclose(dygraph_out, static_out),
-            msg='dygraph_out is {}\n static_out is \n{}'.format(dygraph_out,
-                                                                static_out))
+        self.assertTrue(np.allclose(dygraph_out, static_out),
+                        msg='dygraph_out is {}\n static_out is \n{}'.format(
+                            dygraph_out, static_out))
 
     def test_save_in_eval(self, with_training=True):
         paddle.jit.ProgramTranslator().enable(True)
@@ -94,23 +98,22 @@ class TestLstm(unittest.TestCase):
         load_net = paddle.jit.load(model_path)
 
         static_out = load_net(x)
-        self.assertTrue(
-            np.allclose(dygraph_out.numpy(), static_out.numpy()),
-            msg='dygraph_out is {}\n static_out is \n{}'.format(dygraph_out,
-                                                                static_out))
+        self.assertTrue(np.allclose(dygraph_out.numpy(), static_out.numpy()),
+                        msg='dygraph_out is {}\n static_out is \n{}'.format(
+                            dygraph_out, static_out))
         # switch back into train mode.
         net.train()
         train_out = net(x)
-        self.assertTrue(
-            np.allclose(dygraph_out.numpy(), train_out.numpy()),
-            msg='dygraph_out is {}\n static_out is \n{}'.format(dygraph_out,
-                                                                train_out))
+        self.assertTrue(np.allclose(dygraph_out.numpy(), train_out.numpy()),
+                        msg='dygraph_out is {}\n static_out is \n{}'.format(
+                            dygraph_out, train_out))
 
     def test_save_without_training(self):
         self.test_save_in_eval(with_training=False)
 
 
 class LinearNet(nn.Layer):
+
     def __init__(self):
         super(LinearNet, self).__init__()
         self.fc = nn.Linear(10, 12)
@@ -124,6 +127,7 @@ class LinearNet(nn.Layer):
 
 
 class TestSaveInEvalMode(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -156,13 +160,13 @@ class TestSaveInEvalMode(unittest.TestCase):
         eval_out = net(x)
 
         infer_out = load_net(x)
-        self.assertTrue(
-            np.allclose(eval_out.numpy(), infer_out.numpy()),
-            msg='eval_out is {}\n infer_out is \n{}'.format(eval_out,
-                                                            infer_out))
+        self.assertTrue(np.allclose(eval_out.numpy(), infer_out.numpy()),
+                        msg='eval_out is {}\n infer_out is \n{}'.format(
+                            eval_out, infer_out))
 
 
 class TestEvalAfterSave(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 

@@ -45,6 +45,17 @@ class TestTrainerDesc(unittest.TestCase):
         self.assertEqual(mpi_rank, 1)
         self.assertEqual(dump_fields_path, "path")
 
+    def test_config_dump_simple(self):
+        """
+        Testcase for dump_in_simple_mode
+        """
+        trainer_desc = fluid.trainer_desc.TrainerDesc()
+        trainer_desc._set_dump_fields(["a", "b"])
+        trainer_desc._set_is_dump_in_simple_mode(True)
+
+        is_dump_in_simple_mode = trainer_desc.proto_desc.is_dump_in_simple_mode
+        self.assertEqual(is_dump_in_simple_mode, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

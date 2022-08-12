@@ -96,8 +96,8 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
                                 val = dmc_bilinear(input[n, c], in_h, in_w,
                                                    im_h, im_w)
                             val_out = val * mask_table[kh, kw]
-                            col_buffer[n, c * f_h * f_w + kh * f_w + kw, h *
-                                       in_w + w] = val_out
+                            col_buffer[n, c * f_h * f_w + kh * f_w + kw,
+                                       h * in_w + w] = val_out
 
     out = np.zeros((in_n, group, int(out_c // group), out_h * out_w))
     weight = filter.reshape(group, int(out_c // group), f_c * f_h * f_w)
@@ -126,6 +126,7 @@ def deform_conv2d_wrapper(x,
 
 
 class TestModulatedDeformableConvOp(OpTest):
+
     def setUp(self):
         self.python_api = deform_conv2d_wrapper
         self.op_type = "deformable_conv"
@@ -169,11 +170,10 @@ class TestModulatedDeformableConvOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            {'Input', 'Offset', 'Mask', 'Filter'},
-            'Output',
-            max_relative_error=0.05,
-            check_eager=True)
+        self.check_grad({'Input', 'Offset', 'Mask', 'Filter'},
+                        'Output',
+                        max_relative_error=0.05,
+                        check_eager=True)
 
     def init_test_case(self):
         self.pad = [1, 1]
@@ -207,6 +207,7 @@ class TestModulatedDeformableConvOp(OpTest):
 
 
 class TestWithStride(TestModulatedDeformableConvOp):
+
     def init_test_case(self):
         self.pad = [3, 3]
         self.stride = [2, 2]
@@ -229,6 +230,7 @@ class TestWithStride(TestModulatedDeformableConvOp):
 
 
 class TestWithDilation(TestModulatedDeformableConvOp):
+
     def init_test_case(self):
         self.pad = [2, 2]
         self.stride = [1, 1]
@@ -254,6 +256,7 @@ class TestWithDilation(TestModulatedDeformableConvOp):
 
 
 class TestWith3x3(TestModulatedDeformableConvOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -276,11 +279,13 @@ class TestWith3x3(TestModulatedDeformableConvOp):
 
 
 class TestWithGroup(TestModulatedDeformableConvOp):
+
     def init_group(self):
         self.groups = 2
 
 
 class TestWithDouble(TestModulatedDeformableConvOp):
+
     def init_type(self):
         self.dtype = np.float64
 
@@ -307,42 +312,61 @@ class TestWithDouble(TestModulatedDeformableConvOp):
 
 
 class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
+
     def test_error(self):
+
         def test_invalid_input():
             paddle.enable_static()
             input = [1, 3, 32, 32]
-            offset = fluid.data(
-                name='offset', shape=[None, 3, 32, 32], dtype='float32')
-            mask = fluid.data(
-                name='mask', shape=[None, 3, 32, 32], dtype='float32')
-            loss = fluid.layers.deformable_conv(
-                input, offset, mask, num_filters=4, filter_size=1)
+            offset = fluid.data(name='offset',
+                                shape=[None, 3, 32, 32],
+                                dtype='float32')
+            mask = fluid.data(name='mask',
+                              shape=[None, 3, 32, 32],
+                              dtype='float32')
+            loss = fluid.layers.deformable_conv(input,
+                                                offset,
+                                                mask,
+                                                num_filters=4,
+                                                filter_size=1)
 
         self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_offset():
             paddle.enable_static()
-            input = fluid.data(
-                name='input', shape=[None, 3, 32, 32], dtype='int32')
-            offset = fluid.data(
-                name='offset', shape=[None, 3, 32, 32], dtype='float32')
-            mask = fluid.data(
-                name='mask', shape=[None, 3, 32, 32], dtype='float32')
-            loss = fluid.layers.deformable_conv(
-                input, offset, mask, num_filters=4, filter_size=1)
+            input = fluid.data(name='input',
+                               shape=[None, 3, 32, 32],
+                               dtype='int32')
+            offset = fluid.data(name='offset',
+                                shape=[None, 3, 32, 32],
+                                dtype='float32')
+            mask = fluid.data(name='mask',
+                              shape=[None, 3, 32, 32],
+                              dtype='float32')
+            loss = fluid.layers.deformable_conv(input,
+                                                offset,
+                                                mask,
+                                                num_filters=4,
+                                                filter_size=1)
 
         self.assertRaises(TypeError, test_invalid_offset)
 
         def test_invalid_filter():
             paddle.enable_static()
-            input = fluid.data(
-                name='input_filter', shape=[None, 3, 32, 32], dtype='float32')
-            offset = fluid.data(
-                name='offset_filter', shape=[None, 3, 32, 32], dtype='float32')
-            mask = fluid.data(
-                name='mask_filter', shape=[None, 3, 32, 32], dtype='float32')
-            loss = fluid.layers.deformable_conv(
-                input, offset, mask, num_filters=4, filter_size=0)
+            input = fluid.data(name='input_filter',
+                               shape=[None, 3, 32, 32],
+                               dtype='float32')
+            offset = fluid.data(name='offset_filter',
+                                shape=[None, 3, 32, 32],
+                                dtype='float32')
+            mask = fluid.data(name='mask_filter',
+                              shape=[None, 3, 32, 32],
+                              dtype='float32')
+            loss = fluid.layers.deformable_conv(input,
+                                                offset,
+                                                mask,
+                                                num_filters=4,
+                                                filter_size=0)
 
         self.assertRaises(ValueError, test_invalid_filter)
 
@@ -352,15 +376,22 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
 
 class TestDeformConv2DAPI(unittest.TestCase):
+
     def test_api(self):
+
         def test_deform_conv2d_v1():
             paddle.enable_static()
-            input = paddle.static.data(
-                name='input_v1', shape=[None, 3, 32, 32], dtype='float32')
-            offset = paddle.static.data(
-                name='offset_v1', shape=[None, 4, 32, 32], dtype='float32')
-            out = paddle.static.nn.deform_conv2d(
-                input, offset, None, num_filters=4, filter_size=1)
+            input = paddle.static.data(name='input_v1',
+                                       shape=[None, 3, 32, 32],
+                                       dtype='float32')
+            offset = paddle.static.data(name='offset_v1',
+                                        shape=[None, 4, 32, 32],
+                                        dtype='float32')
+            out = paddle.static.nn.deform_conv2d(input,
+                                                 offset,
+                                                 None,
+                                                 num_filters=4,
+                                                 filter_size=1)
 
             assert (out.shape == (-1, 4, 32, 32))
 
@@ -368,14 +399,20 @@ class TestDeformConv2DAPI(unittest.TestCase):
 
         def test_deform_conv2d_v2():
             paddle.enable_static()
-            input = paddle.static.data(
-                name='input_v2', shape=[None, 3, 32, 32], dtype='float32')
-            offset = paddle.static.data(
-                name='offset_v2', shape=[None, 4, 32, 32], dtype='float32')
-            mask = paddle.static.data(
-                name='mask_v2', shape=[None, 2, 32, 32], dtype='float32')
-            out = paddle.static.nn.deform_conv2d(
-                input, offset, mask, num_filters=4, filter_size=1)
+            input = paddle.static.data(name='input_v2',
+                                       shape=[None, 3, 32, 32],
+                                       dtype='float32')
+            offset = paddle.static.data(name='offset_v2',
+                                        shape=[None, 4, 32, 32],
+                                        dtype='float32')
+            mask = paddle.static.data(name='mask_v2',
+                                      shape=[None, 2, 32, 32],
+                                      dtype='float32')
+            out = paddle.static.nn.deform_conv2d(input,
+                                                 offset,
+                                                 mask,
+                                                 num_filters=4,
+                                                 filter_size=1)
 
             assert (out.shape == (-1, 4, 32, 32))
 

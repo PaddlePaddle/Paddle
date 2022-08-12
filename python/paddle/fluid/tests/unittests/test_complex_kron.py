@@ -21,6 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class ComplexKronTestCase(unittest.TestCase):
+
     def __init__(self, methodName='runTest', x=None, y=None):
         super(ComplexKronTestCase, self).__init__(methodName)
         self.x = x
@@ -53,27 +54,23 @@ def load_tests(loader, standard_tests, pattern):
     suite = unittest.TestSuite()
     for dtype in ["float32", "float64"]:
         suite.addTest(
-            ComplexKronTestCase(
-                x=np.random.randn(2, 2).astype(dtype) + 1j * np.random.randn(
-                    2, 2).astype(dtype),
-                y=np.random.randn(3, 3).astype(dtype) + 1j * np.random.randn(
-                    3, 3).astype(dtype)))
+            ComplexKronTestCase(x=np.random.randn(2, 2).astype(dtype) +
+                                1j * np.random.randn(2, 2).astype(dtype),
+                                y=np.random.randn(3, 3).astype(dtype) +
+                                1j * np.random.randn(3, 3).astype(dtype)))
         suite.addTest(
-            ComplexKronTestCase(
-                x=np.random.randn(2, 2).astype(dtype),
-                y=np.random.randn(3, 3).astype(dtype) + 1j * np.random.randn(
-                    3, 3).astype(dtype)))
+            ComplexKronTestCase(x=np.random.randn(2, 2).astype(dtype),
+                                y=np.random.randn(3, 3).astype(dtype) +
+                                1j * np.random.randn(3, 3).astype(dtype)))
         suite.addTest(
-            ComplexKronTestCase(
-                x=np.random.randn(2, 2).astype(dtype) + 1j * np.random.randn(
-                    2, 2).astype(dtype),
-                y=np.random.randn(3, 3).astype(dtype)))
+            ComplexKronTestCase(x=np.random.randn(2, 2).astype(dtype) +
+                                1j * np.random.randn(2, 2).astype(dtype),
+                                y=np.random.randn(3, 3).astype(dtype)))
 
         suite.addTest(
-            ComplexKronTestCase(
-                x=np.random.randn(2, 2).astype(dtype) + 1j * np.random.randn(
-                    2, 2).astype(dtype),
-                y=np.random.randn(2, 2, 3).astype(dtype)))
+            ComplexKronTestCase(x=np.random.randn(2, 2).astype(dtype) +
+                                1j * np.random.randn(2, 2).astype(dtype),
+                                y=np.random.randn(2, 2, 3).astype(dtype)))
 
     return suite
 

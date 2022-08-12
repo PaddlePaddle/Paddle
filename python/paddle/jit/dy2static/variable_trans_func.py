@@ -15,10 +15,6 @@
 from __future__ import print_function
 
 from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_bool_as_type  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check  # noqa: F401
 from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node  # noqa: F401
 
 __all__ = []

@@ -17,8 +17,9 @@ import unittest
 
 
 class TestContextManagerRaiseException(unittest.TestCase):
-    # When exception raised in 'with' context, we should safely exit the context 
+    # When exception raised in 'with' context, we should safely exit the context
     def test_func1(self):
+
         def foo():
             with fluid.dygraph.guard():
                 print("raise error in context manager")
@@ -27,7 +28,7 @@ class TestContextManagerRaiseException(unittest.TestCase):
         self.assertRaises(TypeError, foo)
 
     def test_func2(self):
-        # After test_func1 executed, if fluid.dygraph.guard() in test_func1 safely exited, 
+        # After test_func1 executed, if fluid.dygraph.guard() in test_func1 safely exited,
         # fluid._non_static_mode() should be false.
         self.assertEqual(fluid._non_static_mode(), False)
 

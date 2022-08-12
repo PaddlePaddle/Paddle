@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/activation_kernel.h"
 
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -21,8 +22,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
 #include "paddle/phi/kernels/impl/activation_impl.h"
-
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 
 namespace phi {
 
@@ -98,6 +97,7 @@ DEFINE_GPU_ACTIVATION_KERNEL(Reciprocal, CudaReciprocalFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Square, CudaSquareFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sqrt, CudaSqrtFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, CudaRsqrtFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Softsign, CudaSoftsignFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Log, CudaLogFunctor)
@@ -112,6 +112,7 @@ DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      CudaThresholdedReluFunctor,
                                      threshold)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Relu6, CudaRelu6Functor, threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      CudaHardShrinkFunctor,
                                      threshold)
@@ -131,6 +132,7 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      CudaHardSigmoidFunctor,
                                      slope,
                                      offset)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Selu, CudaSeluFunctor, scale, alpha)
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
@@ -193,6 +195,7 @@ PD_REGISTER_ACTIVATION_KERNEL(atanh, AtanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(brelu, BReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(stanh, StanhKernel)
@@ -240,6 +243,7 @@ PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
@@ -262,3 +266,4 @@ PD_REGISTER_KERNEL(pow,
                    int,
                    int64_t,
                    phi::dtype::float16) {}
+PD_REGISTER_KERNEL(selu, GPU, ALL_LAYOUT, phi::SeluKernel, float, double) {}

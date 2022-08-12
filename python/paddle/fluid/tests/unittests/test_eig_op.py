@@ -59,6 +59,7 @@ def eig_backward(w, v, grad_w, grad_v):
 
 
 class TestEigOp(OpTest):
+
     def setUp(self):
         paddle.enable_static()
         paddle.device.set_device("cpu")
@@ -142,26 +143,28 @@ class TestEigOp(OpTest):
                                    self.grad_v)
 
     def test_check_output(self):
-        self.check_output_with_place_customized(
-            checker=self.checker, place=core.CPUPlace())
+        self.check_output_with_place_customized(checker=self.checker,
+                                                place=core.CPUPlace())
 
     def test_check_grad(self):
         self.init_grad()
-        self.check_grad(
-            ['X'], ['Eigenvalues', 'Eigenvectors'],
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_w, self.grad_v])
+        self.check_grad(['X'], ['Eigenvalues', 'Eigenvectors'],
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_w, self.grad_v])
 
 
 class TestComplex128(TestEigOp):
+
     def set_dtype(self):
         self.dtype = np.complex128
 
 
 @skip_check_grad_ci(
-    reason="For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
+    reason=
+    "For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
 )
 class TestDouble(TestEigOp):
+
     def set_dtype(self):
         self.dtype = np.float64
 
@@ -170,9 +173,11 @@ class TestDouble(TestEigOp):
 
 
 @skip_check_grad_ci(
-    reason="For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
+    reason=
+    "For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
 )
 class TestEigBatchMarices(TestEigOp):
+
     def set_dtype(self):
         self.dtype = np.float64
 
@@ -184,9 +189,11 @@ class TestEigBatchMarices(TestEigOp):
 
 
 @skip_check_grad_ci(
-    reason="For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
+    reason=
+    "For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
 )
 class TestFloat(TestEigOp):
+
     def set_dtype(self):
         self.dtype = np.float32
 
@@ -195,6 +202,7 @@ class TestFloat(TestEigOp):
 
 
 class TestEigStatic(TestEigOp):
+
     def test_check_output_with_place(self):
         paddle.enable_static()
         place = core.CPUPlace()
@@ -209,17 +217,64 @@ class TestEigStatic(TestEigOp):
                                            feed={"input": input_np},
                                            fetch_list=[act_val, act_vec])
         self.assertTrue(
-            np.allclose(expect_val, fetch_val, 1e-6, 1e-6),
-            "The eigen values have diff: \nExpected " + str(expect_val) + "\n" +
-            "But got: " + str(fetch_val))
+            np.allclose(expect_val, fetch_val, 1e-6,
+                        1e-6), "The eigen values have diff: \nExpected " +
+            str(expect_val) + "\n" + "But got: " + str(fetch_val))
         self.assertTrue(
-            np.allclose(np.abs(expect_vec), np.abs(fetch_vec), 1e-6, 1e-6),
-            "The eigen vectors have diff: \nExpected " +
+            np.allclose(np.abs(expect_vec), np.abs(fetch_vec), 1e-6,
+                        1e-6), "The eigen vectors have diff: \nExpected " +
             str(np.abs(expect_vec)) + "\n" + "But got: " +
             str(np.abs(fetch_vec)))
 
 
+class TestEigDyGraph(unittest.TestCase):
+
+    def test_check_output_with_place(self):
+        input_np = np.random.random([3, 3]).astype('complex')
+        expect_val, expect_vec = np.linalg.eig(input_np)
+
+        paddle.set_device("cpu")
+        paddle.disable_static()
+
+        input_tensor = paddle.to_tensor(input_np)
+        fetch_val, fetch_vec = paddle.linalg.eig(input_tensor)
+
+        self.assertTrue(
+            np.allclose(expect_val, fetch_val.numpy(), 1e-6,
+                        1e-6), "The eigen values have diff: \nExpected " +
+            str(expect_val) + "\n" + "But got: " + str(fetch_val))
+        self.assertTrue(
+            np.allclose(np.abs(expect_vec), np.abs(fetch_vec.numpy()), 1e-6,
+                        1e-6), "The eigen vectors have diff: \nExpected " +
+            str(np.abs(expect_vec)) + "\n" + "But got: " +
+            str(np.abs(fetch_vec.numpy())))
+
+    def test_check_grad(self):
+        test_shape = [3, 3]
+        test_type = 'float64'
+        paddle.set_device("cpu")
+
+        input_np = np.random.random(test_shape).astype(test_type)
+        real_w, real_v = np.linalg.eig(input_np)
+
+        grad_w = np.ones(real_w.shape, test_type)
+        grad_v = np.ones(real_v.shape, test_type)
+        grad_x = eig_backward(real_w, real_v, grad_w, grad_v)
+
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(input_np)
+            x.stop_gradient = False
+            w, v = paddle.linalg.eig(x)
+            (w.sum() + v.sum()).backward()
+
+        self.assertTrue(
+            np.allclose(np.abs(x.grad.numpy()), np.abs(grad_x), 1e-5, 1e-5),
+            "The grad x have diff: \nExpected " + str(np.abs(grad_x)) + "\n" +
+            "But got: " + str(np.abs(x.grad.numpy())))
+
+
 class TestEigWrongDimsError(unittest.TestCase):
+
     def test_error(self):
         paddle.device.set_device("cpu")
         paddle.disable_static()
@@ -229,6 +284,7 @@ class TestEigWrongDimsError(unittest.TestCase):
 
 
 class TestEigNotSquareError(unittest.TestCase):
+
     def test_error(self):
         paddle.device.set_device("cpu")
         paddle.disable_static()
@@ -238,12 +294,13 @@ class TestEigNotSquareError(unittest.TestCase):
 
 
 class TestEigUnsupportedDtypeError(unittest.TestCase):
+
     def test_error(self):
         paddle.device.set_device("cpu")
         paddle.disable_static()
         a = (np.random.random((3, 3)) * 10).astype('int64')
         x = paddle.to_tensor(a)
-        self.assertRaises(ValueError, paddle.linalg.eig, x)
+        self.assertRaises(RuntimeError, paddle.linalg.eig, x)
 
 
 if __name__ == "__main__":

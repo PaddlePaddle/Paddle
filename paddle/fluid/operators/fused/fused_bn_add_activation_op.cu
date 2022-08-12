@@ -16,6 +16,7 @@
 #include <cfloat>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/fused/fused_bn_add_activation_op.h"
@@ -35,12 +36,13 @@ template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 template <typename T>
-class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
+class FusedBatchNormAddActKernel<phi::GPUContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     float momentum = ctx.Attr<float>("momentum");
@@ -79,7 +81,7 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
     const DataLayout data_layout = DataLayout::kNHWC;
     ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     // ------------------- cudnn descriptors ---------------------
     auto handle = dev_ctx.cudnn_handle();
@@ -96,8 +98,11 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
     std::vector<int> strides = {H * W * D * C, 1, W * D * C, D * C, C};
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        data_desc_, CudnnDataType<T>::type,
-        in_dims.size() > 3 ? in_dims.size() : 4, dims.data(), strides.data()));
+        data_desc_,
+        CudnnDataType<T>::type,
+        in_dims.size() > 3 ? in_dims.size() : 4,
+        dims.data(),
+        strides.data()));
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnDeriveBNTensorDescriptor(
         bn_param_desc_, data_desc_, mode_));
 
@@ -144,27 +149,40 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
             /*xDesc=*/data_desc_,
             /*sizeInBytes=*/&reserve_space_size));
 
-    reserve_space_ptr = reserve_space->mutable_data(ctx.GetPlace(), x->dtype(),
-                                                    reserve_space_size);
-    workspace_ptr = workspace_tensor.mutable_data(ctx.GetPlace(), x->dtype(),
-                                                  workspace_size);
+    reserve_space_ptr = reserve_space->mutable_data(
+        ctx.GetPlace(), x->dtype(), reserve_space_size);
+    workspace_ptr = workspace_tensor.mutable_data(
+        ctx.GetPlace(), x->dtype(), workspace_size);
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
-            handle, mode_, bnOps_, CudnnDataType<T>::kOne(),
-            CudnnDataType<T>::kZero(), data_desc_, x->template data<T>(),
-            data_desc_, z->template data<T>(), data_desc_,
-            y->template data<T>(), bn_param_desc_,
+            handle,
+            mode_,
+            bnOps_,
+            CudnnDataType<T>::kOne(),
+            CudnnDataType<T>::kZero(),
+            data_desc_,
+            x->template data<T>(),
+            data_desc_,
+            z->template data<T>(),
+            data_desc_,
+            y->template data<T>(),
+            bn_param_desc_,
             scale->template data<BatchNormParamType<T>>(),
-            bias->template data<BatchNormParamType<T>>(), this_factor,
+            bias->template data<BatchNormParamType<T>>(),
+            this_factor,
             mean_out->template mutable_data<BatchNormParamType<T>>(
                 ctx.GetPlace()),
             variance_out->template mutable_data<BatchNormParamType<T>>(
                 ctx.GetPlace()),
-            epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
-                         ctx.GetPlace()),
+            epsilon,
+            saved_mean->template mutable_data<BatchNormParamType<T>>(
+                ctx.GetPlace()),
             saved_variance->template mutable_data<BatchNormParamType<T>>(
                 ctx.GetPlace()),
-            activation_desc_, workspace_ptr, workspace_size, reserve_space_ptr,
+            activation_desc_,
+            workspace_ptr,
+            workspace_size,
+            reserve_space_ptr,
             reserve_space_size));
 
     // clean when exit.
@@ -176,12 +194,13 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
 };
 
 template <typename T>
-class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
+class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     std::string act_type = ctx.Attr<std::string>("act_type");
@@ -208,20 +227,23 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
     d_x->mutable_data<T>(ctx.GetPlace());
     d_z->mutable_data<T>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(
-        d_scale && d_bias, true,
+        d_scale && d_bias,
+        true,
         platform::errors::PreconditionNotMet(
             "Both the scale grad and the bias grad must not be null."));
     d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
     d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL,
+    PADDLE_ENFORCE_EQ(scale->dims().size(),
+                      1UL,
                       platform::errors::PreconditionNotMet(
                           "The scale only has one dimension."));
     PADDLE_ENFORCE_EQ(
-        scale->dims()[0], C,
+        scale->dims()[0],
+        C,
         platform::errors::PreconditionNotMet(
             "The size of scale is equal to the channel of Input(X)."));
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     std::vector<int> dims = {N, C, H, W, D};
     std::vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
@@ -242,8 +264,11 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-        data_desc_, CudnnDataType<T>::type,
-        in_dims.size() > 3 ? in_dims.size() : 4, dims.data(), strides.data()));
+        data_desc_,
+        CudnnDataType<T>::type,
+        in_dims.size() > 3 ? in_dims.size() : 4,
+        dims.data(),
+        strides.data()));
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnDeriveBNTensorDescriptor(
         bn_param_desc_, data_desc_, mode_));
 
@@ -277,8 +302,8 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
             /*activationDesc=*/activation_desc_,
             /*sizeInBytes=*/&workspace_size));
 
-    workspace_ptr = workspace_tensor.mutable_data(ctx.GetPlace(), x->dtype(),
-                                                  workspace_size);
+    workspace_ptr = workspace_tensor.mutable_data(
+        ctx.GetPlace(), x->dtype(), workspace_size);
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationBackwardEx(
             /*handle=*/dev_ctx.cudnn_handle(),
@@ -328,8 +353,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     fused_bn_add_activation,
-    ops::FusedBatchNormAddActKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(fused_bn_add_activation_grad,
-                        ops::FusedBatchNormAddActGradKernel<
-                            plat::CUDADeviceContext, plat::float16>);
+    ops::FusedBatchNormAddActKernel<phi::GPUContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    fused_bn_add_activation_grad,
+    ops::FusedBatchNormAddActGradKernel<phi::GPUContext, plat::float16>);
 #endif

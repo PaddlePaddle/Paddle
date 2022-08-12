@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <time.h>
+
 #include "paddle/fluid/framework/device_worker.h"
 
 namespace phi {
@@ -144,11 +145,18 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         float* w = tensor->data<float>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        memory::Copy(places_[i], w, platform::CUDAPinnedPlace(), pin_w,
-                     sizeof(float) * tensor->numel(), copy_streams_[i]);
+        memory::Copy(places_[i],
+                     w,
+                     platform::CUDAPinnedPlace(),
+                     pin_w,
+                     sizeof(float) * tensor->numel(),
+                     copy_streams_[i]);
 #endif
 #ifdef PADDLE_WITH_XPU
-        memory::Copy(places_[i], w, platform::CPUPlace(), pin_w,
+        memory::Copy(places_[i],
+                     w,
+                     platform::CPUPlace(),
+                     pin_w,
                      sizeof(float) * tensor->numel());
 #endif
       }
@@ -174,14 +182,23 @@ void PullDenseWorker::PullDense(bool force_update) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU)
       VLOG(3) << "pull dense " << force_update << " " << tid;
-      fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
-                                     &pull_dense_status_, false);
+      fleet_ptr_->PullDenseVarsAsync(*root_scope_,
+                                     tid,
+                                     dense_value_names_[tid],
+                                     &pull_dense_status_,
+                                     false);
 #elif defined(PADDLE_WITH_PSCORE)
-      fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
-                                     &pull_dense_status_, true);
+      fleet_ptr_->PullDenseVarsAsync(*root_scope_,
+                                     tid,
+                                     dense_value_names_[tid],
+                                     &pull_dense_status_,
+                                     true);
 #else
-      fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
-                                     &pull_dense_status_, true);
+      fleet_ptr_->PullDenseVarsAsync(*root_scope_,
+                                     tid,
+                                     dense_value_names_[tid],
+                                     &pull_dense_status_,
+                                     true);
 #endif
       ResetThreadVersion(tid);
     }

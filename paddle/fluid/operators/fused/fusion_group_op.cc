@@ -32,16 +32,19 @@ class FusionGroupOp : public framework::OperatorWithKernel {
     const size_t num_outs = output_names.size();
 
     PADDLE_ENFORCE_GE(
-        num_ins, 1UL,
+        num_ins,
+        1UL,
         platform::errors::InvalidArgument(
             "Expected the number of inputs >= 1. Received %d.", num_ins));
     PADDLE_ENFORCE_GE(
-        num_outs, 1UL,
+        num_outs,
+        1UL,
         platform::errors::InvalidArgument(
             "Expected the number of outputs >= 1. Recived %d.", num_outs));
 
     int type = ctx->Attrs().Get<int>("type");
-    PADDLE_ENFORCE_EQ(type, 0UL,
+    PADDLE_ENFORCE_EQ(type,
+                      0UL,
                       platform::errors::InvalidArgument(
                           "Only support fusion of elementwise operations."));
 
@@ -49,11 +52,15 @@ class FusionGroupOp : public framework::OperatorWithKernel {
     if (type == 0) {
       for (size_t i = 1; i < num_ins; ++i) {
         PADDLE_ENFORCE_EQ(
-            x_dims[0], x_dims[i],
+            x_dims[0],
+            x_dims[i],
             platform::errors::InvalidArgument(
                 "All the inputs' dims is expected to be the same. "
                 "But received [%s] (name: %s) vs [%s] (name: %s).",
-                x_dims[0], input_names[0], x_dims[i], input_names[i]));
+                x_dims[0],
+                input_names[0],
+                x_dims[i],
+                input_names[i]));
       }
       std::vector<framework::DDim> out_dims;
       for (size_t j = 0; j < num_outs; ++j) {

@@ -40,12 +40,16 @@ class MeanXPUKernel : public framework::OpKernel<T> {
     x_shape.push_back(1);
     x_shape.push_back(input->numel());
     std::vector<int> rdims = {1};
-    int r = xpu::reduce_mean(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x_data),
-        reinterpret_cast<XPUType*>(y_data), x_shape, rdims);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    int r = xpu::reduce_mean(dev_ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(x_data),
+                             reinterpret_cast<XPUType*>(y_data),
+                             x_shape,
+                             rdims);
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU reduce_mean kernel return wrong value[%d %s]", r,
+                          "XPU reduce_mean kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -56,8 +60,10 @@ class MeanGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto OG = context.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(OG->numel(), 1, platform::errors::InvalidArgument(
-                                          "Mean Gradient should be scalar"));
+    PADDLE_ENFORCE_EQ(
+        OG->numel(),
+        1,
+        platform::errors::InvalidArgument("Mean Gradient should be scalar"));
     auto IG = context.Output<Tensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
@@ -71,11 +77,13 @@ class MeanGradXPUKernel : public framework::OpKernel<T> {
     float dy0_fp32 = static_cast<float>(dy0_value);
     dy0_fp32 = dy0_fp32 / static_cast<float>(IG->numel());
 
-    int r = xpu::constant(dev_ctx.x_context(), dx, IG->numel(),
-                          static_cast<XPUType>(dy0_fp32));
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    int r = xpu::constant(
+        dev_ctx.x_context(), dx, IG->numel(), static_cast<XPUType>(dy0_fp32));
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU constant kernel return wrong value[%d %s]", r,
+                          "XPU constant kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -85,7 +93,8 @@ class MeanGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    mean, ops::MeanXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    mean,
+    ops::MeanXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::MeanXPUKernel<paddle::platform::XPUDeviceContext,
                        paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(

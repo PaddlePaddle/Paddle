@@ -38,8 +38,10 @@ template <typename T, int BlockDim>
 using BlockReduceTempStorage = typename BlockReduce<T, BlockDim>::TempStorage;
 
 template <typename T, int BlockDim>
-__global__ void sequence_softmax_kernel(const T *in_data, const size_t *ref_lod,
-                                        const size_t src_hight, T *out_data) {
+__global__ void sequence_softmax_kernel(const T *in_data,
+                                        const size_t *ref_lod,
+                                        const size_t src_hight,
+                                        T *out_data) {
   __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
   __shared__ T shared_max_data;
   __shared__ T shared_sum_data;
@@ -119,8 +121,8 @@ __global__ void sequence_softmax_grad_kernel(const T *softmax_grad_data,
 }
 
 template <typename T>
-struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &context,
+struct SequenceSoftmaxFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &context,
                   const LoDTensor &x,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *out) {
@@ -134,17 +136,20 @@ struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
     dim3 block_size(thread_x);
     dim3 grid_size(max_blocks);
     paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
-    sequence_softmax_kernel<
-        T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
-        x.data<T>(), mixv_ref_lod.CUDAData(context.GetPlace()), height,
-        out->mutable_data<T>(context.GetPlace()));
+    sequence_softmax_kernel<T, kThreadsPerBlock>
+        <<<grid_size, block_size, 0, context.stream()>>>(
+            x.data<T>(),
+            mixv_ref_lod.CUDAData(context.GetPlace()),
+            height,
+            out->mutable_data<T>(context.GetPlace()));
   }
 };
 
 template <typename T>
-struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &context,
-                  const LoDTensor &dout, const LoDTensor &out,
+struct SequenceSoftmaxGradFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &context,
+                  const LoDTensor &dout,
+                  const LoDTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *dx) {
     size_t height = ref_lod.size() - 1;
@@ -158,11 +163,13 @@ struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
     dim3 grid_size(max_blocks);
 
     paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
-    sequence_softmax_grad_kernel<
-        T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
-        dout.data<T>(), out.data<T>(),
-        mixv_ref_lod.CUDAData(context.GetPlace()), height,
-        dx->mutable_data<T>(context.GetPlace()));
+    sequence_softmax_grad_kernel<T, kThreadsPerBlock>
+        <<<grid_size, block_size, 0, context.stream()>>>(
+            dout.data<T>(),
+            out.data<T>(),
+            mixv_ref_lod.CUDAData(context.GetPlace()),
+            height,
+            dx->mutable_data<T>(context.GetPlace()));
   }
 };
 
@@ -170,12 +177,10 @@ struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sequence_softmax,
-    ops::SequenceSoftmaxKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceSoftmaxKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(sequence_softmax,
+                        ops::SequenceSoftmaxKernel<phi::GPUContext, float>,
+                        ops::SequenceSoftmaxKernel<phi::GPUContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     sequence_softmax_grad,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CUDADeviceContext,
-                                   double>);
+    ops::SequenceSoftmaxGradKernel<phi::GPUContext, float>,
+    ops::SequenceSoftmaxGradKernel<phi::GPUContext, double>);

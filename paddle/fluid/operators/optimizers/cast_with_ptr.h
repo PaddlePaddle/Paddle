@@ -31,8 +31,10 @@ struct CastFunctor {
 };
 
 template <typename InT, typename OutT, int VecSize>
-static void VecCastKernel(const platform::CUDADeviceContext &ctx, const InT *x,
-                          OutT *y, size_t n) {
+static void VecCastKernel(const phi::GPUContext &ctx,
+                          const InT *x,
+                          OutT *y,
+                          size_t n) {
   auto config = platform::GetGpuLaunchConfig1D(ctx, n, VecSize);
   auto block = config.GetGridSize();
   auto thread = config.GetBlockSize();
@@ -43,19 +45,22 @@ static void VecCastKernel(const platform::CUDADeviceContext &ctx, const InT *x,
   in_arr[0] = reinterpret_cast<const _ptr_ char *>(x);
   phi::Array<_ptr_ OutT *, 1> out_arr;
   out_arr[0] = y;
-  phi::funcs::VectorizedElementwiseKernel<
-      OutT, FunctorT, 1, 1, VecSize><<<block, thread, 0, stream>>>(
-      in_arr, out_arr, n, main_offset, FunctorT());
+  phi::funcs::VectorizedElementwiseKernel<OutT, FunctorT, 1, 1, VecSize>
+      <<<block, thread, 0, stream>>>(
+          in_arr, out_arr, n, main_offset, VecSize, FunctorT());
 }
 
 }  // namespace details
 
 template <typename InT, typename OutT>
-static void LaunchCastKernel(const platform::CUDADeviceContext &ctx,
-                             const InT *x, OutT *y, size_t n) {
+static void LaunchCastKernel(const phi::GPUContext &ctx,
+                             const InT *x,
+                             OutT *y,
+                             size_t n) {
   if (n == 0) return;
   PADDLE_ENFORCE_NE(
-      static_cast<const void *>(x), static_cast<void *>(y),
+      static_cast<const void *>(x),
+      static_cast<void *>(y),
       platform::errors::InvalidArgument("Inplace cast is not supported yet."));
   int vec_size = std::min(phi::GetVectorizedSize(x), phi::GetVectorizedSize(y));
   switch (vec_size) {

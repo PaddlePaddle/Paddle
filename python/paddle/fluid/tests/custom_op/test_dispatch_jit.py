@@ -20,7 +20,7 @@ from paddle.utils.cpp_extension import load, get_build_directory
 from utils import paddle_includes, extra_cc_args
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.fluid.framework import _test_eager_guard
-# Because Windows don't use docker, the shared lib already exists in the 
+# Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\dispatch_op\\dispatch_op.pyd'.format(get_build_directory())
 if os.name == 'nt' and os.path.isfile(file):
@@ -36,6 +36,7 @@ dispatch_op = load(
 
 
 class TestJitDispatch(unittest.TestCase):
+
     def setUp(self):
         paddle.set_device('cpu')
 
@@ -46,9 +47,10 @@ class TestJitDispatch(unittest.TestCase):
         np_x = x.numpy()
         np_out = out.numpy()
         self.assertTrue(dtype in str(np_out.dtype))
-        self.assertTrue(
-            np.array_equal(np_x, np_out),
-            "custom op x: {},\n custom op out: {}".format(np_x, np_out))
+        np.testing.assert_array_equal(
+            np_x,
+            np_out,
+            err_msg='custom op x: {},\n custom op out: {}'.format(np_x, np_out))
 
     def run_dispatch_test(self, func, dtype):
         with _test_eager_guard():

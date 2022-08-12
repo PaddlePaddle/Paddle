@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -116,13 +116,11 @@ class Uniform(distribution.Distribution):
         else:
             if isinstance(low, float) and isinstance(high, float):
                 self.all_arg_is_float = True
-            if isinstance(
-                    low,
-                    np.ndarray) and str(low.dtype) in ['float32', 'float64']:
+            if isinstance(low, np.ndarray) and str(
+                    low.dtype) in ['float32', 'float64']:
                 self.dtype = low.dtype
-            elif isinstance(
-                    high,
-                    np.ndarray) and str(high.dtype) in ['float32', 'float64']:
+            elif isinstance(high, np.ndarray) and str(
+                    high.dtype) in ['float32', 'float64']:
                 self.dtype = high.dtype
             # pylint: disable=unbalanced-tuple-unpacking
             self.low, self.high = self._to_tensor(low, high)
@@ -161,16 +159,16 @@ class Uniform(distribution.Distribution):
             zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
             uniform_random_tmp_reshape = nn.reshape(uniform_random_tmp,
                                                     output_shape)
-            output = uniform_random_tmp_reshape * (
-                zero_tmp_reshape + self.high - self.low)
+            output = uniform_random_tmp_reshape * (zero_tmp_reshape +
+                                                   self.high - self.low)
             output = elementwise_add(output, self.low, name=name)
             return output
         else:
             output_shape = shape + batch_shape
             output = nn.uniform_random(
                 output_shape, dtype=self.dtype, min=0., max=1.,
-                seed=seed) * (tensor.zeros(
-                    output_shape, dtype=self.dtype) + (self.high - self.low))
+                seed=seed) * (tensor.zeros(output_shape, dtype=self.dtype) +
+                              (self.high - self.low))
             output = elementwise_add(output, self.low, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
@@ -204,8 +202,9 @@ class Uniform(distribution.Distribution):
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_sub(
-            nn.log(lb * ub), nn.log(self.high - self.low), name=name)
+        return elementwise_sub(nn.log(lb * ub),
+                               nn.log(self.high - self.low),
+                               name=name)
 
     def probs(self, value):
         """Probability density/mass function.

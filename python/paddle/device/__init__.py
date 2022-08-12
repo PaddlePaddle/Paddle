@@ -1,18 +1,18 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the functions to manipulate devices 
+# TODO: define the functions to manipulate devices
 import re
 import os
 from paddle.fluid import core
@@ -230,7 +230,10 @@ def _convert_to_place(device):
         device_id = int(selected_mlus[0])
         place = core.MLUPlace(device_id)
     elif device in core.get_all_custom_device_type():
-        place = core.CustomPlace(device, 0)
+        selected_devices = os.getenv("FLAGS_selected_{}s".format(device),
+                                     "0").split(",")
+        device_id = int(selected_devices[0])
+        place = core.CustomPlace(device, device_id)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
@@ -349,6 +352,10 @@ def get_device():
     elif isinstance(place, core.MLUPlace):
         device_id = place.get_device_id()
         device = 'mlu:' + str(device_id)
+    elif isinstance(place, core.CustomPlace):
+        device_id = place.get_device_id()
+        device_type = place.get_device_type()
+        device = device_type + ':' + str(device_id)
     else:
         raise ValueError("The device specification {} is invalid".format(place))
 

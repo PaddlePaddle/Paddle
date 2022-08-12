@@ -38,6 +38,7 @@ paddle.enable_static()
 
 
 class TestCollectiveReduceScatter(TestCollectiveRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 
@@ -45,8 +46,9 @@ class TestCollectiveReduceScatter(TestCollectiveRunnerBase):
         ring_id = 0
         nranks = 2
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(
-                name="tindata", shape=[10, 1000], dtype='float32')
+            tindata = layers.data(name="tindata",
+                                  shape=[10, 1000],
+                                  dtype='float32')
             toutdata = fluid.layers.collective._c_reducescatter(tindata, nranks)
             toutdata = fluid.layers.collective._c_sync_comm_stream(toutdata, 0)
             return toutdata

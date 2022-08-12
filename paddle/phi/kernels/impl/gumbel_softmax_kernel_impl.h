@@ -15,6 +15,7 @@
 #pragma once
 
 #include <random>
+
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/phi/core/dense_tensor.h"

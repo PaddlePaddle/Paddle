@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/compare_kernel.h"
-#include "paddle/phi/kernels/impl/compare_kernel_impl.h"
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/impl/compare_kernel_impl.h"
 
 namespace phi {
 
@@ -80,7 +80,8 @@ PD_REGISTER_KERNEL(less_than,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(less_equal,
                    CPU,
                    ALL_LAYOUT,
@@ -90,7 +91,8 @@ PD_REGISTER_KERNEL(less_equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(greater_than,
                    CPU,
                    ALL_LAYOUT,
@@ -100,7 +102,8 @@ PD_REGISTER_KERNEL(greater_than,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(greater_equal,
                    CPU,
                    ALL_LAYOUT,
@@ -110,7 +113,8 @@ PD_REGISTER_KERNEL(greater_equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(equal,
                    CPU,
                    ALL_LAYOUT,
@@ -120,7 +124,8 @@ PD_REGISTER_KERNEL(equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(not_equal,
                    CPU,
                    ALL_LAYOUT,
@@ -130,7 +135,8 @@ PD_REGISTER_KERNEL(not_equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(equal_all,
                    CPU,

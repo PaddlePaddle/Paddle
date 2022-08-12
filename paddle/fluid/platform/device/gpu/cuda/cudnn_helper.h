@@ -210,18 +210,24 @@ class ScopedTensorDescriptor {
 
     if (dims.size() == 4) {
       if (format == CUDNN_TENSOR_NCHW) {
-        PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
-            desc_, type, dims_with_group.size(), dims_with_group.data(),
-            strides.data()));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::cudnnSetTensorNdDescriptor(desc_,
+                                                type,
+                                                dims_with_group.size(),
+                                                dims_with_group.data(),
+                                                strides.data()));
       } else {  // CUDNN_TENSOR_NHWC
         PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensor4dDescriptor(
             desc_, format, type, dims[0], dims[3], dims[1], dims[2]));
       }
     } else if (dims.size() == 5) {
       if (format == CUDNN_TENSOR_NCHW) {
-        PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
-            desc_, type, dims_with_group.size(), dims_with_group.data(),
-            strides.data()));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::cudnnSetTensorNdDescriptor(desc_,
+                                                type,
+                                                dims_with_group.size(),
+                                                dims_with_group.data(),
+                                                strides.data()));
       } else {  // CUDNN_TENSOR_NHWC
         PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
             desc_, format, type, dims.size(), dims.data()));
@@ -234,8 +240,8 @@ class ScopedTensorDescriptor {
   inline cudnnTensorDescriptor_t descriptor(const DataLayout& order,
                                             const std::vector<int>& dims,
                                             const int groups = 1) {
-    return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims,
-                      groups);
+    return descriptor(
+        GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims, groups);
   }
 
   inline cudnnTensorDescriptor_t descriptor(const cudnnDataType_t cudnn_type,
@@ -271,8 +277,12 @@ class ScopedRNNTensorDescriptor {
   }
 
   inline cudnnRNNDataDescriptor_t descriptor(
-      const cudnnDataType_t cudnn_type, int max_seq_length, int batch_size,
-      int input_size, bool time_major, const std::vector<int>& seq_length) {
+      const cudnnDataType_t cudnn_type,
+      int max_seq_length,
+      int batch_size,
+      int input_size,
+      bool time_major,
+      const std::vector<int>& seq_length) {
     static double padding_fill = 0.0f;
     cudnnRNNDataLayout_t layout;
 
@@ -282,19 +292,32 @@ class ScopedRNNTensorDescriptor {
       layout = CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED;
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetRNNDataDescriptor(
-        desc_, cudnn_type, layout, max_seq_length, batch_size, input_size,
-        seq_length.data(), static_cast<void*>(&padding_fill)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cudnnSetRNNDataDescriptor(desc_,
+                                           cudnn_type,
+                                           layout,
+                                           max_seq_length,
+                                           batch_size,
+                                           input_size,
+                                           seq_length.data(),
+                                           static_cast<void*>(&padding_fill)));
 
     return desc_;
   }
 
   template <typename T>
   inline cudnnRNNDataDescriptor_t descriptor(
-      int max_length, int batch_size, int input_size, bool time_major,
+      int max_length,
+      int batch_size,
+      int input_size,
+      bool time_major,
       const std::vector<int>& seq_length) {
-    return descriptor(CudnnDataType<T>::type, max_length, batch_size,
-                      input_size, time_major, seq_length);
+    return descriptor(CudnnDataType<T>::type,
+                      max_length,
+                      batch_size,
+                      input_size,
+                      time_major,
+                      seq_length);
   }
 
   inline cudnnRNNDataDescriptor_t desc() { return desc_; }
@@ -319,11 +342,16 @@ class ScopedDropoutDescriptor {
                                              bool initialized,
                                              float dropout_prob_,
                                              framework::Tensor* dropout_state_,
-                                             int seed, size_t state_size) {
+                                             int seed,
+                                             size_t state_size) {
     if (dropout_state_ == nullptr) {  // for no dropout or test
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetDropoutDescriptor(
-          desc_, handle, 0 /* dropout */, nullptr, 0 /* state_size */,
-          0 /* seed */));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cudnnSetDropoutDescriptor(desc_,
+                                             handle,
+                                             0 /* dropout */,
+                                             nullptr,
+                                             0 /* state_size */,
+                                             0 /* seed */));
       return desc_;
     }
     auto* dropout_state_data = dropout_state_->data<uint8_t>();
@@ -383,9 +411,12 @@ class ScopedFilterDescriptor {
       kernel_with_group[0] /= groups;
       // NOTE: input filter(C) of the filter is already asserted to be C/groups.
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetFilterNdDescriptor(
-        desc_, type, format, kernel_with_group.size(),
-        kernel_with_group.data()));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cudnnSetFilterNdDescriptor(desc_,
+                                            type,
+                                            format,
+                                            kernel_with_group.size(),
+                                            kernel_with_group.data()));
     return desc_;
   }
 
@@ -393,8 +424,8 @@ class ScopedFilterDescriptor {
   inline cudnnFilterDescriptor_t descriptor(const DataLayout& order,
                                             const std::vector<int>& kernel,
                                             const int groups = 1) {
-    return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type,
-                      kernel, groups);
+    return descriptor(
+        GetCudnnTensorFormat(order), CudnnDataType<T>::type, kernel, groups);
   }
 
   inline cudnnFilterDescriptor_t desc() { return desc_; }
@@ -416,31 +447,43 @@ class ScopedConvolutionDescriptor {
   }
 
   inline cudnnConvolutionDescriptor_t descriptor(
-      cudnnDataType_t type, const std::vector<int>& pads,
-      const std::vector<int>& strides, const std::vector<int>& dilations) {
-    PADDLE_ENFORCE_EQ(pads.size(), strides.size(),
+      cudnnDataType_t type,
+      const std::vector<int>& pads,
+      const std::vector<int>& strides,
+      const std::vector<int>& dilations) {
+    PADDLE_ENFORCE_EQ(pads.size(),
+                      strides.size(),
                       platform::errors::InvalidArgument(
                           "The size of pads and strides should be equal. But "
                           "received size of pads is %d, size of strides is %d.",
-                          pads.size(), strides.size()));
+                          pads.size(),
+                          strides.size()));
     PADDLE_ENFORCE_EQ(
-        pads.size(), dilations.size(),
+        pads.size(),
+        dilations.size(),
         platform::errors::InvalidArgument(
             "The size of pads and dilations should be equal. But received size "
             "of pads is %d, size of dilations is %d.",
-            pads.size(), dilations.size()));
+            pads.size(),
+            dilations.size()));
 
     cudnnDataType_t compute_type =
         (type == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetConvolutionNdDescriptor(
-        desc_, pads.size(), pads.data(), strides.data(), dilations.data(),
-        CUDNN_CROSS_CORRELATION, compute_type));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cudnnSetConvolutionNdDescriptor(desc_,
+                                                 pads.size(),
+                                                 pads.data(),
+                                                 strides.data(),
+                                                 dilations.data(),
+                                                 CUDNN_CROSS_CORRELATION,
+                                                 compute_type));
     return desc_;
   }
 
   template <typename T>
   inline cudnnConvolutionDescriptor_t descriptor(
-      const std::vector<int>& pads, const std::vector<int>& strides,
+      const std::vector<int>& pads,
+      const std::vector<int>& strides,
       const std::vector<int>& dilations) {
     return descriptor(CudnnDataType<T>::type, pads, strides, dilations);
   }
@@ -463,21 +506,29 @@ class ScopedPoolingDescriptor {
                                              const std::vector<int>& kernel,
                                              const std::vector<int>& pads,
                                              const std::vector<int>& strides) {
-    PADDLE_ENFORCE_EQ(kernel.size(), pads.size(),
+    PADDLE_ENFORCE_EQ(kernel.size(),
+                      pads.size(),
                       platform::errors::InvalidArgument(
                           "The size of kernel and pads should be equal. But "
                           "received size of kernel is %d, size of pads is %d.",
-                          kernel.size(), pads.size()));
+                          kernel.size(),
+                          pads.size()));
     PADDLE_ENFORCE_EQ(
-        kernel.size(), strides.size(),
+        kernel.size(),
+        strides.size(),
         platform::errors::InvalidArgument(
             "The size of kernel and strides should be equal. But "
             "received size of kernel is %d, size of strides is %d.",
-            kernel.size(), strides.size()));
+            kernel.size(),
+            strides.size()));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetPoolingNdDescriptor(
-        desc_, (GetPoolingMode(mode)),
+        desc_,
+        (GetPoolingMode(mode)),
         CUDNN_PROPAGATE_NAN,  // Always propagate nans.
-        kernel.size(), kernel.data(), pads.data(), strides.data()));
+        kernel.size(),
+        kernel.data(),
+        pads.data(),
+        strides.data()));
     return desc_;
   }
 
@@ -570,7 +621,7 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
   use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_CUDA
   if (use_cudnn) {
-    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.device_context<phi::GPUContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
   }
 #endif

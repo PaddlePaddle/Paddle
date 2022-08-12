@@ -44,10 +44,12 @@ class ElementwiseMulGradXPUKernel : public ElemwiseGradKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(elementwise_mul, ops::ElementwiseMulXPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(elementwise_mul,
+                       ops::ElementwiseMulXPUKernel<float>,
                        ops::ElementwiseMulXPUKernel<paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
-    elementwise_mul_grad, ops::ElementwiseMulGradXPUKernel<float>,
+    elementwise_mul_grad,
+    ops::ElementwiseMulGradXPUKernel<float>,
     ops::ElementwiseMulGradXPUKernel<paddle::platform::float16>);
 
 #endif

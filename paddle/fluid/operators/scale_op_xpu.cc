@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 
@@ -46,7 +47,11 @@ class ScaleXPUKernel : public framework::OpKernel<T> {
     phi::ScaleKernel<T>(
         static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *in, scale, bias, bias_after_scale, out);
+        *in,
+        scale,
+        bias,
+        bias_after_scale,
+        out);
   }
 };
 
@@ -56,7 +61,8 @@ class ScaleXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
-    scale, ops::ScaleXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    scale,
+    ops::ScaleXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::ScaleXPUKernel<paddle::platform::XPUDeviceContext,
                         paddle::platform::float16>,
     ops::ScaleXPUKernel<paddle::platform::XPUDeviceContext, int64_t>);

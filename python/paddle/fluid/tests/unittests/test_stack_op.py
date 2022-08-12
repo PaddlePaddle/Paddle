@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 
 
 class TestStackOpBase(OpTest):
+
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
@@ -63,36 +64,43 @@ class TestStackOpBase(OpTest):
 
 
 class TestStackOp1(TestStackOpBase):
+
     def initParameters(self):
         self.num_inputs = 8
 
 
 class TestStackOp2(TestStackOpBase):
+
     def initParameters(self):
         self.num_inputs = 10
 
 
 class TestStackOp3(TestStackOpBase):
+
     def initParameters(self):
         self.axis = -1
 
 
 class TestStackOp4(TestStackOpBase):
+
     def initParameters(self):
         self.axis = -4
 
 
 class TestStackOp5(TestStackOpBase):
+
     def initParameters(self):
         self.axis = 1
 
 
 class TestStackOp6(TestStackOpBase):
+
     def initParameters(self):
         self.axis = 3
 
 
 class TestStackBF16Op(OpTest):
+
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
@@ -166,10 +174,8 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
-        self.assertTrue(
-            np.array_equal(
-                res[0], np.stack(
-                    [self.x] * self.iter_num, axis=self.axis)))
+        np.testing.assert_array_equal(
+            res[0], np.stack([self.x] * self.iter_num, axis=self.axis))
 
 
 class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
@@ -202,13 +208,12 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
-        self.assertTrue(
-            np.array_equal(
-                res[0], np.stack(
-                    [self.x] * self.iter_num, axis=self.axis)))
+        np.testing.assert_array_equal(
+            res[0], np.stack([self.x] * self.iter_num, axis=self.axis))
 
 
 class API_test(unittest.TestCase):
+
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data('data1', shape=[1, 2], dtype='float64')
@@ -220,11 +225,12 @@ class API_test(unittest.TestCase):
             input1 = np.random.random([1, 2]).astype('float64')
             input2 = np.random.random([1, 2]).astype('float64')
             input3 = np.random.random([1, 2]).astype('float64')
-            result, = exe.run(
-                feed={"data1": input1,
-                      "data2": input2,
-                      "data3": input3},
-                fetch_list=[result_stack])
+            result, = exe.run(feed={
+                "data1": input1,
+                "data2": input2,
+                "data3": input3
+            },
+                              fetch_list=[result_stack])
             expected_result = np.stack([input1, input2, input3], axis=0)
             self.assertTrue(np.allclose(expected_result, result))
 
@@ -235,6 +241,7 @@ class API_test(unittest.TestCase):
 
 
 class API_DygraphTest(unittest.TestCase):
+
     def test_out(self):
         data1 = np.array([[1.0, 2.0]])
         data2 = np.array([[3.0, 4.0]])

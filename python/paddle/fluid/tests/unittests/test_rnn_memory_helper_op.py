@@ -24,19 +24,21 @@ import paddle.fluid.core as core
 
 
 class RNNMemoryHelperOpTest(unittest.TestCase):
+
     def setUp(self):
         self.program = Program()
         self.place = core.CPUPlace()
 
-        self.X = self.program.global_block().create_var(
-            name='X', shape=[2, 3], dtype='float32')
-        self.Out = self.program.global_block().create_var(
-            name='Out', shape=[2, 3], dtype='float32')
-        self.program.global_block().append_op(
-            type='rnn_memory_helper',
-            inputs={"X": self.X},
-            outputs={"Out": self.Out},
-            attrs={})
+        self.X = self.program.global_block().create_var(name='X',
+                                                        shape=[2, 3],
+                                                        dtype='float32')
+        self.Out = self.program.global_block().create_var(name='Out',
+                                                          shape=[2, 3],
+                                                          dtype='float32')
+        self.program.global_block().append_op(type='rnn_memory_helper',
+                                              inputs={"X": self.X},
+                                              outputs={"Out": self.Out},
+                                              attrs={})
 
     def test_forward(self):
         x_np = np.random.normal(size=(2, 3)).astype("float32")
@@ -50,29 +52,31 @@ class RNNMemoryHelperOpTest(unittest.TestCase):
 
 
 class RNNMemoryHelperGradOpTest(unittest.TestCase):
+
     def setUp(self):
         self.program = Program()
         self.place = core.CPUPlace()
 
         self.input_names = ['X', 'Out', 'Out@GRAD']
         self.input_vars = {
-            name: self.program.global_block().create_var(
-                name=name, shape=[2, 3], dtype='float32')
+            name: self.program.global_block().create_var(name=name,
+                                                         shape=[2, 3],
+                                                         dtype='float32')
             for name in self.input_names
         }
 
         self.output_names = ['X@GRAD']
         self.output_vars = {
-            name: self.program.global_block().create_var(
-                name=name, shape=[2, 3], dtype='float32')
+            name: self.program.global_block().create_var(name=name,
+                                                         shape=[2, 3],
+                                                         dtype='float32')
             for name in self.output_names
         }
 
-        self.program.global_block().append_op(
-            type='rnn_memory_helper_grad',
-            inputs=self.input_vars,
-            outputs=self.output_vars,
-            attrs={})
+        self.program.global_block().append_op(type='rnn_memory_helper_grad',
+                                              inputs=self.input_vars,
+                                              outputs=self.output_vars,
+                                              attrs={})
 
     def test_backward(self):
         self.feed_map = {
@@ -89,6 +93,7 @@ class RNNMemoryHelperGradOpTest(unittest.TestCase):
 
 
 class RNNMemoryHelperGradOpWithoutInputTest(unittest.TestCase):
+
     def setUp(self):
         self.program = Program()
         self.fake_program = Program()
@@ -96,8 +101,9 @@ class RNNMemoryHelperGradOpWithoutInputTest(unittest.TestCase):
 
         self.input_names = ['X', 'Out']
         self.input_vars = {
-            name: self.program.global_block().create_var(
-                name=name, shape=[2, 3], dtype='float32')
+            name: self.program.global_block().create_var(name=name,
+                                                         shape=[2, 3],
+                                                         dtype='float32')
             for name in self.input_names
         }
         self.input_vars["Out@GRAD"] = \
@@ -106,16 +112,16 @@ class RNNMemoryHelperGradOpWithoutInputTest(unittest.TestCase):
 
         self.output_names = ['X@GRAD']
         self.output_vars = {
-            name: self.program.global_block().create_var(
-                name=name, shape=[2, 3], dtype='float32')
+            name: self.program.global_block().create_var(name=name,
+                                                         shape=[2, 3],
+                                                         dtype='float32')
             for name in self.output_names
         }
 
-        self.program.global_block().append_op(
-            type='rnn_memory_helper_grad',
-            inputs=self.input_vars,
-            outputs=self.output_vars,
-            attrs={})
+        self.program.global_block().append_op(type='rnn_memory_helper_grad',
+                                              inputs=self.input_vars,
+                                              outputs=self.output_vars,
+                                              attrs={})
 
     def test_backward(self):
         self.feed_map = {
@@ -129,8 +135,9 @@ class RNNMemoryHelperGradOpWithoutInputTest(unittest.TestCase):
                       feed=self.feed_map,
                       fetch_list=self.fetch_list)
         self.assertTrue(
-            np.allclose(
-                out[0], np.zeros(shape=(2, 3)).astype("float32"), rtol=1e-5))
+            np.allclose(out[0],
+                        np.zeros(shape=(2, 3)).astype("float32"),
+                        rtol=1e-5))
 
 
 if __name__ == '__main__':

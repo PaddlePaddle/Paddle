@@ -53,6 +53,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    assign, ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    assign,
+    ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, double>)

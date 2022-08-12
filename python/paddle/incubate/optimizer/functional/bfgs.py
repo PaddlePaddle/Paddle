@@ -91,8 +91,8 @@ def minimize_bfgs(objective_func,
 
     if dtype not in ['float32', 'float64']:
         raise ValueError(
-            "The dtype must be 'float32' or 'float64', but the specified is {}.".
-            format(dtype))
+            "The dtype must be 'float32' or 'float64', but the specified is {}."
+            .format(dtype))
 
     op_name = 'minimize_bfgs'
     check_input_type(initial_position, 'initial_position', op_name)
@@ -134,8 +134,8 @@ def minimize_bfgs(objective_func,
                 dtype=dtype)
         else:
             raise NotImplementedError(
-                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
-                format(line_search_fn))
+                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'"
+                .format(line_search_fn))
         num_func_calls += ls_func_calls
 
         #############    update Hk    #############
@@ -150,7 +150,9 @@ def minimize_bfgs(objective_func,
 
         rhok_inv = paddle.dot(yk, sk)
         rhok = paddle.static.nn.cond(
-            rhok_inv == 0., lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype), lambda: 1. / rhok_inv)
+            rhok_inv == 0.,
+            lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
+            lambda: 1. / rhok_inv)
 
         Vk_transpose = I - rhok * sk * yk.t()
         Vk = I - rhok * yk * sk.t()
@@ -162,8 +164,9 @@ def minimize_bfgs(objective_func,
         #############    check convergence    #############
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
-        paddle.assign(done | (gnorm < tolerance_grad) |
-                      (pk_norm < tolerance_change), done)
+        paddle.assign(
+            done | (gnorm < tolerance_grad) | (pk_norm < tolerance_change),
+            done)
         paddle.assign(done, is_converge)
         # when alpha=0, there is no chance to get xk change.
         paddle.assign(done | (alpha == 0.), done)

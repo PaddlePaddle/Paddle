@@ -60,14 +60,12 @@ inline void ModulatedDeformableIm2colCPUKernel(
     const T* data_im_ptr =
         data_im + (b_col * num_channels + c_im) * height * width;
     const T* data_offset_ptr =
-        data_offset +
-        (b_col * deformable_group + deformable_group_index) * 2 * kernel_h *
-            kernel_w * height_col * width_col;
+        data_offset + (b_col * deformable_group + deformable_group_index) * 2 *
+                          kernel_h * kernel_w * height_col * width_col;
     const T* data_mask_ptr =
         data_mask
-            ? data_mask +
-                  (b_col * deformable_group + deformable_group_index) *
-                      kernel_h * kernel_w * height_col * width_col
+            ? data_mask + (b_col * deformable_group + deformable_group_index) *
+                              kernel_h * kernel_w * height_col * width_col
             : nullptr;
 
     for (int i = 0; i < kernel_h; ++i) {

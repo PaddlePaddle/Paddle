@@ -84,7 +84,9 @@ class ReduceProdNPUKernel : public framework::OpKernel<T> {
     if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
       auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
-          NpuOpRunner("Cast", {cast_out}, {*out},
+          NpuOpRunner("Cast",
+                      {cast_out},
+                      {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast.Run(stream);
     }
@@ -97,5 +99,6 @@ class ReduceProdNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    reduce_prod, ops::ReduceProdNPUKernel<plat::NPUDeviceContext, float>,
+    reduce_prod,
+    ops::ReduceProdNPUKernel<plat::NPUDeviceContext, float>,
     ops::ReduceProdNPUKernel<plat::NPUDeviceContext, plat::float16>);

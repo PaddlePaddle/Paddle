@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/set_value_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
@@ -190,7 +189,8 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(set_value, ops::SetValueNPUKernel<int>,
+REGISTER_OP_NPU_KERNEL(set_value,
+                       ops::SetValueNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
                        ops::SetValueNPUKernel<int64_t>,
 #endif

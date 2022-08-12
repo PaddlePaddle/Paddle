@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestSplitOp(TestDistBase):
+
     def _setup_config(self):
         pass
 

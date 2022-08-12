@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
+
 #include "paddle/fluid/distributed/ps/table/table.h"
 
 //#define pslib_debug_dense_compress
@@ -22,7 +23,7 @@ namespace distributed {
 int32_t PsLocalClient::Initialize() {
   const auto& downpour_param = _config.server_param().downpour_server_param();
   TableManager::Instance().Initialize();
-  for (size_t i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
+  for (int i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
     auto* table = CREATE_PSCORE_CLASS(
         Table, downpour_param.downpour_table_param(i).table_class());
     table->SetShard(0, 1);
@@ -117,7 +118,8 @@ int32_t PsLocalClient::Initialize() {
   size_t shard_data_size = num_per_shard;
   size_t shard_buffer_remain = shard_data_size * sizeof(float);
   PADDLE_ENFORCE_EQ(
-      shard_buffer_remain, region_buffer.size() * sizeof(float),
+      shard_buffer_remain,
+      region_buffer.size() * sizeof(float),
       platform::errors::PreconditionNotMet("pull dense size error."));
   size_t index = 0;
   while (shard_buffer_remain > 0 && region_idx < region_num) {
@@ -173,7 +175,9 @@ int32_t PsLocalClient::Initialize() {
 }
 
 ::std::future<int32_t> PsLocalClient::PushDenseRawGradient(
-    int table_id, float* total_send_data, size_t total_send_data_size,
+    int table_id,
+    float* total_send_data,
+    size_t total_send_data_size,
     void* callback) {
   VLOG(1) << "wxx push_dense_raw_gradient";
 
@@ -205,10 +209,13 @@ int32_t PsLocalClient::Initialize() {
   for (size_t i = 0, offset = 0; i < region_num; ++i) {
     uint32_t data_num = regions[i].size / sizeof(float);
     PADDLE_ENFORCE_LE(
-        offset + data_num, data_size,
+        offset + data_num,
+        data_size,
         platform::errors::PreconditionNotMet(
-            "invalid dense size, cur pos[%d] data_num[%d] size[%d]", offset,
-            data_num, data_size));
+            "invalid dense size, cur pos[%d] data_num[%d] size[%d]",
+            offset,
+            data_num,
+            data_size));
     memcpy(region_buffer.data() + offset, regions[i].data, regions[i].size);
     offset += data_num;
   }
@@ -279,10 +286,12 @@ int32_t PsLocalClient::Initialize() {
 }
 
 ::std::future<int32_t> PsLocalClient::PushSparseRawGradient(
-    size_t table_id, const uint64_t* keys, const float** update_values,
-    size_t num, void* callback) {
+    size_t table_id,
+    const uint64_t* keys,
+    const float** update_values,
+    size_t num,
+    void* callback) {
   PSClientClosure* closure = reinterpret_cast<PSClientClosure*>(callback);
-  auto* accessor = GetTableAccessor(table_id);
   auto* table_ptr = GetTable(table_id);
 
   TableContext table_context;
@@ -302,7 +311,6 @@ int32_t PsLocalClient::Initialize() {
                                                  const uint64_t* keys,
                                                  const float** update_values,
                                                  size_t num) {
-  auto* accessor = GetTableAccessor(table_id);
   auto* table_ptr = GetTable(table_id);
 
   TableContext table_context;
@@ -316,5 +324,5 @@ int32_t PsLocalClient::Initialize() {
   table_ptr->Push(table_context);
   return done();
 }
-}
-}
+}  // namespace distributed
+}  // namespace paddle

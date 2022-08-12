@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -57,7 +58,8 @@ class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
       Computes the indices of the %s elements of the input tensor's element
       along the provided axis.
 )DOC",
-                               OpName(), Name()));
+                               OpName(),
+                               Name()));
   }
 };
 

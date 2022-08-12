@@ -25,42 +25,44 @@ import numpy as np
 
 
 class TestHub(unittest.TestCase):
+
     def setUp(self, ):
         self.local_repo = os.path.dirname(os.path.abspath(__file__))
         self.github_repo = 'lyuwenyu/paddlehub_demo:main'
 
     def testLoad(self, ):
-        model = hub.load(
-            self.local_repo, model='MM', source='local', out_channels=8)
+        model = hub.load(self.local_repo,
+                         model='MM',
+                         source='local',
+                         out_channels=8)
 
         data = paddle.rand((1, 3, 100, 100))
         out = model(data)
         np.testing.assert_equal(out.shape, [1, 8, 50, 50])
 
-        model = hub.load(
-            self.github_repo, model='MM', source='github', force_reload=True)
+        model = hub.load(self.github_repo,
+                         model='MM',
+                         source='github',
+                         force_reload=True)
 
-        model = hub.load(
-            self.github_repo,
-            model='MM',
-            source='github',
-            force_reload=False,
-            pretrained=False)
+        model = hub.load(self.github_repo,
+                         model='MM',
+                         source='github',
+                         force_reload=False,
+                         pretrained=False)
 
-        model = hub.load(
-            self.github_repo.split(':')[0],
-            model='MM',
-            source='github',
-            force_reload=False,
-            pretrained=False)
+        model = hub.load(self.github_repo.split(':')[0],
+                         model='MM',
+                         source='github',
+                         force_reload=False,
+                         pretrained=False)
 
-        model = hub.load(
-            self.github_repo,
-            model='MM',
-            source='github',
-            force_reload=False,
-            pretrained=True,
-            out_channels=8)
+        model = hub.load(self.github_repo,
+                         model='MM',
+                         source='github',
+                         force_reload=False,
+                         pretrained=True,
+                         out_channels=8)
 
         data = paddle.ones((1, 3, 2, 2))
         out = model(data)
@@ -70,17 +72,21 @@ class TestHub(unittest.TestCase):
             0.37345418
         ])
         np.testing.assert_equal(out.shape, [1, 8, 1, 1])
-        np.testing.assert_almost_equal(
-            out.numpy(), gt.reshape(1, 8, 1, 1), decimal=5)
+        np.testing.assert_almost_equal(out.numpy(),
+                                       gt.reshape(1, 8, 1, 1),
+                                       decimal=5)
 
     def testHelp(self, ):
         docs1 = hub.help(
             self.local_repo,
             model='MM',
-            source='local', )
+            source='local',
+        )
 
-        docs2 = hub.help(
-            self.github_repo, model='MM', source='github', force_reload=False)
+        docs2 = hub.help(self.github_repo,
+                         model='MM',
+                         source='github',
+                         force_reload=False)
 
         assert docs1 == docs2 == 'This is a test demo for paddle hub\n    ', ''
 
@@ -88,44 +94,46 @@ class TestHub(unittest.TestCase):
         models1 = hub.list(
             self.local_repo,
             source='local',
-            force_reload=False, )
+            force_reload=False,
+        )
 
         models2 = hub.list(
             self.github_repo,
             source='github',
-            force_reload=False, )
+            force_reload=False,
+        )
 
         assert models1 == models2 == ['MM'], ''
 
     def testExcept(self, ):
         with self.assertRaises(ValueError):
-            _ = hub.help(
-                self.github_repo,
-                model='MM',
-                source='github-test',
-                force_reload=False)
+            _ = hub.help(self.github_repo,
+                         model='MM',
+                         source='github-test',
+                         force_reload=False)
 
         with self.assertRaises(ValueError):
-            _ = hub.load(
-                self.github_repo,
-                model='MM',
-                source='github-test',
-                force_reload=False)
+            _ = hub.load(self.github_repo,
+                         model='MM',
+                         source='github-test',
+                         force_reload=False)
 
         with self.assertRaises(ValueError):
-            _ = hub.list(
-                self.github_repo, source='github-test', force_reload=False)
+            _ = hub.list(self.github_repo,
+                         source='github-test',
+                         force_reload=False)
 
         with self.assertRaises(ValueError):
-            _ = hub.load(
-                self.local_repo, model=123, source='local', force_reload=False)
+            _ = hub.load(self.local_repo,
+                         model=123,
+                         source='local',
+                         force_reload=False)
 
         with self.assertRaises(RuntimeError):
-            _ = hub.load(
-                self.local_repo,
-                model='123',
-                source='local',
-                force_reload=False)
+            _ = hub.load(self.local_repo,
+                         model='123',
+                         source='local',
+                         force_reload=False)
 
 
 if __name__ == '__main__':

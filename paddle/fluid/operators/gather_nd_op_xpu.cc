@@ -38,7 +38,8 @@ class GatherNdXPUKernel : public framework::OpKernel<T> {
     const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
+    PADDLE_ENFORCE_EQ(index_type_match,
+                      true,
                       platform::errors::InvalidArgument(
                           "Index holds the wrong type, it holds [%s],"
                           "but desires to be [%s] or [%s]",
@@ -53,24 +54,32 @@ class GatherNdXPUKernel : public framework::OpKernel<T> {
     if (index_shape.size() == 1) {
       index_shape.insert(index_shape.begin(), 1);
     }
-    xpu::VectorParam<int> x_vec = {x_shape.data(),
-                                   static_cast<int>(x_shape.size()), nullptr};
+    xpu::VectorParam<int> x_vec = {
+        x_shape.data(), static_cast<int>(x_shape.size()), nullptr};
 
     auto &dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
     int ret = XPU_SUCCESS;
     if (index_type == framework::proto::VarType::INT32) {
-      ret = xpu::gather_nd<T, int>(dev_ctx.x_context(), x->data<T>(),
-                                   index->data<int>(), out->data<T>(), x_vec,
+      ret = xpu::gather_nd<T, int>(dev_ctx.x_context(),
+                                   x->data<T>(),
+                                   index->data<int>(),
+                                   out->data<T>(),
+                                   x_vec,
                                    index_shape);
     } else {
-      ret = xpu::gather_nd<T, int64_t>(dev_ctx.x_context(), x->data<T>(),
-                                       index->data<int64_t>(), out->data<T>(),
-                                       x_vec, index_shape);
+      ret = xpu::gather_nd<T, int64_t>(dev_ctx.x_context(),
+                                       x->data<T>(),
+                                       index->data<int64_t>(),
+                                       out->data<T>(),
+                                       x_vec,
+                                       index_shape);
     }
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+    PADDLE_ENFORCE_EQ(ret,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU gather_nd kernel return wrong value[%d %s]", ret,
+                          "XPU gather_nd kernel return wrong value[%d %s]",
+                          ret,
                           XPUAPIErrorMsg[ret]));
   }
 };
@@ -79,7 +88,8 @@ class GatherNdXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(gather_nd, ops::GatherNdXPUKernel<int>,
+REGISTER_OP_XPU_KERNEL(gather_nd,
+                       ops::GatherNdXPUKernel<int>,
                        ops::GatherNdXPUKernel<int64_t>,
                        ops::GatherNdXPUKernel<float>);
 

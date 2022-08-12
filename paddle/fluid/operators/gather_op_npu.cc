@@ -33,8 +33,8 @@ class GatherOpNPUKernel : public framework::OpKernel<T> {
     auto *out = ctx.Output<Tensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
-    const auto &runner = NpuOpRunner("Gather", {*x, *index}, {*out},
-                                     {{"validate_indices", true}});
+    const auto &runner = NpuOpRunner(
+        "Gather", {*x, *index}, {*out}, {{"validate_indices", true}});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -71,8 +71,8 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
     zeroslike_xout.Resize(x->dims());
     auto p = zeroslike_xout.mutable_data<T>(ctx.GetPlace());
 
-    platform::NPUMemsetAsync(static_cast<void *>(p), 0,
-                             zeroslike_xout.numel() * sizeof(T), stream);
+    platform::NPUMemsetAsync(
+        static_cast<void *>(p), 0, zeroslike_xout.numel() * sizeof(T), stream);
 
     // step3: scatter(x_grad)
     const auto &runner_scatter = NpuOpRunner(
@@ -86,7 +86,8 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
-    gather, ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    gather,
+    ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext,
                            paddle::platform::float16>);

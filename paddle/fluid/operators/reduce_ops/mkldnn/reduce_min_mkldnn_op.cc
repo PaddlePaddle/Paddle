@@ -29,6 +29,8 @@ class ReduceMinMKLDNNKernel : public ReduceMKLDNNKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(reduce_min, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(reduce_min,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::ReduceMinMKLDNNKernel<float>,
                    ops::ReduceMinMKLDNNKernel<paddle::platform::bfloat16>);

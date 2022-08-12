@@ -43,6 +43,7 @@ def get_random_inputs_and_labels(input_shape, label_shape):
 
 
 def batch_generator_creator():
+
     def __reader__():
         for _ in range(batch_size):
             batch_input, batch_label = get_random_inputs_and_labels(
@@ -54,6 +55,7 @@ def batch_generator_creator():
 
 
 class MLPLayer(nn.Layer):
+
     def __init__(self,
                  hidden_size=1024,
                  intermediate_size=4 * 1024,
@@ -62,8 +64,8 @@ class MLPLayer(nn.Layer):
         super(MLPLayer, self).__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
-        param_initializer = nn.initializer.Normal(
-            mean=0.0, std=initializer_range)
+        param_initializer = nn.initializer.Normal(mean=0.0,
+                                                  std=initializer_range)
 
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.linear0 = nn.Linear(
@@ -79,20 +81,18 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         out = self.norm(input)
-        auto.shard_tensor(
-            self.linear0.weight,
-            dist_attr={
-                "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [-1, 0]
-            })
+        auto.shard_tensor(self.linear0.weight,
+                          dist_attr={
+                              "process_mesh": _g_process_mesh[0],
+                              "dims_mapping": [-1, 0]
+                          })
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
-        auto.shard_tensor(
-            self.linear1.weight,
-            dist_attr={
-                "process_mesh": _g_process_mesh[1],
-                "dims_mapping": [0, -1]
-            })
+        auto.shard_tensor(self.linear1.weight,
+                          dist_attr={
+                              "process_mesh": _g_process_mesh[1],
+                              "dims_mapping": [0, -1]
+                          })
         out = self.linear1(out)
 
         return out
@@ -107,62 +107,58 @@ def get_program():
     start_program = static.Program()
     with static.program_guard(train_program, start_program):
         # input
-        input = static.data(
-            name="input",
-            shape=[batch_size, sequence_len, hidden_size],
-            dtype='float32')
-        label = static.data(
-            name="label", shape=[batch_size, sequence_len, 1], dtype='float32')
+        input = static.data(name="input",
+                            shape=[batch_size, sequence_len, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, sequence_len, 1],
+                            dtype='float32')
         data_holder = [input, label]
         # dataloader
-        dataloader = paddle.io.DataLoader.from_generator(
-            feed_list=data_holder, capacity=4 * batch_size, iterable=False)
-        dataloader.set_batch_generator(
-            batch_generator_creator(), places=paddle.static.cuda_places())
+        dataloader = paddle.io.DataLoader.from_generator(feed_list=data_holder,
+                                                         capacity=4 *
+                                                         batch_size,
+                                                         iterable=False)
+        dataloader.set_batch_generator(batch_generator_creator(),
+                                       places=paddle.static.cuda_places())
         # data dist_attr
-        auto.shard_tensor(
-            input,
-            dist_attr={
-                "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [0, -1, -1]
-            })
-        auto.shard_tensor(
-            label,
-            dist_attr={
-                "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [0, -1, -1]
-            })
+        auto.shard_tensor(input,
+                          dist_attr={
+                              "process_mesh": _g_process_mesh[0],
+                              "dims_mapping": [0, -1, -1]
+                          })
+        auto.shard_tensor(label,
+                          dist_attr={
+                              "process_mesh": _g_process_mesh[0],
+                              "dims_mapping": [0, -1, -1]
+                          })
 
-        mlp_start = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            dropout_ratio=0.1,
-            initializer_range=0.02)
+        mlp_start = MLPLayer(hidden_size=hidden_size,
+                             intermediate_size=4 * hidden_size,
+                             dropout_ratio=0.1,
+                             initializer_range=0.02)
         pred = mlp_start(input)
 
-        mlp_mid = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            dropout_ratio=0.1,
-            initializer_range=0.02)
+        mlp_mid = MLPLayer(hidden_size=hidden_size,
+                           intermediate_size=4 * hidden_size,
+                           dropout_ratio=0.1,
+                           initializer_range=0.02)
         pred = mlp_mid(pred)
 
-        mlp_end = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            dropout_ratio=0.1,
-            initializer_range=0.02)
+        mlp_end = MLPLayer(hidden_size=hidden_size,
+                           intermediate_size=4 * hidden_size,
+                           dropout_ratio=0.1,
+                           initializer_range=0.02)
         pred = mlp_end(pred)
 
         error_cost = paddle.nn.functional.square_error_cost(pred, label)
         loss = paddle.mean(error_cost)
 
-        optimizer = paddle.optimizer.Adam(
-            learning_rate=0.00001,
-            beta1=0.9,
-            beta2=0.999,
-            epsilon=1e-08,
-            grad_clip=None)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+                                          beta1=0.9,
+                                          beta2=0.999,
+                                          epsilon=1e-08,
+                                          grad_clip=None)
 
         feed_vars = {"inputs": [input], "labels": [label]}
         fetch_vars = {"loss": [loss]}
@@ -171,6 +167,7 @@ def get_program():
 
 
 class TestDistributedContext(unittest.TestCase):
+
     def test_backup_restore(self):
         train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program(
         )
@@ -180,18 +177,16 @@ class TestDistributedContext(unittest.TestCase):
         dist_context.initialize()
 
         dist_context._backup(serial=True, dist=True)
-        dist_context._restore(
-            serial=True,
-            serial_mode="to_backup",
-            dist=True,
-            dist_mode="to_backup")
+        dist_context._restore(serial=True,
+                              serial_mode="to_backup",
+                              dist=True,
+                              dist_mode="to_backup")
 
         dist_context._backup(serial=True, dist=True)
-        dist_context._restore(
-            serial=True,
-            serial_mode="to_original",
-            dist=True,
-            dist_mode="to_original")
+        dist_context._restore(serial=True,
+                              serial_mode="to_original",
+                              dist=True,
+                              dist_mode="to_original")
 
         dist_context._backup(serial=True, dist=True)
         dist_context._restore(serial=True, dist=True, dist_mode="to_default")

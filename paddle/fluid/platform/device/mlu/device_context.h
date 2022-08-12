@@ -12,6 +12,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_MLU
 #include <mutex>
+
 #include "paddle/fluid/platform/device/mlu/enforce.h"
 #include "paddle/fluid/platform/device/mlu/mlu_stream.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -133,6 +134,7 @@ class MLUDeviceContext : public DeviceContext {
   int compute_capability_;
   int driver_version_;
   int runtime_version_;
+  int cnnl_version_;
   MLUPlace place_;
   std::shared_ptr<MLUContext> default_ctx_;
 

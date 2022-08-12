@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/source_interceptor.h"
+
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
 namespace paddle {

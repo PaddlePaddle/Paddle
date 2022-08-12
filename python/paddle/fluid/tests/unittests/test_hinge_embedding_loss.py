@@ -34,6 +34,7 @@ def calc_hinge_embedding_loss(input, label, margin=1.0, reduction='mean'):
 
 
 class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
+
     def setUp(self):
         self.margin = 1.0
         self.shape = (10, 10, 5)
@@ -51,37 +52,45 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
-        dy_result = paddle.nn.functional.hinge_embedding_loss(
-            input, label, reduction='sum')
-        expected = calc_hinge_embedding_loss(
-            self.input_np, self.label_np, reduction='sum')
+        dy_result = paddle.nn.functional.hinge_embedding_loss(input,
+                                                              label,
+                                                              reduction='sum')
+        expected = calc_hinge_embedding_loss(self.input_np,
+                                             self.label_np,
+                                             reduction='sum')
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
-        dy_result = paddle.nn.functional.hinge_embedding_loss(
-            input, label, reduction='none')
-        expected = calc_hinge_embedding_loss(
-            self.input_np, self.label_np, reduction='none')
+        dy_result = paddle.nn.functional.hinge_embedding_loss(input,
+                                                              label,
+                                                              reduction='none')
+        expected = calc_hinge_embedding_loss(self.input_np,
+                                             self.label_np,
+                                             reduction='none')
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, self.shape)
 
     def run_static_check(self, place=paddle.CPUPlace):
         paddle.enable_static()
         for reduction in ['none', 'mean', 'sum']:
-            expected = calc_hinge_embedding_loss(
-                self.input_np, self.label_np, reduction=reduction)
+            expected = calc_hinge_embedding_loss(self.input_np,
+                                                 self.label_np,
+                                                 reduction=reduction)
             with program_guard(Program(), Program()):
-                input = paddle.static.data(
-                    name="input", shape=self.shape, dtype=paddle.float64)
-                label = paddle.static.data(
-                    name="label", shape=self.shape, dtype=paddle.float64)
+                input = paddle.static.data(name="input",
+                                           shape=self.shape,
+                                           dtype=paddle.float64)
+                label = paddle.static.data(name="label",
+                                           shape=self.shape,
+                                           dtype=paddle.float64)
                 st_result = paddle.nn.functional.hinge_embedding_loss(
                     input, label, reduction=reduction)
                 exe = paddle.static.Executor(place)
-                result_numpy, = exe.run(
-                    feed={"input": self.input_np,
-                          "label": self.label_np},
-                    fetch_list=[st_result])
+                result_numpy, = exe.run(feed={
+                    "input": self.input_np,
+                    "label": self.label_np
+                },
+                                        fetch_list=[st_result])
                 self.assertTrue(np.allclose(result_numpy, expected))
 
     def test_cpu(self):
@@ -96,6 +105,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
 
     # test case the raise message
     def test_reduce_errors(self):
+
         def test_value_error():
             loss = paddle.nn.functional.hinge_embedding_loss(
                 self.input_np, self.label_np, reduction='reduce_mean')
@@ -104,6 +114,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
 
 
 class TestClassHingeEmbeddingLoss(unittest.TestCase):
+
     def setUp(self):
         self.margin = 1.0
         self.shape = (10, 10, 5)
@@ -124,37 +135,43 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
             reduction='sum')
         dy_result = hinge_embedding_loss(input, label)
-        expected = calc_hinge_embedding_loss(
-            self.input_np, self.label_np, reduction='sum')
+        expected = calc_hinge_embedding_loss(self.input_np,
+                                             self.label_np,
+                                             reduction='sum')
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
             reduction='none')
         dy_result = hinge_embedding_loss(input, label)
-        expected = calc_hinge_embedding_loss(
-            self.input_np, self.label_np, reduction='none')
+        expected = calc_hinge_embedding_loss(self.input_np,
+                                             self.label_np,
+                                             reduction='none')
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, self.shape)
 
     def run_static_check(self, place=paddle.CPUPlace):
         paddle.enable_static()
         for reduction in ['none', 'mean', 'sum']:
-            expected = calc_hinge_embedding_loss(
-                self.input_np, self.label_np, reduction=reduction)
+            expected = calc_hinge_embedding_loss(self.input_np,
+                                                 self.label_np,
+                                                 reduction=reduction)
             with program_guard(Program(), Program()):
-                input = paddle.static.data(
-                    name="input", shape=self.shape, dtype=paddle.float64)
-                label = paddle.static.data(
-                    name="label", shape=self.shape, dtype=paddle.float64)
+                input = paddle.static.data(name="input",
+                                           shape=self.shape,
+                                           dtype=paddle.float64)
+                label = paddle.static.data(name="label",
+                                           shape=self.shape,
+                                           dtype=paddle.float64)
                 hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
                     reduction=reduction)
                 st_result = hinge_embedding_loss(input, label)
                 exe = paddle.static.Executor(place)
-                result_numpy, = exe.run(
-                    feed={"input": self.input_np,
-                          "label": self.label_np},
-                    fetch_list=[st_result])
+                result_numpy, = exe.run(feed={
+                    "input": self.input_np,
+                    "label": self.label_np
+                },
+                                        fetch_list=[st_result])
                 self.assertTrue(np.allclose(result_numpy, expected))
 
     def test_cpu(self):
@@ -169,6 +186,7 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
 
     # test case the raise message
     def test_reduce_errors(self):
+
         def test_value_error():
             hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
                 reduction='reduce_mean')

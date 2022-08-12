@@ -24,6 +24,7 @@ class DeviceTraceEventNode;       // forward declaration
 class HostTraceEventNode;         // forward declaration
 class CudaRuntimeTraceEventNode;  // forward declaration
 class NodeTrees;                  // forward declaration
+class MemTraceEventNode;          // forward declaration
 
 class BaseLogger {
  public:
@@ -33,6 +34,7 @@ class BaseLogger {
   virtual void LogHostTraceEventNode(const HostTraceEventNode&) {}
   virtual void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) {}
   virtual void LogNodeTrees(const NodeTrees&) {}
+  virtual void LogMemTraceEventNode(const MemTraceEventNode&) {}
 };
 
 }  // namespace platform

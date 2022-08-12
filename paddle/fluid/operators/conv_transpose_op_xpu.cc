@@ -9,12 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/conv_transpose_op.h"
-
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/conv_transpose_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 
@@ -59,7 +59,8 @@ class Conv2DTransposeXPUKernel : public framework::OpKernel<T> {
         context.Attr<std::string>("padding_algorithm");
 
     PADDLE_ENFORCE_EQ(
-        data_format == "NHWC" || data_format == "NDHWC", false,
+        data_format == "NHWC" || data_format == "NDHWC",
+        false,
         platform::errors::InvalidArgument(
             ("XPU do support data_format is NCHW in conv_transpose op.")));
 
@@ -68,8 +69,8 @@ class Conv2DTransposeXPUKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims =
         phi::slice_ddim(filter.dims(), 2, filter.dims().size());
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    phi::UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                                  in_data_dims, strides, ksize);
+    phi::UpdatePaddingAndDilation(
+        &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
     const int batch_size = static_cast<int>(input->dims()[0]);
     const int img_yc = static_cast<int>(input->dims()[1]);
@@ -93,16 +94,31 @@ class Conv2DTransposeXPUKernel : public framework::OpKernel<T> {
                      (dilation_check[1] * (ksize_check[1] - 1) + 1);
 
       PADDLE_ENFORCE_EQ(
-          xh_check == img_xh && xw_check == img_xw, true,
+          xh_check == img_xh && xw_check == img_xw,
+          true,
           platform::errors::InvalidArgument(
               ("XPU output size check error in conv_transpose op.")));
     }
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = xpu::conv2d_transpose<float, float, float, int16_t>(
-        dev_ctx.x_context(), input->data<float>(), filter.data<float>(),
-        output->data<float>(), batch_size, img_yc, img_yh, img_yw, img_xc,
-        ksize, strides, paddings, dilations, groups, nullptr, nullptr, nullptr,
+        dev_ctx.x_context(),
+        input->data<float>(),
+        filter.data<float>(),
+        output->data<float>(),
+        batch_size,
+        img_yc,
+        img_yh,
+        img_yw,
+        img_xc,
+        ksize,
+        strides,
+        paddings,
+        dilations,
+        groups,
+        nullptr,
+        nullptr,
+        nullptr,
         true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose");
   }
@@ -133,7 +149,8 @@ class Conv2DTransposeGradXPUKernel : public framework::OpKernel<T> {
         context.Attr<std::string>("padding_algorithm");
 
     PADDLE_ENFORCE_EQ(
-        data_format == "NHWC" || data_format == "NDHWC", false,
+        data_format == "NHWC" || data_format == "NDHWC",
+        false,
         platform::errors::InvalidArgument(
             ("XPU do support data_format is NCHW in conv grad op.")));
 
@@ -142,8 +159,8 @@ class Conv2DTransposeGradXPUKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims =
         phi::slice_ddim(filter.dims(), 2, filter.dims().size());
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    phi::UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                                  in_data_dims, strides, ksize);
+    phi::UpdatePaddingAndDilation(
+        &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
     const int batch_size = static_cast<int>(input->dims()[0]);
     const int img_yc = static_cast<int>(input->dims()[1]);
@@ -161,11 +178,30 @@ class Conv2DTransposeGradXPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = xpu::conv2d_transpose_grad<float, float, float, int16_t>(
-        dev_ctx.x_context(), input->data<T>(), filter.data<T>(),
-        output_grad->data<T>(), input_grad ? input_grad->data<T>() : nullptr,
-        filter_grad ? filter_grad->data<T>() : nullptr, batch_size, img_yc,
-        img_yh, img_yw, img_xc, img_xh, img_xw, ksize, strides, paddings,
-        dilations, groups, nullptr, nullptr, nullptr, nullptr, nullptr, true);
+        dev_ctx.x_context(),
+        input->data<T>(),
+        filter.data<T>(),
+        output_grad->data<T>(),
+        input_grad ? input_grad->data<T>() : nullptr,
+        filter_grad ? filter_grad->data<T>() : nullptr,
+        batch_size,
+        img_yc,
+        img_yh,
+        img_yw,
+        img_xc,
+        img_xh,
+        img_xw,
+        ksize,
+        strides,
+        paddings,
+        dilations,
+        groups,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_grad");
   }
 };
@@ -176,7 +212,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     conv2d_transpose,
     ops::Conv2DTransposeXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(conv2d_transpose_grad,
-                       ops::Conv2DTransposeGradXPUKernel<
-                           paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(
+    conv2d_transpose_grad,
+    ops::Conv2DTransposeGradXPUKernel<paddle::platform::XPUDeviceContext,
+                                      float>);
 #endif

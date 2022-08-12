@@ -26,6 +26,7 @@ import numpy as np
 
 
 class ApiOnesTest(unittest.TestCase):
+
     def test_paddle_ones(self):
         with paddle.static.program_guard(paddle.static.Program()):
             ones = paddle.ones(shape=[10])
@@ -62,7 +63,9 @@ class ApiOnesTest(unittest.TestCase):
 
 
 class ApiOnesZerosError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_error1():
             with paddle.static.program_guard(paddle.static.Program()):
                 ones = paddle.ones(shape=10, dtype="int64")

@@ -23,7 +23,10 @@ import json
 
 import paddle
 from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
-                               TracerEventType)
+                               TracerEventType, enable_memory_recorder,
+                               enable_input_shape_recorder,
+                               disable_memory_recorder,
+                               disable_input_shape_recorder)
 
 from .utils import RecordEvent, wrap_optimizers
 from .profiler_statistic import StatisticData, _build_table, SortedKeys
@@ -72,8 +75,8 @@ def make_scheduler(*,
                    closed: int,
                    ready: int,
                    record: int,
-                   repeat: int=0,
-                   skip_first: int=0) -> Callable:
+                   repeat: int = 0,
+                   skip_first: int = 0) -> Callable:
     r"""
     Return a scheduler function, which scheduler the :ref:`state <api_paddle_profiler_ProfilerState>` according to the setting.
     The state transform confirms to:
@@ -156,7 +159,7 @@ def _default_state_scheduler(step: int):
 
 
 def export_chrome_tracing(dir_name: str,
-                          worker_name: Optional[str]=None) -> Callable:
+                          worker_name: Optional[str] = None) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to chrome tracing format file.
     The output file will be saved in directory ``dir_name``, and file name will be set as worker_name.
@@ -173,7 +176,6 @@ def export_chrome_tracing(dir_name: str,
         The return value can be used as parameter ``on_trace_ready`` in :ref:`Profiler <api_paddle_profiler_Profiler>` .
 
         .. code-block:: python
-            :name: code-example1
 
             # required: gpu
             import paddle.profiler as profiler
@@ -206,7 +208,8 @@ def export_chrome_tracing(dir_name: str,
     return handle_fn
 
 
-def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
+def export_protobuf(dir_name: str,
+                    worker_name: Optional[str] = None) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to protobuf file.
     The output file will be saved in directory ``dir_name``, and file name will be set as worker_name.
@@ -223,7 +226,6 @@ def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
         The return value can be used as parameter ``on_trace_ready`` in :ref:`Profiler <api_paddle_profiler_Profiler>` .
 
         .. code-block:: python
-            :name: code-example1
 
             # required: gpu
             import paddle.profiler as profiler
@@ -280,6 +282,8 @@ class Profiler:
             This callable object will be called when ``scheduler`` returns ``ProfilerState.RECORD_AND_RETURN``. The default value is :ref:`export_chrome_tracing <api_paddle_profiler_export_chrome_tracing>` (./profiler_log/).
         timer_only (bool, optional): If it is True, the cost of Dataloader and every step of the model will be count without profiling. Otherwise, the model will
             be timed and profiled. Default: False.
+        record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
+        profile_memory (bool, optional): If it is True, collect tensor memory allocation and release information. Default: False.
 
     Examples:
         1. profiling range [2, 5).
@@ -391,13 +395,15 @@ class Profiler:
                 # |       ips       |    1086.42904   |    1227.30604   |    959.92796    |
     """
 
-    def __init__(
-            self,
-            *,
-            targets: Optional[Iterable[ProfilerTarget]]=None,
-            scheduler: Union[Callable[[int], ProfilerState], tuple, None]=None,
-            on_trace_ready: Optional[Callable[..., Any]]=None,
-            timer_only: Optional[bool]=False):
+    def __init__(self,
+                 *,
+                 targets: Optional[Iterable[ProfilerTarget]] = None,
+                 scheduler: Union[Callable[[int], ProfilerState], tuple,
+                                  None] = None,
+                 on_trace_ready: Optional[Callable[..., Any]] = None,
+                 record_shapes: Optional[bool] = False,
+                 profile_memory=False,
+                 timer_only: Optional[bool] = False):
         supported_targets = _get_supported_targets()
         if targets:
             self.targets = set(targets)
@@ -424,17 +430,17 @@ class Profiler:
             start_batch, end_batch = scheduler
             start_batch = max(start_batch, 0)
             if start_batch >= 1:
-                self.scheduler = make_scheduler(
-                    closed=max(start_batch - 1, 0),
-                    ready=1,
-                    record=(end_batch - start_batch),
-                    repeat=1)
+                self.scheduler = make_scheduler(closed=max(start_batch - 1, 0),
+                                                ready=1,
+                                                record=(end_batch -
+                                                        start_batch),
+                                                repeat=1)
             else:
-                self.scheduler = make_scheduler(
-                    closed=0,
-                    ready=0,
-                    record=(end_batch - start_batch),
-                    repeat=1)
+                self.scheduler = make_scheduler(closed=0,
+                                                ready=0,
+                                                record=(end_batch -
+                                                        start_batch),
+                                                repeat=1)
         else:
             self.scheduler = _default_state_scheduler
 
@@ -448,6 +454,8 @@ class Profiler:
         self.record_event = None
         self.profiler_result = None
         self.timer_only = timer_only
+        self.record_shapes = record_shapes
+        self.profile_memory = profile_memory
 
     def __enter__(self):
         self.start()
@@ -482,6 +490,10 @@ class Profiler:
         benchmark().begin()
         if self.timer_only:
             return
+        if self.record_shapes:
+            enable_input_shape_recorder()
+        if self.profile_memory:
+            enable_memory_recorder()
         # CLOSED -> self.current_state
         utils._is_profiler_used = True
         if self.current_state == ProfilerState.READY:
@@ -492,9 +504,9 @@ class Profiler:
         elif self.current_state == ProfilerState.RECORD_AND_RETURN:
             self.profiler.prepare()
             self.profiler.start()
-        self.record_event = RecordEvent(
-            name="ProfileStep#{}".format(self.step_num),
-            event_type=TracerEventType.ProfileStep)
+        self.record_event = RecordEvent(name="ProfileStep#{}".format(
+            self.step_num),
+                                        event_type=TracerEventType.ProfileStep)
         self.record_event.begin()
 
     def stop(self):
@@ -521,6 +533,10 @@ class Profiler:
         benchmark().end()
         if self.timer_only:
             return
+        if self.record_shapes:
+            disable_input_shape_recorder()
+        if self.profile_memory:
+            disable_memory_recorder()
         # self.current_state -> CLOSED
         # In this situation, RECORD state is regarded as RECORD_AND_RETURN
         if self.record_event:
@@ -538,7 +554,7 @@ class Profiler:
                 self.on_trace_ready(self)
         utils._is_profiler_used = False
 
-    def step(self, num_samples: Optional[int]=None):
+    def step(self, num_samples: Optional[int] = None):
         r"""
         Signals the profiler that the next profiling step has started.
         Get the new ProfilerState and trigger corresponding action.
@@ -574,9 +590,9 @@ class Profiler:
         self.step_num += 1
         self.current_state = self.scheduler(self.step_num)
         self._trigger_action()
-        self.record_event = RecordEvent(
-            name="ProfileStep#{}".format(self.step_num),
-            event_type=TracerEventType.ProfileStep)
+        self.record_event = RecordEvent(name="ProfileStep#{}".format(
+            self.step_num),
+                                        event_type=TracerEventType.ProfileStep)
         self.record_event.begin()
 
     def step_info(self, unit=None):
@@ -747,12 +763,11 @@ class Profiler:
                 self.profiler_result.get_data(),
                 self.profiler_result.get_extra_info())
             print(
-                _build_table(
-                    statistic_data,
-                    sorted_by=sorted_by,
-                    op_detail=op_detail,
-                    thread_sep=thread_sep,
-                    time_unit=time_unit))
+                _build_table(statistic_data,
+                             sorted_by=sorted_by,
+                             op_detail=op_detail,
+                             thread_sep=thread_sep,
+                             time_unit=time_unit))
 
 
 def get_profiler(config_path):
@@ -820,6 +835,7 @@ def get_profiler(config_path):
             translated_config_dict['timer_only'] = config_dict['timer_only']
         else:
             print(
-                'Set timer_only parameter error, use default parameter instead.')
+                'Set timer_only parameter error, use default parameter instead.'
+            )
 
     return Profiler(**translated_config_dict)

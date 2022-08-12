@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -110,16 +111,21 @@ class NanmedianGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(nanmedian, NanmedianInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(nanmedian,
+                            NanmedianInferShapeFunctor,
                             PD_INFER_META(phi::NanmedianInferMeta));
 
-REGISTER_OPERATOR(nanmedian, ops::NanmedianOp, ops::NanmedianOpMaker,
+REGISTER_OPERATOR(nanmedian,
+                  ops::NanmedianOp,
+                  ops::NanmedianOpMaker,
                   ops::NanmedianGradMaker<paddle::framework::OpDesc>,
                   ops::NanmedianGradMaker<paddle::imperative::OpBase>,
                   NanmedianInferShapeFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(nanmedian_grad, NanmedianGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(nanmedian_grad,
+                            NanmedianGradInferShapeFunctor,
                             PD_INFER_META(phi::NanmedianGradInferMeta));
 
-REGISTER_OPERATOR(nanmedian_grad, ops::NanmedianGradOp,
+REGISTER_OPERATOR(nanmedian_grad,
+                  ops::NanmedianGradOp,
                   NanmedianGradInferShapeFunctor);

@@ -24,10 +24,13 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
@@ -76,7 +79,8 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     auto y_dims = target_tensor->dims();
     for (int i = 0; i < y_dims.size(); ++i) {
       PADDLE_ENFORCE_NE(
-          x_dims[i], 0UL,
+          x_dims[i],
+          0UL,
           platform::errors::InvalidArgument(
               "X(input) should not have 0 dim. But received x_dims[%d] = 0.",
               i));
@@ -84,7 +88,8 @@ class ExpandAsKernel : public framework::OpKernel<T> {
       bcast_dims_remainder += y_dims[i] % x_dims[i];
     }
     PADDLE_ENFORCE_EQ(
-        bcast_dims_remainder, 0UL,
+        bcast_dims_remainder,
+        0UL,
         platform::errors::InvalidArgument(
             "X(input) could not be broadcast together with remapped "
             "shape(expand tensor's shape)"));
@@ -99,8 +104,8 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     auto y = EigenTensor<T, Rank>::From(*out0);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
-                                                                 bcast_dims);
+    EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+        place, y, x, bcast_dims);
   }
 };
 
@@ -136,21 +141,24 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
       auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
       auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
-      framework::TensorCopy(*in0, context.GetPlace(), context.device_context(),
-                            out0);
+      framework::TensorCopy(
+          *in0, context.GetPlace(), context.device_context(), out0);
     } else {
-      PADDLE_ENFORCE_GE(dims, 1,
+      PADDLE_ENFORCE_GE(dims,
+                        1,
                         platform::errors::InvalidArgument(
                             "The rank of the input 'Out@GRAD' for "
                             "expand_as_grad op must be greater than or "
                             "equal to 1, but the value received is %d.",
                             dims));
-      PADDLE_ENFORCE_LE(dims, MAX_RANK_SUPPORTED,
+      PADDLE_ENFORCE_LE(dims,
+                        MAX_RANK_SUPPORTED,
                         platform::errors::InvalidArgument(
                             "The rank of the input 'Out@GRAD' for "
                             "expand_as_grad op must be less than or equal "
                             "to %d, but the value received is %d.",
-                            MAX_RANK_SUPPORTED, dims));
+                            MAX_RANK_SUPPORTED,
+                            dims));
       switch (dims) {
         case 1:
           ExpandAsBackward<1>(context, reshape_dims_vec, reduce_dims_vec);

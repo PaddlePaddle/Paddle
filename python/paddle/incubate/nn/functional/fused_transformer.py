@@ -45,6 +45,8 @@ def fused_feedforward(x,
                       pre_layer_norm=False,
                       training=True,
                       mode='upscale_in_train',
+                      ring_id=-1,
+                      add_residual=True,
                       name=None):
     r"""
     This is a fusion operator to compute feed forward layer in transformer model architecture.
@@ -53,12 +55,19 @@ def fused_feedforward(x,
 
     .. code-block:: python
 
-        residual = src;
+        residual = x
         if pre_layer_norm:
-            src = layer_norm(src)
-        src = linear(dropout(activation(dropout(linear(src)))))
+            out = layer_norm1(x)
+        else:
+            out = x
+        out = linear2(dropout1(activation(linear1(src))))
+        if add_residual:
+            out = residual + dropout2(out)
+        else:
+            out = dropout2(out)
         if not pre_layer_norm:
-            src = layer_norm(out)
+            out = layer_norm2(out)
+
 
     Args:
         x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16, float32 or float64, the shape is`[batch\_size, sequence\_length, d_model]`.
@@ -88,6 +97,8 @@ def fused_feedforward(x,
 
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
+        ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using tensor parallel.
+        add_residual (bool, optional): Whether add residual at the end. Default is True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -98,15 +109,13 @@ def fused_feedforward(x,
 
             # required: gpu
             import paddle
-            import numpy as np
-            x_data = np.random.random((1, 8, 8)).astype("float32")
-            linear1_weight_data = np.random.random((8, 8)).astype("float32")
-            linear2_weight_data = np.random.random((8, 8)).astype("float32")
-            x = paddle.to_tensor(x_data)
-            linear1_weight = paddle.to_tensor(linear1_weight_data)
-            linear2_weight = paddle.to_tensor(linear2_weight_data)
-            out = paddle.incubate.nn.functional.fused_feedforward(x, linear1_weight, linear2_weight)
-            print(out.numpy().shape)
+            import paddle.incubate.nn.functional as F
+
+            x = paddle.randn(shape=(1, 8, 8), dtype="float32")
+            linear1_weight = paddle.randn(shape=(8, 8), dtype="float32")
+            linear2_weight = paddle.randn(shape=(8, 8), dtype="float32")
+            out = F.fused_feedforward(x, linear1_weight, linear2_weight)
+            print(out.shape)
             # (1, 8, 8)
     """
     _verify_dropout_rate(dropout1_rate)
@@ -115,7 +124,8 @@ def fused_feedforward(x,
     seed = None
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(
-            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
+        )
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
     if _non_static_mode():
@@ -127,12 +137,12 @@ def fused_feedforward(x,
             'pre_layer_norm', pre_layer_norm, 'ln1_epsilon', ln1_epsilon,
             'ln2_epsilon', ln2_epsilon, 'act_method', activation,
             'dropout1_rate', dropout1_rate, 'dropout2_rate', dropout2_rate,
-            "dropout1_is_test", not training, "dropout2_is_test", not training,
-            "dropout1_fix_seed", seed is not None, "dropout2_fix_seed",
-            seed is not None, "dropout1_seed", seed
-            if seed is not None else 0, "dropout2_seed", seed
-            if seed is not None else 0, 'dropout1_implementation', mode,
-            'dropout2_implementation', mode)
+            "is_test", not training, "dropout1_fix_seed", seed is not None,
+            "dropout2_fix_seed", seed is not None, "dropout1_seed",
+            seed if seed is not None else 0, "dropout2_seed",
+            seed if seed is not None else 0, 'dropout1_implementation', mode,
+            'dropout2_implementation', mode, 'add_residual', add_residual,
+            'ring_id', ring_id)
         return out
 
     helper = LayerHelper("fused_feedforward")
@@ -147,68 +157,68 @@ def fused_feedforward(x,
         'uint8', stop_gradient=True)
     dropout2_mask = helper.create_variable_for_type_inference(
         'uint8', stop_gradient=True)
-    ln1_mean = helper.create_variable_for_type_inference(
-        x.dtype, stop_gradient=True)
-    ln1_variance = helper.create_variable_for_type_inference(
-        x.dtype, stop_gradient=True)
-    ln2_mean = helper.create_variable_for_type_inference(
-        x.dtype, stop_gradient=True)
-    ln2_variance = helper.create_variable_for_type_inference(
-        x.dtype, stop_gradient=True)
-    linear1_out = helper.create_variable_for_type_inference(
-        x.dtype, stop_gradient=True)
-    ln1_out = helper.create_variable_for_type_inference(
-        x.dtype, stop_gradient=True)
-    dropout1_out = helper.create_variable_for_type_inference(
-        x.dtype, stop_gradient=True)
-    dropout2_out = helper.create_variable_for_type_inference(
-        x.dtype, stop_gradient=True)
+    ln1_mean = helper.create_variable_for_type_inference(x.dtype,
+                                                         stop_gradient=True)
+    ln1_variance = helper.create_variable_for_type_inference(x.dtype,
+                                                             stop_gradient=True)
+    ln2_mean = helper.create_variable_for_type_inference(x.dtype,
+                                                         stop_gradient=True)
+    ln2_variance = helper.create_variable_for_type_inference(x.dtype,
+                                                             stop_gradient=True)
+    linear1_out = helper.create_variable_for_type_inference(x.dtype,
+                                                            stop_gradient=True)
+    ln1_out = helper.create_variable_for_type_inference(x.dtype,
+                                                        stop_gradient=True)
+    dropout1_out = helper.create_variable_for_type_inference(x.dtype,
+                                                             stop_gradient=True)
+    dropout2_out = helper.create_variable_for_type_inference(x.dtype,
+                                                             stop_gradient=True)
 
     if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
         seed = helper.main_program.random_seed
 
-    helper.append_op(
-        type='fused_feedforward',
-        inputs={
-            'X': x,
-            'Linear1Weight': linear1_weight,
-            'Linear1Bias': linear1_bias,
-            'Linear2Weight': linear2_weight,
-            'Linear2Bias': linear2_bias,
-            'Ln1Scale': ln1_scale,
-            'Ln1Bias': ln1_bias,
-            'Ln2Scale': ln2_scale,
-            'Ln2Bias': ln2_bias,
-        },
-        outputs={
-            'Out': out,
-            'Dropout1Mask': dropout1_mask,
-            'Dropout2Mask': dropout2_mask,
-            'Ln1Mean': ln1_mean,
-            'Ln1Variance': ln1_variance,
-            'Ln2Mean': ln2_mean,
-            'Ln2Variance': ln2_variance,
-            'Linear1Out': linear1_out,
-            'Ln1Out': ln1_out,
-            'Dropout1Out': dropout1_out,
-            'Dropout2Out': dropout2_out,
-        },
-        attrs={
-            'dropout1_rate': dropout1_rate,
-            'dropout2_rate': dropout2_rate,
-            'act_method': activation,
-            'pre_layer_norm': pre_layer_norm,
-            'ln1_epsilon': ln1_epsilon,
-            'ln2_epsilon': ln2_epsilon,
-            'dropout1_is_test': not training,
-            'dropout2_is_test': not training,
-            'dropout1_fix_seed': seed is not None,
-            'dropout2_fix_seed': seed is not None,
-            'dropout1_seed': seed if seed is not None else 0,
-            'dropout2_seed': seed if seed is not None else 0,
-            'dropout1_implementation': mode,
-            'dropout2_implementation': mode
-        })
+    helper.append_op(type='fused_feedforward',
+                     inputs={
+                         'X': x,
+                         'Linear1Weight': linear1_weight,
+                         'Linear1Bias': linear1_bias,
+                         'Linear2Weight': linear2_weight,
+                         'Linear2Bias': linear2_bias,
+                         'Ln1Scale': ln1_scale,
+                         'Ln1Bias': ln1_bias,
+                         'Ln2Scale': ln2_scale,
+                         'Ln2Bias': ln2_bias,
+                     },
+                     outputs={
+                         'Out': out,
+                         'Dropout1Mask': dropout1_mask,
+                         'Dropout2Mask': dropout2_mask,
+                         'Ln1Mean': ln1_mean,
+                         'Ln1Variance': ln1_variance,
+                         'Ln2Mean': ln2_mean,
+                         'Ln2Variance': ln2_variance,
+                         'Linear1Out': linear1_out,
+                         'Ln1Out': ln1_out,
+                         'Dropout1Out': dropout1_out,
+                         'Dropout2Out': dropout2_out,
+                     },
+                     attrs={
+                         'dropout1_rate': dropout1_rate,
+                         'dropout2_rate': dropout2_rate,
+                         'act_method': activation,
+                         'pre_layer_norm': pre_layer_norm,
+                         'ln1_epsilon': ln1_epsilon,
+                         'ln2_epsilon': ln2_epsilon,
+                         'is_test': not training,
+                         'dropout1_fix_seed': seed is not None,
+                         'dropout2_fix_seed': seed is not None,
+                         'dropout1_seed': seed if seed is not None else 0,
+                         'dropout2_seed': seed if seed is not None else 0,
+                         'dropout1_implementation': mode,
+                         'dropout2_implementation': mode,
+                         'add_residual': add_residual,
+                         'ring_id': ring_id,
+                     })
     return out
 
 
@@ -279,12 +289,13 @@ def fused_bias_dropout_residual_layer_norm(x,
     seed = None
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(
-            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
+        )
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
     if ln_scale is not None:
-        assert len(ln_scale.
-                   shape) == 1, "The dims of the shape of ln_scale should be 1."
+        assert len(ln_scale.shape
+                   ) == 1, "The dims of the shape of ln_scale should be 1."
         assert x.shape[len(x.shape) - 1] == ln_scale.shape[
             0], "The dim of ln_scale must equal to the last dim of x."
     if ln_bias is not None:
@@ -299,8 +310,8 @@ def fused_bias_dropout_residual_layer_norm(x,
         _, _, _, _, final_out = _C_ops.fused_bias_dropout_residual_layer_norm(
             x, residual, bias, ln_scale, ln_bias, 'dropout_rate', dropout_rate,
             'ln_epsilon', ln_epsilon, 'is_test', not training,
-            'dropout_fix_seed', seed is not None, 'dropout_seed', seed
-            if seed is not None else 0, 'dropout_implementation', mode)
+            'dropout_fix_seed', seed is not None, 'dropout_seed',
+            seed if seed is not None else 0, 'dropout_implementation', mode)
         return final_out
     else:
         helper = LayerHelper('fused_bias_dropout_residual_layer_norm',
@@ -343,17 +354,17 @@ def fused_bias_dropout_residual_layer_norm(x,
             dtype=dtype)
         final_out = helper.create_variable_for_type_inference(dtype=dtype)
 
-        helper.append_op(
-            type='fused_bias_dropout_residual_layer_norm',
-            inputs=inputs,
-            outputs={
-                "BiasDropoutResidualOut": bias_dropout_residual_out,
-                "DropoutMaskOut": dropout_mask_out,
-                "LnMean": ln_mean_out,
-                "LnVariance": ln_variance_out,
-                'Y': final_out,
-            },
-            attrs=attrs)
+        helper.append_op(type='fused_bias_dropout_residual_layer_norm',
+                         inputs=inputs,
+                         outputs={
+                             "BiasDropoutResidualOut":
+                             bias_dropout_residual_out,
+                             "DropoutMaskOut": dropout_mask_out,
+                             "LnMean": ln_mean_out,
+                             "LnVariance": ln_variance_out,
+                             'Y': final_out,
+                         },
+                         attrs=attrs)
         return final_out
 
 
@@ -376,6 +387,7 @@ def fused_multi_head_attention(x,
                                training=True,
                                mode='upscale_in_train',
                                ring_id=-1,
+                               add_residual=True,
                                name=None):
     r"""
     Attention mapps queries and a set of key-value pairs to outputs, and
@@ -385,27 +397,34 @@ def fused_multi_head_attention(x,
 
     .. code-block:: python
 
-    	if pre_layer_norm:
-    	    out = layer_norm(x)
-            out = linear(out) + qkv) + bias
-    	else:
-            out = linear(x) + bias
-            out = transpose(out, perm=[2, 0, 3, 1, 4])
-    	# extract q, k and v from out.
-    	q = out[0:1,::]
-    	k = out[1:2,::]
-    	v = out[2:3,::]
-    	out = q * k^t
-    	out = attn_mask + out
-    	out = softmax(out)
-    	out = dropout(out)
-    	out = out * v
-    	out = transpose(out, perm=[0, 2, 1, 3])
-    	out = out_linear(out)
-    	if pre_layer_norm:
-    	    out = x + dropout(linear_bias + out)
+        residual = x
+        if pre_layer_norm:
+            out = layer_norm(x)
         else:
-            out = layer_norm(x + dropout(linear_bias + out))
+            out = x
+        # compute q, k, v
+        out = matmul(out, qkv_weight) + qkv_bias
+        out = transpose(out, perm=[2, 0, 3, 1, 4])
+        # extract q, k and v from out
+        q = out[0:1,::] * (head_dim ** -0.5)
+        k = out[1:2,::]
+        v = out[2:3,::]
+        out = matmul(q, k, transpose_y=True)
+        out = out + attn_mask
+        out = softmax(out)
+        out = dropout(out)
+        out = matmul(out, v)
+        # combine heads
+        out = transpose(out, perm=[0, 2, 1, 3])
+        # project to output
+        out = linear(out)
+        if add_residual:
+            out = residual + dropout(out)
+        else:
+            out = dropout(out)
+        if not pre_layer_norm:
+            out = layer_norm(out)
+
 
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
@@ -413,7 +432,7 @@ def fused_multi_head_attention(x,
         qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
         linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
         pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture
-	    (False). Default False.
+                                        (False). Default False.
         pre_ln_scale (Tensor, optional): The weight tensor of pre layernorm. Default None.
         pre_ln_bias (Tensor, optional): The bias tensor of pre layernorm. Default None.
         ln_scale (Tensor, optional): The weight tensor of layernorm. Default None.
@@ -425,7 +444,7 @@ def fused_multi_head_attention(x,
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
         cache_kv (Tensor, optional): For generation model, cache structure. The shape is `[2, bsz, num_head, seq_len, head_dim]`. Default None.
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
- 	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
+            some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
             with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the
             data type is bool, the unwanted positions have `False` values and the others have `True` values.
             When the data type is int, the unwanted positions have 0 values and the others have 1 values.
@@ -452,6 +471,7 @@ def fused_multi_head_attention(x,
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
         ring_id (int, optional): For distributed forward in mp, only support NCCL and forward. Default is -1, means not using mp
+        add_residual (bool, optional): Whether add residual at the end. Default is True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -490,7 +510,8 @@ def fused_multi_head_attention(x,
     seed = None
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(
-            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
+        )
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
     if _non_static_mode():
@@ -505,8 +526,10 @@ def fused_multi_head_attention(x,
             0] == 3, "The shape of qkv_weight should be [3, num_head, head_dim, embed_dim]."
         assert qkv_weight.shape[3] == x.shape[
             2], "The 3rd dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
-        assert qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[
-            3], "embed_dim must be divisible by num_heads."
+        if ring_id == -1:
+            # under mp, the num head will be split, this equation will not hold
+            assert qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[
+                3], "embed_dim must be divisible by num_heads."
 
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, cache_kv_out, final_out = _C_ops.fused_attention(
             x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, cache_kv,
@@ -515,10 +538,11 @@ def fused_multi_head_attention(x,
             'dropout_rate', dropout_rate, 'attn_dropout_rate',
             attn_dropout_rate, 'ln_epsilon', ln_epsilon, 'is_test',
             not training, 'attn_dropout_fix_seed', seed is not None,
-            'dropout_fix_seed', seed is not None, 'attn_dropout_seed', seed
-            if seed is not None else 0, 'dropout_seed', seed
-            if seed is not None else 0, 'attn_dropout_implementation', mode,
-            'dropout_implementation', mode, 'ring_id', ring_id)
+            'dropout_fix_seed', seed is not None, 'attn_dropout_seed',
+            seed if seed is not None else 0, 'dropout_seed',
+            seed if seed is not None else 0, 'attn_dropout_implementation',
+            mode, 'dropout_implementation', mode, 'add_residual', add_residual,
+            'ring_id', ring_id)
         if cache_kv is not None:
             return final_out, cache_kv_out
         return final_out
@@ -568,6 +592,7 @@ def fused_multi_head_attention(x,
             'dropout_seed': seed if seed is not None else 0,
             'attn_dropout_implementation': mode,
             'dropout_implementation': mode,
+            'add_residual': add_residual,
             'ring_id': ring_id
         }
 
@@ -603,32 +628,32 @@ def fused_multi_head_attention(x,
         final_out = helper.create_variable_for_type_inference(dtype=dtype)
         cache_kv_out = helper.create_variable_for_type_inference(dtype=dtype)
 
-        helper.append_op(
-            type='fused_attention',
-            inputs=inputs,
-            outputs={
-                "LnMean": pre_ln_mean_out,
-                "LnVariance": pre_ln_variance_out,
-                "LnOut": pre_ln_out,
-                "QKVOut": qkv_out,
-                "QKVBiasOut": qkv_bias_out,
-                "TransposeOut2": transpose_out,
-                "QKOut": qk_out,
-                "QKTVOut": qktv_out,
-                "SoftmaxOut": softmax_out,
-                "AttnDropoutMaskOut": attn_dropout_mask_out,
-                "AttnDropoutOut": attn_dropout_out,
-                "SrcMaskOut": attn_mask_out,
-                "FMHAOut": fmha_out,
-                "OutLinearOut": out_linear_out,
-                "DropoutMaskOut": dropout_mask_out,
-                "Ln2Mean": ln_mean_out,
-                "Ln2Variance": ln_variance_out,
-                "BiasDropoutResidualOut": bias_dropout_residual_out,
-                'Y': final_out,
-                'CacheKVOut': cache_kv_out
-            },
-            attrs=attrs)
+        helper.append_op(type='fused_attention',
+                         inputs=inputs,
+                         outputs={
+                             "LnMean": pre_ln_mean_out,
+                             "LnVariance": pre_ln_variance_out,
+                             "LnOut": pre_ln_out,
+                             "QKVOut": qkv_out,
+                             "QKVBiasOut": qkv_bias_out,
+                             "TransposeOut2": transpose_out,
+                             "QKOut": qk_out,
+                             "QKTVOut": qktv_out,
+                             "SoftmaxOut": softmax_out,
+                             "AttnDropoutMaskOut": attn_dropout_mask_out,
+                             "AttnDropoutOut": attn_dropout_out,
+                             "SrcMaskOut": attn_mask_out,
+                             "FMHAOut": fmha_out,
+                             "OutLinearOut": out_linear_out,
+                             "DropoutMaskOut": dropout_mask_out,
+                             "Ln2Mean": ln_mean_out,
+                             "Ln2Variance": ln_variance_out,
+                             "BiasDropoutResidualOut":
+                             bias_dropout_residual_out,
+                             'Y': final_out,
+                             'CacheKVOut': cache_kv_out
+                         },
+                         attrs=attrs)
 
         return (final_out, cache_kv_out) if cache_kv else final_out
 
@@ -655,6 +680,7 @@ def fused_multi_transformer(x,
                             activation="gelu",
                             training=False,
                             mode='upscale_in_train',
+                            trans_qkvw=True,
                             ring_id=-1,
                             name=None):
     r"""
@@ -731,6 +757,9 @@ def fused_multi_transformer(x,
 
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
+        trans_qkvw (bool, optional): Whether to transpose for weights of qkv.
+            If true, the shape eights of qkv should be [3, num_head, dim_head, dim_embed].
+            Otherwise the shape of weights of qkv should be [dim_embed, 3, num_head, dim_head]. Default True.
         ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using mp.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -790,7 +819,8 @@ def fused_multi_transformer(x,
     """
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(
-            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
+        )
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
     if _non_static_mode():
@@ -800,8 +830,8 @@ def fused_multi_transformer(x,
             ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
             cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
             'dropout_rate', dropout_rate, 'is_test', not training,
-            'dropout_implementation', mode, 'act_method', activation, 'ring_id',
-            ring_id)
+            'dropout_implementation', mode, 'act_method', activation,
+            'trans_qkvw', trans_qkvw, 'ring_id', ring_id)
         if cache_kvs is not None:
             return final_out, cache_kv_out
         return final_out
@@ -849,6 +879,7 @@ def fused_multi_transformer(x,
             'is_test': not training,
             'dropout_implementation': mode,
             'act_method': activation,
+            'trans_qkvw': trans_qkvw,
             'ring_id': ring_id
         }
 
@@ -859,10 +890,9 @@ def fused_multi_transformer(x,
             # NOTE: inplace
             outputs['CacheKVOut'] = cache_kvs
 
-        helper.append_op(
-            type='fused_multi_transformer',
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs)
+        helper.append_op(type='fused_multi_transformer',
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
 
         return (final_out, cache_kvs) if cache_kvs else final_out

@@ -97,8 +97,8 @@ def make_jacobian(x, y_size, np_dtype):
         return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
     elif isinstance(x, Sequence):
         jacobians = list(
-            filter(lambda t: t is not None, (make_jacobian(
-                item, y_size, np_dtype) for item in x)))
+            filter(lambda t: t is not None,
+                   (make_jacobian(item, y_size, np_dtype) for item in x)))
         return jacobians
     else:
         None
@@ -186,8 +186,10 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
 
     np_type = dtype_to_np_dtype(y.dtype)
     # create dy Variable in Program
-    dy = program.global_block().create_var(
-        name=dy_name, shape=y.shape, dtype=np_type, persistable=True)
+    dy = program.global_block().create_var(name=dy_name,
+                                           shape=y.shape,
+                                           dtype=np_type,
+                                           persistable=True)
     # append backward
     dx = fluid.gradients(y, x, dy)
 
@@ -217,8 +219,8 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
             if dx_res[j] is not None:
                 jacobian[dx_idx][:, i] = dx_res[j].flatten()
             else:
-                jacobian[dx_idx][:, i] = np.zeros(
-                    dx[dx_idx].shape, dtype=np_type).flatten()
+                jacobian[dx_idx][:, i] = np.zeros(dx[dx_idx].shape,
+                                                  dtype=np_type).flatten()
 
         _set_item(dy_t, i, 0, np_type)
 
@@ -313,8 +315,8 @@ def grad_check(x,
         analytical.append(
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
 
-    for i, (x_idx,
-            y_idx) in enumerate(product(*[range(len(x)), range(len(y))])):
+    for i, (x_idx, y_idx) in enumerate(
+            product(*[range(len(x)), range(len(y))])):
         a = analytical[y_idx][x_idx]
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
@@ -373,8 +375,10 @@ def double_grad_check(x,
         for yi in y:
             dyi_name = _append_grad_suffix_(yi.name)
             np_type = dtype_to_np_dtype(yi.dtype)
-            dy = program.global_block().create_var(
-                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+            dy = program.global_block().create_var(name=dyi_name,
+                                                   shape=yi.shape,
+                                                   dtype=np_type,
+                                                   persistable=True)
             dy.stop_gradient = False
             v = np.random.random(size=yi.shape).astype(np_type)
             set_var_in_scope(scope, place, dyi_name, v)
@@ -398,7 +402,7 @@ def double_grad_check(x,
     grad_check(x, target_grads, x_init, place, program, eps, atol, rtol)
 
 
-# TODO(jiabin): We currently support only triple grad check here, extend this to support 
+# TODO(jiabin): We currently support only triple grad check here, extend this to support
 # higher order differenciation later.
 
 
@@ -452,8 +456,10 @@ def triple_grad_check(x,
         for yi in y:
             dyi_name = _append_grad_suffix_(yi.name)
             np_type = dtype_to_np_dtype(yi.dtype)
-            dy = program.global_block().create_var(
-                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+            dy = program.global_block().create_var(name=dyi_name,
+                                                   shape=yi.shape,
+                                                   dtype=np_type,
+                                                   persistable=True)
             dy.stop_gradient = False
             v = np.random.random(size=yi.shape).astype(np_type)
             set_var_in_scope(scope, place, dyi_name, v)
@@ -475,11 +481,10 @@ def triple_grad_check(x,
         for dxi in target_grads:
             ddxi_name = _append_grad_suffix_(dxi.name)
             np_type = dtype_to_np_dtype(dxi.dtype)
-            ddx = program.global_block().create_var(
-                name=ddxi_name,
-                shape=dxi.shape,
-                dtype=np_type,
-                persistable=True)
+            ddx = program.global_block().create_var(name=ddxi_name,
+                                                    shape=dxi.shape,
+                                                    dtype=np_type,
+                                                    persistable=True)
             ddx.stop_gradient = False
             v = np.random.random(size=dxi.shape).astype(np_type)
             set_var_in_scope(scope, place, ddxi_name, v)
@@ -507,15 +512,14 @@ def triple_grad_check(x,
     x_init += x_grads_grads_init
 
     # x <=> [x, dout, ddx]
-    grad_check(
-        x=x,
-        y=filted_target_grads_grads,
-        x_init=x_init,
-        place=place,
-        program=program,
-        eps=eps,
-        atol=atol,
-        rtol=rtol)
+    grad_check(x=x,
+               y=filted_target_grads_grads,
+               x_init=x_init,
+               place=place,
+               program=program,
+               eps=eps,
+               atol=atol,
+               rtol=rtol)
 
 
 def get_static_double_grad(x,
@@ -547,8 +551,10 @@ def get_static_double_grad(x,
         yi = y[i]
         dyi_name = _append_grad_suffix_(yi.name)
         np_type = dtype_to_np_dtype(yi.dtype)
-        dy = program.global_block().create_var(
-            name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+        dy = program.global_block().create_var(name=dyi_name,
+                                               shape=yi.shape,
+                                               dtype=np_type,
+                                               persistable=True)
         dy.stop_gradient = False
         set_var_in_scope(scope, place, dyi_name, dy_init[i])
         y_grads.append(dy)
@@ -599,8 +605,10 @@ def get_static_double_grad(x,
         np_type = dtype_to_np_dtype(yi.dtype)
         dy_name = _append_grad_suffix_(yi.name)
         # create dy Variable in Program
-        dy = program.global_block().create_var(
-            name=dy_name, shape=yi.shape, dtype=np_type, persistable=True)
+        dy = program.global_block().create_var(name=dy_name,
+                                               shape=yi.shape,
+                                               dtype=np_type,
+                                               persistable=True)
         # init dy tensor in scope
         value = np.ones(yi.shape, dtype=np_type)
         dy_t = set_var_in_scope(scope, place, dy_name, value)
@@ -656,12 +664,11 @@ def get_eager_double_grad(func,
         dys.append(dy_tensor)
     # calculate first derivative
     outputs = func(inputs)
-    d_inputs = paddle.grad(
-        outputs=outputs,
-        inputs=inputs,
-        grad_outputs=dys,
-        create_graph=True,
-        allow_unused=True)
+    d_inputs = paddle.grad(outputs=outputs,
+                           inputs=inputs,
+                           grad_outputs=dys,
+                           create_graph=True,
+                           allow_unused=True)
     d_inputs = [d_input for d_input in d_inputs if d_input is not None]
 
     # calcluate second derivative
@@ -678,12 +685,11 @@ def get_eager_double_grad(func,
         ddy.stop_gradient = False
         ddys.append(ddy)
 
-    dd_inputs = paddle.grad(
-        outputs=d_inputs,
-        inputs=inputs,
-        grad_outputs=ddys,
-        create_graph=create_graph,
-        allow_unused=True)
+    dd_inputs = paddle.grad(outputs=d_inputs,
+                            inputs=inputs,
+                            grad_outputs=ddys,
+                            create_graph=create_graph,
+                            allow_unused=True)
 
     if return_mid_result:
         return dd_inputs, inputs + ddys
@@ -790,8 +796,10 @@ def get_static_triple_grad(x,
         yi = y[i]
         dyi_name = _append_grad_suffix_(yi.name)
         np_type = dtype_to_np_dtype(yi.dtype)
-        dy = program.global_block().create_var(
-            name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+        dy = program.global_block().create_var(name=dyi_name,
+                                               shape=yi.shape,
+                                               dtype=np_type,
+                                               persistable=True)
         dy.stop_gradient = False
         set_var_in_scope(scope, place, dyi_name, dy_init[i])
         y_grads.append(dy)
@@ -811,8 +819,12 @@ def get_static_triple_grad(x,
         value = np.ones(dxi.shape, dtype=np_type)
         x_grads_grads_init.append(value)
 
-    return get_static_double_grad(
-        x, y, x_init, dy_init=x_grads_grads_init, place=place, program=program)
+    return get_static_double_grad(x,
+                                  y,
+                                  x_init,
+                                  dy_init=x_grads_grads_init,
+                                  place=place,
+                                  program=program)
 
 
 def get_eager_triple_grad(func,
@@ -832,8 +844,11 @@ def get_eager_triple_grad(func,
     Returns:
         A list of numpy array that stores second derivative result calulated by dygraph
     """
-    dd_y, dd_x = get_eager_double_grad(
-        func, x_init, dy_init, place, return_mid_result=True)
+    dd_y, dd_x = get_eager_double_grad(func,
+                                       x_init,
+                                       dy_init,
+                                       place,
+                                       return_mid_result=True)
 
     # calcluate third derivative
     dddys = []

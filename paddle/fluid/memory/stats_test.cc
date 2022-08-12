@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/stats.h"
+
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
 #include "gtest/gtest.h"
 
 namespace paddle {
@@ -127,7 +129,8 @@ class StatsTest : public ::testing::Test {
 
 TEST_F(StatsTest, DeviceAllocatedTest) {
   SetStatType("Allocated");
-  SetFunc(DeviceMemoryStatUpdate, DeviceMemoryStatCurrentValue,
+  SetFunc(DeviceMemoryStatUpdate,
+          DeviceMemoryStatCurrentValue,
           DeviceMemoryStatPeakValue);
   RunTests();
 }
@@ -164,7 +167,8 @@ TEST_F(StatsTest, HostAllocatedMacroTest) {
 
 TEST_F(StatsTest, HostReservedTest) {
   SetStatType("Reserved");
-  SetFunc(HostMemoryStatUpdate, HostMemoryStatCurrentValue,
+  SetFunc(HostMemoryStatUpdate,
+          HostMemoryStatCurrentValue,
           HostMemoryStatPeakValue);
   RunTests();
 }

@@ -18,7 +18,6 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-
 #include "paddle/phi/api/all.h"
 
 namespace egr {
@@ -161,10 +160,11 @@ class EagerUtils {
     if (require_any_grad && autograd_meta) {
       PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() &&
                             egr::egr_utils_api::IsLeafTensor(target),
-                        false, paddle::platform::errors::InvalidArgument(
-                                   "Leaf Var (%s) that doesn't stop gradient "
-                                   "can't use inplace strategy.",
-                                   target.name()));
+                        false,
+                        paddle::platform::errors::InvalidArgument(
+                            "Leaf Var (%s) that doesn't stop gradient "
+                            "can't use inplace strategy.",
+                            target.name()));
     }
   }
 
@@ -234,8 +234,8 @@ class EagerUtils {
       const paddle::experimental::Tensor& tensor);
 
   /**
-    * Fill Zero
-    * **/
+   * Fill Zero
+   * **/
   static void FillZeroForEmptyOptionalGradInput(
       std::vector<paddle::experimental::Tensor>* in_grads,
       const std::vector<GradSlotMeta>& grad_in_metas);

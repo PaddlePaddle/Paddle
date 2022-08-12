@@ -42,7 +42,8 @@ class TestNPUTrilTriu(OpTest):
             'lower': True if self.real_op_type == 'tril' else False,
         }
         self.outputs = {
-            'Out': self.real_np_op(self.X, self.diagonal)
+            'Out':
+            self.real_np_op(self.X, self.diagonal)
             if self.diagonal else self.real_np_op(self.X)
         }
 
@@ -78,15 +79,17 @@ def case_generator(op_type, Xshape, diagonal, expected):
     }
 
     class FailureCase(unittest.TestCase):
+
         def test_failure(self):
             paddle.enable_static()
 
             data = fluid.data(shape=Xshape, dtype='float32', name=cls_name)
-            with self.assertRaisesRegexp(
-                    eval(expected.split(':')[-1]), errmsg[expected]):
+            with self.assertRaisesRegexp(eval(expected.split(':')[-1]),
+                                         errmsg[expected]):
                 getattr(tensor, op_type)(x=data, diagonal=diagonal)
 
     class SuccessCase(TestNPUTrilTriu):
+
         def initTestCase(self):
             paddle.enable_static()
 
@@ -100,7 +103,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
 
 
 ### NOTE: meaningful diagonal is [1 - min(H, W), max(H, W) -1]
-### test the diagonal just at the border, upper/lower the border, 
+### test the diagonal just at the border, upper/lower the border,
 ###     negative/positive integer within range and a zero
 cases = {
     'success': {
@@ -126,8 +129,9 @@ for _op_type in ['tril', 'triu']:
     for _expected, _params in cases.items():
         for _Xshape, _diaglist in _params.items():
             list(
-                map(lambda _diagonal: case_generator(_op_type, _Xshape, _diagonal, _expected),
-                    _diaglist))
+                map(
+                    lambda _diagonal: case_generator(
+                        _op_type, _Xshape, _diagonal, _expected), _diaglist))
 
 
 class TestTrilTriuOpAPI(unittest.TestCase):
@@ -151,9 +155,10 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 tril_out, triu_out = exe.run(
                     fluid.default_main_program(),
                     feed={"x": data},
-                    fetch_list=[tril_out, triu_out], )
-                self.assertTrue(np.allclose(tril_out, np.tril(data)))
-                self.assertTrue(np.allclose(triu_out, np.triu(data)))
+                    fetch_list=[tril_out, triu_out],
+                )
+                np.testing.assert_allclose(tril_out, np.tril(data))
+                np.testing.assert_allclose(triu_out, np.triu(data))
 
     def test_api_with_dygraph(self):
         paddle.disable_static(fluid.NPUPlace(0))
@@ -165,8 +170,8 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 x = fluid.dygraph.to_variable(data)
                 tril_out, triu_out = tensor.tril(x).numpy(), tensor.triu(
                     x).numpy()
-                self.assertTrue(np.allclose(tril_out, np.tril(data)))
-                self.assertTrue(np.allclose(triu_out, np.triu(data)))
+                np.testing.assert_allclose(tril_out, np.tril(data))
+                np.testing.assert_allclose(triu_out, np.triu(data))
 
     def test_fluid_api(self):
         paddle.enable_static()
@@ -189,11 +194,12 @@ class TestTrilTriuOpAPI(unittest.TestCase):
 
 # @skip_check_grad_ci(reason="[NPU does not support grad right now.")
 class TestNPUTrilTriu_bool(TestNPUTrilTriu):
+
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
     def init_dtype(self):
-        self.dtype = np.bool
+        self.dtype = np.bool_
 
     def initTestCase(self):
         self.real_op_type = np.random.choice(['triu', 'tril'])

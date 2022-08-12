@@ -41,20 +41,22 @@ def bow_net(data,
     This model is from https://github.com/PaddlePaddle/models:
     fluid/PaddleNLP/text_classification/nets.py
     """
-    emb = fluid.layers.embedding(
-        input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim])
+    emb = fluid.layers.embedding(input=data,
+                                 is_sparse=is_sparse,
+                                 size=[dict_dim, emb_dim])
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
     bow_tanh = fluid.layers.tanh(bow)
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
     fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = paddle.mean(x=cost)
 
     return avg_cost
 
 
 class TestRegularizer(unittest.TestCase):
+
     def setUp(self):
         self.word_len = 1500
         self.train_data = [[(random.sample(range(1000), 10), [0])]
@@ -98,10 +100,12 @@ class TestRegularizer(unittest.TestCase):
         paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
-        with self.scope_prog_guard(
-                main_prog=main_prog, startup_prog=startup_prog):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1)
+        with self.scope_prog_guard(main_prog=main_prog,
+                                   startup_prog=startup_prog):
+            data = fluid.layers.data(name="words",
+                                     shape=[1],
+                                     dtype="int64",
+                                     lod_level=1)
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
             avg_cost = model(data, label, self.word_len)
@@ -119,10 +123,12 @@ class TestRegularizer(unittest.TestCase):
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
 
-        with self.scope_prog_guard(
-                main_prog=main_prog, startup_prog=startup_prog):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1)
+        with self.scope_prog_guard(main_prog=main_prog,
+                                   startup_prog=startup_prog):
+            data = fluid.layers.data(name="words",
+                                     shape=[1],
+                                     dtype="int64",
+                                     lod_level=1)
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
             avg_cost_l2 = model(data, label, self.word_len)
@@ -154,10 +160,9 @@ class TestRegularizer(unittest.TestCase):
 
             assert len(dense_sparse_p_sum[0]) == len(dense_sparse_p_sum[1])
             for i in range(len(dense_sparse_p_sum[0])):
-                assert np.isclose(
-                    a=dense_sparse_p_sum[0][i],
-                    b=dense_sparse_p_sum[1][i],
-                    rtol=5e-5)
+                assert np.isclose(a=dense_sparse_p_sum[0][i],
+                                  b=dense_sparse_p_sum[1][i],
+                                  rtol=5e-5)
 
     def test_repeated_regularization(self):
         paddle.enable_static()
@@ -176,10 +181,14 @@ class TestRegularizer(unittest.TestCase):
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
 
-            linear1 = fluid.dygraph.Linear(
-                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr)
-            linear2 = fluid.dygraph.Linear(
-                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr)
+            linear1 = fluid.dygraph.Linear(2,
+                                           2,
+                                           param_attr=fc_param_attr,
+                                           bias_attr=fc_param_attr)
+            linear2 = fluid.dygraph.Linear(2,
+                                           2,
+                                           param_attr=fc_param_attr,
+                                           bias_attr=fc_param_attr)
 
             loss1 = linear1(input)
             loss1.backward()

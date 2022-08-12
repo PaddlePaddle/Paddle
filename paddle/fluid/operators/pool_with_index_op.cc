@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -22,7 +23,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-inline int MaxPoolOutputSize(int input_size, int filter_size, int padding,
+inline int MaxPoolOutputSize(int input_size,
+                             int filter_size,
+                             int padding,
                              int stride) {
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
   return output_size;
@@ -265,12 +268,14 @@ DECLARE_INFER_SHAPE_FUNCTOR(max_pool2d_with_index_grad,
                             MaxPool2dWithIndexGradInferShapeFunctor,
                             PD_INFER_META(phi::MaxPoolWithIndexGradInferMeta));
 
-REGISTER_OPERATOR(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
+REGISTER_OPERATOR(max_pool2d_with_index,
+                  ops::MaxPoolWithIndexOp,
                   ops::MaxPool2dWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>,
                   MaxPool2dWithIndexInferShapeFunctor);
-REGISTER_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
+REGISTER_OPERATOR(max_pool2d_with_index_grad,
+                  ops::MaxPoolWithIndexOpGrad,
                   ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer,
                   MaxPool2dWithIndexGradInferShapeFunctor);
 
@@ -281,11 +286,13 @@ DECLARE_INFER_SHAPE_FUNCTOR(max_pool3d_with_index_grad,
                             MaxPool3dWithIndexGradInferShapeFunctor,
                             PD_INFER_META(phi::MaxPoolWithIndexGradInferMeta));
 
-REGISTER_OPERATOR(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
+REGISTER_OPERATOR(max_pool3d_with_index,
+                  ops::MaxPoolWithIndexOp,
                   ops::MaxPool3dWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>,
                   MaxPool3dWithIndexInferShapeFunctor);
-REGISTER_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
+REGISTER_OPERATOR(max_pool3d_with_index_grad,
+                  ops::MaxPoolWithIndexOpGrad,
                   ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer,
                   MaxPool3dWithIndexGradInferShapeFunctor);

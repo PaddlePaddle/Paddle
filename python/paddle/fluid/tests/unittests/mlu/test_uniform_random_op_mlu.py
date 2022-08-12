@@ -18,6 +18,7 @@ import sys
 import subprocess
 import unittest
 import numpy as np
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -40,6 +41,7 @@ def output_hist(out):
 
 
 class TestMLUUniformRandomOp(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "uniform_random"
@@ -69,12 +71,15 @@ class TestMLUUniformRandomOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(
-            np.allclose(
-                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+        np.testing.assert_allclose(hist,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg="hist: " + str(hist))
 
 
 class TestMLUUniformRandomOpSelectedRows(unittest.TestCase):
+
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_mlu():
@@ -89,19 +94,20 @@ class TestMLUUniformRandomOpSelectedRows(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         paddle.seed(10)
-        op = Operator(
-            "uniform_random",
-            Out="X",
-            shape=[1000, 784],
-            min=-5.0,
-            max=10.0,
-            seed=10)
+        op = Operator("uniform_random",
+                      Out="X",
+                      shape=[1000, 784],
+                      min=-5.0,
+                      max=10.0,
+                      seed=10)
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
-        self.assertTrue(
-            np.allclose(
-                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+        np.testing.assert_allclose(hist,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg="hist: " + str(hist))
 
 
 if __name__ == "__main__":

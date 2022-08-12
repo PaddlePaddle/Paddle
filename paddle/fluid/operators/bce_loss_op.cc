@@ -45,10 +45,14 @@ class BCELossGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BCELossGrad");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "BCELossGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "BCELossGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "BCELossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "BCELossGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   framework::GradVarName("X"),
+                   "BCELossGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto labels_dims = ctx->GetInputDim("Label");
@@ -61,19 +65,23 @@ class BCELossGradOp : public framework::OperatorWithKernel {
     }
 
     if (check) {
-      PADDLE_ENFORCE_EQ(x_dims, labels_dims,
+      PADDLE_ENFORCE_EQ(x_dims,
+                        labels_dims,
                         platform::errors::InvalidArgument(
                             "Input(X) and Input(Label) shall have the same "
                             "shape. But received: the shape of Input(X) is "
                             "[%s], the shape of Input(Label) is [%s].",
-                            x_dims, labels_dims));
+                            x_dims,
+                            labels_dims));
 
-      PADDLE_ENFORCE_EQ(x_dims, dout_dims,
+      PADDLE_ENFORCE_EQ(x_dims,
+                        dout_dims,
                         platform::errors::InvalidArgument(
                             "Input(X) and Input(Out@Grad) shall have the same "
                             "shape. But received: the shape of Input(X) is "
                             "[%s], the shape of Input(Out@Grad) is [%s].",
-                            x_dims, dout_dims));
+                            x_dims,
+                            dout_dims));
     }
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -138,12 +146,17 @@ DECLARE_INPLACE_OP_INFERER(BCELossGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(bce_loss, BCELossInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(bce_loss,
+                            BCELossInferShapeFunctor,
                             PD_INFER_META(phi::BCELossInferMeta));
 
-REGISTER_OPERATOR(bce_loss, ops::BCELossOp, ops::BCELossOpMaker,
+REGISTER_OPERATOR(bce_loss,
+                  ops::BCELossOp,
+                  ops::BCELossOpMaker,
                   ops::BCELossGradOpMaker<paddle::framework::OpDesc>,
                   ops::BCELossGradOpMaker<paddle::imperative::OpBase>,
-                  ops::BCELossInplaceInferer, BCELossInferShapeFunctor);
-REGISTER_OPERATOR(bce_loss_grad, ops::BCELossGradOp,
+                  ops::BCELossInplaceInferer,
+                  BCELossInferShapeFunctor);
+REGISTER_OPERATOR(bce_loss_grad,
+                  ops::BCELossGradOp,
                   ops::BCELossGradInplaceInferer);

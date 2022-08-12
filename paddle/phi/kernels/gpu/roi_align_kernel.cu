@@ -14,12 +14,11 @@
 
 #include "paddle/phi/kernels/roi_align_kernel.h"
 
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/memory/memory.h"
 
 namespace phi {
 
@@ -232,20 +231,20 @@ void RoiAlignKernel(const Context& dev_ctx,
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   paddle::memory::Copy(
       gplace, roi_id_data, cplace, roi_batch_id_data, bytes, dev_ctx.stream());
-  GPURoiAlignForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-      output_size,
-      x.data<T>(),
-      boxes.data<T>(),
-      spatial_scale,
-      channels,
-      height,
-      width,
-      pooled_height,
-      pooled_width,
-      sampling_ratio,
-      roi_id_data,
-      dev_ctx.template Alloc<T>(out),
-      aligned);
+  GPURoiAlignForward<T>
+      <<<blocks, threads, 0, dev_ctx.stream()>>>(output_size,
+                                                 x.data<T>(),
+                                                 boxes.data<T>(),
+                                                 spatial_scale,
+                                                 channels,
+                                                 height,
+                                                 width,
+                                                 pooled_height,
+                                                 pooled_width,
+                                                 sampling_ratio,
+                                                 roi_id_data,
+                                                 dev_ctx.template Alloc<T>(out),
+                                                 aligned);
 }
 
 }  // namespace phi

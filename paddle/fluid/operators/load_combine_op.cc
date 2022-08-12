@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/load_combine_op.h"
+
 #include <string>
 #include <vector>
-
-#include "paddle/fluid/operators/load_combine_op.h"
 
 namespace paddle {
 namespace operators {
@@ -80,15 +80,15 @@ that were saved using the SaveCombine operator.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(load_combine, ops::LoadCombineOp,
+REGISTER_OPERATOR(load_combine,
+                  ops::LoadCombineOp,
                   ops::LoadCombineOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
     load_combine,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::LoadCombineOpKernel<phi::CPUContext, float>,
+    ops::LoadCombineOpKernel<phi::CPUContext, double>,
+    ops::LoadCombineOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int8_t>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int64_t>);

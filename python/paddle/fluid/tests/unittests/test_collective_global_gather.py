@@ -22,6 +22,7 @@ import os
 
 
 class TestCollectiveGlobalGatherAPI(TestDistBase):
+
     def _setup_config(self):
         pass
 
@@ -31,20 +32,18 @@ class TestCollectiveGlobalGatherAPI(TestDistBase):
                               "nccl")
 
     def test_global_gather_nccl_dygraph(self):
-        self.check_with_place(
-            "collective_global_gather_dygraph.py",
-            "global_gather",
-            "nccl",
-            static_mode="0",
-            eager_mode=False)
+        self.check_with_place("collective_global_gather_dygraph.py",
+                              "global_gather",
+                              "nccl",
+                              static_mode="0",
+                              eager_mode=False)
 
     def test_global_gather_nccl_dygraph_eager(self):
-        self.check_with_place(
-            "collective_global_gather_dygraph.py",
-            "global_gather",
-            "nccl",
-            static_mode="0",
-            eager_mode=True)
+        self.check_with_place("collective_global_gather_dygraph.py",
+                              "global_gather",
+                              "nccl",
+                              static_mode="0",
+                              eager_mode=True)
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import os
+
 os.environ['CPU_NUM'] = '2'
 
 import unittest
@@ -28,13 +29,17 @@ import numpy
 import multiprocessing
 
 import paddle
+
 paddle.enable_static()
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 class TestEagerDeletionWhileOpBase(unittest.TestCase):
+
     def test_main(self):
-        places = [core.CPUPlace(), ]
+        places = [
+            core.CPUPlace(),
+        ]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 
@@ -48,8 +53,8 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         self.place = place
         self.with_data_parallel = with_data_parallel
 
-        if not core.is_compiled_with_cuda() and isinstance(self.place,
-                                                           core.CUDAPlace):
+        if not core.is_compiled_with_cuda() and isinstance(
+                self.place, core.CUDAPlace):
             return
 
         if isinstance(self.place, core.CUDAPlace):
@@ -57,15 +62,21 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
             ) if self.with_data_parallel else 1
         else:
             device_cnt = int(
-                os.environ.get('CPU_NUM', multiprocessing.cpu_count(
-                ))) if self.with_data_parallel else 1
+                os.environ.get('CPU_NUM', multiprocessing.cpu_count())
+            ) if self.with_data_parallel else 1
 
-        d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32')
-        d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, dtype='float32')
-        d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, dtype='float32')
+        d0 = layers.data("d0",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d1 = layers.data("d1",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d2 = layers.data("d2",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
 
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
@@ -122,7 +133,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         tmp = layers.unsqueeze(sum_result, axes=[0])
         tmp = layers.expand(tmp, expand_times=[10, 1])
         fc = layers.fc(tmp, size=256)
-        loss = layers.mean(sum_result)
+        loss = paddle.mean(sum_result)
 
         optim = fluid.optimizer.Adam(learning_rate=1e-3)
         optim.minimize(loss)
@@ -136,8 +147,9 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
 
         prog = fluid.default_main_program()
         if self.with_data_parallel:
-            prog = compiler.CompiledProgram(fluid.default_main_program(
-            )).with_data_parallel(loss_name=loss.name)
+            prog = compiler.CompiledProgram(
+                fluid.default_main_program()).with_data_parallel(
+                    loss_name=loss.name)
 
         for _ in range(5):
             d = []
@@ -149,9 +161,11 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
                     d.append(numpy.array([tmp] * device_cnt))
 
             outs = exe.run(program=prog,
-                           feed={'d0': d[0],
-                                 'd1': d[1],
-                                 'd2': d[2]},
+                           feed={
+                               'd0': d[0],
+                               'd1': d[1],
+                               'd2': d[2]
+                           },
                            fetch_list=[sum_result])
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 

@@ -20,16 +20,21 @@ from .utils import print_program_with_dist_attr
 
 
 class Planner:
+
     def __init__(self, mode, dist_context):
         self._mode = mode
         self._dist_context = dist_context
 
         # NOTE: [HighOrderGrad]. There are grad ops in forward phase, and it need
         # dependency of backward-forward ops in forward completion.
-        # TODO: The id mapping will be lost if we clone the original program.
         default_ctx = get_default_distributed_context()
         self._dist_context._dist_op_context = default_ctx.dist_op_context
-        self._dist_context.initialize()
+        if not default_ctx.data_parallel:
+            # Use SSA graph for complex parallism
+            self._dist_context.initialize(with_graph=True)
+        else:
+            # Use program for data parallel parallism
+            self._dist_context.initialize(with_graph=False)
 
         self._completer = Completer(self._dist_context)
 

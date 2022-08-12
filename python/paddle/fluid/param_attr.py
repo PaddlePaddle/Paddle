@@ -295,12 +295,12 @@ class WeightNormParamAttr(ParamAttr):
                  trainable=True,
                  do_model_average=False,
                  need_clip=True):
-        super(WeightNormParamAttr, self).__init__(
-            name=name,
-            initializer=initializer,
-            learning_rate=learning_rate,
-            regularizer=regularizer,
-            trainable=trainable,
-            do_model_average=do_model_average,
-            need_clip=need_clip)
+        super(WeightNormParamAttr,
+              self).__init__(name=name,
+                             initializer=initializer,
+                             learning_rate=learning_rate,
+                             regularizer=regularizer,
+                             trainable=trainable,
+                             do_model_average=do_model_average,
+                             need_clip=need_clip)
         self.dim = dim

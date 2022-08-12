@@ -21,8 +21,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-#include "glog/logging.h"
-
 namespace phi {
 
 // TODO(chenweihang): add other flags if needed

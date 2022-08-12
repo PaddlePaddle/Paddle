@@ -20,7 +20,9 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #else
 #include <thrust/fill.h>
+
 #include <vector>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -111,7 +113,8 @@ PD_REGISTER_KERNEL(less_than,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(less_equal,
                    KPS,
                    ALL_LAYOUT,
@@ -121,7 +124,8 @@ PD_REGISTER_KERNEL(less_equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(greater_than,
                    KPS,
                    ALL_LAYOUT,
@@ -131,7 +135,8 @@ PD_REGISTER_KERNEL(greater_than,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(greater_equal,
                    KPS,
                    ALL_LAYOUT,
@@ -141,7 +146,8 @@ PD_REGISTER_KERNEL(greater_equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(equal,
                    KPS,
                    ALL_LAYOUT,
@@ -151,7 +157,8 @@ PD_REGISTER_KERNEL(equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(not_equal,
                    KPS,
                    ALL_LAYOUT,
@@ -161,7 +168,8 @@ PD_REGISTER_KERNEL(not_equal,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(equal_all,
                    KPS,

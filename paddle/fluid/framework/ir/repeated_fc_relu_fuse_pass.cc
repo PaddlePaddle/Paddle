@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/repeated_fc_relu_fuse_pass.h"
+
 #include <string>
 
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -69,7 +70,7 @@ static bool IsOutputOfFC(Node* n) {
 static bool IsFCWithAct(Node* n, const std::string& act_type = "relu") {
   if (n && n->IsOp() && n->Op() && n->Op()->Type() == "fc" &&
       n->inputs.size() == 3U && n->outputs.size() == 1U) {
-    return BOOST_GET_CONST(std::string, n->Op()->GetAttr("activation_type")) ==
+    return PADDLE_GET_CONST(std::string, n->Op()->GetAttr("activation_type")) ==
            act_type;
   }
   return false;
@@ -80,7 +81,7 @@ static bool IsFCWithPaddingWeights(Node* n) {
   if (n && n->IsOp() && n->Op() && n->Op()->Type() == "fc" &&
       n->inputs.size() == 3U && n->outputs.size() == 1U) {
     if (n->Op()->HasAttr("padding_weights")) {
-      res = BOOST_GET_CONST(bool, n->Op()->GetAttr("padding_weights"));
+      res = PADDLE_GET_CONST(bool, n->Op()->GetAttr("padding_weights"));
     }
   }
   return res;
@@ -111,7 +112,8 @@ static int FindFCIdx(Node* x, const std::string& act_type = "relu") {
   return -1;
 }
 
-static int FindInputIdx(Node* n, const std::string& name,
+static int FindInputIdx(Node* n,
+                        const std::string& name,
                         const std::string& act_type = "relu") {
   if (!IsFCWithAct(n, act_type)) {
     return -1;
@@ -125,8 +127,10 @@ static int FindInputIdx(Node* n, const std::string& name,
 }
 
 void BuildRepeatedFCReluPattern(PDPattern* pattern,
-                                const std::string& name_scope, int num_fc) {
-  auto var_next_is_fc_act = [=](Node* x, const std::string& act_type = "relu",
+                                const std::string& name_scope,
+                                int num_fc) {
+  auto var_next_is_fc_act = [=](Node* x,
+                                const std::string& act_type = "relu",
                                 bool check_in_has_only_one_out = true,
                                 int fc_idx = 0) -> bool {
     if (!IsInputOfFC(x)) {
@@ -145,12 +149,14 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
     return x->outputs[fc_idx]->outputs[0];
   };
 
-  auto var_next_is_fc_act_repeated_n_times = [=](
-      Node* x, int repeated_times, const std::string& act_type = "relu",
-      bool check_in_has_only_one_out = true) -> bool {
+  auto var_next_is_fc_act_repeated_n_times =
+      [=](Node* x,
+          int repeated_times,
+          const std::string& act_type = "relu",
+          bool check_in_has_only_one_out = true) -> bool {
     for (int i = 0; i < repeated_times; ++i) {
-      if (!var_next_is_fc_act(x, act_type,
-                              i == 0 && check_in_has_only_one_out)) {
+      if (!var_next_is_fc_act(
+              x, act_type, i == 0 && check_in_has_only_one_out)) {
         return false;
       }
       x = next_var_of_part(x);
@@ -159,7 +165,8 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
   };
 
   // x is output of fc
-  auto var_before_is_fc_act = [=](Node* x, const std::string& act_type = "relu",
+  auto var_before_is_fc_act = [=](Node* x,
+                                  const std::string& act_type = "relu",
                                   bool at_top = false) -> bool {
     if (!IsOutputOfFC(x)) {
       return false;
@@ -191,9 +198,10 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
     return nullptr;
   };
 
-  auto var_before_is_fc_act_repeated_n_times = [=](
-      Node* x, int repeated_times,
-      const std::string& act_type = "relu") -> bool {
+  auto var_before_is_fc_act_repeated_n_times = [=](Node* x,
+                                                   int repeated_times,
+                                                   const std::string& act_type =
+                                                       "relu") -> bool {
     for (int i = 0; i < repeated_times; ++i) {
       if (!var_before_is_fc_act(x, act_type, i == repeated_times - 1)) {
         return false;
@@ -243,8 +251,8 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
           auto* fc_op = x->outputs[0];
           int input_idx = FindInputIdx(fc_op, "Input", "relu");
           return var_next_is_fc_act_repeated_n_times(x, num_fc - i, "relu") &&
-                 var_before_is_fc_act_repeated_n_times(fc_op->inputs[input_idx],
-                                                       i, "relu");
+                 var_before_is_fc_act_repeated_n_times(
+                     fc_op->inputs[input_idx], i, "relu");
         },
         name_scope + "/fc_weight_" + std::to_string(i));
 
@@ -256,8 +264,8 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
           auto* fc_op = x->outputs[0];
           int input_idx = FindInputIdx(fc_op, "Input", "relu");
           return var_next_is_fc_act_repeated_n_times(x, num_fc - i, "relu") &&
-                 var_before_is_fc_act_repeated_n_times(fc_op->inputs[input_idx],
-                                                       i, "relu");
+                 var_before_is_fc_act_repeated_n_times(
+                     fc_op->inputs[input_idx], i, "relu");
         },
         name_scope + "/fc_bias_" + std::to_string(i));
 
@@ -297,10 +305,10 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
           auto* fc_out_var = x->outputs[0];
           return fc_out_var && fc_out_var->IsVar() &&
                  fc_out_var->outputs.size() == 1 &&
-                 var_next_is_fc_act_repeated_n_times(fc_out_var, num_fc - i - 1,
-                                                     "relu") &&
-                 var_before_is_fc_act_repeated_n_times(fc_out_var, i + 1,
-                                                       "relu");
+                 var_next_is_fc_act_repeated_n_times(
+                     fc_out_var, num_fc - i - 1, "relu") &&
+                 var_before_is_fc_act_repeated_n_times(
+                     fc_out_var, i + 1, "relu");
         },
         name_scope + "/fc_op_" + std::to_string(i));
 
@@ -326,12 +334,14 @@ int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
   auto retrieve_node = [](const std::string& name,
                           const GraphPatternDetector::subgraph_t& subgraph,
                           const PDPattern& pat) -> Node* {
-    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)), 0,
+    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)),
+                      0,
                       platform::errors::NotFound(
                           "Pattern has no node called %s.", name.c_str()));
     Node* p = subgraph.at(pat.RetrieveNode(name));
-    PADDLE_ENFORCE_NOT_NULL(p, platform::errors::NotFound(
-                                   "Subgraph has no node %s.", name.c_str()));
+    PADDLE_ENFORCE_NOT_NULL(
+        p,
+        platform::errors::NotFound("Subgraph has no node %s.", name.c_str()));
     return p;
   };
 
@@ -355,18 +365,21 @@ int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
     for (int i = 0; i < num_fc; ++i) {
       if (i < num_fc - 1) {
         relu_vars[i] =
-            retrieve_node(name_scope + "/fc_out_" + std::to_string(i), subgraph,
+            retrieve_node(name_scope + "/fc_out_" + std::to_string(i),
+                          subgraph,
                           fused_pattern);
         relu_names[i] = relu_vars[i]->Name();
       }
 
       weights_vars[i] =
           retrieve_node(name_scope + "/fc_weight_" + std::to_string(i),
-                        subgraph, fused_pattern);
+                        subgraph,
+                        fused_pattern);
       weight_names[i] = weights_vars[i]->Name();
 
       bias_vars[i] = retrieve_node(name_scope + "/fc_bias_" + std::to_string(i),
-                                   subgraph, fused_pattern);
+                                   subgraph,
+                                   fused_pattern);
       bias_names[i] = bias_vars[i]->Name();
     }
 
@@ -374,7 +387,8 @@ int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
         retrieve_node(name_scope + "/fc_in_0", subgraph, fused_pattern);
     auto* last_out_var =
         retrieve_node(name_scope + "/fc_out_" + std::to_string(num_fc - 1),
-                      subgraph, fused_pattern);
+                      subgraph,
+                      fused_pattern);
 
     // Create New OpDesc
     OpDesc op_desc;

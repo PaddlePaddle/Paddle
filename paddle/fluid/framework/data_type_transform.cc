@@ -35,7 +35,8 @@ struct CastDataTypeFunctor {
 #if defined(PADDLE_WITH_XPU)
 
 template <typename InType, typename OutType>
-static void XPUCastData(const framework::Tensor& in, framework::Tensor* out,
+static void XPUCastData(const framework::Tensor& in,
+                        framework::Tensor* out,
                         const platform::XPUDeviceContext* dev_ctx) {
   using XPUInTDType = typename XPUTypeTrait<InType>::Type;
   using XPUOutTDType = typename XPUTypeTrait<OutType>::Type;
@@ -50,7 +51,8 @@ static void XPUCastData(const framework::Tensor& in, framework::Tensor* out,
 
 template <typename InType>
 static void XPUTransDataType(
-    const framework::Tensor& in, framework::Tensor* out,
+    const framework::Tensor& in,
+    framework::Tensor* out,
     const paddle::framework::proto::VarType::Type& dst_type,
     const platform::DeviceContext* ctx) {
   auto* context = static_cast<const platform::XPUDeviceContext*>(ctx);
@@ -77,7 +79,8 @@ static void XPUTransDataType(
 
 template <typename InType>
 struct CastDataType {
-  CastDataType(const framework::Tensor& in, framework::Tensor* out,
+  CastDataType(const framework::Tensor& in,
+               framework::Tensor* out,
                const platform::DeviceContext* ctx)
       : in_(in), out_(out), ctx_(ctx) {}
   const framework::Tensor in_;
@@ -91,15 +94,21 @@ struct CastDataType {
     auto* out_begin = out_->mutable_data<OutType>(in_.place());
 
     if (platform::is_cpu_place(in_.place())) {
-      platform::Transform<platform::CPUDeviceContext> trans;
-      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
-      trans(*context, in_begin, in_end, out_begin,
+      platform::Transform<phi::CPUContext> trans;
+      auto* context = static_cast<const phi::CPUContext*>(ctx_);
+      trans(*context,
+            in_begin,
+            in_end,
+            out_begin,
             CastDataTypeFunctor<InType, OutType>());
 #if defined(__NVCC__) || defined(__HIPCC__)
     } else if (platform::is_gpu_place(in_.place())) {
-      platform::Transform<platform::CUDADeviceContext> trans;
-      auto* context = static_cast<const platform::CUDADeviceContext*>(ctx_);
-      trans(*context, in_begin, in_end, out_begin,
+      platform::Transform<phi::GPUContext> trans;
+      auto* context = static_cast<const phi::GPUContext*>(ctx_);
+      trans(*context,
+            in_begin,
+            in_end,
+            out_begin,
             CastDataTypeFunctor<InType, OutType>());
       context->Wait();
 #endif
@@ -111,7 +120,8 @@ struct CastDataType {
 };
 
 void TransDataType(const OpKernelType& kernel_type_for_var,
-                   const OpKernelType& expected_kernel_type, const Tensor& in,
+                   const OpKernelType& expected_kernel_type,
+                   const Tensor& in,
                    Tensor* out) {
   PADDLE_ENFORCE_EQ(
       framework::TransToProtoVarType(in.dtype()),
@@ -202,7 +212,8 @@ void TransDataType(const Tensor& in,
 }
 
 void TransComplexToReal(const proto::VarType::Type& dst_type,
-                        const proto::VarType::Type& src_type, const Tensor& in,
+                        const proto::VarType::Type& src_type,
+                        const Tensor& in,
                         Tensor* out) {
   auto& pool = platform::DeviceContextPool::Instance();
   auto* ctx = pool.Get(in.place());

@@ -75,21 +75,21 @@ class TestFcFusePass(PassAutoScanTest):
         self.add_ignore_check_case(
             teller1,
             IgnoreReasons.PASS_ACCURACY_ERROR,
-            "Use bad case to test pass.", )
+            "Use bad case to test pass.",
+        )
 
     def sample_program_config(self, draw):
-        # 1. Generate shape of input:X 
+        # 1. Generate shape of input:X
         x_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=8), min_size=4, max_size=5))
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=4,
+                     max_size=5))
         x_shape_rank = len(x_shape)
         # 2. Generate attrs of reduce_mean
         keep_dim = draw(st.booleans())
         reduce_all = False
         begin_norm_axis = draw(
-            st.integers(
-                min_value=1, max_value=x_shape_rank - 1))
+            st.integers(min_value=1, max_value=x_shape_rank - 1))
         if begin_norm_axis == x_shape_rank - 1 and draw(st.booleans()):
             reduce_mean_dim = [-1]
         else:
@@ -98,7 +98,9 @@ class TestFcFusePass(PassAutoScanTest):
         error_test_ratio = draw(st.integers(min_value=1, max_value=10))
         if error_test_ratio > 9:
             keep_dim = True
-            reduce_mean_dim = [1, ]
+            reduce_mean_dim = [
+                1,
+            ]
         elif error_test_ratio > 8:
             keep_dim = True
             begin_norm_axis = 1
@@ -111,20 +113,22 @@ class TestFcFusePass(PassAutoScanTest):
         pow_axis = -1
 
         def generate_pow_data():
-            return np.array([2, ], dtype="float32")
+            return np.array([
+                2,
+            ], dtype="float32")
 
         # 5. Generate attrs of elementwise_add
         if keep_dim:
             add_axis = draw(
-                st.integers(
-                    min_value=-1, max_value=x_shape_rank - 1))
+                st.integers(min_value=-1, max_value=x_shape_rank - 1))
         else:
             add_axis = draw(
-                st.integers(
-                    min_value=-1, max_value=begin_norm_axis - 1))
+                st.integers(min_value=-1, max_value=begin_norm_axis - 1))
 
         def generate_epsilon_data():
-            return np.array([1e-5, ], dtype="float32")
+            return np.array([
+                1e-5,
+            ], dtype="float32")
 
         # 6. Generate attrs of elementwise_div
         div_axis = 0
@@ -142,58 +146,85 @@ class TestFcFusePass(PassAutoScanTest):
 
         mean_op1 = OpConfig(
             "reduce_mean",
-            inputs={"X": ["x"], },
+            inputs={
+                "X": ["x"],
+            },
             outputs={"Out": ["mean_out"]},
             dim=reduce_mean_dim,
             keep_dim=keep_dim,
-            reduce_all=reduce_all, )
+            reduce_all=reduce_all,
+        )
         sub_op = OpConfig(
             "elementwise_sub",
-            inputs={"X": ["x"],
-                    "Y": ["mean_out"]},
+            inputs={
+                "X": ["x"],
+                "Y": ["mean_out"]
+            },
             outputs={"Out": ["sub_out"]},
-            axis=sub_axis, )
+            axis=sub_axis,
+        )
         pow_op = OpConfig(
             "elementwise_pow",
-            inputs={"X": ["sub_out"],
-                    "Y": ["pow_y"]},
+            inputs={
+                "X": ["sub_out"],
+                "Y": ["pow_y"]
+            },
             outputs={"Out": ["pow_out"]},
-            axis=pow_axis, )
+            axis=pow_axis,
+        )
         mean_op2 = OpConfig(
             "reduce_mean",
-            inputs={"X": ["pow_out"], },
+            inputs={
+                "X": ["pow_out"],
+            },
             outputs={"Out": ["mean_out2"]},
             dim=reduce_mean_dim,
             keep_dim=keep_dim,
-            reduce_all=reduce_all, )
+            reduce_all=reduce_all,
+        )
         add_op = OpConfig(
             "elementwise_add",
-            inputs={"X": ["mean_out2"],
-                    "Y": ["epsilon_var"]},
+            inputs={
+                "X": ["mean_out2"],
+                "Y": ["epsilon_var"]
+            },
             outputs={"Out": ["add_out"]},
-            axis=add_axis, )
+            axis=add_axis,
+        )
         sqrt_op = OpConfig(
             "sqrt",
-            inputs={"X": ["add_out"], },
-            outputs={"Out": ["sqrt_out"]}, )
+            inputs={
+                "X": ["add_out"],
+            },
+            outputs={"Out": ["sqrt_out"]},
+        )
         div_op = OpConfig(
             "elementwise_div",
-            inputs={"X": ["sub_out"],
-                    "Y": ["sqrt_out"]},
+            inputs={
+                "X": ["sub_out"],
+                "Y": ["sqrt_out"]
+            },
             outputs={"Out": ["div_out"]},
-            axis=div_axis, )
+            axis=div_axis,
+        )
         mul_op = OpConfig(
             "elementwise_mul",
-            inputs={"X": ["div_out"],
-                    "Y": ["gamma_var"]},
+            inputs={
+                "X": ["div_out"],
+                "Y": ["gamma_var"]
+            },
             outputs={"Out": ["mul_out"]},
-            axis=mul_axis, )
+            axis=mul_axis,
+        )
         add_op2 = OpConfig(
             "elementwise_add",
-            inputs={"X": ["mul_out"],
-                    "Y": ["beta_var"]},
+            inputs={
+                "X": ["mul_out"],
+                "Y": ["beta_var"]
+            },
             outputs={"Out": ["add_out2"]},
-            axis=add_axis2, )
+            axis=add_axis2,
+        )
 
         ops = [
             mean_op1, sub_op, pow_op, mean_op2, add_op, sqrt_op, div_op, mul_op,
@@ -208,15 +239,19 @@ class TestFcFusePass(PassAutoScanTest):
                 "gamma_var": TensorConfig(shape=gamma_shape),
                 "beta_var": TensorConfig(shape=beta_shape),
             },
-            inputs={"x": TensorConfig(shape=x_shape), },
-            outputs=ops[-1].outputs["Out"], )
+            inputs={
+                "x": TensorConfig(shape=x_shape),
+            },
+            outputs=ops[-1].outputs["Out"],
+        )
         return program_config
 
     def test(self):
         self.run_and_statis(
             quant=False,
             max_examples=300,
-            passes=["layer_norm_fuse_pass"], )
+            passes=["layer_norm_fuse_pass"],
+        )
 
 
 if __name__ == "__main__":

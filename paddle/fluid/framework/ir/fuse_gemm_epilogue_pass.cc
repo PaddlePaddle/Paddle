@@ -14,13 +14,22 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_gemm_epilogue_pass.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+static void GetTransposeAttrsFromOp(const OpDesc &op,
+                                    bool *trans_x,
+                                    bool *trans_y) {
+  *trans_x = PADDLE_GET_CONST(bool, op.GetAttr("trans_x"));
+  *trans_y = PADDLE_GET_CONST(bool, op.GetAttr("trans_y"));
+}
 
 void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph) const {
   EpiloguePassActivationCache cache;
@@ -75,6 +84,9 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
     if (!IsGemmFromLinear_(matmul_x_shape, matmul_w_shape, matmul_op_desc))
       return;
 
+    bool trans_x, trans_y;
+    GetTransposeAttrsFromOp(*matmul_op_desc, &trans_x, &trans_y);
+
     OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
     std::string activation = "none";
     fused_gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
@@ -85,6 +97,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
     fused_gemm_epilogue_op_desc.SetAttr("activation", activation);
     fused_gemm_epilogue_op_desc.SetAttr("op_role",
                                         matmul_op_desc->GetAttr("op_role"));
+    fused_gemm_epilogue_op_desc.SetAttr("trans_x", trans_x);
+    fused_gemm_epilogue_op_desc.SetAttr("trans_y", trans_y);
     auto gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
 
     IR_NODE_LINK_TO(subgraph.at(x), gemm_epilogue_node);
@@ -109,8 +123,10 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
 }
 
 ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
-    ir::Graph *graph, const std::unordered_set<std::string> &act_types,
-    bool is_training, bool is_act_grad_x_from_act,
+    ir::Graph *graph,
+    const std::unordered_set<std::string> &act_types,
+    bool is_training,
+    bool is_act_grad_x_from_act,
     EpiloguePassActivationCache *cache) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
@@ -154,6 +170,9 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
 
     auto activation = act_op->Op()->Type();
 
+    bool trans_x, trans_y;
+    GetTransposeAttrsFromOp(*matmul_op_desc, &trans_x, &trans_y);
+
     OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
     fused_gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
     fused_gemm_epilogue_op_desc.SetInput("X", {subgraph.at(x)->Name()});
@@ -163,6 +182,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     fused_gemm_epilogue_op_desc.SetAttr("activation", activation);
     fused_gemm_epilogue_op_desc.SetAttr("op_role",
                                         matmul_op_desc->GetAttr("op_role"));
+    fused_gemm_epilogue_op_desc.SetAttr("trans_x", trans_x);
+    fused_gemm_epilogue_op_desc.SetAttr("trans_y", trans_y);
 
     auto gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
 
@@ -239,27 +260,27 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
                      Graph *g) {
     VLOG(4) << "handle ElewiseAddMatmulAct fuse";
 
-    GET_IR_NODE_FROM_SUBGRAPH(ele_add_grad_op, ele_add_grad,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_bias, ele_grad_bias,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_dx, ele_grad_dx,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_dbias, ele_grad_dbias,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_op, matmul_grad,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_x, matmul_grad_x,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_w, matmul_grad_w,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_dw, matmul_grad_dw,
-                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_add_grad_op, ele_add_grad, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_grad_bias, ele_grad_bias, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_grad_dx, ele_grad_dx, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_grad_dbias, ele_grad_dbias, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_grad_op, matmul_grad, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_grad_x, matmul_grad_x, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_grad_w, matmul_grad_w, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_grad_dw, matmul_grad_dw, ele_add_matmul_act_pattern);
 
     Node *matmul_grad_dx = nullptr;
     if (!without_x_gradient) {
-      GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_dx_ptr, matmul_grad_dx,
-                                ele_add_matmul_act_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(
+          matmul_grad_dx_ptr, matmul_grad_dx, ele_add_matmul_act_pattern);
       matmul_grad_dx = matmul_grad_dx_ptr;
     }
 
@@ -270,9 +291,12 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
     // currently. The conditions below are used to verify wether matmul_v2
     // is created by paddle.nn.Linear
     auto matmul_grad_op_desc = matmul_grad_op->Op();
-    if (!IsGemmFromLinear_(matmul_grad_x_shape, matmul_grad_w_shape,
-                           matmul_grad_op_desc))
+    if (!IsGemmFromLinear_(
+            matmul_grad_x_shape, matmul_grad_w_shape, matmul_grad_op_desc))
       return;
+
+    bool trans_x, trans_y;
+    GetTransposeAttrsFromOp(*matmul_grad_op_desc, &trans_x, &trans_y);
 
     OpDesc fused_gemm_epilogue_grad_op_desc(ele_add_grad_op->Op()->Block());
     std::string activation_grad = "none";
@@ -292,6 +316,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
                                              activation_grad);
     fused_gemm_epilogue_grad_op_desc.SetAttr(
         "op_role", matmul_grad_op_desc->GetAttr("op_role"));
+    fused_gemm_epilogue_grad_op_desc.SetAttr("trans_x", trans_x);
+    fused_gemm_epilogue_grad_op_desc.SetAttr("trans_y", trans_y);
 
     auto gemm_epilogue_grad_node =
         g->CreateOpNode(&fused_gemm_epilogue_grad_op_desc);
@@ -326,8 +352,10 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
 }
 
 ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
-    ir::Graph *graph, const std::unordered_set<std::string> &act_grad_types,
-    bool is_act_grad_x_from_act, EpiloguePassActivationCache *cache) const {
+    ir::Graph *graph,
+    const std::unordered_set<std::string> &act_grad_types,
+    bool is_act_grad_x_from_act,
+    EpiloguePassActivationCache *cache) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("gemm_epilogue");
@@ -342,8 +370,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
 
   patterns::ElewiseAddMatmulAct ele_add_matmul_act_pattern(
       gpd.mutable_pattern(), "ele_add_matmul_act");
-  ele_add_matmul_act_pattern(dout, act_grad_types, false,
-                             is_act_grad_x_from_act);
+  ele_add_matmul_act_pattern(
+      dout, act_grad_types, false, is_act_grad_x_from_act);
 
   int found_ele_add_matmul_act_count = 0;
 
@@ -351,28 +379,28 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
                      Graph *g) {
     VLOG(4) << "handle ElewiseAddMatmulAct fuse";
 
-    GET_IR_NODE_FROM_SUBGRAPH(ele_add_grad_op, ele_add_grad,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_bias, ele_grad_bias,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_dx, ele_grad_dx,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(ele_grad_dbias, ele_grad_dbias,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_op, matmul_grad,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_x, matmul_grad_x,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_w, matmul_grad_w,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_dx, matmul_grad_dx,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_dw, matmul_grad_dw,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(act_grad_op, act_grad,
-                              ele_add_matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(act_grad_dx, act_grad_dx,
-                              ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_add_grad_op, ele_add_grad, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_grad_bias, ele_grad_bias, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_grad_dx, ele_grad_dx, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        ele_grad_dbias, ele_grad_dbias, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_grad_op, matmul_grad, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_grad_x, matmul_grad_x, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_grad_w, matmul_grad_w, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_grad_dx, matmul_grad_dx, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_grad_dw, matmul_grad_dw, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        act_grad_op, act_grad, ele_add_matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        act_grad_dx, act_grad_dx, ele_add_matmul_act_pattern);
 
     auto key =
         GetReserveSpaceCacheKey(matmul_grad_x->Var()->Name(), g->GetBlockId());
@@ -388,12 +416,14 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     // currently. The conditions below are used to verify wether matmul_v2
     // is created by paddle.nn.Linear
     auto matmul_grad_op_desc = matmul_grad_op->Op();
-    if (!IsGemmFromLinear_(matmul_grad_x_shape, matmul_grad_w_shape,
-                           matmul_grad_op_desc))
+    if (!IsGemmFromLinear_(
+            matmul_grad_x_shape, matmul_grad_w_shape, matmul_grad_op_desc))
       return;
 
     auto activation_grad = act_grad_op->Op()->Type();
 
+    bool trans_x, trans_y;
+    GetTransposeAttrsFromOp(*matmul_grad_op_desc, &trans_x, &trans_y);
     OpDesc fused_gemm_epilogue_grad_op_desc(ele_add_grad_op->Op()->Block());
     fused_gemm_epilogue_grad_op_desc.SetType("fused_gemm_epilogue_grad");
     fused_gemm_epilogue_grad_op_desc.SetInput("DOut",
@@ -410,6 +440,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
                                              activation_grad);
     fused_gemm_epilogue_grad_op_desc.SetAttr(
         "op_role", matmul_grad_op_desc->GetAttr("op_role"));
+    fused_gemm_epilogue_grad_op_desc.SetAttr("trans_x", trans_x);
+    fused_gemm_epilogue_grad_op_desc.SetAttr("trans_y", trans_y);
 
     auto gemm_epilogue_grad_node =
         g->CreateOpNode(&fused_gemm_epilogue_grad_op_desc);
@@ -422,8 +454,12 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     IR_NODE_LINK_TO(gemm_epilogue_grad_node, ele_grad_dbias);
     IR_NODE_LINK_TO(reserve_space_node, gemm_epilogue_grad_node);
 
-    GraphSafeRemoveNodes(g, {ele_add_grad_op, ele_grad_dx, matmul_grad_op,
-                             matmul_grad_dx, act_grad_op});
+    GraphSafeRemoveNodes(g,
+                         {ele_add_grad_op,
+                          ele_grad_dx,
+                          matmul_grad_op,
+                          matmul_grad_dx,
+                          act_grad_op});
 
     VLOG(4) << "\n\t " << subgraph.at(dout)->Name() << " and "
             << ele_grad_bias->Name() << " -> " << ele_add_grad_op->Name()
@@ -444,22 +480,22 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
 }
 
 bool FuseGemmEpiloguePass::IsGemmFromLinear_(
-    const std::vector<int64_t> &x_shape, const std::vector<int64_t> &w_shape,
+    const std::vector<int64_t> &x_shape,
+    const std::vector<int64_t> &w_shape,
     OpDesc *matmul_v2_op) const {
   if (w_shape.size() != 2 || x_shape.size() < 2) return false;
-  for (auto attr_name :
-       {"fused_reshape_Out", "fused_reshape_X", "fused_reshape_Y",
-        "fused_transpose_Out", "fused_transpose_X", "fused_transpose_Y"}) {
+  for (auto attr_name : {"fused_reshape_Out",
+                         "fused_reshape_X",
+                         "fused_reshape_Y",
+                         "fused_transpose_Out",
+                         "fused_transpose_X",
+                         "fused_transpose_Y"}) {
     if (matmul_v2_op->HasAttr(attr_name)) {
       std::vector<int> tmp_vec =
-          BOOST_GET_CONST(std::vector<int>, matmul_v2_op->GetAttr(attr_name));
+          PADDLE_GET_CONST(std::vector<int>, matmul_v2_op->GetAttr(attr_name));
       if (tmp_vec.size() > 0) return false;
     }
   }
-  if (BOOST_GET_CONST(bool, matmul_v2_op->GetAttr("trans_x")) ||
-      BOOST_GET_CONST(bool, matmul_v2_op->GetAttr("trans_y")))
-    return false;
-
   return true;
 }
 

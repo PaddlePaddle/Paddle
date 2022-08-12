@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <vector>
-
 #include "paddle/fluid/operators/py_layer_op.h"
+
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -57,7 +57,8 @@ void RunPyObject(py::object *py_object,
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The number of outputs of `PyLayer.backward` should be %d, but "
           "received %d.",
-          outs->size(), result_tuple.size()));
+          outs->size(),
+          result_tuple.size()));
     }
     for (size_t i = 0; i < result_tuple.size(); i++) {
       if ((*outs)[i] != nullptr) {
@@ -198,45 +199,41 @@ class PyLayerOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(py_layer, ops::PyLayerOp, ops::PyLayerOpMaker,
+REGISTER_OPERATOR(py_layer,
+                  ops::PyLayerOp,
+                  ops::PyLayerOpMaker,
                   ops::PyLayerGradOpMaker<paddle::imperative::OpBase>,
                   ops::PyLayerGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OP_CPU_KERNEL(
-    py_layer, ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::float16>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::bfloat16>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    py_layer,
+    ops::PyLayerOpKernel<phi::CPUContext, float>,
+    ops::PyLayerOpKernel<phi::CPUContext, ::paddle::platform::float16>,
+    ops::PyLayerOpKernel<phi::CPUContext, ::paddle::platform::bfloat16>,
+    ops::PyLayerOpKernel<phi::CPUContext, double>,
+    ops::PyLayerOpKernel<phi::CPUContext, int>,
+    ops::PyLayerOpKernel<phi::CPUContext, int64_t>,
 
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::complex<float>>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::complex<double>>);
+    ops::PyLayerOpKernel<phi::CPUContext, bool>,
+    ops::PyLayerOpKernel<phi::CPUContext, uint8_t>,
+    ops::PyLayerOpKernel<phi::CPUContext, int16_t>,
+    ops::PyLayerOpKernel<phi::CPUContext, int8_t>,
+    ops::PyLayerOpKernel<phi::CPUContext, ::paddle::platform::complex<float>>,
+    ops::PyLayerOpKernel<phi::CPUContext, ::paddle::platform::complex<double>>);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
-    py_layer, ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::float16>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::bfloat16>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    py_layer,
+    ops::PyLayerOpKernel<phi::GPUContext, float>,
+    ops::PyLayerOpKernel<phi::GPUContext, ::paddle::platform::float16>,
+    ops::PyLayerOpKernel<phi::GPUContext, ::paddle::platform::bfloat16>,
+    ops::PyLayerOpKernel<phi::GPUContext, double>,
+    ops::PyLayerOpKernel<phi::GPUContext, int>,
+    ops::PyLayerOpKernel<phi::GPUContext, int64_t>,
 
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, bool>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, uint8_t>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int16_t>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::complex<float>>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::complex<double>>);
+    ops::PyLayerOpKernel<phi::GPUContext, bool>,
+    ops::PyLayerOpKernel<phi::GPUContext, uint8_t>,
+    ops::PyLayerOpKernel<phi::GPUContext, int16_t>,
+    ops::PyLayerOpKernel<phi::GPUContext, int8_t>,
+    ops::PyLayerOpKernel<phi::GPUContext, ::paddle::platform::complex<float>>,
+    ops::PyLayerOpKernel<phi::GPUContext, ::paddle::platform::complex<double>>);
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

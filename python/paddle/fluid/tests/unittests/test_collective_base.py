@@ -23,6 +23,7 @@ import subprocess
 import traceback
 import functools
 import pickle
+import tempfile
 from contextlib import closing
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
@@ -30,6 +31,7 @@ from paddle.fluid import core
 
 
 class TestCollectiveRunnerBase(object):
+
     def get_model(self, train_prog, startup_prog):
         raise NotImplementedError(
             "get model should be implemented by child class.")
@@ -40,9 +42,8 @@ class TestCollectiveRunnerBase(object):
             not_ready_endpoints = []
             for ep in endpoints:
                 ip_port = ep.split(":")
-                with closing(
-                        socket.socket(socket.AF_INET,
-                                      socket.SOCK_STREAM)) as sock:
+                with closing(socket.socket(socket.AF_INET,
+                                           socket.SOCK_STREAM)) as sock:
                     sock.settimeout(2)
                     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     if hasattr(socket, 'SO_REUSEPORT'):
@@ -55,12 +56,13 @@ class TestCollectiveRunnerBase(object):
                         not_ready_endpoints.append(ep)
             if not all_ok:
                 sys.stderr.write("server not ready, wait 3 sec to retry...\n")
-                sys.stderr.write("not ready endpoints:" + str(
-                    not_ready_endpoints) + "\n")
+                sys.stderr.write("not ready endpoints:" +
+                                 str(not_ready_endpoints) + "\n")
                 sys.stderr.flush()
                 time.sleep(3)
             else:
                 break
+
 
 #endpoints should be ["ip1:port1","ip2:port2"]
 
@@ -71,30 +73,27 @@ class TestCollectiveRunnerBase(object):
         if rank == 0 and wait_port:
             self.wait_server_ready(other_endpoints)
         block = program.global_block()
-        nccl_id_var = block.create_var(
-            name=nameGen.generate('nccl_id'),
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
+        nccl_id_var = block.create_var(name=nameGen.generate('nccl_id'),
+                                       persistable=True,
+                                       type=core.VarDesc.VarType.RAW)
 
-        block.append_op(
-            type='c_gen_nccl_id',
-            inputs={},
-            outputs={'Out': nccl_id_var},
-            attrs={
-                'rank': rank,
-                'endpoint': current_endpoint,
-                'other_endpoints': other_endpoints
-            })
+        block.append_op(type='c_gen_nccl_id',
+                        inputs={},
+                        outputs={'Out': nccl_id_var},
+                        attrs={
+                            'rank': rank,
+                            'endpoint': current_endpoint,
+                            'other_endpoints': other_endpoints
+                        })
 
-        block.append_op(
-            type='c_comm_init',
-            inputs={'X': nccl_id_var},
-            outputs={},
-            attrs={
-                'nranks': nranks,
-                'rank': rank,
-                'ring_id': self.global_ring_id
-            })
+        block.append_op(type='c_comm_init',
+                        inputs={'X': nccl_id_var},
+                        outputs={},
+                        attrs={
+                            'nranks': nranks,
+                            'rank': rank,
+                            'ring_id': self.global_ring_id
+                        })
 
     def run_trainer(self, args):
         train_prog = fluid.Program()
@@ -138,6 +137,7 @@ from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
+
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
@@ -145,7 +145,13 @@ class TestDistBase(unittest.TestCase):
             self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
 
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def _find_free_port(self):
+
         def __free_port():
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as s:
@@ -183,20 +189,20 @@ class TestDistBase(unittest.TestCase):
         tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
-        tr0_pipe = open("/tmp/tr0_err.log", "wb")
-        tr1_pipe = open("/tmp/tr1_err.log", "wb")
-        #print(tr0_cmd) 
-        tr0_proc = subprocess.Popen(
-            tr0_cmd.strip().split(),
-            stdout=subprocess.PIPE,
-            stderr=tr0_pipe,
-            env=env0)
+        path0 = os.path.join(self.temp_dir.name, "/tmp/tr0_err.log")
+        path1 = os.path.join(self.temp_dir.name, "/tmp/tr1_err.log")
+        tr0_pipe = open(path0, "wb")
+        tr1_pipe = open(path1, "wb")
+        #print(tr0_cmd)
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr0_pipe,
+                                    env=env0)
 
-        tr1_proc = subprocess.Popen(
-            tr0_cmd.strip().split(),
-            stdout=subprocess.PIPE,
-            stderr=tr1_pipe,
-            env=env1)
+        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr1_pipe,
+                                    env=env1)
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
@@ -227,8 +233,8 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
-        tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file,
-                                                         required_envs)
+        tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
+            model_file, required_envs)
         np.random.seed(pid0)
         input1 = np.random.random((10, 1000))
         np.random.seed(pid1)
@@ -253,26 +259,21 @@ class TestDistBase(unittest.TestCase):
         elif col_type == "allreduce":
             need_result = input1 + input2
             self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr0_out, need_result, rtol=1e-05, atol=1e-05))
             self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr1_out, need_result, rtol=1e-05, atol=1e-05))
         elif col_type == "reduce_scatter":
             tmp = input1 + input2
             need_result1 = tmp[0:tmp.shape[0] // 2]
             need_result2 = tmp[tmp.shape[0] // 2:]
             self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result1, rtol=1e-05, atol=1e-05))
+                np.allclose(tr0_out, need_result1, rtol=1e-05, atol=1e-05))
             self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result2, rtol=1e-05, atol=1e-05))
+                np.allclose(tr1_out, need_result2, rtol=1e-05, atol=1e-05))
         elif col_type == "sendrecv":
             need_result = input1
             self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr1_out, need_result, rtol=1e-05, atol=1e-05))
         elif col_type == "identity":
             need_result1 = input1
             need_result2 = input2
@@ -291,28 +292,24 @@ class TestDistBase(unittest.TestCase):
         elif col_type == "concat":
             need_result = np.concatenate((input1, input2), axis=1)
             self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr0_out, need_result, rtol=1e-05, atol=1e-05))
             self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr1_out, need_result, rtol=1e-05, atol=1e-05))
         elif col_type == "split":
             need_result1 = np.split(input1, 2, axis=1)[0]
             need_result2 = np.split(input2, 2, axis=1)[1]
             self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result1, rtol=1e-05, atol=1e-05))
+                np.allclose(tr0_out, need_result1, rtol=1e-05, atol=1e-05))
             self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result2, rtol=1e-05, atol=1e-05))
+                np.allclose(tr1_out, need_result2, rtol=1e-05, atol=1e-05))
         elif col_type == "sendrecv_array":
             need_result1 = np.array([[0, 1, 2]])
             need_result2 = np.array([[3, 4, 5]])
             self.assertTrue(
-                np.allclose(
-                    tr1_out[0][0], need_result1, rtol=1e-05, atol=1e-05))
+                np.allclose(tr1_out[0][0], need_result1, rtol=1e-05,
+                            atol=1e-05))
             self.assertTrue(
-                np.allclose(
-                    tr1_out[0][1], need_result2, rtol=1e-05, atol=1e-05))
+                np.allclose(tr1_out[0][1], need_result2, rtol=1e-05,
+                            atol=1e-05))
         else:
             pass

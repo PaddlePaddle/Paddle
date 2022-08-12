@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,6 +24,7 @@ program_translator = ProgramTranslator()
 
 
 class TestResnetWithPass(unittest.TestCase):
+
     def setUp(self):
         self.build_strategy = paddle.static.BuildStrategy()
         self.build_strategy.fuse_elewise_add_act_ops = True
@@ -44,24 +45,22 @@ class TestResnetWithPass(unittest.TestCase):
         st_pre = self.resnet_helper.predict_static(image)
         dy_jit_pre = self.resnet_helper.predict_dygraph_jit(image)
         predictor_pre = self.resnet_helper.predict_analysis_inference(image)
-        self.assertTrue(
-            np.allclose(dy_pre, st_pre),
-            msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
-        self.assertTrue(
-            np.allclose(dy_jit_pre, st_pre),
-            msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(dy_jit_pre, st_pre))
-        self.assertTrue(
-            np.allclose(predictor_pre, st_pre),
-            msg="predictor_pre:\n {}\n, st_pre: \n{}.".format(predictor_pre,
-                                                              st_pre))
+        self.assertTrue(np.allclose(dy_pre, st_pre),
+                        msg="dy_pre:\n {}\n, st_pre: \n{}.".format(
+                            dy_pre, st_pre))
+        self.assertTrue(np.allclose(dy_jit_pre, st_pre),
+                        msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(
+                            dy_jit_pre, st_pre))
+        self.assertTrue(np.allclose(predictor_pre, st_pre),
+                        msg="predictor_pre:\n {}\n, st_pre: \n{}.".format(
+                            predictor_pre, st_pre))
 
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
-        self.assertTrue(
-            np.allclose(static_loss, dygraph_loss),
-            msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
-                                                             dygraph_loss))
+        self.assertTrue(np.allclose(static_loss, dygraph_loss),
+                        msg="static_loss: {} \n dygraph_loss: {}".format(
+                            static_loss, dygraph_loss))
         self.verify_predict()
 
     def test_in_static_mode_mkldnn(self):
@@ -74,7 +73,9 @@ class TestResnetWithPass(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
+
     def test_type_error(self):
+
         def foo(x):
             out = x + 1
             return out

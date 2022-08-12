@@ -24,6 +24,7 @@ paddle.enable_static()
 
 
 class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = \
@@ -78,9 +79,9 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         self.assertEqual(main_prog_op_types, [
             'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
             'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
-            'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'fill_constant', 'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add', 'softmax', 'cross_entropy2', 'reduce_mean',
+            'fill_constant', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
@@ -160,9 +161,9 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         self.assertEqual(main_prog_op_types, [
             'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
             'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
-            'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'fill_constant', 'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add', 'softmax', 'cross_entropy2', 'reduce_mean',
+            'fill_constant', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
@@ -193,8 +194,11 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         strategy.fuse_grad_size_in_MB = 32
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
 
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)
@@ -224,8 +228,8 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
             'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast',
             'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast',
             'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'softmax',
-            'cast', 'cross_entropy2', 'mean', 'elementwise_mul',
-            'fill_constant', 'elementwise_mul_grad', 'mean_grad',
+            'cast', 'cross_entropy2', 'reduce_mean', 'elementwise_mul',
+            'fill_constant', 'elementwise_mul_grad', 'reduce_mean_grad',
             'cross_entropy_grad2', 'cast', 'softmax_grad',
             'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
             'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
@@ -267,8 +271,11 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         strategy.fuse_grad_merge = True
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
 
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)
@@ -298,10 +305,10 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
             'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast',
             'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast',
             'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'softmax',
-            'cast', 'cross_entropy2', 'mean', 'elementwise_mul',
+            'cast', 'cross_entropy2', 'reduce_mean', 'elementwise_mul',
             'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
             'coalesce_tensor', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
+            'reduce_mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
             'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
             'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
             'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
@@ -325,7 +332,9 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
 
         self.set_strategy(strategy, 'pipeline')
         self.set_strategy(strategy, 'amp')
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.recompute = True
         strategy.recompute_configs = {
             "checkpoints":
@@ -377,26 +386,27 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
             'mul', 'elementwise_add', 'cast', 'tanh', 'cast', 'mul',
             'elementwise_add', 'cast', 'tanh', 'cast', 'mul', 'cast',
             'elementwise_add', 'cast', 'softmax', 'cast', 'cross_entropy2',
-            'mean', 'elementwise_mul', 'coalesce_tensor', 'coalesce_tensor',
+            'reduce_mean', 'elementwise_mul', 'coalesce_tensor',
             'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
-            'coalesce_tensor', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad', 'cast',
-            'elementwise_add_grad', 'cast', 'mul_grad', 'cast', 'tanh_grad',
-            'cast', 'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad',
-            'cast', 'elementwise_add_grad', 'mul_grad', 'cast', 'cast', 'mul',
-            'elementwise_add', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'c_sync_calc_stream',
-            'send_v2', 'cast', 'sum', 'sum', 'cast', 'sum', 'c_reduce_sum',
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
-            'check_finite_and_unscale', 'cast', 'c_allreduce_max',
-            'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
-            'cast', 'momentum', 'cast', 'momentum', 'cast', 'momentum',
-            'momentum', 'cast', 'coalesce_tensor', 'c_broadcast', 'c_broadcast',
-            'coalesce_tensor', 'c_broadcast'
+            'coalesce_tensor', 'coalesce_tensor', 'fill_constant',
+            'elementwise_mul_grad', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'cast', 'softmax_grad', 'cast', 'elementwise_add_grad', 'cast',
+            'mul_grad', 'cast', 'tanh_grad', 'cast', 'elementwise_add_grad',
+            'mul_grad', 'cast', 'tanh_grad', 'cast', 'elementwise_add_grad',
+            'mul_grad', 'cast', 'cast', 'mul', 'elementwise_add', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'c_sync_calc_stream', 'send_v2', 'cast', 'sum', 'sum', 'cast',
+            'sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'c_allreduce_max', 'cast', 'update_loss_scaling',
+            'momentum', 'cast', 'momentum', 'cast', 'momentum', 'cast',
+            'momentum', 'momentum', 'cast', 'coalesce_tensor', 'c_broadcast',
+            'c_broadcast', 'coalesce_tensor', 'c_broadcast'
         ])
 
 
 class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = \
@@ -430,8 +440,11 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         strategy.fuse_grad_size_in_MB = 32
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
 
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)
@@ -491,8 +504,11 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         strategy.fuse_grad_size_in_MB = 32
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
 
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)

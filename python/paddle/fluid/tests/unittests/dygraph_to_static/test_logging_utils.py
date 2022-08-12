@@ -28,6 +28,7 @@ from unittest import mock
 
 
 class TestLoggingUtils(unittest.TestCase):
+
     def setUp(self):
         self.verbosity_level = 1
         self.code_level = 3

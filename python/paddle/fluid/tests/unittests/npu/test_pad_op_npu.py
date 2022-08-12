@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -28,21 +29,25 @@ paddle.enable_static()
 
 
 class TestPadOp(OpTest):
+
     def setUp(self):
         self.op_type = "pad"
         self.set_npu()
         self.init_dtype()
         self.initTestCase()
 
-        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype), }
+        self.inputs = {
+            'X': np.random.random(self.shape).astype(self.dtype),
+        }
         self.attrs = {}
         self.attrs['paddings'] = np.array(self.paddings).flatten()
         self.attrs['pad_value'] = self.pad_value
         self.outputs = {
-            'Out': np.pad(self.inputs['X'],
-                          self.paddings,
-                          mode='constant',
-                          constant_values=self.pad_value)
+            'Out':
+            np.pad(self.inputs['X'],
+                   self.paddings,
+                   mode='constant',
+                   constant_values=self.pad_value)
         }
 
     def test_check_output(self):
@@ -50,8 +55,9 @@ class TestPadOp(OpTest):
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
-            self.check_grad_with_place(
-                self.place, ['X'], 'Out', max_relative_error=0.6)
+            self.check_grad_with_place(self.place, ['X'],
+                                       'Out',
+                                       max_relative_error=0.6)
         else:
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
@@ -69,6 +75,7 @@ class TestPadOp(OpTest):
 
 
 class TestCase1(TestPadOp):
+
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.paddings = [(0, 1), (2, 3), (2, 1), (1, 1)]
@@ -76,6 +83,7 @@ class TestCase1(TestPadOp):
 
 
 class TestCase2(TestPadOp):
+
     def initTestCase(self):
         self.shape = (5, 5, 5)
         self.paddings = [(0, 0), (0, 0), (1, 2)]
@@ -83,6 +91,7 @@ class TestCase2(TestPadOp):
 
 
 class TestCase3(TestPadOp):
+
     def initTestCase(self):
         self.shape = (100)
         self.paddings = [(0, 1)]
@@ -93,7 +102,9 @@ class TestCase3(TestPadOp):
 
 
 def create_test_fp16(parent):
+
     class TestPadFp16(parent):
+
         def init_dtype(self):
             self.dtype = np.float16
 
@@ -109,6 +120,7 @@ create_test_fp16(TestCase3)
 
 
 class TestPadOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.random((2, 2)).astype("float32")

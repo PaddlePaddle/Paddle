@@ -47,7 +47,8 @@ class ShapeNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    shape, ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, bool>,
+    shape,
+    ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, bool>,
     ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
     ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,

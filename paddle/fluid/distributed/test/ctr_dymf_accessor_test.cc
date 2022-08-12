@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
+
 #include <cmath>
 #include <iostream>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/common/registerer.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {

@@ -106,7 +106,7 @@ class TestReduceMinOpWithOutDtype_bool(TestNPUReduceMinOp):
         }
         self.outputs = {
             'Out':
-            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(np.bool)
+            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(np.bool_)
         }
 
 
@@ -194,8 +194,9 @@ class TestReduceMinOpWithOutDtype_fp16(TestNPUReduceMinOp):
             'out_dtype': int(core.VarDesc.VarType.FP16)
         }
         self.outputs = {
-            'Out': self.inputs['X'].min(
-                axis=tuple(self.attrs['dim'])).astype(np.float16)
+            'Out':
+            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
+                np.float16)
         }
 
     def test_check_output(self):
@@ -219,8 +220,9 @@ class TestReduceMinOpWithOutDtype_fp32(TestNPUReduceMinOp):
             'out_dtype': int(core.VarDesc.VarType.FP32)
         }
         self.outputs = {
-            'Out': self.inputs['X'].min(
-                axis=tuple(self.attrs['dim'])).astype(np.float32)
+            'Out':
+            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
+                np.float32)
         }
 
 
@@ -241,8 +243,9 @@ class TestReduceMinOpWithOutDtype_fp64(TestNPUReduceMinOp):
             'out_dtype': int(core.VarDesc.VarType.FP64)
         }
         self.outputs = {
-            'Out': self.inputs['X'].min(
-                axis=tuple(self.attrs['dim'])).astype(np.float64)
+            'Out':
+            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
+                np.float64)
         }
 
 
@@ -263,8 +266,9 @@ class TestReduceMinOpWithOutDtype_fp32_2(TestNPUReduceMinOp):
             'out_dtype': int(core.VarDesc.VarType.FP32)
         }
         self.outputs = {
-            'Out': self.inputs['X'].min(
-                axis=tuple(self.attrs['dim'])).astype(np.float32)
+            'Out':
+            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
+                np.float32)
         }
 
     def init_dtype(self):
@@ -288,8 +292,9 @@ class TestReduceMinOpInt64(TestNPUReduceMinOp):
             'out_dtype': int(core.VarDesc.VarType.INT64)
         }
         self.outputs = {
-            'Out': self.inputs['X'].min(
-                axis=tuple(self.attrs['dim'])).astype(np.float32)
+            'Out':
+            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
+                np.float32)
         }
 
     def init_dtype(self):

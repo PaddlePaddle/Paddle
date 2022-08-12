@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -216,13 +216,13 @@ void ElementwiseAddGrad(const GPUContext &ctx,
         dim3(((size + vec_size - 1) / vec_size + PREDEFINED_BLOCK_SIZE - 1) /
                  PREDEFINED_BLOCK_SIZE,
              1);
-    SimpleElemwiseAddGradCUDAKernel<
-        T><<<grid_size, block_size, 0, ctx.stream()>>>(
-        dout.data<T>(),
-        size,
-        vec_size,
-        dx->mutable_data<T>(ctx.GetPlace()),
-        dy->mutable_data<T>(ctx.GetPlace()));
+    SimpleElemwiseAddGradCUDAKernel<T>
+        <<<grid_size, block_size, 0, ctx.stream()>>>(
+            dout.data<T>(),
+            size,
+            vec_size,
+            dx->mutable_data<T>(ctx.GetPlace()),
+            dy->mutable_data<T>(ctx.GetPlace()));
   } else {
     VLOG(4) << "Special case when dy_data is the same as dout_data, "
                "and dx_data is the same as dout_data, do not need "
@@ -291,9 +291,12 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
         auto size = dy->numel();
         dim3 grid_size =
             dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-        SimpleElemwiseSubGradCUDAKernel<
-            T><<<grid_size, block_size, 0, ctx.stream()>>>(
-            dout.data<T>(), size, nullptr, dy->mutable_data<T>(ctx.GetPlace()));
+        SimpleElemwiseSubGradCUDAKernel<T>
+            <<<grid_size, block_size, 0, ctx.stream()>>>(
+                dout.data<T>(),
+                size,
+                nullptr,
+                dy->mutable_data<T>(ctx.GetPlace()));
       }
     } else {
       std::vector<int> reduce_dims =
@@ -316,12 +319,12 @@ void elementwise_sub_grad(const GPUContext &ctx,
   auto size = x.numel();
   dim3 grid_size =
       dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-  SimpleElemwiseSubGradCUDAKernel<
-      T><<<grid_size, block_size, 0, ctx.stream()>>>(
-      dout.data<T>(),
-      size,
-      dx->mutable_data<T>(ctx.GetPlace()),
-      dy->mutable_data<T>(ctx.GetPlace()));
+  SimpleElemwiseSubGradCUDAKernel<T>
+      <<<grid_size, block_size, 0, ctx.stream()>>>(
+          dout.data<T>(),
+          size,
+          dx->mutable_data<T>(ctx.GetPlace()),
+          dy->mutable_data<T>(ctx.GetPlace()));
 }
 /*
 ******************************

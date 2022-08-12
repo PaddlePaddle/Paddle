@@ -33,7 +33,7 @@ def nested_input(x, y):
     sub_res = z_elem[0] - z_elem[1]
 
     mul_res = y[-1]['d']['da'] * y[-1]['d']['dc']
-    mean_func = fluid.layers.mean
+    mean_func = paddle.mean
     out = mean_func(sub_res) + mean_func(sum_res) + mean_func(mul_res)
     return out
 
@@ -55,6 +55,7 @@ def fake_data(shape):
 
 
 class TestWithNestedInput(unittest.TestCase):
+
     def setUp(self):
         self.x = None
         self.y = None
@@ -63,7 +64,8 @@ class TestWithNestedInput(unittest.TestCase):
         self.x = fake_data([10, 16])
         self.y = [
             fake_data([10, 16]), "preprocess_cmd", 64, {
-                'z': [fake_data([10, 12]), fake_data([10, 12])],
+                'z': [fake_data([10, 12]),
+                      fake_data([10, 12])],
                 'c': fake_data([10, 10]),
                 'd': {
                     'da': 12,
@@ -91,6 +93,7 @@ class TestWithNestedInput(unittest.TestCase):
 
 
 class TestWithNestedOutput(unittest.TestCase):
+
     def setUp(self):
         self.x = None
         self.y = None
@@ -126,6 +129,7 @@ class TestWithNestedOutput(unittest.TestCase):
 
 
 class TestWithTrainAndEval(unittest.TestCase):
+
     def test_switch_eval_and_train(self):
         program_translator = ProgramTranslator()
 
@@ -155,6 +159,7 @@ class TestWithTrainAndEval(unittest.TestCase):
 
 
 class TestWithNoGrad(unittest.TestCase):
+
     def test_with_no_grad(self):
         with fluid.dygraph.guard():
             linear_net = Linear()
@@ -170,6 +175,7 @@ class TestWithNoGrad(unittest.TestCase):
 
 
 class GPT2LMHeadModel(fluid.dygraph.Layer):
+
     def __init__(self):
         super(GPT2LMHeadModel, self).__init__()
         self.embedding0 = paddle.nn.Embedding(20, 16)
@@ -185,6 +191,7 @@ class GPT2LMHeadModel(fluid.dygraph.Layer):
 
 
 class TestPruneUnusedParamInProgram(unittest.TestCase):
+
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
 
@@ -194,7 +201,7 @@ class TestPruneUnusedParamInProgram(unittest.TestCase):
             model.eval()
             input_ids = paddle.to_tensor(input_ids)
             out = model(input_ids)
-            self.assertTrue(np.array_equal(out.numpy(), [[15, 11]]))
+            np.testing.assert_array_equal(out.numpy(), [[15, 11]])
 
 
 if __name__ == '__main__':

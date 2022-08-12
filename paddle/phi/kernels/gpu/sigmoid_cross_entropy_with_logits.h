@@ -15,13 +15,14 @@
 #pragma once
 
 #include <algorithm>
+
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 

@@ -26,11 +26,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-
 #include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/lite/tensor_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -86,7 +85,7 @@ class LiteEngineOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(dev_place)) {
       platform::GpuStreamSync(
-          static_cast<const platform::CUDADeviceContext *>(ctx)->stream());
+          static_cast<const phi::GPUContext *>(ctx)->stream());
     }
 #endif
     VLOG(3) << "lite engine run";
@@ -104,7 +103,7 @@ class LiteEngineOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(dev_place)) {
       platform::GpuStreamSync(
-          static_cast<const platform::CUDADeviceContext *>(ctx)->stream());
+          static_cast<const phi::GPUContext *>(ctx)->stream());
     }
 #endif
   }

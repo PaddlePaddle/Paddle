@@ -39,8 +39,11 @@ class FlipOp : public framework::OperatorWithKernel {
     int customized_type_value =
         framework::OpKernelType::kDefaultCustomizedTypeValue;
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library, customized_type_value);
+    return framework::OpKernelType(input_data_type,
+                                   ctx.GetPlace(),
+                                   layout,
+                                   library,
+                                   customized_type_value);
   }
 };
 
@@ -85,18 +88,22 @@ class FlipOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-DECLARE_INFER_SHAPE_FUNCTOR(flip, FlipInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(flip,
+                            FlipInferShapeFunctor,
                             PD_INFER_META(phi::FlipInferMeta));
-REGISTER_OPERATOR(flip, ops::FlipOp, ops::FlipOpMaker, ops::FlipOpInferVarType,
+REGISTER_OPERATOR(flip,
+                  ops::FlipOp,
+                  ops::FlipOpMaker,
+                  ops::FlipOpInferVarType,
                   ops::FlipOpGradMaker<paddle::framework::OpDesc>,
                   ops::FlipOpGradMaker<paddle::imperative::OpBase>,
                   FlipInferShapeFunctor);
 
 /* ==========================  register checkpoint ===========================*/
-REGISTER_OP_VERSION(flip)
-    .AddCheckpoint(
-        R"ROC(Upgrade flip, add new attr [axis] and delete attr [dims].)ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("axis", "The added attr 'axis' doesn't set default value.",
-                     paddle::none)
-            .DeleteAttr("dims", "The attr 'dims' is deleted."));
+REGISTER_OP_VERSION(flip).AddCheckpoint(
+    R"ROC(Upgrade flip, add new attr [axis] and delete attr [dims].)ROC",
+    paddle::framework::compatible::OpVersionDesc()
+        .NewAttr("axis",
+                 "The added attr 'axis' doesn't set default value.",
+                 paddle::none)
+        .DeleteAttr("dims", "The attr 'dims' is deleted."));

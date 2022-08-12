@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <string>
+
 #include "paddle/fluid/operators/bilateral_slice_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -50,9 +51,14 @@ __device__ T DweightZ(T x) {
 }
 
 template <typename T>
-__global__ void BilateralSliceCudaForwardKernel(
-    T* output, const T* bilateral_grid, const T* guide, const T* input,
-    GridSizes gsz, bool has_offset, int total_count, int output_chans) {
+__global__ void BilateralSliceCudaForwardKernel(T* output,
+                                                const T* bilateral_grid,
+                                                const T* guide,
+                                                const T* input,
+                                                GridSizes gsz,
+                                                bool has_offset,
+                                                int total_count,
+                                                int output_chans) {
   int h = gsz.h;
   int w = gsz.w;
   int gd = gsz.gd;
@@ -167,18 +173,30 @@ class BilateralSliceOpCUDAKernel : public framework::OpKernel<T> {
     platform::GpuLaunchConfig config =
         platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), total_count);
 
-    BilateralSliceCudaForwardKernel<
-        T><<<config.block_per_grid, config.thread_per_block, 0,
-             ctx.cuda_device_context().stream()>>>(
-        output_data, grid_data, guide_data, input_data, grid_sizes, has_offset,
-        total_count, output_dims[1]);
+    BilateralSliceCudaForwardKernel<T>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           ctx.cuda_device_context().stream()>>>(output_data,
+                                                 grid_data,
+                                                 guide_data,
+                                                 input_data,
+                                                 grid_sizes,
+                                                 has_offset,
+                                                 total_count,
+                                                 output_dims[1]);
   }
 };
 
 template <typename T>
-__global__ void BilateralSliceCudaGridGradKernel(
-    T* out_grid_grad, const T* upstream_grad, const T* guide, const T* input,
-    GridSizes gsz, bool has_offset, int grid_count, int output_chans) {
+__global__ void BilateralSliceCudaGridGradKernel(T* out_grid_grad,
+                                                 const T* upstream_grad,
+                                                 const T* guide,
+                                                 const T* input,
+                                                 GridSizes gsz,
+                                                 bool has_offset,
+                                                 int grid_count,
+                                                 int output_chans) {
   int h = gsz.h;
   int w = gsz.w;
   int gd = gsz.gd;
@@ -269,10 +287,15 @@ __global__ void BilateralSliceCudaGridGradKernel(
 }
 
 template <typename T>
-__global__ void BilateralSliceCudaGuideGradKernel(
-    T* out_guide_grad, const T* upstream_grad, const T* bilateral_grid,
-    const T* guide, const T* input, GridSizes gsz, bool has_offset,
-    int guide_count, int output_chans) {
+__global__ void BilateralSliceCudaGuideGradKernel(T* out_guide_grad,
+                                                  const T* upstream_grad,
+                                                  const T* bilateral_grid,
+                                                  const T* guide,
+                                                  const T* input,
+                                                  GridSizes gsz,
+                                                  bool has_offset,
+                                                  int guide_count,
+                                                  int output_chans) {
   int h = gsz.h;
   int w = gsz.w;
   int gd = gsz.gd;
@@ -347,10 +370,14 @@ __global__ void BilateralSliceCudaGuideGradKernel(
 }
 
 template <typename T>
-__global__ void BilateralSliceCudaInputGradKernel(
-    T* out_input_grad, const T* upstream_grad, const T* bilateral_grid,
-    const T* guide, GridSizes gsz, bool has_offset, int input_count,
-    int output_chans) {
+__global__ void BilateralSliceCudaInputGradKernel(T* out_input_grad,
+                                                  const T* upstream_grad,
+                                                  const T* bilateral_grid,
+                                                  const T* guide,
+                                                  GridSizes gsz,
+                                                  bool has_offset,
+                                                  int input_count,
+                                                  int output_chans) {
   int h = gsz.h;
   int w = gsz.w;
   int gd = gsz.gd;
@@ -475,29 +502,51 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
     platform::GpuLaunchConfig config =
         platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), grid_count);
 
-    BilateralSliceCudaGridGradKernel<
-        T><<<config.block_per_grid, config.thread_per_block, 0,
-             ctx.cuda_device_context().stream()>>>(
-        grid_grad_data, output_grad_data, guide_data, input_data, grid_sizes,
-        has_offset, grid_count, output_chans);
+    BilateralSliceCudaGridGradKernel<T>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           ctx.cuda_device_context().stream()>>>(grid_grad_data,
+                                                 output_grad_data,
+                                                 guide_data,
+                                                 input_data,
+                                                 grid_sizes,
+                                                 has_offset,
+                                                 grid_count,
+                                                 output_chans);
 
     config =
         platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), guide_count);
 
-    BilateralSliceCudaGuideGradKernel<
-        T><<<config.block_per_grid, config.thread_per_block, 0,
-             ctx.cuda_device_context().stream()>>>(
-        guide_grad_data, output_grad_data, grid_data, guide_data, input_data,
-        grid_sizes, has_offset, guide_count, output_chans);
+    BilateralSliceCudaGuideGradKernel<T>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           ctx.cuda_device_context().stream()>>>(guide_grad_data,
+                                                 output_grad_data,
+                                                 grid_data,
+                                                 guide_data,
+                                                 input_data,
+                                                 grid_sizes,
+                                                 has_offset,
+                                                 guide_count,
+                                                 output_chans);
 
     config =
         platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), input_count);
 
-    BilateralSliceCudaInputGradKernel<
-        T><<<config.block_per_grid, config.thread_per_block, 0,
-             ctx.cuda_device_context().stream()>>>(
-        input_grad_data, output_grad_data, grid_data, guide_data, grid_sizes,
-        has_offset, input_count, output_chans);
+    BilateralSliceCudaInputGradKernel<T>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           ctx.cuda_device_context().stream()>>>(input_grad_data,
+                                                 output_grad_data,
+                                                 grid_data,
+                                                 guide_data,
+                                                 grid_sizes,
+                                                 has_offset,
+                                                 input_count,
+                                                 output_chans);
   }
 };
 
@@ -505,7 +554,8 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(bilateral_slice, ops::BilateralSliceOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(bilateral_slice,
+                        ops::BilateralSliceOpCUDAKernel<float>,
                         ops::BilateralSliceOpCUDAKernel<double>);
 REGISTER_OP_CUDA_KERNEL(bilateral_slice_grad,
                         ops::BilateralSliceGradOpCUDAKernel<float>,

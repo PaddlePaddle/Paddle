@@ -16,6 +16,7 @@ import unittest
 import os
 import copy
 import sys
+
 sys.path.append("..")
 from launch_function_helper import wait, _find_free_port
 from multiprocessing import Pool, Process
@@ -69,6 +70,7 @@ def run_gen_bkc_id(attr):
 
 
 class TestGenBKCLIdOp(unittest.TestCase):
+
     def setUp(self):
         try:
             self._dist_ut_port_0 = int(os.environ["PADDLE_DIST_UT_PORT"])

@@ -20,7 +20,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -33,28 +35,8 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-#include "paddle/fluid/platform/stream/cuda_stream.h"
-
 namespace paddle {
 namespace experimental {
-namespace detail {
-static Place GetCorrectPlaceByPlaceType(const Place &place_type) {
-  auto alloc_type = place_type.GetType();
-  switch (alloc_type) {
-    case AllocationType::CPU:
-      return place_type;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case AllocationType::GPU:
-      return phi::Place(AllocationType::GPU,
-                        phi::backends::gpu::GetCurrentDeviceId());
-#endif
-    default:
-      PADDLE_THROW(phi::errors::Unavailable(
-          "The PlaceType is a legacy design, only supports CPU and GPU, "
-          "and will not support other place types in the future."));
-  }
-}
-}  // namespace detail
 
 /////// Tensor Methods ////////
 
@@ -76,7 +58,7 @@ Tensor::Tensor(const Place &place) {
          "Reason: A legal tensor cannot be constructed only based on "
          "the `place`, and datatype, shape, layout, etc. is also "
          "required.";
-  DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
+  DefaultAllocator alloc(place);
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
       std::move(phi::DenseTensorMeta(
@@ -92,7 +74,7 @@ Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
          "Reason: A legal tensor cannot be constructed only based on "
          "the `place` and `shape`, and datatype, layout, etc. is also "
          "required.";
-  DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
+  DefaultAllocator alloc(place);
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
       std::move(phi::DenseTensorMeta(phi::DataType::FLOAT32,
@@ -173,6 +155,10 @@ bool Tensor::is_gpu() const { return paddle::platform::is_gpu_place(place()); }
 
 bool Tensor::is_gpu_pinned() const {
   return paddle::platform::is_cuda_pinned_place(place());
+}
+
+bool Tensor::is_custom_device() const {
+  return paddle::platform::is_custom_place(place());
 }
 
 /* Part 4: Data Access methods */
@@ -323,7 +309,10 @@ void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 gpuStream_t Tensor::stream() const {
-  return platform::stream::get_current_stream(-1)->raw_stream();
+  int device_id = phi::backends::gpu::GetCurrentDeviceId();
+  auto *gpu_context = DeviceContextPool::Instance().Get<AllocationType::GPU>(
+      GPUPlace(device_id));
+  return gpu_context->stream();
 }
 #endif
 

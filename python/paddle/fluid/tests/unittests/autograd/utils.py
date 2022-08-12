@@ -22,7 +22,7 @@ import contextlib
 import collections
 import numpy as np
 import paddle
-from paddle.autograd.functional import _as_tensors
+from paddle.incubate.autograd.utils import as_tensors
 
 
 ##########################################################
@@ -57,16 +57,16 @@ def _set_item(t, idx, value):
 
 
 def _compute_numerical_jacobian(func, xs, delta, np_dtype):
-    xs = list(_as_tensors(xs))
-    ys = list(_as_tensors(func(*xs)))
+    xs = list(as_tensors(xs))
+    ys = list(as_tensors(func(*xs)))
     fin_size = len(xs)
     fout_size = len(ys)
     jacobian = list([] for _ in range(fout_size))
     for i in range(fout_size):
         jac_i = list([] for _ in range(fin_size))
         for j in range(fin_size):
-            jac_i[j] = np.zeros(
-                (_product(ys[i].shape), _product(xs[j].shape)), dtype=np_dtype)
+            jac_i[j] = np.zeros((_product(ys[i].shape), _product(xs[j].shape)),
+                                dtype=np_dtype)
         jacobian[i] = jac_i
 
     for j in range(fin_size):
@@ -74,11 +74,11 @@ def _compute_numerical_jacobian(func, xs, delta, np_dtype):
             orig = _get_item(xs[j], q)
             x_pos = orig + delta
             xs[j] = _set_item(xs[j], q, x_pos)
-            ys_pos = _as_tensors(func(*xs))
+            ys_pos = as_tensors(func(*xs))
 
             x_neg = orig - delta
             xs[j] = _set_item(xs[j], q, x_neg)
-            ys_neg = _as_tensors(func(*xs))
+            ys_neg = as_tensors(func(*xs))
 
             xs[j] = _set_item(xs[j], q, orig)
 
@@ -91,8 +91,8 @@ def _compute_numerical_jacobian(func, xs, delta, np_dtype):
 
 
 def _compute_numerical_hessian(func, xs, delta, np_dtype):
-    xs = list(_as_tensors(xs))
-    ys = list(_as_tensors(func(*xs)))
+    xs = list(as_tensors(xs))
+    ys = list(as_tensors(func(*xs)))
     fin_size = len(xs)
     hessian = list([] for _ in range(fin_size))
     for i in range(fin_size):
@@ -109,16 +109,16 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
                     orig = _get_item(xs[j], q)
                     x_pos = orig + delta
                     xs[j] = _set_item(xs[j], q, x_pos)
-                    jacobian_pos = _compute_numerical_jacobian(func, xs, delta,
-                                                               np_dtype)
+                    jacobian_pos = _compute_numerical_jacobian(
+                        func, xs, delta, np_dtype)
                     x_neg = orig - delta
                     xs[j] = _set_item(xs[j], q, x_neg)
-                    jacobian_neg = _compute_numerical_jacobian(func, xs, delta,
-                                                               np_dtype)
+                    jacobian_neg = _compute_numerical_jacobian(
+                        func, xs, delta, np_dtype)
                     xs[j] = _set_item(xs[j], q, orig)
                     hessian[i][j][p][q] = (
-                        jacobian_pos[0][i][0][p] - jacobian_neg[0][i][0][p]
-                    ) / delta / 2.
+                        jacobian_pos[0][i][0][p] -
+                        jacobian_neg[0][i][0][p]) / delta / 2.
     return hessian
 
 
@@ -136,8 +136,8 @@ def _compute_numerical_batch_jacobian(func,
                                       np_dtype,
                                       merge_batch=True):
     no_batch_jacobian = _compute_numerical_jacobian(func, xs, delta, np_dtype)
-    xs = list(_as_tensors(xs))
-    ys = list(_as_tensors(func(*xs)))
+    xs = list(as_tensors(xs))
+    ys = list(as_tensors(func(*xs)))
     fin_size = len(xs)
     fout_size = len(ys)
     bs = xs[0].shape[0]
@@ -164,7 +164,7 @@ def _compute_numerical_batch_jacobian(func,
 
 
 def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
-    xs = list(_as_tensors(xs))
+    xs = list(as_tensors(xs))
     batch_size = xs[0].shape[0]
     fin_size = len(xs)
     hessian = []
@@ -197,13 +197,12 @@ def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
     mid = len(hessian_res) // 2
     for i in range(mid):
         hessian_result.append(
-            np.stack(
-                (hessian_res[i], hessian_res[mid + i]), axis=0))
+            np.stack((hessian_res[i], hessian_res[mid + i]), axis=0))
     return hessian_result
 
 
 def _compute_numerical_vjp(func, xs, v, delta, np_dtype):
-    xs = _as_tensors(xs)
+    xs = as_tensors(xs)
     jacobian = np.array(_compute_numerical_jacobian(func, xs, delta, np_dtype))
     if v is None:
         v = [paddle.ones_like(x) for x in xs]
@@ -218,7 +217,7 @@ def _compute_numerical_vjp(func, xs, v, delta, np_dtype):
 
 
 def _compute_numerical_vhp(func, xs, v, delta, np_dtype):
-    xs = list(_as_tensors(xs))
+    xs = list(as_tensors(xs))
     hessian = np.array(_compute_numerical_hessian(func, xs, delta, np_dtype))
     flat_v = np.array([v_el.numpy().reshape(-1) for v_el in v])
     vhp = [np.zeros((_product(x.shape)), dtype=np_dtype) for x in xs]
@@ -262,6 +261,7 @@ def unuse(x, y):
 
 
 def nested(x):
+
     def inner(y):
         return x * y
 
@@ -391,3 +391,37 @@ def _np_concat_matrix_sequence(src, src_format=MatrixFormat.NM):
     if not isinstance(src[0], typing.Sequence):
         src = [src]
     return concat_row(tuple(concat_col(xs) for xs in src))
+
+
+##########################################################
+# Utils for generating test data.
+##########################################################
+def gen_static_data_and_feed(xs, v, stop_gradient=True):
+    feed = {}
+    if isinstance(xs, typing.Sequence):
+        static_xs = []
+        for i, x in enumerate(xs):
+            x = paddle.static.data(f"x{i}", x.shape, x.dtype)
+            x.stop_gradient = stop_gradient
+            static_xs.append(x)
+        feed.update({f'x{idx}': value for idx, value in enumerate(xs)})
+    else:
+        static_xs = paddle.static.data('x', xs.shape, xs.dtype)
+        static_xs.stop_gradient = stop_gradient
+        feed.update({'x': xs})
+
+    if isinstance(v, typing.Sequence):
+        static_v = []
+        for i, e in enumerate(v):
+            e = paddle.static.data(f'v{i}', e.shape, e.dtype)
+            e.stop_gradient = stop_gradient
+            static_v.append(e)
+        feed.update({f'v{i}': value for i, value in enumerate(v)})
+    elif v is not None:
+        static_v = paddle.static.data('v', v.shape, v.dtype)
+        static_v.stop_gradient = stop_gradient
+        feed.update({'v': v})
+    else:
+        static_v = v
+
+    return feed, static_xs, static_v

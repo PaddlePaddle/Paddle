@@ -15,14 +15,12 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/eager/utils.h"
-
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -140,15 +138,15 @@ TEST(EagerUtils, ComputeRequireGrad) {
   VLOG(6) << "Multi Test ComputeRequireGrad";
   auto_grad0->SetStopGradient(false);
   auto_grad1->SetStopGradient(true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get(),
-                                            auto_grad1.get()) == true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            true, auto_grad0.get(), auto_grad1.get()) == true);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            false, auto_grad0.get(), auto_grad1.get()) == false);
   auto_grad0->SetStopGradient(true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            true, auto_grad0.get(), auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            false, auto_grad0.get(), auto_grad1.get()) == false);
 }
 
 TEST(EagerUtils, PassStopGradient) {
@@ -160,8 +158,11 @@ TEST(EagerUtils, PassStopGradient) {
   VLOG(6) << "Test PassStopGradient";
   egr::EagerUtils::PassStopGradient(false, auto_grad0.get());
   CHECK(auto_grad0->StopGradient() == false);
-  egr::EagerUtils::PassStopGradient(true, auto_grad0.get(), auto_grad1.get(),
-                                    auto_grad2.get(), auto_grad3.get());
+  egr::EagerUtils::PassStopGradient(true,
+                                    auto_grad0.get(),
+                                    auto_grad1.get(),
+                                    auto_grad2.get(),
+                                    auto_grad3.get());
   CHECK(auto_grad0->StopGradient() == false);
   CHECK(auto_grad1->StopGradient() == true);
   CHECK(auto_grad2->StopGradient() == true);

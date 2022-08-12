@@ -15,13 +15,12 @@ limitations under the License. */
 #include <cmath>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -76,7 +75,10 @@ for numerical stability to avoid the division by zero error.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(adagrad, AdagradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(adagrad,
+                            AdagradInferShapeFunctor,
                             PD_INFER_META(phi::AdagradInferMeta));
-REGISTER_OP_WITHOUT_GRADIENT(adagrad, ops::AdagradOp, ops::AdagradOpMaker,
+REGISTER_OP_WITHOUT_GRADIENT(adagrad,
+                             ops::AdagradOp,
+                             ops::AdagradOpMaker,
                              AdagradInferShapeFunctor);

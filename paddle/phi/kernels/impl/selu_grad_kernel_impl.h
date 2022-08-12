@@ -13,9 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/kernels/impl/selu_kernel_impl.h"
-
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/impl/selu_kernel_impl.h"
 
 namespace phi {
 template <typename T, typename Context>

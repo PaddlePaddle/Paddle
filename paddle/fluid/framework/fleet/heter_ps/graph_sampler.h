@@ -14,6 +14,7 @@
 
 #pragma once
 #include <time.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
@@ -23,6 +24,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
@@ -81,10 +83,10 @@ class CommonGraphSampler : public GraphSampler {
   virtual void init(GpuPsGraphTable *g, std::vector<std::string> args);
   GpuPsGraphTable *gpu_table;
   paddle::distributed::GraphTable *table;
-  std::vector<int64_t> gpu_edges_count;
-  int64_t cpu_edges_count;
-  int64_t gpu_edges_limit, cpu_edges_limit, gpu_edges_each_limit;
-  std::vector<std::unordered_set<int64_t>> gpu_set;
+  std::vector<uint64_t> gpu_edges_count;
+  uint64_t cpu_edges_count;
+  uint64_t gpu_edges_limit, cpu_edges_limit, gpu_edges_each_limit;
+  std::vector<std::unordered_set<uint64_t>> gpu_set;
   int gpu_num;
 };
 
@@ -100,13 +102,14 @@ class AllInGpuGraphSampler : public GraphSampler {
  protected:
   paddle::distributed::GraphTable *graph_table;
   GpuPsGraphTable *gpu_table;
-  std::vector<std::vector<paddle::framework::GpuPsGraphNode>> sample_nodes;
-  std::vector<std::vector<int64_t>> sample_neighbors;
+  std::vector<std::vector<uint64_t>> sample_node_ids;
+  std::vector<std::vector<paddle::framework::GpuPsNodeInfo>> sample_node_infos;
+  std::vector<std::vector<uint64_t>> sample_neighbors;
   std::vector<GpuPsCommGraph> sample_res;
   // std::shared_ptr<std::mt19937_64> random;
   int gpu_num;
 };
-}
-};
+}  // namespace framework
+};  // namespace paddle
 #include "paddle/fluid/framework/fleet/heter_ps/graph_sampler_inl.h"
 #endif

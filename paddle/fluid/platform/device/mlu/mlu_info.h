@@ -46,6 +46,9 @@ int GetMLUDriverVersion(int id);
 //! Get the runtime version of the ith MLU.
 int GetMLURuntimeVersion(int id);
 
+//! Get the cnnl version of the ith MLU.
+int GetMLUCnnlVersion(int id);
+
 //! Get the total number of MLU devices in system.
 int GetMLUDeviceCount();
 
@@ -87,33 +90,43 @@ size_t MLUMinChunkSize();
 size_t MLUMaxChunkSize();
 
 //! Copy memory from address device to host asynchronously.
-void MLUMemcpyD2HAsync(void* dst, const void* src, size_t num,
+void MLUMemcpyD2HAsync(void* dst,
+                       const void* src,
+                       size_t num,
                        mluStream stream);
 
 //! Copy memory from address device to host synchronously.
 void MLUMemcpyD2HSync(void* dst, const void* src, size_t num);
 
 //! Copy memory from address host to device asynchronously.
-void MLUMemcpyH2DAsync(void* dst, const void* src, size_t num,
+void MLUMemcpyH2DAsync(void* dst,
+                       const void* src,
+                       size_t num,
                        mluStream stream);
 
 //! Copy memory from address host to device synchronously.
 void MLUMemcpyH2DSync(void* dst, const void* src, size_t num);
 
 //! Copy memory from address device to device asynchronously in a single device.
-void MLUMemcpyD2DAsync(void* dst, const void* src, size_t num,
+void MLUMemcpyD2DAsync(void* dst,
+                       const void* src,
+                       size_t num,
                        mluStream stream);
 
 //! Copy memory from address device to device synchronously in a single device.
 void MLUMemcpyD2DSync(void* dst, const void* src, size_t num);
 
 //! Copy memory from one device to another device asynchronously.
-void MLUMemcpyPeerAsync(void* dst, int dst_place, const void* src,
-                        int src_place, size_t num, mluStream stream);
+void MLUMemcpyPeerAsync(void* dst,
+                        int dst_place,
+                        const void* src,
+                        int src_place,
+                        size_t num,
+                        mluStream stream);
 
 //! Copy memory from one device to another device synchronously.
-void MLUMemcpyPeerSync(void* dst, int dst_place, const void* src, int src_place,
-                       size_t num);
+void MLUMemcpyPeerSync(
+    void* dst, int dst_place, const void* src, int src_place, size_t num);
 
 //! Set memory dst with value count size asynchronously
 void MLUMemsetAsync(void* dst, int value, size_t count, mluStream stream);
@@ -128,8 +141,11 @@ cnrtStatus RecordedMLUMalloc(void** ptr, size_t size, int dev_id);
 void RecordedMLUFree(void* p, size_t size, int dev_id);
 
 //! Get available and total mlu memory with considering limitation
-bool RecordedMLUMemGetInfo(size_t* avail, size_t* total, size_t* actual_avail,
-                           size_t* actual_total, int dev_id);
+bool RecordedMLUMemGetInfo(size_t* avail,
+                           size_t* total,
+                           size_t* actual_avail,
+                           size_t* actual_total,
+                           int dev_id);
 
 //! Get recorded mluMalloc size. If record is disabled, return 0.
 uint64_t RecordedMLUMallocSize(int dev_id);

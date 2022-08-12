@@ -28,7 +28,7 @@ static void LerpFunction(const Context& ctx,
                          DenseTensor* out) {
   ctx.template Alloc<T>(out);
 
-  auto out_dims = out->dims();
+  const auto& out_dims = out->dims();
   auto x_dims = phi::funcs::ExtendDims2Rank(x.dims(), D);
   auto y_dims = phi::funcs::ExtendDims2Rank(y.dims(), D);
   auto w_dims = phi::funcs::ExtendDims2Rank(weight.dims(), D);

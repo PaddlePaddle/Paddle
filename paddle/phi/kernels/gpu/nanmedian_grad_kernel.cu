@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/nanmedian_grad_kernel.h"
+
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/nanmedian_grad_kernel.h"
+#include "paddle/phi/kernels/impl/nanmedian_grad_kernel_impl.h"
 
 namespace phi {
 
@@ -72,9 +74,9 @@ void CalcMedianGradKernel(const Context& dev_ctx,
   int64_t pre_dim = numel / stride;
 
   T div_factor = static_cast<T>(2.0);
-  KernelNanmedianGrad<
-      T><<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-      x_ptr, m_ptr, out_grad_ptr, x_grad_ptr, stride, pre_dim, div_factor);
+  KernelNanmedianGrad<T>
+      <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+          x_ptr, m_ptr, out_grad_ptr, x_grad_ptr, stride, pre_dim, div_factor);
 }
 
 template <typename T, typename Context>

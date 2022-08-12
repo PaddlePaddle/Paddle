@@ -14,16 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/impl/dot_grad_kernel_impl.h"
-#include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
-
-#include "paddle/phi/kernels/cpu/reduce.h"
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
-
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
+#include "paddle/phi/kernels/impl/dot_grad_kernel_impl.h"
+#include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/gpu/reduce.h"

@@ -14,12 +14,11 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/conv_transpose_kernel.h"
-
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/conv_transpose_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"

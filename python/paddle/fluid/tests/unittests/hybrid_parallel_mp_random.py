@@ -26,6 +26,7 @@ import random
 
 
 class TestDistTraning(unittest.TestCase):
+
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2

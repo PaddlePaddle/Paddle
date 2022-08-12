@@ -22,7 +22,7 @@ limitations under the License. */
 
 TEST(AssignOp, AssignLoDTensor) {
   paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CPUDeviceContext ctx(cpu_place);
+  phi::CPUContext ctx(cpu_place);
 
   paddle::framework::Variable output;
   paddle::operators::AssignFunctor assign_functor(&output, ctx);
@@ -47,7 +47,7 @@ TEST(AssignOp, AssignLoDTensor) {
 
 TEST(AssignOp, AssignLoDTensorArray) {
   paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CPUDeviceContext ctx(cpu_place);
+  phi::CPUContext ctx(cpu_place);
 
   paddle::framework::Variable output;
   paddle::operators::AssignFunctor assign_functor(&output, ctx);
@@ -78,7 +78,7 @@ TEST(AssignOp, AssignLoDTensorArray) {
 
 TEST(AssignOp, AssignSelectedRows) {
   paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CPUDeviceContext ctx(cpu_place);
+  phi::CPUContext ctx(cpu_place);
 
   paddle::framework::Variable output;
   paddle::operators::AssignFunctor assign_functor(&output, ctx);

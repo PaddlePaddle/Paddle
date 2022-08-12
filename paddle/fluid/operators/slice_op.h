@@ -16,6 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/utils.h"
@@ -46,11 +47,13 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
     end = start + 1;
   }
 
-  PADDLE_ENFORCE_GT(end, start,
+  PADDLE_ENFORCE_GT(end,
+                    start,
                     platform::errors::InvalidArgument(
                         "Attr(ends) should be greater than attr(starts) in "
                         "slice op. But received end = %d, start = %d.",
-                        ends[0], starts[0]));
+                        ends[0],
+                        starts[0]));
   int64_t out_size = end - start;
 
   if (out_is_array) {
@@ -111,11 +114,13 @@ class SliceKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_EQ(
-        starts.size(), axes.size(),
+        starts.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of starts must be equal to the size of axes."));
     PADDLE_ENFORCE_EQ(
-        ends.size(), axes.size(),
+        ends.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of ends must be equal to the size of axes."));
 
@@ -178,7 +183,8 @@ class SliceGradKernel : public framework::OpKernel<T> {
         d_in_arr->at(i).Resize(dim);
         d_in_arr->at(i).mutable_data<T>(ctx.GetPlace());
         functor(reinterpret_cast<const DeviceContext&>(dev_ctx),
-                &d_in_arr->at(i), static_cast<T>(0));
+                &d_in_arr->at(i),
+                static_cast<T>(0));
       }
 
       if (d_out_is_array) {
@@ -186,13 +192,13 @@ class SliceGradKernel : public framework::OpKernel<T> {
             ctx.Input<LoDTensorArray>(framework::GradVarName("Out"));
         int d_out_size = d_out_arr->size();
         for (int i = 0; i < d_out_size; ++i) {
-          paddle::framework::TensorCopy(d_out_arr->at(i), ctx.GetPlace(),
-                                        &(d_in_arr->at(start + i)));
+          paddle::framework::TensorCopy(
+              d_out_arr->at(i), ctx.GetPlace(), &(d_in_arr->at(start + i)));
         }
       } else {
         auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
-        paddle::framework::TensorCopy(*d_out, ctx.GetPlace(),
-                                      &(d_in_arr->at(start)));
+        paddle::framework::TensorCopy(
+            *d_out, ctx.GetPlace(), &(d_in_arr->at(start)));
       }
       return;
     }

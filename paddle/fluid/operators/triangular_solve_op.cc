@@ -76,8 +76,10 @@ class TriangularSolveGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "triangular_solve");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "triangular_solve");
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "triangular_solve");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "triangular_solve");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "triangular_solve");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -118,10 +120,12 @@ class TriangularSolveOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(triangular_solve, TriangularSolveInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(triangular_solve,
+                            TriangularSolveInferShapeFunctor,
                             PD_INFER_META(phi::TriangularSolveInferMeta));
 
-REGISTER_OPERATOR(triangular_solve, ops::TriangularSolveOp,
+REGISTER_OPERATOR(triangular_solve,
+                  ops::TriangularSolveOp,
                   ops::TriangularSolveOpMaker,
                   ops::TriangularSolveOpInferVarType,
                   ops::TriangularSolveOpGradMaker<paddle::framework::OpDesc>,

@@ -17,6 +17,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 from paddle.fluid.framework import _test_eager_guard
+
 np.random.seed(10)
 
 
@@ -36,6 +37,7 @@ def logit_grad(x, eps=1e-8):
 
 
 class TestLogitOp(OpTest):
+
     def setUp(self):
         self.op_type = 'logit'
         self.python_api = paddle.logit
@@ -57,21 +59,25 @@ class TestLogitOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True)
+        self.check_grad(['X'], ['Out'],
+                        user_defined_grads=[self.x_grad],
+                        check_eager=True)
 
 
 class TestLogitShape(TestLogitOp):
+
     def set_attrs(self):
         self.shape = [2, 60]
 
 
 class TestLogitEps(TestLogitOp):
+
     def set_attrs(self):
         self.eps = 1e-8
 
 
 class TestLogitAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_shape = [120]
         self.x = np.random.uniform(0., 1., self.x_shape).astype(np.float32)

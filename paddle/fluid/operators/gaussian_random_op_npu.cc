@@ -49,8 +49,10 @@ class NPUGaussianRandomKernel : public framework::OpKernel<T> {
       cpu_data[i] = dist(*engine);
     }
     framework::TensorCopy(
-        cpu_tensor, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), tensor);
+        cpu_tensor,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        tensor);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
   }

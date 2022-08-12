@@ -40,6 +40,7 @@ def ref_log_softmax_grad(x, axis):
 
 
 class TestLogSoftmaxOp(OpTest):
+
     def setUp(self):
         self.op_type = 'log_softmax'
         self.python_api = F.log_softmax
@@ -63,16 +64,19 @@ class TestLogSoftmaxOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True)
+        self.check_grad(['X'], ['Out'],
+                        user_defined_grads=[self.x_grad],
+                        check_eager=True)
 
 
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
+
     def set_attrs(self):
         self.shape = [12, 10]
 
 
 class TestLogSoftmaxAxis(TestLogSoftmaxOp):
+
     def set_attrs(self):
         self.axis = 1
 
@@ -80,6 +84,7 @@ class TestLogSoftmaxAxis(TestLogSoftmaxOp):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestLogSoftmaxBF16Op(OpTest):
+
     def setUp(self):
         self.op_type = 'log_softmax'
         self.python_api = F.log_softmax
@@ -101,13 +106,13 @@ class TestLogSoftmaxBF16Op(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], ['Out'],
-            user_defined_grads=[self.x_grad],
-            check_eager=True)
+        self.check_grad_with_place(place, ['X'], ['Out'],
+                                   user_defined_grads=[self.x_grad],
+                                   check_eager=True)
 
 
 class TestNNLogSoftmaxAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1., 1., self.x_shape).astype(np.float32)
@@ -140,6 +145,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
 
 
 class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)

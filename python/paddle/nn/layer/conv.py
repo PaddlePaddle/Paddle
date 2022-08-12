@@ -44,6 +44,7 @@ def _reverse_repeat_list(t, n):
 
 
 class _ConvNd(Layer):
+
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -75,7 +76,7 @@ class _ConvNd(Layer):
                 format(valid_padding_modes, padding_mode))
 
         if padding_mode in {'reflect', 'replicate', 'circular'
-                            } and not isinstance(padding, np.int):
+                            } and not isinstance(padding, int):
             raise TypeError(
                 "when padding_mode in ['reflect', 'replicate', 'circular'], type of padding must be int"
             )
@@ -86,8 +87,9 @@ class _ConvNd(Layer):
                 "data_format must be one of {}, but got data_format='{}'".
                 format(valid_format, data_format))
 
-        channel_last = (data_format == "NHWC") or (data_format == "NDHWC") or (
-            data_format == "NLC")
+        channel_last = (data_format == "NHWC") or (data_format
+                                                   == "NDHWC") or (data_format
+                                                                   == "NLC")
         if channel_last:
             self._channel_dim = len(data_format) - 1
         else:
@@ -134,26 +136,27 @@ class _ConvNd(Layer):
             shape=filter_shape,
             attr=self._param_attr,
             default_initializer=_get_default_param_initializer())
-        self.bias = self.create_parameter(
-            attr=self._bias_attr, shape=[self._out_channels], is_bias=True)
+        self.bias = self.create_parameter(attr=self._bias_attr,
+                                          shape=[self._out_channels],
+                                          is_bias=True)
 
         cudnn_version = get_cudnn_version()
 
-        self._use_cudnn = True if (is_compiled_with_cuda() and
-                                   cudnn_version is not None) else False
+        self._use_cudnn = True if (is_compiled_with_cuda()
+                                   and cudnn_version is not None) else False
 
         self._op_type = "conv" + str(dims) + 'd'
-        if self._op_type == 'conv2d' and (in_channels == groups and
-                                          in_channels != 1 and
-                                          out_channels % in_channels == 0):
+        if self._op_type == 'conv2d' and (in_channels == groups
+                                          and in_channels != 1
+                                          and out_channels % in_channels == 0):
             self._op_type = 'depthwise_conv2d'
             if is_compiled_with_rocm():
                 self._use_cudnn = True
             else:
                 self._use_cudnn = False
 
-        if (is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")[
-                "FLAGS_conv2d_disable_cudnn"]):
+        if (is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")
+            ["FLAGS_conv2d_disable_cudnn"]):
             self._use_cudnn = False
 
     def extra_repr(self):
@@ -311,20 +314,19 @@ class Conv1D(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCL"):
-        super(Conv1D, self).__init__(
-            in_channels,
-            out_channels,
-            kernel_size,
-            False,
-            1,
-            stride=stride,
-            padding=padding,
-            padding_mode=padding_mode,
-            dilation=dilation,
-            groups=groups,
-            weight_attr=weight_attr,
-            bias_attr=bias_attr,
-            data_format=data_format)
+        super(Conv1D, self).__init__(in_channels,
+                                     out_channels,
+                                     kernel_size,
+                                     False,
+                                     1,
+                                     stride=stride,
+                                     padding=padding,
+                                     padding_mode=padding_mode,
+                                     dilation=dilation,
+                                     groups=groups,
+                                     weight_attr=weight_attr,
+                                     bias_attr=bias_attr,
+                                     data_format=data_format)
 
     def forward(self, x):
         padding = 0
@@ -336,15 +338,14 @@ class Conv1D(_ConvNd):
         else:
             padding = self._padding
 
-        out = F.conv1d(
-            x,
-            self.weight,
-            bias=self.bias,
-            padding=padding,
-            stride=self._stride,
-            dilation=self._dilation,
-            groups=self._groups,
-            data_format=self._data_format)
+        out = F.conv1d(x,
+                       self.weight,
+                       bias=self.bias,
+                       padding=padding,
+                       stride=self._stride,
+                       dilation=self._dilation,
+                       groups=self._groups,
+                       data_format=self._data_format)
         return out
 
 
@@ -488,33 +489,31 @@ class Conv1DTranspose(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCL"):
-        super(Conv1DTranspose, self).__init__(
-            in_channels,
-            out_channels,
-            kernel_size,
-            True,
-            1,
-            stride=stride,
-            padding=padding,
-            dilation=dilation,
-            output_padding=output_padding,
-            groups=groups,
-            weight_attr=weight_attr,
-            bias_attr=bias_attr,
-            data_format=data_format)
+        super(Conv1DTranspose, self).__init__(in_channels,
+                                              out_channels,
+                                              kernel_size,
+                                              True,
+                                              1,
+                                              stride=stride,
+                                              padding=padding,
+                                              dilation=dilation,
+                                              output_padding=output_padding,
+                                              groups=groups,
+                                              weight_attr=weight_attr,
+                                              bias_attr=bias_attr,
+                                              data_format=data_format)
 
     def forward(self, x, output_size=None):
-        out = F.conv1d_transpose(
-            x,
-            self.weight,
-            bias=self.bias,
-            output_size=output_size,
-            output_padding=self.output_padding,
-            padding=self._padding,
-            stride=self._stride,
-            dilation=self._dilation,
-            groups=self._groups,
-            data_format=self._data_format)
+        out = F.conv1d_transpose(x,
+                                 self.weight,
+                                 bias=self.bias,
+                                 output_size=output_size,
+                                 output_padding=self.output_padding,
+                                 padding=self._padding,
+                                 stride=self._stride,
+                                 dilation=self._dilation,
+                                 groups=self._groups,
+                                 data_format=self._data_format)
         return out
 
 
@@ -641,20 +640,19 @@ class Conv2D(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCHW"):
-        super(Conv2D, self).__init__(
-            in_channels,
-            out_channels,
-            kernel_size,
-            False,
-            2,
-            stride=stride,
-            padding=padding,
-            padding_mode=padding_mode,
-            dilation=dilation,
-            groups=groups,
-            weight_attr=weight_attr,
-            bias_attr=bias_attr,
-            data_format=data_format)
+        super(Conv2D, self).__init__(in_channels,
+                                     out_channels,
+                                     kernel_size,
+                                     False,
+                                     2,
+                                     stride=stride,
+                                     padding=padding,
+                                     padding_mode=padding_mode,
+                                     dilation=dilation,
+                                     groups=groups,
+                                     weight_attr=weight_attr,
+                                     bias_attr=bias_attr,
+                                     data_format=data_format)
 
     def forward(self, x):
         if self._padding_mode != 'zeros':
@@ -663,19 +661,18 @@ class Conv2D(_ConvNd):
                       mode=self._padding_mode,
                       data_format=self._data_format)
 
-        out = F.conv._conv_nd(
-            x,
-            self.weight,
-            bias=self.bias,
-            stride=self._stride,
-            padding=self._updated_padding,
-            padding_algorithm=self._padding_algorithm,
-            dilation=self._dilation,
-            groups=self._groups,
-            data_format=self._data_format,
-            channel_dim=self._channel_dim,
-            op_type=self._op_type,
-            use_cudnn=self._use_cudnn)
+        out = F.conv._conv_nd(x,
+                              self.weight,
+                              bias=self.bias,
+                              stride=self._stride,
+                              padding=self._updated_padding,
+                              padding_algorithm=self._padding_algorithm,
+                              dilation=self._dilation,
+                              groups=self._groups,
+                              data_format=self._data_format,
+                              channel_dim=self._channel_dim,
+                              op_type=self._op_type,
+                              use_cudnn=self._use_cudnn)
         return out
 
 
@@ -808,20 +805,19 @@ class Conv2DTranspose(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCHW"):
-        super(Conv2DTranspose, self).__init__(
-            in_channels,
-            out_channels,
-            kernel_size,
-            True,
-            2,
-            stride=stride,
-            padding=padding,
-            dilation=dilation,
-            output_padding=output_padding,
-            groups=groups,
-            weight_attr=weight_attr,
-            bias_attr=bias_attr,
-            data_format=data_format)
+        super(Conv2DTranspose, self).__init__(in_channels,
+                                              out_channels,
+                                              kernel_size,
+                                              True,
+                                              2,
+                                              stride=stride,
+                                              padding=padding,
+                                              dilation=dilation,
+                                              output_padding=output_padding,
+                                              groups=groups,
+                                              weight_attr=weight_attr,
+                                              bias_attr=bias_attr,
+                                              data_format=data_format)
 
     def forward(self, x, output_size=None):
         if output_size is None:
@@ -829,17 +825,16 @@ class Conv2DTranspose(_ConvNd):
         else:
             output_padding = 0
 
-        out = F.conv2d_transpose(
-            x,
-            self.weight,
-            bias=self.bias,
-            padding=self._padding,
-            output_padding=output_padding,
-            stride=self._stride,
-            dilation=self._dilation,
-            groups=self._groups,
-            output_size=output_size,
-            data_format=self._data_format)
+        out = F.conv2d_transpose(x,
+                                 self.weight,
+                                 bias=self.bias,
+                                 padding=self._padding,
+                                 output_padding=output_padding,
+                                 stride=self._stride,
+                                 dilation=self._dilation,
+                                 groups=self._groups,
+                                 output_size=output_size,
+                                 data_format=self._data_format)
         return out
 
 
@@ -966,20 +961,19 @@ class Conv3D(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCDHW"):
-        super(Conv3D, self).__init__(
-            in_channels,
-            out_channels,
-            kernel_size,
-            False,
-            3,
-            stride=stride,
-            padding=padding,
-            padding_mode=padding_mode,
-            dilation=dilation,
-            groups=groups,
-            weight_attr=weight_attr,
-            bias_attr=bias_attr,
-            data_format=data_format)
+        super(Conv3D, self).__init__(in_channels,
+                                     out_channels,
+                                     kernel_size,
+                                     False,
+                                     3,
+                                     stride=stride,
+                                     padding=padding,
+                                     padding_mode=padding_mode,
+                                     dilation=dilation,
+                                     groups=groups,
+                                     weight_attr=weight_attr,
+                                     bias_attr=bias_attr,
+                                     data_format=data_format)
 
     def forward(self, x):
         if self._padding_mode != 'zeros':
@@ -988,19 +982,18 @@ class Conv3D(_ConvNd):
                       mode=self._padding_mode,
                       data_format=self._data_format)
 
-        out = F.conv._conv_nd(
-            x,
-            self.weight,
-            bias=self.bias,
-            stride=self._stride,
-            padding=self._updated_padding,
-            padding_algorithm=self._padding_algorithm,
-            dilation=self._dilation,
-            groups=self._groups,
-            data_format=self._data_format,
-            channel_dim=self._channel_dim,
-            op_type=self._op_type,
-            use_cudnn=self._use_cudnn)
+        out = F.conv._conv_nd(x,
+                              self.weight,
+                              bias=self.bias,
+                              stride=self._stride,
+                              padding=self._updated_padding,
+                              padding_algorithm=self._padding_algorithm,
+                              dilation=self._dilation,
+                              groups=self._groups,
+                              data_format=self._data_format,
+                              channel_dim=self._channel_dim,
+                              op_type=self._op_type,
+                              use_cudnn=self._use_cudnn)
         return out
 
 
@@ -1145,20 +1138,19 @@ class Conv3DTranspose(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCDHW"):
-        super(Conv3DTranspose, self).__init__(
-            in_channels,
-            out_channels,
-            kernel_size,
-            True,
-            3,
-            stride=stride,
-            padding=padding,
-            dilation=dilation,
-            output_padding=output_padding,
-            groups=groups,
-            weight_attr=weight_attr,
-            bias_attr=bias_attr,
-            data_format=data_format)
+        super(Conv3DTranspose, self).__init__(in_channels,
+                                              out_channels,
+                                              kernel_size,
+                                              True,
+                                              3,
+                                              stride=stride,
+                                              padding=padding,
+                                              dilation=dilation,
+                                              output_padding=output_padding,
+                                              groups=groups,
+                                              weight_attr=weight_attr,
+                                              bias_attr=bias_attr,
+                                              data_format=data_format)
 
     def forward(self, x, output_size=None):
         if output_size is None:
@@ -1166,15 +1158,14 @@ class Conv3DTranspose(_ConvNd):
         else:
             output_padding = 0
 
-        out = F.conv3d_transpose(
-            x,
-            self.weight,
-            bias=self.bias,
-            padding=self._padding,
-            output_padding=output_padding,
-            stride=self._stride,
-            dilation=self._dilation,
-            groups=self._groups,
-            output_size=output_size,
-            data_format=self._data_format)
+        out = F.conv3d_transpose(x,
+                                 self.weight,
+                                 bias=self.bias,
+                                 padding=self._padding,
+                                 output_padding=output_padding,
+                                 stride=self._stride,
+                                 dilation=self._dilation,
+                                 groups=self._groups,
+                                 output_size=output_size,
+                                 data_format=self._data_format)
         return out

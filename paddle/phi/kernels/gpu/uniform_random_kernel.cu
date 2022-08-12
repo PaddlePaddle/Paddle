@@ -15,8 +15,8 @@
 #include "paddle/phi/kernels/uniform_random_kernel.h"
 
 #include <thrust/random.h>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"

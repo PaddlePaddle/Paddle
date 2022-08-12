@@ -36,8 +36,8 @@ np.random.seed(0)
 def generator():
     batch_size = 5
     for i in range(5):
-        curr_train_x = np.random.randint(
-            batch_size, size=(batch_size, 3)).astype("float32")
+        curr_train_x = np.random.randint(batch_size,
+                                         size=(batch_size, 3)).astype("float32")
         if i >= 2:
             curr_train_x[0, :] = np.nan
             curr_train_x[-1, :] = np.inf
@@ -70,7 +70,7 @@ def net():
     cost, y_predict = fluid.layers.softmax_with_cross_entropy(
         hidden, y, return_softmax=True)
     acc_top1 = fluid.layers.accuracy(input=y_predict, label=y, k=1)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.05)
     sgd_optimizer.minimize(avg_cost)
@@ -94,12 +94,14 @@ def check(use_cuda):
             for train_data, y_label in generator():
                 outs = exe.run(
                     main,
-                    feed={'x': train_data,
-                          'y': y_label},
+                    feed={
+                        'x': train_data,
+                        'y': y_label
+                    },
                     fetch_list=[y_predict.name, avg_cost.name, acc_top1.name])
                 step += 1
-                print('iter={:.0f},cost={},acc1={}'.format(step, outs[1][0],
-                                                           outs[2][0]))
+                print('iter={:.0f},cost={},acc1={}'.format(
+                    step, outs[1][0], outs[2][0]))
 
 
 if __name__ == '__main__':

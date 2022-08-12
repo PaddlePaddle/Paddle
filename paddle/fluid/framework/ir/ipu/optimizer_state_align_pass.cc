@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/ipu/optimizer_state_align_pass.h"
+
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
@@ -31,16 +32,17 @@ void IpuOptimizerStateAlignPass::ApplyImpl(ir::Graph* graph) const {
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()) {
-      int op_role = BOOST_GET_CONST(
-          int, node->Op()->GetAttr(
-                   framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
+      int op_role = PADDLE_GET_CONST(
+          int,
+          node->Op()->GetAttr(
+              framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
 
       if ((op_role == static_cast<int>(framework::OpRole::kOptimize))) {
         auto inputs = node->Op()->Inputs();
         if (inputs.count(platform::ipu::sBeta1Pow)) {
           auto var = scope_->GetVar(inputs.at(platform::ipu::sBeta1Pow)[0]);
           auto data = var->GetMutable<framework::LoDTensor>()->data<float>();
-          auto beta = BOOST_GET_CONST(
+          auto beta = PADDLE_GET_CONST(
               float, node->Op()->GetAttr(platform::ipu::sBeta1));
 
           // ensure current save with beta1pow, rather than step.

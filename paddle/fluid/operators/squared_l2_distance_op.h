@@ -72,15 +72,17 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
     auto* y_g = context.Output<Tensor>(framework::GradVarName("Y"));
 
     PADDLE_ENFORCE_NOT_NULL(
-        x_g, platform::errors::NotFound(
-                 "variable(%s) cannot be found "
-                 "in scope for operator 'squared_l2_distance_grad'.",
-                 framework::GradVarName("X")));
+        x_g,
+        platform::errors::NotFound(
+            "variable(%s) cannot be found "
+            "in scope for operator 'squared_l2_distance_grad'.",
+            framework::GradVarName("X")));
     PADDLE_ENFORCE_NOT_NULL(
-        y_g, platform::errors::NotFound(
-                 "variable(%s) cannot be found "
-                 "in scope for operator 'squared_l2_distance_grad'.",
-                 framework::GradVarName("Y")));
+        y_g,
+        platform::errors::NotFound(
+            "variable(%s) cannot be found "
+            "in scope for operator 'squared_l2_distance_grad'.",
+            framework::GradVarName("Y")));
 
     auto sub_result = framework::EigenMatrix<T>::From(*in0);
     auto out_grad = framework::EigenMatrix<T>::From(*in1);
@@ -107,12 +109,14 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
 
     y_g->mutable_data<T>(context.GetPlace());
 
-    PADDLE_ENFORCE_GE(sub_result.dimensions()[0], y_dims[0],
+    PADDLE_ENFORCE_GE(sub_result.dimensions()[0],
+                      y_dims[0],
                       platform::errors::InvalidArgument(
                           "First dimension of gradient must be greater or "
                           "equal than first dimension of target. But received "
                           "gradient dimension = %d and target dimension is %d.",
-                          sub_result.dimensions()[0], y_dims[0]));
+                          sub_result.dimensions()[0],
+                          y_dims[0]));
 
     if (sub_result.dimensions()[0] == y_dims[0]) {
       auto y_grad = framework::EigenMatrix<T>::From(

@@ -32,6 +32,7 @@ np.random.seed(0)
 
 
 class TestPostTrainingQuantization(unittest.TestCase):
+
     def setUp(self):
         self.download_path = 'int8/download'
         self.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
@@ -42,16 +43,16 @@ class TestPostTrainingQuantization(unittest.TestCase):
         try:
             os.system("mkdir -p " + self.int8_model_path)
         except Exception as e:
-            print("Failed to create {} due to {}".format(self.int8_model_path,
-                                                         str(e)))
+            print("Failed to create {} due to {}".format(
+                self.int8_model_path, str(e)))
             sys.exit(-1)
 
     def tearDown(self):
         try:
             os.system("rm -rf {}".format(self.int8_model_path))
         except Exception as e:
-            print("Failed to delete {} due to {}".format(self.int8_model_path,
-                                                         str(e)))
+            print("Failed to delete {} due to {}".format(
+                self.int8_model_path, str(e)))
 
     def cache_unzipping(self, target_folder, zip_path):
         cmd = 'tar xf {0} -C {1}'.format(zip_path, target_folder)
@@ -82,8 +83,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         cnt = 0
         periods = []
         for batch_id, data in enumerate(val_reader()):
-            image = np.array(
-                [x[0].reshape(img_shape) for x in data]).astype("float32")
+            image = np.array([x[0].reshape(img_shape)
+                              for x in data]).astype("float32")
             input_label = np.array([x[1] for x in data]).astype("int64")
 
             t1 = time.time()
@@ -147,10 +148,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
             optimize_model=is_optimize_model,
             is_use_cache_file=is_use_cache_file)
         ptq.quantize()
-        ptq.save_quantized_model(
-            self.int8_model_path,
-            model_filename='model.pdmodel',
-            params_filename='model.pdiparams')
+        ptq.save_quantized_model(self.int8_model_path,
+                                 model_filename='model.pdmodel',
+                                 params_filename='model.pdiparams')
 
     def run_test(self,
                  model_name,
@@ -172,36 +172,37 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("Start FP32 inference for {0} on {1} images ...".format(
             model_name, infer_iterations * batch_size))
-        (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
-            origin_model_path, batch_size, infer_iterations)
+        (fp32_throughput, fp32_latency,
+         fp32_acc1) = self.run_program(origin_model_path, batch_size,
+                                       infer_iterations)
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model_name, quant_iterations * batch_size))
-        self.generate_quantized_model(
-            origin_model_path,
-            algo,
-            quantizable_op_type,
-            is_full_quantize,
-            is_use_cache_file,
-            is_optimize_model,
-            batch_size,
-            quant_iterations,
-            is_data_loader=is_data_loader)
+        self.generate_quantized_model(origin_model_path,
+                                      algo,
+                                      quantizable_op_type,
+                                      is_full_quantize,
+                                      is_use_cache_file,
+                                      is_optimize_model,
+                                      batch_size,
+                                      quant_iterations,
+                                      is_data_loader=is_data_loader)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             model_name, infer_iterations * batch_size))
-        (int8_throughput, int8_latency, int8_acc1) = self.run_program(
-            self.int8_model_path, batch_size, infer_iterations)
+        (int8_throughput, int8_latency,
+         int8_acc1) = self.run_program(self.int8_model_path, batch_size,
+                                       infer_iterations)
 
         print("---Post training quantization of {} method---".format(algo))
         print(
-            "FP32 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}.".
-            format(model_name, batch_size, fp32_throughput, fp32_latency,
-                   fp32_acc1))
+            "FP32 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}."
+            .format(model_name, batch_size, fp32_throughput, fp32_latency,
+                    fp32_acc1))
         print(
-            "INT8 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}.\n".
-            format(model_name, batch_size, int8_throughput, int8_latency,
-                   int8_acc1))
+            "INT8 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}.\n"
+            .format(model_name, batch_size, int8_throughput, int8_latency,
+                    int8_acc1))
         sys.stdout.flush()
 
         delta_value = fp32_acc1 - int8_acc1
@@ -209,6 +210,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
 
 class TestPostTrainingKLForWhile(TestPostTrainingQuantization):
+
     def test_post_training_kl(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
@@ -229,6 +231,7 @@ class TestPostTrainingKLForWhile(TestPostTrainingQuantization):
 
 
 class TestPostTraininghistForWhile(TestPostTrainingQuantization):
+
     def test_post_training_hist(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
@@ -249,6 +252,7 @@ class TestPostTraininghistForWhile(TestPostTrainingQuantization):
 
 
 class TestPostTrainingmseForWhile(TestPostTrainingQuantization):
+
     def test_post_training_mse(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
@@ -269,6 +273,7 @@ class TestPostTrainingmseForWhile(TestPostTrainingQuantization):
 
 
 class TestPostTrainingavgForWhile(TestPostTrainingQuantization):
+
     def test_post_training_avg(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
@@ -289,6 +294,7 @@ class TestPostTrainingavgForWhile(TestPostTrainingQuantization):
 
 
 class TestPostTrainingMinMaxForWhile(TestPostTrainingQuantization):
+
     def test_post_training_min_max(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
@@ -309,6 +315,7 @@ class TestPostTrainingMinMaxForWhile(TestPostTrainingQuantization):
 
 
 class TestPostTrainingAbsMaxForWhile(TestPostTrainingQuantization):
+
     def test_post_training_abs_max(self):
         model_name = "mnist_while"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_while.tar.gz"
@@ -326,20 +333,19 @@ class TestPostTrainingAbsMaxForWhile(TestPostTrainingQuantization):
                       is_full_quantize, is_use_cache_file, is_optimize_model,
                       diff_threshold, batch_size, infer_iterations,
                       quant_iterations)
-        self.run_test(
-            model_name,
-            data_url,
-            data_md5,
-            algo,
-            quantizable_op_type,
-            is_full_quantize,
-            is_use_cache_file,
-            is_optimize_model,
-            diff_threshold,
-            batch_size,
-            infer_iterations,
-            quant_iterations,
-            is_data_loader=True)
+        self.run_test(model_name,
+                      data_url,
+                      data_md5,
+                      algo,
+                      quantizable_op_type,
+                      is_full_quantize,
+                      is_use_cache_file,
+                      is_optimize_model,
+                      diff_threshold,
+                      batch_size,
+                      infer_iterations,
+                      quant_iterations,
+                      is_data_loader=True)
 
 
 if __name__ == '__main__':

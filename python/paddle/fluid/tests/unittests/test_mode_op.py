@@ -57,6 +57,7 @@ def cal_mode(a, axis, keepdim=False):
 
 
 class TestModeOp(OpTest):
+
     def init_args(self):
         self.axis = 1
 
@@ -82,6 +83,7 @@ class TestModeOp(OpTest):
 
 
 class TestModeOpLastdim(OpTest):
+
     def init_args(self):
         self.axis = -1
 
@@ -107,12 +109,14 @@ class TestModeOpLastdim(OpTest):
 
 
 class TestModeOpKernels(unittest.TestCase):
+
     def setUp(self):
         self.axises = [-1, 1]
         np.random.seed(666)
         self.inputs = np.ceil(np.random.rand(2, 10, 10) * 1000)
 
     def test_mode_op(self):
+
         def test_cpu_kernel():
             paddle.set_device('cpu')
             tensor = paddle.to_tensor(self.inputs)
@@ -121,8 +125,9 @@ class TestModeOpKernels(unittest.TestCase):
                 v, inds = paddle.mode(tensor, axis)
                 self.assertTrue(np.allclose(v.numpy(), value_expect))
 
-                value_expect, indice_expect = cal_mode(
-                    self.inputs, axis, keepdim=True)
+                value_expect, indice_expect = cal_mode(self.inputs,
+                                                       axis,
+                                                       keepdim=True)
                 v, inds = paddle.mode(tensor, axis, keepdim=True)
                 self.assertTrue(np.allclose(v.numpy(), value_expect))
 
@@ -134,8 +139,9 @@ class TestModeOpKernels(unittest.TestCase):
                 v, inds = paddle.mode(tensor, axis)
                 self.assertTrue(np.allclose(v.numpy(), value_expect))
 
-                value_expect, indice_expect = cal_mode(
-                    self.inputs, axis, keepdim=True)
+                value_expect, indice_expect = cal_mode(self.inputs,
+                                                       axis,
+                                                       keepdim=True)
                 v, inds = paddle.mode(tensor, axis, keepdim=True)
                 self.assertTrue(np.allclose(v.numpy(), value_expect))
 
@@ -146,6 +152,7 @@ class TestModeOpKernels(unittest.TestCase):
 
 
 class TestModeOpErrors(unittest.TestCase):
+
     def setUp(self):
         self.x = paddle.uniform([2, 10, 20, 25], dtype='float32')
 
@@ -156,17 +163,19 @@ class TestModeOpErrors(unittest.TestCase):
 
 
 class TestModeOpInStatic(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(666)
-        self.input_data = np.ceil(
-            np.random.random((2, 10, 10)) * 1000, dtype=np.float64)
+        self.input_data = np.ceil(np.random.random((2, 10, 10)) * 1000,
+                                  dtype=np.float64)
 
     def test_run_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            input_tensor = paddle.static.data(
-                name="x", shape=[2, 10, 10], dtype="float64")
+            input_tensor = paddle.static.data(name="x",
+                                              shape=[2, 10, 10],
+                                              dtype="float64")
 
             result = paddle.mode(input_tensor, axis=1)
             expect_value = cal_mode(self.input_data, axis=1)[0]

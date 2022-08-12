@@ -32,6 +32,7 @@ from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, Distribu
 
 
 class CollectiveOptimizerTest(unittest.TestCase):
+
     def test_ds_as_None(self):
         optimizer = fluid.optimizer.AdamOptimizer()
         dist_optimizer = CollectiveOptimizer(optimizer, strategy=None)

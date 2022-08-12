@@ -100,27 +100,26 @@ void IndexSelectGradKernel(const Context& ctx,
 
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    index_select_grad_cuda_kernel<T,
-                                  int64_t><<<grid_dim, block_dim, 0, stream>>>(
-        output_grad_data,
-        in_grad_data,
-        index_data,
-        index_nums,
-        out_nums,
-        stride,
-        size,
-        delta);
+    index_select_grad_cuda_kernel<T, int64_t>
+        <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
+                                             in_grad_data,
+                                             index_data,
+                                             index_nums,
+                                             out_nums,
+                                             stride,
+                                             size,
+                                             delta);
   } else {
     const int* index_data = index.data<int>();
-    index_select_grad_cuda_kernel<T, int><<<grid_dim, block_dim, 0, stream>>>(
-        output_grad_data,
-        in_grad_data,
-        index_data,
-        index_nums,
-        out_nums,
-        stride,
-        size,
-        delta);
+    index_select_grad_cuda_kernel<T, int>
+        <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
+                                             in_grad_data,
+                                             index_data,
+                                             index_nums,
+                                             out_nums,
+                                             stride,
+                                             size,
+                                             delta);
   }
 }
 

@@ -38,7 +38,7 @@ do
             echo "Testcase: opt: ${opt}, onchip: ${onchip}, rts: ${rts}"
             echo "paddle.distributed.fleet.launch test with IPUs..."
             python3.7 -m paddle.distributed.launch \
-            --device_num=8 \
+            --devices=8 \
             ipu \
             --hosts=localhost \
             --nproc_per_host=2 \

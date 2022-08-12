@@ -34,13 +34,19 @@ class LabelSmoothXPUKernel : public framework::OpKernel<T> {
       PADDLE_THROW(
           platform::errors::External("XPU doesn't support dist label smooth"));
     } else {
-      int r = xpu::label_smooth<T>(dev_ctx.x_context(), in_t->data<T>(), ptr,
-                                   in_t->numel(), epsilon, label_dim);
+      int r = xpu::label_smooth<T>(dev_ctx.x_context(),
+                                   in_t->data<T>(),
+                                   ptr,
+                                   in_t->numel(),
+                                   epsilon,
+                                   label_dim);
       PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
+          r,
+          XPU_SUCCESS,
           platform::errors::External("XPU API(label_smooth) return wrong "
                                      "value[%d %s]",
-                                     r, XPUAPIErrorMsg[r]));
+                                     r,
+                                     XPUAPIErrorMsg[r]));
     }
   }
 };

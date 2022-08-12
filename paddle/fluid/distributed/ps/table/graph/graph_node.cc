@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+
 #include <cstring>
 namespace paddle {
 namespace distributed {

@@ -45,7 +45,8 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   std::unordered_set<std::string> names;
   auto checker = [&](const std::string& name) {
     PADDLE_ENFORCE_EQ(
-        names.count(name), 0,
+        names.count(name),
+        0,
         platform::errors::AlreadyExists("Attribute [%s] is duplicated.", name));
     names.insert(name);
   };
@@ -72,8 +73,10 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
       .InEnum(
           {static_cast<int>(OpRole::kForward),
            static_cast<int>(OpRole::kBackward),
-           static_cast<int>(OpRole::kOptimize), static_cast<int>(OpRole::kRPC),
-           static_cast<int>(OpRole::kDist), static_cast<int>(OpRole::kLRSched),
+           static_cast<int>(OpRole::kOptimize),
+           static_cast<int>(OpRole::kRPC),
+           static_cast<int>(OpRole::kDist),
+           static_cast<int>(OpRole::kLRSched),
            static_cast<int>(OpRole::kLoss) | static_cast<int>(OpRole::kForward),
            static_cast<int>(OpRole::kLoss) |
                static_cast<int>(OpRole::kBackward),

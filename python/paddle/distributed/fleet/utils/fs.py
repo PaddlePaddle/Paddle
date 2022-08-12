@@ -55,6 +55,7 @@ class FSShellCmdAborted(ExecuteError):
 
 
 class FS(object):
+
     @abc.abstractmethod
     def ls_dir(self, fs_path):
         raise NotImplementedError
@@ -386,7 +387,9 @@ class LocalFS(FS):
 
 
 def _handle_errors(max_time_out=None):
+
     def decorator(f):
+
         @functools.wraps(f)
         def handler(*args, **kwargs):
             o = args[0]
@@ -406,13 +409,15 @@ def _handle_errors(max_time_out=None):
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
                         raise FSTimeOut("args:{} timeout:{}".format(
-                            args, time.time() - start))
+                            args,
+                            time.time() - start))
 
                     time.sleep(inter)
 
                 if time.time() - last_print_time > 30:
                     print("hadoop operator timeout:args:{} timeout:{}".format(
-                        args, time.time() - start))
+                        args,
+                        time.time() - start))
                     last_print_time = time.time()
 
         return handler
@@ -481,6 +486,7 @@ class HDFSClient(FS):
             time.sleep(retry_sleep_second)
         if ret == 134:
             raise FSShellCmdAborted(cmd)
+
         return ret, output.splitlines()
 
     @_handle_errors()
@@ -610,10 +616,12 @@ class HDFSClient(FS):
 
     def _is_dir(self, fs_path):
         cmd = "test -d {}".format(fs_path, redirect_stderr=True)
-        ret, lines = self._run_cmd(cmd)
+        ret, lines = self._run_cmd(cmd, retry_times=1)
         if ret:
             # other error
             if self._test_match(lines):
+                print('raise exception: ')
+                print('\n'.join(lines))
                 raise ExecuteError(cmd)
 
             return False
@@ -677,13 +685,10 @@ class HDFSClient(FS):
                 client = HDFSClient(hadoop_home, configs)
                 ret = client.is_exist("hdfs:/test_hdfs_client")
         """
-        cmd = "ls {} ".format(fs_path)
-        ret, out = self._run_cmd(cmd, redirect_stderr=True)
+        cmd = "test -e {} ".format(fs_path)
+        ret, out = self._run_cmd(cmd, redirect_stderr=True, retry_times=1)
         if ret != 0:
-            for l in out:
-                if "No such file or directory" in l:
-                    return False
-            raise ExecuteError(cmd)
+            return False
 
         return True
 
@@ -707,7 +712,7 @@ class HDFSClient(FS):
         self._try_upload(local_dir, dest_dir)
 
     # can't retry
-    def upload(self, local_path, fs_path, multi_processes=1, overwrite=False):
+    def upload(self, local_path, fs_path, multi_processes=5, overwrite=False):
         """
         Upload the local path to remote HDFS.
 
@@ -761,11 +766,7 @@ class HDFSClient(FS):
         local = LocalFS()
         if not local.is_exist(local_path):
             raise FSFileNotExistsError("{} not exists".format(local_path))
-        # upload_dir
-        if local.is_dir(local_path):
-            self.upload_dir(local_path, fs_path, overwrite=overwrite)
-            return
-        # upload files
+
         all_files = get_local_files(local_path)
         if not all_files:
             print("there are nothing need to upload, function exit")
@@ -778,8 +779,8 @@ class HDFSClient(FS):
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(
-                target=__subprocess_upload, args=(fs_path, process_datas))
+            p = multiprocessing.Process(target=__subprocess_upload,
+                                        args=(fs_path, process_datas))
             procs.append(p)
             p.start()
 
@@ -800,7 +801,7 @@ class HDFSClient(FS):
             raise e
 
     # can't retry
-    def download(self, fs_path, local_path, multi_processes=1, overwrite=False):
+    def download(self, fs_path, local_path, multi_processes=5, overwrite=False):
         """
         Download remote HDFS path to the local.
 
@@ -842,13 +843,14 @@ class HDFSClient(FS):
         if self.is_file(fs_path):
             return self._try_download(fs_path, local_path)
         # download dir
-        _, all_filenames = self.ls_dir(fs_path)
-        all_files = [fs_path + i for i in all_filenames]
+        dirs, all_filenames = self.ls_dir(fs_path)
+        all_files = [fs_path + "/" + i for i in all_filenames]
+        all_files.extend([fs_path + "/" + i for i in dirs])
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(
-                target=__subprocess_download, args=(local_path, process_datas))
+            p = multiprocessing.Process(target=__subprocess_download,
+                                        args=(local_path, process_datas))
             procs.append(p)
             p.start()
 
@@ -943,8 +945,8 @@ class HDFSClient(FS):
 
         if test_exists:
             if not self.is_exist(fs_src_path):
-                raise FSFileNotExistsError("{} is not exists".format(
-                    fs_src_path))
+                raise FSFileNotExistsError(
+                    "{} is not exists".format(fs_src_path))
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(fs_dst_path))
@@ -956,7 +958,7 @@ class HDFSClient(FS):
         cmd = "mv {} {}".format(fs_src_path, fs_dst_path)
         ret = 0
         try:
-            ret, _ = self._run_cmd(cmd)
+            ret, _ = self._run_cmd(cmd, retry_times=1)
             if ret != 0:
                 raise ExecuteError(cmd)
         except Exception as e:
@@ -1084,7 +1086,7 @@ class HDFSClient(FS):
     @_handle_errors()
     def _try_cat(self, fs_path):
         cmd = "cat {}".format(fs_path)
-        ret, output = self._run_cmd(cmd)
+        ret, output = self._run_cmd(cmd, retry_times=1)
         if ret != 0:
             raise ExecuteError(cmd)
         return output
@@ -1398,8 +1400,8 @@ class AFSClient(FS):
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(
-                target=__subprocess_download, args=(local_path, process_datas))
+            p = multiprocessing.Process(target=__subprocess_download,
+                                        args=(local_path, process_datas))
             procs.append(p)
             p.start()
 
@@ -1453,8 +1455,8 @@ class AFSClient(FS):
 
         if test_exists:
             if not self.is_exist(fs_src_path):
-                raise FSFileNotExistsError("{} is not exists".format(
-                    fs_src_path))
+                raise FSFileNotExistsError(
+                    "{} is not exists".format(fs_src_path))
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(fs_dst_path))

@@ -20,6 +20,7 @@ import six
 
 
 class TestScope(unittest.TestCase):
+
     def test_create_destroy(self):
         paddle_c = paddle.fluid.core
         scope = paddle_c.Scope()

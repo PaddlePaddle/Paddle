@@ -24,6 +24,7 @@ from paddle.fluid import Program, compiler, program_guard
 from paddle.fluid.op import Operator
 
 import sys
+
 sys.path.append('..')
 from op_test import OpTest, skip_check_grad_ci
 
@@ -31,6 +32,7 @@ paddle.enable_static()
 
 
 class ElementwiseMulOp(OpTest):
+
     def init_kernel_type(self):
         self.__class__.use_mlu = True
         self.place = paddle.device.MLUPlace(0)
@@ -58,12 +60,14 @@ class ElementwiseMulOp(OpTest):
         self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        self.check_grad_with_place(
-            self.place, ['Y'], 'Out', no_grad_set=set("X"))
+        self.check_grad_with_place(self.place, ['Y'],
+                                   'Out',
+                                   no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', no_grad_set=set('Y'))
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   no_grad_set=set('Y'))
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -80,6 +84,7 @@ class ElementwiseMulOp(OpTest):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseMulOp_scalar(ElementwiseMulOp):
+
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.inputs = {
@@ -91,6 +96,7 @@ class TestElementwiseMulOp_scalar(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_Vector(ElementwiseMulOp):
+
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.inputs = {
@@ -102,6 +108,7 @@ class TestElementwiseMulOp_Vector(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
+
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
@@ -112,6 +119,7 @@ class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
+
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.inputs = {
@@ -127,6 +135,7 @@ class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
+
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.inputs = {
@@ -141,6 +150,7 @@ class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
+
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.inputs = {
@@ -156,6 +166,7 @@ class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
+
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.inputs = {
@@ -167,6 +178,7 @@ class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
+
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.inputs = {
@@ -178,11 +190,13 @@ class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
 
 
 class TestElementwiseMulOpFp16(ElementwiseMulOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
+
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.inputs = {
@@ -194,6 +208,7 @@ class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
+
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.inputs = {
@@ -205,6 +220,7 @@ class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
+
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.inputs = {
@@ -221,13 +237,14 @@ class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
 
 
 class TestElementwiseMulOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of elementwise_mul must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
-            y1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
+            y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.elementwise_mul, x1, y1)
 
             # the input dtype of elementwise_mul must be float16 or float32 or int32

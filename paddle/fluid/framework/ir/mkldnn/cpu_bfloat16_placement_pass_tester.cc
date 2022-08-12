@@ -21,7 +21,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
            const std::string& mkldnn_data_type = "float32",
@@ -65,9 +67,20 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
 
-  for (auto& v :
-       std::vector<std::string>({"a", "b", "c", "f", "g", "h", "k", "l", "m",
-                                 "n", "o", "p", "r", "s"})) {
+  for (auto& v : std::vector<std::string>({"a",
+                                           "b",
+                                           "c",
+                                           "f",
+                                           "g",
+                                           "h",
+                                           "k",
+                                           "l",
+                                           "m",
+                                           "n",
+                                           "o",
+                                           "p",
+                                           "r",
+                                           "s"})) {
     prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
   }
 
@@ -127,8 +140,8 @@ void DefaultAttrTest(unsigned expected_bfloat16_data_type_count,
 }
 
 TEST(Bfloat16PlacementPass, enable_all) {
-  MainTest({"conv2d", "pool2d", "gelu", "concat", "sum"}, 8,
-           BuildProgramDesc());
+  MainTest(
+      {"conv2d", "pool2d", "gelu", "concat", "sum"}, 8, BuildProgramDesc());
 }
 
 TEST(Bfloat16PlacementPass, enabled_conv_and_pool) {

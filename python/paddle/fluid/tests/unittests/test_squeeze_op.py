@@ -28,12 +28,15 @@ paddle.enable_static()
 
 # Correct: General.
 class TestSqueezeOp(OpTest):
+
     def setUp(self):
         self.op_type = "squeeze"
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
-        self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape), }
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.new_shape),
+        }
 
     def test_check_output(self):
         self.check_output()
@@ -51,6 +54,7 @@ class TestSqueezeOp(OpTest):
 
 
 class TestSqueezeBF16Op(OpTest):
+
     def setUp(self):
         self.op_type = "squeeze"
         self.dtype = np.uint16
@@ -78,6 +82,7 @@ class TestSqueezeBF16Op(OpTest):
 
 # Correct: There is mins axis.
 class TestSqueezeOp1(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 3, 1, 40)
         self.axes = (0, -2)
@@ -86,14 +91,16 @@ class TestSqueezeOp1(TestSqueezeOp):
 
 # Correct: No axes input.
 class TestSqueezeOp2(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = ()
         self.new_shape = (20, 5)
 
 
-# Correct: Just part of axes be squeezed. 
+# Correct: Just part of axes be squeezed.
 class TestSqueezeOp3(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)
         self.axes = (1, -1)
@@ -102,6 +109,7 @@ class TestSqueezeOp3(TestSqueezeOp):
 
 # Correct: The demension of axis is not of size 1 remains unchanged.
 class TestSqueezeOp4(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)
         self.axes = (1, 2)
@@ -109,12 +117,13 @@ class TestSqueezeOp4(TestSqueezeOp):
 
 
 class TestSqueezeOpError(unittest.TestCase):
+
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of softmax_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], paddle.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         paddle.CPUPlace())
             self.assertRaises(TypeError, paddle.squeeze, x1)
             # The input axes of squeeze must be list.
             x2 = paddle.static.data(name='x2', shape=[4], dtype="int32")
@@ -125,6 +134,7 @@ class TestSqueezeOpError(unittest.TestCase):
 
 
 class API_TestSqueeze(unittest.TestCase):
+
     def setUp(self):
         self.executed_api()
 
@@ -135,8 +145,9 @@ class API_TestSqueeze(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            data1 = paddle.static.data(
-                'data1', shape=[-1, 1, 10], dtype='float64')
+            data1 = paddle.static.data('data1',
+                                       shape=[-1, 1, 10],
+                                       dtype='float64')
             result_squeeze = self.squeeze(data1, axis=[1])
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -148,11 +159,13 @@ class API_TestSqueeze(unittest.TestCase):
 
 
 class API_TestStaticSqueeze_(API_TestSqueeze):
+
     def executed_api(self):
         self.squeeze = paddle.squeeze_
 
 
 class API_TestDygraphSqueeze(unittest.TestCase):
+
     def setUp(self):
         self.executed_api()
 
@@ -206,6 +219,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
 
 
 class API_TestDygraphSqueezeInplace(API_TestDygraphSqueeze):
+
     def executed_api(self):
         self.squeeze = paddle.squeeze_
 

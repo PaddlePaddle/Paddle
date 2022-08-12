@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -26,6 +27,7 @@ SEED = 2022
 
 
 class TestAssign(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "assign"

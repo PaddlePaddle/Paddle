@@ -12,26 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/mkldnn_inplace_pass.h"
-
 #include <gtest/gtest.h>
+
 #include <unordered_set>
+#include "paddle/utils/tribool.h"
 
-#include <boost/logic/tribool.hpp>
-
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_inplace_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP_ITSELF(leaky_relu);
-USE_OP_DEVICE_KERNEL(leaky_relu, MKLDNN);
+PD_DECLARE_KERNEL(leaky_relu, OneDNN, ALL_LAYOUT);
 USE_OP_ITSELF(gelu);
 USE_OP_ITSELF(relu);
 USE_OP_ITSELF(tanh);
-USE_OP_DEVICE_KERNEL(tanh, MKLDNN);
+PD_DECLARE_KERNEL(tanh, OneDNN, ALL_LAYOUT);
 PD_DECLARE_ARG_MAPPING_FN(gelu);
 
 namespace paddle {
@@ -40,15 +40,17 @@ namespace ir {
 
 class MKLDNNInplacePassTest {
  private:
-  void SetOp(ProgramDesc* prog, const std::string& type,
-             const std::string& name, const std::vector<std::string>& inputs,
+  void SetOp(ProgramDesc* prog,
+             const std::string& type,
+             const std::string& name,
+             const std::vector<std::string>& inputs,
              const std::vector<std::string>& outputs,
-             boost::tribool use_mkldnn) {
+             paddle::tribool use_mkldnn) {
     auto* op = prog->MutableBlock(0)->AppendOp();
 
     op->SetType(type);
 
-    if (!boost::indeterminate(use_mkldnn))
+    if (!paddle::indeterminate(use_mkldnn))
       op->SetAttr("use_mkldnn", use_mkldnn);
 
     if (type == "conv2d") {
@@ -56,8 +58,8 @@ class MKLDNNInplacePassTest {
       op->SetInput("Input", {inputs[0]});
       op->SetInput("Filter", {inputs[1]});
       op->SetInput("Bias", {inputs[2]});
-    } else if (std::unordered_set<std::string>{"gelu", "leaky_relu", "relu",
-                                               "tanh"}
+    } else if (std::unordered_set<std::string>{
+                   "gelu", "leaky_relu", "relu", "tanh"}
                    .count(type)) {
       op->SetInput("X", inputs);
     } else if (type == "softmax") {
@@ -76,9 +78,19 @@ class MKLDNNInplacePassTest {
                                bool branched) {
     ProgramDesc prog;
 
-    for (auto& v :
-         std::vector<std::string>({"a", "weights", "bias", "f", "g", "h", "i",
-                                   "j", "k", "l", "m", "n", "z"})) {
+    for (auto& v : std::vector<std::string>({"a",
+                                             "weights",
+                                             "bias",
+                                             "f",
+                                             "g",
+                                             "h",
+                                             "i",
+                                             "j",
+                                             "k",
+                                             "l",
+                                             "m",
+                                             "n",
+                                             "z"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::SELECTED_ROWS);
       if (v == "weights" || v == "bias") {
@@ -86,35 +98,65 @@ class MKLDNNInplacePassTest {
       }
     }
 
-    SetOp(&prog, "conv2d", "conv1",
+    SetOp(&prog,
+          "conv2d",
+          "conv1",
           std::vector<std::string>({"a", "weights", "bias"}),
-          std::vector<std::string>({"f"}), boost::indeterminate);
-    SetOp(&prog, "relu", "relu1", std::vector<std::string>({"f"}),
+          std::vector<std::string>({"f"}),
+          paddle::indeterminate);
+    SetOp(&prog,
+          "relu",
+          "relu1",
+          std::vector<std::string>({"f"}),
           std::vector<std::string>({"g"}),
           mkldnn_enabled_op.compare("relu") == 0);
-    SetOp(&prog, "softmax", "softmax1", std::vector<std::string>({"g"}),
+    SetOp(&prog,
+          "softmax",
+          "softmax1",
+          std::vector<std::string>({"g"}),
           std::vector<std::string>({"h"}),
           mkldnn_enabled_op.compare("softmax") == 0);
-    SetOp(&prog, "elementwise_add", "elementwise_add1",
-          std::vector<std::string>({"h", "i"}), std::vector<std::string>({"j"}),
+    SetOp(&prog,
+          "elementwise_add",
+          "elementwise_add1",
+          std::vector<std::string>({"h", "i"}),
+          std::vector<std::string>({"j"}),
           mkldnn_enabled_op.compare("elementwise_add") == 0);
-    SetOp(&prog, "relu", "relu2", std::vector<std::string>({"j"}),
+    SetOp(&prog,
+          "relu",
+          "relu2",
+          std::vector<std::string>({"j"}),
           std::vector<std::string>({"k"}),
           mkldnn_enabled_op.compare("relu") == 0);
-    SetOp(&prog, "tanh", "tanh1", std::vector<std::string>({"k"}),
+    SetOp(&prog,
+          "tanh",
+          "tanh1",
+          std::vector<std::string>({"k"}),
           std::vector<std::string>({"l"}),
           mkldnn_enabled_op.compare("tanh") == 0);
-    SetOp(&prog, "relu", "relu3", std::vector<std::string>({"l"}),
+    SetOp(&prog,
+          "relu",
+          "relu3",
+          std::vector<std::string>({"l"}),
           std::vector<std::string>({"m"}),
           mkldnn_enabled_op.compare("relu") == 0);
-    SetOp(&prog, "leaky_relu", "leaky_relu1", std::vector<std::string>({"m"}),
+    SetOp(&prog,
+          "leaky_relu",
+          "leaky_relu1",
+          std::vector<std::string>({"m"}),
           std::vector<std::string>({"n"}),
           mkldnn_enabled_op.compare("leaky_relu") == 0);
-    SetOp(&prog, "gelu", "gelu1", std::vector<std::string>({"n"}),
+    SetOp(&prog,
+          "gelu",
+          "gelu1",
+          std::vector<std::string>({"n"}),
           std::vector<std::string>({"m"}),
           mkldnn_enabled_op.compare("gelu") == 0);
     if (branched == true) {
-      SetOp(&prog, "softmax", "softmax2", std::vector<std::string>({"g"}),
+      SetOp(&prog,
+            "softmax",
+            "softmax2",
+            std::vector<std::string>({"g"}),
             std::vector<std::string>({"z"}),
             mkldnn_enabled_op.compare("softmax") == 0);
     }
@@ -123,7 +165,8 @@ class MKLDNNInplacePassTest {
   }
 
  public:
-  void MainTest(const std::string& mkldnn_enabled_op, bool branched,
+  void MainTest(const std::string& mkldnn_enabled_op,
+                bool branched,
                 unsigned expected_use_mkldnn_true_count) {
     auto prog = BuildProgramDesc(mkldnn_enabled_op, branched);
 

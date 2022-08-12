@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/bce_loss_kernel.h"
 
 #include <algorithm>  // for max
+
 #include "paddle/fluid/operators/math.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"

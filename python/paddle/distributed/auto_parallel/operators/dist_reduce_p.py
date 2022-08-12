@@ -34,6 +34,7 @@ from ..utils import _get_comm_group, _get_corresponding_rank
 
 
 class DistributedReducePrimtive(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedReducePrimtive, self).__init__(op_type)
 
@@ -44,6 +45,7 @@ register_distributed_operator_impl_container(
 
 # Batch Dimension Reduce Primitive
 class DistributedReducePrimtiveImpl0(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedReducePrimtiveImpl0, self).__init__(name)
         self._forward_implemented = True
@@ -118,15 +120,14 @@ class DistributedReducePrimtiveImpl0(DistributedOperatorImpl):
         # batch dimension synchronization
         var_name = src_op.output_arg_names[0]
         sync_group = new_process_group(ctx.data_parallel_group)
-        allreduce_op = main_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': [var_name]},
-            outputs={'Out': [var_name]},
-            attrs={
-                'ring_id': sync_group.id,
-                'use_calc_stream': True,
-                OP_ROLE_KEY: OpRole.Forward
-            })
+        allreduce_op = main_block.append_op(type='c_allreduce_sum',
+                                            inputs={'X': [var_name]},
+                                            outputs={'Out': [var_name]},
+                                            attrs={
+                                                'ring_id': sync_group.id,
+                                                'use_calc_stream': True,
+                                                OP_ROLE_KEY: OpRole.Forward
+                                            })
 
         # dist attr
         var = main_block.var(var_name)

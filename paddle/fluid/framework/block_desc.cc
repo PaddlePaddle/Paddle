@@ -176,19 +176,48 @@ std::vector<OpDesc *> BlockDesc::AllOps() const {
 }
 
 void BlockDesc::Flush() {
+  auto need_update = NeedUpdate(true);
   for (auto &op_desc : ops_) {
     op_desc->Flush();
   }
-
-  if (need_update_) {
+  // no flush for var_desc? or is op_desc flush really needed?
+  VLOG(10) << "Flush " << NeedUpdate(true) << " " << need_update << std::endl;
+  if (need_update) {
     this->desc_->mutable_ops()->Clear();
     for (auto &op_desc : ops_) {
       this->desc_->mutable_ops()->Add()->CopyFrom(*op_desc->Proto());
+      // op_desc's need_update is set to false in op_desc->Flush();
     }
+
+    std::vector<std::string> var_names;
+    std::set<std::string> var_names_set;
+
+    // keep order
+    for (const auto &var : this->desc_->vars()) {
+      var_names.emplace_back(var.name());
+      var_names_set.insert(var.name());
+    }
+
     this->desc_->mutable_vars()->Clear();
-    for (auto &var_desc : vars_) {
-      this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
+    for (const auto &name : var_names) {
+      if (vars_.count(name)) {
+        this->desc_->mutable_vars()->Add()->CopyFrom(*vars_[name]->Proto());
+        vars_[name]->SetNeedUpdate(false);
+      }
     }
+
+    for (auto &var_desc : vars_) {
+      if (var_names_set.count(var_desc.first) != 1) {
+        this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
+        var_desc.second->SetNeedUpdate(false);
+      }
+    }
+
+    // this->desc_->mutable_vars()->Clear();
+    // for (auto &var_desc : vars_) {
+    //   this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
+    //   var_desc.second->SetNeedUpdate(false);
+    // }
     need_update_ = false;
   }
 }
@@ -207,30 +236,37 @@ BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
   for (const proto::VarDesc &var_desc : desc_->vars()) {
     vars_[var_desc.name()].reset(new VarDesc(var_desc));
   }
+
   for (const proto::OpDesc &op_desc : desc_->ops()) {
     ops_.emplace_back(new OpDesc(op_desc, this));
   }
 }
 
-BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
+BlockDesc::BlockDesc(const BlockDesc &other,
+                     proto::BlockDesc *desc,
                      ProgramDesc *prog)
     : prog_(prog), desc_(desc) {
   need_update_ = true;
-  for (auto &op : other.ops_) {
-    ops_.emplace_back(new OpDesc(*op, this));
-  }
+  // NOTE(dev): Init vars_ firstly so we can find them
+  // while constructing OpDesc.
   for (auto &it : other.vars_) {
     auto *var = new VarDesc(*it.second);
     vars_[it.first].reset(var);
+  }
+  for (auto &op : other.ops_) {
+    ops_.emplace_back(new OpDesc(*op, this));
   }
 }
 
 void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {
   PADDLE_ENFORCE_EQ(
-      desc_->has_forward_block_idx(), false,
+      desc_->has_forward_block_idx(),
+      false,
       platform::errors::PreconditionNotMet(
           "Block %d's parent block ID has been set to %d, cannot be set to %d.",
-          desc_->idx(), desc_->forward_block_idx(), forward_block_id));
+          desc_->idx(),
+          desc_->forward_block_idx(),
+          forward_block_id));
   desc_->set_forward_block_idx(forward_block_id);
 }
 
@@ -268,13 +304,17 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
     for (const auto &pair : src_op->GetAttrMap()) {
       const auto &attr_name = pair.first;
       const auto &attr_value = pair.second;
-      auto attr_type = static_cast<proto::AttrType>(attr_value.which() - 1);
-      if (attr_type == proto::AttrType::BLOCK) {
-        auto block_id = BOOST_GET_CONST(BlockDesc *, attr_value)->ID();
+      auto attr_type = static_cast<proto::AttrType>(attr_value.index() - 1);
+      if (attr_type == proto::AttrType::VAR ||
+          attr_type == proto::AttrType::VARS) {
+        dst_op->UpdateVarAttr(attr_name, attr_value);
+      } else if (attr_type == proto::AttrType::BLOCK) {
+        auto block_id = PADDLE_GET_CONST(BlockDesc *, attr_value)->ID();
         dst_op->SetBlockAttr(attr_name, prog_->MutableBlock(block_id));
         VLOG(10) << "Set block attr " << attr_name << " id " << block_id;
       } else if (attr_type == proto::AttrType::BLOCKS) {
-        auto old_blocks = BOOST_GET_CONST(std::vector<BlockDesc *>, attr_value);
+        auto old_blocks =
+            PADDLE_GET_CONST(std::vector<BlockDesc *>, attr_value);
         std::vector<BlockDesc *> new_blocks;
         new_blocks.reserve(old_blocks.size());
         for (auto *b : old_blocks) {
@@ -292,6 +332,25 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
   block->vars_.clear();
   block->need_update_ = true;
   block->Flush();
+}
+
+bool BlockDesc::NeedUpdate(bool include_subs) {
+  bool need = need_update_;
+  if (include_subs) {
+    for (const auto &op : ops_) {
+      if (op->NeedUpdate()) {
+        need = true;
+        break;
+      }
+    }
+    for (const auto &pair : vars_) {
+      if (pair.second->NeedUpdate()) {
+        need = true;
+        break;
+      }
+    }
+  }
+  return need;
 }
 
 }  // namespace framework

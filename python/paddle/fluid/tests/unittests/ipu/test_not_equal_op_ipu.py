@@ -20,9 +20,8 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -51,10 +50,12 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
-        y = paddle.static.data(
-            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32')
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        y = paddle.static.data(name=self.feed_list[1],
+                               shape=self.feed_shape[1],
+                               dtype='float32')
         out = paddle.fluid.layers.not_equal(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -70,6 +71,7 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+
     def set_data_feed(self):
         x = np.ones([1, 10])
         y = np.ones([1, 10])
@@ -78,6 +80,7 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
+
     def set_data_feed(self):
         x = np.ones([1, 10])
         y = np.arange(0, 10).reshape([1, 10])
@@ -85,9 +88,8 @@ class TestCase2(TestBase):
         self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestScalar(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -98,8 +100,12 @@ class TestScalar(IPUOpTest):
     def set_data_feed(self):
         x = np.ones([1, 10])
         y = 0.5
-        self.feed_fp32 = {"x": x.astype(np.float32), }
-        self.feed_fp16 = {"x": x.astype(np.float16), }
+        self.feed_fp32 = {
+            "x": x.astype(np.float32),
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+        }
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
@@ -110,8 +116,9 @@ class TestScalar(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
         out = (x != 0.5)
         self.fetch_list = [out.name]
 

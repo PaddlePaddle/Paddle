@@ -23,7 +23,8 @@ template <typename DeviceContext, typename T>
 class SoftmaxMaskFuseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+                      true,
                       platform::errors::Unimplemented(
                           "Softmax mask fuse op only supports GPU now."));
   }

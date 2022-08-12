@@ -27,7 +27,7 @@ KernelSignature InstanceNormOpArgumentMapping(
 KernelSignature InstanceNormGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("instance_norm_grad",
-                         {"X", "Y@GRAD", "Scale", "SavedMean", "SavedVariance"},
+                         {"X", "Scale", "SavedMean", "SavedVariance", "Y@GRAD"},
                          {"epsilon"},
                          {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }

@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import paddle
+
 paddle.enable_static()
 
 import unittest
@@ -24,18 +25,18 @@ from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
 
 
 class EntryAttrChecks(unittest.TestCase):
+
     def embedding_layer(self):
         prog = fluid.Program()
         scope = fluid.core.Scope()
 
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog):
-                input = fluid.layers.data(
-                    name="dnn_data",
-                    shape=[-1, 1],
-                    dtype="int64",
-                    lod_level=1,
-                    append_batch_size=False)
+                input = fluid.layers.data(name="dnn_data",
+                                          shape=[-1, 1],
+                                          dtype="int64",
+                                          lod_level=1,
+                                          append_batch_size=False)
                 emb = fluid.layers.embedding(
                     input=input,
                     size=[100, 10],
@@ -56,6 +57,7 @@ class EntryAttrChecks(unittest.TestCase):
 
 
 class TestEntryAttrs(EntryAttrChecks):
+
     def test_embedding_layer(self):
         self.embedding_layer()
 

@@ -15,6 +15,7 @@ limitations under the License. */
 #include <initializer_list>
 #include <iostream>
 #include <memory>
+
 #include "dnnl.hpp"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/operator.h"
@@ -27,12 +28,12 @@ namespace operators {
 
 using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
-using paddle::platform::CPUDeviceContext;
 using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
-using platform::to_void_cast;
+using phi::CPUContext;
 using phi::vectorize;
+using platform::to_void_cast;
 using Direction = dnnl::rnn_direction;
 
 namespace {
@@ -69,25 +70,30 @@ class MultiGRUHandler {
         hidden_(ctx.Output<LoDTensor>("Hidden")),
         x_lod_(x_->lod()[0]) {
     PADDLE_ENFORCE_EQ(
-        weights_x_.size(), layers_ * 2,
+        weights_x_.size(),
+        layers_ * 2,
         platform::errors::InvalidArgument("The number of WeightX inputs does "
                                           "not match the number of layers."));
     PADDLE_ENFORCE_EQ(
-        weights_h_.size(), layers_ * 2,
+        weights_h_.size(),
+        layers_ * 2,
         platform::errors::InvalidArgument("The number of WeightH inputs does "
                                           "not match the number of layers."));
     if (biases_.size() > 0)
       PADDLE_ENFORCE_EQ(
-          biases_.size(), layers_ * 2,
+          biases_.size(),
+          layers_ * 2,
           platform::errors::InvalidArgument("The number of Bias inputs does "
                                             "not match the number of layers."));
     // oneDNN kernel has hardcoded activation functions
     PADDLE_ENFORCE_EQ(
-        ctx.Attr<std::string>("gate_activation"), "sigmoid",
+        ctx.Attr<std::string>("gate_activation"),
+        "sigmoid",
         platform::errors::Unimplemented(
             "oneDNN fusion_gru supports only sigmoid as a gate activation."));
     PADDLE_ENFORCE_EQ(
-        ctx.Attr<std::string>("activation"), "tanh",
+        ctx.Attr<std::string>("activation"),
+        "tanh",
         platform::errors::Unimplemented(
             "oneDNN fusion_gru supports only tanh as an activation."));
 
@@ -127,11 +133,13 @@ class MultiGRUHandler {
       // Add int8 attributes
       const auto scale_weights = ctx.MultiInput<LoDTensor>("Scale_weights");
       PADDLE_ENFORCE_EQ(
-          scale_weights.size(), layers_ * 2,
+          scale_weights.size(),
+          layers_ * 2,
           platform::errors::InvalidArgument(
               "The number of weight scale inputs does "
               "not match the number of layers. Expected: %d. Actual: %d",
-              layers_ * 2, scale_weights.size()));
+              layers_ * 2,
+              scale_weights.size()));
       const float scale_data = ctx.Attr<float>("Scale_data");
       const float shift_data = ctx.Attr<float>("Shift_data");
 
@@ -170,17 +178,21 @@ class MultiGRUHandler {
       const auto weights_dt =
           is_int8 ? dnnl::memory::data_type::s8 : dnnl::memory::data_type::f32;
 
-      auto x_md = MKLDNNMemDesc({Ti_, N_, ICs[layer]}, MKLDNNGetDataType<T>(),
+      auto x_md = MKLDNNMemDesc({Ti_, N_, ICs[layer]},
+                                MKLDNNGetDataType<T>(),
                                 MKLDNNMemoryFormat::ntc);
-      auto h0_md = MKLDNNMemDesc({L, D, N_, OCs[layer]}, MKLDNNGetDataType<T>(),
+      auto h0_md = MKLDNNMemDesc({L, D, N_, OCs[layer]},
+                                 MKLDNNGetDataType<T>(),
                                  MKLDNNMemoryFormat::ldnc);
-      auto wx_md = MKLDNNMemDesc({L, D, ICs[layer], G, OCs[layer]}, weights_dt,
+      auto wx_md = MKLDNNMemDesc({L, D, ICs[layer], G, OCs[layer]},
+                                 weights_dt,
                                  MKLDNNMemoryFormat::any);
-      auto wh_md = MKLDNNMemDesc({L, D, OCs[layer], G, OCs[layer]}, weights_dt,
+      auto wh_md = MKLDNNMemDesc({L, D, OCs[layer], G, OCs[layer]},
+                                 weights_dt,
                                  MKLDNNMemoryFormat::any);
-      auto b_md =
-          MKLDNNMemDesc({L, D, G, OCs[layer]}, MKLDNNGetDataType<float>(),
-                        MKLDNNMemoryFormat::ldgo);
+      auto b_md = MKLDNNMemDesc({L, D, G, OCs[layer]},
+                                MKLDNNGetDataType<float>(),
+                                MKLDNNMemoryFormat::ldgo);
       auto h_md =
           MKLDNNMemDesc({Ti_, N_, OCs[layer]},
                         (layer == layers_ - 1) ? MKLDNNGetDataType<T_out>()
@@ -188,13 +200,21 @@ class MultiGRUHandler {
                         MKLDNNMemoryFormat::ntc);
 
       auto desc = std::make_shared<dnnl::gru_forward::desc>(
-          dnnl::prop_kind::forward_inference, dir, x_md, h0_md, wx_md, wh_md,
-          b_md, h_md, dnnl::memory::desc());
+          dnnl::prop_kind::forward_inference,
+          dir,
+          x_md,
+          h0_md,
+          wx_md,
+          wh_md,
+          b_md,
+          h_md,
+          dnnl::memory::desc());
       pd = std::make_shared<dnnl::gru_forward::primitive_desc>(
           *desc, attrs_[2 * layer + (dir == R2L)], engine_);
       PADDLE_ENFORCE_NOT_NULL(
-          pd, platform::errors::InvalidArgument(
-                  "Primitive descriptor for gru_forward cannot be null."));
+          pd,
+          platform::errors::InvalidArgument(
+              "Primitive descriptor for gru_forward cannot be null."));
       dev_ctx_.SetBlob(pd_key, pd);
     }
     gru_pds_[{layer, dir}] = pd;
@@ -214,8 +234,8 @@ class MultiGRUHandler {
                         MKLDNNMemoryFormat::ntc);
 
       std::vector<dnnl::memory::desc> src_mds{in_md, in_md};
-      pd = std::make_shared<dnnl::concat::primitive_desc>(axis, src_mds,
-                                                          engine_);
+      pd = std::make_shared<dnnl::concat::primitive_desc>(
+          axis, src_mds, engine_);
       dev_ctx_.SetBlob(pd_key, pd);
     }
     concat_pds_[layer] = pd;
@@ -248,22 +268,29 @@ class MultiGRUHandler {
   }
 
   // Reorder input memory [WORDS, C] + LoD -> [N, T, C]
-  void reorderPPtoNTC(void* input_data, void* output_data,
-                      std::vector<size_t> lod, int layer, Direction dir) {
+  void reorderPPtoNTC(void* input_data,
+                      void* output_data,
+                      std::vector<size_t> lod,
+                      int layer,
+                      Direction dir) {
     auto* input_data_iter = reinterpret_cast<T*>(input_data);
     auto* output_data_iter = reinterpret_cast<T*>(output_data);
     for (int n = 0; n < N_; ++n) {
       const auto num_elements = (lod[n + 1] - lod[n]) * ICs[layer];
       const auto offset = dir == R2L ? (Ti_ * ICs[layer] - num_elements) : 0;
-      memcpy(output_data_iter + n * Ti_ * ICs[layer] + offset, input_data_iter,
+      memcpy(output_data_iter + n * Ti_ * ICs[layer] + offset,
+             input_data_iter,
              sizeof(T) * num_elements);
       input_data_iter += num_elements;
     }
   }
 
   // Reorder input memory [WORDS, C] + LoD -> [T, N, C]
-  void reorderPPtoTNC(void* input_data, void* output_data,
-                      std::vector<size_t> lod, int layer, Direction dir) {
+  void reorderPPtoTNC(void* input_data,
+                      void* output_data,
+                      std::vector<size_t> lod,
+                      int layer,
+                      Direction dir) {
     auto* input_data_iter = reinterpret_cast<T*>(input_data);
     auto* output_data_iter = reinterpret_cast<T*>(output_data);
     for (int n = 0; n < N_; ++n) {
@@ -272,7 +299,8 @@ class MultiGRUHandler {
       for (size_t t = 0; t < num_elements; ++t) {
         memcpy(
             output_data_iter + (t + offset) * N_ * ICs[layer] + n * ICs[layer],
-            input_data_iter, sizeof(T) * ICs[layer]);
+            input_data_iter,
+            sizeof(T) * ICs[layer]);
         input_data_iter += ICs[layer];
       }
     }
@@ -287,9 +315,12 @@ class MultiGRUHandler {
     auto out_mem = AcquireGruOutputMemory(layer, dir);
 
     std::unordered_map<int, dnnl::memory> gru_args = {
-        {DNNL_ARG_SRC_LAYER, *input_mem},  {DNNL_ARG_SRC_ITER, *h0_mem},
-        {DNNL_ARG_WEIGHTS_LAYER, *wx_mem}, {DNNL_ARG_WEIGHTS_ITER, *wh_mem},
-        {DNNL_ARG_BIAS, *b_mem},           {DNNL_ARG_DST_LAYER, *out_mem}};
+        {DNNL_ARG_SRC_LAYER, *input_mem},
+        {DNNL_ARG_SRC_ITER, *h0_mem},
+        {DNNL_ARG_WEIGHTS_LAYER, *wx_mem},
+        {DNNL_ARG_WEIGHTS_ITER, *wh_mem},
+        {DNNL_ARG_BIAS, *b_mem},
+        {DNNL_ARG_DST_LAYER, *out_mem}};
 
     auto gru_forward_p0 = AcquireGruPrimitive(layer, dir);
 
@@ -311,8 +342,8 @@ class MultiGRUHandler {
                                      MKLDNNGetDataType<float>(),
                                      MKLDNNMemoryFormat::ldnc},
                                     engine_);
-      memset(user_h0_memory.get_data_handle(), 0,
-             sizeof(float) * N_ * OCs[layer]);
+      memset(
+          user_h0_memory.get_data_handle(), 0, sizeof(float) * N_ * OCs[layer]);
       memory_p = std::make_shared<dnnl::memory>(
           gru_pds_[{layer, dir}]->src_iter_desc(), engine_);
 
@@ -332,15 +363,16 @@ class MultiGRUHandler {
         std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(key));
 
     if (!memory_p) {
-      auto user_md =
-          MKLDNNMemDesc({1, 1, ICs[layer], 3, OCs[layer]},
-                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
+      auto user_md = MKLDNNMemDesc({1, 1, ICs[layer], 3, OCs[layer]},
+                                   MKLDNNGetDataType<float>(),
+                                   MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, engine_);
 
       auto* weight_x_data =
           reinterpret_cast<float*>(user_memory.get_data_handle());
       int idx = layer * 2 + (dir == R2L);
-      memcpy(weight_x_data, weights_x_[idx]->data<float>(),
+      memcpy(weight_x_data,
+             weights_x_[idx]->data<float>(),
              sizeof(float) * ICs[layer] * 3 * OCs[layer]);
 
       if (origin_mode_ == false) {
@@ -371,9 +403,9 @@ class MultiGRUHandler {
         std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(key));
 
     if (!memory_p) {
-      auto user_md =
-          MKLDNNMemDesc({1, 1, OCs[layer], 3, OCs[layer]},
-                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
+      auto user_md = MKLDNNMemDesc({1, 1, OCs[layer], 3, OCs[layer]},
+                                   MKLDNNGetDataType<float>(),
+                                   MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, engine_);
 
       // Reorder weights_h from PP format [OC, 2OC] + [OC, OC] to
@@ -389,7 +421,8 @@ class MultiGRUHandler {
 
       for (int64_t c = 0; c < OCs[layer]; ++c) {
         memcpy(weight_h_data, src1_iter, 2 * OCs[layer] * sizeof(float));
-        memcpy(weight_h_data + 2 * OCs[layer], src2_iter,
+        memcpy(weight_h_data + 2 * OCs[layer],
+               src2_iter,
                OCs[layer] * sizeof(float));
 
         src1_iter += 2 * OCs[layer];
@@ -506,7 +539,8 @@ class MultiGRUHandler {
   }
 
   std::shared_ptr<dnnl::memory> executeConcat(
-      std::shared_ptr<dnnl::memory> mem1, std::shared_ptr<dnnl::memory> mem2,
+      std::shared_ptr<dnnl::memory> mem1,
+      std::shared_ptr<dnnl::memory> mem2,
       int layer) {
     auto out_mem = AcquireConcatOutputMemory(layer);
 
@@ -590,7 +624,8 @@ class MultiGRUHandler {
     auto oc = OCs[layer] * 2;
     for (int n = 0; n < N_; ++n) {
       const auto num_elements = (x_lod_[n + 1] - x_lod_[n]) * oc;
-      memcpy(output_data_iter, input_data_iter + n * Ti_ * oc,
+      memcpy(output_data_iter,
+             input_data_iter + n * Ti_ * oc,
              sizeof(T_out) * num_elements);
       output_data_iter += num_elements;
     }
@@ -685,6 +720,8 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(multi_gru, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(multi_gru,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::MultiGRUMKLDNNKernel<float>,
                    ops::MultiGRUMKLDNNKernel<uint8_t>);

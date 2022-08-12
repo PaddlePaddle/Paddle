@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/eager/tensor_wrapper.h"
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
-#include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
 #include "paddle/fluid/eager/utils.h"
 

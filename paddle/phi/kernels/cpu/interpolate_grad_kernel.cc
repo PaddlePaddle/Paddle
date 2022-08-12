@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/interpolate_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -1040,28 +1041,43 @@ PD_REGISTER_KERNEL(bilinear_interp_v2_grad,
                    ALL_LAYOUT,
                    phi::BilinearInterpGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(nearest_interp_v2_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::NearestInterpGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(trilinear_interp_v2_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::TrilinearInterpGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(linear_interp_v2_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::LinearInterpGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(bicubic_interp_v2_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::BicubicInterpGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}

@@ -18,7 +18,6 @@ limitations under the License. */
 #include <unordered_set>
 
 #include "glog/logging.h"
-
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -52,6 +51,7 @@ const std::unordered_set<std::string> deprecated_op_names({"diag",
                                                            "squeeze_grad",
                                                            "isfinite",
                                                            "matmul",
+                                                           "fill",
                                                            "matmul_grad",
                                                            "matmul_grad_grad",
                                                            "max",

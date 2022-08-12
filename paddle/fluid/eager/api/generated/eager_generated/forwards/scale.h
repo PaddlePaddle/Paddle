@@ -18,7 +18,9 @@
 namespace egr {
 
 paddle::experimental::Tensor scale(const paddle::experimental::Tensor& x,
-                                   float scale, float bias,
-                                   bool bias_after_scale, bool trace_backward);
+                                   float scale,
+                                   float bias,
+                                   bool bias_after_scale,
+                                   bool trace_backward);
 
 }  // namespace egr

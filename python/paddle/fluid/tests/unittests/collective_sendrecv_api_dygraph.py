@@ -37,6 +37,7 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 
 class TestCollectiveSendRecvAPI(TestCollectiveAPIRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 

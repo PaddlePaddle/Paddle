@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@ import logging
 
 
 class Context(object):
+
     def __init__(self, enable_plugin=True):
         self.args, self.unknown_args = parse_args()
         self.envs = fetch_envs()
@@ -50,30 +51,22 @@ class Context(object):
         if self.args.legacy:
             return True
 
+        if self.args.master:
+            return False
+
         if len(self.unknown_args) > 0:
             self.logger.warning("Compatible mode enable with args {}".format(
                 self.unknown_args))
             return True
 
-        legacy_env_list = [
-            'DISTRIBUTED_TRAINER_ENDPOINTS',
-            'PADDLE_ELASTIC_JOB_ID',
-            'FLAGS_START_PORT',
-        ]
-
-        for env in legacy_env_list:
-            if env in self.envs:
-                self.logger.warning(
-                    "ENV {} is deprecated, legacy launch enable".format(env))
-                return True
-
-        if self.args.master:
-            return False
-
         return False
 
     def get_envs(self):
         return self.envs.copy()
+
+    def set_envs(self, env={}):
+        env = {k: v for k, v in env.items() if isinstance(v, str)}
+        self.envs.update(env)
 
     def _enable_plugin(self):
         for pl in plugins.enabled_plugins:
@@ -98,4 +91,7 @@ class Context(object):
     def set_env_in_args(self):
         for k, v in env_args_mapping.items():
             if k in self.envs:
+                print(
+                    f"LAUNCH WARNNING args {v} is override by env {self.envs[k]}"
+                )
                 setattr(self.args, v, self.envs[k])

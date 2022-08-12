@@ -14,6 +14,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include <stddef.h>
+
 #include <array>
 #include <string>
 #include <vector>

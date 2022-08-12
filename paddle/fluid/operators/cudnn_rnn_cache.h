@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
@@ -65,11 +66,21 @@ struct CudnnRNNCache {
   int num_layers_;
   int seed_;
 
-  void init(cudnnHandle_t handle, const platform::Place &place, size_t seq_len,
-            int batch_size, int input_size, int hidden_size, int num_layers,
-            float dropout_prob, bool is_bidirec, int seed, int weight_numel,
-            size_t *reserve_size_, framework::Tensor *dropout_state_,
-            bool initialized, cudnnDataType_t cudnn_type) {
+  void init(cudnnHandle_t handle,
+            const platform::Place &place,
+            size_t seq_len,
+            int batch_size,
+            int input_size,
+            int hidden_size,
+            int num_layers,
+            float dropout_prob,
+            bool is_bidirec,
+            int seed,
+            int weight_numel,
+            size_t *reserve_size_,
+            framework::Tensor *dropout_state_,
+            bool initialized,
+            cudnnDataType_t cudnn_type) {
     seq_length_ = seq_len;
     batch_size_ = batch_size;
     input_size_ = input_size;
@@ -104,8 +115,8 @@ struct CudnnRNNCache {
           y_desc_[i], cudnn_type, 3, dims_y.data(), strides_y.data()));
     }
 
-    std::vector<int> dims_hx = {num_layers_ * numDirections, batch_size_,
-                                hidden_size_};
+    std::vector<int> dims_hx = {
+        num_layers_ * numDirections, batch_size_, hidden_size_};
     std::vector<int> strides_hx = {hidden_size_ * batch_size_, hidden_size_, 1};
 
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -152,27 +163,40 @@ struct CudnnRNNCache {
       dropout_state_->Resize({static_cast<int64_t>(state_size)});
       uint8_t *dropout_state_data =
           dropout_state_->mutable_data<uint8_t>(place);
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetDropoutDescriptor(
-          dropout_desc_, handle, dropout_prob_, dropout_state_data, state_size,
-          seed_));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cudnnSetDropoutDescriptor(dropout_desc_,
+                                                       handle,
+                                                       dropout_prob_,
+                                                       dropout_state_data,
+                                                       state_size,
+                                                       seed_));
     } else {
       uint8_t *dropout_state_data = dropout_state_->data<uint8_t>();
       auto dropout_state_dims = dropout_state_->dims();
       state_size = dropout_state_dims[0];
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cudnnRestoreDropoutDescriptor(
-              dropout_desc_, handle, dropout_prob_, dropout_state_data,
-              state_size, 0));
+          platform::dynload::cudnnRestoreDropoutDescriptor(dropout_desc_,
+                                                           handle,
+                                                           dropout_prob_,
+                                                           dropout_state_data,
+                                                           state_size,
+                                                           0));
     }
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateRNNDescriptor(&rnn_desc_));
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
-        handle, rnn_desc_, hidden_size_, num_layers_, dropout_desc_,
+        handle,
+        rnn_desc_,
+        hidden_size_,
+        num_layers_,
+        dropout_desc_,
         CUDNN_LINEAR_INPUT,
-        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
-        CUDNN_RNN_ALGO_STANDARD, cudnn_type));
+        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL,
+        CUDNN_LSTM,
+        CUDNN_RNN_ALGO_STANDARD,
+        cudnn_type));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateFilterDescriptor(&w_desc_));
@@ -183,7 +207,8 @@ struct CudnnRNNCache {
         handle, rnn_desc_, x_desc_[0], &weights_size_, cudnn_type));
 
     PADDLE_ENFORCE_EQ(
-        weights_size_, cudnn_size * weight_numel,
+        weights_size_,
+        cudnn_size * weight_numel,
         platform::errors::InvalidArgument(
             "The cudnn lstm and setting weight size should be same."));
 

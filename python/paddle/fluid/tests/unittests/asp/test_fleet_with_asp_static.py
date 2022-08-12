@@ -23,6 +23,7 @@ import os
 from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
+
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -33,6 +34,7 @@ paddle.enable_static()
 
 
 class TestFleetWithASPStatic(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
@@ -41,8 +43,9 @@ class TestFleetWithASPStatic(unittest.TestCase):
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
-            input_x = paddle.static.data(
-                name="x", shape=[-1, 32], dtype='float32')
+            input_x = paddle.static.data(name="x",
+                                         shape=[-1, 32],
+                                         dtype='float32')
             input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
             fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
@@ -62,12 +65,12 @@ class TestFleetWithASPStatic(unittest.TestCase):
 
         with fluid.program_guard(train_prog, startup_prog):
             optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
-            optimizer = fleet.distributed_optimizer(
-                optimizer, strategy=strategy)
+            optimizer = fleet.distributed_optimizer(optimizer,
+                                                    strategy=strategy)
             optimizer.minimize(avg_cost)
 
-        place = fluid.CUDAPlace(0) if paddle.fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if paddle.fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 
         exe = fluid.Executor(place)
         feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
@@ -80,14 +83,24 @@ class TestFleetWithASPStatic(unittest.TestCase):
 
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
-                mat = np.array(fluid.global_scope().find_var(param.name)
-                               .get_tensor())
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, n=2, m=4))
+                mat = np.array(fluid.global_scope().find_var(
+                    param.name).get_tensor())
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
 
 
 class TestFleetWithASPAMPStatic(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
@@ -96,8 +109,9 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
-            input_x = paddle.static.data(
-                name="x", shape=[-1, 32], dtype='float32')
+            input_x = paddle.static.data(name="x",
+                                         shape=[-1, 32],
+                                         dtype='float32')
             input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
             fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
@@ -118,12 +132,12 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
 
         with fluid.program_guard(train_prog, startup_prog):
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
-            optimizer = fleet.distributed_optimizer(
-                optimizer, strategy=strategy)
+            optimizer = fleet.distributed_optimizer(optimizer,
+                                                    strategy=strategy)
             optimizer.minimize(avg_cost)
 
-        place = fluid.CUDAPlace(0) if paddle.fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if paddle.fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 
         exe = fluid.Executor(place)
         feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
@@ -138,11 +152,20 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
 
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
-                mat = np.array(fluid.global_scope().find_var(param.name)
-                               .get_tensor())
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, n=2, m=4))
+                mat = np.array(fluid.global_scope().find_var(
+                    param.name).get_tensor())
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
 
     def test_with_asp_and_pure_fp16(self):
         fleet.init(is_collective=True)
@@ -158,12 +181,12 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
             with paddle.static.amp.fp16_guard():
                 optimizer = optimizer = paddle.optimizer.Momentum(
                     learning_rate=0.01, multi_precision=True)
-                optimizer = fleet.distributed_optimizer(
-                    optimizer, strategy=strategy)
+                optimizer = fleet.distributed_optimizer(optimizer,
+                                                        strategy=strategy)
                 optimizer.minimize(avg_cost)
 
-        place = fluid.CUDAPlace(0) if paddle.fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if paddle.fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 
         exe = fluid.Executor(place)
         feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
@@ -178,11 +201,20 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
 
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
-                mat = np.array(fluid.global_scope().find_var(param.name)
-                               .get_tensor())
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, n=2, m=4))
+                mat = np.array(fluid.global_scope().find_var(
+                    param.name).get_tensor())
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
 
 
 if __name__ == "__main__":

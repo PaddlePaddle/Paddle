@@ -27,8 +27,11 @@
 */
 namespace egr {
 
-void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
-              bool bias_after_scale, paddle::experimental::Tensor* out);
+void ScaleAPI(const paddle::experimental::Tensor& x,
+              float scale,
+              float bias,
+              bool bias_after_scale,
+              paddle::experimental::Tensor* out);
 
 class GradNodeScale : public GradNodeBase {
  public:

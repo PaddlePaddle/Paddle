@@ -177,7 +177,6 @@ void EinsumGradKernel(const Context& dev_ctx,
       cache[0].ShareBufferWith(*(inner_cache[0]));
       cache[1].ShareBufferWith(*(inner_cache[1]));
     }
-
     EinsumKernelImpl<T, Context>(dev_ctx,
                                  all_labels,
                                  operands_for_A,

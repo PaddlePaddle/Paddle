@@ -47,8 +47,8 @@ def avg_pool1D_forward_naive(x,
     if adaptive:
         L_out = ksize[0]
     else:
-        L_out = (L - ksize[0] + 2 * paddings[0] + strides[0] - 1
-                 ) // strides[0] + 1 if ceil_mode else (
+        L_out = (L - ksize[0] + 2 * paddings[0] + strides[0] -
+                 1) // strides[0] + 1 if ceil_mode else (
                      L - ksize[0] + 2 * paddings[0]) // strides[0] + 1
 
     out = np.zeros((N, C, L_out))
@@ -64,15 +64,16 @@ def avg_pool1D_forward_naive(x,
         field_size = (r_end - r_start) \
             if (exclusive or adaptive) else (ksize[0])
         if data_type == np.int8 or data_type == np.uint8:
-            out[:, :, i] = (np.rint(
-                np.sum(x_masked, axis=(2, 3)) / field_size)).astype(data_type)
+            out[:, :, i] = (np.rint(np.sum(x_masked, axis=(2, 3)) /
+                                    field_size)).astype(data_type)
         else:
-            out[:, :, i] = (np.sum(x_masked, axis=(2)) /
-                            field_size).astype(data_type)
+            out[:, :,
+                i] = (np.sum(x_masked, axis=(2)) / field_size).astype(data_type)
     return out
 
 
 class TestPool1D_API(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -84,8 +85,11 @@ class TestPool1D_API(unittest.TestCase):
             input_np = np.random.random([2, 3, 32]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)
             result = F.adaptive_avg_pool1d(input, output_size=16)
-            result_np = avg_pool1D_forward_naive(
-                input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True)
+            result_np = avg_pool1D_forward_naive(input_np,
+                                                 ksize=[16],
+                                                 strides=[0],
+                                                 paddings=[0],
+                                                 adaptive=True)
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
@@ -94,8 +98,9 @@ class TestPool1D_API(unittest.TestCase):
             result = ada_max_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            result = paddle.nn.functional.common.interpolate(
-                input, mode="area", size=16)
+            result = paddle.nn.functional.common.interpolate(input,
+                                                             mode="area",
+                                                             size=16)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
     def check_adaptive_avg_static_results(self, place):
@@ -104,8 +109,11 @@ class TestPool1D_API(unittest.TestCase):
             result = F.adaptive_avg_pool1d(input, output_size=16)
 
             input_np = np.random.random([2, 3, 32]).astype("float32")
-            result_np = avg_pool1D_forward_naive(
-                input_np, ksize=[16], strides=[2], paddings=[0], adaptive=True)
+            result_np = avg_pool1D_forward_naive(input_np,
+                                                 ksize=[16],
+                                                 strides=[2],
+                                                 paddings=[0],
+                                                 adaptive=True)
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),

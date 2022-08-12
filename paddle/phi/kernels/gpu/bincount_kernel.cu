@@ -108,11 +108,9 @@ void BincountCUDAInner(const Context& dev_ctx,
     int64_t* output_data = dev_ctx.template Alloc<int64_t>(output);
     phi::funcs::SetConstant<Context, int64_t>()(dev_ctx, output, 0L);
 
-    KernelBincount<T, InputT, int64_t><<<GET_BLOCKS(input_numel),
-                                         PADDLE_CUDA_NUM_THREADS,
-                                         0,
-                                         stream>>>(
-        input_data, input_numel, has_weights, weights_data, output_data);
+    KernelBincount<T, InputT, int64_t>
+        <<<GET_BLOCKS(input_numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+            input_data, input_numel, has_weights, weights_data, output_data);
   } else {
     const auto& weights_type =
         paddle::framework::TransToProtoVarType(weights->dtype());
@@ -122,20 +120,16 @@ void BincountCUDAInner(const Context& dev_ctx,
       phi::funcs::SetConstant<Context, float>()(
           dev_ctx, output, static_cast<float>(0));
 
-      KernelBincount<T, InputT, float><<<GET_BLOCKS(input_numel),
-                                         PADDLE_CUDA_NUM_THREADS,
-                                         0,
-                                         stream>>>(
-          input_data, input_numel, has_weights, weights_data, output_data);
+      KernelBincount<T, InputT, float>
+          <<<GET_BLOCKS(input_numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+              input_data, input_numel, has_weights, weights_data, output_data);
     } else {
       double* output_data = dev_ctx.template Alloc<double>(output);
       phi::funcs::SetConstant<Context, double>()(
           dev_ctx, output, static_cast<double>(0));
-      KernelBincount<T, InputT, double><<<GET_BLOCKS(input_numel),
-                                          PADDLE_CUDA_NUM_THREADS,
-                                          0,
-                                          stream>>>(
-          input_data, input_numel, has_weights, weights_data, output_data);
+      KernelBincount<T, InputT, double>
+          <<<GET_BLOCKS(input_numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+              input_data, input_numel, has_weights, weights_data, output_data);
     }
   }
 }

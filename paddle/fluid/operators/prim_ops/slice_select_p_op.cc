@@ -64,34 +64,40 @@ class SliceSelectPrimOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
     auto x_shape = x_var->GetShape();
     auto axis = ctx->Attrs().Get<std::vector<int64_t>>("axis");
     auto starts = ctx->Attrs().Get<std::vector<int64_t>>("starts");
     auto ends = ctx->Attrs().Get<std::vector<int64_t>>("ends");
     auto strides = ctx->Attrs().Get<std::vector<int64_t>>("strides");
     PADDLE_ENFORCE_EQ(
-        starts.size(), axis.size(),
+        starts.size(),
+        axis.size(),
         platform::errors::InvalidArgument(
             "Number of starts attribute and axis attribute should be same, "
             "but get %d and %d",
-            starts.size(), axis.size()));
+            starts.size(),
+            axis.size()));
     PADDLE_ENFORCE_EQ(
-        ends.size(), axis.size(),
+        ends.size(),
+        axis.size(),
         platform::errors::InvalidArgument(
             "Number of ends attribute and axis attribute should be same, "
             "but get %d and %d",
-            ends.size(), axis.size()));
+            ends.size(),
+            axis.size()));
     PADDLE_ENFORCE_EQ(
-        strides.size(), axis.size(),
+        strides.size(),
+        axis.size(),
         platform::errors::InvalidArgument(
             "Number of strides attribute and axis attribute should be same, "
             "but get %d and %d",
-            strides.size(), axis.size()));
+            strides.size(),
+            axis.size()));
     for (size_t i = 0; i < axis.size(); ++i) {
       x_shape[axis[i]] = (ends[i] - starts[i] + strides[i] - 1) / strides[i];
     }
-    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(x_shape);
+    PADDLE_GET(framework::VarDesc *, y_var_ptr)->SetShape(x_shape);
   }
 };
 
@@ -109,7 +115,8 @@ class SliceSelectPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(slice_select_p, paddle::operators::SliceSelectPrimOp,
+REGISTER_OPERATOR(slice_select_p,
+                  paddle::operators::SliceSelectPrimOp,
                   paddle::operators::SliceSelectPrimOpMaker,
                   paddle::operators::SliceSelectPrimOpShapeInference,
                   paddle::operators::SliceSelectPrimOpVarTypeInference);

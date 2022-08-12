@@ -28,7 +28,8 @@ namespace framework {
 class ProcessMeshDesc {
  public:
   ProcessMeshDesc(const std::vector<int32_t>& topo,
-                  const std::vector<int32_t>& process_group, int32_t parent_id);
+                  const std::vector<int32_t>& process_group,
+                  int32_t parent_id);
 
   int32_t ID() const { return desc_.id(); }
   int32_t Parent() const { return desc_.parent_id(); }
@@ -50,7 +51,8 @@ class ProcessMeshDescMap {
 
   void Insert(int32_t index, ProcessMeshDesc* mesh) {
     PADDLE_ENFORCE_NE(
-        Has(index), true,
+        Has(index),
+        true,
         platform::errors::AlreadyExists("Index (%d) has been used.", index));
     map_.insert(std::make_pair(index, mesh));
   }

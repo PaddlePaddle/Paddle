@@ -37,8 +37,10 @@ class EmbEltwiseLayernormPluginDynamicImplBase {
   virtual void terminate() = 0;
   virtual int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                       const nvinfer1::PluginTensorDesc* outputDesc,
-                      const void* const* inputs, void* const* outputs,
-                      void* workspace, cudaStream_t stream) = 0;
+                      const void* const* inputs,
+                      void* const* outputs,
+                      void* workspace,
+                      cudaStream_t stream) = 0;
   virtual void shareGPUData(
       const EmbEltwiseLayernormPluginDynamicImplBase* anthor) = 0;
 };
@@ -48,10 +50,13 @@ class EmbEltwiseLayernormPluginDynamicImpl
     : public EmbEltwiseLayernormPluginDynamicImplBase {
  public:
   explicit EmbEltwiseLayernormPluginDynamicImpl(std::vector<float*> input_embs,
-                                                float* bias, float* scale,
+                                                float* bias,
+                                                float* scale,
                                                 std::vector<int> emb_sizes,
-                                                int bias_size, int scale_size,
-                                                int hidden_size, float eps)
+                                                int bias_size,
+                                                int scale_size,
+                                                int hidden_size,
+                                                float eps)
       : embs_(input_embs),
         bias_(bias),
         scale_(scale),
@@ -67,7 +72,9 @@ class EmbEltwiseLayernormPluginDynamicImpl
   void terminate();
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT;
   void shareGPUData(const EmbEltwiseLayernormPluginDynamicImplBase* anthor);
 
@@ -95,10 +102,13 @@ class EmbEltwiseLayernormPluginDynamicImpl
 class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit EmbEltwiseLayernormPluginDynamic(std::vector<float*> input_embs,
-                                            float* bias, float* scale,
+                                            float* bias,
+                                            float* scale,
                                             std::vector<int> emb_sizes,
-                                            int bias_size, int scale_size,
-                                            int hidden_size, float eps,
+                                            int bias_size,
+                                            int scale_size,
+                                            int hidden_size,
+                                            float eps,
                                             bool with_fp16)
       : embs_(input_embs),
         bias_(bias),
@@ -113,9 +123,14 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
       VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp16";
-      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
-          embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
-          hidden_size_, eps_);
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(embs_,
+                                                             bias_,
+                                                             scale_,
+                                                             emb_sizes_,
+                                                             bias_size_,
+                                                             scale_size_,
+                                                             hidden_size_,
+                                                             eps_);
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "The Ernie(Bert) tensorRT plugin should be "
@@ -126,9 +141,14 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 #endif
     } else {
       VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp32";
-      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
-          embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
-          hidden_size_, eps_);
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(embs_,
+                                                              bias_,
+                                                              scale_,
+                                                              emb_sizes_,
+                                                              bias_size_,
+                                                              scale_size_,
+                                                              hidden_size_,
+                                                              eps_);
     }
   }
 
@@ -170,9 +190,14 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
-          embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
-          hidden_size_, eps_);
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(embs_,
+                                                             bias_,
+                                                             scale_,
+                                                             emb_sizes_,
+                                                             bias_size_,
+                                                             scale_size_,
+                                                             hidden_size_,
+                                                             eps_);
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "The Ernie(Bert) tensorRT plugin should be "
@@ -182,16 +207,27 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
           "AnalysisConfig::Precision::kFloat32, false, false) "));
 #endif
     } else {
-      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
-          embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
-          hidden_size_, eps_);
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(embs_,
+                                                              bias_,
+                                                              scale_,
+                                                              emb_sizes_,
+                                                              bias_size_,
+                                                              scale_size_,
+                                                              hidden_size_,
+                                                              eps_);
     }
   }
 
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    auto ptr = new EmbEltwiseLayernormPluginDynamic(
-        embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,
-        eps_, with_fp16_);
+    auto ptr = new EmbEltwiseLayernormPluginDynamic(embs_,
+                                                    bias_,
+                                                    scale_,
+                                                    emb_sizes_,
+                                                    bias_size_,
+                                                    scale_size_,
+                                                    hidden_size_,
+                                                    eps_,
+                                                    with_fp16_);
     ptr->shareGPUData(this);
     return ptr;
   }
@@ -245,9 +281,11 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, with_fp16_);
   }
 
-  nvinfer1::DimsExprs getOutputDimensions(
-      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* in_out,
@@ -268,11 +306,14 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 
   int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
               const nvinfer1::PluginTensorDesc* output_desc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* input_types,
-      int nb_inputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) const
+      TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override {
     if (own_host_buff_) {
@@ -326,9 +367,10 @@ class EmbEltwiseLayernormPluginDynamicCreator
     return nullptr;
   }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     return new EmbEltwiseLayernormPluginDynamic(serial_data, serial_length);
   }
 

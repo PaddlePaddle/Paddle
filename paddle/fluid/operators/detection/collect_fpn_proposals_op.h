@@ -20,6 +20,7 @@ limitations under the License.*/
 #include <numeric>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -73,7 +74,8 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     int post_nms_topN = context.Attr<int>("post_nms_topN");
 
-    PADDLE_ENFORCE_GE(post_nms_topN, 0UL,
+    PADDLE_ENFORCE_GE(post_nms_topN,
+                      0UL,
                       platform::errors::InvalidArgument(
                           "The parameter post_nms_topN must be "
                           "a positive integer. But received post_nms_topN = %d",
@@ -81,12 +83,14 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     // assert that the length of Rois and scores are same
     PADDLE_ENFORCE_EQ(
-        multi_layer_rois.size(), multi_layer_scores.size(),
+        multi_layer_rois.size(),
+        multi_layer_scores.size(),
         platform::errors::InvalidArgument(
             "The number of RoIs and Scores should"
             " be the same. But received number of RoIs is %d, number of Scores "
             "is %d",
-            multi_layer_rois.size(), multi_layer_scores.size()));
+            multi_layer_rois.size(),
+            multi_layer_scores.size()));
     // Check if the lod information of two LoDTensor is same
     const int num_fpn_level = multi_layer_rois.size();
     std::vector<int> integral_of_all_rois(num_fpn_level + 1, 0);
@@ -140,11 +144,13 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     if (post_nms_topN > integral_of_all_rois[num_fpn_level]) {
       post_nms_topN = integral_of_all_rois[num_fpn_level];
     }
-    std::stable_sort(scores_of_all_rois.begin(), scores_of_all_rois.end(),
+    std::stable_sort(scores_of_all_rois.begin(),
+                     scores_of_all_rois.end(),
                      CompareByScore<T>);
     scores_of_all_rois.resize(post_nms_topN);
     // sort by batch id
-    std::stable_sort(scores_of_all_rois.begin(), scores_of_all_rois.end(),
+    std::stable_sort(scores_of_all_rois.begin(),
+                     scores_of_all_rois.end(),
                      CompareByBatchid<T>);
     // create a pointer array
     std::vector<const T*> multi_fpn_rois_data(num_fpn_level);

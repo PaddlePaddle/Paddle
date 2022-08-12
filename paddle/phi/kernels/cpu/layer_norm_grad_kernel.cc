@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/layer_norm_grad_kernel.h"
+
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
@@ -21,7 +22,7 @@
 #endif
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"

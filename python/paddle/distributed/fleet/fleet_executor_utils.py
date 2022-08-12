@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -54,11 +54,10 @@ class TaskNode:
         if ops is not None:
             assert role is not None and task_id is not None, \
                 "If init task node with ops, should provide `role` and `task_id`."
-            self.node = core.TaskNode(role, ops, cur_rank,
-                                      int(task_id), max_run_times,
-                                      max_slot_times)
-            print("Creating task node by ops. The role is:",
-                  self.role(), "and the id is:", self.task_id())
+            self.node = core.TaskNode(role, ops, cur_rank, int(task_id),
+                                      max_run_times, max_slot_times)
+            print("Creating task node by ops. The role is:", self.role(),
+                  "and the id is:", self.task_id())
         else:
             self.program = program
             self.node = core.TaskNode(program.desc, cur_rank, max_run_times,
@@ -218,39 +217,35 @@ def run1f1b(program, cur_rank, max_run_times, dist_opt, nrank):
     # Create task nodes.
     # The lr_sched and opt should be 'amplifier interceptor.
     # The fwd and bwd should be 'compute interceptor'.
-    lr_task_node = TaskNode(
-        cur_rank=cur_rank,
-        max_run_times=max_run_times,
-        max_slot_times=max_slot_times,
-        role=int(OpRole.Optimize.LRSched),
-        ops=lr_ops,
-        task_id=int(cur_rank * num_of_functionality + 0),
-        node_type="Amplifier")
+    lr_task_node = TaskNode(cur_rank=cur_rank,
+                            max_run_times=max_run_times,
+                            max_slot_times=max_slot_times,
+                            role=int(OpRole.Optimize.LRSched),
+                            ops=lr_ops,
+                            task_id=int(cur_rank * num_of_functionality + 0),
+                            node_type="Amplifier")
     lr_task_node.set_run_pre_steps(max_run_times)
-    fwd_task_node = TaskNode(
-        cur_rank=cur_rank,
-        max_run_times=max_run_times,
-        max_slot_times=max_slot_times,
-        role=int(OpRole.Forward),
-        ops=fwd_ops,
-        task_id=int(cur_rank * num_of_functionality + 1),
-        node_type="Compute")
-    bwd_task_node = TaskNode(
-        cur_rank=cur_rank,
-        max_run_times=max_run_times,
-        max_slot_times=max_slot_times,
-        role=int(OpRole.Backward),
-        ops=bwd_ops,
-        task_id=int(cur_rank * num_of_functionality + 2),
-        node_type="Compute")
-    opt_task_node = TaskNode(
-        cur_rank=cur_rank,
-        max_run_times=max_run_times,
-        max_slot_times=max_slot_times,
-        role=int(OpRole.Optimize),
-        ops=opt_ops,
-        task_id=int(cur_rank * num_of_functionality + 3),
-        node_type="Amplifier")
+    fwd_task_node = TaskNode(cur_rank=cur_rank,
+                             max_run_times=max_run_times,
+                             max_slot_times=max_slot_times,
+                             role=int(OpRole.Forward),
+                             ops=fwd_ops,
+                             task_id=int(cur_rank * num_of_functionality + 1),
+                             node_type="Compute")
+    bwd_task_node = TaskNode(cur_rank=cur_rank,
+                             max_run_times=max_run_times,
+                             max_slot_times=max_slot_times,
+                             role=int(OpRole.Backward),
+                             ops=bwd_ops,
+                             task_id=int(cur_rank * num_of_functionality + 2),
+                             node_type="Compute")
+    opt_task_node = TaskNode(cur_rank=cur_rank,
+                             max_run_times=max_run_times,
+                             max_slot_times=max_slot_times,
+                             role=int(OpRole.Optimize),
+                             ops=opt_ops,
+                             task_id=int(cur_rank * num_of_functionality + 3),
+                             node_type="Amplifier")
     opt_task_node.set_run_pre_steps(max_run_times)
     opt_task_node.set_run_at_offset(max_run_times - 1)
     task_nodes = [lr_task_node, fwd_task_node, bwd_task_node, opt_task_node]
@@ -318,8 +313,10 @@ def origin(program, cur_rank):
         task_id_to_rank (dict): a fake dict, since there is no upstream or downstream, this dict won't be used
     """
     print("fleet executor will use python side origin scheduler.")
-    task_node = TaskNode(
-        program=program, cur_rank=cur_rank, max_run_times=1, max_slot_times=1)
+    task_node = TaskNode(program=program,
+                         cur_rank=cur_rank,
+                         max_run_times=1,
+                         max_slot_times=1)
     task_node.set_type("Compute")
     task_id = task_node.task_id()
     task_id_to_rank = {task_id: cur_rank}

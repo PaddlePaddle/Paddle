@@ -23,7 +23,9 @@ import numpy as np
 # 1: relu(X=ewadd(X=mul(X=x, Y=w), Y=b)) => fc(Input=x, W=w, Bias=b)
 @ir.RegisterPass
 def generate_fc_fuse():
+
     def create_pass_pair(with_relu):
+
         def pattern(x, w, b):
             mul = ir.PassDesc.OP.mul(X=x, Y=w)
             ewadd = ir.PassDesc.OP.elementwise_add(X=mul, Y=b)
@@ -34,8 +36,8 @@ def generate_fc_fuse():
 
         def replace(x, w, b):
             fc = ir.PassDesc.OP.fc(Input=x, W=w, Bias=b)
-            fc.Attr("in_num_col_dims").MappedPattern(
-                op="mul", name="x_num_col_dims")
+            fc.Attr("in_num_col_dims").MappedPattern(op="mul",
+                                                     name="x_num_col_dims")
             if with_relu:
                 fc.SetAttr("activation_type", "relu")
             return fc
@@ -55,6 +57,7 @@ def multi_add_to_sum_v1():
 
 @ir.RegisterPass
 def multi_add_to_sum_v2():
+
     def pattern(x, y, z):
         ewadd1 = ir.PassDesc.OP.elementwise_add(X=x, Y=y)
         ewadd2 = ir.PassDesc.OP.elementwise_add(X=ewadd1, Y=z)
@@ -78,6 +81,7 @@ def multi_add_to_sum_v3():
     'y2': InputSpec([32, 48])
 })
 def generate_combine_mul_v1():
+
     def pattern(x, y1, y2):
         mul1 = paddle.matmul(x, y1)
         mul2 = paddle.matmul(x, y2)
@@ -95,6 +99,7 @@ def generate_combine_mul_v1():
 
 @ir.RegisterPass
 def generate_combine_mul_v2():
+
     def pattern(x, y1, y2):
         mul1 = ir.PassDesc.OP.matmul_v2(X=x, Y=y1)
         mul2 = ir.PassDesc.OP.matmul_v2(X=x, Y=y2)
@@ -113,6 +118,7 @@ def generate_combine_mul_v2():
 # reshape(reshape(x)) => x
 @ir.RegisterPass(input_specs={'x': InputSpec([10, 16, 16])})
 def generate_simplify_inference_v1():
+
     def pattern(x):
         transpose = paddle.transpose(x, [0, 2, 1])
         return paddle.transpose(transpose, [0, 2, 1])
@@ -122,6 +128,7 @@ def generate_simplify_inference_v1():
 
 @ir.RegisterPass
 def generate_simplify_inference_v2():
+
     def pattern(x):
         op1 = ir.PassDesc.OP.transpose2
         op2 = ir.PassDesc.OP.transpose2
@@ -133,6 +140,7 @@ def generate_simplify_inference_v2():
 
 @ir.RegisterPass
 def generate_layer_norm_fuse_pass():
+
     def pattern(x, gamma, beta):
         gamma.Attr("shape").Size().EQ(1)
         gamma.Attr("shape")[0].EQ(x.Attr("shape")[-1])
@@ -167,6 +175,7 @@ def generate_layer_norm_fuse_pass():
 
 @ir.RegisterPass
 def unimplemented_operand_exception():
+
     def pattern(x, y):
         return ir.PassDesc.OP.elementwise_add(X=x, Y=y)
 
@@ -180,6 +189,7 @@ def unimplemented_operand_exception():
 
 @ir.RegisterPass
 def unimplemented_operation_exception():
+
     def pattern(x, y):
         return ir.PassDesc.OP.elementwise_add(X=x, Y=y)
 
@@ -198,6 +208,7 @@ def get_multi_pass_desc_from_str(s):
 
 
 class TestGeneratePass(unittest.TestCase):
+
     def convert_ops_to_op_dicts(self, ops):
         op_dicts = dict()
         for op in ops:
@@ -226,12 +237,13 @@ class TestGeneratePass(unittest.TestCase):
             core.get_pass("unimplemented_operation_exception").apply(graph)
 
     def test_generate_fc_fuse(self):
+
         def _check_fc_fuse_pass(pass_desc, with_relu):
             pattern_op_dicts = self.convert_ops_to_op_dicts(pass_desc.pattern)
             replace_op_dicts = self.convert_ops_to_op_dicts(pass_desc.replace)
             self.assertEqual(len(pattern_op_dicts.get("mul", [])), 1)
-            self.assertEqual(
-                len(pattern_op_dicts.get("elementwise_add", [])), 1)
+            self.assertEqual(len(pattern_op_dicts.get("elementwise_add", [])),
+                             1)
             if with_relu:
                 self.assertEqual(len(pattern_op_dicts.get("relu", [])), 1)
                 pattern_op_num = 3  # relu, ewadd, mul
@@ -312,8 +324,9 @@ class TestGeneratePass(unittest.TestCase):
         }
         before_out1, before_out2 = executor.run(
             program, feed=feed, fetch_list=[out1.name, out2.name])
-        after_out1, after_out2 = executor.run(
-            after_program, feed=feed, fetch_list=[out1.name, out2.name])
+        after_out1, after_out2 = executor.run(after_program,
+                                              feed=feed,
+                                              fetch_list=[out1.name, out2.name])
         self.assertTrue(np.allclose(before_out1, after_out1))
         self.assertTrue(np.allclose(before_out2, after_out2))
 
@@ -368,10 +381,12 @@ class TestGeneratePass(unittest.TestCase):
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(program, startup_program):
             x = paddle.static.data("x", [3, 64, 120], "float32")
-            gamma = paddle.static.create_parameter(
-                shape=[120], dtype="float32", is_bias=True)
-            beta = paddle.static.create_parameter(
-                shape=[120], dtype="float32", is_bias=True)
+            gamma = paddle.static.create_parameter(shape=[120],
+                                                   dtype="float32",
+                                                   is_bias=True)
+            beta = paddle.static.create_parameter(shape=[120],
+                                                  dtype="float32",
+                                                  is_bias=True)
 
             x_sub_mean = x - paddle.mean(x, axis=-1, keepdim=True)
             std_dev = paddle.mean(x_sub_mean.pow(2), axis=-1, keepdim=True)
