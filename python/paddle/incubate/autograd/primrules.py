@@ -18,7 +18,7 @@ import paddle
 from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
                       matmul, mul, neg, reduce, reshape, scatter_add, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, log, select, eq, pow)
+                      transpose, log, select, eq)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -312,7 +312,7 @@ def elementwise_pow_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
 
-    z = pow(x, y)
+    z = primops.pow(x, y)
     return z
 
 
@@ -718,7 +718,7 @@ def pow_jvp(op, x_dot, y_dot):
 
         cond = eq(y, zero_y)
         new_y = select(cond, one_y, sub(y, one_y))
-        t1 = mul(x_dot, mul(y, pow(x, new_y)))
+        t1 = mul(x_dot, mul(y, primops.pow(x, new_y)))
         return t1
 
     if x_dot is None and y_dot is None:

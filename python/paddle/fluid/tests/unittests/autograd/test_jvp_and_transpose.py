@@ -912,6 +912,36 @@ class TestSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
         ]
 
 
+class TestEqPJVPAndTranspose(TestAddPJVPAndTranspose):
+
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'eq_p'
+        X = paddle.static.data(name='X', shape=[4, 5], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[4, 5], dtype='float64')
+
+        self.prim_input = {'X': X, 'Y': Y}
+        self.prim_output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.prim_attrs = {}
+
+        # Set JVP
+        X_DOT = paddle.static.data(name='X_DOT', shape=[4, 5], dtype='float64')
+        Y_DOT = paddle.static.data(name='Y_DOT', shape=[4, 5], dtype='float64')
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
+
+        self.all_ops = [
+            # prim op:
+            'eq_p',
+            # jvp op:
+            'fill_constant_p',
+            # transpose op:
+        ]
+
+
 class TestPowPJVPAndTranspose(TestAddPJVPAndTranspose):
 
     def init_data(self):

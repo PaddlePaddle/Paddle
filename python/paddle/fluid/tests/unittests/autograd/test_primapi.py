@@ -16,7 +16,8 @@ import typing
 import unittest
 
 import numpy as np
-import autograd.numpy as agnp
+import autograd
+import autograd.numpy as np_autograd
 
 import paddle
 
@@ -156,9 +157,7 @@ class TestForwardGrad(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.xs = tuple(
-            x.astype(cls.dtype) if str(x.dtype) == 'float' else x
-            for x in cls.xs)
+        cls.xs = tuple(x.astype(cls.dtype) for x in cls.xs)
         cls._rtol = config.TOLERANCE.get(str(
             cls.dtype)).get("first_order_grad").get("rtol")
         cls._atol = config.TOLERANCE.get(str(
@@ -245,6 +244,9 @@ class TestForwardGrad(unittest.TestCase):
         paddle.incubate.autograd.disable_prim()
 
 
+where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
+
+
 @utils.place(config.DEVICES)
 @utils.parameterize(
     (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
@@ -263,6 +265,11 @@ class TestForwardGrad(unittest.TestCase):
         ('sin', paddle.sin, (np.random.rand(100, 200), ), None, 'float32'),
         ('cos', paddle.cos, (np.random.rand(200, 90), ), None, 'float32'),
         ('exp', paddle.exp, (np.random.rand(299, 320), ), None, 'float32'),
+        # In where op, grad of condition computed by paddle.static.gradients is None,
+        # and paddle.incubate.autograd.grad will replace None with zeros while transpose
+        # will just return None because cond_dot is unused, that is a diff.
+        ('select', where_wrap,
+         (np.random.rand(3, 4), np.random.rand(3, 4)), None, 'float32'),
         # pow_p and pow has diff when compute z_dot of 0^0
         ('pow', paddle.pow,
          (np.array([1, 2, 3]), np.array([0, 2, 7])), None, 'float32'),
@@ -377,129 +384,6 @@ class TestGrad(unittest.TestCase):
             np.testing.assert_allclose(i, j, rtol=self._rtol, atol=self._atol)
 
 
-# In where op, grad of condition computed by paddle.static.gradients is None,
-# and paddle.incubate.autograd.grad will replace None with zeros while transpose
-# will just return None because cond_dot is unused, that is a diff.
-@utils.place(config.DEVICES)
-@utils.parameterize(
-    (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
-    (('select', paddle.where, (np.random.randn(3, 4) > 0, np.random.randn(
-        3, 4), np.random.randn(3, 4)), None, 'float32'), ))
-class TestSelectGrad(unittest.TestCase):
-
-    def setUp(self):
-        paddle.enable_static()
-        paddle.incubate.autograd.enable_prim()
-
-    def tearDown(self):
-        paddle.incubate.autograd.disable_prim()
-        paddle.disable_static()
-
-    @classmethod
-    def setUpClass(cls):
-        cls.xs = tuple(
-            x.astype(cls.dtype) if x.dtype != bool else x for x in cls.xs)
-        cls._rtol = config.TOLERANCE.get(str(
-            cls.dtype)).get("first_order_grad").get("rtol")
-        cls._atol = config.TOLERANCE.get(str(
-            cls.dtype)).get("first_order_grad").get("atol")
-
-    def test_grad(self):
-
-        def expected():
-            paddle.incubate.autograd.disable_prim()
-            sp = paddle.static.Program()
-            mp = paddle.static.Program()
-            with paddle.static.program_guard(mp, sp):
-                feed, static_xs, static_v = utils.gen_static_data_and_feed(
-                    self.xs, self.v, stop_gradient=False)
-                _, ys_grad = paddle.incubate.autograd.vjp(
-                    self.fun, static_xs, static_v)
-            exe = paddle.static.Executor()
-            exe.run(sp)
-            ys_grad = [ys_grad[1], ys_grad[2]]
-            out = exe.run(mp, feed=feed, fetch_list=ys_grad)
-            paddle.incubate.autograd.enable_prim()
-            return out
-
-        def actual():
-            paddle.incubate.autograd.enable_prim()
-            sp = paddle.static.Program()
-            mp = paddle.static.Program()
-            with paddle.static.program_guard(mp, sp):
-                feed, static_xs, static_v = utils.gen_static_data_and_feed(
-                    self.xs, self.v, stop_gradient=False)
-                ys = self.fun(*static_xs) if isinstance(
-                    static_xs, typing.Sequence) else self.fun(static_xs)
-                ys_grad = paddle.incubate.autograd.grad(ys, static_xs, static_v)
-                paddle.incubate.autograd.prim2orig(mp.block(0))
-            exe = paddle.static.Executor()
-            exe.run(sp)
-            ys_grad = [ys_grad[1], ys_grad[2]]
-            out = exe.run(mp, feed=feed, fetch_list=ys_grad)
-            paddle.incubate.autograd.disable_prim()
-            return out
-
-        actual = actual()
-        expected = expected()
-        self.assertEqual(type(actual), type(expected))
-        for i, j in zip(actual, expected):
-            np.testing.assert_allclose(i, j, rtol=self._rtol, atol=self._atol)
-
-    def test_illegal_param(self):
-        paddle.incubate.autograd.enable_prim()
-        with self.assertRaises(TypeError):
-            paddle.incubate.autograd.grad(
-                1, paddle.static.data('inputs', shape=[1]))
-
-        with self.assertRaises(TypeError):
-            paddle.incubate.autograd.grad(
-                paddle.static.data('targets', shape=[1]), 1)
-        paddle.incubate.autograd.disable_prim()
-
-    def test_disable_prim(self):
-
-        def expected():
-            paddle.incubate.autograd.disable_prim()
-            sp = paddle.static.Program()
-            mp = paddle.static.Program()
-            with paddle.static.program_guard(mp, sp):
-                feed, static_xs, static_v = utils.gen_static_data_and_feed(
-                    self.xs, self.v, stop_gradient=False)
-                ys = self.fun(*static_xs) if isinstance(
-                    static_xs, typing.Sequence) else self.fun(static_xs)
-                ys_grad = paddle.incubate.autograd.grad(ys, static_xs, static_v)
-            exe = paddle.static.Executor()
-            exe.run(sp)
-            ys_grad = [ys_grad[1], ys_grad[2]]
-            out = exe.run(mp, feed=feed, fetch_list=ys_grad)
-            paddle.incubate.autograd.enable_prim()
-            return out
-
-        def actual():
-            paddle.incubate.autograd.disable_prim()
-            sp = paddle.static.Program()
-            mp = paddle.static.Program()
-            with paddle.static.program_guard(mp, sp):
-                feed, static_xs, static_v = utils.gen_static_data_and_feed(
-                    self.xs, self.v, stop_gradient=False)
-                ys = self.fun(*static_xs) if isinstance(
-                    static_xs, typing.Sequence) else self.fun(static_xs)
-                ys_grad = paddle.static.gradients(ys, static_xs, static_v)
-            exe = paddle.static.Executor()
-            exe.run(sp)
-            ys_grad = [ys_grad[1], ys_grad[2]]
-            out = exe.run(mp, feed=feed, fetch_list=ys_grad)
-            paddle.incubate.autograd.enable_prim()
-            return out
-
-        actual = actual()
-        expected = expected()
-        self.assertEqual(type(actual), type(expected))
-        for i, j in zip(actual, expected):
-            np.testing.assert_allclose(i, j, rtol=self._rtol, atol=self._atol)
-
-
 def multiply_pd(x):
     x2 = paddle.multiply(x, x)
     x3 = paddle.multiply(x2, x2)
@@ -508,11 +392,11 @@ def multiply_pd(x):
 
 
 multiply_ag = lambda xs: xs[0] * xs[0] * xs[0] * xs[0] * xs[0]
-sin_ag = lambda xs: agnp.sin(xs[0])
-cos_ag = lambda xs: agnp.cos(xs[0])
-exp_ag = lambda xs: agnp.exp(xs[0])
+sin_ag = lambda xs: np_autograd.sin(xs[0])
+cos_ag = lambda xs: np_autograd.cos(xs[0])
+exp_ag = lambda xs: np_autograd.exp(xs[0])
 pow_ag = lambda xs: xs[0]**xs[1]
-log_ag = lambda xs: agnp.log(xs[0])
+log_ag = lambda xs: np_autograd.log(xs[0])
 
 
 @utils.place(config.DEVICES)
@@ -539,8 +423,7 @@ class TestGradWithHigherOrder(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.xs = tuple(
-            x.astype(cls.dtype) if x.dtype != bool else x for x in cls.xs)
+        cls.xs = tuple(x.astype(cls.dtype) for x in cls.xs)
         cls._rtol = config.TOLERANCE.get(str(
             cls.dtype)).get("first_order_grad").get("rtol")
         cls._atol = config.TOLERANCE.get(str(
@@ -549,15 +432,15 @@ class TestGradWithHigherOrder(unittest.TestCase):
     def test_grad(self):
 
         def expected():
-            from autograd import elementwise_grad as egrad
+            egrad = autograd.elementwise_grad
             grad_3 = egrad(egrad(egrad(self.fun_ag)))(self.xs)
             grad_4 = egrad(egrad(egrad(egrad(self.fun_ag))))(self.xs)
             grad_5 = egrad(egrad(egrad(egrad(egrad(self.fun_ag)))))(self.xs)
-            # grad_3 is tuple
+            # the output of egrad is tuple
             return list(grad_3 + grad_4 + grad_5)
 
         def actual():
-            from paddle.incubate.autograd import grad as paddle_grad
+            paddle_grad = paddle.incubate.autograd.grad
             paddle.incubate.autograd.enable_prim()
             main = paddle.static.Program()
             startup = paddle.static.Program()
