@@ -26,7 +26,7 @@ void GraphSendUVGradKernel(const Context& ctx,
                            const DenseTensor& src_index,
                            const DenseTensor& dst_index,
                            const DenseTensor& out_grad,
-                           const std::string& compute_type,
+                           const std::string& message_op,
                            DenseTensor* x_grad,
                            DenseTensor* y_grad);
 

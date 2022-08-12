@@ -21,7 +21,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
-#include "paddle/phi/kernels/impl/graph_messaage_passing_impl.h"
+#include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {

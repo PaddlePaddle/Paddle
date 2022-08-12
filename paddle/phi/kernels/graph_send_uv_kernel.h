@@ -25,7 +25,7 @@ void GraphSendUVKernel(const Context& ctx,
                        const DenseTensor& y,
                        const DenseTensor& src_index,
                        const DenseTensor& dst_index,
-                       const std::string& compute_type,
+                       const std::string& message_op,
                        DenseTensor* out);
 
 }  // namespace phi

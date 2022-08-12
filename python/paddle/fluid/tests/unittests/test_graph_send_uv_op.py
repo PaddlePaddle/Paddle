@@ -27,23 +27,23 @@ def compute_graph_send_uv(inputs, attributes):
     y = inputs['y']
     src_index = inputs['src_index']
     dst_index = inputs['dst_index']
-    compute_type = attributes['compute_type']
+    message_op = attributes['message_op']
 
     gather_x = x[src_index]
     gather_y = y[dst_index]
 
     # Calculate forward output.
-    if compute_type == "ADD":
+    if message_op == "ADD":
         results = gather_x + gather_y
-    elif compute_type == "MUL":
+    elif message_op == "MUL":
         results = gather_x * gather_y
 
     return results
 
 
-def graph_send_uv_wrapper(x, y, src_index, dst_index, compute_type="add"):
+def graph_send_uv_wrapper(x, y, src_index, dst_index, message_op="add"):
     return paddle.geometric.send_uv(x, y, src_index, dst_index,
-                                    compute_type.lower())
+                                    message_op.lower())
 
 
 class TestGraphSendUVOp(OpTest):
@@ -60,7 +60,7 @@ class TestGraphSendUVOp(OpTest):
             'src_index': self.src_index,
             'dst_index': self.dst_index
         }
-        self.attrs = {'compute_type': self.compute_type}
+        self.attrs = {'message_op': self.message_op}
         out = compute_graph_send_uv(self.inputs, self.attrs)
         self.outputs = {'out': out}
 
@@ -76,7 +76,7 @@ class TestGraphSendUVOp(OpTest):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestCase1(TestGraphSendUVOp):
@@ -87,7 +87,7 @@ class TestCase1(TestGraphSendUVOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestCase2(TestGraphSendUVOp):
@@ -98,7 +98,7 @@ class TestCase2(TestGraphSendUVOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestCase3(TestGraphSendUVOp):
@@ -109,7 +109,7 @@ class TestCase3(TestGraphSendUVOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestCase4(TestGraphSendUVOp):
@@ -120,7 +120,7 @@ class TestCase4(TestGraphSendUVOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestCase5(TestGraphSendUVOp):
@@ -131,7 +131,7 @@ class TestCase5(TestGraphSendUVOp):
         index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class TestCase6(TestGraphSendUVOp):
@@ -142,7 +142,7 @@ class TestCase6(TestGraphSendUVOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
+        self.message_op = 'ADD'
 
 
 class TestCase7(TestGraphSendUVOp):
@@ -153,7 +153,7 @@ class TestCase7(TestGraphSendUVOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
+        self.message_op = 'MUL'
 
 
 class API_GeometricSendUVTest(unittest.TestCase):
@@ -169,22 +169,22 @@ class API_GeometricSendUVTest(unittest.TestCase):
                                            y,
                                            src_index,
                                            dst_index,
-                                           compute_type="add")
+                                           message_op="add")
         res_sub = paddle.geometric.send_uv(x,
                                            y,
                                            src_index,
                                            dst_index,
-                                           compute_type="sub")
+                                           message_op="sub")
         res_mul = paddle.geometric.send_uv(x,
                                            y,
                                            src_index,
                                            dst_index,
-                                           compute_type="mul")
+                                           message_op="mul")
         res_div = paddle.geometric.send_uv(x,
                                            y,
                                            src_index,
                                            dst_index,
-                                           compute_type="div")
+                                           message_op="div")
         res = [res_add, res_sub, res_mul, res_div]
 
         np_add = np.array([[2, 5, 7], [5, 9, 11], [4, 9, 11], [1, 3, 5]],
@@ -213,22 +213,22 @@ class API_GeometricSendUVTest(unittest.TestCase):
                                                y,
                                                src_index,
                                                dst_index,
-                                               compute_type="add")
+                                               message_op="add")
             res_sub = paddle.geometric.send_uv(x,
                                                y,
                                                src_index,
                                                dst_index,
-                                               compute_type="sub")
+                                               message_op="sub")
             res_mul = paddle.geometric.send_uv(x,
                                                y,
                                                src_index,
                                                dst_index,
-                                               compute_type="mul")
+                                               message_op="mul")
             res_div = paddle.geometric.send_uv(x,
                                                y,
                                                src_index,
                                                dst_index,
-                                               compute_type="div")
+                                               message_op="div")
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")

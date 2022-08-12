@@ -21,7 +21,7 @@ from paddle import _C_ops
 from .utils import reshape_lhs_rhs
 
 
-def send_uv(x, y, src_index, dst_index, compute_type="add", name=None):
+def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
     """
 
     Graph Learning message passing api.
@@ -29,17 +29,17 @@ def send_uv(x, y, src_index, dst_index, compute_type="add", name=None):
     This api is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory 
     consumption in the process of message passing. Take `x` as the source node feature tensor, take `y` as 
     the destination node feature tensor. Then we use `src_index` and `dst_index` to gather the corresponding data,
-    and then compute the edge features in different compute_types like `add`, `sub`, `mul`, `div`.
+    and then compute the edge features in different message_ops like `add`, `sub`, `mul`, `div`.
 
     .. code-block:: text
 
            Given:
 
-           X = [[0, 2, 3],
+           x = [[0, 2, 3],
                 [1, 4, 5],
                 [2, 6, 7]]
 
-           Y = [[0, 1, 2],
+           y = [[0, 1, 2],
                 [2, 3, 4],
                 [4, 5, 6]]
 
@@ -47,11 +47,11 @@ def send_uv(x, y, src_index, dst_index, compute_type="add", name=None):
 
            dst_index = [1, 2, 1, 0]
 
-           compute_type = "add"
+           message_op = "add"
 
            Then:
 
-           Out = [[2, 5, 7],
+           out = [[2, 5, 7],
                   [5, 9, 11],
                   [4, 9, 11],
                   [0, 3, 5]]
@@ -62,7 +62,7 @@ def send_uv(x, y, src_index, dst_index, compute_type="add", name=None):
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64. 
-        compute_type (Tensor): Different compute types for x and y, including `add`, `sub`, `mul` and `div`.
+        message_op (Tensor): Different message ops for x and y, including `add`, `sub`, `mul` and `div`.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -80,32 +80,32 @@ def send_uv(x, y, src_index, dst_index, compute_type="add", name=None):
             indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.geometric.send_uv(x, y, src_index, dst_index, compute_type="add")
+            out = paddle.geometric.send_uv(x, y, src_index, dst_index, message_op="add")
             # Outputs: [[2., 5., 7.], [5., 9., 11.], [4., 9., 11.], [0., 3., 5.]]
 
     """
 
-    if compute_type not in ['add', 'sub', 'mul', 'div']:
+    if message_op not in ['add', 'sub', 'mul', 'div']:
         raise ValueError(
-            "compute_type should be `add`, `sub`, `mul`, `div`, but received %s"
-            % compute_type)
+            "message_op should be `add`, `sub`, `mul`, `div`, but received %s" %
+            message_op)
 
     x, y = reshape_lhs_rhs(x, y)
 
-    if compute_type == 'sub':
-        compute_type = 'add'
+    if message_op == 'sub':
+        message_op = 'add'
         y = -y
-    if compute_type == 'div':
-        compute_type = 'mul'
+    if message_op == 'div':
+        message_op = 'mul'
         y = 1. / y
 
     if in_dygraph_mode():
         return _C_ops.final_state_graph_send_uv(x, y, src_index, dst_index,
-                                                compute_type.upper())
+                                                message_op.upper())
     else:
         if _in_legacy_dygraph():
             return _C_ops.graph_send_uv(x, y, src_index, dst_index,
-                                        "compute_type", compute_type.upper())
+                                        "message_op", message_op.upper())
         else:
             helper = LayerHelper("send_uv", **locals())
             check_variable_and_dtype(
@@ -126,7 +126,7 @@ def send_uv(x, y, src_index, dst_index, compute_type="add", name=None):
                 'src_index': src_index,
                 'dst_index': dst_index
             }
-            attrs = {'compute_type': compute_type.upper()}
+            attrs = {'message_op': message_op.upper()}
             helper.append_op(type="graph_send_uv",
                              inputs=inputs,
                              attrs=attrs,

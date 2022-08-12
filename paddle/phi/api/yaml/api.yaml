@@ -136,7 +136,7 @@
   backward : fft_r2c_grad
 
 - api : graph_send_uv
-  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str compute_type = "ADD")
+  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
   output : Tensor(out)
   infer_meta :
     func : GraphSendUVInferMeta

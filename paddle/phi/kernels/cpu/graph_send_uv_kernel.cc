@@ -18,7 +18,7 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/graph_send_ue_recv_funcs.h"
-#include "paddle/phi/kernels/impl/graph_send_ue_recv_kernel_impl.h"
+#include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 
 namespace phi {
 
@@ -55,7 +55,7 @@ void GraphSendUVOpKernelLaunchHelper(const Context& ctx,
                                      const DenseTensor& y,
                                      const DenseTensor& src_index,
                                      const DenseTensor& dst_index,
-                                     const std::string& compute_type,
+                                     const std::string& message_op,
                                      DenseTensor* out) {
   const int& index_size = src_index.dims()[0];
   auto out_dims = out->dims();
@@ -72,7 +72,7 @@ void GraphSendUVOpKernelLaunchHelper(const Context& ctx,
   const T* y_data = y.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
-  if (compute_type == "ADD") {
+  if (message_op == "ADD") {
     GraphAddFunctor<T> add_functor;
     GraphSendUVCpuKernel<T, IndexT, GraphAddFunctor<T>>(bcast_info,
                                                         x_data,
@@ -82,7 +82,7 @@ void GraphSendUVOpKernelLaunchHelper(const Context& ctx,
                                                         out_data,
                                                         index_size,
                                                         add_functor);
-  } else if (compute_type == "MUL") {
+  } else if (message_op == "MUL") {
     GraphMulFunctor<T> mul_functor;
     GraphSendUVCpuKernel<T, IndexT, GraphMulFunctor<T>>(bcast_info,
                                                         x_data,
@@ -101,15 +101,15 @@ void GraphSendUVKernel(const Context& ctx,
                        const DenseTensor& y,
                        const DenseTensor& src_index,
                        const DenseTensor& dst_index,
-                       const std::string& compute_type,
+                       const std::string& message_op,
                        DenseTensor* out) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendUVOpKernelLaunchHelper<Context, T, int32_t>(
-        ctx, x, y, src_index, dst_index, compute_type, out);
+        ctx, x, y, src_index, dst_index, message_op, out);
   } else if (index_type == phi::DataType::INT64) {
     GraphSendUVOpKernelLaunchHelper<Context, T, int64_t>(
-        ctx, x, y, src_index, dst_index, compute_type, out);
+        ctx, x, y, src_index, dst_index, message_op, out);
   }
 }
 

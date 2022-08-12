@@ -2691,7 +2691,7 @@ void GraphSendUVInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           const MetaTensor& src_index,
                           const MetaTensor& dst_index,
-                          const std::string& compute_type,
+                          const std::string& message_op,
                           MetaTensor* out) {
   auto src_index_dims = src_index.dims();
   if (src_index_dims.size() == 2) {
