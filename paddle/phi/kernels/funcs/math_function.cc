@@ -67,6 +67,19 @@ template struct SetConstant<paddle::platform::XPUDeviceContext,
                             phi::dtype::complex<float>>;
 template struct SetConstant<paddle::platform::XPUDeviceContext,
                             phi::dtype::complex<double>>;
+
+template struct SetConstant<phi::XPUContext, phi::dtype::float16>;
+template struct SetConstant<phi::XPUContext, phi::dtype::bfloat16>;
+template struct SetConstant<phi::XPUContext, float>;
+template struct SetConstant<phi::XPUContext, double>;
+template struct SetConstant<phi::XPUContext, uint8_t>;
+template struct SetConstant<phi::XPUContext, int16_t>;
+template struct SetConstant<phi::XPUContext, int>;
+template struct SetConstant<phi::XPUContext, int64_t>;
+template struct SetConstant<phi::XPUContext, bool>;
+template struct SetConstant<phi::XPUContext, phi::dtype::complex<float>>;
+template struct SetConstant<phi::XPUContext, phi::dtype::complex<double>>;
+
 #endif
 
 #define DEFINE_CPU_TRANS(RANK)                                            \

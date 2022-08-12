@@ -455,6 +455,14 @@
     func : celu
   backward : celu_grad
 
+- api : class_center_sample
+  args : (Tensor label, int num_classes, int num_samples, int ring_id, int rank, int nranks, bool fix_seed, int seed)
+  output : Tensor(remapped_label), Tensor(sampled_local_class_center)
+  infer_meta :
+    func : ClassCenterSampleInferMeta 
+  kernel :
+    func : class_center_sample 
+
 - api : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
   output : Tensor(out)

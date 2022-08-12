@@ -37,8 +37,10 @@ void SetConstant<DeviceContext, T>::operator()(
   }
 #endif
   if (!xpu_place) {
+#ifndef PADDLE_WITH_XPU
     auto t = paddle::framework::EigenVector<T>::Flatten(*tensor);
     t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
+#endif
   }
 }
 
