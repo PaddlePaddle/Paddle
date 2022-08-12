@@ -97,7 +97,7 @@ class TestWhereAPI(unittest.TestCase):
                     x.stop_gradient = x_stop_gradient
                     y.stop_gradient = y_stop_gradient
                     result = paddle.where(cond, x, y)
-                    append_backward(layers.mean(result))
+                    append_backward(paddle.mean(result))
                     for use_cuda in [False, True]:
                         if (use_cuda
                                 and (not fluid.core.is_compiled_with_cuda())):
@@ -282,7 +282,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
             result = paddle.where(cond, a, b)
             result = result.numpy()
             expect = np.where(cond, a, b)
-            self.assertTrue(np.array_equal(expect, result))
+            np.testing.assert_array_equal(expect, result)
 
     def test_dygraph_api_broadcast_1(self):
         cond_shape = [2, 4]

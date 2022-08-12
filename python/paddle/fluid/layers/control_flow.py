@@ -21,7 +21,7 @@ from .. import core
 from ..framework import Program, Variable, Operator, _non_static_mode, static_only, _in_legacy_dygraph, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, padding_to_same_structure, is_sequence, pack_sequence_as, flatten, to_sequence
 import numpy
 import warnings
 import six
@@ -107,8 +107,14 @@ def select_input(inputs, mask):
 
 def select_input_with_buildin_type(inputs, mask):
     from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
-    support_ret_buildin_type = (bool, float, six.integer_types)
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_var_like
     false_var, true_var = inputs
+
+    if isinstance(false_var, UndefinedVar) and isinstance(
+            true_var, UndefinedVar):
+        """ None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None.
+        """
+        return None
 
     if isinstance(false_var, Variable) and isinstance(true_var, Variable):
         return select_input(inputs, mask)
@@ -132,6 +138,27 @@ def select_input_with_buildin_type(inputs, mask):
             "Return results from different branches in cond are not same type: "
             "false_var returned by fasle_fn is '{}' and true_var of true_fn is "
             "'{}'".format(type(false_var), type(true_var)))
+    elif ((isinstance(false_var, UndefinedVar)
+           and isinstance(true_var, (Variable, ) + support_ret_buildin_type))
+          or (isinstance(true_var, UndefinedVar)
+              and isinstance(false_var,
+                             (Variable, ) + support_ret_buildin_type))):
+
+        def create_var_if_not_undefined_var(a):
+            if isinstance(a, UndefinedVar): return a
+            return to_static_variable(a)
+
+        def create_like_if_undefined_var(a, b):
+            if isinstance(a, UndefinedVar): return create_undefined_var_like(b)
+            return a
+
+        # TODO(xiongkun): add warning here.
+        true_var, false_var = create_var_if_not_undefined_var(
+            true_var), create_var_if_not_undefined_var(false_var)
+        inputs = [
+            create_like_if_undefined_var(false_var, true_var),
+            create_like_if_undefined_var(true_var, false_var)
+        ]
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
@@ -1154,12 +1181,19 @@ class While(object):
             })
 
 
+support_ret_buildin_type = (bool, float, six.integer_types)
+
+
 def assign_skip_lod_tensor_array(input, output):
     """
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
-    if not isinstance(input, Variable) and not isinstance(input, core.VarBase):
-        output = input
+    if not isinstance(input, (Variable, core.VarBase)):
+        if isinstance(output, Variable) and isinstance(
+                input, support_ret_buildin_type):
+            assign(input, output)
+        else:
+            output = input
         return
 
     if input.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
@@ -1266,6 +1300,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         if not isinstance(output_vars, (list, tuple)):
             output_vars = [output_vars]
         try:
+            loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
             assert_same_structure(output_vars, loop_vars, check_types=False)
         except ValueError as e:
             raise ValueError(
@@ -1275,6 +1310,36 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         assign(now_cond, pre_cond)
     return loop_vars
+
+
+def _deal_with_undefined_var(output_vars, loop_vars):
+    """ Deal with undefined var cases, We create undefined variable based on the results of body().
+        In Dy2Static, we use undefined var to represent the var created in control flow. This function
+        expand the loop_vars and replace original loop_vars.
+        1. UndefinedVar = Variable      # create a variable
+        2. UndefinedVar = None          # create a undefined var with RETURN_NO_VALUE_MAGIC_NUM
+        3. UndefinedVar = List(int)     # create a list of variable
+        4. UndefinedVar = value         # create a variable
+    """
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_variable
+
+    def create_var_like(o_var):
+        if isinstance(o_var,
+                      (Variable, ) + support_ret_buildin_type) or o_var is None:
+            return create_undefined_variable()
+        if isinstance(o_var, (tuple, list)):
+            return [create_undefined_variable() for i in range(len(o_var))]
+
+    if len(output_vars) != len(loop_vars):
+        raise ValueError("The length of loop_vars should be the same.")
+
+    results = []
+    for o_var, l_var in zip(output_vars, loop_vars):
+        if isinstance(l_var, UndefinedVar) or l_var is None:
+            results.append(create_var_like(o_var))
+        else:
+            results.append(l_var)
+    return results
 
 
 def lod_rank_table(x, level=0):
@@ -2377,7 +2442,7 @@ def copy_var_to_parent_block(var, layer_helper):
     return parent_block_var
 
 
-def cond(pred, true_fn=None, false_fn=None, name=None):
+def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     """
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
     ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
@@ -2426,6 +2491,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
         name(str, optional): The default value is ``None`` . Normally users
              don't have to set this parameter. For more information, please
              refer to :ref:`api_guide_Name` .
+        return_names(sequence of string, optional): The default value is ``None`` . 
+             Normally users don't have to set this parameters.  A sequence of strings 
+             to represents the name of returned vars.  The structure of sequence must 
+             be same with return values of true_fn and false_fn.
 
     Returns:
         Tensor|list(Tensor)|tuple(Tensor): returns ``true_fn()`` if the
@@ -2536,18 +2605,76 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             "true_fn returns non-None while false_fn returns None")
 
     # Merge ture and false output if they are not None
-    try:
-        assert_same_structure(true_output, false_output, check_types=False)
-    except ValueError as e:
+    if return_names is None:
+        return_names = ["no name"] * len(to_sequence(true_output))
+    else:
+        """ 
+        dy2static will set the return_names and expand the return values to UndefinedVar.
+        """
+        true_output, false_output = expand_undefined_var(
+            true_output, false_output, return_names)
+        true_output, false_output = change_none_to_undefinedvar(
+            true_output, false_output)
+    if len(to_sequence(true_output)) != len(to_sequence(false_output)):
         raise ValueError(
-            "Incompatible return values of true_fn and false_fn in cond: {}".
-            format(e))
+            "true fn returns {} vars, but false fn returns {} vars, which is not equals"
+            .format(len(to_sequence(true_output)),
+                    len(to_sequence(false_output))))
+    for true_out, false_out, return_name in zip(to_sequence(true_output),
+                                                to_sequence(false_output),
+                                                to_sequence(return_names)):
+        try:
+            assert_same_structure(true_out, false_out, check_types=False)
+        except ValueError as e:
+            raise ValueError(
+                "Incompatible return values of `{}` in true_fn and false_fn in cond: {}"
+                .format(return_name, e))
 
     mask = cast(pred, dtype='int32')
     merge_func = lambda false_var, true_var: select_input_with_buildin_type(
         [false_var, true_var], mask)
     merged_output = map_structure(merge_func, false_output, true_output)
     return merged_output
+
+
+def change_none_to_undefinedvar(nest1, nest2):
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+
+    def map_fn(x):
+        if x is None: return UndefinedVar("padding")
+        return x
+
+    nest1_out = pack_sequence_as(nest1, list(map(map_fn, flatten(nest1))))
+    nest2_out = pack_sequence_as(nest2, list(map(map_fn, flatten(nest2))))
+    return nest1_out, nest2_out
+
+
+def expand_undefined_var(nest1, nest2, names):
+    """ TODO: make this function recursively.
+        nest1: Var1, (UndefinedVar, [1,2,3])
+        nest2: Var2, ([1,2,3,4], UndefinedVar)
+        In this case, we should not expand recursively.
+    """
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_VALUE_PREFIX
+
+    def pack_undefined_var_as(seq):
+        return pack_sequence_as(seq,
+                                [UndefinedVar("padding") for i in flatten(seq)])
+
+    def map_fn(n1, n2, name):
+        if not name.startswith(RETURN_VALUE_PREFIX) and (isinstance(
+                n1, UndefinedVar) or n1 is None):
+            return pack_undefined_var_as(n2)
+        return n1
+
+    nest1_out = list(
+        map(map_fn, to_sequence(nest1), to_sequence(nest2), to_sequence(names)))
+    nest2_out = list(
+        map(map_fn, to_sequence(nest2), to_sequence(nest1), to_sequence(names)))
+    if not is_sequence(nest1): nest1_out = nest1_out[0]
+    if not is_sequence(nest2): nest2_out = nest2_out[0]
+    return nest1_out, nest2_out
 
 
 def _error_message(what, arg_name, op_name, right_value, error_value):

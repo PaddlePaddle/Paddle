@@ -211,12 +211,11 @@ REGISTER_OPERATOR(partial_concat,
 
 REGISTER_OPERATOR(partial_concat_grad, ops::PartialConcatGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    partial_concat,
-    ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_CPU_KERNEL(partial_concat,
+                       ops::PartialConcatKernel<phi::CPUContext, double>,
+                       ops::PartialConcatKernel<phi::CPUContext, float>,
+                       ops::PartialConcatKernel<phi::CPUContext, int64_t>,
+                       ops::PartialConcatKernel<phi::CPUContext, int>);
 
 REGISTER_OP_CPU_KERNEL(partial_concat_grad,
                        ops::PartialConcatGradientOpKernel<float>,

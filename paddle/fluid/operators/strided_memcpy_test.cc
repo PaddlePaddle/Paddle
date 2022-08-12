@@ -35,7 +35,7 @@ TEST(StridedMemcpy, CPUCrop) {
   framework::DDim dst_dim({2, 2});
   framework::DDim dst_stride({2, 1});
 
-  platform::CPUDeviceContext ctx;
+  phi::CPUContext ctx;
   StridedMemcpy<int>(ctx, src + 1, src_stride, dst_dim, dst_stride, dst);
 
   ASSERT_EQ(1, dst[0]);
@@ -57,7 +57,7 @@ TEST(StridedMemcpy, CPUConcat) {
   framework::DDim src_stride({2, 1});
   framework::DDim dst_dim({2, 2});
   framework::DDim dst_stride({4, 1});
-  platform::CPUDeviceContext ctx;
+  phi::CPUContext ctx;
 
   StridedMemcpy<int>(ctx, src, src_stride, dst_dim, dst_stride, dst);
   StridedMemcpy<int>(ctx, src, src_stride, dst_dim, dst_stride, dst + 2);
@@ -86,7 +86,7 @@ TEST(StridedMemcpy, GPUCrop) {
   platform::CUDAPlace gpu0(0);
   platform::CPUPlace cpu;
 
-  platform::CUDADeviceContext ctx(gpu0);
+  phi::GPUContext ctx(gpu0);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(gpu0, ctx.stream())
                        .get());
@@ -128,7 +128,7 @@ TEST(StridedMemcpy, GPUConcat) {
 
   platform::CUDAPlace gpu0(0);
   platform::CPUPlace cpu;
-  platform::CUDADeviceContext ctx(gpu0);
+  phi::GPUContext ctx(gpu0);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(gpu0, ctx.stream())
                        .get());

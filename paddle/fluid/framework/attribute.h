@@ -72,10 +72,10 @@ struct ExtractAttribute<bool> {
 
   bool* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = BOOST_GET_CONST(int, attr);
+      int val = PADDLE_GET_CONST(int, attr);
       attr = static_cast<bool>(val);
     } else if (attr.type() == typeid(float)) {  // NOLINT
-      float val = BOOST_GET_CONST(float, attr);
+      float val = PADDLE_GET_CONST(float, attr);
       attr = static_cast<bool>(val);
     }
     bool* attr_value = nullptr;
@@ -100,10 +100,10 @@ struct ExtractAttribute<int64_t> {
 
   int64_t* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = BOOST_GET_CONST(int, attr);
+      int val = PADDLE_GET_CONST(int, attr);
       attr = static_cast<int64_t>(val);
     } else if (attr.type() == typeid(float)) {  // NOLINT
-      int val = BOOST_GET_CONST(float, attr);
+      int val = PADDLE_GET_CONST(float, attr);
       attr = static_cast<int64_t>(val);
     }
     int64_t* attr_value = nullptr;
@@ -128,11 +128,11 @@ struct ExtractAttribute<std::vector<int64_t>> {
 
   std::vector<int64_t>* operator()(Attribute& attr) const {
     if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
-      std::vector<int> val = BOOST_GET_CONST(std::vector<int>, attr);
+      std::vector<int> val = PADDLE_GET_CONST(std::vector<int>, attr);
       std::vector<int64_t> vec(val.begin(), val.end());
       attr = vec;
     } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
-      std::vector<float> val = BOOST_GET_CONST(std::vector<float>, attr);
+      std::vector<float> val = PADDLE_GET_CONST(std::vector<float>, attr);
       std::vector<int64_t> vec(val.begin(), val.end());
       attr = vec;
     }
@@ -159,10 +159,10 @@ struct ExtractAttribute<float> {
 
   float* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = BOOST_GET_CONST(int, attr);
+      int val = PADDLE_GET_CONST(int, attr);
       attr = static_cast<float>(val);
     } else if (attr.type() == typeid(int64_t)) {  // NOLINT
-      int64_t val = BOOST_GET_CONST(int64_t, attr);
+      int64_t val = PADDLE_GET_CONST(int64_t, attr);
       attr = static_cast<float>(val);
     }
     float* attr_value = nullptr;
@@ -187,11 +187,11 @@ struct ExtractAttribute<std::vector<double>> {
 
   std::vector<double>* operator()(Attribute& attr) const {
     if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
-      std::vector<int> val = BOOST_GET_CONST(std::vector<int>, attr);
+      std::vector<int> val = PADDLE_GET_CONST(std::vector<int>, attr);
       std::vector<double> vec(val.begin(), val.end());
       attr = vec;
     } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
-      std::vector<float> val = BOOST_GET_CONST(std::vector<float>, attr);
+      std::vector<float> val = PADDLE_GET_CONST(std::vector<float>, attr);
       std::vector<double> vec(val.begin(), val.end());
       attr = vec;
     }
@@ -219,6 +219,28 @@ inline proto::AttrType AttrTypeID() {
 
 inline proto::AttrType AttrTypeID(const Attribute& attr) {
   return static_cast<proto::AttrType>(attr.index() - 1);
+}
+
+inline bool IsAttrVar(const Attribute& attr) {
+  return AttrTypeID(attr) == proto::AttrType::VAR;
+}
+
+inline bool IsAttrVars(const Attribute& attr) {
+  return AttrTypeID(attr) == proto::AttrType::VARS;
+}
+
+inline bool HasAttrVar(const Attribute& attr) {
+  return IsAttrVar(attr) || IsAttrVars(attr);
+}
+
+inline AttributeMap FilterAttrVar(const AttributeMap& attrs) {
+  AttributeMap attrs_var;
+  for (auto& attr : attrs) {
+    if (HasAttrVar(attr.second)) {
+      attrs_var.emplace(attr);
+    }
+  }
+  return attrs_var;
 }
 
 class AttrReader {
@@ -414,9 +436,15 @@ class TypedAttrChecker {
       }
       return;
     }
+    // If attribute is VarDesc(s), we should verify it's dtype and shape.
+    auto it = attr_map->find(attr_name_);
+    if (it != attr_map->end() && HasAttrVar(it->second)) {
+      VLOG(1) << "Found Attribute " << attr_name_
+              << " with Variable, skip attr_checker.";
+      return;
+    }
 
     if (only_check_exist_value) {
-      auto it = attr_map->find(attr_name_);
       if (it != attr_map->end()) {
         ExtractAttribute<T> extract_attr(attr_name_);
         T* attr_value = extract_attr(it->second);
@@ -425,7 +453,6 @@ class TypedAttrChecker {
         }
       }
     } else {
-      auto it = attr_map->find(attr_name_);
       if (it == attr_map->end()) {
         // user do not set this attr
         PADDLE_ENFORCE_EQ(

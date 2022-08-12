@@ -144,7 +144,7 @@ LoDTensor LodExpand(const LoDTensor& source,
       auto slice = tensor.Slice(elem, elem + 1);
       TensorCopy(source.Slice(ins, ins + 1),
                  platform::CPUPlace(),
-                 platform::CPUDeviceContext(),
+                 phi::CPUContext(),
                  &slice);
     }
   }

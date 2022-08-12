@@ -124,18 +124,18 @@ class FillConstantKernel : public framework::OpKernel<T> {
                                                                  : "<T>");
       tensor->mutable_data(platform::CPUPlace(),
                            framework::TransToPhiDataType(data_type));
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+      phi::funcs::SetConstant<phi::CPUContext, T> functor;
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
-      functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
+      functor(reinterpret_cast<const phi::CPUContext &>(dev_ctx),
               tensor,
               static_cast<T>(value));
     } else if (actual_place == 1) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       tensor->mutable_data(ctx.GetPlace(),
                            framework::TransToPhiDataType(data_type));
-      phi::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
+      phi::funcs::SetConstant<phi::GPUContext, T> functor;
       auto &dev_ctx = *pool.Get(ctx.GetPlace());
-      functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
+      functor(reinterpret_cast<const phi::GPUContext &>(dev_ctx),
               tensor,
               static_cast<T>(value));
 #else

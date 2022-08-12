@@ -245,10 +245,10 @@ class ShardingPass(PassBase):
                         })
                     dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
                         main_block.var(sum_op_output))
-                    assert dist_attr is not None
-                    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                        new_op, dist_attr.process_mesh, dist_attr.dims_mapping,
-                        self._dist_context)
+                    # assert dist_attr is not None
+                    # naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    #     new_op, dist_attr.process_mesh, dist_attr.dims_mapping,
+                    #     self._dist_context)
                 break
 
         main_block._sync_with_cpp()

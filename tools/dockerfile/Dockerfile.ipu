@@ -6,7 +6,7 @@
 # run a container
 # docker run --ulimit memlock=-1:-1 --net=host --cap-add=IPC_LOCK --device=/dev/infiniband/ --ipc=host --rm -it paddlepaddle/paddle:latest-dev-ipu bash
 
-FROM graphcore/poplar:2.5.1
+FROM graphcore/poplar:2.6.0
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 # ENV variables
@@ -14,21 +14,19 @@ ARG WITH_AVX
 ENV HOME /root
 ENV WITH_AVX=${WITH_AVX:-ON}
 
-# Add bash enhancements
-COPY paddle/scripts/docker/root/ /root/
+# install pkgs
 RUN apt-get update && apt-get install -y apt-utils
 RUN ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
 RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && add-apt-repository ppa:ubuntu-toolchain-r/test
 RUN apt-get update && apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip make libgcc-s1 sudo openssh-server \
-            coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev libgl1-mesa-glx libsqlite3-dev libopenblas-dev \
-            bison graphviz libjpeg-dev zlib1g zlib1g-dev automake locales swig net-tools libtool module-init-tools numactl libnuma-dev \
-            openssl libffi-dev pciutils libblas-dev gfortran libblas3 liblapack-dev liblapack3 default-jre screen tmux gdb lldb gcc g++
+    coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev libgl1-mesa-glx libsqlite3-dev libopenblas-dev \
+    bison graphviz libjpeg-dev zlib1g zlib1g-dev automake locales swig net-tools libtool module-init-tools numactl libnuma-dev \
+    openssl libffi-dev pciutils libblas-dev gfortran libblas3 liblapack-dev liblapack3 default-jre screen tmux gdb lldb gcc g++
 RUN apt-get update && apt-get install -y rdma-core librdmacm1
-RUN apt-get update && apt-get install libspdlog-dev
 
 # Downgrade gcc&&g++
-WORKDIR /usr/bin 
+WORKDIR /usr/bin
 COPY tools/dockerfile/build_scripts /build_scripts 
 RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
 RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 
@@ -50,6 +48,7 @@ RUN cd /opt && wget -q https://repo.anaconda.com/miniconda/${CONDA_FILE} && chmo
 RUN mkdir /opt/conda && ./${CONDA_FILE} -b -f -p "/opt/conda" && rm -rf ${CONDA_FILE}
 ENV PATH=/opt/conda/bin:${PATH}
 RUN conda init bash && conda install -n base jupyter jupyterlab
+RUN conda install -n base spdlog==1.8.0 -y
 
 # Install Go and glide
 RUN wget -qO- https://paddle-ci.cdn.bcebos.com/go1.8.1.linux-amd64.tar.gz | \
@@ -93,10 +92,9 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     make -j8 && make install && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
 
-# clang-form 3.8.0
-RUN wget https://paddle-ci.cdn.bcebos.com/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && \ 
-    tar xf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && cd clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && \
-    cp -r * /usr/local && cd .. && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz 
+# # clang-form 3.8.0
+# RUN wget https://paddle-ci.cdn.bcebos.com/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && \
+#     tar xf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && cd clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && \
+#     cp -r * /usr/local && cd .. && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz
 
 RUN apt-get clean -y
-EXPOSE 22

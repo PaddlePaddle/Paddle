@@ -14,12 +14,10 @@
 
 #pragma once
 
-#include <mutex>
 #include <type_traits>
-
 #include "glog/logging.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
+#include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace phi {
 namespace autotune {
@@ -51,33 +49,61 @@ class AutoTuneBase {
  public:
   AutoTuneBase() {}
   virtual ~AutoTuneBase() {}
-  explicit AutoTuneBase(KernelType kernel) { kernels_.push_back(kernel); }
 
-  template <typename Type>
-  void AddCallBack(Type kernel) {
-    static_assert(std::is_same<Type, KernelType>::value,
-                  "Type must be the same");
-    kernels_.push_back(kernel);
+  explicit AutoTuneBase(KernelType kernel) {
+    kernels_.push_back(/*default=*/kernel);
   }
 
-  template <typename... Args>
-  void RunBestKernel(const int idx, Args&&... args) {
-    kernels_[idx].Run(args...);
-  }
-
-  template <typename... Args>
-  void RunDefaultKernel(Args&&... args) {
-    kernels_[0].Run(args...);
+  void AddCallBack(KernelType kernel) {
+    if (!is_init_) {
+      std::lock_guard<std::mutex> lock(mutex_);
+      kernels_.push_back(kernel);
+    }
   }
 
   template <typename Context, typename... Args>
-  int PickBestKernel(const Context& ctx, Args&&... args) {
+  void Run(const Context& ctx,
+           const AlgorithmType& algo,
+           const size_t key,
+           Args&&... args) {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
         paddle::platform::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
-    int best_idx = 0;
+    is_init_ = true;
+
+    auto& cache = AutoTuneCache::Instance().Get(algo);
+    if (cache.Find(key)) {
+      auto best_idx = cache.Get(key);
+      kernels_[best_idx].Run(args...);
+    } else {
+      bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
+      if (use_autotune) {
+        // All avaliable kernels have ran while picking the best kernel,
+        // so there may be no need for another kernel run.
+        auto best_idx = PickBestKernel(ctx, args...);
+        cache.Set(key, best_idx);
+      } else {
+        kernels_[0].Run(args...);
+      }
+    }
+  }
+
+ private:
+  bool is_init_{false};
+  std::vector<KernelType> kernels_;
+  mutable std::mutex mutex_;
+
+  template <typename Context, typename... Args>
+  size_t PickBestKernel(const Context& ctx, Args&&... args) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    PADDLE_ENFORCE_GT(
+        kernels_.size(),
+        0,
+        paddle::platform::errors::InvalidArgument(
+            "kernel num must be greater than 0, now is %d", kernels_.size()));
+    size_t best_idx = 0;
     float min_time = std::numeric_limits<float>::max();
 
     // Time cost test estabulished in default stream.
@@ -92,22 +118,14 @@ class AutoTuneBase {
     return best_idx;
   }
 
-  bool IsInit() { return is_init_; }
-  void Finalize() { is_init_ = true; }
-
- private:
-  bool is_init_{false};
-  std::vector<KernelType> kernels_;
-
   template <typename Context, typename... Args>
   float RunAndMeasureKernel(const Context& ctx, const int idx, Args&&... args) {
+    // Regard 1st run as warmup. Judge the result by the time cost of rest run
+    // cycles.
+    constexpr int repeats = 3;
     phi::GpuTimer timer;
     float time_cost = 0;
     const auto& stream = ctx.stream();
-
-    // Treat 1st run as warm up. Judge the result with
-    // the sum of 2nd and 3rd run.
-    constexpr int repeats = 3;
 
     ctx.Wait();
     for (int i = 0; i < repeats; ++i) {
@@ -151,7 +169,7 @@ std::once_flag TransposeAutoTuner<T, KernelType>::init_flag_;
 
 template <typename T, typename RetureType, typename... Args>
 static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>>*
-    MakeTransposeTuner(RetureType (*func)(Args...)) {
+MakeTransposeTuner(RetureType (*func)(Args...)) {
   auto obj = MakeCallback<T>(func);
   return TransposeAutoTuner<T, decltype(obj)>::Instance(obj);
 }

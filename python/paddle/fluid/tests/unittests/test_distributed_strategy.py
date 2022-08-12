@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
@@ -238,7 +239,7 @@ class TestDebugInfo(unittest.TestCase):
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         y_predict = fluid.layers.fc(input=x, size=1, act=None)
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,

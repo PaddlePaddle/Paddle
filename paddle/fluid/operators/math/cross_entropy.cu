@@ -150,11 +150,6 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
   }
 }
 
-template class CrossEntropyFunctor<platform::CUDADeviceContext, float>;
-template class CrossEntropyFunctor<platform::CUDADeviceContext, double>;
-template class CrossEntropyFunctor<platform::CUDADeviceContext,
-                                   platform::float16>;
-
 template class CrossEntropyFunctor<phi::GPUContext, float>;
 template class CrossEntropyFunctor<phi::GPUContext, double>;
 template class CrossEntropyFunctor<phi::GPUContext, platform::float16>;

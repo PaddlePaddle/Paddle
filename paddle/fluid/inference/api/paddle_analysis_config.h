@@ -145,7 +145,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param[in] other another AnalysisConfig
   ///
-  explicit AnalysisConfig(const AnalysisConfig& other);
+  AnalysisConfig(const AnalysisConfig& other);
   ///
   /// \brief Construct a new AnalysisConfig from a no-combined model.
   ///
@@ -167,6 +167,14 @@ struct PD_INFER_DECL AnalysisConfig {
     kFloat32 = 0,  ///< fp32
     kInt8,         ///< int8
     kHalf,         ///< fp16
+    kBf16,         ///< bf16
+  };
+
+  enum class Backend {
+    kCPU = 0,
+    kGPU,
+    kXPU,
+    kNPU,
   };
 
   ///
@@ -515,7 +523,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// quantization).
   ///
   ///
-  void EnableTensorRtEngine(int workspace_size = 1 << 20,
+  void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
                             int max_batch_size = 1,
                             int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
@@ -906,6 +914,14 @@ struct PD_INFER_DECL AnalysisConfig {
 
   const DistConfig& dist_config() const { return dist_config_; }
 
+  ///
+  /// \brief Set a list of operators that do not support mixed precision. This
+  /// interface is in the experimental stage and may change in the future. Note
+  /// that the blacklist must be the same as the model conversion blacklist.
+  ///
+  void Exp_SetBlackListOpsForMixedModel(
+      const std::unordered_set<std::string>& black_list);
+
  protected:
   // Update the config.
   void Update();
@@ -917,6 +933,9 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string model_dir_;
   mutable std::string prog_file_;
   mutable std::string params_file_;
+
+  // Mixed precision.
+  std::unordered_set<std::string> mixed_black_list_;
 
   // GPU related.
   bool use_gpu_{false};
@@ -948,7 +967,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_tensorrt_{false};
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
-  int tensorrt_workspace_size_{1 << 30};
+  int64_t tensorrt_workspace_size_{1 << 30};
   // While TensorRT allows an engine optimized for a given max batch size
   // to run at any smaller size, the performance for those smaller
   // sizes may not be as well-optimized. Therefore, Max batch is best

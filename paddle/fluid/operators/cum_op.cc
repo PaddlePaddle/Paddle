@@ -64,13 +64,13 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetType("cumsum");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
-    grad_op->SetAttr("axis", BOOST_GET_CONST(int, this->GetAttr("axis")));
+    grad_op->SetAttr("axis", PADDLE_GET_CONST(int, this->GetAttr("axis")));
     grad_op->SetAttr("flatten",
-                     BOOST_GET_CONST(bool, this->GetAttr("flatten")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("flatten")));
     grad_op->SetAttr("reverse",
-                     !BOOST_GET_CONST(bool, this->GetAttr("reverse")));
+                     !PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
     grad_op->SetAttr("exclusive",
-                     BOOST_GET_CONST(bool, this->GetAttr("exclusive")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("exclusive")));
   }
 };
 
@@ -131,13 +131,13 @@ class LogcumsumexpGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetInput("Out", this->Output("Out"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    grad_op->SetAttr("axis", BOOST_GET_CONST(int, this->GetAttr("axis")));
+    grad_op->SetAttr("axis", PADDLE_GET_CONST(int, this->GetAttr("axis")));
     grad_op->SetAttr("flatten",
-                     BOOST_GET_CONST(bool, this->GetAttr("flatten")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("flatten")));
     grad_op->SetAttr("exclusive",
-                     BOOST_GET_CONST(bool, this->GetAttr("exclusive")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("exclusive")));
     grad_op->SetAttr("reverse",
-                     BOOST_GET_CONST(bool, this->GetAttr("reverse")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
   }
 };
 
@@ -145,7 +145,7 @@ class LogcumsumexpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 DECLARE_INFER_SHAPE_FUNCTOR(cumsum,
                             CumsumInferShapeFunctor,
                             PD_INFER_META(phi::CumInferMeta));

@@ -66,10 +66,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
                           Node* reshape2_qkv_out,
                           Node* scale,
                           Node* scale_out) {
-    auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
-    // auto scale_bias = BOOST_GET_CONST(float, scale->Op()->GetAttr("bias"));
+    auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
+    // auto scale_bias = PADDLE_GET_CONST(float, scale->Op()->GetAttr("bias"));
     // bool after_scale =
-    //    BOOST_GET_CONST(bool, scale->Op()->GetAttr("bias_after_scale"));
+    //    PADDLE_GET_CONST(bool, scale->Op()->GetAttr("bias_after_scale"));
 
     // create multihead
     OpDesc multihead_op_desc(mul0->Op()->Block());
@@ -89,7 +89,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
 
     auto reshape_desc = reshape2->Op();
     int head_number =
-        BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(2);
 
     ReplaceOutputVar(mul0, mul0_out, q_var_node);
     ReplaceOutputVar(mul1, mul1_out, k_var_node);
@@ -822,7 +823,7 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
                           Node* eltadd2,
                           Node* matmul_qk,
                           Node* reshape2_qkv) {
-    auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
+    auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
@@ -909,7 +910,8 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
     auto reshape_desc = reshape2->Op();
     int head_number =
-        BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(2);
 
     OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("multihead_matmul");
@@ -935,11 +937,11 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* add2_op_desc = eltadd2->Op();
     if (add0_op_desc->HasAttr("out_threshold")) {
       auto out_scale0 =
-          BOOST_GET_CONST(float, add0_op_desc->GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, add0_op_desc->GetAttr("out_threshold"));
       auto out_scale1 =
-          BOOST_GET_CONST(float, add1_op_desc->GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, add1_op_desc->GetAttr("out_threshold"));
       auto out_scale2 =
-          BOOST_GET_CONST(float, add2_op_desc->GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, add2_op_desc->GetAttr("out_threshold"));
       auto out_scale_max = std::max(out_scale0, out_scale1);
       out_scale_max = std::max(out_scale_max, out_scale2);
       multihead_op_desc.SetAttr("fc_out_threshold", out_scale_max);
@@ -950,7 +952,7 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     if (matmul_qk_op_desc->HasAttr("Input_scale")) {
       multihead_op_desc.SetAttr("qkv2context_plugin_int8", true);
       if (softmax_qk_op_desc->HasAttr("out_threshold")) {
-        auto qkv_plugin_scale = BOOST_GET_CONST(
+        auto qkv_plugin_scale = PADDLE_GET_CONST(
             float, softmax_qk_op_desc->GetAttr("out_threshold"));
         multihead_op_desc.SetAttr("dp_probs", qkv_plugin_scale);
       }
@@ -1337,7 +1339,8 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
                           Node* reshape2,
                           Node* reshape2_qkv_out,
                           Node* matmul_qk) {
-    auto scale_attr = BOOST_GET_CONST(float, matmul_qk->Op()->GetAttr("alpha"));
+    auto scale_attr =
+        PADDLE_GET_CONST(float, matmul_qk->Op()->GetAttr("alpha"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
@@ -1424,7 +1427,8 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
 
     auto reshape_desc = reshape2->Op();
     int head_number =
-        BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(2);
 
     OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("multihead_matmul");

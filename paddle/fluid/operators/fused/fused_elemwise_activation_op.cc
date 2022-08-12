@@ -283,14 +283,14 @@ class FusedElemwiseActivationGradMaker
 
     grad_op->SetAttrMap(this->Attrs());
 
-    std::vector<std::string> functor_names = BOOST_GET_CONST(
+    std::vector<std::string> functor_names = PADDLE_GET_CONST(
         std::vector<std::string>, grad_op->GetAttr("functor_list"));
 
     functor_names[0] += "_grad";
     functor_names[1] += "_grad";
     grad_op->SetAttr("functor_list", functor_names);
 
-    if (BOOST_GET_CONST(bool, grad_op->GetAttr("save_intermediate_out"))) {
+    if (PADDLE_GET_CONST(bool, grad_op->GetAttr("save_intermediate_out"))) {
       // PADDLE_ENFORCE_NE(Output("IntermediateOut").size(), 0);
       grad_op->SetInput("IntermediateOut", this->Output("IntermediateOut"));
       grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
@@ -463,17 +463,13 @@ REGISTER_OPERATOR(fused_elemwise_activation_grad,
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_activation,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       float>,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       double>);
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_activation_grad,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           float>,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           double>);
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, double>);
 
 // for memory optimization, we register the fused_elemwise_add_activation OP
 REGISTER_OPERATOR(
@@ -488,14 +484,10 @@ REGISTER_OPERATOR(fused_elemwise_add_activation_grad,
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_add_activation,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       float>,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       double>);
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_add_activation_grad,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           float>,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           double>);
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, double>);

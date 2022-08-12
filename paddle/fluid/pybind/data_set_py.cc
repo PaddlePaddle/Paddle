@@ -35,7 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/fluid/pybind/data_set_py.h"
 
 namespace py = pybind11;
@@ -365,6 +365,9 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("enable_pv_merge",
            &framework::Dataset::EnablePvMerge,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_gpu_graph_mode",
+           &framework::Dataset::SetGpuGraphMode,
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")

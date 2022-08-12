@@ -14,13 +14,12 @@ limitations under the License. */
 
 #include "paddle/phi/core/enforce.h"
 
-#include <boost/variant.hpp>
 #include <map>
 #include <memory>
 #include <unordered_map>
 #include <vector>
 
-#include "boost/blank.hpp"
+#include "paddle/utils/blank.h"
 #include "paddle/utils/variant.h"
 
 namespace egr {
@@ -28,8 +27,9 @@ class EagerVariable;
 }
 namespace paddle {
 namespace framework {
+class VarDesc;
 class BlockDesc;
-using Attribute = paddle::variant<boost::blank,
+using Attribute = paddle::variant<paddle::blank,
                                   int,
                                   float,
                                   std::string,
@@ -42,7 +42,9 @@ using Attribute = paddle::variant<boost::blank,
                                   int64_t,
                                   std::vector<BlockDesc*>,
                                   std::vector<int64_t>,
-                                  std::vector<double>>;
+                                  std::vector<double>,
+                                  VarDesc*,
+                                  std::vector<VarDesc*>>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 }  // namespace framework
 namespace imperative {

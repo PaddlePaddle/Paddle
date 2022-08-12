@@ -66,7 +66,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
                                     mask=cond,
                                     x=image)
             loss = layers.cross_entropy(input=prob, label=label)
-            avg_loss = layers.mean(loss)
+            avg_loss = paddle.mean(loss)
 
             optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(avg_loss, startup_prog)
@@ -124,7 +124,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
 
             prob = ie()
             loss = layers.cross_entropy(input=prob[0], label=label)
-            avg_loss = layers.mean(loss)
+            avg_loss = paddle.mean(loss)
 
             optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(avg_loss, startup_prog)

@@ -536,8 +536,8 @@ class Pad2dGradCPUKernel : public framework::OpKernel<T> {
     auto d_out_dims = d_out->dims();
     const T* d_out_data = d_out->data<T>();
     T* d_in_data = d_in->mutable_data<T>(context.GetPlace());
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
-    set_zero(context.template device_context<platform::CPUDeviceContext>(),
+    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
+    set_zero(context.template device_context<phi::CPUContext>(),
              d_in,
              static_cast<T>(0));
     const int pad_top = pads[0];
@@ -699,8 +699,41 @@ class Pad2dOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+#ifdef PADDLE_WITH_MKLDNN
+    // only constant mode and non-blocked layouts are supported for oneDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+        ctx.Attr<std::string>("mode") == "constant" &&
+        ctx.Input<Tensor>("X")
+                ->mem_desc()
+                .data.format_desc.blocking.inner_nblks == 0) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name,
+      const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_format");
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_,
+          tensor.place(),
+          framework::StringToDataLayout(data_format));
+    }
+#endif
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -740,6 +773,10 @@ class Pad2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "An optional string from: \"NHWC\", \"NCHW\". "
         "Defaults to \"NHWC\". Specify the data format of the input data.")
         .SetDefault("NCHW");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Pad2d Operator.
 Pad 2-d images according to 'paddings' and 'mode'. 

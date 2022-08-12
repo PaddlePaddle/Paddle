@@ -303,7 +303,7 @@ def train(args, fake_data_reader, to_static):
                 loss = fluid.layers.cross_entropy(input=outputs,
                                                   label=labels,
                                                   ignore_index=-1)
-                avg_loss = fluid.layers.mean(loss)
+                avg_loss = paddle.mean(loss)
                 acc_top1 = fluid.layers.accuracy(input=outputs,
                                                  label=labels,
                                                  k=1)

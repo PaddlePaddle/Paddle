@@ -68,7 +68,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       // run time
       framework::Variable* x_var =
-          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+          PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
       const auto& x_lod = x_var->Get<LoDTensor>().lod();
       PADDLE_ENFORCE_EQ(x_lod.empty(),
                         false,
@@ -282,15 +282,13 @@ REGISTER_OPERATOR(sequence_pad,
 REGISTER_OPERATOR(sequence_pad_grad,
                   ops::SequencePadGradOp,
                   ops::SequencePadGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_pad,
-    ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_pad_grad,
-    ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_pad,
+                       ops::SequencePadOpKernel<phi::CPUContext, float>,
+                       ops::SequencePadOpKernel<phi::CPUContext, double>,
+                       ops::SequencePadOpKernel<phi::CPUContext, int>,
+                       ops::SequencePadOpKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_pad_grad,
+                       ops::SequencePadGradOpKernel<phi::CPUContext, float>,
+                       ops::SequencePadGradOpKernel<phi::CPUContext, double>,
+                       ops::SequencePadGradOpKernel<phi::CPUContext, int>,
+                       ops::SequencePadGradOpKernel<phi::CPUContext, int64_t>);

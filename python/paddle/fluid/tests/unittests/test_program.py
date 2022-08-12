@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 
 from paddle.fluid.framework import Program, default_main_program, program_guard, grad_var_name
+import paddle
 import paddle.fluid.layers as layers
 import paddle.fluid as fluid
 
@@ -120,7 +121,7 @@ class TestProgram(unittest.TestCase):
                                             use_double_buffer=True)
             in_data, label = fluid.layers.read_file(reader)
             predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
-            loss = fluid.layers.mean(
+            loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()
@@ -146,7 +147,7 @@ class TestProgram(unittest.TestCase):
         program = fluid.default_main_program()
         data = fluid.data(name='x', shape=[None, 13], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
-        loss = fluid.layers.mean(hidden)
+        loss = paddle.mean(hidden)
         fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
         # NOTE: here the parameters are fc_0.w_0 and fc_0.b_0
@@ -182,7 +183,7 @@ class TestProgram(unittest.TestCase):
                                             use_double_buffer=True)
             in_data, label = fluid.layers.read_file(reader)
             predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
-            loss = fluid.layers.mean(
+            loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()
@@ -199,6 +200,45 @@ class TestProgram(unittest.TestCase):
             for var in block.desc.all_vars():
                 self.assertFalse(var.has_is_parameter())
                 self.assertFalse(var.has_stop_gradient())
+
+
+def build_program():
+    main_program = paddle.static.Program()
+    startuo_program = paddle.static.Program()
+    with paddle.utils.unique_name.guard():
+        with paddle.static.program_guard(main_program, startuo_program):
+            x = paddle.static.data(name='x', shape=[3, 2, 1])
+            out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
+    return main_program
+
+
+class TestProgramProto(unittest.TestCase):
+
+    def test_update_op(self):
+        program = build_program()
+        a = program.desc.serialize_to_string()
+        program.current_block().ops[0]._set_attr('use_mkldnn', True)
+        self.assertTrue(program.desc.need_update())
+        b = program.desc.serialize_to_string()
+        self.assertFalse(a == b)
+
+    def test_update_var(self):
+        program = build_program()
+        a = program.desc.serialize_to_string()
+        program.current_block().var("x").desc.set_stop_gradient(False)
+        self.assertTrue(program.desc.need_update())
+        b = program.desc.serialize_to_string()
+        self.assertFalse(a == b)
+
+    # it seems the attrs of framework::VarDesc is not write to proto,
+    # except for persistable/need_check_feed/is_parameter/stop_gradient
+    def test_update_var_attr(self):
+        program = build_program()
+        a = program.desc.serialize_to_string()
+        program.current_block().var("x").desc._set_attr("a", 1)
+        self.assertFalse(program.desc.need_update())
+        b = program.desc.serialize_to_string()
+        self.assertTrue(a == b)  # not affected
 
 
 if __name__ == '__main__':

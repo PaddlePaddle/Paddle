@@ -104,15 +104,18 @@ class TestSlogDeterminantOp(OpTest):
 
     def setUp(self):
         self.op_type = "slogdeterminant"
+        self.python_api = paddle.linalg.slogdet
         self.init_data()
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
-        self.check_grad(['Input'], ['Out'], max_relative_error=0.1)
+        self.check_grad(['Input'], ['Out'],
+                        max_relative_error=0.1,
+                        check_eager=True)
 
     def init_data(self):
         np.random.seed(0)

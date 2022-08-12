@@ -4,18 +4,18 @@ if(WIN32)
   nv_library(
     tensorrt_engine
     SRCS engine.cc trt_int8_calibrator.cc
-    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context boost
+    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context
          paddle_inference_api)
 else()
   nv_library(
     tensorrt_engine
     SRCS engine.cc trt_int8_calibrator.cc
-    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context boost)
+    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context)
 endif()
 nv_library(
   tensorrt_op_teller
   SRCS op_teller.cc
-  DEPS framework_proto device_context boost)
+  DEPS framework_proto device_context)
 nv_test(
   test_tensorrt
   SRCS test_tensorrt.cc
@@ -24,5 +24,12 @@ nv_test(
   test_tensorrt_engine
   SRCS test_engine.cc test_dynamic_engine.cc
   DEPS dynload_cuda tensorrt_engine tensorrt_plugin)
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(test_tensorrt_engine)
+endif()
+
 add_subdirectory(plugin)
 add_subdirectory(convert)

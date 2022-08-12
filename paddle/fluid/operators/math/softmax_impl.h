@@ -19,7 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace operators {
@@ -226,7 +230,7 @@ void SoftmaxFunctor<DeviceContext, T, is_test, Enable>::operator()(
 
 template <class DeviceContext>
 using enable_if_CPU = typename std::enable_if<
-    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type;
+    std::is_same<DeviceContext, phi::CPUContext>::value>::type;
 
 template <typename DeviceContext, typename T, bool is_test>
 class SoftmaxFunctor<DeviceContext, T, is_test, enable_if_CPU<DeviceContext>> {

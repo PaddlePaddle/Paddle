@@ -210,12 +210,11 @@ REGISTER_OPERATOR(partial_sum,
 
 REGISTER_OPERATOR(partial_sum_grad, ops::PartialSumGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    partial_sum,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(partial_sum,
+                       ops::PartialSumKernel<phi::CPUContext, float>,
+                       ops::PartialSumKernel<phi::CPUContext, int>,
+                       ops::PartialSumKernel<phi::CPUContext, double>,
+                       ops::PartialSumKernel<phi::CPUContext, int64_t>);
 
 REGISTER_OP_CPU_KERNEL(partial_sum_grad,
                        ops::PartialSumGradientOpKernel<float>,

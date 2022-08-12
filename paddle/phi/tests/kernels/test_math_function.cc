@@ -20,9 +20,9 @@ namespace phi {
 namespace tests {
 
 template <typename T>
-inline phi::funcs::BlasT<paddle::platform::CPUDeviceContext, T> GetBlas(
-    const paddle::platform::CPUDeviceContext& context) {
-  return phi::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
+inline phi::funcs::BlasT<phi::CPUContext, T> GetBlas(
+    const phi::CPUContext& context) {
+  return phi::funcs::GetBlas<phi::CPUContext, T>(context);
 }
 
 TEST(math_function, gemm_notrans_cblas) {
@@ -44,7 +44,7 @@ TEST(math_function, gemm_notrans_cblas) {
   float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
-  paddle::platform::CPUDeviceContext context(*cpu_place);
+  phi::CPUContext context(*cpu_place);
   GetBlas<float>(context).GEMM(false,
                                false,
                                m,
@@ -165,7 +165,7 @@ TEST(math_function, gemm_trans_cblas) {
   float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
-  paddle::platform::CPUDeviceContext context(*cpu_place);
+  phi::CPUContext context(*cpu_place);
   GetBlas<float>(context).GEMM(false,
                                true,
                                m,
@@ -196,8 +196,8 @@ TEST(math_function, zero) {
   paddle::framework::Tensor tensor;
   auto* cpu_place = new paddle::platform::CPUPlace();
   float* t = tensor.mutable_data<float>({2, 2}, *cpu_place);
-  paddle::platform::CPUDeviceContext context(*cpu_place);
-  phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
+  phi::CPUContext context(*cpu_place);
+  phi::funcs::SetConstant<phi::CPUContext, float> functor;
   functor(context, &tensor, 0);
   EXPECT_EQ(t[0], 0);
   EXPECT_EQ(t[1], 0);
@@ -231,7 +231,7 @@ void GemvTest(int m, int n, bool trans) {
     data_b[i] = static_cast<T>(i);
   }
 
-  paddle::platform::CPUDeviceContext context(*cpu_place);
+  phi::CPUContext context(*cpu_place);
   GetBlas<T>(context).GEMV(trans,
                            static_cast<int>(m),
                            static_cast<int>(n),
@@ -272,8 +272,7 @@ TEST(math_funciton, set_constant) {
   paddle::framework::Tensor t;
   t.Resize({10, 10});
   t.mutable_data<int>(paddle::platform::CPUPlace());
-  auto* ctx = new paddle::platform::CPUDeviceContext();
-  ctx->Init();
+  auto* ctx = new phi::CPUContext();
   phi::funcs::set_constant(*ctx, &t, 10);
   for (int64_t i = 0; i < t.numel(); ++i) {
     PADDLE_ENFORCE_EQ(10,
@@ -312,7 +311,7 @@ void GemmWarpTest(int m, int n, int k, T alpha, T beta) {
   }
 
   // this would call gemm_warp
-  paddle::platform::CPUDeviceContext context(*cpu_place);
+  phi::CPUContext context(*cpu_place);
   GetBlas<T>(context).GEMM(
       CblasNoTrans, CblasNoTrans, m, n, k, alpha, A, B, beta, CREF);
 

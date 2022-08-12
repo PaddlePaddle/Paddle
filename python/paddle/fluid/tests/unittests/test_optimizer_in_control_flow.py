@@ -72,7 +72,7 @@ def static(train_data,
         def fn_1(opt, avg_loss=None, pred=None, label=None):
             if avg_loss is None:
                 loss = layers.cross_entropy(input=pred, label=label)
-                avg_loss = layers.mean(loss, name='mean_cross_entropy_loss')
+                avg_loss = paddle.mean(loss, name='mean_cross_entropy_loss')
             opt.minimize(avg_loss)
             return avg_loss
 
@@ -80,7 +80,7 @@ def static(train_data,
             if avg_loss is None:
                 loss = layers.softmax_with_cross_entropy(logits=pred,
                                                          label=label)
-                avg_loss = layers.mean(loss, name='mean_softmax_loss')
+                avg_loss = paddle.mean(loss, name='mean_softmax_loss')
             opt.minimize(avg_loss)
             return avg_loss
 
@@ -101,10 +101,10 @@ def static(train_data,
                 lambda: fn_2(sgd, None, prediction, label))
         else:
             loss_1 = layers.cross_entropy(input=prediction, label=label)
-            avg_loss_1 = layers.mean(loss_1)
+            avg_loss_1 = paddle.mean(loss_1)
             loss_2 = layers.softmax_with_cross_entropy(logits=prediction,
                                                        label=label)
-            avg_loss_2 = layers.mean(loss_2)
+            avg_loss_2 = paddle.mean(loss_2)
             avg_loss = layers.case([(mod_two, lambda: fn_1(adam, avg_loss_1))],
                                    lambda: fn_2(sgd, avg_loss_2))
 
@@ -174,13 +174,13 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
 
             if epoch % 2 == 0:
                 cross_entropy_loss = layers.cross_entropy(prediction, var_label)
-                loss = layers.mean(cross_entropy_loss)
+                loss = paddle.mean(cross_entropy_loss)
                 loss.backward()
                 adam.minimize(loss)
             else:
                 softmax_loss = layers.softmax_with_cross_entropy(
                     prediction, var_label)
-                loss = layers.mean(softmax_loss)
+                loss = paddle.mean(softmax_loss)
                 loss.backward()
                 sgd.minimize(loss)
 
@@ -247,7 +247,7 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
 
             x = fluid.layers.data("X", [10], 'float32')
             hidden = layers.fc(x, 5)
-            avg_loss = layers.mean(hidden)
+            avg_loss = paddle.mean(hidden)
 
             adam = optimizer.Adam(learning_rate=LR)
             sgd = optimizer.SGD(learning_rate=LR)

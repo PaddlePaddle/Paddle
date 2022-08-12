@@ -89,8 +89,8 @@ class ParallelExecutor {
   void FeedAndSplitTensorIntoLocalScopes(
       const std::unordered_map<std::string, LoDTensor> &tensors);
 
-  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
-                      bool return_merged = true);
+  FetchUnmergedList Run(const std::vector<std::string> &fetch_tensors);
+  FetchList RunAndMerge(const std::vector<std::string> &fetch_tensors);
 
   void RunWithoutFetch(const std::vector<std::string> &skip_eager_vars);
 
@@ -125,6 +125,8 @@ class ParallelExecutor {
       const std::vector<Scope *> &local_scopes, bool create_new);
 
   std::vector<ir::Graph *> CloneGraphToMultiDevices(ir::Graph *graph);
+
+  void PreludeToRun(const std::vector<std::string> &fetch_tensors);
 
   void PrepareNCCLCommunicator(Scope *global_scope);
 

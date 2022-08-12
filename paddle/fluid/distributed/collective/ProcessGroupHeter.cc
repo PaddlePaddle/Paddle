@@ -73,9 +73,15 @@ ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
       src_rank_(src_rank),
       dst_rank_(dst_rank) {
   return;
+#ifdef PADDLE_WITH_CUSTOM
+  if (paddle::platform::is_custom_place(place_)) {
+    inner_pg_ = std::make_shared<ProcessGroupCustom>(
+        store, local_rank, local_size, place_, IGNORE_ID);
+  } else {
+#endif
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  inner_pg_ = std::make_shared<ProcessGroupNCCL>(
-      store, local_rank, local_size, place_, IGNORE_ID);
+    inner_pg_ = std::make_shared<ProcessGroupNCCL>(
+        store, local_rank, local_size, place_, IGNORE_ID);
 #elif defined(PADDLE_WITH_ASCEND_CL)
   inner_pg_ = std::make_shared<ProcessGroupHCCL>(
       store, local_rank, local_size, place_, IGNORE_ID);
@@ -83,6 +89,10 @@ ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
   PADDLE_THROW(platform::errors::Unavailable(
       "ProcessGroupHeter only supports NCCL, RCCL and HCCL now."));
 #endif
+#ifdef PADDLE_WITH_CUSTOM
+  }
+#endif
+
   if (local_rank_ == 0 && !with_switch_) {
     auto opts = ProcessGroupGloo::GlooOptions::create();
     opts->device = ProcessGroupGloo::createDefaultDevice();

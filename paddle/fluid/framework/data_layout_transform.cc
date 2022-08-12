@@ -44,8 +44,8 @@ void CastDataLayout::apply() {
   auto place = ctx_->GetPlace();
 
   if (platform::is_cpu_place(place)) {
-    phi::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans4;
-    auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+    phi::funcs::Transpose<phi::CPUContext, T, 4> trans4;
+    auto* context = static_cast<const phi::CPUContext*>(ctx_);
     trans4(*context, in_, out_, axis_);
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(

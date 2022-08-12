@@ -37,7 +37,7 @@ np.random.seed(SEED)
 # Use a decorator to test exception
 @paddle.jit.to_static
 def dyfunc_with_if(x_v):
-    if fluid.layers.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -58,7 +58,7 @@ def nested_func(x_v):
 @paddle.jit.to_static
 def dyfunc_with_third_library_logging(x_v):
     logging.info('test dyfunc_with_third_library_logging')
-    if fluid.layers.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -266,7 +266,7 @@ class TestDynamicToStaticCode(unittest.TestCase):
         return get_source_code(self.answer_func)
 
     def _get_transformed_code(self):
-        transformed_func = _jst.convert_call(self.func)
+        transformed_func = _jst.Call(self.func)
         return get_source_code(transformed_func)
 
     def test_code(self):
@@ -289,7 +289,7 @@ class TestDynamicToStaticCode2(TestDynamicToStaticCode):
         class StaticCode():
 
             def func_convert_then_not_to_static(x):
-                y = _jst.convert_call(func_not_to_static)(x)
+                y = _jst.Call(func_not_to_static)(x)
                 return y
 
         self.answer_func = StaticCode.func_convert_then_not_to_static

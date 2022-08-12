@@ -72,9 +72,10 @@ bool RemovePaddingPlugin::supportsFormatCombination(
   if (pos == 1 || pos == 2) {  // pos_id, work_id
     return inOut[pos].type == nvinfer1::DataType::kINT32 &&
            inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
+  } else {
+    return inOut[pos].type == nvinfer1::DataType::kFLOAT &&
+           inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
   }
-  return inOut[pos].type == nvinfer1::DataType::kFLOAT &&
-         inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
   // return (inOut[pos].type == nvinfer1::DataType::kFLOAT && inOut[pos].format
   // == nvinfer1::TensorFormat::kLINEAR)||
   // (inOut[pos].type == nvinfer1::DataType::kHALF && inOut[pos].format ==

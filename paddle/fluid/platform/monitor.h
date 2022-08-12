@@ -26,6 +26,8 @@
 
 #include "glog/logging.h"
 
+#include "paddle/phi/core/macros.h"
+
 namespace paddle {
 namespace platform {
 

@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # this file contains experimental build options for lazy cuda module loading
-# cuda moduel lazy loading is supported by CUDA 11.6+
-# this experiment option makes Paddle supports lazy loading before CUDA 11.6.
+# cuda moduel lazy loading is supported by CUDA 11.7+
+# this experiment option makes Paddle supports lazy loading before CUDA 11.7.
 
 option(EXP_CUDA_MODULE_LOADING_LAZY "enable lazy cuda module loading" OFF)
 if(${EXP_CUDA_MODULE_LOADING_LAZY})
@@ -28,13 +28,13 @@ if(${EXP_CUDA_MODULE_LOADING_LAZY})
     message("EXP_CUDA_MODULE_LOADING_LAZY only works with CUDA")
     return()
   endif()
-  if(${CUDA_VERSION} VERSION_GREATER_EQUAL "11.6")
-    message("cuda 11.6+ already support lazy module loading")
+  if(${CUDA_VERSION} VERSION_GREATER_EQUAL "11.7")
+    message("cuda 11.7+ already support lazy module loading")
     return()
   endif()
 
   message(
-    "for cuda before 11.6, libcudart.so must be used for the lazy module loading trick to work, instead of libcudart_static.a"
+    "for cuda before 11.7, libcudart.so must be used for the lazy module loading trick to work, instead of libcudart_static.a"
   )
   set(CUDA_USE_STATIC_CUDA_RUNTIME
       OFF

@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
@@ -266,12 +267,12 @@ class TestMutiTask(unittest.TestCase):
 
         def fn_1():
             sum = layers.elementwise_mul(x, y)
-            loss = layers.mean(sum, name="f_1_loss")
+            loss = paddle.mean(sum, name="f_1_loss")
             adam.minimize(loss)
 
         def fn_2():
             sum = layers.elementwise_mul(x, y)
-            loss = layers.mean(sum, name="f_2_loss")
+            loss = paddle.mean(sum, name="f_2_loss")
             adagrad.minimize(loss)
 
         layers.case(pred_fn_pairs=[(switch_id == one, fn_1)], default=fn_2)

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 from paddle.fluid import Program, program_guard
+import paddle
 import paddle.fluid.core as core
 import numpy as np
 import paddle.fluid.layers as layers
@@ -195,7 +196,7 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
                                    mask=y,
                                    x=x,
                                    level=level)
-            mean = layers.mean(out)
+            mean = paddle.mean(out)
 
             append_backward(mean)
 

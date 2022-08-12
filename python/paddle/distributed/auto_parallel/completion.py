@@ -1396,7 +1396,7 @@ class Completer:
                             op_dist_attr.set_output_dims_mapping(
                                 input_var.name, [-1])
                         else:
-                            assert "Moment" in input_name
+                            assert "Moment" in input_name or "Velocity" in input_name
                             input_var_attr.dims_mapping = ref_dims_mapping
                             op_dist_attr.set_input_dims_mapping(
                                 input_var.name, ref_dims_mapping)

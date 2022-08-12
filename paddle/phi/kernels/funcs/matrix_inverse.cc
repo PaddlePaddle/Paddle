@@ -29,9 +29,5 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
 template class MatrixInverseFunctor<CPUContext, float>;
 template class MatrixInverseFunctor<CPUContext, double>;
 
-// TODO(chenweihang): remove these instantiations later
-template class MatrixInverseFunctor<paddle::platform::CPUDeviceContext, float>;
-template class MatrixInverseFunctor<paddle::platform::CPUDeviceContext, double>;
-
 }  // namespace funcs
 }  // namespace phi

@@ -81,7 +81,7 @@ class TestAutoCast(unittest.TestCase):
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
             with fluid.dygraph.amp_guard(True):
-                out_fp32 = fluid.layers.mean(data)
+                out_fp32 = paddle.mean(data)
 
         self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
         self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
@@ -221,7 +221,7 @@ class TestAmpScaler(unittest.TestCase):
                 data = fluid.dygraph.to_variable(inp_np)
 
                 out = model(data)
-                loss = fluid.layers.mean(out)
+                loss = paddle.mean(out)
                 if use_scaler:
                     print('use scaler')
                     scaled_loss = scaler.scale(loss)
@@ -272,7 +272,7 @@ class TestAmpScaler(unittest.TestCase):
                 data = fluid.dygraph.to_variable(inp_np)
 
                 out = model(data)
-                loss = fluid.layers.mean(out)
+                loss = paddle.mean(out)
                 if use_scaler:
                     print('use scaler')
                     scaled_loss = scaler.scale(loss)
@@ -315,7 +315,7 @@ class TestAmpScaler(unittest.TestCase):
             data = fluid.dygraph.to_variable(inp_np)
 
             out = model(data)
-            loss = fluid.layers.mean(out)
+            loss = paddle.mean(out)
             scaled_loss = scaler.scale(loss)
             scaled_loss.backward()
             optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
@@ -323,8 +323,8 @@ class TestAmpScaler(unittest.TestCase):
 
             for param in model.parameters():
                 # param not update when tensor contains nan or inf
-                self.assertTrue(
-                    np.array_equal(param.numpy(), params_init[param.name]))
+                np.testing.assert_array_equal(param.numpy(),
+                                              params_init[param.name])
 
     def test_nan_inf(self):
         self.nan_inf()
@@ -965,7 +965,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
                           fetch_list=fetch_targets)
         print("pred.numpy()", pred.numpy())
         print("result", results[0])
-        self.assertTrue(np.array_equal(pred.numpy(), results[0]))
+        np.testing.assert_array_equal(pred.numpy(), results[0])
         paddle.disable_static()
 
     def test_inference_save_load(self):
@@ -1206,7 +1206,7 @@ class TestResnet(unittest.TestCase):
                     out = resnet(img)
 
                 loss = fluid.layers.cross_entropy(input=out, label=label)
-                avg_loss = fluid.layers.mean(x=loss)
+                avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
 

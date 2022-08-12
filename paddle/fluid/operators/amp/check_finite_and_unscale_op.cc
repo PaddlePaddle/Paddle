@@ -95,7 +95,7 @@ template <typename T>
 class CheckFiniteAndUnscaleCpuKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
     const auto xs = ctx.MultiInput<framework::Tensor>("X");
     const auto* scale = ctx.Input<framework::Tensor>("Scale");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
@@ -106,11 +106,10 @@ class CheckFiniteAndUnscaleCpuKernel : public framework::OpKernel<T> {
 
     *found_inf_data = false;
     framework::Tensor is_finite =
-        ctx.AllocateTmpTensor<bool, platform::CPUDeviceContext>({1}, dev_ctx);
+        ctx.AllocateTmpTensor<bool, phi::CPUContext>({1}, dev_ctx);
     bool* is_finite_data = is_finite.template data<bool>();
 
-    auto& dev = *ctx.template device_context<platform::CPUDeviceContext>()
-                     .eigen_device();
+    auto& dev = *ctx.template device_context<phi::CPUContext>().eigen_device();
 
     T inverse_scale = Inverse<T>(*scale_data);
     for (size_t i = 0; i < xs.size(); ++i) {

@@ -14,7 +14,12 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
 #ifdef PADDLE_WITH_CUDA
 
 #include <memory>
@@ -172,7 +177,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   std::vector<std::string> runtime_input_names_;
   mutable TensorRTEngine *trt_engine_{nullptr};
   int max_batch_size_;
-  int workspace_size_;
+  int64_t workspace_size_;
   std::unique_ptr<TRTInt8Calibrator> calibrator_;
   bool enable_int8_;
   bool enable_fp16_;
@@ -192,6 +197,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   std::map<std::string, std::vector<int>> min_input_shape_{};
   std::map<std::string, std::vector<int>> max_input_shape_{};
   std::map<std::string, std::vector<int>> opt_input_shape_{};
+  phi::DataType model_precision_{phi::DataType::FLOAT32};
 
  public:
   TensorRTEngineOp(const std::string &type,
@@ -201,7 +207,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       : framework::OperatorBase(type, inputs, outputs, attrs) {
     input_names_ = Inputs("Xs");
     max_batch_size_ = Attr<int>("max_batch_size");
-    workspace_size_ = Attr<int>("workspace_size");
+    workspace_size_ = Attr<int64_t>("workspace_size");
     device_id_ = Attr<int>("gpu_id");
     enable_int8_ = Attr<bool>("enable_int8");
     enable_fp16_ = Attr<bool>("enable_fp16");
@@ -217,6 +223,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
     }
+    model_precision_ = static_cast<phi::DataType>(Attr<int>("model_precision"));
 
     if (HasAttr("dynamic_shape_names") && HasAttr("min_input_shape") &&
         HasAttr("max_input_shape") && HasAttr("opt_input_shape")) {
@@ -464,15 +471,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     int runtime_batch = -1;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
-
-    PADDLE_ENFORCE_EQ(
-        runtime_input_names_.empty(),
-        false,
-        platform::errors::PreconditionNotMet(
-            "TensorRT engine needs at least one input, but no input is found. "
-            "Please check if you set the input correctly."));
+    auto stream = reinterpret_cast<const phi::GPUContext &>(dev_ctx).stream();
 
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
@@ -562,6 +561,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
       }
       runtime_batch = t_shape[0];
+      VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype();
       auto type = framework::TransToProtoVarType(t.dtype());
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
@@ -626,6 +626,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             num_bindings));
       auto trt_type = engine->engine()->getBindingDataType(bind_index);
       // get adr and set type
+      VLOG(1) << "trt output [" << y << "] dtype is "
+              << TRT2FluidDataType(trt_type);
       buffers[bind_index] = static_cast<void *>(
           fluid_t->mutable_data(dev_place, TRT2FluidDataType(trt_type)));
       output_index += 1;

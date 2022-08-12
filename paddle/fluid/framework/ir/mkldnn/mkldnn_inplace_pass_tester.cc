@@ -14,23 +14,24 @@
 
 #include <gtest/gtest.h>
 
-#include <boost/logic/tribool.hpp>
 #include <unordered_set>
+#include "paddle/utils/tribool.h"
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_inplace_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP_ITSELF(leaky_relu);
-USE_OP_DEVICE_KERNEL(leaky_relu, MKLDNN);
+PD_DECLARE_KERNEL(leaky_relu, OneDNN, ALL_LAYOUT);
 USE_OP_ITSELF(gelu);
 USE_OP_ITSELF(relu);
 USE_OP_ITSELF(tanh);
-USE_OP_DEVICE_KERNEL(tanh, MKLDNN);
+PD_DECLARE_KERNEL(tanh, OneDNN, ALL_LAYOUT);
 PD_DECLARE_ARG_MAPPING_FN(gelu);
 
 namespace paddle {
@@ -44,12 +45,12 @@ class MKLDNNInplacePassTest {
              const std::string& name,
              const std::vector<std::string>& inputs,
              const std::vector<std::string>& outputs,
-             boost::tribool use_mkldnn) {
+             paddle::tribool use_mkldnn) {
     auto* op = prog->MutableBlock(0)->AppendOp();
 
     op->SetType(type);
 
-    if (!boost::indeterminate(use_mkldnn))
+    if (!paddle::indeterminate(use_mkldnn))
       op->SetAttr("use_mkldnn", use_mkldnn);
 
     if (type == "conv2d") {
@@ -102,7 +103,7 @@ class MKLDNNInplacePassTest {
           "conv1",
           std::vector<std::string>({"a", "weights", "bias"}),
           std::vector<std::string>({"f"}),
-          boost::indeterminate);
+          paddle::indeterminate);
     SetOp(&prog,
           "relu",
           "relu1",

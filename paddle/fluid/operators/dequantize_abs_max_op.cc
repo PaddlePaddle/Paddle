@@ -33,8 +33,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct DequantizeFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& dev_ctx,
+struct DequantizeFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& dev_ctx,
                   const framework::Tensor* in,
                   const framework::Tensor* scale,
                   float max_range,
@@ -49,8 +49,8 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CPUDeviceContext, int8_t>;
-template struct DequantizeFunctor<platform::CPUDeviceContext, int16_t>;
+template struct DequantizeFunctor<phi::CPUContext, int8_t>;
+template struct DequantizeFunctor<phi::CPUContext, int16_t>;
 
 class DequantizeMaxAbsOp : public framework::OperatorWithKernel {
  public:
@@ -102,7 +102,7 @@ $$Out = \frac{scale*X}{ max\_range }$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     dequantize_abs_max,

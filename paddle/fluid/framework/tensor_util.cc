@@ -261,8 +261,7 @@ void TensorCopyImpl(const TENSOR& src,
                           "place is %s, context place is %s.",
                           src_gpu_place,
                           ctx_gpu_place));
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   }
   else if (platform::is_cpu_place(src_place) &&  // NOLINT
@@ -284,8 +283,7 @@ void TensorCopyImpl(const TENSOR& src,
                           "destination place is %s, context place is %s.",
                           dst_gpu_place,
                           ctx_gpu_place));
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
   }
   else if (platform::is_gpu_place(src_place) &&  // NOLINT
@@ -308,8 +306,7 @@ void TensorCopyImpl(const TENSOR& src,
                           "device context GPU number is %d.",
                           src_gpu_place.device,
                           ctx_gpu_place.device));
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   }
@@ -333,8 +330,7 @@ void TensorCopyImpl(const TENSOR& src,
                           "device context GPU number is %d.",
                           dst_gpu_place.device,
                           ctx_gpu_place.device));
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
         dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   }
@@ -349,8 +345,7 @@ void TensorCopyImpl(const TENSOR& src,
         platform::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     if (platform::is_same_place(src_place, dst_place)) {
       memory::Copy(
           dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
@@ -689,7 +684,7 @@ inline void AnyImpl(Predicate predicate,
 }
 
 template <typename Predicate>
-class AnyVisitor : public boost::static_visitor<bool> {
+class AnyVisitor : public std::unary_function<const Place&, bool> {
  private:
   const framework::Tensor& tensor_;
   Predicate predicate_;
@@ -774,7 +769,7 @@ class AnyVisitor : public boost::static_visitor<bool> {
 };
 
 template <typename Predicate>
-class AnyOutVisitor : public boost::static_visitor<> {
+class AnyOutVisitor : public std::unary_function<const Place&, void> {
  private:
   const framework::Tensor& tensor_;
   mutable framework::Tensor* out_;
@@ -843,7 +838,7 @@ inline void AllImpl(Predicate predicate,
 }
 
 template <typename Predicate>
-class AllOutVisitor : public boost::static_visitor<> {
+class AllOutVisitor : public std::unary_function<const Place&, void> {
  private:
   const framework::Tensor& tensor_;
   mutable framework::Tensor* out_;
@@ -942,7 +937,7 @@ static inline void __global__ BothFalse(const T* cmp, T* out, int element_num) {
 }
 #endif
 
-struct BothFalseVisitor : public boost::static_visitor<> {
+struct BothFalseVisitor : public std::unary_function<const Place&, void> {
   const framework::Tensor& in_;
   mutable framework::Tensor* out_;
   BothFalseVisitor(const framework::Tensor& in, framework::Tensor* out)
@@ -1076,8 +1071,7 @@ void TensorToStream(std::ostream& os,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
-      auto& gpu_dev_ctx =
-          static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+      auto& gpu_dev_ctx = static_cast<const phi::GPUContext&>(dev_ctx);
       platform::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
@@ -1253,7 +1247,7 @@ void TensorFromStream(std::istream& is,
     is.seekg(seekg, is.cur);
 
     void* buf;
-    platform::CPUDeviceContext ctx;
+    phi::CPUContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
@@ -1336,7 +1330,7 @@ void TensorFromStream(std::istream& is,
     std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
     tensor->Resize(phi::make_ddim(dims));
     void* buf;
-    platform::CPUDeviceContext ctx;
+    phi::CPUContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
@@ -1482,13 +1476,12 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
         platform::CUDAPlace(dl_tensor.device.device_id);
     dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(dst_place);
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(*ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(*ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_XPU

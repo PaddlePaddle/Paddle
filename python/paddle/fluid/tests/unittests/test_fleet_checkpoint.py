@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
@@ -43,7 +44,7 @@ class FleetTest(unittest.TestCase):
                                   place=fluid.CPUPlace())
         predict = fluid.layers.fc(input=image, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         optimizer = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
 
         dist_optimizer = fleet.distributed_optimizer(optimizer)

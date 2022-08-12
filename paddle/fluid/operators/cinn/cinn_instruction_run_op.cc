@@ -113,13 +113,11 @@ It accomplishes the execution of the instruction according to the following step
 }  // namespace paddle::operators
 
 namespace ops = paddle::operators;
-using CPUDeviceContext = paddle::platform::CPUDeviceContext;
 REGISTER_OPERATOR(
     cinn_instruction_run,
     ops::CinnInstructionRunOp,
     ops::CinnInstructionRunOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    cinn_instruction_run,
-    ops::CinnInstructionRunOpKernel<CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(cinn_instruction_run,
+                       ops::CinnInstructionRunOpKernel<phi::CPUContext, float>);

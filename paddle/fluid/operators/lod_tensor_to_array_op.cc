@@ -44,7 +44,8 @@ struct LoDTensorToArrayFunctorImpl {
   void apply();
 };
 
-struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
+struct LoDTensorToArrayFunctor
+    : public std::unary_function<platform::Place, void> {
   std::vector<const framework::Tensor *> ref_inputs_;
   mutable std::vector<framework::Tensor *> outputs_;
   const framework::Tensor &input_;
@@ -62,10 +63,10 @@ struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
     auto &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx = pool.Get(place);
     if (std::is_same<Place, platform::CPUPlace>::value) {
-      Apply(static_cast<platform::CPUDeviceContext *>(dev_ctx));
+      Apply(static_cast<phi::CPUContext *>(dev_ctx));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      Apply(static_cast<platform::CUDADeviceContext *>(dev_ctx));
+      Apply(static_cast<phi::GPUContext *>(dev_ctx));
 #else
       PADDLE_THROW(
           platform::errors::Unavailable("Paddle is not compiled with CUDA."));

@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "Python.h"
-#include "boost/optional.hpp"
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/imperative/layer.h"

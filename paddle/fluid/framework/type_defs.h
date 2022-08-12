@@ -22,9 +22,9 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include "boost/blank.hpp"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/variant.h"
+
+#include "paddle/utils/blank.h"
 #include "paddle/utils/small_vector.h"
 #include "paddle/utils/variant.h"
 
@@ -34,6 +34,7 @@ class OperatorBase;
 class OpDesc;
 class InferShapeContext;
 class InferVarTypeContext;
+class VarDesc;
 class BlockDesc;
 class Variable;
 class InferNoNeedBufferVarsFN;
@@ -42,7 +43,7 @@ class InferNoNeedBufferVarsFN;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
-using Attribute = paddle::variant<boost::blank,
+using Attribute = paddle::variant<paddle::blank,
                                   int,
                                   float,
                                   std::string,
@@ -55,11 +56,13 @@ using Attribute = paddle::variant<boost::blank,
                                   int64_t,
                                   std::vector<BlockDesc*>,
                                   std::vector<int64_t>,
-                                  std::vector<double>>;
+                                  std::vector<double>,
+                                  VarDesc*,
+                                  std::vector<VarDesc*>>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL
-using NPUAttribute = paddle::variant<boost::blank,
+using NPUAttribute = paddle::variant<paddle::blank,
                                      int,
                                      float,
                                      std::string,
@@ -73,6 +76,8 @@ using NPUAttribute = paddle::variant<boost::blank,
                                      std::vector<BlockDesc*>,
                                      std::vector<int64_t>,
                                      std::vector<double>,
+                                     VarDesc*,
+                                     std::vector<VarDesc*>,
                                      std::vector<std::vector<int64_t>>>;
 
 using NPUAttributeMap = std::unordered_map<std::string, NPUAttribute>;

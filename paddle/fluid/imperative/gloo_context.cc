@@ -46,8 +46,8 @@ void GLOOParallelContext::Init() {
   int port = std::stoi(addr[1]);
   gloo_wrapper->SetHttpStore(host, port, "worker");
   gloo_wrapper->Init();
-  device_ = std::unique_ptr<platform::CPUDeviceContext>(
-      new platform::CPUDeviceContext(platform::CPUPlace()));
+  device_ = std::unique_ptr<phi::CPUContext>(
+      new phi::CPUContext(platform::CPUPlace()));
   device_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(platform::CPUPlace())
                             .get());
@@ -200,7 +200,7 @@ void GLOOParallelContext::Broadcast(framework::Variable *src, int ring_id) {
 
 paddle::platform::DeviceContext *GLOOParallelContext::GetDeviceContext(
     int ring_id) {
-  // return the CPUDeviceContext
+  // return the CPUContext
   return device_.get();
 }
 

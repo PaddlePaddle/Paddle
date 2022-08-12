@@ -184,11 +184,6 @@ nvinfer1::DimsExprs PoolPluginDynamic::getOutputDimensions(
                     platform::errors::InvalidArgument(
                         "The Split plugin should be only one input."));
 
-  PADDLE_ENFORCE_EQ(
-      inputs[0].d[1]->isConstant(),
-      true,
-      platform::errors::InvalidArgument("The channel dimension should be "
-                                        "static, but we found it's dynamic."));
   nvinfer1::DimsExprs output(inputs[0]);
   if (is_global_ && !adaptive_) {
     output.d[2] = expr_builder.constant(1);

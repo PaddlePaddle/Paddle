@@ -38,7 +38,7 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename T, bool is_test>
 class MaxSeqPoolFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::LoDTensor& input,
                   T pad_value,
                   framework::LoDTensor* output,
@@ -117,7 +117,7 @@ class MaxSeqPoolFunctor {
 template <typename T>
 class MaxSeqPoolFunctor<T, true> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::LoDTensor& input,
                   T pad_value,
                   framework::LoDTensor* output,
@@ -178,7 +178,7 @@ class MaxSeqPoolFunctor<T, true> {
 template <typename T>
 class MaxSeqPoolGradFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::LoDTensor& out_grad,
                   const framework::Tensor& index,
                   framework::LoDTensor* in_grad) {
@@ -224,7 +224,7 @@ class MaxSeqPoolGradFunctor {
     const int* max_index = index.data<int>();
     T* ig_data = in_grad->data<T>();
 
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
     set_zero(context, in_grad, static_cast<T>(0.0));
     int64_t num_seq = og_dims[0];
     int64_t dim = out_grad.numel() / num_seq;
@@ -241,7 +241,7 @@ class MaxSeqPoolGradFunctor {
 template <typename T>
 class LastSeqPoolFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::LoDTensor& input,
                   T pad_value,
                   framework::LoDTensor* output) {
@@ -275,7 +275,7 @@ class LastSeqPoolFunctor {
 template <typename T>
 class FirstSeqPoolFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::LoDTensor& input,
                   T pad_value,
                   framework::LoDTensor* output) {
@@ -309,7 +309,7 @@ class FirstSeqPoolFunctor {
 template <typename T>
 class SumSeqPoolGradFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad) {
     auto lod_level = in_grad->lod().size();
@@ -328,7 +328,7 @@ class SumSeqPoolGradFunctor {
                           out_w));
     const T* out_g_data = out_grad.data<T>();
     T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       if (h == 0) continue;
@@ -343,10 +343,10 @@ class SumSeqPoolGradFunctor {
 };
 
 template <typename T>
-class SequencePoolFunctor<platform::CPUDeviceContext, T> {
+class SequencePoolFunctor<phi::CPUContext, T> {
  public:
   /* max pool has index output */
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const std::string pooltype,
                   T pad_value,
                   const framework::LoDTensor& input,
@@ -435,9 +435,9 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
+class SequencePoolGradFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const std::string pooltype,
                   const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
@@ -451,7 +451,7 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
 
     if (pooltype == "LAST" || pooltype == "FIRST") {
       // set X@Grad be zero at first when pooltype is LAST/FIRST
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+      phi::funcs::SetConstant<phi::CPUContext, T> functor;
       functor(context, in_grad, 0);
     }
 
@@ -495,10 +495,10 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template class SequencePoolFunctor<platform::CPUDeviceContext, float>;
-template class SequencePoolFunctor<platform::CPUDeviceContext, double>;
-template class SequencePoolGradFunctor<platform::CPUDeviceContext, float>;
-template class SequencePoolGradFunctor<platform::CPUDeviceContext, double>;
+template class SequencePoolFunctor<phi::CPUContext, float>;
+template class SequencePoolFunctor<phi::CPUContext, double>;
+template class SequencePoolGradFunctor<phi::CPUContext, float>;
+template class SequencePoolGradFunctor<phi::CPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

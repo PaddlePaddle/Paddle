@@ -212,7 +212,7 @@ class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
     auto block_desc =
-        BOOST_GET_CONST(BlockDesc*, this->GetAttr("global_block"));
+        PADDLE_GET_CONST(BlockDesc*, this->GetAttr("global_block"));
     auto params_grad = this->InputGrad("Params");
     FilterHelper<T>::filter(block_desc, &params_grad);  // filter the vector.
     grad_op->SetOutput(framework::GradVarName("Params"), params_grad);
@@ -232,9 +232,7 @@ REGISTER_OPERATOR(run_program,
 REGISTER_OPERATOR(run_program_grad, ops::RunProgramGradOp);
 
 /* see [Why use single type kernel] */
-REGISTER_OP_CPU_KERNEL(
-    run_program,
-    ops::RunProgramOpKernel<paddle::platform::CPUDeviceContext, float>)
-REGISTER_OP_CPU_KERNEL(
-    run_program_grad,
-    ops::RunProgramGradOpKernel<paddle::platform::CPUDeviceContext, float>)
+REGISTER_OP_CPU_KERNEL(run_program,
+                       ops::RunProgramOpKernel<phi::CPUContext, float>)
+REGISTER_OP_CPU_KERNEL(run_program_grad,
+                       ops::RunProgramGradOpKernel<phi::CPUContext, float>)

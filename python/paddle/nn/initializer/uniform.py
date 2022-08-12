@@ -30,7 +30,6 @@ class Uniform(UniformInitializer):
 
     Examples:
         .. code-block:: python
-            :name: initializer_Uniform-example
 
             import paddle
 

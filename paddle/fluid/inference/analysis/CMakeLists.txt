@@ -49,10 +49,10 @@ function(inference_analysis_test_build TARGET)
       SRCS
       ${analysis_test_SRCS}
       DEPS
+      ${analysis_test_EXTRA_DEPS}
       analysis
       pass
-      ${GLOB_PASS_LIB}
-      ${analysis_test_EXTRA_DEPS})
+      ${GLOB_PASS_LIB})
   endif()
 endfunction()
 
@@ -65,6 +65,7 @@ function(inference_analysis_test_run TARGET)
                           "${multiValueArgs}" ${ARGN})
     inference_base_test_run(${TARGET} COMMAND ${analysis_test_COMMAND} ARGS
                             ${analysis_test_ARGS})
+    set_tests_properties(${TARGET} PROPERTIES LABELS "RUN_TYPE=INFER")
   endif()
 endfunction()
 
@@ -80,12 +81,13 @@ function(inference_analysis_test TARGET)
       SRCS
       ${analysis_test_SRCS}
       DEPS
+      ${analysis_test_EXTRA_DEPS}
       analysis
       pass
-      ${GLOB_PASS_LIB}
-      ${analysis_test_EXTRA_DEPS})
+      ${GLOB_PASS_LIB})
     inference_base_test_run(${TARGET} COMMAND ${TARGET} ARGS
                             ${analysis_test_ARGS})
+    set_tests_properties(${TARGET} PROPERTIES LABELS "RUN_TYPE=INFER")
   endif()
 endfunction()
 
@@ -109,4 +111,9 @@ elseif(WIN32)
     paddle_inference_api
     ARGS
     --inference_model_dir=${WORD2VEC_MODEL_DIR})
+  if(WITH_ONNXRUNTIME AND WIN32)
+    # Copy onnxruntime for some c++ test in Windows, since the test will
+    # be build only in CI, so suppose the generator in Windows is Ninja.
+    copy_onnx(test_analyzer)
+  endif()
 endif()

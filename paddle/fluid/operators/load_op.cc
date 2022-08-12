@@ -68,10 +68,9 @@ REGISTER_OPERATOR(load, ops::LoadOp, ops::LoadOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
     load,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::bfloat16>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::LoadOpKernel<phi::CPUContext, float>,
+    ops::LoadOpKernel<phi::CPUContext, double>,
+    ops::LoadOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::LoadOpKernel<phi::CPUContext, int>,
+    ops::LoadOpKernel<phi::CPUContext, int8_t>,
+    ops::LoadOpKernel<phi::CPUContext, int64_t>);

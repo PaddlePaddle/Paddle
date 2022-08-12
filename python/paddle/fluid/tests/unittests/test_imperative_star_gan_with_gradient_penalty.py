@@ -427,7 +427,7 @@ def get_generator_loss(image_real, label_org, label_trg, generator,
 
     pred_fake, cls_fake = discriminator(fake_img)
 
-    g_loss_fake = -fluid.layers.mean(pred_fake)
+    g_loss_fake = -paddle.mean(pred_fake)
     g_loss_cls = loss_cls(cls_fake, label_trg, cfg)
     g_loss = g_loss_fake + cfg.lambda_rec * g_loss_rec + g_loss_cls
     return g_loss
@@ -439,8 +439,8 @@ def get_discriminator_loss(image_real, label_org, label_trg, generator,
     pred_real, cls_real = discriminator(image_real)
     pred_fake, _ = discriminator(fake_img)
     d_loss_cls = loss_cls(cls_real, label_org, cfg)
-    d_loss_fake = fluid.layers.mean(pred_fake)
-    d_loss_real = -fluid.layers.mean(pred_real)
+    d_loss_fake = paddle.mean(pred_fake)
+    d_loss_real = -paddle.mean(pred_real)
     d_loss = d_loss_real + d_loss_fake + d_loss_cls
 
     d_loss_gp = gradient_penalty(discriminator, image_real, fake_img,

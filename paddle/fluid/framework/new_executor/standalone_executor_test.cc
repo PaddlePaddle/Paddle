@@ -57,7 +57,7 @@ USE_OP_ITSELF(sqrt);
 USE_OP_ITSELF(elementwise_max);
 USE_OP_ITSELF(elementwise_div);
 USE_OP_ITSELF(sgd);
-USE_OP(squared_l2_norm);
+USE_OP_ITSELF(squared_l2_norm);
 USE_OP_ITSELF(memcpy_h2d);
 USE_OP_ITSELF(memcpy_d2h);
 USE_OP_ITSELF(fetch_v2);
@@ -87,6 +87,7 @@ PD_DECLARE_KERNEL(mean, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(mean_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sigmoid, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sigmoid_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(squared_l2_norm, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(reshape_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_grad, GPU, ALL_LAYOUT);
@@ -121,45 +122,45 @@ ProgramDesc GetLmMainProgram() {
   int64_t batch_size = 20;
 
   auto& op1 = global_block.AllOps()[1];
-  auto shape1 = BOOST_GET_CONST(std::vector<int64_t>, op1->GetAttr("shape"));
+  auto shape1 = PADDLE_GET_CONST(std::vector<int64_t>, op1->GetAttr("shape"));
   shape1[0] = batch_size * 20;
   op1->SetAttr("shape", shape1);
 
   auto& op2 = global_block.AllOps()[2];
-  auto shape2 = BOOST_GET_CONST(std::vector<int64_t>, op2->GetAttr("shape"));
+  auto shape2 = PADDLE_GET_CONST(std::vector<int64_t>, op2->GetAttr("shape"));
   shape2[0] = batch_size;
   op2->SetAttr("shape", shape2);
 
   auto& op3 = global_block.AllOps()[3];
-  auto shape3 = BOOST_GET_CONST(std::vector<int64_t>, op3->GetAttr("shape"));
+  auto shape3 = PADDLE_GET_CONST(std::vector<int64_t>, op3->GetAttr("shape"));
   shape3[0] = batch_size;
   op3->SetAttr("shape", shape3);
   return main_prog;
 }
 
-TEST(StandaloneExecutor, run) {
-  auto place = platform::CUDAPlace(0);
-  ProgramDesc test_prog = load_from_file("lm_startup_program");
-  ProgramDesc main_prog = GetLmMainProgram();
+// TEST(StandaloneExecutor, run) {
+//   auto place = platform::CUDAPlace(0);
+//   ProgramDesc test_prog = load_from_file("lm_startup_program");
+//   ProgramDesc main_prog = GetLmMainProgram();
 
-  Scope scope;
-  StandaloneExecutor exec(place, test_prog, main_prog, &scope);
-  exec.Run({}, {}, {});
-  auto start = std::chrono::steady_clock::now();
+//   Scope scope;
+//   StandaloneExecutor exec(place, test_prog, main_prog, &scope);
+//   exec.Run({}, {}, {});
+//   auto start = std::chrono::steady_clock::now();
 
-  for (size_t i = 0; i < 10; ++i) {
-    if (i % 200 == 0) {
-      std::cout << i << std::endl;
-    }
+//   for (size_t i = 0; i < 10; ++i) {
+//     if (i % 200 == 0) {
+//       std::cout << i << std::endl;
+//     }
 
-    exec.Run({}, {}, {});
-  }
+//     exec.Run({}, {}, {});
+//   }
 
-  auto end = std::chrono::steady_clock::now();
-  std::chrono::duration<double> diff = end - start;
+//   auto end = std::chrono::steady_clock::now();
+//   std::chrono::duration<double> diff = end - start;
 
-  std::cout << "time cost " << diff.count() << std::endl;
-}
+//   std::cout << "time cost " << diff.count() << std::endl;
+// }
 
 TEST(InterpreterCore, skip_gc_vars) {
   auto place = platform::CUDAPlace(0);
@@ -168,9 +169,8 @@ TEST(InterpreterCore, skip_gc_vars) {
 
   Scope scope;
 
-  VariableScope startup_scope(&scope);
   std::shared_ptr<InterpreterCore> startup_core =
-      CreateInterpreterCore(place, startup_prog, &startup_scope);
+      CreateInterpreterCore(place, startup_prog, &scope);
   startup_core->Run({}, {});
 
   std::set<std::string> skip_gc_vars = {"uniform_0.tmp_0",
@@ -183,26 +183,31 @@ TEST(InterpreterCore, skip_gc_vars) {
                                    "split_0.tmp_0",
                                    "elementwise_add_0.tmp_0",
                                    "tmp_0"};
+
+  std::shared_ptr<InterpreterCore> main_core =
+      CreateInterpreterCore(place, main_prog, &scope, {}, skip_gc_vars);
+
   auto check_gc_result =
-      [](VariableScope& scope, std::set<std::string>& vars, bool is_skip_gc) {
+      [](Scope& scope, std::set<std::string>& vars, bool is_skip_gc) {
+        // the first local scope is created in startup_core
+        // the second local scope is created in main_core
+        ASSERT_EQ(scope.kids().size(), 2UL);
+        auto* local_scope = scope.kids().back();
         for (const std::string& var_name : vars) {
-          ASSERT_EQ(
-              scope.FindVar(var_name)->GetMutable<LoDTensor>()->IsInitialized(),
-              is_skip_gc);
+          ASSERT_EQ(local_scope->FindVar(var_name)
+                        ->GetMutable<LoDTensor>()
+                        ->IsInitialized(),
+                    is_skip_gc);
         }
       };
 
-  VariableScope main_scope(&scope);
-  std::shared_ptr<InterpreterCore> main_core =
-      CreateInterpreterCore(place, main_prog, &main_scope, {}, skip_gc_vars);
+  main_core->Run({}, {});
+  check_gc_result(scope, skip_gc_vars, true);
+  check_gc_result(scope, gc_vars, false);
 
   main_core->Run({}, {});
-  check_gc_result(main_scope, skip_gc_vars, true);
-  check_gc_result(main_scope, gc_vars, false);
-
-  main_core->Run({}, {});
-  check_gc_result(main_scope, skip_gc_vars, true);
-  check_gc_result(main_scope, gc_vars, false);
+  check_gc_result(scope, skip_gc_vars, true);
+  check_gc_result(scope, gc_vars, false);
 }
 
 void TestShareWorkQueue(const ProgramDesc& prog,
@@ -213,11 +218,10 @@ void TestShareWorkQueue(const ProgramDesc& prog,
   const platform::CPUPlace place = platform::CPUPlace();
 
   Scope scope;
-  VariableScope variable_scope(&scope);
   std::shared_ptr<InterpreterCore> core1 =
-      CreateInterpreterCore(place, prog, &variable_scope, fetch_names);
+      CreateInterpreterCore(place, prog, &scope, fetch_names);
   std::shared_ptr<InterpreterCore> core2 =
-      CreateInterpreterCore(place, prog, &variable_scope, fetch_names);
+      CreateInterpreterCore(place, prog, &scope, fetch_names);
   core2->ShareWorkQueueFrom(core1);
 
   auto run_and_check = [&feed_names, &feed_tensors, &fetch_results](
@@ -225,7 +229,7 @@ void TestShareWorkQueue(const ProgramDesc& prog,
     FetchList fetch_list = core->Run(feed_names, feed_tensors);
     for (size_t i = 0; i < fetch_list.size(); ++i) {
       const float* fetch_data =
-          BOOST_GET_CONST(LoDTensor, fetch_list[i]).data<float>();
+          PADDLE_GET_CONST(LoDTensor, fetch_list[i]).data<float>();
       ASSERT_FLOAT_EQ(*fetch_data, fetch_results.at(i));
     }
   };

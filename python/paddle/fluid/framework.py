@@ -75,7 +75,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode') == '1')
+_in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode', '1') == '1')
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
@@ -84,6 +84,8 @@ _already_patch_eager_tensor = False
 _already_patch_varbase = False
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
+_enable_standalone_executor_ = (os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR',
+                                               None))
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -257,6 +259,17 @@ global_ipu_index = -1
 global_ipu_stage = -1
 ipu_index_attr_name = 'ipu_index'
 ipu_stage_attr_name = 'ipu_stage'
+
+
+@signature_safe_contextmanager
+def _enable_standalone_executor(enable=True):
+    global _enable_standalone_executor_
+    original_ = _enable_standalone_executor_
+    _enable_standalone_executor_ = enable
+    try:
+        yield
+    finally:
+        _enable_standalone_executor_ = original_
 
 
 @signature_safe_contextmanager
@@ -1247,6 +1260,17 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
                             list(shape) if shape else [], name,
                             type if type else core.VarDesc.VarType.LOD_TENSOR,
                             True if persistable else False)
+
+
+def _all_is_type(vals, expected_type):
+    """
+    Return True if type of each element is expected_type.
+
+    NOTE: BuiltIn all() will always return True if vals is empty.
+    """
+    assert isinstance(vals, (list, tuple))
+    if not vals: return False
+    return all(isinstance(v, expected_type) for v in vals)
 
 
 class VariableMetaClass(type):
@@ -2921,7 +2945,28 @@ class Operator(object):
             if skip_op_callstack and name == "op_callstack":
                 continue
 
-            attr_type = self.desc.attr_type(name)
+            attr_type = self.desc.attr_type(name, True)
+            if attr_type == core.AttrType.VAR:
+                attr_var_name = self.desc.attr(name, True).name()
+                a = "{name} = Var['{value}']".format(name=name,
+                                                     type=attr_type,
+                                                     value=attr_var_name)
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
+            if attr_type == core.AttrType.VARS:
+                attr_var_names = [
+                    "'%s'" % var.name() for var in self.desc.attr(name, True)
+                ]
+                a = "{name} = Vars[{value}]".format(
+                    name=name, type=attr_type, value=','.join(attr_var_names))
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
             if attr_type == core.AttrType.BLOCK:
                 a = "{name} = block[{value}]".format(
                     name=name, type=attr_type, value=self._block_attr_id(name))
@@ -3115,10 +3160,13 @@ class Operator(object):
         Raises:
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            self.desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            self.desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and all(
-                isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             self.desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
@@ -3128,7 +3176,7 @@ class Operator(object):
 
     @property
     def attr_names(self):
-        return self.desc.attr_names()
+        return self.desc.attr_names(True)
 
     def attr(self, name):
         """
@@ -4379,10 +4427,13 @@ class IrOpNode(IrNode):
         assert self.node.op() is not None, \
             "The node operator description can not be None."
         desc = self.node.op()
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and \
-                all(isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
@@ -4837,10 +4888,13 @@ class IrGraph(object):
         """
         Update the value of desc's attribute by attribute's name.
         """
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and all(
-                isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
@@ -7065,9 +7119,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'npu', '', None]:
+    if device not in ['cpu', 'gpu', 'npu', 'xpu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' 'npu' 'xpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
     if index:
         device = ":".join([device, index])

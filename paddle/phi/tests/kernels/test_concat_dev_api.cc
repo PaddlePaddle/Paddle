@@ -60,7 +60,6 @@ TEST(DEV_API, concat) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-  dev_ctx.Init();
   auto out = phi::Concat<float>(dev_ctx, inputs, 0);
 
   // 3. check result

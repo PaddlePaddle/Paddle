@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
-
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.initializer as initializer
 from paddle.fluid import Program, program_guard
@@ -192,7 +192,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                                 seed=1,
                                 num_neg_samples=num_neg_samples,
                                 is_sparse=is_sparse)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         # optimizer
         optimizer = self.get_optimizer()
         optimizer.minimize(avg_cost)

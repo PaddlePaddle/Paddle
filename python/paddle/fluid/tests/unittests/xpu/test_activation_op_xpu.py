@@ -34,12 +34,15 @@ class TestActivationOPBase(XPUOpTest):
     def setUp(self):
         self.place = paddle.XPUPlace(0)
         self.init_dtype()
+        self.set_shape()
         self.set_case()
+
+    def set_shape(self):
+        self.shape = [11, 17]
 
     def set_case(self):
         self.op_type = 'exp'
-
-        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = np.exp(x)
         self.attrs = {'use_xpu': True}
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -313,13 +316,32 @@ class XPUTestLogOP(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = "log"
             self.dtype = self.in_type
-
-            x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+            x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
             out = np.log(x)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
             self.outputs = {'Out': out}
+
+    class TestLogCase1(XPUTestLog):
+
+        def set_shape(self):
+            self.shape = [1, 11, 17]
+
+    class TestLogCase2(XPUTestLog):
+
+        def set_shape(self):
+            self.shape = [2, 2, 2]
+
+    class TestLogCase3(XPUTestLog):
+
+        def set_shape(self):
+            self.shape = [2]
+
+    class TestLogCase4(XPUTestLog):
+
+        def set_shape(self):
+            self.shape = [1, 2, 3, 4]
 
 
 support_types = get_xpu_op_support_types('log')

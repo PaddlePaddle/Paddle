@@ -351,7 +351,7 @@ class TestImperativeResneXt(unittest.TestCase):
                     softmax_out = fluid.layers.softmax(out, use_cudnn=False)
                     loss = fluid.layers.cross_entropy(input=softmax_out,
                                                       label=label)
-                    avg_loss = fluid.layers.mean(x=loss)
+                    avg_loss = paddle.mean(x=loss)
 
                     dy_out = avg_loss.numpy()
 
@@ -410,7 +410,7 @@ class TestImperativeResneXt(unittest.TestCase):
             out = se_resnext(img)
             softmax_out = fluid.layers.softmax(out, use_cudnn=False)
             loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
-            avg_loss = fluid.layers.mean(x=loss)
+            avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
 
             # initialize params and fetch them

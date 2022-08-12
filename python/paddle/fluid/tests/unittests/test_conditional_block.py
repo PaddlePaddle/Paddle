@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -46,7 +47,7 @@ class ConditionalBlockTest(unittest.TestCase):
 
             outs = exe.run(main_program, feed={'X': x}, fetch_list=[out])[0]
             print(outs)
-            loss = layers.mean(out)
+            loss = paddle.mean(out)
             append_backward(loss=loss)
             outs = exe.run(
                 main_program,

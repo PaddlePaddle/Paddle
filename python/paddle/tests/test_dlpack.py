@@ -33,9 +33,8 @@ class TestDLPack(unittest.TestCase):
                 isinstance(out_from_dlpack, paddle.fluid.core.eager.Tensor))
         else:
             self.assertTrue(isinstance(out_from_dlpack, paddle.Tensor))
-        self.assertTrue(
-            np.array_equal(np.array(out_from_dlpack),
-                           np.array([1, 2, 3, 4]).astype('int')))
+        np.testing.assert_array_equal(np.array(out_from_dlpack),
+                                      np.array([1, 2, 3, 4]).astype('int'))
 
     def test_dlpack_dygraph(self):
         with _test_eager_guard():
@@ -64,9 +63,9 @@ class TestDLPack(unittest.TestCase):
         dlpack = paddle.utils.dlpack.to_dlpack(tensor)
         out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
         self.assertTrue(isinstance(out_from_dlpack, fluid.core.Tensor))
-        self.assertTrue(
-            np.array_equal(np.array(out_from_dlpack),
-                           np.array([[1], [2], [3], [4]]).astype('int')))
+        np.testing.assert_array_equal(
+            np.array(out_from_dlpack),
+            np.array([[1], [2], [3], [4]]).astype('int'))
 
         # when build with cuda
         if core.is_compiled_with_cuda():
@@ -76,9 +75,9 @@ class TestDLPack(unittest.TestCase):
             gdlpack = paddle.utils.dlpack.to_dlpack(gtensor)
             gout_from_dlpack = paddle.utils.dlpack.from_dlpack(gdlpack)
             self.assertTrue(isinstance(gout_from_dlpack, fluid.core.Tensor))
-            self.assertTrue(
-                np.array_equal(np.array(gout_from_dlpack),
-                               np.array([[1], [2], [3], [4]]).astype('int')))
+            np.testing.assert_array_equal(
+                np.array(gout_from_dlpack),
+                np.array([[1], [2], [3], [4]]).astype('int'))
 
     def func_test_dlpack_dtype_conversion(self):
         paddle.disable_static()

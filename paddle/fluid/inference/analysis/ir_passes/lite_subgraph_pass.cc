@@ -234,7 +234,7 @@ void LiteSubgraphPass::SetUpEngine(
                              framework::Scope* scope,
                              const std::vector<std::string>& params) {
     std::ostringstream os;
-    platform::CPUDeviceContext ctx;
+    phi::CPUContext ctx;
     for (const auto& param : params) {
       VLOG(3) << "Serialize param: " << param;
       PADDLE_ENFORCE_NOT_NULL(

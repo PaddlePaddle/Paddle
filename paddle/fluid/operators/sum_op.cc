@@ -359,9 +359,8 @@ REGISTER_OPERATOR(sum,
 
 REGISTER_OP_CPU_KERNEL(
     sum,
-    ops::SumKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SumKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SumKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SumKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::bfloat16>,
-    ops::SumKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::SumKernel<phi::CPUContext, float>,
+    ops::SumKernel<phi::CPUContext, double>,
+    ops::SumKernel<phi::CPUContext, int>,
+    ops::SumKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::SumKernel<phi::CPUContext, int64_t>);

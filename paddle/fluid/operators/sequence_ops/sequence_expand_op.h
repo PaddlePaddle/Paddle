@@ -49,9 +49,9 @@ struct SequenceExpandGradFunctor {
 };
 
 template <typename T>
-struct SequenceExpandFunctor<platform::CPUDeviceContext, T> {
+struct SequenceExpandFunctor<phi::CPUContext, T> {
   void operator()(
-      const platform::CPUDeviceContext& context,
+      const phi::CPUContext& context,
       const LoDTensor& x,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
@@ -161,9 +161,9 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
  *
  * */
 template <typename T>
-struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
+struct SequenceExpandGradFunctor<phi::CPUContext, T> {
   void operator()(
-      const platform::CPUDeviceContext& context,
+      const phi::CPUContext& context,
       const LoDTensor& dout,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
@@ -181,7 +181,7 @@ struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
         int dout_end = dout_offset + repeat_num * x_seq_len;
         auto dout_sub = dout.Slice(dout_offset, dout_end);
         dout_sub.Resize({repeat_num, dx_sub.dims()[0]});
-        phi::funcs::ColwiseSum<platform::CPUDeviceContext, T> col_sum;
+        phi::funcs::ColwiseSum<phi::CPUContext, T> col_sum;
         col_sum(context, dout_sub, &dx_sub);
         dout_offset += repeat_num * x_seq_len;
       }

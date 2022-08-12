@@ -42,7 +42,7 @@ class TestMeanOp(OpTest):
 
     def setUp(self):
         self.op_type = "mean"
-        self.python_api = fluid.layers.mean
+        self.python_api = paddle.mean
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
@@ -64,12 +64,12 @@ class TestMeanOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
             input1 = 12
-            self.assertRaises(TypeError, fluid.layers.mean, input1)
+            self.assertRaises(TypeError, paddle.mean, input1)
             # The input dtype of mean_op must be float16, float32, float64.
             input2 = fluid.layers.data(name='input2',
                                        shape=[12, 10],
                                        dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.mean, input2)
+            self.assertRaises(TypeError, paddle.mean, input2)
             input3 = fluid.layers.data(name='input3',
                                        shape=[4],
                                        dtype="float16")
@@ -96,11 +96,11 @@ class TestFP16MeanOp(TestMeanOp):
                 x_np = np.random.random((10, 10)).astype(self.dtype)
                 x = paddle.to_tensor(x_np)
                 x.stop_gradient = False
-                y = fluid.layers.mean(x)
+                y = paddle.mean(x)
                 dx = paddle.grad(y, x)[0].numpy()
                 dx_expected = self.dtype(1.0 / np.prod(x_np.shape)) * np.ones(
                     x_np.shape).astype(self.dtype)
-                self.assertTrue(np.array_equal(dx, dx_expected))
+                np.testing.assert_array_equal(dx, dx_expected)
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -193,7 +193,7 @@ class TestReduceMeanOp(OpTest):
                 dx_expected = ref_reduce_mean_grad(self.inputs['X'],
                                                    self.attrs['dim'],
                                                    self.dtype)
-                self.assertTrue(np.array_equal(dx, dx_expected))
+                np.testing.assert_array_equal(dx, dx_expected)
 
 
 class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):

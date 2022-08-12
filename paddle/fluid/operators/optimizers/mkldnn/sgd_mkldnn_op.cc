@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class SGDOneDNNKernel : public SGDOpKernel<pplat::CPUDeviceContext, T> {
+class SGDOneDNNKernel : public SGDOpKernel<phi::CPUContext, T> {
  protected:
   void dense_param_and_grad_kernel(
       const framework::ExecutionContext &ctx) const override {

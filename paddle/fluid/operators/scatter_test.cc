@@ -42,7 +42,7 @@ TEST(scatter, ScatterUpdate) {
   }
 
   auto* cpu_place = new paddle::platform::CPUPlace();
-  paddle::platform::CPUDeviceContext ctx(*cpu_place);
+  phi::CPUContext ctx(*cpu_place);
   phi::funcs::ScatterAssign<float>(ctx, src, index, &output);
 
   for (size_t i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], 0.0f);

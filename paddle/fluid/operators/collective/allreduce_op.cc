@@ -73,10 +73,9 @@ REGISTER_OP_WITHOUT_GRADIENT(allreduce,
                              ops::AllReduceOp,
                              ops::AllReduceOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    allreduce,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, float>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, double>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, int>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, plat::float16>);
+REGISTER_OP_CPU_KERNEL(allreduce,
+                       ops::AllReduceOpKernel<phi::CPUContext, float>,
+                       ops::AllReduceOpKernel<phi::CPUContext, double>,
+                       ops::AllReduceOpKernel<phi::CPUContext, int>,
+                       ops::AllReduceOpKernel<phi::CPUContext, int64_t>,
+                       ops::AllReduceOpKernel<phi::CPUContext, plat::float16>);

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .wrapper import Config, DataType, PlaceType, PrecisionType, Tensor, Predictor
+from .wrapper import Config, DataType, PlaceType, PrecisionType, BackendType, Tensor, Predictor
+from .wrapper import convert_to_mixed_precision
 
 from ..core import create_predictor, get_version, get_num_bytes_of_data_type, PredictorPool, get_trt_compile_version, get_trt_runtime_version

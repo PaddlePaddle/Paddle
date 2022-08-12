@@ -178,7 +178,7 @@ class TestImperativeMnist(unittest.TestCase):
                         helper.assertEachVar(cost, cost_static)
 
                     loss = fluid.layers.cross_entropy(cost, label)
-                    avg_loss = fluid.layers.mean(loss)
+                    avg_loss = paddle.mean(loss)
 
                     dy_out = avg_loss.numpy()
 
@@ -213,7 +213,7 @@ class TestImperativeMnist(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
             loss = fluid.layers.cross_entropy(cost, label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             sgd.minimize(avg_loss)
 
             # initialize params and fetch them

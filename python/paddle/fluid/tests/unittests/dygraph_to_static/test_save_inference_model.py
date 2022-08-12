@@ -45,7 +45,7 @@ class SimpleFcLayer(fluid.dygraph.Layer):
     def forward(self, x):
         y = self._linear(x)
         z = self._linear(y)
-        out = fluid.layers.mean(z)
+        out = paddle.mean(z)
         return out, y
 
 

@@ -179,6 +179,16 @@ class Partitioner(object):
 
         partitioned_main_prog.current_block_idx = 0
 
+        # should reconnect the block_attr ptr to the correct block
+        for block_id in range(self._dist_context.block_state.nblock):
+            block = partitioned_main_prog.block(block_id)
+            for op in block.ops:
+                for attr_name in op.all_attrs():
+                    if op.attr_type(attr_name) == core.AttrType.BLOCK:
+                        relative_id = op._block_attr_id(attr_name)
+                        op._set_attr(attr_name,
+                                     partitioned_main_prog.block(relative_id))
+
         partitioned_params_and_grads = []
         for p, g in params_and_grads:
             assert p.name in self._serial2dist_varname_mapping
@@ -264,10 +274,12 @@ class Partitioner(object):
                     self._dist_context, **kinputs, **koutputs,
                     **{"grad_var_to_var": grad_var_to_var})
             elif is_optimize_op(op):
+                # NOTE: BACKWARD_ONLY_DIST_OPS's op_role must 2 because of 1F1B PASS
                 kinputs, koutputs = dist_op_context.prepare_context(op)
-                dist_op_impl = get_distributed_operator_impl_container(
-                    "default").get_impl(0)
-                dist_op_impl.backward(self._dist_context, **kinputs, **koutputs)
+                dist_op_opt_impl = _get_dist_op_backward_implement(
+                    op, self._dist_context, forward_op_id2forward_op)
+                dist_op_opt_impl.backward(self._dist_context, **kinputs,
+                                          **koutputs)
             else:
                 raise NotImplementedError(
                     "partitioner only support forward and backward, optimize ops, but got {}"

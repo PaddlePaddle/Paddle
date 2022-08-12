@@ -64,7 +64,7 @@ class GLOOParallelContext : public ParallelContext {
   void AllReduce(const phi::SelectedRows& src, phi::SelectedRows* dst);
 
  private:
-  std::unique_ptr<platform::CPUDeviceContext> device_;
+  std::unique_ptr<phi::CPUContext> device_;
 };
 
 }  //  namespace imperative

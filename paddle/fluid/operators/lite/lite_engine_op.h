@@ -85,7 +85,7 @@ class LiteEngineOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(dev_place)) {
       platform::GpuStreamSync(
-          static_cast<const platform::CUDADeviceContext *>(ctx)->stream());
+          static_cast<const phi::GPUContext *>(ctx)->stream());
     }
 #endif
     VLOG(3) << "lite engine run";
@@ -103,7 +103,7 @@ class LiteEngineOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(dev_place)) {
       platform::GpuStreamSync(
-          static_cast<const platform::CUDADeviceContext *>(ctx)->stream());
+          static_cast<const phi::GPUContext *>(ctx)->stream());
     }
 #endif
   }

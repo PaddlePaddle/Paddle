@@ -250,6 +250,10 @@ def get_trainer_endpoint(role_maker):
     return role_maker._get_trainer_endpoint()
 
 
+def get_trainer_endpoints(role_maker):
+    return role_maker._get_trainer_endpoints()
+
+
 def get_previous_stage_trainers(role_maker):
     try:
         return role_maker._get_previous_trainers()
@@ -1591,3 +1595,11 @@ def debug_program(file, program):
     os.makedirs(os.path.dirname(file), exist_ok=True)
     with open(file, 'w+') as f:
         f.write(str(program))
+
+
+def is_distributed_env():
+    node_role = os.getenv("TRAINING_ROLE")
+    if node_role is None:
+        return False
+    else:
+        return True

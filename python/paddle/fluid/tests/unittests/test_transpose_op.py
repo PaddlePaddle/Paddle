@@ -126,6 +126,41 @@ class TestCase9(TestTransposeOp):
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
+class TestAutoTuneTransposeOp(OpTest):
+
+    def setUp(self):
+        self.init_op_type()
+        self.initTestCase()
+        self.python_api = paddle.transpose
+        self.inputs = {'X': np.random.random(self.shape).astype("float64")}
+        self.attrs = {
+            'axis': list(self.axis),
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("float64"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+    def initTestCase(self):
+        fluid.core.set_autotune_range(0, 3)
+        fluid.core.update_autotune_status()
+        fluid.core.enable_autotune()
+        self.shape = (1, 12, 256, 1)
+        self.axis = (0, 3, 2, 1)
+
+    def init_op_type(self):
+        self.op_type = "transpose2"
+        self.use_mkldnn = False
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'], check_eager=True)
+        fluid.core.disable_autotune()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+
 class TestTransposeBF16Op(OpTest):
 
     def setUp(self):
@@ -423,13 +458,13 @@ class TestMoveAxis(unittest.TestCase):
             exe = paddle.static.Executor()
             out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
 
-        self.assertEqual(np.array_equal(out_np, expected), True)
+        np.testing.assert_array_equal(out_np, expected)
 
         paddle.disable_static()
         x = paddle.to_tensor(x_np)
         out = paddle.moveaxis(x, [0, 4, 3, 2], [1, 3, 2, 0])
         self.assertEqual(out.shape, [4, 2, 5, 7, 3])
-        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        np.testing.assert_array_equal(out.numpy(), expected)
         paddle.enable_static()
 
     def test_moveaxis2(self):
@@ -443,13 +478,13 @@ class TestMoveAxis(unittest.TestCase):
             exe = paddle.static.Executor()
             out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
 
-        self.assertEqual(np.array_equal(out_np, expected), True)
+        np.testing.assert_array_equal(out_np, expected)
 
         paddle.disable_static()
         x = paddle.to_tensor(x_np)
         out = x.moveaxis(-2, -1)
         self.assertEqual(out.shape, [2, 5, 3])
-        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        np.testing.assert_array_equal(out.numpy(), expected)
         paddle.enable_static()
 
     def test_moveaxis3(self):

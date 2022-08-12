@@ -129,7 +129,6 @@ REGISTER_OPERATOR(
     ops::CTCAlignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    ctc_align,
-    ops::CTCAlignKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CTCAlignKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(ctc_align,
+                       ops::CTCAlignKernel<phi::CPUContext, int>,
+                       ops::CTCAlignKernel<phi::CPUContext, int64_t>);

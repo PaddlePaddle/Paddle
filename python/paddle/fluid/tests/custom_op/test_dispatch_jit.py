@@ -47,9 +47,10 @@ class TestJitDispatch(unittest.TestCase):
         np_x = x.numpy()
         np_out = out.numpy()
         self.assertTrue(dtype in str(np_out.dtype))
-        self.assertTrue(
-            np.array_equal(np_x, np_out),
-            "custom op x: {},\n custom op out: {}".format(np_x, np_out))
+        np.testing.assert_array_equal(
+            np_x,
+            np_out,
+            err_msg='custom op x: {},\n custom op out: {}'.format(np_x, np_out))
 
     def run_dispatch_test(self, func, dtype):
         with _test_eager_guard():

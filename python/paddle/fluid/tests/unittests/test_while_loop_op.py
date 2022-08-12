@@ -222,7 +222,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             x.stop_gradient = False
 
             out = layers.while_loop(cond, body, [i, x])
-            mean = layers.mean(out[1])
+            mean = paddle.mean(out[1])
             append_backward(mean)
 
         place = fluid.CUDAPlace(
@@ -264,7 +264,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             x.stop_gradient = False
 
             out = layers.while_loop(cond, body, [i, x])
-            mean = layers.mean(out[1])
+            mean = paddle.mean(out[1])
             append_backward(mean)
 
         place = fluid.CUDAPlace(
@@ -351,7 +351,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                                     [i, j, x, mem_array])
 
             sum_result = layers.array_read(array=mem_array, i=j)
-            mean = layers.mean(sum_result)
+            mean = paddle.mean(sum_result)
             append_backward(mean)
 
             place = fluid.CUDAPlace(
@@ -587,7 +587,7 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
 
         np_x = np.array([1, 2, 3, 4, 5], dtype='int32')
         res = exe.run(main_program, feed={'x': np_x}, fetch_list=[z])
-        self.assertTrue(np.array_equal(res[0], [np.sum(np_x)]))
+        np.testing.assert_array_equal(res[0], [np.sum(np_x)])
 
 
 if __name__ == '__main__':

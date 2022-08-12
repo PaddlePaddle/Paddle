@@ -206,7 +206,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         out = fluid.layers.l2_normalize(x=emb, axis=-1)
 
         cost = fluid.layers.square_error_cost(input=out, label=label)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
@@ -368,7 +368,7 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
                                           name='X',
                                           dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.fluid.layers.mean(hidden)
+            loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)
 
@@ -470,7 +470,7 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
                                           name='X',
                                           dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.fluid.layers.mean(hidden)
+            loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)
 

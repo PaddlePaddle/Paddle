@@ -129,8 +129,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     emission_row_max.mutable_data<T>(
         phi::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
-    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
+    auto& place =
+        *ctx.template device_context<phi::CPUContext>().eigen_device();
     auto x = framework::EigenMatrix<T>::From(emission_weights_tmp);
     auto x_row_max = framework::EigenMatrix<T>::From(emission_row_max);
     x_row_max.device(place) =
@@ -325,21 +325,20 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       Tensor one_seq_beta = beta.Slice(start_pos, end_pos);
       Tensor one_seq_emission_grad =
           emission_grad_tmp.Slice(start_pos, end_pos);
-      BackwardOneSequence(
-          ctx.template device_context<platform::CPUDeviceContext>(),
-          ll_grad[i],
-          one_seq_emission_exps,
-          *transition_exps,
-          one_seq_alpha,
-          one_seq_label,
-          &one_seq_beta,
-          transition_grad,
-          &one_seq_emission_grad);
+      BackwardOneSequence(ctx.template device_context<phi::CPUContext>(),
+                          ll_grad[i],
+                          one_seq_emission_exps,
+                          *transition_exps,
+                          one_seq_alpha,
+                          one_seq_label,
+                          &one_seq_beta,
+                          transition_grad,
+                          &one_seq_emission_grad);
     }
   };
 
  private:
-  void BackwardOneSequence(const platform::CPUDeviceContext& ctx,
+  void BackwardOneSequence(const phi::CPUContext& ctx,
                            const T ll_grad,
                            const Tensor& emission_exps,
                            const Tensor& transition_exps,

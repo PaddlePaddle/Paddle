@@ -105,7 +105,7 @@ struct TestBroadcastOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CUDAPlace(i);
         place_list_.push_back(p);
-        ctxs_.emplace_back(new p::CUDADeviceContext(p));
+        ctxs_.emplace_back(new phi::GPUContext(p));
       }
       nccl_ctxs_.reset(new platform::NCCLContextMap(place_list_));
 #else
@@ -117,7 +117,7 @@ struct TestBroadcastOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CPUPlace();
         place_list_.push_back(p);
-        ctxs_.emplace_back(new p::CPUDeviceContext(p));
+        ctxs_.emplace_back(new phi::CPUContext(p));
       }
 #if defined(PADDLE_WITH_XPU_BKCL)
       bkcl_ctxs_.reset(nullptr);

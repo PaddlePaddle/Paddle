@@ -26,6 +26,7 @@ import gc
 
 gc.set_debug(gc.DEBUG_COLLECTABLE)
 
+import paddle
 import paddle.fluid as fluid
 
 
@@ -51,7 +52,7 @@ class TranspilerTest(unittest.TestCase):
                                     bias_attr=fluid.ParamAttr(name='fc_b'))
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
         sgd_optimizer.minimize(avg_cost)
 
@@ -257,7 +258,7 @@ class TestLRDecay(TranspilerTest):
                                     bias_attr=fluid.ParamAttr(name='fc_b'))
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(
             learning_rate=fluid.layers.exponential_decay(learning_rate=1.0,
                                                          decay_steps=2100,
@@ -402,7 +403,7 @@ class TestDecayedAdagrad(TranspilerTest):
                                     bias_attr=fluid.ParamAttr(name='fc_b'))
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         opt = fluid.optimizer.DecayedAdagrad(learning_rate=0.1)
         opt.minimize(avg_cost)
 
@@ -422,7 +423,7 @@ class TestFtrl(TranspilerTest):
                                     bias_attr=fluid.ParamAttr(name='fc_b'))
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         opt = fluid.optimizer.Ftrl(learning_rate=0.1)
         opt.minimize(avg_cost)
 
@@ -442,7 +443,7 @@ class TestLRDecayConditional(TranspilerTest):
                                     bias_attr=fluid.ParamAttr(name='fc_b'))
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(
             learning_rate=fluid.layers.piecewise_decay([10000, 20000],
                                                        [1.0, 0.5, 1.0]))
@@ -491,7 +492,7 @@ class TestL2Decay(TranspilerTest):
             bias_attr=fluid.ParamAttr(name='fc_b'))
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
 
         def filter(param):
@@ -523,7 +524,7 @@ class TestL2DecayWithPiecewise(TranspilerTest):
                                     bias_attr=fluid.ParamAttr(name='fc_b'))
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         base_lr = 1.0
         bd = [1, 10, 20, 30]
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
@@ -568,7 +569,7 @@ class TestEmptyPserverOptimizeBlocks(TranspilerTest):
                                     bias_attr=False)
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=1.0)
         sgd_optimizer.minimize(avg_cost)
 
@@ -624,7 +625,7 @@ class TestDistLookupTableBase(TranspilerTest):
 
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         optimizer = fluid.optimizer.Adam(learning_rate=0.003)
         optimizer.minimize(avg_cost)
 
@@ -852,7 +853,7 @@ class TestRMSPropOptimizer(TranspilerTest):
                                     bias_attr=fluid.ParamAttr(name='fc_b'))
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
         optimizer.minimize(avg_cost)
 
@@ -882,7 +883,7 @@ class TestLoadSliceVar(TranspilerTest):
                                     bias_attr=fluid.ParamAttr(name='fc_b'))
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
         optimizer.minimize(avg_cost)
 
@@ -1027,7 +1028,7 @@ class TestRemoteNce(TestDistLookupTableBase):
                                 seed=1,
                                 num_neg_samples=5,
                                 is_sparse=is_sparse)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         # optimizer
         optimizer = fluid.optimizer.Adam(learning_rate=0.003)
         optimizer.minimize(avg_cost)
@@ -1096,7 +1097,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
                                      path_code=path_code,
                                      is_custom=True,
                                      is_sparse=is_sparse)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         # optimizer
         optimizer = fluid.optimizer.SGD(learning_rate=0.003)
         optimizer.minimize(avg_cost)

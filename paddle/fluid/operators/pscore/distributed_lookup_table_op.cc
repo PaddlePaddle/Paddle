@@ -152,5 +152,4 @@ REGISTER_OPERATOR(distributed_lookup_table,
 
 REGISTER_OP_CPU_KERNEL(
     distributed_lookup_table,
-    ops::DistributedLookupTableKernel<paddle::platform::CPUDeviceContext,
-                                      float>);
+    ops::DistributedLookupTableKernel<phi::CPUContext, float>);

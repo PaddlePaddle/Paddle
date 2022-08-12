@@ -27,6 +27,7 @@ class TestBmmOp(OpTest):
 
     def setUp(self):
         self.op_type = "bmm"
+        self.python_api = paddle.tensor.bmm
         X = np.random.random((10, 3, 4)).astype("float64")
         Y = np.random.random((10, 4, 5)).astype("float64")
         self.inputs = {'X': X, 'Y': Y}
@@ -34,10 +35,10 @@ class TestBmmOp(OpTest):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 class API_TestBmm(unittest.TestCase):

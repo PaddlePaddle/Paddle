@@ -48,10 +48,10 @@ class Status {
   using Code = int;
   struct Impl;
 
-  Status() noexcept;
-  explicit Status(std::exception_ptr e) noexcept;
+  Status();
+  explicit Status(std::exception_ptr e);
 
-  Status(const Status&) noexcept;
+  Status(const Status&);
   Status& operator=(const Status&) noexcept;
   Status& operator=(Status&&) = default;
   Status(Status&&) = default;
@@ -61,7 +61,7 @@ class Status {
   ///
   /// \return A status which indicate ok.
   ///
-  static Status OK() noexcept;
+  static Status OK();
 
   ///
   /// \brief Determine whether the status is ok.

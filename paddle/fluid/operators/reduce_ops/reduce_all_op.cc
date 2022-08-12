@@ -27,9 +27,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 DECLARE_INFER_SHAPE_FUNCTOR(reduce_all,

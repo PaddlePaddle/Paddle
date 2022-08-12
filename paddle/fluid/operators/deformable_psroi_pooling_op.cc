@@ -349,7 +349,7 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 REGISTER_OPERATOR(
     deformable_psroi_pooling,
     ops::DeformablePSROIPoolOp,
