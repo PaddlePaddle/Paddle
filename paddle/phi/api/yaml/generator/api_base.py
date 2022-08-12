@@ -116,7 +116,8 @@ class BaseAPI(object):
         args_list = args_str.split(',')
         input_types_map = {
             'Tensor': 'const Tensor&',
-            'Tensor[]': 'const std::vector<Tensor>&'
+            'Tensor[]': 'const std::vector<Tensor>&',
+            'Tensor[][]': 'const std::vector<std::vector<Tensor>>&'
         }
         attr_types_map = {
             'IntArray': 'const IntArray&',
@@ -496,6 +497,22 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 """
 
                     param_code = param_code + param + "_metas, "
+                elif self.inputs['input_info'][
+                        param] == "const std::vector<std::vector<Tensor>>&":
+                    meta_tensor_code = meta_tensor_code + f"""
+{code_indent}  auto {param}_meta_vec = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
+{code_indent}  std::vector<std::vector<const phi::MetaTensor*>> {param}_metas({param}_meta_vec.size());
+{code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
+{code_indent}    {param}_metas[i].resize({param}_meta_vec[i].size());
+{code_indent}  }}
+{code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
+{code_indent}    for (size_t j = 0; j < {param}_meta_vec[i].size(); ++j) {{
+{code_indent}      {param}_metas[i][j] = &{param}_meta_vec[i][j];
+{code_indent}    }}
+{code_indent}  }}
+"""
+
+                    param_code = param_code + param + "_metas, "
                 elif param in self.optional_vars:
                     param_code = param_code + "MakeMetaTensor(" + PREFIX_TENSOR_NAME + param + "), "
                 else:
@@ -541,6 +558,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             'const phi::DenseTensor&',
             'const std::vector<Tensor>&':
             'const std::vector<const phi::DenseTensor*>&',
+            'const std::vector<std::vector<Tensor>>&':
+            'const std::vector<std::vector<const phi::DenseTensor*>>&',
             'const paddle::optional<Tensor&>':
             'paddle::optional<const phi::DenseTensor&>',
             'const paddle::optional<Tensor>&':
@@ -598,6 +617,20 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
 {code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
+{code_indent}  }}"""
+
+                        elif self.inputs['input_info'][
+                                input_name] == "const std::vector<std::vector<Tensor>>&":
+                            input_tensor_code = input_tensor_code + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
+{code_indent}  std::vector<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
+{code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i].resize((*{PREFIX_TENSOR_NAME}{input_name}_vec)[i].size())
+{code_indent}  }}
+{code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
+{code_indent}    for (size_t j = 0; j < {PREFIX_TENSOR_NAME}{input_name}[i].size(); ++j) {{   
+{code_indent}      {PREFIX_TENSOR_NAME}{input_name}[i][j] = &({PREFIX_TENSOR_NAME}{input_name}_vec->at(i)).at(j);
+{code_indent}    }}
 {code_indent}  }}"""
 
                         else:

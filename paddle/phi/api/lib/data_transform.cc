@@ -292,6 +292,39 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
   return paddle::none;
 }
 
+std::unique_ptr<std::vector<std::vector<phi::DenseTensor>>> PrepareData(
+    const std::vector<std::vector<Tensor>>& inputs,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  auto pt_tensors =
+      std::make_unique<std::vector<std::vector<phi::DenseTensor>>>();
+  pt_tensors->resize(inputs.size());
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    (*pt_tensors)[i].reserve(inputs[i].size());
+  }
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    for (const auto& input : inputs[i]) {
+      const auto& tensor_in = input.impl();
+      if (!transform_flag.NeedTransform() || !tensor_in->initialized() ||
+          (!NeedTransformPlace(
+               tensor_in->place(), target_args_def.backend, transform_flag) &&
+           !NeedTransformDataType(
+               tensor_in->dtype(), target_args_def.dtype, transform_flag) &&
+           !NeedTransformLayout(
+               tensor_in->layout(), target_args_def.layout, transform_flag))) {
+        (*pt_tensors)[i].emplace_back(
+            *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
+      } else {
+        (*pt_tensors)[i].emplace_back(
+            TransformData((static_cast<phi::DenseTensor*>(tensor_in.get())),
+                          target_args_def,
+                          transform_flag));
+      }
+    }
+  }
+  return pt_tensors;
+}
+
 void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,
                       phi::DenseTensor* out) {

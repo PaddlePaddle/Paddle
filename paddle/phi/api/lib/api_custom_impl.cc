@@ -198,6 +198,97 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
   return api_output;
 }
 
+std::vector<Tensor> add_n_array_impl(
+    const std::vector<std::vector<Tensor>>& x) {
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+
+  if (kernel_backend == Backend::UNDEFINED ||
+      kernel_layout == DataLayout::UNDEFINED ||
+      kernel_data_type == DataType::UNDEFINED) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  VLOG(6) << "add_n_array API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "add_n_array", {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
+  VLOG(6) << "add_n_array kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(
+      kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
+
+  auto input_x_vec = PrepareData(x, kernel.InputAt(0), {});
+  std::vector<std::vector<const phi::DenseTensor*>> input_x(
+      input_x_vec->size());
+  for (size_t i = 0; i < input_x.size(); ++i) {
+    input_x[i].reserve((*input_x_vec)[i].size());
+  }
+  for (size_t i = 0; i < input_x.size(); ++i) {
+    for (size_t j = 0; j < input_x[i].size(); ++j) {
+      input_x[i].emplace_back(&(input_x_vec->at(i).at(j)));
+    }
+  }
+
+  std::vector<Tensor> api_output;
+  std::vector<phi::DenseTensor*> kernel_out;
+  size_t max_size = 0;
+  for (const auto& input_vec : x) {
+    max_size = max_size > input_vec.size() ? max_size : input_vec.size();
+  }
+  if (max_size) {
+    kernel_out = SetKernelOutput(max_size, kernel_backend, &api_output);
+  }
+
+  // auto x_meta_vec = MakeMetaTensor(input_x);
+  // std::vector<std::vector<const phi::MetaTensor*>>
+  // x_metas(x_meta_vec.size()); for (size_t i = 0; i < x_meta_vec.size(); ++i)
+  // {
+  //   x_metas[i].reserve(x_meta_vec[i].size());
+  // }
+  // for (size_t i = 0; i < x_meta_vec.size(); ++i) {
+  //   for (size_t j = 0; j < x_meta_vec[i].size(); ++j) {
+  //     x_metas[i].emplace_back(&x_meta_vec[i][j]);
+  //   }
+  // }
+  // auto kernel_out_meta_vec = MakeMetaTensor(kernel_out);
+  // std::vector<phi::MetaTensor*> kernel_out_metas(kernel_out_meta_vec.size());
+  // for (size_t i = 0; i < kernel_out_meta_vec.size(); ++i) {
+  //   kernel_out_metas[i] = kernel_out[i] ? &kernel_out_meta_vec[i] : nullptr;
+  // }
+  // phi::AddNArrayInferMeta(x_metas, kernel_out_metas);
+
+  using kernel_signature =
+      void (*)(const platform::DeviceContext&,
+               const std::vector<std::vector<const phi::DenseTensor*>>&,
+               std::vector<phi::DenseTensor*>&);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  {
+    paddle::platform::RecordEvent kernel_record_event(
+        "add_n_array compute",
+        paddle::platform::TracerEventType::OperatorInner,
+        1);
+    (*kernel_fn)(*dev_ctx, input_x, kernel_out);
+  }
+  if (kernel_result.has_fallback_cpu) {
+    TransDataBackend(kernel_out, kernel_backend, kernel_out);
+  }
+
+  return api_output;
+}
+
 Tensor conv2d_impl(const Tensor& input,
                    const Tensor& filter,
                    const std::vector<int>& strides,

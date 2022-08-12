@@ -50,7 +50,7 @@ yaml_types_mapping = {
     'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
     'Tensor[]' : 'std::vector<Tensor>',
-    'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
+    'Tensor[][]' : 'std::vector<std::vector<Tensor>>',
     'Scalar' : 'paddle::experimental::Scalar',
     'Scalar(int)' : 'paddle::experimental::Scalar',
     'Scalar(int64_t)' : 'paddle::experimental::Scalar',

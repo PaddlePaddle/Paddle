@@ -15,7 +15,8 @@
 # type mapping: types in yaml -> types in c++ API
 input_types_map = {
     'Tensor': 'const Tensor&',
-    'Tensor[]': 'const std::vector<Tensor>&'
+    'Tensor[]': 'const std::vector<Tensor>&',
+    'Tensor[][]': 'const std::vector<std::vector<Tensor>>&'
 }
 
 optional_input_types_map = {

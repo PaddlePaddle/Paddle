@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/optional.h"
 
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 namespace paddle {
 namespace experimental {
 
@@ -51,6 +52,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
     int64_t min_row_size_to_use_multithread,
     bool multi_precision,
     bool use_global_beta_pow);
+
+std::vector<Tensor> add_n_array_impl(const std::vector<std::vector<Tensor>>& x);
 
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
     const Tensor& x,

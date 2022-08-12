@@ -2598,6 +2598,9 @@ void Yolov3LossInferMeta(const MetaTensor& x,
   gt_match_mask->set_dtype(x.dtype());
 }
 
+void AddNArrayInferMeta(const std::vector<std::vector<const MetaTensor*>>& x,
+                        std::vector<MetaTensor*> out,
+                        MetaConfig config) {}
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(batch_norm, phi::BatchNormInferMeta);

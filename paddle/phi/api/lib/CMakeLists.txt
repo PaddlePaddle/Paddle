@@ -329,7 +329,7 @@ add_custom_command(
           ${im_api_gen_file} ${api_gen_base} ${api_gen_file}
   VERBATIM)
 
-# generate wrapped infermeta
+#generate wrapped infermeta
 add_custom_command(
   OUTPUT ${wrapped_infermeta_header_file} ${wrapped_infermeta_source_file}
   COMMAND

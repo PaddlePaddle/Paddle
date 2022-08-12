@@ -465,4 +465,7 @@ void Yolov3LossInferMeta(const MetaTensor& x,
                          MetaTensor* objectness_mask,
                          MetaTensor* gt_match_mask);
 
+void AddNArrayInferMeta(const std::vector<std::vector<const MetaTensor*>>& x,
+                        std::vector<MetaTensor*> out,
+                        MetaConfig config = MetaConfig());
 }  // namespace phi

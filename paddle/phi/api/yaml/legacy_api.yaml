@@ -103,6 +103,12 @@
     func : add_n_middle
   backward : add_n_grad
 
+- api : add_n_array
+  args : (Tensor[][] x)
+  output : Tensor[]
+  invoke : add_n_array_impl(x)
+  backward : add_n_array_grad
+
 - api : addmm
   args : (Tensor input, Tensor x, Tensor y, float alpha, float beta)
   output : Tensor
