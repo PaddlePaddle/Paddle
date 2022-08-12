@@ -590,8 +590,24 @@ def interpolate(x,
             attr_list.append(v)
         dy_attr = tuple(attr_list)
 
+        eager_args = [x]
+        eager_args.append(inputs['OutSize'] if 'OutSize' in inputs else None)
+        eager_args.append(inputs['SizeTensor'] if 'SizeTensor' in
+                          inputs else None)
+        eager_args.append(inputs['Scale'] if 'Scale' in inputs else None)
+        eager_args.extend([
+            attrs['data_layout'], attrs['out_d'], attrs['out_h'], attrs['out_w']
+        ])
+        eager_args.append(attrs['scale'] if 'scale' in attrs else [])
+        eager_args.extend([
+            attrs['interp_method'], attrs['align_corners'], attrs['align_mode']
+        ])
+
         if resample_type == "linear":
-            out = _C_ops.linear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_linear_interp_v2(*eager_args)
+            else:
+                out = _C_ops.linear_interp_v2(x, *dy_attr)
         elif resample_type == "bilinear":
             out = _C_ops.bilinear_interp_v2(x, *dy_attr)
         elif resample_type == "trilinear":
@@ -1557,7 +1573,7 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         name(str, optional): The default value is None. Normally there is no need for user
             to set this property.
 
-    Returns：
+    Returns: 
         Tensor, padded with 0 according to pad and data type is same as input.
 
     Examples:
