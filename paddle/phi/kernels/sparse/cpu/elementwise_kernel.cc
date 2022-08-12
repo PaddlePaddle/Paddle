@@ -212,7 +212,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                           max_len,
                           out_indexs.data(),
                           out_values_vec.data(),
-                          nnz,
+                          &nnz,
                           functor,
                           is_divide);
 
