@@ -43,11 +43,11 @@ struct Linspace<phi::CPUContext, T> {
 };
 
 template <typename T, typename Context>
-void AffineGridGradKernel(const Context& dev_ctx,
-                          const DenseTensor& output_grad,
-                          const IntArray& outputShape,
-                          bool align_corners,
-                          DenseTensor* input_grad) {
+void AffineGridGrad4DKernel(const Context& dev_ctx,
+                            const DenseTensor& output_grad,
+                            const IntArray& outputShape,
+                            bool align_corners,
+                            DenseTensor* input_grad) {
   auto& theta_grad = input_grad;
   int n = output_grad.dims()[0];
   auto& size_attr = outputShape.GetData();
@@ -59,7 +59,7 @@ void AffineGridGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(theta_grad);
   phi::funcs::SetConstant<Context, T>()(dev_ctx, theta_grad, static_cast<T>(0));
   DenseTensor grid;
-  GetIdxMap<Context, T>(n, h, w, align_corners, &grid, dev_ctx);
+  GetIdxMap4D<Context, T>(n, h, w, align_corners, &grid, dev_ctx);
   // output = grid * theta.T
   // TODO(wanghaoshuang): Refine batched matrix multiply
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
@@ -76,6 +76,63 @@ void AffineGridGradKernel(const Context& dev_ctx,
                 T(1),
                 &sliced_theta_grad,
                 T(0));
+  }
+}
+
+template <typename T, typename Context>
+void AffineGridGrad5DKernel(const Context& dev_ctx,
+                            const DenseTensor& output_grad,
+                            const IntArray& outputShape,
+                            bool align_corners,
+                            DenseTensor* input_grad) {
+  auto& theta_grad = input_grad;
+  int n = output_grad.dims()[0];
+  auto& size_attr = outputShape.GetData();
+  int d = 0;
+  int h = 0;
+  int w = 0;
+  d = size_attr[2];
+  h = size_attr[3];
+  w = size_attr[4];
+  theta_grad->Resize(phi::make_ddim({n, 3, 4}));
+  dev_ctx.template Alloc<T>(theta_grad);
+  phi::funcs::SetConstant<Context, T>()(dev_ctx, theta_grad, static_cast<T>(0));
+  DenseTensor grid;
+  GetIdxMap5D<Context, T>(n, d, h, w, align_corners, &grid, dev_ctx);
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  for (int i = 0; i < n; ++i) {
+    DenseTensor sliced_grid = grid.Slice(i, i + 1).Resize(
+        {static_cast<int64_t>(d) * static_cast<int64_t>(h) *
+             static_cast<int64_t>(w),
+         4});
+    DenseTensor sliced_out_grad = output_grad.Slice(i, i + 1).Resize(
+        {static_cast<int64_t>(d) * static_cast<int64_t>(h) *
+             static_cast<int64_t>(w),
+         3});
+    DenseTensor sliced_theta_grad = theta_grad->Slice(i, i + 1).Resize({3, 4});
+    blas.MatMul(sliced_out_grad,
+                true,
+                sliced_grid,
+                false,
+                T(1),
+                &sliced_theta_grad,
+                T(0));
+  }
+}
+
+template <typename T, typename Context>
+void AffineGridGradKernel(const Context& dev_ctx,
+                          const DenseTensor& output_grad,
+                          const IntArray& outputShape,
+                          bool align_corners,
+                          DenseTensor* input_grad) {
+  auto& size_attr = outputShape.GetData();
+  if (size_attr.size() == 4) {
+    AffineGridGrad4DKernel<T, Context>(
+        dev_ctx, output_grad, outputShape, align_corners, input_grad);
+  } else {
+    AffineGridGrad5DKernel<T, Context>(
+        dev_ctx, output_grad, outputShape, align_corners, input_grad);
   }
 }
 
