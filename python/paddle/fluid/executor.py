@@ -1437,15 +1437,11 @@ class Executor(object):
                 assert isinstance(program, Program)
                 return True
 
-        def _apply_inplace_addto_pass(program, enable_inplace, enable_addto):
+        def _apply_inplace_addto_pass(program, enable_inplace, enable_addto,
+                                      skip_var_names):
             use_cuda = True if core.is_compiled_with_cuda() else False
-            # skip data var
-            data_vars = []
-            for var_name, var in program.global_block().vars.items():
-                if var.is_data:
-                    data_vars.append(var_name)
 
-            attrs = {"use_cuda": use_cuda, "mem_opt_skip_vars": data_vars}
+            attrs = {"use_cuda": use_cuda, "mem_opt_skip_vars": skip_var_names}
             attr_types = {"use_cuda": "bool", "mem_opt_skip_vars": "list[str]"}
 
             empty_startup_program = Program()
@@ -1512,8 +1508,11 @@ class Executor(object):
                     enable_inplace = True if build_strategy is None or build_strategy.enable_inplace else False
                     enable_addto = True if build_strategy is not None and build_strategy.enable_addto else False
                     if enable_inplace or enable_addto:
+                        # inplace should skip feed and fetch var
+                        skip_var_names = eval(
+                            _get_program_cache_key(feed, fetch_list))
                         _apply_inplace_addto_pass(program, enable_inplace,
-                                                  enable_addto)
+                                                  enable_addto, skip_var_names)
 
                     new_program = program.clone()
                     new_exe = _StandaloneExecutor(self.place, new_program,
