@@ -468,7 +468,8 @@ class TestPyLayer(unittest.TestCase):
 
             @staticmethod
             def forward(ctx, x):
-                ctx.mark_dirty(x)
+                if in_dygraph_mode():
+                    ctx.mark_dirty(x)
                 return x
 
             @staticmethod
@@ -481,7 +482,7 @@ class TestPyLayer(unittest.TestCase):
                 super(Layer, self).__init__()
 
             def forward(self, data):
-                data = paddle.nn.functional.relu(data)
+                data = data**2
                 z = paddle.tanh(data)
                 z = cus_tanh.apply(data)
                 return z.mean()
