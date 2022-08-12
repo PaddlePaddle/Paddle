@@ -1549,6 +1549,9 @@ def increment(x, value=1.0, in_place=True):
           counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
           fluid.layers.increment(counter) # [1.]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_increment_(x, value)
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'increment')
     helper = LayerHelper("increment", **locals())

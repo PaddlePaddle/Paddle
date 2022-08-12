@@ -1223,13 +1223,14 @@
   backward : imag_grad
 
 # increment
-- api : increment
+- api : increment_
   args : (Tensor x, float value)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : IncrementInferMeta
   kernel :
     func : increment
+  inplace : (x -> out)
 
 - api : index_sample
   args : (Tensor x, Tensor index)

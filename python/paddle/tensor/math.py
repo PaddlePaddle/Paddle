@@ -3526,7 +3526,10 @@ def increment(x, value=1.0, name=None):
             # [1.]
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_increment_( x, value)
+
+    if _in_legacy_dygraph():
         return _C_ops.increment(x, 'step', value)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
