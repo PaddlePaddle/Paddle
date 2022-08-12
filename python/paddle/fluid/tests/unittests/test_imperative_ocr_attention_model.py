@@ -573,7 +573,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
         self.assertTrue(np.allclose(static_out, dy_out))
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
+            np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         for key, value in six.iteritems(static_param_value):
             self.assertTrue(np.allclose(value, dy_param_value[key], rtol=1e-05))
@@ -582,7 +582,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
         self.assertTrue(np.allclose(static_out, eager_out))
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.array_equal(value, eager_param_init_value[key]))
+            np.testing.assert_array_equal(value, eager_param_init_value[key])
 
         for key, value in six.iteritems(static_param_value):
             self.assertTrue(

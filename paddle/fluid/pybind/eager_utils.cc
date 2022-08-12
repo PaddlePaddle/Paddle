@@ -1235,6 +1235,9 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   } else if (PyObject_CheckLongOrToLong(&obj)) {
     int value = CastPyArg2Int(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
+  } else if (PyObject_CheckString(obj)) {
+    std::string value = CastPyArg2String(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
