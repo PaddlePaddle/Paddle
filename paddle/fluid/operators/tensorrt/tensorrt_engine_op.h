@@ -564,7 +564,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype();
       auto indata_type = inference::tensorrt::PhiType2NvType(t.dtype());
       auto intrt_index = engine->engine()->getBindingIndex(x.c_str());
-      auto intrt_type = engine->engine()->getBindingDataType(idx);
+      auto intrt_type = engine->engine()->getBindingDataType(intrt_index);
       PADDLE_ENFORCE_EQ(indata_type,
                         intrt_type,
                         platform::errors::InvalidArgument(
