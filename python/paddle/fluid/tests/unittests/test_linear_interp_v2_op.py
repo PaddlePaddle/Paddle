@@ -45,7 +45,9 @@ def linear_interp_v2_test(x,
     elif isinstance(scale, list) or isinstance(scale, tuple):
         scale = list(map(float, scale))
     if SizeTensor is not None:
-        SizeTensor = [SizeTensor]
+        if not isinstance(SizeTensor, list) and not isinstance(
+                SizeTensor, tuple):
+            SizeTensor = [SizeTensor]
     return final_state_linear_interp_v2(x, OutSize, SizeTensor, Scale,
                                         data_layout, out_d, out_h, out_w, scale,
                                         interp_method, align_corners,
