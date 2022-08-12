@@ -20,8 +20,38 @@ from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.nn.functional import interpolate
+from paddle._C_ops import final_state_trilinear_interp_v2
 
 np.random.seed(123)
+
+
+def trilinear_interp_v2_test(x,
+                             OutSize=None,
+                             SizeTensor=None,
+                             Scale=None,
+                             data_layout='NCHW',
+                             out_d=-1,
+                             out_h=-1,
+                             out_w=-1,
+                             scale=[],
+                             interp_method='linear',
+                             align_corners=False,
+                             align_mode=1):
+    if isinstance(scale, float) or isinstance(scale, int):
+        scale_list = []
+        for _ in range(len(x.shape) - 2):
+            scale_list.append(scale)
+        scale = list(map(float, scale_list))
+    elif isinstance(scale, list) or isinstance(scale, tuple):
+        scale = list(map(float, scale))
+    if SizeTensor is not None:
+        if not isinstance(SizeTensor, list) and not isinstance(
+                SizeTensor, tuple):
+            SizeTensor = [SizeTensor]
+    return final_state_trilinear_interp_v2(x, OutSize, SizeTensor, Scale,
+                                           data_layout, out_d, out_h, out_w,
+                                           scale, interp_method, align_corners,
+                                           align_mode)
 
 
 def trilinear_interp_np(input,
@@ -141,6 +171,7 @@ def trilinear_interp_np(input,
 class TestTrilinearInterpOp(OpTest):
 
     def setUp(self):
+        self.python_api = trilinear_interp_v2_test
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCDHW'
@@ -148,8 +179,7 @@ class TestTrilinearInterpOp(OpTest):
         self.op_type = "trilinear_interp_v2"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
         # Skip check_eager while found them in Inputs.
-        # TODO(dev): add self.python_api
-        self.check_eager = False
+        self.check_eager = True
         input_np = np.random.random(self.input_shape).astype("float32")
 
         scale_w = 0
@@ -164,7 +194,7 @@ class TestTrilinearInterpOp(OpTest):
             in_h = self.input_shape[2]
             in_w = self.input_shape[3]
 
-        if self.scale > 0:
+        if self.scale and self.scale > 0:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
                 scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -206,7 +236,7 @@ class TestTrilinearInterpOp(OpTest):
             'align_mode': self.align_mode,
             'data_layout': data_layout
         }
-        if self.scale > 0:
+        if self.scale and self.scale > 0:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
                 self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -229,7 +259,7 @@ class TestTrilinearInterpOp(OpTest):
         self.out_d = 2
         self.out_h = 2
         self.out_w = 2
-        self.scale = 0.
+        self.scale = []
         self.out_size = np.array([3, 3, 3]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
@@ -243,7 +273,7 @@ class TestTrilinearInterpCase1(TestTrilinearInterpOp):
         self.out_d = 1
         self.out_h = 1
         self.out_w = 1
-        self.scale = 0.
+        self.scale = []
         self.align_corners = True
         self.align_mode = 1
 
@@ -256,7 +286,7 @@ class TestTrilinearInterpCase2(TestTrilinearInterpOp):
         self.out_d = 12
         self.out_h = 12
         self.out_w = 12
-        self.scale = 0.
+        self.scale = []
         self.align_corners = True
         self.align_mode = 1
 
@@ -269,7 +299,7 @@ class TestTrilinearInterpCase3(TestTrilinearInterpOp):
         self.out_d = 32
         self.out_h = 16
         self.out_w = 8
-        self.scale = 0.
+        self.scale = []
         self.align_corners = True
         self.align_mode = 1
 
@@ -282,7 +312,7 @@ class TestTrilinearInterpCase4(TestTrilinearInterpOp):
         self.out_d = 1
         self.out_h = 1
         self.out_w = 1
-        self.scale = 0.
+        self.scale = []
         self.out_size = np.array([2, 2, 2]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
@@ -296,7 +326,7 @@ class TestTrilinearInterpCase5(TestTrilinearInterpOp):
         self.out_d = 12
         self.out_h = 12
         self.out_w = 12
-        self.scale = 0.
+        self.scale = []
         self.out_size = np.array([11, 11, 11]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
@@ -310,7 +340,7 @@ class TestTrilinearInterpCase6(TestTrilinearInterpOp):
         self.out_d = 8
         self.out_h = 32
         self.out_w = 16
-        self.scale = 0.
+        self.scale = []
         self.out_size = np.array([17, 9, 5]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
@@ -324,7 +354,7 @@ class TestTrilinearInterpSame(TestTrilinearInterpOp):
         self.out_d = 16
         self.out_h = 8
         self.out_w = 4
-        self.scale = 0.
+        self.scale = []
         self.align_corners = True
         self.align_mode = 1
 
@@ -337,7 +367,7 @@ class TestTrilinearInterpSameHW(TestTrilinearInterpOp):
         self.out_d = 8
         self.out_h = 8
         self.out_w = 4
-        self.scale = 0.
+        self.scale = []
         self.align_corners = True
         self.align_mode = 1
 
@@ -350,7 +380,7 @@ class TestTrilinearInterpActualShape(TestTrilinearInterpOp):
         self.out_d = 64
         self.out_h = 32
         self.out_w = 16
-        self.scale = 0.
+        self.scale = []
         self.out_size = np.array([33, 19, 7]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
@@ -364,7 +394,7 @@ class TestTrilinearInterpDatalayout(TestTrilinearInterpOp):
         self.out_d = 2
         self.out_h = 2
         self.out_w = 2
-        self.scale = 0.
+        self.scale = []
         self.out_size = np.array([3, 3, 3]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
@@ -374,16 +404,16 @@ class TestTrilinearInterpDatalayout(TestTrilinearInterpOp):
 class TestTrilinearInterpOpUint8(OpTest):
 
     def setUp(self):
+        self.python_api = trilinear_interp_v2_test
         self.out_size = None
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "trilinear_interp_v2"
-        # TODO(dev): add self.python_api
-        self.check_eager = False
+        self.check_eager = True
         input_np = np.random.randint(low=0, high=256,
                                      size=self.input_shape).astype("uint8")
 
-        if self.scale > 0:
+        if self.scale and self.scale > 0:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
                 scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -416,7 +446,7 @@ class TestTrilinearInterpOpUint8(OpTest):
             'align_corners': self.align_corners,
             'align_mode': self.align_mode
         }
-        if self.scale > 0:
+        if self.scale and self.scale > 0:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
                 self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -435,7 +465,7 @@ class TestTrilinearInterpOpUint8(OpTest):
         self.out_d = 13
         self.out_h = 10
         self.out_w = 9
-        self.scale = 0.
+        self.scale = []
         self.align_corners = True
         self.align_mode = 1
 
@@ -448,7 +478,7 @@ class TestTrilinearInterpCase1Uint8(TestTrilinearInterpOpUint8):
         self.out_d = 13
         self.out_h = 7
         self.out_w = 2
-        self.scale = 0.
+        self.scale = []
         self.align_corners = True
         self.align_mode = 1
 
@@ -461,7 +491,7 @@ class TestTrilinearInterpCase2Uint8(TestTrilinearInterpOpUint8):
         self.out_d = 3
         self.out_h = 5
         self.out_w = 13
-        self.scale = 0.
+        self.scale = []
         self.out_size = np.array([6, 15, 21]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
@@ -535,7 +565,7 @@ class TestTrilinearInterpZero(TestTrilinearInterpOp):
         self.out_d = 30
         self.out_h = 20
         self.out_w = 25
-        self.scale = 0.0
+        self.scale = []
         self.align_corners = False
         self.align_mode = 0
 
@@ -543,12 +573,12 @@ class TestTrilinearInterpZero(TestTrilinearInterpOp):
 class TestTrilinearInterpOp_attr_tensor(OpTest):
 
     def setUp(self):
+        self.python_api = trilinear_interp_v2_test
         self.out_size = None
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "trilinear_interp_v2"
-        # TODO(dev): add self.python_api
-        self.check_eager = False
+        self.check_eager = True
         self.shape_by_1Dtensor = False
         self.scale_by_1Dtensor = False
         self.attrs = {
@@ -562,7 +592,7 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
 
         if self.scale_by_1Dtensor:
             self.inputs['Scale'] = np.array([self.scale]).astype("float32")
-        elif self.scale > 0:
+        elif self.scale and self.scale > 0:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
                 scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -593,7 +623,7 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         self.attrs['out_d'] = self.out_d
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
-        if self.scale > 0:
+        if self.scale and self.scale > 0:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
                 self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -619,7 +649,7 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         self.out_d = 2
         self.out_h = 3
         self.out_w = 3
-        self.scale = 0.
+        self.scale = []
         self.out_size = [2, 3, 3]
         self.align_corners = True
         self.align_mode = 1
@@ -649,7 +679,7 @@ class TestTrilinearInterp_attr_tensor_Case2(TestTrilinearInterpOp_attr_tensor):
         self.out_d = 16
         self.out_h = 12
         self.out_w = 4
-        self.scale = 0.
+        self.scale = []
         self.out_size = [16, 4, 10]
         self.align_corners = True
         self.align_mode = 1
