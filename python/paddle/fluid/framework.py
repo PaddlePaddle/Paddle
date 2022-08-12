@@ -2520,31 +2520,18 @@ class Variable(object):
         return self.desc.attr(name)
 
     @property
-    def process_mesh(self):
+    def dist_attr(self):
         """
-        Get the process mesh belonging to this Variable.
+        Get distributed attribute of this Variable.
         """
-        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
-        from paddle.distributed.auto_parallel.interface import ProcessMesh
-        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
-        mesh_id = self.desc.attr(mesh_attr_name)
-        return _g_process_mesh_map[mesh_id]
+        return self.desc.dist_attr
 
-    @property
-    def shard_mask(self):
+    @dist_attr.setter
+    def dist_attr(self, dist_attr):
         """
-        Get shard_mask belonging to this Variable.
+        Set distributed attribute of this Variable.
         """
-        mask_attr_name = 'mask' + core.kAutoParallelSuffix()
-        return self.desc.attr(mask_attr_name)
-
-    @property
-    def offload_device(self):
-        """
-        Get the offload device of this Variable.
-        """
-        offload_attr_name = 'offload_device' + core.kAutoParallelSuffix()
-        return self.desc.attr(offload_attr_name)
+        self.desc.dist_attr = dist_attr
 
 
 def get_all_op_protos():
@@ -3263,29 +3250,18 @@ class Operator(object):
         return False
 
     @property
-    def process_mesh(self):
+    def dist_attr(self):
         """
-        Get the process mesh belonging to this Operator.
+        Get distributed attribute of this Variable.
         """
-        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
-        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
-        mesh_id = self.attr(mesh_attr_name)
-        return _g_process_mesh_map[mesh_id]
+        return self.desc.dist_attr
 
-    def dims_mapping(self, name):
+    @dist_attr.setter
+    def dist_attr(self, dist_attr):
         """
-        Get the dims_mapping for the op's var named `name`.
+        Set distributed attribute of this Variable.
         """
-        dims_mapping_attr_name = name + core.kAutoParallelSuffix()
-        return self.attr(dims_mapping_attr_name)
-
-    @property
-    def pipeline_stage(self):
-        """
-        Get pipeline stage of the Operator.
-        """
-        pipeline_stage_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix()
-        return self.desc.attr(pipeline_stage_attr_name)
+        self.desc.dist_attr = dist_attr
 
 
 class Block(object):

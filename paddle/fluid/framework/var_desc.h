@@ -184,24 +184,16 @@ class VarDesc {
   proto::VarType::TensorDesc *mutable_tensor_desc();
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
-  // This thread-safe implementation seems to be redudent since the neural
-  // networks are usually constructed in a single thread.
+  proto::VarDesc desc_;
+  AttributeMap attrs_;
+
+  // Note: the following members are only used for auto parallel for now
   static uint64_t GenerateId() {
     static std::atomic<std::uint64_t> uid{0};
     return ++uid;
   }
-
-  proto::VarDesc desc_;
-  AttributeMap attrs_;
-
-  // Note: the id_ is unique for all VarDesc (only for auto parallel).
   uint64_t id_ = GenerateId();
-  // Note: the orignal_id_ is used for referring to the original VarDesc
-  // that the current VarDesc is built from (only for auto parallel).
-  // The default original_id_ is same as the id_, which means the
-  // current VarDesc is not built from the other one.
   uint64_t original_id_ = id_;
-  // Note: this attribute is used for auto parallel
   std::unique_ptr<TensorDistAttr> dist_attr_;
 };
 

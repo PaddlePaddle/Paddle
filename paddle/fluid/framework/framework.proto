@@ -38,13 +38,6 @@ enum AttrType {
   FLOAT64S = 12;
 }
 
-message ProcessMeshDesc {
-  required int32 id = 1;
-  required int32 parent_id = 2;
-  repeated int32 topology = 3;
-  repeated int32 process_group = 4;
-};
-
 // OpDesc describes an instance of a C++ framework::OperatorBase
 // derived class type.
 message OpDesc {
