@@ -43,7 +43,7 @@ class TestIndexAddOp(unittest.TestCase):
         self.index_type = np.int32
 
     def setPlace(self):
-        self.place = "cpu"
+        self.place = ["cpu"]
 
     def config(self):
         self.axis = 0
@@ -155,7 +155,7 @@ class TestIndexAddOp(unittest.TestCase):
                                        atol=self.atol)
 
     def test_dynamic(self):
-        #paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static()
         for device in self.place:
             self.run_imperative(device)
 
@@ -206,8 +206,11 @@ class TestIndexAdOpCase5(TestIndexAddOp):
 class TestIndexAdOpGPU(TestIndexAddOp):
 
     def setPlace(self):
+        self.place = []
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
+        else:
+            self.place.append('cpu')
 
 
 if __name__ == '__main__':
