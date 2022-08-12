@@ -274,7 +274,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
     elif not isinstance(
             place,
         (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace,
-        core.NPUPlace, core.XPUPlace, core.MLUPlace, core.CustomPlace)):
+         core.NPUPlace, core.XPUPlace, core.MLUPlace, core.CustomPlace)):
         raise ValueError(
             "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.MLUPlace, paddle.CustomPlace"
         )
@@ -343,17 +343,17 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
     if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
         return core.eager.Tensor(value=data,
-                                place=place,
-                                persistable=False,
-                                zero_copy=False,
-                                name=None,
-                                stop_gradient=stop_gradient)
+                                 place=place,
+                                 persistable=False,
+                                 zero_copy=False,
+                                 name=None,
+                                 stop_gradient=stop_gradient)
     else:
         return paddle.Tensor(value=data,
-                            place=place,
-                            persistable=False,
-                            zero_copy=False,
-                            stop_gradient=stop_gradient)
+                             place=place,
+                             persistable=False,
+                             zero_copy=False,
+                             stop_gradient=stop_gradient)
 
 
 def to_tensor(data, dtype=None, place=None, stop_gradient=True):
