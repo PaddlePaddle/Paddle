@@ -116,7 +116,7 @@ class PACT(nn.Layer):
         return x
 
 
-class SimpleMPNet(fluid.dygraph.Layer):
+class SimpleMPNet(nn.Layer):
 
     def __init__(self, vocab_size, hidden_size, inner_size, output_size, np_fc1,
                  np_fc2, mp_id):
@@ -167,7 +167,7 @@ class SimpleMPNet(fluid.dygraph.Layer):
         return x
 
 
-class SimpleDPNet(fluid.dygraph.Layer):
+class SimpleDPNet(nn.Layer):
 
     def __init__(self, vocab_size, hidden_size, inner_size, output_size, np_fc1,
                  np_fc2):

@@ -28,11 +28,18 @@ from paddle import in_dynamic_mode
 from paddle.nn import Layer
 
 __all__ = [
-    'FakeQuantAbsMax', 'FakeQuantMovingAverageAbsMax',
-    'FakeQuantChannelWiseAbsMax', 'QuantizedConv2D', 'QuantizedConv2DTranspose',
-    'QuantizedLinear', 'MovingAverageAbsMaxScale', 'MAOutputScaleLayer',
-    'FakeQuantMAOutputScaleLayer', 'QuantStub', 'QuantizedRowParallelLinear',
-    'QuantizedColumnParallelLinear'
+    'FakeQuantAbsMax',
+    'FakeQuantMovingAverageAbsMax',
+    'FakeQuantChannelWiseAbsMax',
+    'QuantizedConv2D',
+    'QuantizedConv2DTranspose',
+    'QuantizedLinear',
+    'MovingAverageAbsMaxScale',
+    'MAOutputScaleLayer',
+    'FakeQuantMAOutputScaleLayer',
+    'QuantStub',
+    'QuantizedRowParallelLinear',
+    'QuantizedColumnParallelLinear',
 ]
 
 _logger = get_logger(__name__,
@@ -695,6 +702,9 @@ class QuantizedColumnParallelLinear(Layer):
                  weight_quant_layer=None,
                  act_quant_layer=None):
         super(QuantizedColumnParallelLinear, self).__init__()
+        '''
+        
+        '''
         assert weight_quant_layer is None, "When quantizing ColumnParallelLinear, weight_quant_layer should be None."
         assert act_quant_layer is None, "When quantizing ColumnParallelLinear, act_quant_layer should be None."
 
@@ -717,7 +727,8 @@ class QuantizedColumnParallelLinear(Layer):
             quant_on_weight=True,
             channel_num=self.weight.shape[self._linear_quant_axis],
             quant_axis=self._linear_quant_axis,
-            reduce_type='max')
+            reduce_type='max'
+            if paddle.distributed.get_world_size() > 1 else None)
 
         self._fake_quant_input = _get_fake_quant_type(
             activation_quantize_type,
@@ -799,7 +810,8 @@ class QuantizedRowParallelLinear(Layer):
             quant_on_weight=True,
             channel_num=self.weight.shape[self._linear_quant_axis],
             quant_axis=self._linear_quant_axis,
-            reduce_type='max')
+            reduce_type='max'
+            if paddle.distributed.get_world_size() > 1 else None)
 
         self._fake_quant_input = _get_fake_quant_type(
             activation_quantize_type,
@@ -808,7 +820,8 @@ class QuantizedRowParallelLinear(Layer):
             quant_bits=activation_bits,
             dtype=self._dtype,
             quant_on_weight=False,
-            reduce_type='max')
+            reduce_type='max'
+            if paddle.distributed.get_world_size() > 1 else None)
 
         self._act_preprocess = act_pre_layer(
         ) if act_pre_layer is not None else None
