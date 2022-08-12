@@ -1459,7 +1459,6 @@ void IndexAddInferMeta(const MetaTensor& x,
           axis));
 
   int real_axis = axis >= 0 ? axis : axis + input_dim.size();
-  std::cout << "real_axis = " << real_axis << std::endl;
 
   PADDLE_ENFORCE_EQ(
       index_dim.size() == 1 ||

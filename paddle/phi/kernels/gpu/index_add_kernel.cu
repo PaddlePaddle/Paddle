@@ -39,8 +39,6 @@ __global__ void index_add_cuda_kernel(const T* input,
     IndexT src_dim_idx = index[dim_idx];
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-    // limin-todo: should be atomicAdd.
-    // output[input_idx] = output[input_idx] + add_value[idx];
     paddle::platform::CudaAtomicAdd(&output[input_idx], add_value[idx]);
   }
 }
@@ -55,10 +53,11 @@ void IndexAddKernel(const Context& ctx,
   int dim = axis;
   auto input_dim = x.dims();
   auto output_dim = output->dims();
+  auto add_value_dim = add_value.dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
   auto stride_dim = phi::stride(input_dim);
   int64_t stride = stride_dim[dim];
-  int64_t size = output_dim[dim];
+  int64_t size = add_value_dim[dim];
   int64_t delta = input_dim[dim] - size;
   const auto& index_type = index.dtype();
 

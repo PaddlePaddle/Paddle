@@ -43,7 +43,9 @@ class TestIndexAddOp(unittest.TestCase):
         self.index_type = np.int32
 
     def setPlace(self):
-        self.place = ["cpu"]
+        self.place = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            self.place.append('gpu')
 
     def config(self):
         self.axis = 0
@@ -203,15 +205,13 @@ class TestIndexAdOpCase5(TestIndexAddOp):
         self.add_value_shape = (10, 4)
 
 
-class TestIndexAdOpGPU(TestIndexAddOp):
-
-    def setPlace(self):
-        self.place = []
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
-        else:
-            self.place.append('cpu')
-
+# class TestIndexAdOpGPU(TestIndexAddOp):
+#     def setPlace(self):
+#         self.place = []
+#         if paddle.is_compiled_with_cuda():
+#             self.place.append('gpu')
+#         else:
+#             self.place.append('cpu')
 
 if __name__ == '__main__':
     unittest.main()

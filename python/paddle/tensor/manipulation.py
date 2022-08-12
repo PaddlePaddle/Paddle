@@ -4396,9 +4396,9 @@ def index_add(x, index, add_value, axis=0, name=None):
             # required: gpu
             import paddle
 
-            input_tensor = paddle.ones((3, 3))
-            index = paddle.to_tensor([0, 2])
-            add_value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]])
+            input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
+            index = paddle.to_tensor([0, 2], dtype="int32")
+            add_value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], dtype="float32")
             outplace_res = paddle.index_add(input_tensor, index, add_value, axis=0)
             print(outplace_res.numpy())
             # [[2 2 2]
@@ -4450,9 +4450,9 @@ def index_add_(x, index, add_value, axis=0, name=None):
             # required: gpu
             import paddle
 
-            input_tensor = paddle.ones((3, 3))
-            index = paddle.to_tensor([0, 2])
-            add_value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]])
+            input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
+            index = paddle.to_tensor([0, 2], dtype="int32")
+            add_value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], dtype="float32")
             inplace_res = paddle.index_add_(input_tensor, index, add_value, axis=1)
             print(inplace_res.numpy())
             # [[2, 1, 2]
