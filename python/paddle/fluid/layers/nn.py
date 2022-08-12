@@ -1455,7 +1455,7 @@ def softmax(input, use_cudnn=True, name=None, axis=-1):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_softmax(outs_cast, axis)
+        return _C_ops.final_state_softmax(input, axis)
 
     if _non_static_mode():
         return _C_ops.softmax(input, 'axis', axis, 'use_cudnn', use_cudnn)
