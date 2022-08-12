@@ -12,14 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-KernelSignature ErfinvGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("erfinv_grad", {"Out", "Out@GRAD"}, {}, {"X@GRAD"});
-}
-
+template <typename T, typename Context>
+void ClassCenterSampleKernel(const Context& dev_ctx,
+                             const DenseTensor& label,
+                             int num_classes,
+                             int num_samples,
+                             int ring_id,
+                             int rank,
+                             int nranks,
+                             bool fix_seed,
+                             int seed,
+                             DenseTensor* remapped_label,
+                             DenseTensor* sampled_local_class_center);
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(erfinv_grad, phi::ErfinvGradOpArgumentMapping);

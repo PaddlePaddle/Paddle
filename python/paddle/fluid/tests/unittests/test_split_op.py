@@ -511,7 +511,7 @@ class API_TestDygraphSplit(unittest.TestCase):
             num1 = paddle.full(shape=[1], fill_value=1, dtype='int32')
             x0 = paddle.split(input, num_or_sections=[-1], axis=num1)
             x0_out = x0[0].numpy()
-        self.assertTrue(np.array_equal(x0_out, input.numpy()))
+        np.testing.assert_array_equal(x0_out, input.numpy())
 
     def test_negative_one_section(self):
         with _test_eager_guard():
@@ -540,4 +540,5 @@ class API_TestEmptySplit(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

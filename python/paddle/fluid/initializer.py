@@ -138,14 +138,20 @@ class ConstantInitializer(Initializer):
                 or isinstance(var, framework.EagerParamBase))
         assert isinstance(block, framework.Block)
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            place = _current_expected_place()
+            if self._force_cpu:
+                place = core.CPUPlace()
+            _C_ops.final_state_full_(var, var.shape, str(float(self._value)),
+                                     var.dtype, place)
+            return None
+        elif _in_legacy_dygraph():
             _C_ops.fill_constant(var, 'value', float(self._value),
                                  'force_cpu', self._force_cpu, 'dtype',
                                  int(var.dtype), 'str_value',
                                  str(float(self._value)), 'shape', var.shape)
             return None
         else:
-            # fill constant should set the "str_value" to preserve precision
             op = block.append_op(type="fill_constant",
                                  outputs={"Out": var},
                                  attrs={

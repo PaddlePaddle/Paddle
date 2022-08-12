@@ -25,7 +25,7 @@ namespace phi {
 template <typename T, typename Context>
 void ComputeDropoutInference(const Context& ctx,
                              const DenseTensor& x,
-                             float dropout_prob,
+                             const Scalar& dropout_prob,
                              bool upscale_in_train,
                              DenseTensor* y) {
   if (upscale_in_train) {
@@ -41,7 +41,7 @@ void ComputeDropoutInference(const Context& ctx,
     auto X = EigenMatrix<T>::Reshape(x, 1);
     auto Y = EigenMatrix<T>::Reshape(*y, 1);
     auto& place = *ctx.eigen_device();
-    Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
+    Y.device(place) = X * static_cast<T>(1.0f - dropout_prob.to<float>());
   }
 }
 
@@ -49,7 +49,7 @@ template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const paddle::optional<DenseTensor>& seed_tensor,
-                      float p,
+                      const Scalar& p,
                       bool is_test,
                       const std::string& mode,
                       int seed,
@@ -59,7 +59,7 @@ void DropoutRawKernel(const Context& dev_ctx,
   auto* y = out;
   const auto* x_data = x.data<T>();
   T* y_data = dev_ctx.template Alloc<T>(y);
-  float dropout_prob = p;
+  float dropout_prob = p.to<float>();
 
   auto& dropout_implementation = mode;
   bool upscale_in_train = (dropout_implementation == "upscale_in_train");
@@ -109,7 +109,7 @@ template <typename T, typename Context>
 void DropoutNdKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& seed_tensor,
-                     float p,
+                     const Scalar& p,
                      bool is_test,
                      const std::string& mode,
                      int seed,
@@ -120,7 +120,7 @@ void DropoutNdKernel(const Context& dev_ctx,
   auto* y = out;
   const auto* x_data = x.data<T>();
   T* y_data = dev_ctx.template Alloc<T>(y);
-  float dropout_prob = p;
+  float dropout_prob = p.to<float>();
 
   auto& dropout_implementation = mode;
   bool upscale_in_train = (dropout_implementation == "upscale_in_train");
