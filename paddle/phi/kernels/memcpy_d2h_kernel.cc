@@ -25,18 +25,9 @@ void MemcpyD2HKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {
-  PADDLE_ENFORCE_GE(
-      dst_place_type,
-      0,
-      errors::OutOfRange("dst_place_type only support 0-1, but got: %d",
-                         dst_place_type));
-  PADDLE_ENFORCE_LE(
-      dst_place_type,
-      1,
-      errors::OutOfRange("dst_place_type only support 0-1, but got: %d",
-                         dst_place_type));
-
   // Copy will set the stream of the tensor while setting blocking to false
+  // it also handles asynchronous small data(<64kb) copy bewteen host and device
+  // so no need to do anything special
   switch (dst_place_type) {
     case 0:
       Copy(dev_ctx, x, CPUPlace(), false, out);
@@ -46,6 +37,8 @@ void MemcpyD2HKernel(const Context& dev_ctx,
       break;
 
     default:
+      PADDLE_THROW(errors::OutOfRange(
+          "dst_place_type only support 0-1, but got: %d", dst_place_type));
       break;
   }
 }
