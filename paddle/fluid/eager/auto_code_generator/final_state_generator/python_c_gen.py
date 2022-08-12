@@ -411,12 +411,12 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         amp_dygraph_function_call_str = ",".join(amp_dygraph_function_call_list)
 
         # Generate Python-C Function Definitions
-        if is_forward_only:
-            fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                "paddle::experimental::", namespace, forward_api_name)
-        else:
-            fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                "::", namespace, GetForwardFunctionName(forward_api_name))
+        # if is_forward_only:
+        #     fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
+        #         "paddle::experimental::", namespace, forward_api_name)
+        # else:
+        fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
+            "::", namespace, GetForwardFunctionName(forward_api_name))
 
         return_str = "    return ToPyObject(out);"
 
@@ -489,17 +489,17 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             dygraph_function_call_str)
 
         # Generate Python-C Function Definetion
-        if (is_forward_only) and (len(amp_tensors_vector_list) >
-                                  0) and (forward_api_name not in no_amp_list):
-            self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-                forward_api_name, pythonc_record_event_str, forward_api_name,
-                get_eager_tensor_str, parse_attributes_str, set_device_str,
-                amp_dygraph_function_str, return_str)
-        else:
-            self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-                forward_api_name, pythonc_record_event_str, forward_api_name,
-                get_eager_tensor_str, parse_attributes_str, set_device_str,
-                noamp_dygraph_function_str, return_str)
+        # if (len(amp_tensors_vector_list) >
+        #                           0) and (forward_api_name not in no_amp_list):
+        #     self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
+        #         forward_api_name, pythonc_record_event_str, forward_api_name,
+        #         get_eager_tensor_str, parse_attributes_str, set_device_str,
+        #         amp_dygraph_function_str, return_str)
+        # else:
+        self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
+            forward_api_name, pythonc_record_event_str, forward_api_name,
+            get_eager_tensor_str, parse_attributes_str, set_device_str,
+            noamp_dygraph_function_str, return_str)
 
         # Set prefix of forward_api_name to avoid conflicts
         prefix = self.namespace.strip("::")
@@ -513,14 +513,14 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         if forward_inplace_map:
             inplaced_forward_api_name = GetInplacedFunctionName(
                 self.forward_api_name)
-            if is_forward_only:
-                inplaced_fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                    "paddle::experimental::", namespace,
-                    inplaced_forward_api_name)
-            else:
-                inplaced_fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                    "::", namespace,
-                    GetForwardFunctionName(inplaced_forward_api_name))
+            # if is_forward_only:
+            #     inplaced_fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
+            #         "paddle::experimental::", namespace,
+            #         inplaced_forward_api_name)
+            # else:
+            inplaced_fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
+                "::", namespace,
+                GetForwardFunctionName(inplaced_forward_api_name))
 
             inplace_noamp_dygraph_function_str = NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
                 inplaced_fwd_function_name, dygraph_function_call_str,
@@ -542,19 +542,19 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             return_str += "    return ToPyObject(out, args, inplace_var_idx_map);"
 
             # Generate Python-C Function Definetion
-            if (is_forward_only) and (len(amp_tensors_vector_list) > 0) and (
-                    inplaced_forward_api_name not in no_amp_list):
-                python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-                    inplaced_forward_api_name, pythonc_record_event_str,
-                    inplaced_forward_api_name, get_eager_tensor_str,
-                    parse_attributes_str, set_device_str,
-                    inplace_amp_dygraph_function_str, return_str)
-            else:
-                python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-                    inplaced_forward_api_name, pythonc_record_event_str,
-                    inplaced_forward_api_name, get_eager_tensor_str,
-                    parse_attributes_str, set_device_str,
-                    inplace_noamp_dygraph_function_str, return_str)
+            # if (len(amp_tensors_vector_list) > 0) and (
+            #         inplaced_forward_api_name not in no_amp_list):
+            #     python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
+            #         inplaced_forward_api_name, pythonc_record_event_str,
+            #         inplaced_forward_api_name, get_eager_tensor_str,
+            #         parse_attributes_str, set_device_str,
+            #         inplace_amp_dygraph_function_str, return_str)
+            # else:
+            python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
+                inplaced_forward_api_name, pythonc_record_event_str,
+                inplaced_forward_api_name, get_eager_tensor_str,
+                parse_attributes_str, set_device_str,
+                inplace_noamp_dygraph_function_str, return_str)
 
             python_c_inplace_func_reg_str = PYTHON_C_FUNCTION_REG_TEMPLATE.format(
                 forward_api_name_prefix, inplaced_forward_api_name, namespace,

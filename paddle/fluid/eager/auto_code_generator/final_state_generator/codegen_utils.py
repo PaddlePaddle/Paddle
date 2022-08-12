@@ -18,6 +18,13 @@ import re
 import argparse
 import os
 
+import sys
+# sys.path.append('../../../phi/api/yaml/generator/')
+# from api_gen import ForwardAPI
+# from paddle.phi.api.yaml.generator.api_gen import *
+# paddle/fluid/eager/auto_code_generator/final_state_generator/codegen_utils.py
+# paddle/phi/api/yaml/generator/api_gen.py##
+# /home/develop/dev_tmp5/Paddle/paddle/phi/api/yaml/generator/api_gen.py
 ########################
 ### Global Variables ###
 ########################
@@ -352,6 +359,9 @@ class FunctionGeneratorBase:
     def __init__(self, forward_api_contents, namespace):
         self.forward_api_contents = forward_api_contents
         self.namespace = namespace
+
+        self.is_forward_only = False if 'backward' in forward_api_contents.keys(
+        ) else True
 
         self.forward_api_name = ""
 
