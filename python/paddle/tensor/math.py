@@ -2059,8 +2059,6 @@ def _get_reduce_axis(axis):
     Internal function for max, min, amax and amin. 
     It computes the attribute reduce_all value based on axis.
     """
-    if isinstance(axis, Variable):
-        return False, axis
     if axis is not None and not isinstance(axis, list):
         if isinstance(axis, tuple):
             axis = list(axis)
@@ -2073,6 +2071,11 @@ def _get_reduce_axis(axis):
     if axis == None:
         axis = []
     return reduce_all, axis
+
+def _get_reduce_axis_with_tensor(axis):
+    if isinstance(axis, Variable):
+        return False, axis
+    return _get_reduce_axis(axis)
 
 def _get_reduce_all_value(axis):
     """
@@ -2271,7 +2274,7 @@ def min(x, axis=None, keepdim=False, name=None):
             #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis(axis)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis)
     if in_dygraph_mode():
         return _C_ops.final_state_min(x, axis, keepdim)
 
