@@ -75,7 +75,7 @@ class ApiMaxTest(unittest.TestCase):
                                              paddle.static.Program()):
                 data = paddle.static.data("data", shape=[10, 10], dtype="int64")
                 axis = paddle.static.data("axis", shape=[10, 10], dtype="int64")
-                result_min = paddle.min(data, axis)
+                result_max = paddle.max(data, axis)
 
         self.assertRaises(TypeError, test_axis_type)
 
