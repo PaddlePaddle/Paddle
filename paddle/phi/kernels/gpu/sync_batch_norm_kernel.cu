@@ -100,7 +100,19 @@ void SyncBatchNormKernel(const Context &ctx,
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto *comm = ctx.nccl_comm();
+    int global_gid = 0;
+    ncclComm_t comm = nullptr;
+
+    if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
+            global_gid)) {
+      auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
+          paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
+              global_gid));
+      comm = nccl_pg->NCCLComm(x.place());
+    } else {
+      comm = ctx.nccl_comm();
+    }
+
     if (comm) {
       int dtype = paddle::platform::ToNCCLDataType(
           paddle::framework::TransToProtoVarType(mean_out->dtype()));
@@ -113,6 +125,7 @@ void SyncBatchNormKernel(const Context &ctx,
           ncclSum,
           comm,
           stream));
+      VLOG(3) << "Sync result using all reduce";
     } else {
       PADDLE_THROW(
           paddle::platform::errors::Fatal("The GPU NCCL is not initialized."));
