@@ -105,9 +105,9 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
 
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::ConcatActivation conv_concat_act(
+  patterns::OperatorActivation conv_concat_act(
       pattern, "conv2d_concat_" + act_type + "_mkldnn_fuse_pass");
-  conv_concat_act(act_type);
+  conv_concat_act("concat", act_type);
 
   int found_conv_concat_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -118,33 +118,44 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
       return;
     }
 
-    GET_IR_NODE_FROM_SUBGRAPH(concat_op, concat_op, conv_concat_act);
-    GET_IR_NODE_FROM_SUBGRAPH(concat_out, concat_out, conv_concat_act);
-    GET_IR_NODE_FROM_SUBGRAPH(activation_op, activation_op, conv_concat_act);
+    GET_IR_NODE_FROM_SUBGRAPH(concat_op, preceding_op, conv_concat_act);
+    GET_IR_NODE_FROM_SUBGRAPH(concat_out, preceding_op_out, conv_concat_act);
+    GET_IR_NODE_FROM_SUBGRAPH(activation_op, activation, conv_concat_act);
     GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, conv_concat_act);
 
-    // Check if all concat inputs are mkldnn conv2d
     auto concat_inputs = concat_op->inputs;
     for (auto node : concat_inputs) {
       auto prev_op_node = node->inputs;
-      PADDLE_ENFORCE_EQ(prev_op_node.size(),
-                        1,
-                        platform::errors::InvalidArgument(
-                            "Node(%s) input size(%d) must be 1.",
-                            node->Name(),
-                            prev_op_node.size()));
-      auto* conv_op = prev_op_node[0];
-      if (conv_op->Op()->Type() != "conv2d") return;
-
-      if (FindFuseOption(*conv_op, *activation_op) != FUSE_MKLDNN) {
+      if (prev_op_node.size() != 1) {
+        LOG(WARNING)
+            << "Operator connected to concat can have only one output.";
+        return;
+      }
+      if (prev_op_node[0]->Op()->Type() != "conv2d") {
+        LOG(WARNING) << "This fuse pass supports only conv2d + activation.";
         return;
       }
     }
 
     for (auto node : concat_inputs) {
-      auto prev_op_node = node->inputs;
-      auto* conv_op = prev_op_node[0];
-      conv_op->Op()->SetAttr("fuse_activation", act_type);
+      OpDesc* conv_op = node->inputs[0]->Op();
+      OpDesc* act_op = activation_op->Op();
+
+      auto attr_map = paddle::platform::GetAttributeMap(act_type);
+      for (const auto& attrs : attr_map) {
+        if (act_op->HasAttr(attrs.first)) {
+          conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
+        }
+      }
+
+      if (act_type == "gelu" && act_op->HasAttr("approximate")) {
+        act_type = PADDLE_GET_CONST(bool, act_op->GetAttr("approximate"))
+                       ? "gelu_tanh"
+                       : "gelu_erf";
+        conv_op->SetAttr("fuse_alpha", 0.0f);
+        conv_op->SetAttr("fuse_beta", 0.0f);
+      }
+      conv_op->SetAttr("fuse_activation", act_type);
     }
 
     concat_op->Op()->SetOutput("Out", {activation_out->Name()});

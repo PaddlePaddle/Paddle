@@ -1228,18 +1228,6 @@ struct Concat : public PatternBase {
   PATTERN_DECL_NODE(concat_out);
 };
 
-struct ConcatActivation : public PatternBase {
-  ConcatActivation(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "concat_activation") {}
-
-  PDNode* operator()(const std::string& activation_type);
-
-  PATTERN_DECL_NODE(concat_op);
-  PATTERN_DECL_NODE(concat_out);
-  PATTERN_DECL_NODE(activation_op);
-  PATTERN_DECL_NODE(activation_out);
-};
-
 // Op + Requant
 // named nodes:
 // any_op, any_out

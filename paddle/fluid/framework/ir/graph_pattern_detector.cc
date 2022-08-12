@@ -2081,26 +2081,6 @@ PDNode *patterns::Concat::operator()() {
   return output_var;
 }
 
-PDNode *patterns::ConcatActivation::operator()(
-    const std::string &activation_type) {
-  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
-  auto act_op =
-      pattern->NewNode(activation_op_repr())->assert_is_op(activation_type);
-
-  auto concat_out = pattern->NewNode(concat_out_repr())
-                        ->assert_is_op_output("concat", "Out")
-                        ->assert_is_only_output_of_op("concat");
-
-  auto act_out = pattern->NewNode(activation_out_repr())
-                     ->AsOutput()
-                     ->assert_is_op_output(activation_type, "Out");
-
-  concat_op->LinksTo({concat_out});
-  act_op->LinksFrom({concat_out}).LinksTo({act_out});
-
-  return act_out;
-}
-
 PDNode *patterns::OpRequant::operator()() {
   auto any_op = pattern->NewNode(any_op_repr())
                     ->assert_is_op()
