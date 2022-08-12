@@ -22,6 +22,36 @@ import paddle.fluid as fluid
 import paddle
 from paddle.fluid import Program, program_guard
 from paddle.nn.functional import interpolate
+from paddle._C_ops import final_state_bicubic_interp_v2
+
+
+def bicubic_interp_v2_test(x,
+                           OutSize=None,
+                           SizeTensor=None,
+                           Scale=None,
+                           data_layout='NCHW',
+                           out_d=-1,
+                           out_h=-1,
+                           out_w=-1,
+                           scale=[],
+                           interp_method='linear',
+                           align_corners=False,
+                           align_mode=1):
+    if isinstance(scale, float) or isinstance(scale, int):
+        scale_list = []
+        for _ in range(len(x.shape) - 2):
+            scale_list.append(scale)
+        scale = list(map(float, scale_list))
+    elif isinstance(scale, list) or isinstance(scale, tuple):
+        scale = list(map(float, scale))
+    if SizeTensor is not None:
+        if not isinstance(SizeTensor, list) and not isinstance(
+                SizeTensor, tuple):
+            SizeTensor = [SizeTensor]
+    return final_state_bicubic_interp_v2(x, OutSize, SizeTensor, Scale,
+                                         data_layout, out_d, out_h, out_w,
+                                         scale, interp_method, align_corners,
+                                         align_mode)
 
 
 def cubic_1(x, a):
@@ -133,6 +163,7 @@ def bicubic_interp_np(input,
 class TestBicubicInterpOp(OpTest):
 
     def setUp(self):
+        self.python_api = bicubic_interp_v2_test
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
@@ -140,8 +171,7 @@ class TestBicubicInterpOp(OpTest):
         self.op_type = "bicubic_interp_v2"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
         # Skip check_eager while found them in Inputs.
-        # TODO(dev): add self.python_api
-        self.check_eager = False
+        self.check_eager = True
         input_np = np.random.random(self.input_shape).astype("float64")
         scale_h = 0
         scale_w = 0
@@ -208,7 +238,7 @@ class TestBicubicInterpOp(OpTest):
         self.input_shape = [2, 3, 5, 5]
         self.out_h = 2
         self.out_w = 2
-        self.scale = 0.
+        self.scale = []
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
 
@@ -220,7 +250,7 @@ class TestBicubicInterpCase1(TestBicubicInterpOp):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
-        self.scale = 0.
+        self.scale = []
         self.align_corners = True
 
 
@@ -231,7 +261,7 @@ class TestBicubicInterpCase2(TestBicubicInterpOp):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 10
         self.out_w = 8
-        self.scale = 0.
+        self.scale = []
         self.align_corners = True
 
 
@@ -242,7 +272,7 @@ class TestBicubicInterpCase3(TestBicubicInterpOp):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
-        self.scale = 0.
+        self.scale = []
         self.align_corners = False
 
 
@@ -253,7 +283,7 @@ class TestBicubicInterpCase4(TestBicubicInterpOp):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
-        self.scale = 0.
+        self.scale = []
         self.out_size = np.array([2, 2]).astype("int32")
         self.align_corners = True
 
@@ -265,7 +295,7 @@ class TestBicubicInterpCase5(TestBicubicInterpOp):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 11
         self.out_w = 11
-        self.scale = 0.
+        self.scale = []
         self.out_size = np.array([6, 4]).astype("int32")
         self.align_corners = False
 
@@ -289,7 +319,7 @@ class TestBicubicInterpSame(TestBicubicInterpOp):
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32
         self.out_w = 64
-        self.scale = 0.
+        self.scale = []
         self.align_corners = True
 
 
@@ -311,7 +341,7 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
         self.input_shape = [2, 5, 5, 3]
         self.out_h = 2
         self.out_w = 2
-        self.scale = 0.
+        self.scale = []
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
         self.data_layout = "NHWC"
