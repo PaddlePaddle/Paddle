@@ -186,25 +186,32 @@ inline std::string Vec2Str(const std::vector<T>& vec) {
 }
 
 static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
+  nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
   switch (type) {
     case phi::DataType::FLOAT32:
-      return nvinfer1::DataType::kFLOAT;
+      nv_type = nvinfer1::DataType::kFLOAT;
+      break;
     case phi::DataType::FLOAT16:
-      return nvinfer1::DataType::kHALF;
+      nv_type = nvinfer1::DataType::kHALF;
+      break;
     case phi::DataType::INT32:
     case phi::DataType::INT64:
-      return nvinfer1::DataType::kINT32;
+      nv_type = nvinfer1::DataType::kINT32;
+      break;
     case phi::DataType::INT8:
-      return nvinfer1::DataType::kINT8;
+      nv_type = nvinfer1::DataType::kINT8;
+      break;
 #if IS_TRT_VERSION_GE(7000)
     case phi::DataType::BOOL:
-      return nvinfer1::DataType::kBOOL;
+      nv_type = nvinfer1::DataType::kBOOL;
+      break;
 #endif
     default:
       paddle::platform::errors::InvalidArgument(
           "phi::DataType not supported data type %s.", type);
-      return nvinfer1::DataType::kFLOAT;
+      break;
   }
+  return nv_type;
 }
 }  // namespace tensorrt
 }  // namespace inference
