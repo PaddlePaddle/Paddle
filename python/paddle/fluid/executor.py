@@ -1438,10 +1438,7 @@ class Executor(object):
                 return True
 
         def _apply_inplace_addto_pass(program, enable_inplace, enable_addto):
-            use_cuda = False
-            if core.is_compiled_with_cuda():
-                use_cuda = True
-
+            use_cuda = True if core.is_compiled_with_cuda() else False
             # skip data var
             data_vars = []
             for var_name, var in program.global_block().vars.items():
@@ -1487,24 +1484,17 @@ class Executor(object):
                 if key not in self._executor_cache._cached_executors:
                     # To apply IR pass, compile the Program to IrGraph and convert it back to Program
                     if isinstance(program, compiler.CompiledProgram):
+                        build_strategy = program._build_strategy
                         # print(f"Program before convert:\n {inner_program}", flush=True)
                         program._compile(scope, self.place)
                         ir_graph = framework.IrGraph(program._graph)
                         inner_program = ir_graph.to_program()
-                        # standalone executor will apply buffer_shared_inplace_pass and
-                        # inplace_addto_op_pass pass to converted program
-                        if program._build_strategy is not None and (
-                                program._build_strategy.enable_inplace
-                                or program._build_strategy.enable_addto):
-                            _apply_inplace_addto_pass(
-                                inner_program,
-                                program._build_strategy.enable_inplace,
-                                program._build_strategy.enable_addto)
                         # print(f"Program after convert:\n {inner_program}", flush=True)
                         logging.warning(
                             "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
                         )
                     else:
+                        build_strategy = None
                         from paddle.incubate.autograd import prim_enabled, prim2orig
                         if prim_enabled() and program == default_main_program():
                             prim2orig()
@@ -1516,6 +1506,14 @@ class Executor(object):
                         feed_var_name=feed_var_name,
                         fetch_var_name=fetch_var_name,
                         use_fetch_v2=True)
+
+                    # standalone executor will apply buffer_shared_inplace_pass and
+                    # inplace_addto_op_pass to program according to build_strategy
+                    enable_inplace = True if build_strategy is None or build_strategy.enable_inplace else False
+                    enable_addto = True if build_strategy is not None and build_strategy.enable_addto else False
+                    if enable_inplace or enable_addto:
+                        _apply_inplace_addto_pass(program, enable_inplace,
+                                                  enable_addto)
 
                     new_program = program.clone()
                     new_exe = _StandaloneExecutor(self.place, new_program,
