@@ -36,7 +36,6 @@ void DropoutRawKernel(const Context& dev_ctx,
   if (mask) {
     dev_ctx.template Alloc<uint8_t>(mask);
   }
-
   paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
                                                  is_test,
                                                  p.to<float>(),
