@@ -1515,13 +1515,13 @@ def assign(x, output=None):
         input = np.array([input])
     elif isinstance(input, (list, tuple)):
         input = np.array(input)
+    output_dtype = None
     # NOTE(Aurelius84): Why we judge core.VarBase?
     # In case of @to_static, a VarBase can be as input of `assign`,
     # but _non_static_mode()==False under @to_static, which means
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
-        output_dtype = None
         if in_dygraph_mode():
             if output is None:
                 output = _C_ops.final_state_assign(input)
