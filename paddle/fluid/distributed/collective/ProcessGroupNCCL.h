@@ -157,6 +157,8 @@ class ProcessGroupNCCL : public ProcessGroup {
 
   static void GroupEnd();
 
+  ncclComm_t NCCLComm(const Place& place) const;
+
  protected:
   virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
       std::vector<Place> places,
