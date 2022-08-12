@@ -27,7 +27,10 @@ from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_di
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-_skip_ops = ['create_py_reader', 'create_double_buffer_reader', 'read', 'slice']
+_skip_ops = [
+    'create_py_reader', 'create_double_buffer_reader', 'read', 'slice', 'split',
+    'assign'
+]
 # update here to support new optimizers
 _supported_optimizer_type = [
     "adam", "adamax", "adamw", "decayed_adagrad", "momentum", "dgc_momentum",
