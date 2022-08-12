@@ -86,6 +86,7 @@ class HostStatisticNode:
         for rt in self.runtime_node:
             rt.cal_statistic()
         self.cpu_time = self.hostnode.end_ns - self.hostnode.start_ns
+        self.self_cpu_time = self.cpu_time
         for child in self.children_node:
             self.gpu_time += child.gpu_time
             self.general_gpu_time += child.general_gpu_time
@@ -918,7 +919,7 @@ def _build_table(statistic_data,
         accmulation_time = 0
         gpu_accmulation_time = 0
         gpu_total_time = statistic_data.event_summary.model_perspective_items[
-            'ProfileStep'].general_gpu_time
+            'ProfileStep'].gpu_time
         for name in [
                 'ProfileStep', 'Dataloader', 'Forward', 'Backward',
                 'Optimization'
@@ -928,7 +929,7 @@ def _build_table(statistic_data,
                 if gpu_total_time == 0:
                     gpu_ratio = 0
                 else:
-                    gpu_ratio = float(item.general_gpu_time) / gpu_total_time
+                    gpu_ratio = float(item.gpu_time) / gpu_total_time
                 name = '{}'.format(
                     name) if 'ProfileStep' in name else '  {}'.format(name)
                 row_values = [
@@ -949,7 +950,7 @@ def _build_table(statistic_data,
                 all_row_values.append(row_values)
                 if 'ProfileStep' not in name:
                     accmulation_time += item.cpu_time
-                    gpu_accmulation_time += item.general_gpu_time
+                    gpu_accmulation_time += item.gpu_time
 
         other_time = total_time - accmulation_time
         other_gpu_time = gpu_total_time - gpu_accmulation_time

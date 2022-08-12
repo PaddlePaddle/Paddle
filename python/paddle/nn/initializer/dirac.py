@@ -16,6 +16,7 @@ from ...fluid.initializer import Initializer
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.core import VarDesc
 from ...fluid import framework
+from ...fluid.framework import _current_expected_place
 from paddle import in_dynamic_mode
 from paddle.utils import unique_name
 from paddle import _C_ops
@@ -130,9 +131,10 @@ class Dirac(Initializer):
         op = None
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                _C_ops.fill_constant(out_var, 'value', float(0), 'force_cpu',
-                                     False, 'dtype', out_var.dtype, 'str_value',
-                                     str(float(0)), 'shape', out_var.shape)
+                place = _current_expected_place()
+                _C_ops.final_state_full_(out_var, out_var.shape, str(float(0)),
+                                         out_var.dtype, place)
+
         else:
             block.append_op(type='fill_constant',
                             inputs={},
