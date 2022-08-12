@@ -71,10 +71,10 @@ OpVersionDesc&& OpVersionDesc::DeleteOutput(const std::string& name,
 }
 
 OpVersion& OpVersionRegistrar::Register(const std::string& op_type) {
-  PADDLE_ENFORCE_EQ(
-      op_version_map_.find(op_type), op_version_map_.end(),
-      platform::errors::AlreadyExists(
-          "'%s' is registered in operator version more than once.", op_type));
+//  PADDLE_ENFORCE_EQ(
+//      op_version_map_.find(op_type), op_version_map_.end(),
+//      platform::errors::AlreadyExists(
+//          "'%s' is registered in operator version more than once.", op_type));
   op_version_map_.insert(
       std::pair<std::string, OpVersion>{op_type, OpVersion()});
   return op_version_map_[op_type];
