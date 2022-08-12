@@ -365,11 +365,11 @@ class PassVersionCheckerRegistrar {
     return instance;
   }
   PassVersionCheckers& Register(const std::string& pass_name) {
-    PADDLE_ENFORCE_EQ(pass_version_checkers_map_.find(pass_name),
-                      pass_version_checkers_map_.end(),
-                      platform::errors::AlreadyExists(
-                          "PassVersionCheckers(%s) has alredy been registered.",
-                          pass_name.c_str()));
+//    PADDLE_ENFORCE_EQ(pass_version_checkers_map_.find(pass_name),
+//                      pass_version_checkers_map_.end(),
+//                      platform::errors::AlreadyExists(
+//                          "PassVersionCheckers(%s) has alredy been registered.",
+//                          pass_name.c_str()));
     return pass_version_checkers_map_[pass_name];
   }
   bool IsPassCompatible(const std::string& fuse_pass_name) const {
