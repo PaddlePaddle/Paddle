@@ -4123,7 +4123,11 @@ def moveaxis(x, source, destination, name=None):
     for i in range(len(src_dims)):
         perm[dst_dims[i]] = src_dims[i]
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_transpose(x, perm)
+        return out
+
+    if _in_legacy_dygraph():
         out, _ = _C_ops.transpose2(x, 'axis', perm)
         return out
 
