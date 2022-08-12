@@ -24,6 +24,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename T>
 class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
   using MPDType = typename details::MPTypeTrait<T>::Type;
