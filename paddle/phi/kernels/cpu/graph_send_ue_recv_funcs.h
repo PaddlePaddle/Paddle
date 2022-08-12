@@ -13,22 +13,34 @@
 // limitations under the License.
 
 #pragma once
+#include <algorithm>
+#include <vector>
 
-#include <string>
-
-#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void GraphSendRecvKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& src_index,
-                         const DenseTensor& dst_index,
-                         const std::string& reduce_op,
-                         const IntArray& out_size,
-                         DenseTensor* out,
-                         DenseTensor* dst_count);
+template <typename T>
+struct GraphAddFunctor {
+  inline T operator()(const T a, const T b) const { return a + b; }
+};
+
+template <typename T>
+struct GraphMulFunctor {
+  inline T operator()(const T a, const T b) const { return a * b; }
+};
+
+template <typename T>
+struct GraphMaxFunctor {
+  inline T operator()(const T a, const T b) const { return a < b ? b : a; }
+};
+
+template <typename T>
+struct GraphMinFunctor {
+  inline T operator()(const T a, const T b) const { return a < b ? a : b; }
+};
 
 }  // namespace phi
