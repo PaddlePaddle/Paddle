@@ -1419,7 +1419,10 @@ def get_standalone_cost_data(distributed_programs):
     }
 
     standalone_cost_data = []
-    not_enum_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
+    # skip ops
+    not_enum_ops = [
+        "create_py_reader", "create_double_buffer_reader", "read", "assign"
+    ]
     for distributed_program in distributed_programs:
         cost_data = {}
         vars = distributed_program.global_block().vars
