@@ -57,14 +57,44 @@ class TestToTensorReturnVal(unittest.TestCase):
                             dygraph_res[0].dtype, tensor_badreturn_1(x).dtype))
         
 
+class UnittestBase(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.init_info()
+
+    def tearDwon(self):
+        self.temp_dir.cleanup()
+
+    def init_info(self):
+        self.shapes = None
+        self.save_path = None
+
+    def infer_prog(self):
+        config = paddle_infer.Config(self.save_path + '.pdmodel',
+                                     self.save_path + '.pdiparams')
+        predictor = paddle_infer.create_predictor(config)
+        input_names = predictor.get_input_names()
+        for i, shape in enumerate(self.shapes):
+            input_handle = predictor.get_input_handle(input_names[i])
+            fake_input = np.random.randn(*shape).astype("float32")
+            input_handle.reshape(shape)
+            input_handle.copy_from_cpu(fake_input)
+        predictor.run()
+        output_names = predictor.get_output_names()
+        output_handle = predictor.get_output_handle(output_names[0])
+        output_data = output_handle.copy_to_cpu()
+
+        return output_data
+
 
 class TestDropout(UnittestBase):
 
     def init_info(self):
         self.shapes = [[10, 10]]
+        self.save_path = os.path.join(self.temp_dir.name, 'dropout')
 
-    def test_to_tensor_for_static(self):
-        paddle.enable_static()
+    def test_static(self):
         main_prog = Program()
         starup_prog = Program()
         with program_guard(main_prog, starup_prog):
@@ -73,7 +103,7 @@ class TestDropout(UnittestBase):
             x.stop_gradient = False
             feat = fc(x)
             # p is a Variable
-            p = paddle.to_tensor([1])
+            p = paddle.randn([1])
             out = paddle.nn.functional.dropout(feat, p=p)
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
@@ -83,6 +113,8 @@ class TestDropout(UnittestBase):
             exe = paddle.static.Executor()
             exe.run(starup_prog)
             res = exe.run(fetch_list=[x, out])
+            # export model
+            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
 
             # Test for Inference Predictor
             infer_out = self.infer_prog()
