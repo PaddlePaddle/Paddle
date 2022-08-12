@@ -16,13 +16,16 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/sum_op.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using SelectedRows = phi::SelectedRows;
+using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
 class SumNPUKernel : public framework::OpKernel<T> {
