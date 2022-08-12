@@ -659,7 +659,7 @@ class ForwardPostHooks(PyLayer):
     def forward(ctx, inputs, layer, order_tracer, trainable_params,
                 param2buffer, param2buffer_size, rank, group, sync_comm,
                 offload, task_flow):
-
+        ctx.mark_dirty(inputs)
         layer_id = id(layer)
         # release current layer full params
         _release_param(trainable_params[layer_id], param2buffer, rank,
