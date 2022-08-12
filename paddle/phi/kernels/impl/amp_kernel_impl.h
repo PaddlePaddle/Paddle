@@ -79,7 +79,7 @@ class LazyZeros {
   void operator()(const DeviceContext& dev_ctx,
                   const bool* found_inf_data,
                   const std::vector<const DenseTensor*>& xs,
-                  const std::vector<DenseTensor*>& outs) const;
+                  const std::vector<DenseTensor*>& outs) const {}
 };
 
 template <typename Context, typename T, bool IsFoundInfOnCPU>

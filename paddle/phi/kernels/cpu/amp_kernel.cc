@@ -27,24 +27,7 @@
 namespace phi {
 
 // Utils
-template <typename T>
-class LazyZeros<phi::CPUContext, T> {
- public:
-  void operator()(const phi::CPUContext& dev_ctx,
-                  const bool* found_inf_data,
-                  const std::vector<const DenseTensor*>& xs,
-                  const std::vector<DenseTensor*>& outs) const {
-    for (size_t i = 0; i < xs.size(); ++i) {
-      auto* out = outs[i];
-      T* out_data = dev_ctx.Alloc<T>(out);
-      int num = out->numel();
-      if (*found_inf_data) {
-        VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
-        std::memset(out_data, 0, num * sizeof(T));
-      }
-    }
-  }
-};
+
 template <typename T, bool IsFoundInfOnCPU>
 class UpdateLossScalingFunctor<phi::CPUContext, T, IsFoundInfOnCPU> {
  public:
