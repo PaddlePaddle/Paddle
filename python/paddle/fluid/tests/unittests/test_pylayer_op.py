@@ -705,6 +705,7 @@ class TestPyLayer(unittest.TestCase):
 
                 @staticmethod
                 def forward(ctx, x):
+                    ctx.mark_not_inplace(x)
                     return x, x + x
 
                 @staticmethod
@@ -723,6 +724,7 @@ class TestPyLayer(unittest.TestCase):
 
                 @staticmethod
                 def forward(ctx, x):
+                    ctx.mark_not_inplace(x)
                     ctx.set_materialize_grads(False)
                     return x, x + x
 
