@@ -25,7 +25,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/optional.h"
 
-#ifdef PADDLE_WITH_XPU_BKCL
+#ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 
