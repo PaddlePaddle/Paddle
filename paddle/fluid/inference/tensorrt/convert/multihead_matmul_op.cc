@@ -454,9 +454,17 @@ class MultiheadMatMulOpConverter : public OpConverter {
         std::vector<int> pos_id = {0};
         int max_batch = 500;
         for (int i = 1; i < max_batch; i++) {
-          pos_id.push_back(input_dims.d[1] * i);
+          pos_id.push_back(i);
         }
-        nvinfer1::ITensor* pos_id_tensor = Add1DConstantLayer(pos_id);
+        nvinfer1::ITensor* fake_pos_id_tensor = Add1DConstantLayer(pos_id);
+        nvinfer1::ITensor* length_tensor =
+            GetEleTensorOfShape(input_shape_tensor, 1);
+        auto pos_id_layer =
+            TRT_ENGINE_ADD_LAYER(engine_,
+                                 ElementWise,
+                                 *fake_pos_id_tensor,
+                                 *length_tensor,
+                                 nvinfer1::ElementWiseOperation::kPROD);
         // size = batch + 1;
         nvinfer1::ITensor* batch_tensor =
             GetEleTensorOfShape(input_shape_tensor, 0);
@@ -481,21 +489,18 @@ class MultiheadMatMulOpConverter : public OpConverter {
         stride.d[0] = 1;
         size.d[0] = 1;
 
-        auto* slice_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Slice, *pos_id_tensor, start, size, stride);
-        slice_layer->setInput(2, *size_layer->getOutput(0));
-        plugin_inputs.emplace_back(slice_layer->getOutput(0));
+        auto* slice_pos_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Slice, *pos_id_layer->getOutput(0), start, size, stride);
+        slice_pos_layer->setInput(2, *size_layer->getOutput(0));
+        plugin_inputs.emplace_back(slice_pos_layer->getOutput(0));
 
         // input_3 for plugin
-        std::vector<int> data(input_dims.d[1], 1);
-        nvinfer1::ITensor* max_seqlen_tensor = Add1DConstantLayer(data);
-        auto* shuffle_layer =
-            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *max_seqlen_tensor);
-        nvinfer1::Dims shape_dim;
-        shape_dim.nbDims = 1;
-        shape_dim.d[0] = -1;
-        shuffle_layer->setReshapeDimensions(shape_dim);
-        plugin_inputs.emplace_back(shuffle_layer->getOutput(0));
+        std::vector<int> data(500, 1);
+        nvinfer1::ITensor* fake_max_seqlen_tensor = Add1DConstantLayer(data);
+        auto* slice_max_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Slice, *fake_max_seqlen_tensor, start, size, stride);
+        slice_max_layer->setInput(2, *length_tensor);
+        plugin_inputs.emplace_back(slice_max_layer->getOutput(0));
         // plugin_layer
         auto plugin_layer = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *plugin);
@@ -504,9 +509,9 @@ class MultiheadMatMulOpConverter : public OpConverter {
         auto* reshape_after_mha_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *plugin_layer->getOutput(0));
         std::vector<nvinfer1::ITensor*> reshape_tensor;
+        reshape_tensor.push_back(batch_tensor);
+        reshape_tensor.push_back(length_tensor);
         reshape_tensor.push_back(Add1DConstantLayer(-1));
-        reshape_tensor.push_back(Add1DConstantLayer(input_dims.d[1]));
-        reshape_tensor.push_back(Add1DConstantLayer(input_dims.d[2]));
         reshape_after_mha_layer->setInput(1, *Concat(reshape_tensor));
         reshape_after_mha_layer->setName(
             ("shuffle_last_multihead_matmul(Output: " + output_name + ")")
