@@ -29,11 +29,13 @@ template <typename T, typename Context>
 void AddNArrayKernel(const Context& dev_ctx,
                      const std::vector<std::vector<const DenseTensor*>>& x,
                      std::vector<DenseTensor*> out) {
+  for (auto ele : out) {
+    dev_ctx.template Alloc<T>(ele);
+  }
   bool in_place = true;
-
   if (x.size() > 0 && x[0].size() == out.size()) {
     for (size_t i = 0; i < out.size(); i++) {
-      if (out[i]->Holder() != x[0][i]->Holder()) {
+      if (out[i]->data() != x[0][i]->data()) {
         in_place = false;
         break;
       }
@@ -41,7 +43,6 @@ void AddNArrayKernel(const Context& dev_ctx,
   } else {
     in_place = false;
   }
-
   for (size_t i = in_place ? 1 : 0; i < x.size(); ++i) {
     auto& in_array = x[i];
 

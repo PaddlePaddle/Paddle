@@ -127,6 +127,12 @@ void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
 
 TensorBase* MetaTensor::tensor() const { return tensor_; }
 
+bool MetaTensor::is_dense() const { return DenseTensor::classof(tensor_); }
+bool MetaTensor::is_selected_rows() const {
+  return SelectedRows::classof(tensor_);
+}
+bool MetaTensor::is_tensor_array() const { return false; }
+
 void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   bool is_dense_tensor = phi::DenseTensor::classof(tensor_);
   bool is_selected_rows = phi::SelectedRows::classof(tensor_);

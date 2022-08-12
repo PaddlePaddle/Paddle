@@ -146,13 +146,43 @@ int64_t CompatMetaTensor::numel() const {
   }
 }
 
+bool CompatMetaTensor::is_selected_rows() const {
+  if (is_runtime_) {
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    return var->IsType<phi::SelectedRows>();
+  } else {
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
+    return var->GetDataType() == proto::VarType::SELECTED_ROWS;
+  }
+}
+
+bool CompatMetaTensor::is_dense() const {
+  if (is_runtime_) {
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    return var->IsType<phi::DenseTensor>();
+  } else {
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
+    return var->GetDataType() == proto::VarType::LOD_TENSOR;
+  }
+}
+
+bool CompatMetaTensor::is_tensor_array() const {
+  if (is_runtime_) {
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    return var->IsType<framework::LoDTensorArray>();
+  } else {
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
+    return var->GetDataType() == proto::VarType::LOD_TENSOR_ARRAY;
+  }
+}
+
 DDim CompatMetaTensor::dims() const {
   if (is_runtime_) {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
     if (var->IsType<phi::DenseTensor>()) {
       return var->Get<phi::DenseTensor>().dims();
     } else if (var->IsType<phi::SelectedRows>()) {
-      return var->Get<phi::SelectedRows>().dims();
+      return var->Get<phi::SelectedRows>().GetCompleteDims();
     } else if (var->IsType<framework::LoDTensorArray>()) {
       // use tensor array size as dims
       auto& tensor_array = var->Get<framework::LoDTensorArray>();
@@ -221,8 +251,7 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
     } else if (var->IsType<phi::SelectedRows>()) {
-      auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
+      var->GetMutable<phi::SelectedRows>()->set_height(dims[0]);
     } else if (var->IsType<framework::LoDTensorArray>()) {
       auto* tensor_array = var->GetMutable<framework::LoDTensorArray>();
       // Note: Here I want enforce `tensor_array->size() == 0UL`, because
@@ -292,7 +321,7 @@ void CompatMetaTensor::set_layout(DataLayout layout) {
 void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
-    if (var->IsType<phi::DenseTensor>()) {
+    if (var->IsType<phi::DenseTensor>() && meta_tensor.is_dense()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->lod =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetRuntimeLoD();

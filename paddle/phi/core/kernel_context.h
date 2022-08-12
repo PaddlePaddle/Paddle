@@ -120,7 +120,7 @@ class KernelContext {
             "input(vector<vector<Tensor>>)."
             "May be something wrong when you BuildPhiKernelContext"));
       }
-      for (size_t i = 0; i < end_index; ++i) {
+      for (size_t i = start_index; i < end_index; ++i) {
         auto* t = static_cast<const TensorType*>(inputs_.at(i));
         v.emplace_back(t);
       }

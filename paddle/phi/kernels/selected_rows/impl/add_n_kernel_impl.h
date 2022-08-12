@@ -27,6 +27,8 @@ template <typename T, typename Context>
 void AddNKernel(const Context &dev_ctx,
                 const std::vector<const SelectedRows *> &x,
                 SelectedRows *out) {
+  dev_ctx.template Alloc<T>(out->mutable_value());
+
   bool in_place = false;
   if (x.size() > 0 && x[0]->value().Holder() == out->value().Holder()) {
     in_place = true;
@@ -79,6 +81,7 @@ void AddNKernel(const Context &dev_ctx,
   } else {
     // no data, just set a empty out tensor.
     auto *out_dense = out->mutable_value();
+    out_dense->clear();
     out_dense->Resize(phi::make_ddim({0}));
     dev_ctx.template Alloc<T>(out_dense);
   }
