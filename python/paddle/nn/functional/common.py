@@ -609,13 +609,25 @@ def interpolate(x,
             else:
                 out = _C_ops.linear_interp_v2(x, *dy_attr)
         elif resample_type == "bilinear":
-            out = _C_ops.bilinear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_bilinear_interp_v2(*eager_args)
+            else:
+                out = _C_ops.bilinear_interp_v2(x, *dy_attr)
         elif resample_type == "trilinear":
-            out = _C_ops.trilinear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_trilinear_interp_v2(*eager_args)
+            else:
+                out = _C_ops.trilinear_interp_v2(x, *dy_attr)
         elif resample_type == "nearest":
-            out = _C_ops.nearest_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_nearest_interp_v2(*eager_args)
+            else:
+                out = _C_ops.nearest_interp_v2(x, *dy_attr)
         elif resample_type == "bicubic":
-            out = _C_ops.bicubic_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_bicubic_interp_v2(*eager_args)
+            else:
+                out = _C_ops.bicubic_interp_v2(x, *dy_attr)
         return out
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type='{}_interp_v2'.format(resample_type),

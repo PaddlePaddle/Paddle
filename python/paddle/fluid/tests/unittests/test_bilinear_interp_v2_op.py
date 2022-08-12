@@ -21,6 +21,34 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.nn.functional import interpolate
 import paddle
+from paddle._C_ops import final_state_bilinear_interp_v2
+
+
+def bilinear_interp_v2_test(x,
+                            OutSize=None,
+                            SizeTensor=None,
+                            Scale=None,
+                            data_layout='NCHW',
+                            out_d=-1,
+                            out_h=-1,
+                            out_w=-1,
+                            scale=0.0,
+                            interp_method='linear',
+                            align_corners=False,
+                            align_mode=1):
+    if isinstance(scale, float) or isinstance(scale, int):
+        scale_list = []
+        for _ in range(len(x.shape) - 2):
+            scale_list.append(scale)
+        scale = list(map(float, scale_list))
+    elif isinstance(scale, list) or isinstance(scale, tuple):
+        scale = list(map(float, scale))
+    if SizeTensor is not None:
+        SizeTensor = [SizeTensor]
+    return final_state_bilinear_interp_v2(x, OutSize, SizeTensor, Scale,
+                                          data_layout, out_d, out_h, out_w,
+                                          scale, interp_method, align_corners,
+                                          align_mode)
 
 
 def bilinear_interp_np(input,
@@ -106,6 +134,7 @@ def bilinear_interp_np(input,
 class TestBilinearInterpOp(OpTest):
 
     def setUp(self):
+        self.python_api = bilinear_interp_v2_test
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
@@ -164,10 +193,10 @@ class TestBilinearInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_eager=True)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -309,6 +338,7 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
 class TestBilinearInterpOpUint8(OpTest):
 
     def setUp(self):
+        self.python_api = bilinear_interp_v2_test
         self.out_size = None
         self.actual_shape = None
         self.init_test_case()
@@ -355,7 +385,9 @@ class TestBilinearInterpOpUint8(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(place=core.CPUPlace(), atol=1)
+        self.check_output_with_place(place=core.CPUPlace(),
+                                     atol=1,
+                                     check_eager=True)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -476,6 +508,7 @@ class TestBilinearInterpZero(TestBilinearInterpOp):
 class TestBilinearInterpOp_attr_tensor(OpTest):
 
     def setUp(self):
+        self.python_api = bilinear_interp_v2_test
         self.out_size = None
         self.actual_shape = None
         self.init_test_case()
@@ -531,10 +564,10 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_eager=True)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
