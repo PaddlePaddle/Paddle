@@ -24,6 +24,7 @@
 
 #include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace inference {
@@ -182,6 +183,28 @@ inline std::string Vec2Str(const std::vector<T>& vec) {
   }
   os << vec[vec.size() - 1] << ")";
   return os.str();
+}
+
+static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
+  switch (type) {
+    case phi::DataType::FLOAT32:
+      return nvinfer1::DataType::kFLOAT;
+    case phi::DataType::FLOAT16:
+      return nvinfer1::DataType::kHALF;
+    case phi::DataType::INT32:
+    case phi::DataType::INT64:
+      return nvinfer1::DataType::kINT32;
+    case phi::DataType::INT8:
+      return nvinfer1::DataType::kINT8;
+#if IS_TRT_VERSION_GE(7000)
+    case phi::DataType::BOOL:
+      return nvinfer1::DataType::kBOOL;
+#endif
+    default:
+      paddle::platform::errors::InvalidArgument(
+          "phi::DataType not supported data type %s.", type);
+      break;
+  }
 }
 }  // namespace tensorrt
 }  // namespace inference
