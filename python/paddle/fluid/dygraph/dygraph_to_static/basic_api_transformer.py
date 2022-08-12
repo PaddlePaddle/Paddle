@@ -35,6 +35,8 @@ class BasicApiTransformer(BaseTransformer):
         self.class_node_dict = {}
 
     def transform(self):
+        to_tensor_transformer = ToTensorTransformer(self.root)
+        to_tensor_transformer.transform()
         self.visit(self.root)
 
         return self.wrapper_root
@@ -126,9 +128,6 @@ def is_to_variable(node):
 
     if utils.is_dygraph_api(node):
         return api_name.endswith("to_variable")
-
-    if utils.is_paddle_api(node):
-        return api_name.endswith("to_tensor")
 
     return False
 
