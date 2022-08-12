@@ -92,7 +92,10 @@ def _run_paddle_while(cond, body, getter, setter):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
     def new_body_fn(*args):
         """ wrap the body() and add return value for `while_loop`
+            the args may be differ from getter().
         """
+        mutable_loop_vars = args
+        setter(mutable_loop_vars)
         body()
         return getter()
 
@@ -110,7 +113,7 @@ def _run_paddle_while(cond, body, getter, setter):
     setter(loop_vars)  # change the non-local var to variable
     # variable maybe modified to inner var. change it into
     loop_vars = control_flow.while_loop(new_cond_fn, new_body_fn, loop_vars)
-    setter(loop_vars)  # change the non-local var to variable
+    setter(loop_vars)  # change back to loop_vars
     return loop_vars
 
 
