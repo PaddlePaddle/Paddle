@@ -259,3 +259,7 @@ class API_GeometricSendUVTest(unittest.TestCase):
                 self.assertTrue(
                     np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
                     {}\n{}, check diff!".format(np_res, paddle_res))
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_compute_all_dygraph()
