@@ -4369,9 +4369,6 @@ def _index_add_params_check(x, index, add_value, input_axis):
 
     for i in range(dims):
         if i != axis and x.shape[i] != add_value.shape[i]:
-            print("i = ", i)
-            print("x.shape[i] = ", x.shape[i])
-            print("add_value.shape[i] = ", add_value.shape[i])
             raise TypeError(
                 "The add_value.shape[i] should be equal to x.shape[i] when i != axis."
             )
@@ -4452,7 +4449,7 @@ def index_add_(x, index, add_value, axis=0, name=None):
 
             input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
             index = paddle.to_tensor([0, 2], dtype="int32")
-            add_value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], dtype="float32")
+            add_value = paddle.to_tensor([[1, 1], [1, 1], [1, 1]], dtype="float32")
             inplace_res = paddle.index_add_(input_tensor, index, add_value, axis=1)
             print(inplace_res.numpy())
             # [[2, 1, 2]
