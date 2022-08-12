@@ -525,7 +525,6 @@ def add(x, y, name=None):
     Args:
         x (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
         y (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
-        with_quant_attr (BOOLEAN) – Whether the operator has attributes used by quantization.
         name (string, optional) – Name of the output. Default is None. It’s used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
@@ -1079,10 +1078,9 @@ def fmin(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 for func in [
-        add,
         multiply
 ]:
-    proto_dict = {'add': 'elementwise_add', 'multiply': 'elementwise_mul'}
+    proto_dict = {'multiply': 'elementwise_mul'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
 
     additional_args_lines = [
