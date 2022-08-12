@@ -294,6 +294,14 @@ void AllReduceOpHandle::SyncBKCLAllReduce() {
         bkcl_ctxs_->GetRunEnvBKCLCtx(run_order_, use_hierarchical_allreduce_);
     auto &bkcl_ctx = bkcl_ctxs->at(dev_id);
     auto stream = bkcl_ctx.stream();
+    VLOG(0) << "AllReduceOpHandle " << this << "bkcl_ctxs_(BKCLCommunicator) "
+            << bkcl_ctxs_ << " flat_bkcl_ctxs(BKCLContextMap) " << bkcl_ctxs
+            << " bkcl_ctx(BKCLContext) " << &bkcl_ctx << " stream " << stream
+            << "run_order_ " << run_order_ << " dev_id " << dev_id;
+    // auto stream =
+    //   platform::BKCLCommContext::Instance().Get(run_order_,
+    //   p)->dev_context()->stream();
+    // VLOG(0) << "sync stream is " << stream;
 
     platform::XPUStreamSync(stream);
   }

@@ -93,14 +93,19 @@ class BKCLOpHandleBase : public OpHandleBase {
     auto flat_bkcl_ctxs = bkcl_ctxs_->GetFlatCtx(run_order_);
     int dev_id = place.device;
     auto& bkcl_ctx = flat_bkcl_ctxs->at(dev_id);
+    auto stream = bkcl_ctx.stream();
     auto comm = bkcl_ctx.comm_;
+    VLOG(0) << "BKCLOpHandleBase " << this << " bkcl_ctxs_(BKCLCommunicator) "
+            << bkcl_ctxs_ << " flat_bkcl_ctxs(BKCLContextMap) "
+            << flat_bkcl_ctxs << " bkcl_ctx(BKCLContext) " << &bkcl_ctx
+            << " stream " << stream << " comm " << comm;
 
-    VLOG(10) << "before all reduce buffer:" << sendbuff << ", numel:" << count
-             << ", dev_id:" << dev_id << ", dtype:" << datatype
-             << ", place:" << place;
+    VLOG(0) << "before all reduce buffer:" << sendbuff << ", numel:" << count
+            << ", dev_id:" << dev_id << ", dtype:" << datatype
+            << ", place:" << place;
 
     PADDLE_ENFORCE_EQ(
-        bkcl_all_reduce(comm, sendbuff, recvbuff, count, datatype, op, NULL),
+        bkcl_all_reduce(comm, sendbuff, recvbuff, count, datatype, op, stream),
         BKCL_SUCCESS,
         platform::errors::PreconditionNotMet("bckl all reduce failed"));
   }
