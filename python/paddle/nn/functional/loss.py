@@ -1262,7 +1262,7 @@ def l1_loss(input, label, reduction='mean', name=None):
         if reduction == 'mean':
             return _C_ops.final_state_mean_all(unreduced)
         elif reduction == 'sum':
-            return paddle.sum(unreduced, axis=[], keepdum=False)
+            return paddle.sum(unreduced, axis=[], keepdim=False)
         else:
             return unreduced
     elif in_dynamic_mode():

@@ -2388,7 +2388,7 @@
   backward : soft_shrink_grad
 
 - api : softmax
-  args : (Tensor x, int axis)
+  args : (Tensor x, int axis=-1)
   output : Tensor
   infer_meta :
     func : SoftmaxInferMeta

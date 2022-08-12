@@ -21,7 +21,7 @@ import numpy as np
 from paddle import _C_ops
 from ...device import is_compiled_with_rocm
 from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 from paddle.framework import _non_static_mode
 
 __all__ = []

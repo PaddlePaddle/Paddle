@@ -230,7 +230,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.hard_shrink(x, threshold)
+        return _C_ops.final_state_hard_shrink(x, threshold)
 
     if _in_legacy_dygraph():
         return _C_ops.hard_shrink(x, 'threshold', threshold)
