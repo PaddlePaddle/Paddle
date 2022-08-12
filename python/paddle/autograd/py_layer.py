@@ -407,8 +407,8 @@ class EagerPyLayerContext(object):
         """
         return self.container
 
-    def mark_dirty(self, *args):
-        self.dirty_tensors = args
+    def mark_not_inplace(self, *args):
+        self.not_inplace_tensors = args
 
     def mark_non_differentiable(self, *args):
         """

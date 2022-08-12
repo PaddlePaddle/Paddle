@@ -468,8 +468,6 @@ class TestPyLayer(unittest.TestCase):
 
             @staticmethod
             def forward(ctx, x):
-                if in_dygraph_mode():
-                    ctx.mark_dirty(x)
                 return x
 
             @staticmethod
@@ -508,7 +506,6 @@ class TestPyLayer(unittest.TestCase):
 
                 @staticmethod
                 def forward(ctx, x):
-                    ctx.mark_dirty(x)
                     return x
 
                 @staticmethod
@@ -545,7 +542,6 @@ class TestPyLayer(unittest.TestCase):
 
                 @staticmethod
                 def forward(ctx, x):
-                    ctx.mark_dirty(x)
                     return x
 
                 @staticmethod
@@ -580,7 +576,6 @@ class TestPyLayer(unittest.TestCase):
 
                 @staticmethod
                 def forward(ctx, x):
-                    ctx.mark_dirty(x)
                     return x
 
                 @staticmethod
@@ -614,8 +609,6 @@ class TestPyLayer(unittest.TestCase):
 
             @staticmethod
             def forward(ctx, x):
-                if in_dygraph_mode():
-                    ctx.mark_dirty(x)
                 return x
 
             @staticmethod

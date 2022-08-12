@@ -92,8 +92,8 @@ static void PyLayerDealloc(PyLayerObject* self) {
   if (self->non_differentiable) {
     Py_DECREF(self->non_differentiable);
   }
-  if (self->dirty_tensors) {
-    Py_DECREF(self->dirty_tensors);
+  if (self->not_inplace_tensors) {
+    Py_DECREF(self->not_inplace_tensors);
   }
   self->grad_node.~weak_ptr<egr::GradNodePyLayer>();
   self->forward_input_tensor_is_duplicable.~vector();
@@ -165,7 +165,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   inputs_tensor.reserve(inputs_size);
   ctx->forward_input_tensor_is_duplicable.clear();
   ctx->forward_input_tensor_is_duplicable.reserve(inputs_size);
-  std::set<phi::TensorBase*> input_tensor_pyobjs;
+  std::set<phi::TensorBase*> input_tensorbases;
   for (size_t i = 0; i < inputs_size; i++) {
     PyObject* obj = nullptr;
     if (i >= args_size) {
@@ -174,7 +174,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       obj = PyTuple_GET_ITEM(args, i);
     }
     if (IsEagerTensor(obj)) {
-      input_tensor_pyobjs.insert(
+      input_tensorbases.insert(
           reinterpret_cast<TensorObject*>(obj)->tensor.impl().get());
       auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(
           reinterpret_cast<TensorObject*>(obj)->tensor);
@@ -193,7 +193,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
         if (IsEagerTensor(o)) {
-          input_tensor_pyobjs.insert(
+          input_tensorbases.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
         }
@@ -216,7 +216,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
         if (IsEagerTensor(o)) {
-          input_tensor_pyobjs.insert(
+          input_tensorbases.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
         }
@@ -272,10 +272,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
     PyTuple_SET_ITEM(outputs_tuple, 0, outputs);
   }
 
-  std::set<phi::TensorBase*> dirty_tensor_pyobjs;
-  auto dirty_tensors = GetTensorsFromPyObject(ctx->dirty_tensors);
-  for (auto it : dirty_tensors) {
-    dirty_tensor_pyobjs.insert(it->impl().get());
+  std::set<paddle::experimental::Tensor*> inplace_tensors;
+  std::set<phi::TensorBase*> not_inplace_tensorbases;
+  auto not_inplace_tensors = GetTensorsFromPyObject(ctx->not_inplace_tensors);
+  for (auto it : not_inplace_tensors) {
+    not_inplace_tensorbases.insert(it->impl().get());
   }
 
   auto outputs_size = PyTuple_GET_SIZE(outputs_tuple);
@@ -293,14 +294,18 @@ PyObject* pylayer_method_apply(PyObject* cls,
       outputs_autograd_meta.push_back({egr::EagerUtils::autograd_meta(
           &(reinterpret_cast<TensorObject*>(obj)->tensor))});
       ctx->forward_output_tensor_is_duplicable.push_back(false);
-      if (input_tensor_pyobjs.count(
-              reinterpret_cast<TensorObject*>(obj)->tensor.impl().get()) &&
-          !dirty_tensor_pyobjs.count(
+      if (input_tensorbases.count(
               reinterpret_cast<TensorObject*>(obj)->tensor.impl().get())) {
-        PyTuple_SET_ITEM(
-            outputs_tuple,
-            i,
-            tensor_view(&(reinterpret_cast<TensorObject*>(obj)->tensor)));
+        if (not_inplace_tensorbases.count(
+                reinterpret_cast<TensorObject*>(obj)->tensor.impl().get())) {
+          PyTuple_SET_ITEM(
+              outputs_tuple,
+              i,
+              tensor_view(&(reinterpret_cast<TensorObject*>(obj)->tensor)));
+        } else {
+          inplace_tensors.insert(
+              &(reinterpret_cast<TensorObject*>(obj)->tensor));
+        }
       }
     } else if (PyList_Check(obj)) {
       std::vector<paddle::experimental::Tensor*> tensors;
@@ -309,14 +314,18 @@ PyObject* pylayer_method_apply(PyObject* cls,
         PyObject* o = PyList_GetItem(obj, j);
         if (IsEagerTensor(o)) {
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
-          if (input_tensor_pyobjs.count(
-                  reinterpret_cast<TensorObject*>(o)->tensor.impl().get()) &&
-              !dirty_tensor_pyobjs.count(
+          if (input_tensorbases.count(
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
-            PyList_SetItem(
-                obj,
-                j,
-                tensor_view(&(reinterpret_cast<TensorObject*>(o)->tensor)));
+            if (not_inplace_tensorbases.count(
+                    reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
+              PyTuple_SetItem(
+                  obj,
+                  j,
+                  tensor_view(&(reinterpret_cast<TensorObject*>(o)->tensor)));
+            } else {
+              inplace_tensors.insert(
+                  &(reinterpret_cast<TensorObject*>(o)->tensor));
+            }
           }
         }
       }
@@ -333,14 +342,18 @@ PyObject* pylayer_method_apply(PyObject* cls,
         PyObject* o = PyTuple_GetItem(obj, j);
         if (IsEagerTensor(o)) {
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
-          if (input_tensor_pyobjs.count(
-                  reinterpret_cast<TensorObject*>(o)->tensor.impl().get()) &&
-              !dirty_tensor_pyobjs.count(
+          if (input_tensorbases.count(
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
-            PyTuple_SetItem(
-                obj,
-                j,
-                tensor_view(&(reinterpret_cast<TensorObject*>(o)->tensor)));
+            if (not_inplace_tensorbases.count(
+                    reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
+              PyTuple_SetItem(
+                  obj,
+                  j,
+                  tensor_view(&(reinterpret_cast<TensorObject*>(o)->tensor)));
+            } else {
+              inplace_tensors.insert(
+                  &(reinterpret_cast<TensorObject*>(o)->tensor));
+            }
           }
         }
       }
@@ -372,19 +385,19 @@ PyObject* pylayer_method_apply(PyObject* cls,
       }
     }
 
-    for (auto it = dirty_tensors.begin(); it != dirty_tensors.end(); ++it) {
-      auto dirty_tensor = *it;
-      auto dirty_tensor_autograd_meta =
-          egr::EagerUtils::autograd_meta(dirty_tensor);
-      PADDLE_ENFORCE_EQ(!dirty_tensor_autograd_meta->StopGradient() &&
-                            egr::egr_utils_api::IsLeafTensor(*dirty_tensor),
+    for (auto it = inplace_tensors.begin(); it != inplace_tensors.end(); ++it) {
+      auto inplace_tensor = *it;
+      auto inplace_tensor_autograd_meta =
+          egr::EagerUtils::autograd_meta(inplace_tensor);
+      PADDLE_ENFORCE_EQ(!inplace_tensor_autograd_meta->StopGradient() &&
+                            egr::egr_utils_api::IsLeafTensor(*inplace_tensor),
                         false,
                         paddle::platform::errors::InvalidArgument(
                             "Leaf Var (%s) that doesn't stop gradient "
                             "can't use inplace strategy.",
-                            dirty_tensor->name()));
-      dirty_tensor->bump_inplace_version();
-      VLOG(3) << "Tensor(" << dirty_tensor->name()
+                            inplace_tensor->name()));
+      inplace_tensor->bump_inplace_version();
+      VLOG(3) << "Tensor(" << inplace_tensor->name()
               << ") uses Inplace Strategy.";
     }
 
@@ -491,24 +504,24 @@ int tensor_properties_set_non_differentiable(PyLayerObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyObject* tensor_properties_get_dirty_tensors(PyLayerObject* self,
-                                              void* closure) {
+PyObject* tensor_properties_get_not_inplace_tensors(PyLayerObject* self,
+                                                    void* closure) {
   EAGER_TRY
-  if (self->dirty_tensors == nullptr) {
+  if (self->not_inplace_tensors == nullptr) {
     RETURN_PY_NONE;
   }
-  Py_INCREF(self->dirty_tensors);
-  return self->dirty_tensors;
+  Py_INCREF(self->not_inplace_tensors);
+  return self->not_inplace_tensors;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int tensor_properties_set_dirty_tensors(PyLayerObject* self,
-                                        PyObject* value,
-                                        void* closure) {
+int tensor_properties_set_not_inplace_tensors(PyLayerObject* self,
+                                              PyObject* value,
+                                              void* closure) {
   EAGER_TRY
   Py_XINCREF(value);
-  Py_XDECREF(self->dirty_tensors);
-  self->dirty_tensors = value;
+  Py_XDECREF(self->not_inplace_tensors);
+  self->not_inplace_tensors = value;
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
@@ -548,9 +561,9 @@ struct PyGetSetDef pylayer_properties[] {
        (setter)tensor_properties_set_non_differentiable,
        nullptr,
        nullptr},
-      {"dirty_tensors",
-       (getter)tensor_properties_get_dirty_tensors,
-       (setter)tensor_properties_set_dirty_tensors,
+      {"not_inplace_tensors",
+       (getter)tensor_properties_get_not_inplace_tensors,
+       (setter)tensor_properties_set_not_inplace_tensors,
        nullptr,
        nullptr},
       {"materialize_grads",
