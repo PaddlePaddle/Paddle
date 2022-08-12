@@ -371,7 +371,7 @@ class TestBuffer(unittest.TestCase):
         self.func_test_buffer_state_dict()
 
     def assert_var_base_equal(self, var1, var2):
-        self.assertTrue(np.array_equal(var1.numpy(), var2.numpy()))
+        np.testing.assert_array_equal(var1.numpy(), var2.numpy())
 
 
 class BufferNetWithModification(paddle.nn.Layer):
@@ -414,8 +414,8 @@ class TestModifiedBuffer(unittest.TestCase):
         st_outs = self._run(True)
 
         for i in range(len(dy_outs)):
-            self.assertTrue(
-                np.array_equal(dy_outs[i].numpy(), st_outs[i].numpy()))
+            np.testing.assert_array_equal(dy_outs[i].numpy(),
+                                          st_outs[i].numpy())
 
     def test_modified(self):
         with _test_eager_guard():

@@ -644,8 +644,8 @@
   backward : divide_double_grad
 
 - backward_api : dropout_grad
-  forward : dropout (Tensor x, Tensor seed_tensor, float p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(mask)
-  args : (Tensor mask, Tensor out_grad, float p, bool is_test, str mode)
+  forward : dropout (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(mask)
+  args : (Tensor mask, Tensor out_grad, Scalar p, bool is_test, str mode)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -941,14 +941,26 @@
     func : gelu_grad
 
 - backward_api : graph_send_recv_grad
-  forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", IntArray out_size = {0}) -> Tensor(out), Tensor(dst_count)
-  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str pool_type = "SUM")
+  forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0}) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str reduce_op = "SUM")
   output : Tensor(x_grad)
   infer_meta :
     func : GeneralUnaryGradInferMeta
     param : [x]
   kernel :
     func : graph_send_recv_grad
+    data_type : out_grad
+  optional: out, dst_count
+
+- backward_api : graph_send_ue_recv_grad
+  forward : graph_send_ue_recv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op, str reduce_op, IntArray out_size) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str message_op, str reduce_op)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : graph_send_ue_recv_grad
     data_type : out_grad
   optional: out, dst_count
 
