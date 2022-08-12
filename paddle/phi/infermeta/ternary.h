@@ -75,7 +75,7 @@ void InstanceNormInferMeta(const MetaTensor& x,
 void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,
-                            const std::string& pool_type,
+                            const std::string& reduce_op,
                             const IntArray& out_size,
                             MetaTensor* out,
                             MetaTensor* dst_count);

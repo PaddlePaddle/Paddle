@@ -16,34 +16,34 @@ limitations under the License. */
 
 namespace phi {
 
-KernelSignature GraphSendRecvOpArgumentMapping(
+KernelSignature GraphSendUERecvOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("Out_size")) {
-    return KernelSignature("graph_send_recv",
-                           {"X", "Src_index", "Dst_index"},
-                           {"reduce_op", "Out_size"},
+    return KernelSignature("graph_send_ue_recv",
+                           {"X", "Y", "Src_index", "Dst_index"},
+                           {"message_op", "reduce_op", "Out_size"},
                            {"Out", "Dst_count"});
   } else {
-    return KernelSignature("graph_send_recv",
-                           {"X", "Src_index", "Dst_index"},
-                           {"reduce_op", "out_size"},
+    return KernelSignature("graph_send_ue_recv",
+                           {"X", "Y", "Src_index", "Dst_index"},
+                           {"message_op", "reduce_op", "out_size"},
                            {"Out", "Dst_count"});
   }
 }
 
-KernelSignature GraphSendRecvGradOpArgumentMapping(
+KernelSignature GraphSendUERecvGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "graph_send_recv_grad",
-      {"X", "Src_index", "Dst_index", "Out", "Dst_count", "Out@GRAD"},
-      {"reduce_op"},
-      {"X@GRAD"});
+      "graph_send_ue_recv_grad",
+      {"X", "Y", "Src_index", "Dst_index", "Out", "Dst_count", "Out@GRAD"},
+      {"message_op", "reduce_op"},
+      {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(graph_send_recv,
-                           phi::GraphSendRecvOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(graph_send_ue_recv,
+                           phi::GraphSendUERecvOpArgumentMapping);
 
-PD_REGISTER_ARG_MAPPING_FN(graph_send_recv_grad,
-                           phi::GraphSendRecvGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(graph_send_ue_recv_grad,
+                           phi::GraphSendUERecvGradOpArgumentMapping);

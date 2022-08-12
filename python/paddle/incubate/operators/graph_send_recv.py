@@ -69,7 +69,7 @@ def graph_send_recv(x,
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64. 
-        pool_type (str): The pooling type of graph_send_recv, including `sum`, `mean`, `max`, `min`.
+        pool_type (str): The pooling types of graph_send_recv, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
         out_size (int|Tensor|None): We can set `out_size` to get necessary output shape. If not set or 
                                     out_size is smaller or equal to 0, then this input will not be used.
@@ -123,7 +123,7 @@ def graph_send_recv(x,
     if _in_legacy_dygraph():
         out_size = convert_out_size_to_list(out_size)
         out, tmp = _C_ops.graph_send_recv(x, src_index,
-                                          dst_index, None, 'pool_type',
+                                          dst_index, None, 'reduce_op',
                                           pool_type.upper(), 'out_size',
                                           out_size)
         return out
@@ -151,7 +151,7 @@ def graph_send_recv(x,
                                                           stop_gradient=True)
 
     inputs = {"X": x, "Src_index": src_index, "Dst_index": dst_index}
-    attrs = {"pool_type": pool_type.upper()}
+    attrs = {"reduce_op": pool_type.upper()}
     get_out_size_tensor_inputs(inputs=inputs,
                                attrs=attrs,
                                out_size=out_size,

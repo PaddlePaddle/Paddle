@@ -15,20 +15,22 @@
 #pragma once
 
 #include <string>
-
-#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void GraphSendRecvKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& src_index,
-                         const DenseTensor& dst_index,
-                         const std::string& reduce_op,
-                         const IntArray& out_size,
-                         DenseTensor* out,
-                         DenseTensor* dst_count);
-
+void GraphSendUERecvGradKernel(const Context& ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const DenseTensor& src_index,
+                               const DenseTensor& dst_index,
+                               const paddle::optional<DenseTensor>& out,
+                               const paddle::optional<DenseTensor>& dst_count,
+                               const DenseTensor& out_grad,
+                               const std::string& message_op,
+                               const std::string& reduce_op,
+                               DenseTensor* x_grad,
+                               DenseTensor* y_grad);
 }  // namespace phi
