@@ -33,7 +33,7 @@ def linear_interp_v2_test(x,
                           out_d=-1,
                           out_h=-1,
                           out_w=-1,
-                          scale=0.0,
+                          scale=[],
                           interp_method='linear',
                           align_corners=False,
                           align_mode=1):
