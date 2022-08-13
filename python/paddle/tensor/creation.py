@@ -419,17 +419,19 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     # call assign instead for static graph
     else:
-        output_dtype = data.dtype
-        if dtype is not None:
-            output_dtype = dtype
-
-        # if target dtype is different, create a new variable
-        if isinstance(data, (Variable, core.VarBase)) and data.dtype == output_dtype:
+        if isinstance(data, (Variable, core.VarBase)) and (dtype is None or dtype == data.dtype):
             output = data
         else:
+            if dtype:
+                target_dtype = dtype
+            elif hasattr(data, 'dtype'):
+                target_dtype = data.dtype
+            else:
+                target_dtype = paddle.get_default_dtype()
+            
             output = assign(data)
-            if output.dtype != output_dtype:
-                output = output.astype(output_dtype)
+            if output.dtype != target_dtype:
+                output = output.astype(target_dtype)
 
         output.stop_gradient = stop_gradient
 
