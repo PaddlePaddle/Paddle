@@ -417,9 +417,11 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if _non_static_mode():
         return _to_tensor_non_static(data, dtype, place, stop_gradient)
 
-    # call assign instead for static graph
+    # call assign for static graph
     else:
-        if isinstance(data, (Variable, core.VarBase)) and (dtype is None or dtype == data.dtype):
+        if isinstance(data, 
+                      (Variable, core.VarBase)) and (dtype is None 
+                                                     or dtype == data.dtype):
             output = data
         else:
             if dtype:
@@ -428,7 +430,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                 target_dtype = data.dtype
             else:
                 target_dtype = None
-            
+
             output = assign(data)
             if target_dtype is not None and output.dtype != target_dtype:
                 output = output.astype(target_dtype)
