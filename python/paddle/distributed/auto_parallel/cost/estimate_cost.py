@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid.core as core
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
-from .base_cost import Cost, CompOpCost, CommContext
+from .base_cost import Cost
 from ..operators.common import get_distributed_operator_impl_container
 from ..dist_tensor import DistributedTensor
 
