@@ -152,9 +152,9 @@ void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
  *   1. it is an output var in run_program_op
  *   2. it is an input var used in backward_op
  */
-void ParseSafeEagerDeletionSkipVars(
-    const ProgramDesc &backward_program,
-    std::set<std::string> *skip_eager_delete_vars) {
+std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
+    const ProgramDesc &backward_program) {
+  std::set<std::string> skip_eager_delete_vars;
   auto backward_ops = backward_program.Block(0).AllOps();
   auto &op_info_map = OpInfoMap::Instance();
   std::unordered_set<std::string> op_outputs;
@@ -189,11 +189,12 @@ void ParseSafeEagerDeletionSkipVars(
   // prevent it being deleted when grad op is called multiple times.
   for (const std::string &var_name : op_inputs) {
     if (op_outputs.find(var_name) == op_outputs.end()) {
-      VLOG(2) << "skip eager var: " << var_name;
-      skip_eager_delete_vars->insert(var_name);
+      VLOG(1) << "skip eager var: " << var_name;
+      skip_eager_delete_vars.insert(var_name);
     }
   }
-  VLOG(3) << "Found skip_eager_delete_vars: " << skip_eager_delete_vars->size();
+  VLOG(1) << "Found skip_eager_delete_vars: " << skip_eager_delete_vars.size();
+  return skip_eager_delete_vars;
 }
 }  // namespace details
 

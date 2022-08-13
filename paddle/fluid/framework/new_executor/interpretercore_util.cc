@@ -674,17 +674,11 @@ void build_op_func_list(const platform::Place& place,
       auto* var = local_scope->FindVar(var_name);
       if (var == nullptr || skip_gc_vars.find(var_name) != skip_gc_vars.end()) {
         VLOG(6) << "skip gc var is: " << var_name;
-        if (var->IsType<LoDTensor>()) {
-          VLOG(6) << "skip gc tensor ptr is: "
-                  << var->GetMutable<LoDTensor>()->Holder();
-        }
         continue;
       }
 
       VLOG(6) << "Erase variable " << var_name;
       if (var->IsType<LoDTensor>()) {
-        VLOG(6) << "Erase variable tensor ptr is: "
-                << var->GetMutable<LoDTensor>()->Holder();
         garbages->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
       }

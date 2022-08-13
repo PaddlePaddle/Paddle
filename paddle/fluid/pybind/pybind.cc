@@ -2143,6 +2143,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("clear_executor_cache",
         []() { framework::ExecutorInfoCache::Instance().Finalize(); });
 
+  m.def("parse_safe_eager_deletion_skip_vars",
+        paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet);
+
 #ifdef PADDLE_WITH_IPU
   py::class_<platform::ipu::IpuBackend,
              std::unique_ptr<platform::ipu::IpuBackend, py::nodelete>>(

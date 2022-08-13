@@ -49,9 +49,8 @@ void ParseSafeEagerDeletionSkipVars(
 void AppendSkipDeletionVars(const std::vector<std::string>& append_vars,
                             std::set<std::string>* all_vars);
 
-void ParseSafeEagerDeletionSkipVars(
-    const ProgramDesc& backward_program,
-    std::set<std::string>* skip_eager_delete_vars);
+std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
+    const ProgramDesc& backward_program);
 
 }  // namespace details
 
