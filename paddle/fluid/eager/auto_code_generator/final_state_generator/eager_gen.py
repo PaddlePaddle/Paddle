@@ -331,6 +331,7 @@ FORWARD_CC_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 
+#include "paddle/phi/api/include/strings_api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -1827,7 +1828,10 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         self.ParseForwardYamlContents()
 
         backward_yaml_path = self.backward_yaml_path
-        self.grad_api_dict = ReadBwdFile(backward_yaml_path)
+
+        # string api is forward_only, no backward_yaml respectively
+        if backward_yaml_path is not None:
+            self.grad_api_dict = ReadBwdFile(backward_yaml_path)
 
     def GetBackwardAPIContents(self, forward_api_contents):
         grad_api_dict = self.grad_api_dict
@@ -1856,9 +1860,6 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
             else:
                 backward_api_contents = self.GetBackwardAPIContents(
                     forward_api_contents)
-
-            # special case
-            # if backward_api_contents is None:
 
             # Generate Dygraph Forward Function
             function_generator = DygraphForwardFunctionGenerator(
@@ -1971,7 +1972,12 @@ if __name__ == "__main__":
 
     for i in range(len(api_yaml_paths)):
         api_yaml_path = api_yaml_paths[i]
-        backward_yaml_path = backward_yaml_paths[i]
+
+        # string api is forwrad only
+        if "string" not in api_yaml_path:
+            backward_yaml_path = backward_yaml_paths[i]
+        else:
+            backward_yaml_path = None
 
         generator = DygraphForwardAndNodesGenerator(api_yaml_path,
                                                     backward_yaml_path)
