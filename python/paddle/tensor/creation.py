@@ -427,10 +427,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             elif hasattr(data, 'dtype'):
                 target_dtype = data.dtype
             else:
-                target_dtype = paddle.get_default_dtype()
+                target_dtype = None
             
             output = assign(data)
-            if output.dtype != target_dtype:
+            if target_dtype is not None and output.dtype != target_dtype:
                 output = output.astype(target_dtype)
 
         output.stop_gradient = stop_gradient
