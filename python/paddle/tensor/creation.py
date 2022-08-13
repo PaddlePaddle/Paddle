@@ -419,12 +419,17 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     # call assign instead for static graph
     else:
-        if isinstance(data, (Variable, core.VarBase)) and data.dtype == dtype:
+        output_dtype = data.dtype
+        if dtype is not None:
+            output_dtype = dtype
+
+        # if target dtype is different, create a new variable
+        if isinstance(data, (Variable, core.VarBase)) and data.dtype == output_dtype:
             output = data
         else:
             output = assign(data)
-            if dtype is not None:
-                output = output.astype(dtype)
+            if output.dtype != output_dtype:
+                output = output.astype(output_dtype)
 
         output.stop_gradient = stop_gradient
 
@@ -1525,7 +1530,6 @@ def assign(x, output=None):
         input = np.array([input])
     elif isinstance(input, (list, tuple)):
         input = np.array(input)
-    output_dtype = None
     # NOTE(Aurelius84): Why we judge core.VarBase?
     # In case of @to_static, a VarBase can be as input of `assign`,
     # but _non_static_mode()==False under @to_static, which means
@@ -1553,7 +1557,6 @@ def assign(x, output=None):
                              inputs={'X': [input]},
                              outputs={'Out': [output]})
     elif isinstance(input, np.ndarray):
-        output_dtype = input.dtype
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
@@ -1633,9 +1636,6 @@ def assign(x, output=None):
 
     if is_inplace and _in_legacy_dygraph():
         output._bump_inplace_version()
-
-    if output_dtype is not None:
-        output = output.astype(output_dtype)
 
     return output
 
