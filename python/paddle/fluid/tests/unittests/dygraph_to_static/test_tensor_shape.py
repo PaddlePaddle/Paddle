@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# to_tensor api will create 1 less op now, this test was changed
+
 from __future__ import print_function
 
 import numpy
@@ -289,8 +292,6 @@ class TestTensorShapeBasic(unittest.TestCase):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
         self._compute_op_num(program)
-        # to_tensor & to_variable will not deepcopy when it is not needed
-        # self.expected_op_num shoule -1 here
         self.assertEqual(self.op_num, self.expected_op_num)
         self.assertEqual(self.shape_op_num, self.expected_shape_op_num)
         self.assertEqual(self.slice_op_num, self.expected_slice_op_num)
