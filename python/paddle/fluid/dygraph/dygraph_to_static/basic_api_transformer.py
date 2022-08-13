@@ -167,7 +167,7 @@ def to_to_tensor_node(node):
         if kw.arg == 'value' or kw.arg == 'data':
             node.keywords[idx].arg = 'x'
             temp_keywords.append(node.keywords[idx])
-        elif kw.arg == 'dtype'
+        elif kw.arg == 'dtype':
             temp_keywords.append(node.keywords[idx])
     node.keywords = temp_keywords
 
