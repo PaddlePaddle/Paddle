@@ -42,6 +42,10 @@ paddle::any GetAttrValue(const Attribute& attr) {
       return PADDLE_GET_CONST(std::vector<int64_t>, attr);
     case proto::AttrType::FLOAT64S:
       return PADDLE_GET_CONST(std::vector<double>, attr);
+    case proto::AttrType::VAR:
+      return PADDLE_GET_CONST(VarDesc*, attr);
+    case proto::AttrType::VARS:
+      return PADDLE_GET_CONST(std::vector<VarDesc*>, attr);
     case proto::AttrType::BLOCK:
       return PADDLE_GET_CONST(BlockDesc*, attr);
     case proto::AttrType::BLOCKS:

@@ -94,7 +94,7 @@ class TestExponentialAPI(unittest.TestCase):
         self.assertTrue(np.min(y.numpy()) >= 0)
 
         y.backward()
-        self.assertTrue(np.array_equal(x.grad.numpy(), np.zeros([10, 10])))
+        np.testing.assert_array_equal(x.grad.numpy(), np.zeros([10, 10]))
         paddle.enable_static()
 
     def test_fixed_random_number(self):

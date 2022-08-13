@@ -285,8 +285,8 @@ class TestMulNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
 
 
 class TestMulNet3_2(unittest.TestCase):
@@ -358,9 +358,9 @@ class TestMulNet3_2(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred,
-                                    atol=1e-5))  # atol needed on cann 20.3
-        self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-5))
+        np.testing.assert_allclose(npu_pred, cpu_pred,
+                                   atol=1e-5)  # atol needed on cann 20.3
+        np.testing.assert_allclose(npu_loss, cpu_loss, atol=1e-5)
 
 
 class TestMulNet3_2_xc2(unittest.TestCase):
@@ -433,8 +433,8 @@ class TestMulNet3_2_xc2(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
 
 
 class TestMulNet4_2(unittest.TestCase):
@@ -509,9 +509,9 @@ class TestMulNet4_2(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred,
-                                    atol=1e-5))  # atol needed on cann 20.3
-        self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-5))
+        np.testing.assert_allclose(npu_pred, cpu_pred,
+                                   atol=1e-5)  # atol needed on cann 20.3
+        np.testing.assert_allclose(npu_loss, cpu_loss, atol=1e-5)
 
 
 if __name__ == '__main__':

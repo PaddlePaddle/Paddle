@@ -31,7 +31,7 @@ namespace inference {
 namespace tensorrt {
 
 void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
-  nvinfer1::DataType nv_type;
+  nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
   switch (type) {
     case phi::DataType::FLOAT32:
       nv_type = nvinfer1::DataType::kFLOAT;
