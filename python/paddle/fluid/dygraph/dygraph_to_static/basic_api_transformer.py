@@ -159,17 +159,16 @@ def to_to_tensor_node(node):
     # Transform dygraph api `fluid.dygraph.to_variable` to `paddle.to_tensor` which could manage static cases
 
     assert isinstance(node, gast.Call)
-    assign_api = gast.parse('paddle.to_tensor').body[0].value
-    node.func = assign_api
+    to_tensor_api = gast.parse('paddle.to_tensor').body[0].value
+    node.func = to_tensor_api
 
-    if node.args:
-        node.args = [node.args[0]]
-        node.keywords = []
-    else:
-        for idx, kw in enumerate(node.keywords):
-            if kw.arg == 'value' or kw.arg == 'data':
-                node.keywords[idx].arg = 'x'
-                node.keywords = [node.keywords[idx]]
-                node.args = []
-                break
+    temp_keywords = []
+    for idx, kw in enumerate(node.keywords):
+        if kw.arg == 'value' or kw.arg == 'data':
+            node.keywords[idx].arg = 'x'
+            temp_keywords.append(node.keywords[idx])
+        elif kw.arg == 'dtype'
+            temp_keywords.append(node.keywords[idx])
+    node.keywords = temp_keywords
+
     return node
