@@ -289,7 +289,9 @@ class TestTensorShapeBasic(unittest.TestCase):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
         self._compute_op_num(program)
-        self.assertEqual(self.op_num, self.expected_op_num)
+        # to_tensor & to_variable will not deepcopy when it is not needed
+        # self.expected_op_num shoule -1 here
+        self.assertEqual(self.op_num, self.expected_op_num - 1)
         self.assertEqual(self.shape_op_num, self.expected_shape_op_num)
         self.assertEqual(self.slice_op_num, self.expected_slice_op_num)
 
@@ -534,7 +536,7 @@ class TestOpNumBasicWithTensorShape(unittest.TestCase):
         program = static_layer.main_program
 
         self._compute_op_num(program)
-        self.assertEqual(self.op_num, self.expected_op_num)
+        self.assertEqual(self.op_num, self.expected_op_num - 1)
         self.assertEqual(self.shape_op_num, self.expected_shape_op_num)
         self.assertEqual(self.slice_op_num, self.expected_slice_op_num)
 
