@@ -1251,9 +1251,9 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
     """
     # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
     # incorrectly, so we have to explicitly contruct tensors here
-    full_posinf = paddle.full_like(x, float("+inf"))
-    full_neginf = paddle.full_like(x, float("-inf"))
-    full_nan = paddle.full_like(x, nan)
+    posinf_value = paddle.full_like(x, float("+inf"))
+    neginf_value = paddle.full_like(x, float("-inf"))
+    nan = paddle.full_like(x, nan)
     assert x.dtype in [paddle.float32, paddle.float64]
     is_float32 = x.dtype == paddle.float32
     if posinf is None:
@@ -1262,9 +1262,9 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
     if neginf is None:
         neginf = np.finfo(np.float32).min if is_float32 else np.finfo(np.float64).min
     neginf = paddle.full_like(x, neginf)
-    x = paddle.where(paddle.isnan(x), full_nan, x)
-    x = paddle.where(x == full_posinf, posinf, x)
-    x = paddle.where(x == full_neginf, neginf, x)
+    x = paddle.where(paddle.isnan(x), nan, x)
+    x = paddle.where(x == posinf_value, posinf, x)
+    x = paddle.where(x == neginf_value, neginf, x)
     return x
 
 

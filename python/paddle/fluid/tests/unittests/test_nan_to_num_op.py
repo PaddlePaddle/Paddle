@@ -86,6 +86,7 @@ class TestNanToNum(unittest.TestCase):
         paddle.disable_static(place=self.place)
 
         with paddle.fluid.dygraph.guard():
+            # NOTE(tiancaishaonvjituizi): float64 input fails the test
             x_np = np.array([[1, np.nan, -2], [np.inf, 0,
                                                -np.inf]]).astype(np.float64)
                                                # -np.inf]]).astype(np.float32)
