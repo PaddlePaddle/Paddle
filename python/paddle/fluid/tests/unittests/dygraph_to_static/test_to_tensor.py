@@ -27,6 +27,7 @@ import numpy as np
 @paddle.jit.to_static
 def tensor_badreturn_0(x):
     a = paddle.to_tensor([1.0, 2.0, 3.0], dtype="int64")
+
     return a
 
 
@@ -35,7 +36,7 @@ def tensor_badreturn_1(x):
     paddle.set_default_dtype("float64")
     a = paddle.to_tensor([1.0, 2.0, 3.0])
 
-    return a 
+    return a
 
 
 @paddle.jit.to_static
