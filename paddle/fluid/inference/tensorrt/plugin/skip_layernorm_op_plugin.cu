@@ -125,8 +125,8 @@ bool SkipLayerNormPluginDynamic::supportsFormatCombination(
       return (desc.type == nvinfer1::DataType::kHALF) &&
              (desc.format == nvinfer1::TensorFormat::kLINEAR);
 #else
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
+      return (desc.type == nvinfer1::DataType::kFLOAT) &&
+             (desc.format == nvinfer1::TensorFormat::kLINEAR);
 #endif
     } else {
       return (desc.type == nvinfer1::DataType::kFLOAT) &&
