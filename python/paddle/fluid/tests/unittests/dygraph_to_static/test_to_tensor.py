@@ -67,9 +67,9 @@ class TestToTensorReturnVal(unittest.TestCase):
                 tensor_badreturn_0(x).dtype))
         self.assertTrue(
             dygraph_res[0].stop_gradient == tensor_badreturn_0(x).stop_gradient,
-            msg='case 0: to_static stop_gradient is {}, orig stop_gradient is {}'.format(
-                dygraph_res[0].stop_gradient,
-                tensor_badreturn_0(x).stop_gradient))
+            msg='case 0: to_static stop_gradient is {}, orig stop_gradient is {}'
+            .format(dygraph_res[0].stop_gradient,
+                    tensor_badreturn_0(x).stop_gradient))
 
         self.assertTrue(
             dygraph_res[1].dtype == tensor_badreturn_1(x).dtype,
@@ -78,9 +78,9 @@ class TestToTensorReturnVal(unittest.TestCase):
                 tensor_badreturn_1(x).dtype))
         self.assertTrue(
             dygraph_res[1].stop_gradient == tensor_badreturn_1(x).stop_gradient,
-            msg='case 1: to_static stop_gradient is {}, orig stop_gradient is {}'.format(
-                dygraph_res[1].stop_gradient,
-                tensor_badreturn_1(x).stop_gradient))
+            msg='case 1: to_static stop_gradient is {}, orig stop_gradient is {}'
+            .format(dygraph_res[1].stop_gradient,
+                    tensor_badreturn_1(x).stop_gradient))
 
         self.assertTrue(
             dygraph_res[2].dtype == tensor_badreturn_2(x).dtype,
@@ -89,9 +89,9 @@ class TestToTensorReturnVal(unittest.TestCase):
                 tensor_badreturn_2(x).dtype))
         self.assertTrue(
             dygraph_res[2].stop_gradient == tensor_badreturn_2(x).stop_gradient,
-            msg='case 2: to_static stop_gradient is {}, orig stop_gradient is {}'.format(
-                dygraph_res[2].stop_gradient,
-                tensor_badreturn_2(x).stop_gradient))
+            msg='case 2: to_static stop_gradient is {}, orig stop_gradient is {}'
+            .format(dygraph_res[2].stop_gradient,
+                    tensor_badreturn_2(x).stop_gradient))
 
 
 class UnittestBase(unittest.TestCase):

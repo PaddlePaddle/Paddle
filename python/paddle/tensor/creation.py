@@ -419,7 +419,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     # call assign for static graph
     else:
-        if isinstance(data, 
+        if isinstance(data,
                       (Variable, core.VarBase)) and (dtype is None
                                                      or dtype == data.dtype):
             output = data
