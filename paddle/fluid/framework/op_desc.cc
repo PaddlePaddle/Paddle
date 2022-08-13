@@ -901,7 +901,14 @@ void OpDesc::Flush() {
     }
 
     this->desc_.mutable_attrs()->Clear();
-    for (auto &attr : attrs_) {
+    std::vector<std::pair<std::string, Attribute>> sorted_attrs{attrs_.begin(),
+                                                                attrs_.end()};
+    std::sort(
+        sorted_attrs.begin(),
+        sorted_attrs.end(),
+        [](std::pair<std::string, Attribute> a,
+           std::pair<std::string, Attribute> b) { return a.first < b.first; });
+    for (auto &attr : sorted_attrs) {
       auto *attr_desc = desc_.add_attrs();
       attr_desc->set_name(attr.first);
       attr_desc->set_type(

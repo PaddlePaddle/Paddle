@@ -426,8 +426,13 @@ def _prepare_fleet_executor():
     return fleet_exe
 
 
+def _get_strong_program_cache_key_for_new_exe(program, feed, fetch_list):
+    return program.desc.cached_hash_str() + _get_program_cache_key(
+        feed, fetch_list)
+
+
 def _get_strong_program_cache_key(program, feed, fetch_list):
-    # NOTE(xiongkun) id(proram) may be duplicate. So add addition var_name as cache key.
+    # TODO(zhiqiu): use hash_str to generate cache key as above
     def _get_varname_from_block(block):
         block_str = []
         for var_name in list(block.vars.keys()):
@@ -1455,8 +1460,8 @@ class Executor(object):
                         % (type(feed)))
                 feed = self._update_feed(program, feed)
 
-                key = _get_strong_program_cache_key(inner_program, feed,
-                                                    fetch_list)
+                key = _get_strong_program_cache_key_for_new_exe(
+                    inner_program, feed, fetch_list)
 
                 # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
                 # while use program to geet _StandaloneExecutor
