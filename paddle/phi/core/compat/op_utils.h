@@ -70,7 +70,8 @@ const std::unordered_set<std::string> deprecated_op_names({"diag",
                                                            "expand_as_grad",
                                                            "one_hot",
                                                            "top_k",
-                                                           "top_k_grad"});
+                                                           "top_k_grad",
+                                                           "linear_interp_v2"});
 
 class DefaultKernelSignatureMap {
  public:
