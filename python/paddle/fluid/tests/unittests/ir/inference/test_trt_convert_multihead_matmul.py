@@ -1093,11 +1093,18 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
+        def generate_trt_nodes_num():
+            ver = paddle_infer.get_trt_compile_version()
+            if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7200:
+                return 0, 3
+            return 1, 2
+
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.workspace_size = 2013265920
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), (1e-3, 1e-3)
+        yield self.create_inference_config(), generate_trt_nodes_num(), (1e-3,
+                                                                         1e-3)
 
     def add_skip_trt_case(self):
         pass

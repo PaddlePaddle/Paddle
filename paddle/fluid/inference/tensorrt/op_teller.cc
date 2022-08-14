@@ -1841,6 +1841,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                   << biasqk_shape[3] << "].";
           return false;
         }
+      } else {
+#if !IS_TRT_VERSION_GE(7200)
+        VLOG(3) << "The version of TRT must be greater than 7.2";
+        return false;
+#endif
       }
     }
 
