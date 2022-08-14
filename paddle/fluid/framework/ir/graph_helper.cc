@@ -498,21 +498,49 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   return desc;
 }
 
-void UpdateControlOpSkipEagerDeletionVars(const Node &node) {
-  if (node.IsWrappedBy<details::OpHandleBase>()) {
-    details::OpHandleBase &op_hander =
-        const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
-    auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(&op_hander);
-    auto *op_base = compute_op->GetOp();
-    if (op_base->Attrs().count("skip_eager_deletion_vars")) {
-      node.Op()->SetAttr("skip_eager_deletion_vars",
-                         op_base->Attrs().at("skip_eager_deletion_vars"));
+void UpdateControlOpSkipEagerDeletionVars(const Node &node,
+                                          const Graph &graph,
+                                          const size_t graph_idx,
+                                          const std::string &control_type) {
+  // Node(zhangbo): SkipEagerDeletionVars pass policy for control flow class op:
+  // 1) if op is in main_block: SkipEagerDeletionVars information will be
+  // writted into Graph OpNode which wrapped by OpHandleBase; 2) if op is in
+  // sub_block: SkipEagerDeletionVars information will be writted into graph's
+  // OriginProgram OpDesc. Please refer to
+  // FindAllConditionalBlockAndConditionalBlockGradOp in
+  // "paddle/fluid/operators/controlflow/conditional_block_op_helper.cc"
+  if (graph_idx == 0) {
+    if (node.IsWrappedBy<details::OpHandleBase>()) {
+      details::OpHandleBase &op_hander =
+          const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
+      auto *compute_op =
+          dynamic_cast<details::ComputationOpHandle *>(&op_hander);
+      auto *op_base = compute_op->GetOp();
+      if (op_base->Attrs().count("skip_eager_deletion_vars")) {
+        node.Op()->SetAttr("skip_eager_deletion_vars",
+                           op_base->Attrs().at("skip_eager_deletion_vars"));
+      }
+    }
+  } else {
+    auto origin_program = graph.OriginProgram();
+    auto &block = origin_program.Block(graph_idx);
+    for (size_t j = 0; j < block.OpSize(); ++j) {
+      auto *op = block.Op(j);
+      if (op->Type() == control_type) {
+        if (op->InputArgumentNames() == node.Op()->InputArgumentNames() &&
+            op->OutputArgumentNames() == node.Op()->OutputArgumentNames()) {
+          node.Op()->SetAttr("skip_eager_deletion_vars",
+                             op->GetAttr("skip_eager_deletion_vars"));
+        }
+      }
     }
   }
 }
 
 static void GetGraphOpDesc(const std::vector<Node *> &nodes,
-                           std::vector<OpDesc> *ops) {
+                           std::vector<OpDesc> *ops,
+                           const Graph &graph,
+                           const size_t graph_idx) {
   auto is_fused_opt = [](Node *n) -> bool {
     auto op_type = n->Op()->Type();
     auto is_opt =
@@ -556,12 +584,10 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         ops->emplace_back(depend_desc);
         VLOG(4) << "add depend op";
       }
-      if (n->Name() == "while" || n->Name() == "while_grad" ||
-          n->Name() == "conditional_block" ||
-          n->Name() == "conditional_block_grad" || n->Name() == "recurrent" ||
-          n->Name() == "recurrent_grad") {
-        VLOG(4) << "Update control op attr: skip_eager_deletion_vars";
-        UpdateControlOpSkipEagerDeletionVars(*n);
+      if (n->Name() == "while" || n->Name() == "conditional_block" ||
+          n->Name() == "recurrent") {
+        VLOG(1) << "Update control op attr: skip_eager_deletion_vars";
+        UpdateControlOpSkipEagerDeletionVars(*n, graph, graph_idx, n->Name());
       }
       ops->emplace_back(*n->Op());
       VLOG(4) << n->ToString();
@@ -584,7 +610,8 @@ static void GetGraphVarDesc(const Graph &graph,
 
 static void GraphToBlock(const Graph &graph,
                          proto::BlockDesc *block,
-                         const SortKind *sort_kind) {
+                         const SortKind *sort_kind,
+                         const size_t graph_idx) {
   // Remove the unneeded variables after memory optimization.
   std::unordered_set<std::string> vars2remove;
   if (graph.Has(kGraphToProgramVarsToRemove)) {
@@ -628,7 +655,7 @@ static void GraphToBlock(const Graph &graph,
   }
 
   std::vector<OpDesc> ops;
-  GetGraphOpDesc(nodes, &ops);
+  GetGraphOpDesc(nodes, &ops, graph, graph_idx);
 
   for (auto &op : ops) {
     RemoveControlDepInputAndOuput(&op);
@@ -654,7 +681,8 @@ void GraphToProgram(const Graph &graph,
   block->set_idx(kRootBlockIndex);
 
   if (FLAGS_convert_all_blocks) {
-    GraphToBlock(*graph.GetSubGraph(kRootBlockIndex), block, sort_kind);
+    GraphToBlock(
+        *graph.GetSubGraph(kRootBlockIndex), block, sort_kind, kRootBlockIndex);
 
     VLOG(3) << "Graph to program need convert " << graph.SubGraphsSize()
             << " sub graph";
@@ -665,10 +693,10 @@ void GraphToProgram(const Graph &graph,
       block = program_pb.add_blocks();
       block->set_idx(idx);
       block->set_parent_idx(kRootBlockIndex);
-      GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind);
+      GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind, idx);
     }
   } else {
-    GraphToBlock(graph, block, sort_kind);
+    GraphToBlock(graph, block, sort_kind, kRootBlockIndex);
   }
 
   program->CopyFrom(program_pb);
