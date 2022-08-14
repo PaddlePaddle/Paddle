@@ -1274,11 +1274,13 @@ class Executor(object):
                 #  [-0.44514108 -0.2345845 ]]
 
         """
-        # Temporary FLAGS, just for test the performance of program cache
+        # Temporary FLAGS, just for testing the performance of program cache
         force_use_program_cache = os.environ.get(
             'FLAGS_FORCE_USE_PROGRAM_CACHE', None)
         if force_use_program_cache is not None:
-            use_program_cache = force_use_program_cache
+            use_program_cache = force_use_program_cache in [
+                1, '1', True, 'True', 'true'
+            ]
             warnings.warn(
                 f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE",
                 UserWarning)
