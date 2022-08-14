@@ -76,24 +76,22 @@ class VarDesc {
   }
 
   // Explicitly implement the copy constructor for auto parallel
-  VarDesc(const VarDesc &other)
-      : desc_(other.desc_),
-        attrs_(other.attrs_),
-        original_id_(other.original_id_),
-        dist_attr_(new TensorDistAttr(*other.dist_attr_)) {}
+  VarDesc(const VarDesc &other);
 
   VarDesc &operator=(const VarDesc &other) {
     desc_ = other.desc_;
     attrs_ = other.attrs_;
     original_id_ = other.original_id_;
-    dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
+    if (other.dist_attr_) {
+      dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
+    }
     need_updated_ = true;
     return *this;
   }
 
   proto::VarDesc *Proto() {
-    return &desc_;
     need_updated_ = true;
+    return &desc_;
   }
 
   const proto::VarDesc *Proto() const { return &desc_; }
@@ -203,7 +201,7 @@ class VarDesc {
     original_id_ = original_id;
     need_updated_ = true;
   }
-  TensorDistAttr &MutableDistAttr();
+  TensorDistAttr *MutableDistAttr();
   void SetDistAttr(const TensorDistAttr &dist_attr);
 
  private:

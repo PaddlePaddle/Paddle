@@ -442,7 +442,9 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
   original_id_ = op_desc.original_id_;
-  dist_attr_.reset(new OperatorDistAttr(*op_desc.dist_attr_));
+  if (op_desc.dist_attr_) {
+    dist_attr_.reset(new OperatorDistAttr(*op_desc.dist_attr_));
+  }
   need_update_ = true;
 }
 
@@ -984,12 +986,12 @@ void OpDesc::InferVarType(BlockDesc *block) const {
   }
 }
 
-OperatorDistAttr &OpDesc::MutableDistAttr() {
+OperatorDistAttr *OpDesc::MutableDistAttr() {
   if (dist_attr_) {
-    return *dist_attr_;
+    return dist_attr_.get();
   } else {
     dist_attr_.reset(new OperatorDistAttr(*this));
-    return *dist_attr_;
+    return dist_attr_.get();
   }
 }
 

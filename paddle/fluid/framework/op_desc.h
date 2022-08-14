@@ -181,7 +181,7 @@ class OpDesc {
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
-  OperatorDistAttr &MutableDistAttr();
+  OperatorDistAttr *MutableDistAttr();
   void SetDistAttr(const OperatorDistAttr &dist_attr);
 
  private:

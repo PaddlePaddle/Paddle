@@ -21,6 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+VarDesc::VarDesc(const VarDesc &other)
+    : desc_(other.desc_),
+      attrs_(other.attrs_),
+      original_id_(other.original_id_) {
+  if (other.dist_attr_) {
+    dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
+  }
+}
+
 proto::VarType::Type VarDesc::GetType() const { return desc_.type().type(); }
 
 void VarDesc::SetType(proto::VarType::Type type) {
@@ -354,13 +363,13 @@ Attribute VarDesc::GetAttr(const std::string &name) const {
   return it->second;
 }
 
-TensorDistAttr &VarDesc::MutableDistAttr() {
+TensorDistAttr *VarDesc::MutableDistAttr() {
   // If dist_attr_ is nullptr, construct a new one and return.
   if (dist_attr_) {
-    return *dist_attr_;
+    return dist_attr_.get();
   } else {
     dist_attr_.reset(new TensorDistAttr(*this));
-    return *dist_attr_;
+    return dist_attr_.get();
   }
 }
 
