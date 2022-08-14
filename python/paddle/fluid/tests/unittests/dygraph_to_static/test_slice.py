@@ -208,8 +208,8 @@ class TestSliceSupplementSpecialCase(unittest.TestCase):
 
         out = exe.run(prog, feed={'x': array}, fetch_list=[z1, z2])
 
-        self.assertTrue(np.array_equal(out[0], array[::2]))
-        self.assertTrue(np.array_equal(out[1], array[::-2]))
+        np.testing.assert_array_equal(out[0], array[::2])
+        np.testing.assert_array_equal(out[1], array[::-2])
 
     def test_static_slice_step_dygraph2static(self):
         paddle.disable_static()
@@ -225,10 +225,10 @@ class TestSliceSupplementSpecialCase(unittest.TestCase):
                                      input_spec=[InputSpec(shape=[None, 4, 4])])
         static_result = sfunc(inps)
 
-        self.assertTrue(
-            np.array_equal(origin_result[0].numpy(), static_result[0].numpy()))
-        self.assertTrue(
-            np.array_equal(origin_result[1].numpy(), static_result[1].numpy()))
+        np.testing.assert_array_equal(origin_result[0].numpy(),
+                                      static_result[0].numpy())
+        np.testing.assert_array_equal(origin_result[1].numpy(),
+                                      static_result[1].numpy())
 
 
 class TestPaddleStridedSlice(unittest.TestCase):
@@ -268,10 +268,8 @@ class TestPaddleStridedSlice(unittest.TestCase):
                                   ends=e2,
                                   strides=stride2)
 
-        self.assertTrue(
-            np.array_equal(
-                sl.numpy(), array[s2[0]:e2[0]:stride2[0],
-                                  s2[1]:e2[1]:stride2[1]]))
+        np.testing.assert_array_equal(
+            sl.numpy(), array[s2[0]:e2[0]:stride2[0], s2[1]:e2[1]:stride2[1]])
 
         array = np.arange(6 * 7 * 8).reshape((6, 7, 8))
         pt = paddle.to_tensor(array)
@@ -285,9 +283,10 @@ class TestPaddleStridedSlice(unittest.TestCase):
                                   strides=stride2)
 
         array_slice = array[s2[0]:e2[0]:stride2[0], ::, s2[1]:e2[1]:stride2[1]]
-        self.assertTrue(
-            np.array_equal(sl.numpy(), array_slice),
-            msg="paddle.strided_slice:\n {} \n numpy slice:\n{}".format(
+        np.testing.assert_array_equal(
+            sl.numpy(),
+            array_slice,
+            err_msg='paddle.strided_slice:\n {} \n numpy slice:\n{}'.format(
                 sl.numpy(), array_slice))
 
 

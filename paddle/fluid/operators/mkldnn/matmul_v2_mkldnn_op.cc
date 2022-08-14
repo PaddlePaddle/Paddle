@@ -108,24 +108,6 @@ phi::DDim GetDimForInput(const ExecutionContext &ctx, std::string input_name) {
   auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
   auto input_dims = ctx.Input<Tensor>(input_name)->dims();
   if (!shape.empty() && !axis.empty()) {
-    auto it_zero = std::find(shape.begin(), shape.end(), 0);
-    if (it_zero != shape.end()) {
-      for (uint64_t i = 0; i < shape.size(); i++) {
-        if (shape[i] == 0) {
-          PADDLE_ENFORCE_LT(i,
-                            input_dims.size(),
-                            paddle::platform::errors::InvalidArgument(
-                                "The index of 0 in fused_reshape_%s ",
-                                "should be less than output dim size, ",
-                                "but the index is %d and output dim size is %d",
-                                input_name,
-                                i,
-                                input_dims.size()));
-          shape[i] = input_dims.at(i);
-        }
-      }
-    }
-
     return input_dims.reshape(shape).transpose(axis);
   }
   return input_dims;
@@ -225,12 +207,7 @@ class MatMulMKLDNNHandler
       src_memory_p->set_data_handle(x_ptr);
       weights_memory_p->set_data_handle(y_ptr);
       dst_memory_p->set_data_handle(out_ptr);
-      matmul_p->execute(astream,
-                        {
-                            {DNNL_ARG_SRC, *src_memory_p},
-                            {DNNL_ARG_WEIGHTS, *weights_memory_p},
-                            {DNNL_ARG_DST, *dst_memory_p},
-                        });
+      matmul_p->execute(astream, matmul_args);
       x_ptr = static_cast<char *>(x_ptr) + std::get<0>(offsets);
       y_ptr = static_cast<char *>(y_ptr) + std::get<1>(offsets);
       out_ptr = static_cast<char *>(out_ptr) + std::get<2>(offsets);
@@ -270,25 +247,6 @@ class MatMulMKLDNNHandler
     auto input_dims = ctx.Input<Tensor>(input_name)->dims();
     auto new_dims = input_dims;
     if (!shape.empty() && !axis.empty()) {
-      auto it_zero = std::find(shape.begin(), shape.end(), 0);
-      if (it_zero != shape.end()) {
-        for (uint64_t i = 0; i < shape.size(); i++) {
-          if (shape[i] == 0) {
-            PADDLE_ENFORCE_LT(
-                i,
-                input_dims.size(),
-                paddle::platform::errors::InvalidArgument(
-                    "The index of 0 in fused_reshape_%s ",
-                    "should be less than output dim size, ",
-                    "but the index is %d and output dim size is %d",
-                    input_name,
-                    i,
-                    input_dims.size()));
-            shape[i] = input_dims.at(i);
-          }
-        }
-      }
-
       new_dims = input_dims.reshape(shape).transpose(axis);
     }
 
@@ -519,7 +477,10 @@ static void ExecuteMatMul(const ExecutionContext &ctx) {
   constexpr bool is_int8 = IsInt8<XT>();
   constexpr bool is_bfloat16 = IsBfloat16<XT>();
   const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-  constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
+  const bool fuse_relu =
+      ctx.HasAttr("fuse_activation")
+          ? ctx.Attr<std::string>("fuse_activation") == "relu"
+          : false;
   auto *x = ctx.Input<Tensor>("X");
   auto *y = ctx.Input<Tensor>("Y");
   auto *out = ctx.Output<Tensor>("Out");
@@ -596,23 +557,6 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext &ctx,
   auto input_dims = ctx.Input<Tensor>(input_name)->dims();
   auto new_dims = input_dims;
   if (!shape.empty() && !axis.empty()) {
-    auto it_zero = std::find(shape.begin(), shape.end(), 0);
-    if (it_zero != shape.end()) {
-      for (uint64_t i = 0; i < shape.size(); i++) {
-        if (shape[i] == 0) {
-          PADDLE_ENFORCE_LT(i,
-                            input_dims.size(),
-                            paddle::platform::errors::InvalidArgument(
-                                "The index of 0 in fused_reshape_%s ",
-                                "should be less than output dim size, ",
-                                "but the index is %d and output dim size is %d",
-                                input_name,
-                                i,
-                                input_dims.size()));
-          shape[i] = input_dims.at(i);
-        }
-      }
-    }
     new_dims = input_dims.reshape(shape).transpose(axis);
   }
 
