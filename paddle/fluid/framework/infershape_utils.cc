@@ -331,6 +331,10 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
+    if (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array()) {
+      VLOG(3) << "input metatensor is not LoDTensor or LoDTensorArray.";
+      return;
+    }
     var->SetLoDLevel(
         static_cast<const CompatMetaTensor&>(meta_tensor).GetCompileTimeLoD());
   }
