@@ -489,6 +489,15 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
   this->block_ = block;
 }
 
+// Explicitly implement the assign operator, Since the added
+// unique_ptr data member does not have the implicit assign operator.
+OpDesc &OpDesc::operator=(const OpDesc &other) {
+  CopyFrom(other);
+  block_ = other.block_;
+  need_update_ = true;
+  return *this;
+}
+
 proto::OpDesc *OpDesc::Proto() {
   Flush();
   return &desc_;

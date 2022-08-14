@@ -52,6 +52,8 @@ class OpDesc {
 
   OpDesc(const OpDesc &other, BlockDesc *block);
 
+  OpDesc &operator=(const OpDesc &other);
+
   void CopyFrom(const OpDesc &op_desc);
 
   proto::OpDesc *Proto();
