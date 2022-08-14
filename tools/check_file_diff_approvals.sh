@@ -261,8 +261,8 @@ fi
 
 INVALID_ASSERT_CHECK=`echo "$ALL_ADDED_LINES" | grep -E "self\.assert(True|Equal)\(\s*(np|numpy)\.(allclose|array_equal)" || true`
 if [ "${INVALID_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="It is recommended to use np.testing.assert_allclose(...) instead of self.assertTrue(np.allclose(...)) or self.assertEqual(np.allclose(...)).\nThe code that do not meet the specification are as follows:\n${INVALID_ASSERT_CHECK}\n"
-    check_approval 1 qili93 (Recommend), luotao1
+    echo_line="It is recommended to use 'np.testing.assert_allclose(...)' instead of 'self.assertTrue(np.allclose(...))' or 'self.assertEqual(np.allclose(...))'.\nPlease modify the code below. If anything is unclear, please request qili93 (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_ASSERT_CHECK}\n"
+    check_approval 1 qili93 luotao1
 fi
 
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
