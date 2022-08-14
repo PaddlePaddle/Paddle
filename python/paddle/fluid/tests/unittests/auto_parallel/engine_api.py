@@ -120,9 +120,6 @@ def train(fetch):
     labels_spec = InputSpec([batch_size], 'int64', 'label')
 
     dist_strategy = fleet.DistributedStrategy()
-    dist_strategy.amp = False
-    dist_strategy.pipeline = False
-    dist_strategy.recompute = False
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
@@ -144,8 +141,7 @@ def train(fetch):
     engine.fit(train_dataset,
                batch_size=batch_size,
                steps_per_epoch=batch_num * batch_size,
-               fetches=fetches,
-               collate_fn=default_collate_fn)
+               fetches=fetches)
 
     # eval
     eval_dataset = MyDataset(batch_size)

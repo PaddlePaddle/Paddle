@@ -73,7 +73,7 @@ class DistributedDataLoader(metaclass=abc.ABCMeta):
             if self.dataset_kind == _DatasetKind.MAP:
                 return list(range(len(self.dataset)))
             else:
-                raise TypeError()
+                raise TypeError("Only support datasets in map-style.")
 
 
 class NonIterableGeneratorLoader(DistributedDataLoader):
