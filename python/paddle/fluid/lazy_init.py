@@ -100,9 +100,9 @@ class LazyInit(object):
     trigger EagerParamBase Lazy Initialization and get startup Program.
     """
 
-    def __init__(self, class_obj=None, **kwargs):
+    def __init__(self, class_obj=None):
         self.class_obj = class_obj
-        self.clear_cache = kwargs.get('clear_cache', True)
+        self.clear_cache = True
 
     def __call__(self, *args, **kwargs):
         """
