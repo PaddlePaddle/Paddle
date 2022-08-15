@@ -21,6 +21,8 @@ from paddle.distribution import transform, variable, constraint
 import config
 import parameterize as param
 
+np.random.seed(2022)
+paddle.seed(2022)
 paddle.enable_static()
 
 

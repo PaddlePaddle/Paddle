@@ -50,7 +50,7 @@ class TestCheckFetchList(unittest.TestCase):
             fetch_list=[self.fetch_list],  # support single list/tuple
             return_numpy=True)
 
-        self.assertTrue(np.array_equal(res[0], self.expected))
+        np.testing.assert_array_equal(res[0], self.expected)
 
     def test_with_error(self):
         with self.assertRaises(TypeError):
