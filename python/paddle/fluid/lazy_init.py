@@ -120,7 +120,7 @@ class LazyInit(object):
                 for param in fc.parameters():
                     param.initialize()
         """
-        assert issubclass(
+        assert isinstance(
             self.class_obj, type
         ), "Required class_obj must be a class type, but received %s." % self.class_obj
         assert isinstance()
