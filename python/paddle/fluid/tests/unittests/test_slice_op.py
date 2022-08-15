@@ -638,6 +638,7 @@ class TestSliceApiEager(unittest.TestCase):
                 np.testing.assert_array_equal(a_1.numpy(), a_2.numpy())
                 a_1.backward()
                 grad_truth = paddle.zeros_like(a)
+                grad_truth.stop_gradient = True
                 grad_truth[-3:3, 0:2, 2:4] = 1
                 np.testing.assert_array_equal(grad_truth, a.gradient())
 
