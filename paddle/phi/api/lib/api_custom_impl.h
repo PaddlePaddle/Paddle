@@ -101,19 +101,6 @@ std::vector<Tensor> split_impl(const Tensor& x,
                                const IntArray& num_or_sections,
                                const Scalar& axis);
 
-std::tuple<Tensor, Tensor, Tensor> momentum_impl(
-    const Tensor& param,
-    const Tensor& grad,
-    const Tensor& velocity,
-    const Tensor& learning_rate,
-    const paddle::optional<Tensor>& master_param,
-    float mu,
-    bool use_nesterov,
-    const std::string& regularization_method,
-    float regularization_coeff,
-    bool multi_precision,
-    float rescale_grad);
-
 ////////////////// Backward(grad) api impls //////////////////////
 
 void conv2d_grad_impl(const Tensor& input,
