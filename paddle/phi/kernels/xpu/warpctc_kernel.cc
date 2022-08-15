@@ -18,4 +18,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/warpctc_kernel_impl.h"
 
+// basic implemention called on the third_party libary:
+// https://github.com/baidu-research/warp-ctc
 PD_REGISTER_KERNEL(warpctc, XPU, ALL_LAYOUT, phi::WarpctcKernel, float) {}
