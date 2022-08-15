@@ -46,6 +46,12 @@ def tensor_badreturn_2(x):
     return a
 
 
+@paddle.jit.to_static
+def tensor_badreturn_3(x):
+    a = paddle.to_tensor([1.0, 2.0, 3.0], place=paddle.CUDAPlace(0), dtype="float64", stop_gradient=False)
+
+    return a
+
 class TestToTensorReturnVal(unittest.TestCase):
 
     def _run(self, to_static):
@@ -55,43 +61,20 @@ class TestToTensorReturnVal(unittest.TestCase):
         out0 = tensor_badreturn_0(x)
         out1 = tensor_badreturn_1(x)
         out2 = tensor_badreturn_2(x)
-        return out0, out1, out2
+        out3 = tensor_badreturn_3(x)
+        return  out0, out1, out2, out3
 
     def test_to_tensor_badreturn(self):
-        dygraph_res = self._run(to_static=False)
+        static_res = self._run(to_static=True)
         x = paddle.to_tensor([3])
-        self.assertTrue(
-            dygraph_res[0].dtype == tensor_badreturn_0(x).dtype,
-            msg='case 0: to_static dtype is {}, orig dtype is {}'.format(
-                dygraph_res[0].dtype,
-                tensor_badreturn_0(x).dtype))
-        self.assertTrue(
-            dygraph_res[0].stop_gradient == tensor_badreturn_0(x).stop_gradient,
-            msg='case 0: to_static stop_gradient is {}, orig stop_gradient is {}'
-            .format(dygraph_res[0].stop_gradient,
-                    tensor_badreturn_0(x).stop_gradient))
+        self.assertTrue(static_res[0].dtype == tensor_badreturn_0(x).dtype)
+        self.assertTrue(static_res[0].stop_gradient == tensor_badreturn_0(x).stop_gradient)
 
-        self.assertTrue(
-            dygraph_res[1].dtype == tensor_badreturn_1(x).dtype,
-            msg='case 1: to_static dtype is {}, orig dtype is {}'.format(
-                dygraph_res[1].dtype,
-                tensor_badreturn_1(x).dtype))
-        self.assertTrue(
-            dygraph_res[1].stop_gradient == tensor_badreturn_1(x).stop_gradient,
-            msg='case 1: to_static stop_gradient is {}, orig stop_gradient is {}'
-            .format(dygraph_res[1].stop_gradient,
-                    tensor_badreturn_1(x).stop_gradient))
+        self.assertTrue(static_res[1].dtype == tensor_badreturn_1(x).dtype)
+        self.assertTrue(static_res[1].stop_gradient == tensor_badreturn_1(x).stop_gradient)
 
-        self.assertTrue(
-            dygraph_res[2].dtype == tensor_badreturn_2(x).dtype,
-            msg='case 2: to_static dtype is {}, orig dtype is {}'.format(
-                dygraph_res[2].dtype,
-                tensor_badreturn_2(x).dtype))
-        self.assertTrue(
-            dygraph_res[2].stop_gradient == tensor_badreturn_2(x).stop_gradient,
-            msg='case 2: to_static stop_gradient is {}, orig stop_gradient is {}'
-            .format(dygraph_res[2].stop_gradient,
-                    tensor_badreturn_2(x).stop_gradient))
+        self.assertTrue(static_res[2].dtype == tensor_badreturn_2(x).dtype,)
+        self.assertTrue(static_res[2].stop_gradient == tensor_badreturn_2(x).stop_gradient)
 
 
 class UnittestBase(unittest.TestCase):

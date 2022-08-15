@@ -419,25 +419,45 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     # call assign for static graph
     else:
-        if isinstance(data,
-                      (Variable, core.VarBase)) and (dtype is None
-                                                     or dtype == data.dtype):
-            output = data
-        else:
-            if dtype:
-                target_dtype = dtype
-            elif hasattr(data, 'dtype'):
-                target_dtype = data.dtype
+        def call_assign(data, dtype=None, stop_grandient=None):
+            if isinstance(data,
+                        (Variable, core.VarBase)) and (dtype is None
+                                                        or dtype == data.dtype):
+                output = data
             else:
-                target_dtype = None
+                if dtype:
+                    target_dtype = dtype
+                elif hasattr(data, 'dtype'):
+                    target_dtype = data.dtype
+                else:
+                    target_dtype = None
 
-            output = assign(data)
-            if target_dtype is not None and output.dtype != target_dtype:
-                output = output.astype(target_dtype)
+                output = assign(data)
+                if target_dtype is not None and output.dtype != target_dtype:
+                    output = output.astype(target_dtype)
 
-        output.stop_gradient = stop_gradient
+            output.stop_gradient = stop_gradient
 
-        return output
+            return output
+
+        if isinstance(place, str):
+            if (place == "device"):
+                place_str = None
+            else:
+                place_str = place
+        elif isinstance(place, core.CPUPlace):
+            place_str = 'cpu'
+        elif isinstance(place, core.CUDAPlace):
+            place_str = 'gpu:' + str(place._get_device_id())
+        elif isinstance(place, core.NPUPlace):
+            place_str = 'npu:' + str(place._get_device_id())
+        elif isinstance(place, core.device.XPUPlace):
+            place_str = 'xpu:' + str(place._get_device_id())
+        else:
+            place_str = None
+
+        with paddle.static.device_guard(place_str):
+            return call_assign(data, dtype, stop_gradient)
 
 
 def full_like(x, fill_value, dtype=None, name=None):
