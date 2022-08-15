@@ -107,8 +107,11 @@ void BindCommunicatorContext(py::module* m) {
                     int,
                     bool,
                     bool,
-                    int64_t>())
+                    int64_t,
+                    const std::vector<int32_t>&>())
       .def("var_name", [](const CommContext& self) { return self.var_name; })
+      .def("remote_sparse_ids",
+           [](const CommContext& self) { return self.remote_sparse_ids; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
       .def("table_id", [](const CommContext& self) { return self.table_id; })
