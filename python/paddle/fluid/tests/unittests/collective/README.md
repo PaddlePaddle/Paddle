@@ -15,4 +15,4 @@
 When commiting the codes, you should commit both the testslist.csv and the generated CMakeLists.txt. Once you pulled the repo, you don't need to run this command untill you modify the testslists.csv file.
     
 ### step 4. Run cmake and make and ctest
-    build paddle and run ctest for the new unit test
+    Build paddle and run ctest for the new unit test
