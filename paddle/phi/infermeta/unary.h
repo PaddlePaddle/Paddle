@@ -353,18 +353,18 @@ void ReduceInferMetaBase(const MetaTensor& x,
                          bool reduce_all,
                          MetaTensor* out);
 
-void ReduceMinInferMetaBase(const MetaTensor& x,
-                            const IntArray& axis,
-                            bool keep_dim,
-                            bool reduce_all,
-                            MetaTensor* out,
-                            MetaConfig config = MetaConfig());
+void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
+                                     const IntArray& axis,
+                                     bool keep_dim,
+                                     bool reduce_all,
+                                     MetaTensor* out,
+                                     MetaConfig config = MetaConfig());
 
-void ReduceMinInferMeta(const MetaTensor& x,
-                        const IntArray& axis,
-                        bool keep_dim,
-                        MetaTensor* out,
-                        MetaConfig config = MetaConfig());
+void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
+                                 const IntArray& axis,
+                                 bool keep_dim,
+                                 MetaTensor* out,
+                                 MetaConfig config = MetaConfig());
 
 void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,

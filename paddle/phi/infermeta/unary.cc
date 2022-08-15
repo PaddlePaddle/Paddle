@@ -2603,12 +2603,12 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-void ReduceMinInferMetaBase(const MetaTensor& x,
-                            const IntArray& axis,
-                            bool keep_dim,
-                            bool reduce_all,
-                            MetaTensor* out,
-                            MetaConfig config) {
+void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
+                                     const IntArray& axis,
+                                     bool keep_dim,
+                                     bool reduce_all,
+                                     MetaTensor* out,
+                                     MetaConfig config) {
   std::vector<int64_t> vec_axis = axis.GetData();
   if (config.is_runtime) {
     ReduceInferMetaBase(x, vec_axis, keep_dim, reduce_all, out);
@@ -2627,16 +2627,16 @@ void ReduceMinInferMetaBase(const MetaTensor& x,
   }
 }
 
-void ReduceMinInferMeta(const MetaTensor& x,
-                        const IntArray& axis,
-                        bool keep_dim,
-                        MetaTensor* out,
-                        MetaConfig config) {
+void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
+                                 const IntArray& axis,
+                                 bool keep_dim,
+                                 MetaTensor* out,
+                                 MetaConfig config) {
   bool reduce_all = false;
   if (axis.size() == 0) {
     reduce_all = true;
   }
-  ReduceMinInferMetaBase(x, axis, keep_dim, reduce_all, out, config);
+  ReduceIntArrayAxisInferMetaBase(x, axis, keep_dim, reduce_all, out, config);
 }
 
 void RepeatInterleaveInferMeta(const MetaTensor& x,

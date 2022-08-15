@@ -1710,7 +1710,7 @@
   args : (Tensor x, IntArray dims={}, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceMinInferMeta
+    func : ReduceIntArrayAxisInferMeta
   kernel :
     func : min
   backward : min_grad
