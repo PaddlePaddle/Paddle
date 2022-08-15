@@ -509,19 +509,7 @@ void UpdateControlOpSkipEagerDeletionVars(const Node &node,
   // OriginProgram OpDesc. Please refer to
   // FindAllConditionalBlockAndConditionalBlockGradOp in
   // "paddle/fluid/operators/controlflow/conditional_block_op_helper.cc"
-  if (graph_idx == 0) {
-    if (node.IsWrappedBy<details::OpHandleBase>()) {
-      details::OpHandleBase &op_hander =
-          const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
-      auto *compute_op =
-          dynamic_cast<details::ComputationOpHandle *>(&op_hander);
-      auto *op_base = compute_op->GetOp();
-      if (op_base->Attrs().count("skip_eager_deletion_vars")) {
-        node.Op()->SetAttr("skip_eager_deletion_vars",
-                           op_base->Attrs().at("skip_eager_deletion_vars"));
-      }
-    }
-  } else {
+  if (graph_idx != 0) {
     auto origin_program = graph.OriginProgram();
     auto &block = origin_program.Block(graph_idx);
     for (size_t j = 0; j < block.OpSize(); ++j) {
@@ -533,6 +521,18 @@ void UpdateControlOpSkipEagerDeletionVars(const Node &node,
           node.Op()->SetAttr("skip_eager_deletion_vars",
                              op->GetAttr("skip_eager_deletion_vars"));
         }
+      }
+    }
+  } else {
+    if (node.IsWrappedBy<details::OpHandleBase>()) {
+      details::OpHandleBase &op_hander =
+          const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
+      auto *compute_op =
+          dynamic_cast<details::ComputationOpHandle *>(&op_hander);
+      auto *op_base = compute_op->GetOp();
+      if (op_base->Attrs().count("skip_eager_deletion_vars")) {
+        node.Op()->SetAttr("skip_eager_deletion_vars",
+                           op_base->Attrs().at("skip_eager_deletion_vars"));
       }
     }
   }
@@ -585,8 +585,10 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         ops->emplace_back(depend_desc);
         VLOG(4) << "add depend op";
       }
-      if (n->Name() == "while" || n->Name() == "conditional_block" ||
-          n->Name() == "recurrent") {
+      if (n->Name() == "while" || n->Name() == "while_grad" ||
+          n->Name() == "conditional_block" ||
+          n->Name() == "conditional_block_grad" || n->Name() == "recurrent" ||
+          n->Name() == "recurrent_grad") {
         VLOG(1) << "Update control op attr: skip_eager_deletion_vars";
         UpdateControlOpSkipEagerDeletionVars(*n, graph, graph_idx, n->Name());
       }
@@ -682,8 +684,10 @@ void GraphToProgram(const Graph &graph,
   block->set_idx(kRootBlockIndex);
 
   if (FLAGS_convert_all_blocks) {
-    GraphToBlock(
-        *graph.GetSubGraph(kRootBlockIndex), block, sort_kind, kRootBlockIndex);
+    GraphToBlock(*graph.GetSubGraph(kRootBlockIndex),
+                 block,
+                 sort_kind,
+                 graph.GetSubGraph(kRootBlockIndex)->GetBlockId());
 
     VLOG(3) << "Graph to program need convert " << graph.SubGraphsSize()
             << " sub graph";
@@ -694,10 +698,13 @@ void GraphToProgram(const Graph &graph,
       block = program_pb.add_blocks();
       block->set_idx(idx);
       block->set_parent_idx(kRootBlockIndex);
-      GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind, idx);
+      GraphToBlock(*graph.GetSubGraph(idx),
+                   block,
+                   sort_kind,
+                   graph.GetSubGraph(idx)->GetBlockId());
     }
   } else {
-    GraphToBlock(graph, block, sort_kind, kRootBlockIndex);
+    GraphToBlock(graph, block, sort_kind, graph.GetBlockId());
   }
 
   program->CopyFrom(program_pb);
