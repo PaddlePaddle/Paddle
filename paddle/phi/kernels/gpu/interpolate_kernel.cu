@@ -35,11 +35,11 @@ __forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(
     T* lambda2,
     T src_x,
     const int in_img_x) {
-  src_x = (src_x > T(0)) ? src_x : T(0);
+  src_x = (src_x > static_cast<T>(0)) ? src_x : static_cast<T>(0);
   *in_img_idx = static_cast<int>(src_x);
   *x_id = (*in_img_idx < in_img_x - 1) ? 1 : 0;
   *lambda1 = static_cast<T>(static_cast<float>(src_x) - *in_img_idx);
-  *lambda2 = T(1.0) - *lambda1;
+  *lambda2 = static_cast<T>(1.0) - *lambda1;
 }
 
 template <typename T>
@@ -81,11 +81,11 @@ __global__ void KeLinearInterpFw(const T* in,
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;  // w_id
 
     T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    src_w = (src_w > T(0)) ? src_w : T(0);
+    src_w = (src_w > static_cast<T>(0)) ? src_w : static_cast<T>(0);
     T w1lambda = align_flag
                      ? static_cast<T>(static_cast<float>(src_w) - in_img_idx)
                      : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
-    T w2lambda = T(1.0) - w1lambda;
+    T w2lambda = static_cast<T>(1.0) - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
       const T* in_pos =
@@ -306,13 +306,13 @@ template <typename T>
 __device__ __forceinline__ static T Kecubic_interp(
     const T x0, const T x1, const T x2, const T x3, T t) {
   T coeffs[4];
-  T a = T(-0.75);
+  T a = static_cast<T>(-0.75);
   T x_1 = t;
-  T x_2 = T(1.0) - t;
-  coeffs[0] = funcs::CubicConvolution2<T>(x_1 + T(1.0), a);
+  T x_2 = static_cast<T>(1.0) - t;
+  coeffs[0] = funcs::CubicConvolution2<T>(x_1 + static_cast<T>(1.0), a);
   coeffs[1] = funcs::CubicConvolution1<T>(x_1, a);
   coeffs[2] = funcs::CubicConvolution1<T>(x_2, a);
-  coeffs[3] = funcs::CubicConvolution2<T>(x_2 + T(1.0), a);
+  coeffs[3] = funcs::CubicConvolution2<T>(x_2 + static_cast<T>(1.0), a);
   return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
 }
 
@@ -493,11 +493,11 @@ __global__ void KeTrilinearInterpFw(const T* in,
     in_img_idt = (in_img_idt > 0) ? in_img_idt : 0;
     int d_id = (in_img_idt < in_img_d - 1) ? 1 : 0;
     T src_d = static_cast<T>(ratio_d * (out_img_idt + 0.5) - 0.5);
-    src_d = (src_d > T(0)) ? src_d : T(0);
+    src_d = (src_d > static_cast<T>(0)) ? src_d : static_cast<T>(0);
     T d1lambda = align_flag
                      ? static_cast<T>(static_cast<float>(src_d) - in_img_idt)
                      : static_cast<T>(ratio_d * out_img_idt - in_img_idt);
-    T d2lambda = T(1.0) - d1lambda;
+    T d2lambda = static_cast<T>(1.0) - d1lambda;
 
     int in_img_idy = align_flag
                          ? static_cast<int>(ratio_h * (out_img_idy + 0.5) - 0.5)
@@ -505,11 +505,11 @@ __global__ void KeTrilinearInterpFw(const T* in,
     in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
     T src_h = static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
-    src_h = (src_h > T(0)) ? src_h : T(0);
+    src_h = (src_h > static_cast<T>(0)) ? src_h : static_cast<T>(0);
     T h1lambda = align_flag
                      ? static_cast<T>(static_cast<float>(src_h) - in_img_idy)
                      : static_cast<T>(ratio_h * out_img_idy - in_img_idy);
-    T h2lambda = T(1.0) - h1lambda;
+    T h2lambda = static_cast<T>(1.0) - h1lambda;
 
     int in_img_idx = align_flag
                          ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
@@ -517,11 +517,11 @@ __global__ void KeTrilinearInterpFw(const T* in,
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
     T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    src_w = (src_w > T(0)) ? src_w : T(0);
+    src_w = (src_w > static_cast<T>(0)) ? src_w : static_cast<T>(0);
     T w1lambda = align_flag
                      ? static_cast<T>(static_cast<float>(src_w) - in_img_idx)
                      : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
-    T w2lambda = T(1.0) - w1lambda;
+    T w2lambda = static_cast<T>(1.0) - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
       int in_pos1_idx = out_id_h * input_w + channel_id * in_img_size +
@@ -939,8 +939,9 @@ static void Interpolate2DCUDAFwd(
       thread_num = 512;
     }
 #endif
-    const T align_type_value =
-        (align_mode == 0 && !align_corners) ? T(0.5) : T(0);
+    const T align_type_value = (align_mode == 0 && !align_corners)
+                                   ? static_cast<T>(0.5)
+                                   : static_cast<T>(0);
     if (data_layout == DataLayout::kNCHW) {
       // get launch 3D config
       int nc = n * c;
@@ -1483,6 +1484,7 @@ PD_REGISTER_KERNEL(trilinear_interp_v2,
                    phi::TrilinearInterpKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
@@ -1493,6 +1495,7 @@ PD_REGISTER_KERNEL(linear_interp_v2,
                    phi::LinearInterpKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
@@ -1503,6 +1506,7 @@ PD_REGISTER_KERNEL(bicubic_interp_v2,
                    phi::BicubicInterpKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
