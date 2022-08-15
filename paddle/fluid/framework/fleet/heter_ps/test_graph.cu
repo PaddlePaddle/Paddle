@@ -50,15 +50,16 @@ TEST(TEST_FLEET, graph_comm) {
   }
   std::vector<int> neighbor_offset(gpu_count, 0), node_index(gpu_count, 0);
   for (int i = 0; i < graph_list.size(); i++) {
-    graph_list[i].node_list = new GpuPsGraphNode[graph_list[i].node_size];
+    graph_list[i].node_list = new uint64_t[graph_list[i].node_size];
+    graph_list[i].node_info_list = new GpuPsNodeInfo[graph_list[i].node_size];
     graph_list[i].neighbor_list = new int64_t[graph_list[i].neighbor_size];
   }
   for (int i = 0; i < node_count; i++) {
     ind = i % gpu_count;
-    graph_list[ind].node_list[node_index[ind]].node_id = i;
-    graph_list[ind].node_list[node_index[ind]].neighbor_offset =
+    graph_list[ind].node_list[node_index[ind]] = i;
+    graph_list[ind].node_info_list[node_index[ind]].neighbor_offset =
         neighbor_offset[ind];
-    graph_list[ind].node_list[node_index[ind]].neighbor_size =
+    graph_list[ind].node_info_list[node_index[ind]].neighbor_size =
         neighbors[i].size();
     for (auto x : neighbors[i]) {
       graph_list[ind].neighbor_list[neighbor_offset[ind]++] = x;

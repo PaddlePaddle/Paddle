@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -54,34 +56,6 @@ class UniformRandomInplaceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "UniformRandomInplaceOp");
-    OP_INOUT_CHECK(
-        ctx->HasOutput("Out"), "Output", "Out", "UniformRandomInplaceOp");
-    PADDLE_ENFORCE_LT(
-        ctx->Attrs().Get<float>("min"),
-        ctx->Attrs().Get<float>("max"),
-        platform::errors::InvalidArgument(
-            "The uniform_random's min must less then max. But received min = "
-            "%f great than or equal max = %f.",
-            ctx->Attrs().Get<float>("min"),
-            ctx->Attrs().Get<float>("max")));
-    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_num"),
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The uniform_random's diag_num must greater than or "
-                          "equal 0. But recevied diag_num (%d) < 0.",
-                          ctx->Attrs().Get<int>("diag_num")));
-    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"),
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The uniform_random's diag_step must greater than or "
-                          "equal 0. But recevied diag_step (%d) < 0.",
-                          ctx->Attrs().Get<int>("diag_step")));
-    auto xdim = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", xdim);
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -90,46 +64,15 @@ class UniformRandomInplaceOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T>
-class CPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
+class UniformRandomInplaceGradOp : public framework::OperatorWithKernel {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto out_var = ctx.OutputVar("Out");
-    auto *tensor = out_var->GetMutable<framework::LoDTensor>();
-    T *data = tensor->mutable_data<T>(ctx.GetPlace());
-    int64_t size = tensor->numel();
-    std::uniform_real_distribution<T> dist(
-        static_cast<T>(ctx.Attr<float>("min")),
-        static_cast<T>(ctx.Attr<float>("max")));
-    auto engine = paddle::framework::GetCPURandomEngine(
-        static_cast<unsigned int>(ctx.Attr<int>("seed")));
-    for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(*engine);
-    }
-  }
+  using framework::OperatorWithKernel::OperatorWithKernel;
 };
 
 class UniformRandomInplaceOpVarTypeInference
     : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {}
-};
-
-class UniformRandomInplaceGradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   "Out_Grad",
-                   "UniformRandomInplaceGradOp");
-    auto x_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto x_grad_name = framework::GradVarName("X");
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
-    }
-  }
 };
 
 template <typename T>
@@ -146,24 +89,20 @@ class UniformRandomInplaceGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename T>
-class CPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    if (dx) {
-      auto *data = dx->mutable_data<T>(ctx.GetPlace());
-      std::fill(data, data + dx->numel(), T(0));
-    }
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 DECLARE_INPLACE_OP_INFERER(UniformRandomInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(UniformRandomInplaceGradInplaceInferer,
                            {paddle::framework::GradVarName("Out"),
                             paddle::framework::GradVarName("X")});
+
+DECLARE_INFER_SHAPE_FUNCTOR(uniform_random_inplace,
+                            UniformRandomInplaceInferShapeFunctor,
+                            PD_INFER_META(phi::UniformRandomInplaceInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(
+    uniform_random_inplace_grad,
+    UniformRandomInplaceGradInferShapeFunctor,
+    PD_INFER_META(phi::UniformRandomInplaceGradInferMeta));
 
 REGISTER_OPERATOR(uniform_random_inplace,
                   paddle::operators::UniformRandomInplaceOp,
@@ -173,15 +112,9 @@ REGISTER_OPERATOR(uniform_random_inplace,
                   paddle::operators::UniformRandomInplaceGradOpMaker<
                       paddle::imperative::OpBase>,
                   paddle::operators::UniformRandomInplaceOpVarTypeInference,
-                  UniformRandomInplaceInferer);
+                  UniformRandomInplaceInferer,
+                  UniformRandomInplaceInferShapeFunctor);
 REGISTER_OPERATOR(uniform_random_inplace_grad,
                   paddle::operators::UniformRandomInplaceGradOp,
-                  UniformRandomInplaceGradInplaceInferer);
-REGISTER_OP_CPU_KERNEL(
-    uniform_random_inplace,
-    paddle::operators::CPUUniformRandomInplaceKernel<float>,
-    paddle::operators::CPUUniformRandomInplaceKernel<double>);
-REGISTER_OP_CPU_KERNEL(
-    uniform_random_inplace_grad,
-    paddle::operators::CPUUniformRandomInplaceGradKernel<float>,
-    paddle::operators::CPUUniformRandomInplaceGradKernel<double>);
+                  UniformRandomInplaceGradInplaceInferer,
+                  UniformRandomInplaceGradInferShapeFunctor);

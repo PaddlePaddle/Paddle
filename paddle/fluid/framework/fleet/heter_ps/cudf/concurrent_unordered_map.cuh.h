@@ -51,6 +51,8 @@
   }
 #endif
 
+DECLARE_bool(gpugraph_enable_hbm_table_collision_stat);
+
 // TODO: can we do this more efficiently?
 __inline__ __device__ int8_t atomicCAS(int8_t* address,
                                        int8_t compare,
@@ -330,8 +332,7 @@ template <typename Key,
           Key unused_key,
           typename Hasher = default_hash<Key>,
           typename Equality = equal_to<Key>,
-          typename Allocator = managed_allocator<thrust::pair<Key, Element>>,
-          bool count_collisions = false>
+          typename Allocator = managed_allocator<thrust::pair<Key, Element>>>
 class concurrent_unordered_map : public managed {
  public:
   using size_type = size_t;
@@ -363,9 +364,12 @@ class concurrent_unordered_map : public managed {
         m_allocator(a),
         m_hashtbl_size(n),
         m_hashtbl_capacity(n),
-        m_collisions(0),
-        m_unused_element(
-            unused_element) {  // allocate the raw data of hash table:
+        m_unused_element(unused_element),
+        m_enable_collision_stat(false),
+        m_insert_times(0),
+        m_insert_collisions(0),
+        m_query_times(0),
+        m_query_collisions(0) {  // allocate the raw data of hash table:
     // m_hashtbl_values,pre-alloc it on current GPU if UM.
     m_hashtbl_values = m_allocator.allocate(m_hashtbl_capacity);
     constexpr int block_size = 128;
@@ -390,9 +394,9 @@ class concurrent_unordered_map : public managed {
     // Initialize kernel, set all entry to unused <K,V>
     init_hashtbl<<<((m_hashtbl_size - 1) / block_size) + 1, block_size>>>(
         m_hashtbl_values, m_hashtbl_size, unused_key, m_unused_element);
-    // CUDA_RT_CALL( cudaGetLastError() );
     CUDA_RT_CALL(cudaStreamSynchronize(0));
     CUDA_RT_CALL(cudaGetLastError());
+    m_enable_collision_stat = FLAGS_gpugraph_enable_hbm_table_collision_stat;
   }
 
   ~concurrent_unordered_map() {
@@ -572,11 +576,16 @@ class concurrent_unordered_map : public managed {
       // TODO: How to handle data types less than 32 bits?
       if (keys_equal(unused_key, old_key) || keys_equal(insert_key, old_key)) {
         update_existing_value(existing_value, x, op);
-
         insert_success = true;
+        if (m_enable_collision_stat) {
+          atomicAdd(&m_insert_times, 1);
+        }
         break;
       }
 
+      if (m_enable_collision_stat) {
+        atomicAdd(&m_insert_collisions, 1);
+      }
       current_index = (current_index + 1) % hashtbl_size;
       current_hash_bucket = &(hashtbl_values[current_index]);
     }
@@ -614,9 +623,9 @@ std::numeric_limits<mapped_type>::is_integer && sizeof(unsigned long long int)
 reinterpret_cast<unsigned long long
 int*>(tmp_it), unused, value ); if ( old_val == unused ) { it = tmp_it;
               }
-              else if ( count_collisions )
+              else if ( m_enable_collision_stat )
               {
-                  atomicAdd( &m_collisions, 1 );
+                  atomicAdd( &m_insert_collisions, 1 );
               }
           } else {
               const key_type old_key = atomicCAS( &(tmp_it->first), unused_key,
@@ -625,9 +634,9 @@ x.first );
                   (m_hashtbl_values+hash_tbl_idx)->second = x.second;
                   it = tmp_it;
               }
-              else if ( count_collisions )
+              else if ( m_enable_collision_stat )
               {
-                  atomicAdd( &m_collisions, 1 );
+                  atomicAdd( &m_insert_collisions, 1 );
               }
           }
 #else
@@ -648,8 +657,7 @@ x.second );
   }
   */
 
-  __forceinline__ __host__ __device__ const_iterator
-  find(const key_type& k) const {
+  __forceinline__ __device__ const_iterator find(const key_type& k) {
     size_type key_hash = m_hf(k);
     size_type hash_tbl_idx = key_hash % m_hashtbl_size;
 
@@ -667,8 +675,15 @@ x.second );
         begin_ptr = m_hashtbl_values + m_hashtbl_size;
         break;
       }
+      if (m_enable_collision_stat) {
+        atomicAdd(&m_query_collisions, 1);
+      }
       hash_tbl_idx = (hash_tbl_idx + 1) % m_hashtbl_size;
       ++counter;
+    }
+
+    if (m_enable_collision_stat) {
+      atomicAdd(&m_query_times, 1);
     }
 
     return const_iterator(
@@ -770,7 +785,7 @@ x.second );
 
   int assign_async(const concurrent_unordered_map& other,
                    cudaStream_t stream = 0) {
-    m_collisions = other.m_collisions;
+    m_insert_collisions = other.m_insert_collisions;
     if (other.m_hashtbl_size <= m_hashtbl_capacity) {
       m_hashtbl_size = other.m_hashtbl_size;
     } else {
@@ -795,10 +810,15 @@ x.second );
                    0,
                    stream>>>(
         m_hashtbl_values, m_hashtbl_size, unused_key, m_unused_element);
-    if (count_collisions) m_collisions = 0;
+    if (m_enable_collision_stat) {
+      m_insert_times = 0;
+      m_insert_collisions = 0;
+      m_query_times = 0;
+      m_query_collisions = 0;
+    }
   }
 
-  unsigned long long get_num_collisions() const { return m_collisions; }
+  unsigned long long get_num_collisions() const { return m_insert_collisions; }
 
   void print() {
     for (size_type i = 0; i < 5; ++i) {
@@ -850,6 +870,21 @@ x.second );
     return it;
   }
 
+  __host__ void print_collision(int id) {
+    if (m_enable_collision_stat) {
+      printf(
+          "collision stat for hbm table %d, insert(%lu:%lu:%.2f), "
+          "query(%lu:%lu:%.2f)\n",
+          id,
+          m_insert_times,
+          m_insert_collisions,
+          m_insert_collisions / (double)m_insert_times,
+          m_query_times,
+          m_query_collisions,
+          m_query_collisions / (double)m_query_times);
+    }
+  }
+
  private:
   const hasher m_hf;
   const key_equal m_equal;
@@ -862,7 +897,11 @@ x.second );
   size_type m_hashtbl_capacity;
   value_type* m_hashtbl_values;
 
-  unsigned long long m_collisions;
+  bool m_enable_collision_stat;
+  uint64_t m_insert_times;
+  uint64_t m_insert_collisions;
+  uint64_t m_query_times;
+  uint64_t m_query_collisions;
 };
 
 #endif  // CONCURRENT_UNORDERED_MAP_CUH

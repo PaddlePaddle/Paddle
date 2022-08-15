@@ -206,7 +206,7 @@ class TensorRTEngine {
 
   TensorRTEngine(
       int max_batch,
-      int max_workspace,
+      int64_t max_workspace,
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr,
       int device_id = 0,
@@ -278,6 +278,7 @@ class TensorRTEngine {
   void DeclareOutput(const std::string& name);
   void ClearTensorMap() { itensor_map_.clear(); }
 
+  void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
@@ -671,7 +672,7 @@ class TensorRTEngine {
   // the runtime batch size
   static int runtime_batch_;
   // the max memory size the engine uses
-  int max_workspace_;
+  int64_t max_workspace_;
 
   AnalysisConfig::Precision precision_;
   TRTInt8Calibrator* calibrator_;
@@ -766,7 +767,7 @@ class TRTEngineManager {
   TensorRTEngine* Create(
       std::string name,
       int max_batch,
-      int max_workspace,
+      int64_t max_workspace,
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr,
       int device_id = 0,

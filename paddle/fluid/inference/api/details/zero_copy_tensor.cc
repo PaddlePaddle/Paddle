@@ -88,6 +88,11 @@ void Tensor::ReshapeStrings(const size_t &shape) {
 
 template <typename T>
 T *Tensor::mutable_data(PlaceType place) {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  if (is_ort_tensor_) {
+    return ORTGetMutableData<T>();
+  }
+#endif
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   PADDLE_ENFORCE_GT(
       tensor->numel(),
@@ -718,6 +723,17 @@ void Tensor::SetOrtMark(bool is_ort_tensor) { is_ort_tensor_ = is_ort_tensor; }
 
 void Tensor::SetOrtBinding(const std::shared_ptr<Ort::IoBinding> binding) {
   binding_ = binding;
+}
+
+template <typename T>
+T *Tensor::ORTGetMutableData() {
+  auto binding = binding_.lock();
+  PADDLE_ENFORCE_NOT_NULL(binding,
+                          paddle::platform::errors::PreconditionNotMet(
+                              "output tensor [%s] no binding ptr", name_));
+  std::vector<Ort::Value> outputs = binding->GetOutputValues();
+  Ort::Value &value = outputs[idx_];
+  return value.GetTensorMutableData<T>();
 }
 
 template <typename T>

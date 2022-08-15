@@ -47,14 +47,14 @@ struct RangeInitFunctor {
 };
 
 template <typename T>
-static void SortDescending(const platform::CUDADeviceContext &ctx,
+static void SortDescending(const phi::GPUContext &ctx,
                            const Tensor &value,
                            Tensor *value_out,
                            Tensor *index_out) {
   int num = static_cast<int>(value.numel());
   Tensor index_in_t;
   int *idx_in = index_in_t.mutable_data<int>({num}, ctx.GetPlace());
-  platform::ForRange<platform::CUDADeviceContext> for_range(ctx, num);
+  platform::ForRange<phi::GPUContext> for_range(ctx, num);
   for_range(RangeInitFunctor{0, 1, idx_in});
 
   int *idx_out = index_out->mutable_data<int>({num}, ctx.GetPlace());
@@ -287,7 +287,7 @@ static __global__ void NMSKernel(const int n_boxes,
 }
 
 template <typename T>
-static void NMS(const platform::CUDADeviceContext &ctx,
+static void NMS(const phi::GPUContext &ctx,
                 const Tensor &proposals,
                 const Tensor &sorted_indices,
                 const T nms_threshold,

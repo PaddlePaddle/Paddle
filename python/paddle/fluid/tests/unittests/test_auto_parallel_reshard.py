@@ -28,7 +28,7 @@ from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.process_group import _g_process_group_map
+from paddle.distributed.auto_parallel.process_group import _g_process_group_map, ProcessGroup
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
@@ -307,6 +307,7 @@ class TestMLPReshard(unittest.TestCase):
             train_program, startup_program, dist_context, rank_id)
         for key in list(_g_process_group_map.keys()):
             del _g_process_group_map[key]
+        _g_process_group_map[0] = ProcessGroup(0, [])
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
@@ -326,10 +327,10 @@ class TestMLPReshard(unittest.TestCase):
             train_program, startup_program, dist_context, rank_id, True)
         for key in list(_g_process_group_map.keys()):
             del _g_process_group_map[key]
+        _g_process_group_map[0] = ProcessGroup(0, [])
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
-
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
         self.assertTrue(check_initialization(dist_startup_prog, rank_id))

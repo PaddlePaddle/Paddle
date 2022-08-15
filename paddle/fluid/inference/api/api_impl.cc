@@ -248,8 +248,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
-      auto *dev_ctx =
-          static_cast<const platform::CUDADeviceContext *>(pool.Get(place_));
+      auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place_));
       auto dst_gpu_place = place_;
       memory::Copy(dst_gpu_place,
                    static_cast<void *>(input_ptr),

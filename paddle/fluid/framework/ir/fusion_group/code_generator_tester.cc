@@ -229,7 +229,7 @@ void TestMainImpl(std::string func_name,
   device_code.SetWorkloadPerThread(1);
   device_code.Launch(n, &args);
 
-  auto* dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext*>(
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       paddle::platform::DeviceContextPool::Instance().Get(place));
   dev_ctx->Wait();
 

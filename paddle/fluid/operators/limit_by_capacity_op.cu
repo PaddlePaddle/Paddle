@@ -61,8 +61,7 @@ class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
 
     auto n_expert = expert_count->numel() / n_worker;
     const auto place = context.GetPlace();
-    const auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    const auto& dev_ctx = context.template device_context<phi::GPUContext>();
 
     dim3 grid_dim(256);
     dim3 block_dim(1024);

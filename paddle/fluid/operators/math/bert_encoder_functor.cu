@@ -532,7 +532,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(half2 *qk_buf_,
 }
 
 template <typename T>
-inline void MatMulWithHeadQK(const platform::CUDADeviceContext &context,
+inline void MatMulWithHeadQK(const phi::GPUContext &context,
                              int head_num,
                              int seq_len,
                              int size_per_head,
@@ -549,8 +549,7 @@ inline void MatMulWithHeadQK(const platform::CUDADeviceContext &context,
   CBLAS_TRANSPOSE transB = !k_trans ? CblasNoTrans : CblasTrans;
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
-  auto blas =
-      phi::funcs::GetBlas<platform::CUDADeviceContext, run_type>(context);
+  auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(context);
   auto stream = context.stream();
 
   blas.BatchedGEMM(transA,
@@ -625,7 +624,7 @@ inline void MatMulWithHeadQK(const platform::CUDADeviceContext &context,
 }
 
 template <typename T>
-inline void MatMulWithHeadQKV(const platform::CUDADeviceContext &context,
+inline void MatMulWithHeadQKV(const phi::GPUContext &context,
                               int head_num,
                               int seq_len,
                               int size_per_head,
@@ -641,8 +640,7 @@ inline void MatMulWithHeadQKV(const platform::CUDADeviceContext &context,
   int k = head_num * size_per_head;
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
-  auto blas =
-      phi::funcs::GetBlas<platform::CUDADeviceContext, run_type>(context);
+  auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(context);
   auto stream = context.stream();
   CBLAS_TRANSPOSE transA = !qk_trans ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !v_trans ? CblasNoTrans : CblasTrans;
@@ -663,17 +661,16 @@ inline void MatMulWithHeadQKV(const platform::CUDADeviceContext &context,
 }
 
 template <typename T>
-void MultiHeadGPUComputeFunctor<T>::operator()(
-    const platform::CUDADeviceContext &dev_ctx,
-    int batch,
-    int seq_len,
-    int head_num,
-    int head_size,
-    T *qkptr,
-    const T *bias_qk_ptr,
-    T *tptr,
-    T alpha,
-    T beta) {
+void MultiHeadGPUComputeFunctor<T>::operator()(const phi::GPUContext &dev_ctx,
+                                               int batch,
+                                               int seq_len,
+                                               int head_num,
+                                               int head_size,
+                                               T *qkptr,
+                                               const T *bias_qk_ptr,
+                                               T *tptr,
+                                               T alpha,
+                                               T beta) {
   auto stream = dev_ctx.stream();
   const int tsize = batch * head_num * seq_len * head_size;
 

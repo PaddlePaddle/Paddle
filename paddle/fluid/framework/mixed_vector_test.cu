@@ -38,7 +38,7 @@ static __global__ void multiply_10(int* ptr) {
 }
 
 gpuStream_t GetCUDAStream(paddle::platform::CUDAPlace place) {
-  return reinterpret_cast<const paddle::platform::CUDADeviceContext*>(
+  return reinterpret_cast<const phi::GPUContext*>(
              paddle::platform::DeviceContextPool::Instance().Get(place))
       ->stream();
 }

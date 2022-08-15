@@ -30,7 +30,7 @@ template <typename T>
 class AttnMatMul {
  public:
   // (m, n, k) = bsz_seq, output_size, input_size
-  AttnMatMul(const platform::CUDADeviceContext& dev_ctx,
+  AttnMatMul(const phi::GPUContext& dev_ctx,
              bool transA,
              bool transB,
              int bsz_seq,
@@ -60,7 +60,7 @@ class AttnMatMul {
     T beta = static_cast<T>(0.0);
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     blas.GEMM(transA,
               transB,
               bsz_seq_,
@@ -91,7 +91,7 @@ class AttnMatMul {
     T beta_dA = use_addto ? static_cast<T>(1.0) : static_cast<T>(0.0);
     T beta_dB = static_cast<T>(0.0);
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     if (!transA_) {
       // forward: gemm-nt
       if (transB_) {
@@ -223,7 +223,7 @@ class AttnMatMul {
   }
 
  private:
-  const platform::CUDADeviceContext& dev_ctx_;
+  const phi::GPUContext& dev_ctx_;
 
   bool transA_;
   bool transB_;

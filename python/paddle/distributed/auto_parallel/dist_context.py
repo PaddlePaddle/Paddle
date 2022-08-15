@@ -831,8 +831,10 @@ class DistributedContext:
                 if (dist_tensor
                         is not None) and (not dist_tensor.validate_dist_attr()):
                     assert False, "Tensor {} (id: {}, original_id: {}) has a wrong distributed attributes {}.".format(
-                        dist_tensor.serial_tensor.name, dist_tensor.desc.id(),
-                        dist_tensor.desc.original_id(), dist_tensor.dist_attr)
+                        dist_tensor.serial_tensor.name,
+                        dist_tensor.serial_tensor.desc.id(),
+                        dist_tensor.serial_tensor.desc.original_id(),
+                        dist_tensor.dist_attr)
             for op in block.ops:
                 dist_op = self.get_dist_op_for_program(op)
                 assert dist_op is not None, \

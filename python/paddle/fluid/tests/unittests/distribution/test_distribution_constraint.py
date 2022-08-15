@@ -21,6 +21,8 @@ from paddle.distribution import constraint
 import config
 import parameterize as param
 
+np.random.seed(2022)
+
 
 @param.param_cls((param.TEST_CASE_NAME, 'value'),
                  [('NotImplement', np.random.rand(2, 3))])

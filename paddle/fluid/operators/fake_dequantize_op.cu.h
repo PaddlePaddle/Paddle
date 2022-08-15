@@ -31,8 +31,8 @@ __global__ void KeDequantize(
 }
 
 template <typename T>
-struct DequantizeFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& dev_ctx,
+struct DequantizeFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& dev_ctx,
                   const framework::Tensor* in,
                   const framework::Tensor* scale,
                   T max_range,
@@ -102,8 +102,8 @@ __global__ void DequantizeTwoScale(const T* in,
 }
 
 template <typename T>
-struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& dev_ctx,
+struct ChannelDequantizeFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& dev_ctx,
                   const framework::Tensor* in,
                   const framework::Tensor** scales,
                   const int scale_num,
@@ -163,10 +163,10 @@ struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CUDADeviceContext, float>;
-template struct DequantizeFunctor<platform::CUDADeviceContext, double>;
-template struct ChannelDequantizeFunctor<platform::CUDADeviceContext, float>;
-template struct ChannelDequantizeFunctor<platform::CUDADeviceContext, double>;
+template struct DequantizeFunctor<phi::GPUContext, float>;
+template struct DequantizeFunctor<phi::GPUContext, double>;
+template struct ChannelDequantizeFunctor<phi::GPUContext, float>;
+template struct ChannelDequantizeFunctor<phi::GPUContext, double>;
 
 }  // namespace operators
 }  // namespace paddle

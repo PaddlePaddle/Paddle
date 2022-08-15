@@ -93,7 +93,7 @@ class EmbEltwiseLayerNormFunctor {
 template <typename T>
 class MultiHeadGPUComputeFunctor {
  public:
-  void operator()(const platform::CUDADeviceContext &dev_ctx,
+  void operator()(const phi::GPUContext &dev_ctx,
                   int batch,
                   int seq_len,
                   int head_num,

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 namespace phi {
@@ -126,6 +127,7 @@ void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
                   const MetaTensor& stat_neg,
+                  const MetaTensor& ins_tag_weight,
                   const std::string& curve,
                   int num_thresholds,
                   int slide_steps,
@@ -212,6 +214,29 @@ void DeformableConvInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
+void EditDistanceInferMeta(const MetaTensor& hyps,
+                           const MetaTensor& refs,
+                           const MetaTensor& hypslength,
+                           const MetaTensor& refslength,
+                           bool normalized,
+                           MetaTensor* sequencenum,
+                           MetaTensor* out);
+
+void GenerateProposalsV2InferMeta(const MetaTensor& scores,
+                                  const MetaTensor& bbox_deltas,
+                                  const MetaTensor& im_shape,
+                                  const MetaTensor& anchors,
+                                  const MetaTensor& variances,
+                                  int pre_nms_top_n,
+                                  int post_nms_top_n,
+                                  float nms_thresh,
+                                  float min_size,
+                                  float eta,
+                                  bool pixel_offset,
+                                  MetaTensor* rpn_rois,
+                                  MetaTensor* rpn_roi_probs,
+                                  MetaTensor* rpn_rois_num);
+
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,
@@ -244,6 +269,27 @@ void InterpolateInferMeta(
     int align_mode,
     MetaTensor* output,
     MetaConfig config = MetaConfig());
+
+void LambInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& moment1,
+                   const MetaTensor& moment2,
+                   const MetaTensor& beta1_pow,
+                   const MetaTensor& beta2_pow,
+                   const MetaTensor& master_param,
+                   const MetaTensor& skip_update,
+                   float weight_decay,
+                   float beta1,
+                   float beta2,
+                   float epsilon,
+                   bool multi_precision,
+                   MetaTensor* param_out,
+                   MetaTensor* moment1_out,
+                   MetaTensor* moment2_out,
+                   MetaTensor* beta1_pow_out,
+                   MetaTensor* beta2_pow_out,
+                   MetaTensor* master_param_outs);
 
 void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
@@ -419,5 +465,15 @@ void Yolov3LossInferMeta(const MetaTensor& x,
                          MetaTensor* loss,
                          MetaTensor* objectness_mask,
                          MetaTensor* gt_match_mask);
+
+void GraphSendUERecvInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const MetaTensor& src_index,
+                              const MetaTensor& dst_index,
+                              const std::string& message_op,
+                              const std::string& reduce_op,
+                              const IntArray& out_size,
+                              MetaTensor* out,
+                              MetaTensor* dst_count);
 
 }  // namespace phi

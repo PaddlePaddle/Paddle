@@ -177,22 +177,75 @@ __global__ void TakeAlongAxis(const T* src,
   }
 }
 
+__global__ void pos_id_prune_kernel(const int32_t* src,
+                                    int32_t* dst,
+                                    int pos_nums,
+                                    float scale) {
+  dst[0] = 0;
+  for (int i = 1; i < pos_nums; i++) {
+    dst[i] =
+        dst[i - 1] + max(static_cast<int>((src[i] - src[i - 1]) * scale), 2);
+  }
+}
+
 nvinfer1::DimsExprs FusedTokenPrunePluginDynamic::getOutputDimensions(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   auto x_dims = inputs[1], new_mask_dims = inputs[3];
-  if (output_index == 0) {
-    nvinfer1::DimsExprs ret = x_dims;
-    ret.d[1] = new_mask_dims.d[2];
-    return ret;
+  if (flag_varseqlen_) {
+    if (output_index == 0) {
+      nvinfer1::DimsExprs ret = x_dims;
+      ret.d[1] = new_mask_dims.d[2];
+      return ret;
+    } else if (output_index == 1) {
+      nvinfer1::DimsExprs ret;
+      ret.nbDims = 2;
+      ret.d[0] = new_mask_dims.d[0];
+      ret.d[1] = new_mask_dims.d[2];
+      return ret;
+    } else if (output_index == 2) {
+      // word id
+      nvinfer1::DimsExprs ret;
+      ret.nbDims = 1;
+      // max sum of seqlen: pre_seqlen * new_mask[2] / mask[1] + 2 * batchs
+      const auto* two = expr_builder.constant(2);
+      ret.d[0] = expr_builder.operation(
+          nvinfer1::DimensionOperation::kSUM,
+          *expr_builder.operation(
+              nvinfer1::DimensionOperation::kFLOOR_DIV,
+              *expr_builder.operation(nvinfer1::DimensionOperation::kPROD,
+                                      *inputs[4].d[0],
+                                      *new_mask_dims.d[2]),
+              *inputs[6].d[1]),
+          *expr_builder.operation(
+              nvinfer1::DimensionOperation::kPROD, *two, *inputs[6].d[0]));
+      return ret;
+    } else if (output_index == 3) {
+      // pos id
+      nvinfer1::DimsExprs ret = inputs[5];
+      return ret;
+    } else if (output_index == 4) {
+      // mask id
+      nvinfer1::DimsExprs ret;
+      ret.nbDims = 2;
+      ret.d[0] = inputs[6].d[0];
+      ret.d[1] = new_mask_dims.d[2];
+      return ret;
+    }
   } else {
-    nvinfer1::DimsExprs ret;
-    ret.nbDims = 2;
-    ret.d[0] = new_mask_dims.d[0];
-    ret.d[1] = new_mask_dims.d[2];
-    return ret;
+    if (output_index == 0) {
+      nvinfer1::DimsExprs ret = x_dims;
+      ret.d[1] = new_mask_dims.d[2];
+      return ret;
+    } else {
+      nvinfer1::DimsExprs ret;
+      ret.nbDims = 2;
+      ret.d[0] = new_mask_dims.d[0];
+      ret.d[1] = new_mask_dims.d[2];
+      return ret;
+    }
   }
 }
 
@@ -215,26 +268,53 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
                                         nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
-  if (pos == 0) {
-    if (with_fp16_) {
+  if (flag_varseqlen_) {
+    if (pos == 0) {
+      if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-      return (in.type == nvinfer1::DataType::kFLOAT ||
-              in.type == nvinfer1::DataType::kHALF) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
+        return (in.type == nvinfer1::DataType::kFLOAT ||
+                in.type == nvinfer1::DataType::kHALF) &&
+               (in.format == nvinfer1::TensorFormat::kLINEAR);
 #else
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
+        return (in.type == nvinfer1::DataType::kFLOAT) &&
+               (in.format == nvinfer1::TensorFormat::kLINEAR);
 #endif
+      } else {
+        return (in.type == nvinfer1::DataType::kFLOAT) &&
+               (in.format == nvinfer1::TensorFormat::kLINEAR);
+      }
+    } else if (pos <= 3 || pos == 7) {
+      const nvinfer1::PluginTensorDesc& prev = in_out[0];
+      return in.type == prev.type && in.format == prev.format;
+    } else if (pos == 6 || pos == 11) {  // mask_id, mask_id_out
+      return in.type == nvinfer1::DataType::kFLOAT &&
+             in.format == nvinfer1::TensorFormat::kLINEAR;
     } else {
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
+      return in.type == nvinfer1::DataType::kINT32 &&
+             in.format == nvinfer1::TensorFormat::kLINEAR;
     }
-  } else if (pos <= 4) {
-    const nvinfer1::PluginTensorDesc& prev = in_out[pos - 1];
-    return in.type == prev.type && in.format == prev.format;
   } else {
-    const nvinfer1::PluginTensorDesc& prev = in_out[pos - 1];
-    return in.type == nvinfer1::DataType::kINT32 && in.format == prev.format;
+    if (pos == 0) {
+      if (with_fp16_) {
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+        return (in.type == nvinfer1::DataType::kFLOAT ||
+                in.type == nvinfer1::DataType::kHALF) &&
+               (in.format == nvinfer1::TensorFormat::kLINEAR);
+#else
+        return (in.type == nvinfer1::DataType::kFLOAT) &&
+               (in.format == nvinfer1::TensorFormat::kLINEAR);
+#endif
+      } else {
+        return (in.type == nvinfer1::DataType::kFLOAT) &&
+               (in.format == nvinfer1::TensorFormat::kLINEAR);
+      }
+    } else if (pos <= 4) {
+      const nvinfer1::PluginTensorDesc& prev = in_out[0];
+      return in.type == prev.type && in.format == prev.format;
+    } else {
+      return in.type == nvinfer1::DataType::kINT32 &&
+             in.format == nvinfer1::TensorFormat::kLINEAR;
+    }
   }
 }
 
@@ -242,10 +322,22 @@ nvinfer1::DataType FusedTokenPrunePluginDynamic::getOutputDataType(
     int index,
     const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  if (index == 0) {
-    return input_types[1];
-  } else if (index == 1) {
-    return nvinfer1::DataType::kINT32;
+  if (flag_varseqlen_) {
+    if (index == 0) {
+      return input_types[1];
+    } else if (index == 4) {
+      return nvinfer1::DataType::kFLOAT;
+    } else {
+      // index = 1,2,3
+      return nvinfer1::DataType::kINT32;
+    }
+  } else {
+    if (index == 0) {
+      return input_types[1];
+    } else {
+      // index = 1
+      return nvinfer1::DataType::kINT32;
+    }
   }
 }
 
@@ -273,15 +365,16 @@ size_t FusedTokenPrunePluginDynamic::getWorkspaceSize(
 }
 
 template <typename T>
-int FusedTokenPrunePluginDynamic::enqueueImpl(
-    const nvinfer1::PluginTensorDesc* input_desc,
-    const nvinfer1::PluginTensorDesc* output_desc,
-    const void* const* inputs,
-    void* const* outputs,
-    void* workspace_ptr,
-    cudaStream_t stream,
-    int device_id,
-    T max_value) {
+inline void enqueueImpl(const nvinfer1::PluginTensorDesc* input_desc,
+                        const nvinfer1::PluginTensorDesc* output_desc,
+                        const void* const* inputs,
+                        void* const* outputs,
+                        void* workspace_ptr,
+                        cudaStream_t stream,
+                        int device_id,
+                        T max_value,
+                        bool keep_first_token_,
+                        bool keep_order_) {
   // Dims
   auto attn_dims = input_desc[0].dims;
   auto x_dims = input_desc[1].dims;
@@ -462,8 +555,14 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
                                      slimmed_x_len,
                                      c);
   }
+}
 
-  return cudaGetLastError() != cudaSuccess;
+inline void pos_id_prune(const int32_t* input,
+                         int32_t* output,
+                         int pos_nums,
+                         float scale,
+                         cudaStream_t stream) {
+  pos_id_prune_kernel<<<1, 1, 0, stream>>>(input, output, pos_nums, scale);
 }
 
 int FusedTokenPrunePluginDynamic::enqueue(
@@ -485,14 +584,16 @@ int FusedTokenPrunePluginDynamic::enqueue(
 
     float max = std::numeric_limits<float>::max();
 
-    return enqueueImpl<float>(input_desc,
-                              output_desc,
-                              inputs,
-                              outputs,
-                              workspace,
-                              stream,
-                              device_id,
-                              max);
+    enqueueImpl<float>(input_desc,
+                       output_desc,
+                       inputs,
+                       outputs,
+                       workspace,
+                       stream,
+                       device_id,
+                       max,
+                       keep_first_token_,
+                       keep_order_);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
@@ -500,14 +601,16 @@ int FusedTokenPrunePluginDynamic::enqueue(
 
     half max = 65504.0;
 
-    return enqueueImpl<half>(input_desc,
-                             output_desc,
-                             inputs,
-                             outputs,
-                             workspace,
-                             stream,
-                             device_id,
-                             max);
+    enqueueImpl<half>(input_desc,
+                      output_desc,
+                      inputs,
+                      outputs,
+                      workspace,
+                      stream,
+                      device_id,
+                      max,
+                      keep_first_token_,
+                      keep_order_);
 
 #else
     PADDLE_THROW(platform::errors::Fatal(
@@ -522,6 +625,17 @@ int FusedTokenPrunePluginDynamic::enqueue(
         platform::errors::Fatal("The FusedTokenPrune TRT Plugin's input type "
                                 "should be float or half."));
   }
+  if (flag_varseqlen_) {
+    float scale =
+        static_cast<float>(input_desc[3].dims.d[2]) / input_desc[6].dims.d[1];
+    // outputs[2]=inputs[4]; // word_id
+    const int32_t* inputs5 = static_cast<const int32_t*>(inputs[5]);
+    int32_t* outputs3 = static_cast<int32_t*>(outputs[3]);
+    pos_id_prune(
+        inputs5, outputs3, input_desc[5].dims.d[0], scale, stream);  // pos_id
+    // outputs[4]=inputs[6]; // new_mask
+  }
+  return cudaGetLastError() != cudaSuccess;
 }
 
 #endif

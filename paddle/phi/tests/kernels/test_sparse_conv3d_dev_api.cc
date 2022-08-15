@@ -160,7 +160,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
 
 // test gpu
 #if defined(PADDLE_WITH_CUDA)
-  phi::GPUContext dev_ctx_gpu;
+  phi::GPUContext dev_ctx_gpu{phi::GPUPlace()};
   dev_ctx_gpu.PartialInitWithoutAllocator();
   dev_ctx_gpu.SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()

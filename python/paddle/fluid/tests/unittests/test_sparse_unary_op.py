@@ -160,7 +160,7 @@ class TestSparseUnary(unittest.TestCase):
 
     def test_sparse_cast(self):
         self.compare_with_dense_two_attr(paddle.cast,
-                                         paddle.incubate.sparse.cast, 'int16',
+                                         paddle.incubate.sparse.cast, 'int32',
                                          'float32')
         self.compare_with_dense_two_attr(paddle.cast,
                                          paddle.incubate.sparse.cast, 'int32',

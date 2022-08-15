@@ -120,11 +120,11 @@ class NCCLGroupGuard {
 };
 
 struct NCCLContext {
-  std::unique_ptr<CUDADeviceContext> ctx_;
+  std::unique_ptr<phi::GPUContext> ctx_;
   ncclComm_t comm_;
 
   explicit NCCLContext(int dev_id) : comm_{nullptr} {
-    ctx_.reset(new CUDADeviceContext(CUDAPlace(dev_id)));
+    ctx_.reset(new phi::GPUContext(CUDAPlace(dev_id)));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(CUDAPlace(dev_id), ctx_->stream())
                            .get());
@@ -211,11 +211,9 @@ struct NCCLContextMap {
   NCCLContextMap(const NCCLContextMap &other) = delete;
   NCCLContextMap &operator=(const NCCLContextMap &other) = delete;
 
-  CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
+  phi::GPUContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
-  CUDADeviceContext *DevCtx(platform::Place p) const {
-    return DevCtx(p.device);
-  }
+  phi::GPUContext *DevCtx(platform::Place p) const { return DevCtx(p.device); }
 
   const NCCLContext &at(platform::Place p) const { return this->at(p.device); }
 
