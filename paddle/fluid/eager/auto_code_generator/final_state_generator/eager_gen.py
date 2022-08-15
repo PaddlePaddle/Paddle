@@ -209,14 +209,6 @@ FORWARD_FUNCTION_TEMPLATE = \
 }}
 """
 
-FORWARD_ONLY_COMPUTE_REQUIRED_GRAD_TEMPLATE = \
-"""
-bool trace_backward = egr::Controller::Instance().HasGrad();
-bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
-if (require_any_grad) {{
-    egr::EagerUtils::PassStopGradient({});
-}}
-"""
 
 FORWARD_ONLY_FUNCTION_TEMPLATE = \
 """
@@ -225,18 +217,12 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = \
 {}
   // AMP Logic
 {}
-  // Get Input AutoGradMeta
-{}
+
   // Forward API Call
   VLOG(3) << \"Final State Running: \" << \"{}\";
 {}
   // Get Outputs
 {}
-  // Get Output AutoGradMeta
-{}
-
-  // ComputeRequireGrad
-  {}
 
   // Returns
   return {};
@@ -1267,67 +1253,30 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 amp_autocast_list_str, amp_call_str)
 
         # Generate forward_definition_str and forward_declaration_str
-        if (len(amp_tensors_vector_list) > 0) and (self.forward_api_name
-                                                   not in no_amp_list):
-            if not self.is_forward_only:
-                self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
-                    returns_type_str, forward_function_name,
-                    inputs_args_definition_str, dygraph_event_str,
-                    amp_logic_str, inputs_autograd_meta_str,
-                    forward_function_name, forward_call_str, check_nan_inf_str,
-                    get_outputs_str, outputs_autograd_meta_str,
-                    compute_require_grad_args_str, check_inplace_str,
-                    bump_inplace_version_str, node_creation_str, returns_str)
-            else:
-                pass_stop_gradient_args_str = self.GetPassStopGradientArgsList(
-                    self.forward_outputs_position_map)
-
-                compute_required_grad_and_pass_stop_gradient_strs = ""
-                if is_has_input_autogradmeta:
-                    compute_required_grad_and_pass_stop_gradient_strs = FORWARD_ONLY_COMPUTE_REQUIRED_GRAD_TEMPLATE.format(
-                        compute_require_grad_args_str,
-                        pass_stop_gradient_args_str)
-                else:
-                    outputs_autograd_meta_str = ""
-
-                self.forward_definition_str += FORWARD_ONLY_FUNCTION_TEMPLATE.format(
-                    returns_type_str, forward_function_name,
-                    inputs_args_definition_str, dygraph_event_str,
-                    amp_logic_str, inputs_autograd_meta_str,
-                    forward_function_name, forward_call_str, get_outputs_str,
-                    outputs_autograd_meta_str,
-                    compute_required_grad_and_pass_stop_gradient_strs,
-                    returns_str)
+        if not self.is_forward_only:
+            self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
+                returns_type_str, forward_function_name,
+                inputs_args_definition_str, dygraph_event_str, amp_logic_str,
+                inputs_autograd_meta_str, forward_function_name,
+                forward_call_str, check_nan_inf_str, get_outputs_str,
+                outputs_autograd_meta_str, compute_require_grad_args_str,
+                check_inplace_str, bump_inplace_version_str, node_creation_str,
+                returns_str)
         else:
-            if not self.is_forward_only:
-                self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
+            if (len(amp_tensors_vector_list) > 0) and (self.forward_api_name
+                                                       not in no_amp_list):
+                self.forward_definition_str += FORWARD_ONLY_FUNCTION_TEMPLATE.format(
                     returns_type_str, forward_function_name,
-                    inputs_args_definition_str, dygraph_event_str, " ",
-                    inputs_autograd_meta_str, forward_function_name,
-                    forward_call_str, check_nan_inf_str, get_outputs_str,
-                    outputs_autograd_meta_str, compute_require_grad_args_str,
-                    check_inplace_str, bump_inplace_version_str,
-                    node_creation_str, returns_str)
+                    inputs_args_definition_str, dygraph_event_str,
+                    amp_logic_str, forward_function_name, forward_call_str,
+                    get_outputs_str, returns_str)
             else:
-                pass_stop_gradient_args_str = self.GetPassStopGradientArgsList(
-                    self.forward_outputs_position_map)
-
-                compute_required_grad_and_pass_stop_gradient_strs = ""
-                if is_has_input_autogradmeta:
-                    compute_required_grad_and_pass_stop_gradient_strs = FORWARD_ONLY_COMPUTE_REQUIRED_GRAD_TEMPLATE.format(
-                        compute_require_grad_args_str,
-                        pass_stop_gradient_args_str)
-                else:
-                    outputs_autograd_meta_str = ""
-
                 self.forward_definition_str += FORWARD_ONLY_FUNCTION_TEMPLATE.format(
                     returns_type_str, forward_function_name,
                     inputs_args_definition_str, dygraph_event_str, " ",
-                    inputs_autograd_meta_str, forward_function_name,
-                    forward_call_str, get_outputs_str,
-                    outputs_autograd_meta_str,
-                    compute_required_grad_and_pass_stop_gradient_strs,
+                    forward_function_name, forward_call_str, get_outputs_str,
                     returns_str)
+
         self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
 
     def GenerateInplacedForwardDygraphFunctions(self):
