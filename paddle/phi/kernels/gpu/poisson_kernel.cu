@@ -27,48 +27,48 @@ limitations under the License. */
 namespace phi {
 
 template <typename T>
-struct PoissonCudaFunctor {
- public:
-  PoissonCudaFunctor(const T* in,
-                     T* out,
-                     unsigned int seed,
-                     unsigned int offset)
-      : in_(in), out_(out), seed_(seed), offset_(offset) {}
-
-  __device__ void operator()(int64_t idx) {
+__global__ void get_poisson(const int N,
+                            const T* in,
+                            T* out,
+                            unsigned int seed,
+                            unsigned int offset) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < N){
+//
+//    curandStatePhilox4_32_10_t state;
+//    curand_init(seed, idx, offset, &state);
+//    out[idx] = curand_poisson(&state, in[idx]);
 #ifdef __NVCC__
     curandStatePhilox4_32_10_t state;
-    curand_init(seed_, idx, offset_, &state);
-    out_[idx] = static_cast<T>(curand_poisson(&state, in_[idx]));
+    curand_init(seed, idx, offset, &state);
+    out[idx] = static_cast<T>(curand_poisson(&state, in[idx]));
 #elif __HIPCC__
     hiprandStatePhilox4_32_10_t state;
-    hiprand_init(seed_, idx, offset_, &state);
-    out_[idx] = static_cast<T>(hiprand_poisson(&state, in_[idx]));
+    hiprand_init(seed, idx, offset, &state);
+    out[idx] = static_cast<T>(hiprand_poisson(&state, in[idx]));
 #endif
-  }
 
- private:
-  const T* in_;
-  T* out_;
-  const unsigned int seed_;
-  const unsigned int offset_;
-};
+  }
+}
 
 template <typename T, typename Context>
 void PoissonKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   const T* x_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(out);
-  auto size = x.numel();
+  const int size = x.numel();
+
+  int block_size =
+      std::min(256, ctx.GetMaxThreadsPerBlock());
+//  int block_size = ;
+  dim3 dim_block(block_size);
+  dim3 dim_grid((size + block_size - 1) / block_size);
 
   auto gen_cuda = ctx.GetGenerator();
   auto seed_offset = gen_cuda->IncrementOffset(20);
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;
+  get_poisson<T><<<dim_grid,dim_block>>>(size, x_data, out_data, seed, offset);
 
-  phi::funcs::ForRange<Context> for_range(ctx, size);
-
-  PoissonCudaFunctor<T> functor(x_data, out_data, seed, offset);
-  for_range(functor);
 }
 
 }  // namespace phi
