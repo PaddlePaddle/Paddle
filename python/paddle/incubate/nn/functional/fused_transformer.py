@@ -628,7 +628,7 @@ def fused_multi_head_attention(x,
         final_out = helper.create_variable_for_type_inference(dtype=dtype)
         cache_kv_out = helper.create_variable_for_type_inference(dtype=dtype)
 
-        helper.append_op(type='fused_attention',
+        helper.append_op(type='',
                          inputs=inputs,
                          outputs={
                              "LnMean": pre_ln_mean_out,
@@ -671,9 +671,16 @@ def fused_multi_transformer(x,
                             ffn1_biases,
                             ffn2_weights,
                             ffn2_biases,
+                            pre_ffn_ln_scales=None,
+                            pre_ffn_ln_biases=None,
+                            post_ffn_ln_scales=None,
+                            post_ffn_ln_biases=None,
                             pre_layer_norm=True,
+                            layer_norm_type="pre_layer_norm",
                             epsilon=1e-05,
                             cache_kvs=None,
+                            caches_idx=None,
+                            caches_idx_len=None,
                             time_step=None,
                             attn_mask=None,
                             dropout_rate=0.0,
@@ -823,15 +830,21 @@ def fused_multi_transformer(x,
         )
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
+    if attn_mask is not None and not isinstance(attn_mask, (list, tuple)):
+        attn_mask = [attn_mask]
+
     if _non_static_mode():
         cache_kv_out, final_out = _C_ops.fused_multi_transformer(
             x, ln_scales, ln_biases, qkv_weights, qkv_biases, cache_kvs,
             time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
-            ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
-            cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
-            'dropout_rate', dropout_rate, 'is_test', not training,
-            'dropout_implementation', mode, 'act_method', activation,
-            'trans_qkvw', trans_qkvw, 'ring_id', ring_id)
+            ffn_ln_biases, pre_ffn_ln_scales, pre_ffn_ln_biases,
+            post_ffn_ln_scales, post_ffn_ln_biases, ffn1_weights, ffn1_biases,
+            ffn2_weights, ffn2_biases, caches_idx, caches_idx_len, cache_kvs,
+            'pre_layer_norm', pre_layer_norm, 'layer_norm_type',
+            layer_norm_type, 'epsilon', epsilon, 'dropout_rate', dropout_rate,
+            'is_test', not training, 'dropout_implementation', mode,
+            'act_method', activation, 'trans_qkvw', trans_qkvw, 'ring_id',
+            ring_id)
         if cache_kvs is not None:
             return final_out, cache_kv_out
         return final_out
@@ -870,10 +883,19 @@ def fused_multi_transformer(x,
         inputs['FFN2Weight'] = ffn2_weights
         if ffn2_biases is not None:
             inputs['FFN2Bias'] = ffn2_biases
+        if caches_idx is not None:
+            inputs['AttnIdx'] = caches_idx
+        if caches_idx_len is not None:
+            inputs["AttnIdxLen"] = caches_idx_len
 
+        inputs['PreffnLnScale'] = pre_ffn_ln_scales
+        inputs['PreffnLnBias'] = pre_ffn_ln_biases
+        inputs['PostffnLnScale'] = post_ffn_ln_scales
+        inputs['PostffnLnBias'] = post_ffn_ln_biases
         # set attrs
         attrs = {
             'pre_layer_norm': pre_layer_norm,
+            'layer_norm_type': layer_norm_type,
             'epsilon': epsilon,
             'dropout_rate': dropout_rate,
             'is_test': not training,
@@ -891,6 +913,269 @@ def fused_multi_transformer(x,
             outputs['CacheKVOut'] = cache_kvs
 
         helper.append_op(type='fused_multi_transformer',
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
+
+        return (final_out, cache_kvs) if cache_kvs else final_out
+
+
+def fused_multi_transformer_sparse_attention(x,
+                                             ln_scales,
+                                             ln_biases,
+                                             qkv_weights,
+                                             qkv_biases,
+                                             linear_weights,
+                                             linear_biases,
+                                             ffn_ln_scales,
+                                             ffn_ln_biases,
+                                             ffn1_weights,
+                                             ffn1_biases,
+                                             ffn2_weights,
+                                             ffn2_biases,
+                                             pre_ffn_ln_scales=None,
+                                             pre_ffn_ln_biases=None,
+                                             post_ffn_ln_scales=None,
+                                             post_ffn_ln_biases=None,
+                                             pre_layer_norm=True,
+                                             layer_norm_type="pre_layer_norm",
+                                             epsilon=1e-05,
+                                             cache_kvs=None,
+                                             caches_idx=None,
+                                             caches_idx_len=None,
+                                             time_step=None,
+                                             attn_mask=None,
+                                             dropout_rate=0.0,
+                                             activation="gelu",
+                                             training=False,
+                                             mode='upscale_in_train',
+                                             trans_qkvw=True,
+                                             ring_id=-1,
+                                             name=None):
+    r"""
+    This is a fusion operator to compute multi transformer layers in transformer model architecture.
+    This operator only supports running on GPU. The function of the transformer layer is consistent
+    with the following pseudo code:
+
+    .. code-block:: python
+
+        if pre_layer_norm:
+            out = layer_norm(x)
+            out = qkv_linear(out) + qkv_bias
+        else:
+            out = qkv_linear(x) + qkv_bias
+        out = transpose(out, perm=[2, 0, 3, 1, 4])
+        # extract q, k and v from out.
+        q = out[0:1, ::]
+        k = out[1:2, ::]
+        v = out[2:3, ::]
+        out = q * k^t
+        out = attn_mask + out
+        out = softmax(out)
+        out = dropout(out)
+        out = out * v
+        out = transpose(out, perm=[0, 2, 1, 3])
+        out = linear(out)
+        if pre_layer_norm:
+            out = x + dropout(out + bias)
+        else:
+            out = layer_norm(x + dropout(out + bias))
+
+        residual = out;
+        if pre_layer_norm:
+            out = ffn_layer_norm(out)
+        out = ffn1_linear(out)
+        out = dropout(activation(out + ffn1_bias))
+        out = ffn2_linear(out)
+        out = residual + dropout(out + ffn2_bias)
+        if not pre_layer_norm:
+            out = ffn_layer_norm(out)
+
+    Args:
+        x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, sequence\_length, d\_model]`.
+        ln_scales (list(Tensor)|tuple(Tensor)): The weight tensors of attention layer_norm, the shape is `[d\_model]`.
+        ln_biases (list(Tensor)|tuple(Tensor)): The bias tensors of attention layer_norm. the shape is `[d\_model]`.
+        qkv_weights (list(Tensor)|tuple(Tensor)): The weight tensors of attention qkv computation. The shape is `[3, num\_head, dim\_head, d\_model]`.
+        qkv_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of attention qkv computation. The shape is `[3, num\_head, dim\_head]`.
+        linear_weights (list(Tensor)|tuple(Tensor)): The weight tensors of attention linear. The shape is `[num\_head * dim\_head, d\_model]`.
+        linear_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of attention linear. The shape is `[d\_model]`.
+        ffn_ln_scales (list(Tensor)|tuple(Tensor)): The weight tensors of feedforward layer_norm, the shape is `[d\_model]`
+        ffn_ln_biases (list(Tensor)|tuple(Tensor)): The bias tensors of feedforward layer_norm, the shape is `[d\_model]`
+        ffn1_weights (list(Tensor)|tuple(Tensor)): The weight tensors of feedforward first linear, the shape is `[d\_model, dim\_feedforward]`.
+        ffn1_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of feedforward first linear, the shape is `[dim\_feedforward]`.
+        ffn2_weights (list(Tensor)|tuple(Tensor)): The weight tensors of feedforward second linear, the shape is `[dim\_feedforward, d\_model]`.
+        ffn2_biases (list(Tensor)|tuple(Tensor)|None): The bias tensors of feedforward second linear, the shape is `[d_model]`.
+        pre_layer_norm (bool, optional): whether it is pre_layer_norm(True) or post_layer_norm(False). Default True.
+        epsilon (float, optional): Small float value added to denominator of the layer_norm to avoid dividing by zero. Default is 1e-5.
+        cache_kvs (list(Tensor)|tuple(Tensor), optional): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`. Default None.
+        time_step (Tensor, optional): The time step tensor for the generation model. Which used in decode stage, to represent the time step, that is, the real seq_len of CacheKV. The shape is `[1]`, must be in CPUPlace. Default None.
+        attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
+            some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
+            with shape `[batch_size, 1, sequence_length, sequence_length]`. Default None.
+        dropout_rate (float, optional): The dropout probability of setting units to zero. Default 0.0.
+        activation (str, optional): The activation. Default "gelu".
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default False.
+        mode (str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
+
+                               1. upscale_in_train(default), upscale the output at training time
+
+                                  - train: out = input * mask / ( 1.0 - p )
+                                  - inference: out = input
+
+                               2. downscale_in_infer, downscale the output at inference
+
+                                  - train: out = input * mask
+                                  - inference: out = input * (1.0 - p)
+        trans_qkvw (bool, optional): Whether to transpose for weights of qkv.
+            If true, the shape eights of qkv should be [3, num_head, dim_head, dim_embed].
+            Otherwise the shape of weights of qkv should be [dim_embed, 3, num_head, dim_head]. Default True.
+        ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using mp.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor|tuple: If `cache_kvs` is None, return a tensor that has
+        the same shape and data type with `x`, representing the output
+        of Transformer layers. If `cache_kvs` is not None, return the
+        tuple (output, cache_kvs), which output is the output of
+        Transformer layers, cache_kvs is inplace with input `cache_kvs`.
+
+    Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+            import paddle.incubate.nn.functional as F
+            import numpy as np
+
+            # input: [batch_size, seq_len, embed_dim]
+            x = paddle.rand(shape=(2, 4, 128), dtype="float32")
+
+            # ln_scale: [embed_dim], ln_bias: [embed_dim]
+            ln_scale = paddle.rand(shape=(128,), dtype="float32")
+            ln_bias = paddle.rand(shape=(128,), dtype="float32")
+
+            # qkv_weight: [3, num_head, head_dim, embed_dim], qkv_bias: [3, num_head, head_dim]
+            qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
+            qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
+
+            # linear_weight: [embed_dim, embed_dim], linear_bias: [embed_dim]
+            linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
+            linear_bias = paddle.rand(shape=(128,), dtype="float32")
+
+            # ffn_ln_scale: [embed_dim], ffn_ln_bias: [embed_dim]
+            ffn_ln_scale = paddle.rand(shape=(128,), dtype="float32")
+            ffn_ln_bias = paddle.rand(shape=(128,), dtype="float32")
+
+            # ffn1_weight: [embed_dim, 4*embed_dim], ffn1_bias: [4*embed_dim]
+            ffn1_weight = paddle.rand(shape=(128, 4*128), dtype="float32")
+            ffn1_bias = paddle.rand(shape=(4*128,), dtype="float32")
+
+            # ffn2_weight: [4*embed_dim, embed_dim], ffn2_bias: [embed_dim]
+            ffn2_weight = paddle.rand(shape=(4*128, 128), dtype="float32")
+            ffn2_bias = paddle.rand(shape=(128,), dtype="float32")
+
+            # self attention mask: [batch_size, 1, seq_len, seq_len]
+            attn_mask = paddle.rand(shape=(2, 1, 4, 4), dtype="float32")
+
+            # output: [batch_size, seq_len, embed_dim]
+            output = F.fused_multi_transformer(
+                x, [ln_scale], [ln_bias], [qkv_weight], [qkv_bias],
+                [linear_weight], [linear_bias], [ffn_ln_scale], [ffn_ln_bias],
+                [ffn1_weight], [ffn1_bias], [ffn2_weight], [ffn2_bias],
+                attn_mask=attn_mask)
+            # [2, 4, 128]
+            print(output.shape)
+    """
+    if mode not in ('downscale_in_infer', 'upscale_in_train'):
+        raise ValueError(
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
+        )
+    mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+
+    if attn_mask is not None and not isinstance(attn_mask, (list, tuple)):
+        attn_mask = [attn_mask]
+
+    if _non_static_mode():
+        print('dynamic transformer op type:')
+        cache_kv_out, final_out = _C_ops.fused_multi_transformer_sparse_attn(
+            x, ln_scales, ln_biases, qkv_weights, qkv_biases, cache_kvs,
+            time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
+            ffn_ln_biases, pre_ffn_ln_scales, pre_ffn_ln_biases,
+            post_ffn_ln_scales, post_ffn_ln_biases, ffn1_weights, ffn1_biases,
+            ffn2_weights, ffn2_biases, caches_idx, caches_idx_len, cache_kvs,
+            'pre_layer_norm', pre_layer_norm, 'layer_norm_type',
+            layer_norm_type, 'epsilon', epsilon, 'dropout_rate', dropout_rate,
+            'is_test', not training, 'dropout_implementation', mode,
+            'act_method', activation, 'trans_qkvw', trans_qkvw, 'ring_id',
+            ring_id)
+        if cache_kvs is not None:
+            return final_out, cache_kv_out
+        return final_out
+    else:
+        helper = LayerHelper('fused_multi_transformer_sparse_attn', **locals())
+        dtype = x.dtype
+        # check dtypes
+        check_variable_and_dtype(x, 'x', ['float16', 'float32'],
+                                 'fused_multi_transformer_sparse_attn')
+        check_dtype(dtype, 'dtype', ['float16', 'float32'],
+                    'fused_multi_transformer_sparse_attn')
+
+        # set inputs
+        inputs = dict()
+        inputs['X'] = [x]
+        inputs['LnScale'] = ln_scales
+        inputs['LnBias'] = ln_biases
+        inputs['QKVW'] = qkv_weights
+        if qkv_biases is not None:
+            inputs['QKVBias'] = qkv_biases
+        if cache_kvs is not None:
+            assert len(cache_kvs) == len(qkv_weights)
+            inputs['CacheKV'] = cache_kvs
+            if time_step is not None:
+                inputs['TimeStep'] = time_step
+        inputs['SrcMask'] = attn_mask
+        inputs['OutLinearW'] = linear_weights
+        if linear_biases is not None:
+            inputs['OutLinearBias'] = linear_biases
+
+        inputs['FFNLnScale'] = ffn_ln_scales
+        inputs['FFNLnBias'] = ffn_ln_biases
+        inputs['FFN1Weight'] = ffn1_weights
+        if ffn1_biases is not None:
+            inputs['FFN1Bias'] = ffn1_biases
+        inputs['FFN2Weight'] = ffn2_weights
+        if ffn2_biases is not None:
+            inputs['FFN2Bias'] = ffn2_biases
+        if caches_idx is not None:
+            inputs['AttnIdx'] = caches_idx
+        if caches_idx_len is not None:
+            inputs["AttnIdxLen"] = caches_idx_len
+
+        inputs['PreffnLnScale'] = pre_ffn_ln_scales
+        inputs['PreffnLnBias'] = pre_ffn_ln_biases
+        inputs['PostffnLnScale'] = post_ffn_ln_scales
+        inputs['PostffnLnBias'] = post_ffn_ln_biases
+        # set attrs
+        attrs = {
+            'pre_layer_norm': pre_layer_norm,
+            'layer_norm_type': layer_norm_type,
+            'epsilon': epsilon,
+            'dropout_rate': dropout_rate,
+            'is_test': not training,
+            'dropout_implementation': mode,
+            'act_method': activation,
+            'trans_qkvw': trans_qkvw,
+            'ring_id': ring_id
+        }
+
+        outputs = dict()
+        final_out = helper.create_variable_for_type_inference(dtype=dtype)
+        outputs['Out'] = final_out
+        if cache_kvs:
+            # NOTE: inplace
+            outputs['CacheKVOut'] = cache_kvs
+        print('transformer op type:')
+        helper.append_op(type='fused_multi_transformer_sparse_attn',
                          inputs=inputs,
                          outputs=outputs,
                          attrs=attrs)

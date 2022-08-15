@@ -22,6 +22,7 @@ __all__ = [
     'fused_multi_head_attention',
     'fused_feedforward',
     'fused_multi_transformer',
+    'fused_multi_transformer_sparse_attention',
     'fused_matmul_bias',
     'fused_linear',
     'fused_bias_dropout_residual_layer_norm',
