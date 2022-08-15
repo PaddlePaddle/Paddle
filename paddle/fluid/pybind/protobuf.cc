@@ -18,10 +18,10 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_desc.h"
-#include "paddle/fluid/framework/process_mesh_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
@@ -38,6 +38,9 @@ PyTypeObject *g_blockdesc_pytype = nullptr;
 
 namespace pd = paddle::framework;
 namespace jit = paddle::jit;
+
+using paddle::distributed::auto_parallel::OperatorDistAttr;
+using paddle::distributed::auto_parallel::TensorDistAttr;
 
 template <typename T>
 static pybind11::bytes SerializeMessage(
@@ -111,18 +114,6 @@ void BindProgramDesc(pybind11::module *m) {
         return self.CachedHashString();
         // return pybind11::bytes(self.CachedHashString());
       });
-}
-
-void BindProcessMeshDesc(pybind11::module *m) {
-  pybind11::class_<pd::ProcessMeshDesc>(*m, "ProcessMeshDesc", "")
-      .def(pybind11::init<const std::vector<int32_t> &,
-                          const std::vector<int32_t> &,
-                          int32_t>())
-      .def_property_readonly("id", &pd::ProcessMeshDesc::ID)
-      .def_property_readonly("parent", &pd::ProcessMeshDesc::Parent)
-      .def_property_readonly("topology", &pd::ProcessMeshDesc::Topology)
-      .def_property_readonly("process_group",
-                             &pd::ProcessMeshDesc::ProcessGroup);
 }
 
 void BindBlockDesc(pybind11::module *m) {
@@ -252,6 +243,10 @@ void BindVarDsec(pybind11::module *m) {
       .def("id", &pd::VarDesc::Id)
       .def("original_id", &pd::VarDesc::OriginalId)
       .def("set_original_id", &pd::VarDesc::SetOriginalId)
+      .def_property("dist_attr",
+                    &pd::VarDesc::MutableDistAttr,
+                    &pd::VarDesc::SetDistAttr,
+                    pybind11::return_value_policy::reference)
       .def("attr", &pd::VarDesc::GetAttr);
 
   pybind11::enum_<pd::proto::VarType::Type> vartype(var_desc, "VarType", "");
@@ -398,6 +393,10 @@ void BindOpDesc(pybind11::module *m) {
       .def("id", &pd::OpDesc::Id)
       .def("original_id", &pd::OpDesc::OriginalId)
       .def("set_original_id", &pd::OpDesc::SetOriginalId)
+      .def_property("dist_attr",
+                    &pd::OpDesc::MutableDistAttr,
+                    &pd::OpDesc::SetDistAttr,
+                    pybind11::return_value_policy::reference)
       .def("inputs", [](pd::OpDesc &self) { return self.Inputs(); })
       .def("outputs", &pd::OpDesc::Outputs);
 }
@@ -412,10 +411,6 @@ void BindJitProperty(pybind11::module *m) {
           pybind11::return_value_policy::reference)
       .def("size", &jit::Property::Size)
       .def("set_float",
-           py::overload_cast<const float &>(&jit::Property::SetFloat),
-           "set float",
-           py::arg("val"))
-      .def("set_float",
            py::overload_cast<const std::string &, const float &>(
                &jit::Property::SetFloat),
            "set float",
@@ -427,19 +422,10 @@ void BindJitProperty(pybind11::module *m) {
            py::overload_cast<const std::string &>(&jit::Property::GetFloat,
                                                   py::const_))
       .def("set_floats",
-           py::overload_cast<const std::vector<float> &>(
-               &jit::Property::SetFloats),
-           "set list of float",
-           py::arg("vals"))
-      .def("set_floats",
            py::overload_cast<const std::string &, const std::vector<float> &>(
                &jit::Property::SetFloats),
            "set list of float",
            py::arg("name"),
-           py::arg("val"))
-      .def("set_int",
-           py::overload_cast<const int64_t &>(&jit::Property::SetInt64),
-           "set int",
            py::arg("val"))
       .def("set_int",
            py::overload_cast<const std::string &, const int64_t &>(
@@ -448,19 +434,10 @@ void BindJitProperty(pybind11::module *m) {
            py::arg("name"),
            py::arg("val"))
       .def("set_ints",
-           py::overload_cast<const std::vector<int64_t> &>(
-               &jit::Property::SetInt64s),
-           "set list of int",
-           py::arg("vals"))
-      .def("set_ints",
            py::overload_cast<const std::string &, const std::vector<int64_t> &>(
                &jit::Property::SetInt64s),
            "set list of int",
            py::arg("name"),
-           py::arg("val"))
-      .def("set_string",
-           py::overload_cast<const std::string &>(&jit::Property::SetString),
-           "set string",
            py::arg("val"))
       .def("set_string",
            py::overload_cast<const std::string &, const std::string &>(
@@ -468,11 +445,6 @@ void BindJitProperty(pybind11::module *m) {
            "set string",
            py::arg("name"),
            py::arg("val"))
-      .def("set_strings",
-           py::overload_cast<const std::vector<std::string> &>(
-               &jit::Property::SetStrings),
-           "set list of string",
-           py::arg("vals"))
       .def("set_strings",
            py::overload_cast<const std::string &,
                              const std::vector<std::string> &>(
