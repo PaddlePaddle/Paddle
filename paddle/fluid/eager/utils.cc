@@ -81,16 +81,6 @@ AutogradMeta* EagerUtils::nullable_autograd_meta(
   return nullptr;
 }
 
-AutogradMeta* EagerUtils::nullable_autograd_meta(
-    paddle::optional<paddle::experimental::Tensor>* target) {
-  if (target != nullptr) {
-    if (target->get_ptr() != nullptr) {
-      return EagerUtils::nullable_autograd_meta(*(target->get_ptr()));
-    }
-  }
-  return nullptr;
-}
-
 std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
     const std::vector<paddle::experimental::Tensor>& targets) {
   std::vector<AutogradMeta*> metas;
