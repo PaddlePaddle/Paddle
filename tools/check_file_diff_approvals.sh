@@ -259,7 +259,7 @@ if [ "${EMPTY_GRAD_OP_REGISTERED}" != "" ] && [ "${GIT_PT_ID}" != "" ]; then
     check_approval 1 43953930 46782768 22165420 22361972
 fi
 
-ALL_ADDED_LINES_IN_TARGET_PATH=`git diff -U0 upstream/$BRANCH -- 'python/paddle/fluid/tests/unittests/' 'python/paddle/tests/' 'python/paddle/fluid/contrib/' | grep "^+" || true`
+ALL_ADDED_LINES_IN_TARGET_PATH=`git diff -U0 upstream/$BRANCH -- 'python/paddle/tests/' 'python/paddle/fluid/contrib/' 'python/paddle/fluid/tests/custom_op/' 'python/paddle/fluid/tests/unittests/' 'python/paddle/fluid/tests/*.py' | grep "^+" || true`
 INVALID_ASSERT_CHECK=`echo "$ALL_ADDED_LINES_IN_TARGET_PATH" | grep -E "self\.assert(True|Equal)\(\s*(np|numpy)\.(allclose|array_equal)" || true`
 if [ "${INVALID_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="It is recommended to use 'np.testing.assert_allclose' instead of 'self\.assert(True|Equal)\((np|numpy)\.(allclose|array_equal)'.\nPlease modify the code below. If anything is unclear, please request qili93 (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_ASSERT_CHECK}\n"
