@@ -35,7 +35,7 @@ void AddNArrayKernel(const Context& dev_ctx,
   bool in_place = true;
   if (x.size() > 0 && x[0].size() == out.size()) {
     for (size_t i = 0; i < out.size(); i++) {
-      if (out[i]->data() != x[0][i]->data()) {
+      if (x[0][i]->IsInitialized() && out[i]->data() != x[0][i]->data()) {
         in_place = false;
         break;
       }
