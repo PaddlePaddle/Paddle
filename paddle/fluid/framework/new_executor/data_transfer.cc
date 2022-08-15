@@ -141,15 +141,9 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
     VLOG(6) << "phi_kernel_key " << phi_kernel_key << "\n";
 
-    // this function is used to construct data transfer op
-    // we expect that it always has a valid phi kernel
-    // so no need to fallback to cpu kernel
-    PADDLE_ENFORCE_EQ(
-        op_with_kernel->PhiKernel()->IsValid(),
-        true,
-        platform::errors::PreconditionNotMet(
-            "the %s op has no valid phi kernel.", op_with_kernel->Type()));
-    run_phi_kernel = true;
+    if (op_with_kernel->PhiKernel()->IsValid()) {
+      run_phi_kernel = true;
+    }
   }
 
   // 3. Execute transfer op and construct OpFuncNode
