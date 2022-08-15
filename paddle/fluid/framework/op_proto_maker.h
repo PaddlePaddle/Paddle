@@ -96,12 +96,10 @@ class OpProtoAndCheckerMaker {
 
   template <typename T>
   TypedAttrChecker<T> &AddAttr(const std::string &name,
-                               const std::string &comment,
-                               bool generated = false) {
+                               const std::string &comment) {
     auto *attr = proto_->add_attrs();
     attr->set_name(name);
     attr->set_comment(comment);
-    attr->set_generated(generated);
     attr->set_type(AttrTypeID<T>());
     return op_checker_->AddAttrChecker<T>(name, attr);
   }

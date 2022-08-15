@@ -47,7 +47,6 @@ def bernoulli(x, name=None):
 
     Examples:
         .. code-block:: python
-            :name: bernoulli-example
 
             import paddle
 

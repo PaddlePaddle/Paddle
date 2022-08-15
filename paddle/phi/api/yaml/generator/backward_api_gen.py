@@ -220,6 +220,7 @@ def source_include(header_file_path):
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 DECLARE_bool(conv2d_disable_cudnn);
 """

@@ -40,6 +40,10 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
+    teller_set.insert("rnn");
+    int8_teller_set.insert("rnn");
+    teller_set.insert("fill_constant_batch_size_like");
+    int8_teller_set.insert("fill_constant_batch_size_like");
 #endif
 #if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
@@ -1245,6 +1249,57 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           !desc.HasAttr("ends") || !desc.HasAttr("strides")) {
         VLOG(3)
             << "The necessary attributes of the strided_slice operator miss ";
+        return false;
+      }
+    }
+
+    if (op_type == "rnn") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      if (desc.HasAttr("mode")) {
+        std::string mode = PADDLE_GET_CONST(std::string, desc.GetAttr("mode"));
+        if (mode != "LSTM") return false;
+      }
+      if (desc.HasAttr("dropout_prob")) {
+        float dropout_prob =
+            PADDLE_GET_CONST(float, desc.GetAttr("dropout_prob"));
+        if (dropout_prob > 1e-5) return false;
+      }
+      // not support following four inputs for rnn in paddle-trt
+      auto rnn_inputs = desc.Inputs();
+      if (rnn_inputs.find("SequenceLength") != rnn_inputs.end()) {
+        if (desc.Input("SequenceLength").size()) {
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "fill_constant_batch_size_like") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      if (!desc.HasAttr("input_dim_idx")) {
+        return false;
+      }
+      if (!desc.HasAttr("output_dim_idx")) {
+        return false;
+      }
+      if (!desc.HasAttr("shape")) {
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("Input")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto dtype = x_var_desc->GetDataType();
+      // At present, only support float32 into trt.
+      if (dtype != 5) {
         return false;
       }
     }

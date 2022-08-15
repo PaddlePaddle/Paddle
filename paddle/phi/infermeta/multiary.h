@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 namespace phi {
@@ -269,6 +270,27 @@ void InterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config = MetaConfig());
 
+void LambInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& moment1,
+                   const MetaTensor& moment2,
+                   const MetaTensor& beta1_pow,
+                   const MetaTensor& beta2_pow,
+                   const MetaTensor& master_param,
+                   const MetaTensor& skip_update,
+                   float weight_decay,
+                   float beta1,
+                   float beta2,
+                   float epsilon,
+                   bool multi_precision,
+                   MetaTensor* param_out,
+                   MetaTensor* moment1_out,
+                   MetaTensor* moment2_out,
+                   MetaTensor* beta1_pow_out,
+                   MetaTensor* beta2_pow_out,
+                   MetaTensor* master_param_outs);
+
 void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
@@ -443,5 +465,15 @@ void Yolov3LossInferMeta(const MetaTensor& x,
                          MetaTensor* loss,
                          MetaTensor* objectness_mask,
                          MetaTensor* gt_match_mask);
+
+void GraphSendUERecvInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const MetaTensor& src_index,
+                              const MetaTensor& dst_index,
+                              const std::string& message_op,
+                              const std::string& reduce_op,
+                              const IntArray& out_size,
+                              MetaTensor* out,
+                              MetaTensor* dst_count);
 
 }  // namespace phi

@@ -144,21 +144,21 @@ class TestCustomCPUPlugin(unittest.TestCase):
                                       place=paddle.CPUPlace())
         custom_cpu_tensor = cpu_tensor._copy_to(
             paddle.CustomPlace('custom_cpu', 0), True)
-        self.assertTrue(np.array_equal(custom_cpu_tensor, x))
+        np.testing.assert_array_equal(custom_cpu_tensor, x)
         self.assertTrue(custom_cpu_tensor.place.is_custom_place())
         # custom -> custom
         another_custom_cpu_tensor = custom_cpu_tensor._copy_to(
             paddle.CustomPlace('custom_cpu', 0), True)
-        self.assertTrue(np.array_equal(another_custom_cpu_tensor, x))
+        np.testing.assert_array_equal(another_custom_cpu_tensor, x)
         self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
         # custom -> cpu
         another_cpu_tensor = custom_cpu_tensor._copy_to(paddle.CPUPlace(), True)
-        self.assertTrue(np.array_equal(another_cpu_tensor, x))
+        np.testing.assert_array_equal(another_cpu_tensor, x)
         self.assertTrue(another_cpu_tensor.place.is_cpu_place())
         # custom -> custom self
         another_custom_cpu_tensor = another_custom_cpu_tensor._copy_to(
             paddle.CustomPlace('custom_cpu', 0), True)
-        self.assertTrue(np.array_equal(another_custom_cpu_tensor, x))
+        np.testing.assert_array_equal(another_custom_cpu_tensor, x)
         self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
 
     def _test_fallback_kernel(self):
@@ -168,7 +168,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
         x = paddle.to_tensor([5, 4, 3], 'int16')
         y = paddle.to_tensor([1, 2, 3], 'int16')
         z = paddle.add(x, y)
-        self.assertTrue(np.array_equal(z, r))
+        np.testing.assert_array_equal(z, r)
 
     def tearDown(self):
         del os.environ['CUSTOM_DEVICE_ROOT']

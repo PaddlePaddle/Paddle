@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// clang-format off
 #include "paddle/phi/api/include/tensor.h"
 
 #include <memory>
@@ -35,7 +34,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
-// clang-format off
 
 namespace paddle {
 namespace experimental {
@@ -312,8 +310,8 @@ void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 gpuStream_t Tensor::stream() const {
   int device_id = phi::backends::gpu::GetCurrentDeviceId();
-  auto* gpu_context = DeviceContextPool::Instance()
-    .Get<AllocationType::GPU>(GPUPlace(device_id));
+  auto *gpu_context = DeviceContextPool::Instance().Get<AllocationType::GPU>(
+      GPUPlace(device_id));
   return gpu_context->stream();
 }
 #endif
