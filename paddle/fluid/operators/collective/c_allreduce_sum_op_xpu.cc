@@ -12,18 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-#include <string>
-#include <vector>
+#include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
-namespace paddle {
-namespace framework {
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-// cached ops will be captured to accelerate gpu performance.
-//      1. op will generate a cudaGraph to record inner gpu kernels
-//      2. inner gpu kernels can be launched by calling the cudagraphExecutor
-//      only once.
-std::vector<std::string> cached_gpu_ops{"conv2d_fusion", "depthwise_conv2d"};
-
-}  // namespace framework
-}  // namespace paddle
+REGISTER_OP_XPU_KERNEL(c_allreduce_sum,
+                       ops::CAllReduceOpXPUKernel<ops::kRedSum, float>,
+                       ops::CAllReduceOpXPUKernel<ops::kRedSum, plat::float16>)

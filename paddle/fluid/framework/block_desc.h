@@ -122,7 +122,7 @@ class BlockDesc {
                       // vars_
 
   std::deque<std::unique_ptr<OpDesc>> ops_;
-  std::unordered_map<std::string, std::unique_ptr<VarDesc>> vars_;
+  std::map<std::string, std::unique_ptr<VarDesc>> vars_;
 
   DISABLE_COPY_AND_ASSIGN(BlockDesc);
 };
