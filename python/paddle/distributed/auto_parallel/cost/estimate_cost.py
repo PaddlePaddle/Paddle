@@ -394,7 +394,6 @@ class CostEstimator:
             for process in can_free_memories:
                 if process in memories:
                     memories[process] -= can_free_memories[process]
-                    assert memories[process] >= 0
 
         # Calculate the max memory in all ranks
         max_memory = max(max_memories.values())

@@ -2086,8 +2086,8 @@ class Resharder:
                     tensor.name)
                 process_mesh = dist_op.dist_attr.process_mesh
                 dist_attr = [process_mesh, dims_mapping]
-                if dist_tensor is not None and self.need_reshard(dist_tensor,
-                                                                 dist_attr):
+                if dist_tensor is not None and self.need_reshard(
+                        dist_tensor, dist_attr):
                     if tensor_name not in self._has_resharded:
                         self._has_resharded[tensor_name] = [dist_op]
                     else:
@@ -2100,8 +2100,9 @@ class Resharder:
                                 return reshard_op_cost
                         self._has_resharded[tensor_name].append(dist_op)
 
-                    reshard_op_desc = self.find_op_desc_seq(
-                        dist_tensor, dist_attr, serial=True)
+                    reshard_op_desc = self.find_op_desc_seq(dist_tensor,
+                                                            dist_attr,
+                                                            serial=True)
                     dtype = dist_tensor.serial_tensor.dtype
                     reshard_op_cost = self.parse_op_desc_for_cost(
                         reshard_op_desc, dtype, cluster)
@@ -2138,17 +2139,19 @@ class Resharder:
                     if rank_id not in local_rank_comp_cost:
                         local_rank_comp_cost[rank_id] = []
                     local_rank_comp_cost[rank_id].append(
-                        ConcatOpCost(
-                            op_desc=concat_desc, cluster=cluster))
-                    self._concat_partitions_for_cost(
-                        partition_tensor_list, new_partition, dtype, rank_id,
-                        local_rank_comp_cost, cluster)
+                        ConcatOpCost(op_desc=concat_desc, cluster=cluster))
+                    self._concat_partitions_for_cost(partition_tensor_list,
+                                                     new_partition, dtype,
+                                                     rank_id,
+                                                     local_rank_comp_cost,
+                                                     cluster)
                     break
                 i += 1
             if not has_concat:
                 partition_tensor_list.append(partition_index)
 
     def parse_op_desc_for_cost(self, reshard_op_desc, dtype, cluster):
+
         def _get_idx(comm_ranks, group_ranks):
             res, is_the_same = None, False
             idx = 0
@@ -2183,13 +2186,18 @@ class Resharder:
                                                 shape)
                     idx, is_the_same = _get_idx(comm_ranks, group_ranks)
                     if idx is None:
-                        comm_costs.append([(group_ranks, SendOpCost(
-                            op_desc=send_desc, comm_context=comm_context))])
+                        comm_costs.append([
+                            (group_ranks,
+                             SendOpCost(op_desc=send_desc,
+                                        comm_context=comm_context))
+                        ])
                         comm_ranks.append(set(group_ranks))
                     else:
                         if not is_the_same:
-                            comm_costs[idx].append((group_ranks, SendOpCost(
-                                op_desc=send_desc, comm_context=comm_context)))
+                            comm_costs[idx].append(
+                                (group_ranks,
+                                 SendOpCost(op_desc=send_desc,
+                                            comm_context=comm_context)))
                 elif isinstance(op_desc, AllGatherOpDesc):
                     # NOTE: fill_const and other unnecessary op is not calculated because those cost is very small
                     group_ranks = op_desc.group
@@ -2204,16 +2212,18 @@ class Resharder:
                             split_inputs_shape.append(dim)
                     idx, is_the_same = _get_idx(comm_ranks, group_ranks)
                     if idx is None:
-                        comm_costs.append([(group_ranks, AllgatherOpCost(
-                            op_desc=allgather_desc,
-                            comm_context=comm_context))])
+                        comm_costs.append([
+                            (group_ranks,
+                             AllgatherOpCost(op_desc=allgather_desc,
+                                             comm_context=comm_context))
+                        ])
                         comm_ranks.append(set(group_ranks))
                     else:
                         if not is_the_same:
                             comm_costs[idx].append(
-                                (group_ranks, AllgatherOpCost(
-                                    op_desc=allgather_desc,
-                                    comm_context=comm_context)))
+                                (group_ranks,
+                                 AllgatherOpCost(op_desc=allgather_desc,
+                                                 comm_context=comm_context)))
                     # calc the split op cost
                     if key not in local_rank_comp_cost:
                         local_rank_comp_cost[key] = []
@@ -2224,8 +2234,7 @@ class Resharder:
                     }
                     split_desc["attrs"] = {"num": len(group_ranks), "axis": 0}
                     local_rank_comp_cost[key].append(
-                        SplitOpCost(
-                            op_desc=split_desc, cluster=cluster))
+                        SplitOpCost(op_desc=split_desc, cluster=cluster))
                 elif isinstance(op_desc, ConcatOpDesc):
                     partition_index_list = op_desc._partition_index_list
                     for idx, partion_idex in enumerate(partition_index_list):
@@ -2257,8 +2266,7 @@ class Resharder:
                         "Input": [(dtype, to_slice_tensor_shape)]
                     }
                     local_rank_comp_cost[key].append(
-                        SliceOpCost(
-                            op_desc=slice_desc, cluster=cluster))
+                        SliceOpCost(op_desc=slice_desc, cluster=cluster))
 
         res = (comm_costs, local_rank_comp_cost)
 
