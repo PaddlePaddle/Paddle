@@ -194,9 +194,10 @@ class TestTrilinearInterpOp(OpTest):
             in_h = self.input_shape[2]
             in_w = self.input_shape[3]
 
-        if self.scale and self.scale > 0:
+        if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
-                scale_d = scale_h = scale_w = float(self.scale)
+                if self.scale > 0:
+                    scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 scale_d = scale_w = scale_h = self.scale[0]
             elif isinstance(self.scale, list) and len(self.scale) > 1:
@@ -236,9 +237,10 @@ class TestTrilinearInterpOp(OpTest):
             'align_mode': self.align_mode,
             'data_layout': data_layout
         }
-        if self.scale and self.scale > 0:
+        if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
-                self.scale = [self.scale]
+                if self.scale > 0:
+                    self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
@@ -413,9 +415,10 @@ class TestTrilinearInterpOpUint8(OpTest):
         input_np = np.random.randint(low=0, high=256,
                                      size=self.input_shape).astype("uint8")
 
-        if self.scale and self.scale > 0:
+        if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
-                scale_d = scale_h = scale_w = float(self.scale)
+                if self.scale > 0:
+                    scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 scale_d = scale_w = scale_h = self.scale[0]
             elif isinstance(self.scale, list) and len(self.scale) > 1:
@@ -446,9 +449,10 @@ class TestTrilinearInterpOpUint8(OpTest):
             'align_corners': self.align_corners,
             'align_mode': self.align_mode
         }
-        if self.scale and self.scale > 0:
+        if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
-                self.scale = [self.scale]
+                if self.scale > 0:
+                    self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
@@ -592,9 +596,10 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
 
         if self.scale_by_1Dtensor:
             self.inputs['Scale'] = np.array([self.scale]).astype("float32")
-        elif self.scale and self.scale > 0:
+        elif self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
-                scale_d = scale_h = scale_w = float(self.scale)
+                if self.scale > 0:
+                    scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 scale_d = scale_w = scale_h = self.scale[0]
             elif isinstance(self.scale, list) and len(self.scale) > 1:
@@ -623,9 +628,10 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         self.attrs['out_d'] = self.out_d
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
-        if self.scale and self.scale > 0:
+        if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
-                self.scale = [self.scale]
+                if self.scale > 0:
+                    self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
