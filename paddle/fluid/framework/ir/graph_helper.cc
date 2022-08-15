@@ -526,7 +526,8 @@ void UpdateControlOpSkipEagerDeletionVars(const Node &node,
     auto &block = origin_program.Block(graph_idx);
     for (size_t j = 0; j < block.OpSize(); ++j) {
       auto *op = block.Op(j);
-      if (op->Type() == control_type) {
+      if (op->Type() == control_type &&
+          op->HasAttr("skip_eager_deletion_vars")) {
         if (op->InputArgumentNames() == node.Op()->InputArgumentNames() &&
             op->OutputArgumentNames() == node.Op()->OutputArgumentNames()) {
           node.Op()->SetAttr("skip_eager_deletion_vars",
