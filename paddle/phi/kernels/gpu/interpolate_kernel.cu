@@ -1481,7 +1481,7 @@ PD_REGISTER_KERNEL(linear_interp_v2,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(bicubic_interp_v2,
+PD_REGISTER_KERNEL(bicubic_interp,
                    GPU,
                    ALL_LAYOUT,
                    phi::BicubicInterpKernel,

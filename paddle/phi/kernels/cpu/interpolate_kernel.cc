@@ -1229,12 +1229,8 @@ PD_REGISTER_KERNEL(linear_interp_v2,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(bicubic_interp_v2,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::BicubicInterpKernel,
-                   float,
-                   double) {
+PD_REGISTER_KERNEL(
+    bicubic_interp, CPU, ALL_LAYOUT, phi::BicubicInterpKernel, float, double) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
