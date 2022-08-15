@@ -1154,8 +1154,6 @@ class While(object):
         x_name_list = set()
         x_name_list, inner_outputs = get_inputs_outputs_in_block(
             while_block, x_name_list, inner_outputs, self.helper)
-        # There is a limit in onnx, and the number of inputs is also in the output, so we take and set
-        x_name_list |= inner_outputs
 
         out_vars = []
         for inner_out_name in inner_outputs:
