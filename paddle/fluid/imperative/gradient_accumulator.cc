@@ -408,31 +408,39 @@ void TensorAdd(const VarType& src, VarType* dst) {
   }
 #endif
 
-#define PADDLE_TENSOR_ADD(cpp_type)                                  \
-  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
-    if (platform::is_gpu_place(place)) {                             \
-      auto gpu_ctx = static_cast<phi::GPUContext*>(                  \
-          platform::DeviceContextPool::Instance().Get(place));       \
-      phi::AddKernel<cpp_type, phi::GPUContext>(                     \
-          *gpu_ctx, src_tensor, *dst_tensor, dst_tensor);            \
-    } else if (platform::is_cpu_place(place)) {                      \
-      auto cpu_ctx = static_cast<phi::CPUContext*>(                  \
-          platform::DeviceContextPool::Instance().Get(place));       \
-      phi::AddKernel<cpp_type, phi::CPUContext>(                     \
-          *cpu_ctx, src_tensor, *dst_tensor, dst_tensor);            \
-    }                                                                \
+#define PADDLE_TENSOR_ADD(T, CONTEXT)                                          \
+  if (data_type == framework::DataTypeTrait<T>::DataType()) {                  \
+    auto cpu_ctx = static_cast<CONTEXT*>(                                      \
+        platform::DeviceContextPool::Instance().Get(place));                   \
+    phi::AddKernel<T, CONTEXT>(*cpu_ctx, src_tensor, *dst_tensor, dst_tensor); \
+    return;                                                                    \
   }
 
-  PADDLE_TENSOR_ADD(float);
-
-#ifndef PADDLE_WITH_XPU
-  // NOTE(phlrain): xpu only support float
-  PADDLE_TENSOR_ADD(double);
-  // NOTE(chenweihang): only support complex grad tensor accumulated,
-  // support selected rows if needed in the future
-  PADDLE_TENSOR_ADD(platform::complex<float>);
-  PADDLE_TENSOR_ADD(platform::complex<double>);
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_TENSOR_ADD(float, phi::GPUContext);
+    PADDLE_TENSOR_ADD(double, phi::GPUContext);
+    PADDLE_TENSOR_ADD(phi::dtype::float16, phi::GPUContext);
+    PADDLE_TENSOR_ADD(phi::dtype::bfloat16, phi::GPUContext);
+    PADDLE_TENSOR_ADD(platform::complex<float>, phi::GPUContext);
+    PADDLE_TENSOR_ADD(platform::complex<double>, phi::GPUContext);
 #endif
+  }
+
+  if (platform::is_cpu_place(place)) {
+    PADDLE_TENSOR_ADD(float, phi::CPUContext);
+    PADDLE_TENSOR_ADD(double, phi::CPUContext);
+    PADDLE_TENSOR_ADD(platform::complex<float>, phi::CPUContext);
+    PADDLE_TENSOR_ADD(platform::complex<double>, phi::CPUContext);
+    if (data_type == framework::proto::VarType::BF16) {
+      return TensorAddImpl<phi::CPUContext, platform::bfloat16>(
+          src_tensor, dst_tensor, place);
+    }
+    if (data_type == framework::proto::VarType::FP16) {
+      return TensorAddImpl<phi::CPUContext, platform::float16>(
+          src_tensor, dst_tensor, place);
+    }
+  }
 
 #undef PADDLE_TENSOR_ADD
 
