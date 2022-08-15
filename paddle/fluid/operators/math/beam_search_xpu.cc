@@ -35,9 +35,15 @@ int CopyData(const T *x, T **y, int len) {
     return xpu::Error_t::INVALID_PARAM;
 
   *y = reinterpret_cast<T *>(malloc(sizeof(T) * len));
+  int XPU_PlaceNo = 0;
+  if (std::getenv("XPU_VISIBLE_DEVICES") != nullptr)
+    XPU_PlaceNo = atoi(std::getenv("XPU_VISIBLE_DEVICES"));
+  else if (std::getenv("FLAGS_selected_xpus") != nullptr)
+    XPU_PlaceNo = atoi(std::getenv("FLAGS_selected_xpus"));
+
   paddle::memory::Copy(paddle::platform::CPUPlace(),
                        *y,
-                       paddle::platform::XPUPlace(),
+                       paddle::platform::XPUPlace(XPU_PlaceNo),
                        x,
                        len * sizeof(T));
   return xpu::Error_t::SUCCESS;

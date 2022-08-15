@@ -53,7 +53,13 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
                         data.size()));
 
   CPUPlace place;
-  XPUPlace xpu_place;
+  int XPU_PlaceNo = 0;
+  if (std::getenv("XPU_VISIBLE_DEVICES") != nullptr)
+    XPU_PlaceNo = atoi(std::getenv("XPU_VISIBLE_DEVICES"));
+  else if (std::getenv("FLAGS_selected_xpus") != nullptr)
+    XPU_PlaceNo = atoi(std::getenv("FLAGS_selected_xpus"));
+
+  XPUPlace xpu_place(XPU_PlaceNo);
 
   LoD lod;
   lod.push_back(level_0);
@@ -76,7 +82,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
   tensor_id.set_lod(lod);
 
   int64_t* id_ptr = tensor_id.mutable_data<int64_t>(xpu_place);
-  paddle::memory::Copy(paddle::platform::XPUPlace(),
+  paddle::memory::Copy(paddle::platform::XPUPlace(XPU_PlaceNo),
                        id_ptr,
                        paddle::platform::CPUPlace(),
                        id_cpu_ptr,
@@ -99,7 +105,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
   tensor_score.set_lod(lod);
 
   float* score_ptr = tensor_score.mutable_data<float>(xpu_place);
-  paddle::memory::Copy(paddle::platform::XPUPlace(),
+  paddle::memory::Copy(paddle::platform::XPUPlace(XPU_PlaceNo),
                        score_ptr,
                        paddle::platform::CPUPlace(),
                        score_cpu_ptr,
