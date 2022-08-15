@@ -1,5 +1,5 @@
 - api : empty
-  args : (IntArray shape, Place place=phi::CPUPlace())
+  args : (IntArray shape, Place place=CPUPlace())
   output : Tensor(out@StringTensor)
   infer_meta :
     func : strings::CreateInferMeta
