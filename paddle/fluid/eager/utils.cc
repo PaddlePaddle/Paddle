@@ -84,7 +84,9 @@ AutogradMeta* EagerUtils::nullable_autograd_meta(
 AutogradMeta* EagerUtils::nullable_autograd_meta(
     paddle::optional<paddle::experimental::Tensor>* target) {
   if (target != nullptr) {
-    return EagerUtils::nullable_autograd_meta(*(target->get_ptr()));
+    if (target->get_ptr() != nullptr) {
+      return EagerUtils::nullable_autograd_meta(*(target->get_ptr()));
+    }
   }
   return nullptr;
 }
