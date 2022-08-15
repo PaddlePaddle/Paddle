@@ -27,6 +27,13 @@ from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_
 from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, Dygraph2StaticException
 
 
+def attr(x, attr):
+    if isinstance(x, Variable) and attr == "size":
+        return lambda: x.size()
+    else:
+        return getattr(value, attr)
+
+
 def indexable(x, code=None):
     if isinstance(x, Variable): return x
     if hasattr(x, '__len__') and hasattr(x, '__getitem__'): return x
