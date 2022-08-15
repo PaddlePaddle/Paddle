@@ -17,8 +17,10 @@ limitations under the License. */
 #include <memory>
 
 #include "glog/logging.h"
+#include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/infermeta/sparse/unary.h"
 
 namespace paddle {
 namespace experimental {
@@ -114,32 +116,17 @@ Tensor to_sparse_csr_impl(const Tensor& x) {
     kernel_context.EmplaceBackInput(input.get());
   }
 
-  // 4. InferMeta
-  auto crows_meta =
-      phi::DenseTensorMeta(phi::DataType::INT64, {1}, phi::DataLayout::NCHW);
-  auto cols_meta =
-      phi::DenseTensorMeta(phi::DataType::INT64, {1}, phi::DataLayout::NCHW);
-  auto elements_meta = phi::DenseTensorMeta(x.dtype(), {1}, x.layout());
+  Tensor api_output;
+  auto kernel_out = SetSparseKernelOutput(&api_output, TensorType::SPARSE_CSR);
+  phi::MetaTensor meta_out(kernel_out);
+  phi::sparse::UnchangedInferMeta(MakeMetaTensor(*x.impl()), &meta_out);
 
-  // 5. Prepare outputs
-  // create empty SparseCooTensor
-  phi::DenseTensor non_zero_crows(std::make_shared<phi::Allocation>(),
-                                  std::move(crows_meta));
-  phi::DenseTensor non_zero_cols(std::make_shared<phi::Allocation>(),
-                                 std::move(cols_meta));
-  phi::DenseTensor non_zero_elements(std::make_shared<phi::Allocation>(),
-                                     std::move(elements_meta));
-  auto csr = std::make_shared<phi::SparseCsrTensor>(
-      non_zero_crows, non_zero_cols, non_zero_elements, x.dims());
+  kernel_context.EmplaceBackOutput(
+      static_cast<phi::SparseCsrTensor*>(kernel_out));
 
-  kernel_context.EmplaceBackOutput(csr.get());
-  Tensor out;
-  out.set_impl(csr);
-
-  // 6. Call kernel
   kernel(&kernel_context);
 
-  return out;
+  return api_output;
 }
 
 Tensor to_dense_impl(const Tensor& x) {
@@ -176,22 +163,17 @@ Tensor to_dense_impl(const Tensor& x) {
     kernel_context.EmplaceBackInput(input.get());
   }
 
-  // 4. InferMeta
-  auto dense_meta = phi::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
+  Tensor api_output;
+  auto kernel_out =
+      SetSparseKernelOutput(&api_output, TensorType::DENSE_TENSOR);
+  phi::MetaTensor meta_out(kernel_out);
+  phi::sparse::UnchangedInferMeta(MakeMetaTensor(*x.impl()), &meta_out);
 
-  // 5. Prepare outputs
-  // create empty SparseCooTensor
-  auto dense_out = std::make_shared<phi::DenseTensor>(
-      std::make_shared<phi::Allocation>(), std::move(dense_meta));
+  kernel_context.EmplaceBackOutput(static_cast<phi::DenseTensor*>(kernel_out));
 
-  kernel_context.EmplaceBackOutput(dense_out.get());
-  Tensor out;
-  out.set_impl(dense_out);
-
-  // 6. Call kernel
   kernel(&kernel_context);
 
-  return out;
+  return api_output;
 }
 
 }  // namespace sparse

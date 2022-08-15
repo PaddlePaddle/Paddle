@@ -60,6 +60,10 @@ std::shared_ptr<phi::StringTensor> TensorToStringTensor(const Tensor& tensor) {
   return std::dynamic_pointer_cast<phi::StringTensor>(tensor.impl());
 }
 
+std::shared_ptr<phi::SparseCooTensor> TensorToSparseCooTensor(
+    const Tensor& tensor) {
+  return std::static_pointer_cast<phi::SparseCooTensor>(tensor.impl());
+}
 /* ----------------- for infer_meta --------------------- */
 
 phi::MetaTensor MakeMetaTensor(const phi::TensorBase& tensor) {
