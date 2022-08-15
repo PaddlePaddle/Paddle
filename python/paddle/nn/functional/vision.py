@@ -29,25 +29,22 @@ __all__ = []
 
 def affine_grid(theta, out_shape, align_corners=True, name=None):
     """
-    It generates a grid of (x,y) coordinates using the parameters of
+    It generates a grid of (x,y) or (x,y,z) coordinates using the parameters of
     the affine transformation that correspond to a set of points where
     the input feature map should be sampled to produce the transformed
     output feature map.
 
     Args:
-        theta (Tensor) - A tensor with shape [N, 2, 3]. It contains a batch of affine transform parameters.
+        theta (Tensor) - A tensor with shape [N, 2, 3] or [N, 3, 4]. It contains a batch of affine transform parameters.
                            The data type can be float32 or float64.
-        out_shape (Tensor | list | tuple): The shape of target output with format [batch_size, channel, height, width].
-                                             ``out_shape`` can be a Tensor or a list or tuple. The data
-                                             type must be int32.
-        align_corners(bool): Whether to align corners of target feature map and source feature map. Default: True.
-        name(str|None): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        out_shape (Tensor | list | tuple): Type can be a 1-D Tensor, list, or tuple. It is used to represent the shape of the output in an affine transformation, in the format ``[N, C, H, W]`` or ``[N, C, D, H, W]``. 
+                                           When the format is ``[N, C, H, W]``, it represents the batch size, number of channels, height and width. When the format is ``[N, C, D, H, W]``, it represents the batch size, number of channels, depth, height and width.
+                                           The data type must be int32.
+        align_corners(bool, optional): if True, aligns the centers of the 4 (4D) or 8 (5D) corner pixels of the input and output tensors, and preserves the value of the corner pixels. Default: True
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, A Tensor with shape [batch_size, H, W, 2] while 'H' and 'W' are the height and width of feature map in affine transformation. The data type is the same as `theta`.
-
-    Raises:
-        ValueError: If the type of arguments is not supported.
+        Tensor, A Tensor with shape [batch_size, H, W, 2] or [batch, D, H, W, 3] while ('D')'H', 'W' are the (depth)height, width of feature map in affine transformation. The data type is the same as `theta`.
 
     Examples:
 
@@ -55,13 +52,11 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
             # theta shape = [1, 2, 3]
-            theta = np.array([[[-0.7, -0.4, 0.3],
-                               [ 0.6,  0.5, 1.5]]]).astype("float32")
-            theta_t = paddle.to_tensor(theta)
+            theta = paddle.to_tensor([[[-0.7, -0.4, 0.3],
+                                       [ 0.6,  0.5, 1.5]]], dtype="float32")
             y_t = F.affine_grid(
-                    theta_t,
+                    theta,
                     [1, 2, 3, 3],
                     align_corners=False)
             print(y_t)
@@ -85,6 +80,8 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     if cudnn_version is not None and cudnn_version >= 6000 and align_corners:
         use_cudnn = True
     else:
+        use_cudnn = False
+    if theta.shape[1] == 3:
         use_cudnn = False
     if is_compiled_with_rocm():
         use_cudnn = False  # ROCM platform do not have MIOPEN kernel for affine_grid

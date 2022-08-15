@@ -34,7 +34,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import GroupShardedStage3
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import GroupShardedScaler
 
-logger_ = get_logger(logging.INFO)
+logger_ = get_logger(logging.WARNING)
 
 
 def group_sharded_parallel(model,
