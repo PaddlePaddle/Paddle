@@ -2173,7 +2173,7 @@ def max(x, axis=None, keepdim=False, name=None):
             #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis(axis)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis)
     if in_dygraph_mode():
         return _C_ops.final_state_max(x, axis, keepdim)
     if _in_legacy_dygraph():

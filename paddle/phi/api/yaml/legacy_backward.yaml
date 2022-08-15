@@ -1394,8 +1394,8 @@
     func : matrix_power_grad
 
 - backward_api : max_grad
-  forward: max (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  forward: max (Tensor x,  IntArray dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray dims={}, bool keep_dim=false, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

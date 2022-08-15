@@ -70,15 +70,6 @@ class ApiMaxTest(unittest.TestCase):
 
         self.assertRaises(TypeError, test_input_type)
 
-        def test_axis_type():
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
-                data = paddle.static.data("data", shape=[10, 10], dtype="int64")
-                axis = paddle.static.data("axis", shape=[10, 10], dtype="int64")
-                result_max = paddle.max(data, axis)
-
-        self.assertRaises(TypeError, test_axis_type)
-
     def test_imperative_api(self):
         paddle.disable_static()
         np_x = np.array([10, 10]).astype('float64')
