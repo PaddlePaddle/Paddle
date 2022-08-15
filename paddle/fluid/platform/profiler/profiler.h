@@ -46,7 +46,7 @@ class Profiler {
  public:
   static std::unique_ptr<Profiler> Create(
       const ProfilerOptions& options,
-      const std::string& custom_device_type = "");
+      const std::vector<std::string>& custom_device_types = {});
 
   static bool IsCuptiSupported();
 
@@ -79,7 +79,7 @@ class Profiler {
   };
 
   explicit Profiler(const ProfilerOptions& options,
-                    const std::string& custom_device_type = "");
+                    const std::vector<std::string>& custom_device_types = {});
 
   DISABLE_COPY_AND_ASSIGN(Profiler);
 

@@ -78,10 +78,8 @@ void CustomTracer::CollectTraceData(TraceEventCollector* collector) {
       TracerState::STOPED,
       platform::errors::PreconditionNotMet("Tracer must be STOPED"));
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  // collector -> c_collector
   phi::DeviceManager::ProfilerCollectTraceData(
       dev_type_, &collector_, tracing_start_ns_, context_);
-  // c_collector -> collector
 #endif
   for (auto he : collector_.HostEvents()) {
     collector->AddHostEvent(std::move(he));
@@ -101,6 +99,7 @@ void CustomTracer::CollectTraceData(TraceEventCollector* collector) {
 }  // namespace platform
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 void profiler_add_runtime_trace_event(C_Profiler prof, void* event) {
   paddle::platform::RuntimeTraceEvent re =
       *reinterpret_cast<paddle::platform::RuntimeTraceEvent*>(event);
@@ -114,3 +113,4 @@ void profiler_add_device_trace_event(C_Profiler prof, void* event) {
   reinterpret_cast<paddle::platform::TraceEventCollector*>(prof)
       ->AddDeviceEvent(std::move(de));
 }
+#endif

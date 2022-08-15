@@ -41,11 +41,12 @@ void SynchronizeAllDevice();
 std::atomic<bool> Profiler::alive_{false};
 
 std::unique_ptr<Profiler> Profiler::Create(
-    const ProfilerOptions& options, const std::string& custom_device_type) {
+    const ProfilerOptions& options,
+    const std::vector<std::string>& custom_device_types) {
   if (alive_.exchange(true)) {
     return nullptr;
   }
-  return std::unique_ptr<Profiler>(new Profiler(options, custom_device_type));
+  return std::unique_ptr<Profiler>(new Profiler(options, custom_device_types));
 }
 
 bool Profiler::IsCuptiSupported() {
@@ -65,7 +66,7 @@ bool Profiler::IsCnpapiSupported() {
 }
 
 Profiler::Profiler(const ProfilerOptions& options,
-                   const std::string& custom_device_type) {
+                   const std::vector<std::string>& custom_device_types) {
   options_ = options;
   std::bitset<32> trace_switch(options_.trace_switch);
   if (trace_switch.test(kProfileCPUOptionBit)) {
@@ -80,8 +81,9 @@ Profiler::Profiler(const ProfilerOptions& options,
     tracers_.emplace_back(&MluTracer::GetInstance(), false);
   }
   if (trace_switch.test(kProfileCustomDeviceOptionBit)) {
-    tracers_.emplace_back(&CustomTracer::GetInstance(custom_device_type),
-                          false);
+    for (const auto& dev_type : custom_device_types) {
+      tracers_.emplace_back(&CustomTracer::GetInstance(dev_type), false);
+    }
   }
 }
 

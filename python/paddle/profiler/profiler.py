@@ -410,7 +410,7 @@ class Profiler:
                  profile_memory=False,
                  timer_only: Optional[bool] = False,
                  emit_nvtx: Optional[bool] = False,
-                 custom_device_type=""):
+                 custom_device_types: Optional[list] = []):
         supported_targets = _get_supported_targets()
         if targets:
             self.targets = set(targets)
@@ -430,8 +430,10 @@ class Profiler:
             profileoption.trace_switch |= (1 << 2)
         if ProfilerTarget.CUSTOM_DEVICE in self.targets:
             profileoption.trace_switch |= (1 << 3)
+            if not custom_device_types:
+                custom_device_types = paddle.device.get_all_custom_device_type()
         wrap_optimizers()
-        self.profiler = _Profiler.create(profileoption, custom_device_type)
+        self.profiler = _Profiler.create(profileoption, custom_device_types)
         if callable(scheduler):
             self.scheduler = scheduler
         elif isinstance(scheduler, (tuple, list)):
