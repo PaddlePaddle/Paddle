@@ -168,9 +168,10 @@ class SkipLayerNormOpConverter : public OpConverter {
         return weight;
       };
 
-      bool with_fp16 = engine_->WithFp16() &&
-                       !engine_->disable_trt_plugin_fp16() &&
-                       (input1->getType() == nvinfer1::DataType::kHALF);
+      // bool with_fp16 = engine_->WithFp16() &&
+      //                  !engine_->disable_trt_plugin_fp16() &&
+      //                  (input1->getType() == nvinfer1::DataType::kHALF);
+      bool with_fp16 = false;
       TensorRTEngine::Weight bias_weight, scale_weight;
       if (with_fp16) {
         bias_weight = GetFp16Weight("Bias");
