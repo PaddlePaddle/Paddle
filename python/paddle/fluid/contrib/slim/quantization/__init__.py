@@ -22,12 +22,12 @@ from . import quant2_int8_mkldnn_pass
 from .quant2_int8_mkldnn_pass import *
 from . import post_training_quantization
 from .post_training_quantization import *
-from . import imperative
-from .imperative import *
+#from . import imperative
+#from .imperative import *
 
 __all__ = []
 __all__ += quantization_pass.__all__
 __all__ += quant_int8_mkldnn_pass.__all__
 __all__ += quant2_int8_mkldnn_pass.__all__
 __all__ += post_training_quantization.__all__
-__all__ += imperative.__all__
+#__all__ += imperative.__all__
