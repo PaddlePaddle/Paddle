@@ -100,9 +100,9 @@ class LazyInit(object):
     trigger EagerParamBase Lazy Initialization and get startup Program.
     """
 
-    def __init__(self, class_obj=None, clear_cache=True):
+    def __init__(self, class_obj=None, **kwargs):
         self.class_obj = class_obj
-        self.clear_cache = clear_cache
+        self.clear_cache = kwargs.get('clear_cache', True)
 
     def __call__(self, *args, **kwargs):
         """
@@ -117,8 +117,13 @@ class LazyInit(object):
                 
                 fc = LazyInit(Linear)(10, 10)
 
-                print(fc.startup_program)
+                for param in fc.parameters():
+                    param.initialize()
         """
+        assert issubclass(
+            self.class_obj, type
+        ), "Required class_obj must be a class type, but received %s." % self.class_obj
+        assert isinstance()
         global _lazy_guard
         _lazy_guard.enable(self.clear_cache)
         # construct Layer instance
@@ -147,7 +152,8 @@ class LazyInit(object):
                     print(lz.startup_program())
                 
                 # outer 'with'
-                print(LazyInit.startup_program())
+                for param in fc.parameters():
+                    param.initialize()
         """
         _lazy_guard.enable()
         return self
