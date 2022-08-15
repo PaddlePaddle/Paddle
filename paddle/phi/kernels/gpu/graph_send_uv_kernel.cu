@@ -71,6 +71,13 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& ctx,
                                          const std::string& message_op,
                                          DenseTensor* out) {
   const int64_t& index_size = src_index.dims()[0];
+  PADDLE_ENFORCE_GT(
+      index_size,
+      0,
+      errors::InvalidArgument("The first dimension of src_index or dst_index "
+                              "shoule be greater than 0, but received %d.",
+                              index_size));
+
   auto out_dims = out->dims();
   int64_t memset_size = 1;
   for (int i = 0; i < out_dims.size(); i++) {
@@ -78,7 +85,6 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& ctx,
   }
   ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
-  if (index_size == 0) return;
 
   const auto& bcast_info = phi::CalcBCastInfo(x.dims(), y.dims());
   const T* x_data = x.data<T>();

@@ -219,6 +219,12 @@ void GraphSendUVGradOpCUDAKernelLaunchHelper(const Context& ctx,
                                              DenseTensor* x_grad,
                                              DenseTensor* y_grad) {
   const int64_t& index_size = dst_index.dims()[0];
+  PADDLE_ENFORCE_GT(
+      index_size,
+      0,
+      errors::InvalidArgument("The first dimension of src_index or dst_index "
+                              "shoule be greater than 0, but received %d.",
+                              index_size));
 
   ctx.template Alloc<T>(x_grad);
   T* x_grad_data = x_grad->data<T>();
@@ -245,8 +251,6 @@ void GraphSendUVGradOpCUDAKernelLaunchHelper(const Context& ctx,
   cudaMemset(x_grad_data, 0, memset_bytes_x);
   cudaMemset(y_grad_data, 0, memset_bytes_y);
 #endif
-
-  if (index_size == 0) return;
 
   const T* out_grad_data = out_grad.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();

@@ -63,7 +63,7 @@ void CalculateGrad(const Context& ctx,
       auto out_grad_dims_1 = phi::vectorize<int>(out_grad_dims);
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
-      out_grad_dims_2.insert(out_grad_dims_2.begin(), x_grad_dims[0]);
+      out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
       DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
       phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
@@ -120,7 +120,7 @@ void CalculateGrad(const Context& ctx,
       auto out_grad_dims_1 = phi::vectorize<int>(out_grad_dims);
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
-      out_grad_dims_2.insert(out_grad_dims_2.begin(), x_grad_dims[0]);
+      out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
       DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
       phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
@@ -168,6 +168,13 @@ void GraphSendUVGradOpKernelLaunchHelper(const Context& ctx,
                                          DenseTensor* y_grad) {
   const int64_t& index_size = dst_index.dims()[0];
 
+  PADDLE_ENFORCE_GT(
+      index_size,
+      0,
+      errors::InvalidArgument("The first dimension of src_index or dst_index "
+                              "shoule be greater than 0, but received %d.",
+                              index_size));
+
   ctx.template Alloc<T>(x_grad);
   T* x_grad_data = x_grad->data<T>();
   ctx.template Alloc<T>(y_grad);
@@ -189,7 +196,6 @@ void GraphSendUVGradOpKernelLaunchHelper(const Context& ctx,
   memset(x_grad_data, 0, memset_bytes_x);
   memset(y_grad_data, 0, memset_bytes_y);
 
-  if (index_size == 0) return;
   const T* out_grad_data = out_grad.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
