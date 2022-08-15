@@ -123,7 +123,6 @@ class LazyInit(object):
         assert isinstance(
             self.class_obj, type
         ), "Required class_obj must be a class type, but received %s." % self.class_obj
-        assert isinstance()
         global _lazy_guard
         _lazy_guard.enable(self.clear_cache)
         # construct Layer instance
