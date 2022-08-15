@@ -172,6 +172,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
+  list(REMOVE_ITEM TEST_OPS test_allgather)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
   list(REMOVE_ITEM TEST_OPS test_collective_reduce)
   list(REMOVE_ITEM TEST_OPS test_pipeline_parallel)
@@ -186,8 +187,11 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_collective_reduce_api)
   list(REMOVE_ITEM TEST_OPS test_collective_scatter_api)
   list(REMOVE_ITEM TEST_OPS test_collective_barrier_api)
+  list(REMOVE_ITEM TEST_OPS test_collective_allreduce_api)
   list(REMOVE_ITEM TEST_OPS test_new_group_api)
   list(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
+  list(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
+  list(REMOVE_ITEM TEST_OPS test_collective_allgather_object_api)
   list(REMOVE_ITEM TEST_OPS test_collective_alltoall_api)
   list(REMOVE_ITEM TEST_OPS test_collective_global_gather)
   list(REMOVE_ITEM TEST_OPS test_collective_global_scatter)
@@ -1225,7 +1229,7 @@ endif()
 if(WITH_XPU_BKCL)
   #py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
   py_test(test_collective_allreduce_api_xpu
-          SRCS "collective/test_collective_allreduce_api.py")
+          SRCS "test_collective_allreduce_api.py")
 endif()
 
 if(WITH_HETERPS)
@@ -1622,11 +1626,15 @@ if(APPLE)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
+  set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_collective_allgather_object_api PROPERTIES TIMEOUT
+                                                                       120)
   set_tests_properties(test_collective_alltoall_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_global_gather PROPERTIES TIMEOUT 200)
   set_tests_properties(test_collective_global_scatter PROPERTIES TIMEOUT 200)
   set_tests_properties(test_collective_sendrecv_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
   if(WITH_DISTRIBUTE)
     set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
@@ -1647,8 +1655,11 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
       test_collective_barrier_api
       test_collective_reduce_api
       test_pipeline_parallel
+      test_collective_allreduce_api
       test_new_group_api
       test_collective_broadcast_api
+      test_collective_allgather_api
+      test_collective_allgather_object_api
       test_collective_alltoall_api
       test_collective_global_gather
       test_collective_global_scatter
@@ -1660,6 +1671,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   set_tests_properties(test_collective_reduce_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_reduce PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_allgather PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_scatter_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
