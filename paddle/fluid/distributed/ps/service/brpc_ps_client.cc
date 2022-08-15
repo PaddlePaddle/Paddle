@@ -1791,7 +1791,7 @@ std::future<int32_t> BrpcPsClient::PushDense(const Region *regions,
 void BrpcPsClient::PushDenseTaskConsume() {
   uint64_t merge_size = FLAGS_pserver_push_dense_merge_limit;
   static bool scale_gradient = FLAGS_pserver_scale_gradient_by_merge;
-  ::ThreadPool async_merge_dense_threads(10);
+  ::ThreadPool async_merge_dense_threads(1);
   while (_running) {
     auto async_start_time_ms = butil::gettimeofday_ms();
     for (auto &task_queue_itr : _push_dense_task_queue_map) {
