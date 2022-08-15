@@ -6,7 +6,9 @@
     and specify the properties for the new unit test
 ### step 3. Generate CmakeLists.txt
     Run the cmd:
+```bash
         python3 ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py -f ${PADDLE_ROOT}/python/paddle/fluid/tests/unittests/collective/testslist.csv
+```
     Then the cmd generates a file named CMakeLists.txt in the save directory with the testslist.csv
 
 * note:  
