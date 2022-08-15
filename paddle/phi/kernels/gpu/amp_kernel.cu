@@ -190,7 +190,7 @@ class LazyZeros<phi::GPUContext, T> {
     T** d_out_addrs = reinterpret_cast<T**>(d_out_addrs_mem->ptr());
 
     for (size_t i = 0; i < xs_size; ++i) {
-      h_out_addrs[i] = outs[i]->mutable_data<T>(dev_ctx.GetPlace());
+      h_out_addrs[i] = dev_ctx.Alloc<T>(outs[i]);
     }
     paddle::memory::Copy(dev_ctx.GetPlace(),
                          d_out_addrs,
