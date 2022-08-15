@@ -47,7 +47,7 @@ KernelSignature NearestInterpOpArgumentMapping(
 }
 KernelSignature TrilinearInterpOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("trilinear_interp_v2",
+  return KernelSignature("trilinear_interp",
                          {"X", "OutSize", "SizeTensor", "Scale"},
                          {"data_layout",
                           "out_d",
@@ -121,7 +121,7 @@ KernelSignature NearestInterpGradOpArgumentMapping(
 }
 KernelSignature TrilinearInterpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("trilinear_interp_v2_grad",
+  return KernelSignature("trilinear_interp_grad",
                          {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
                          {"data_layout",
                           "out_d",
@@ -165,6 +165,9 @@ KernelSignature BicubicInterpGradOpArgumentMapping(
 }
 
 }  // namespace phi
+
+PD_REGISTER_BASE_KERNEL_NAME(trilinear_interp_v2, trilinear_interp);
+PD_REGISTER_BASE_KERNEL_NAME(trilinear_interp_v2_grad, trilinear_interp_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(bilinear_interp_v2,
                            phi::BilinearInterpOpArgumentMapping);

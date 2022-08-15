@@ -590,19 +590,6 @@ def interpolate(x,
             attr_list.append(v)
         dy_attr = tuple(attr_list)
 
-        eager_args = [x]
-        eager_args.append(inputs['OutSize'] if 'OutSize' in inputs else None)
-        eager_args.append(inputs['SizeTensor'] if 'SizeTensor' in
-                          inputs else None)
-        eager_args.append(inputs['Scale'] if 'Scale' in inputs else None)
-        eager_args.extend([
-            attrs['data_layout'], attrs['out_d'], attrs['out_h'], attrs['out_w']
-        ])
-        eager_args.append(attrs['scale'] if 'scale' in attrs else [])
-        eager_args.extend([
-            attrs['interp_method'], attrs['align_corners'], attrs['align_mode']
-        ])
-
         if resample_type == "linear":
             if in_dygraph_mode():
                 out = _C_ops.final_state_linear_interp_v2(*eager_args)
@@ -611,7 +598,17 @@ def interpolate(x,
         elif resample_type == "bilinear":
             out = _C_ops.bilinear_interp_v2(x, *dy_attr)
         elif resample_type == "trilinear":
-            out = _C_ops.trilinear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_trilinear_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.trilinear_interp_v2(x, *dy_attr)
         elif resample_type == "nearest":
             out = _C_ops.nearest_interp_v2(x, *dy_attr)
         elif resample_type == "bicubic":

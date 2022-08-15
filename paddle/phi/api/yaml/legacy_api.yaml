@@ -459,9 +459,9 @@
   args : (Tensor label, int num_classes, int num_samples, int ring_id, int rank, int nranks, bool fix_seed, int seed)
   output : Tensor(remapped_label), Tensor(sampled_local_class_center)
   infer_meta :
-    func : ClassCenterSampleInferMeta 
+    func : ClassCenterSampleInferMeta
   kernel :
-    func : class_center_sample 
+    func : class_center_sample
 
 - api : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
@@ -2690,6 +2690,17 @@
   kernel :
     func : tril_triu
   backward : tril_triu_grad
+
+- api : trilinear_interp
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : trilinear_interp
+    data_type : x
+  backward : trilinear_interp_grad
 
 # python API: paddle.nn.initializer.TruncatedNormal
 - api : truncated_gaussian_random
