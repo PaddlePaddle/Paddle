@@ -31,15 +31,15 @@ class TestCumsumOp(unittest.TestCase):
 
         y = paddle.cumsum(data)
         z = np.cumsum(data_np)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
         y = paddle.cumsum(data, axis=0)
         z = np.cumsum(data_np, axis=0)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
         y = paddle.cumsum(data, axis=-1)
         z = np.cumsum(data_np, axis=-1)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
         y = paddle.cumsum(data, dtype='float64')
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP64)
@@ -49,7 +49,7 @@ class TestCumsumOp(unittest.TestCase):
 
         y = paddle.cumsum(data, axis=-2)
         z = np.cumsum(data_np, axis=-2)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
     def run_static(self, use_gpu=False):
         with fluid.program_guard(fluid.Program()):

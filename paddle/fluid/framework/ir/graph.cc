@@ -149,7 +149,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
     ++desc_order;
     // For input args, reuse the same var name if it was created before.
     // Otherwise, create a new one.
-    for (auto &each_var_name : op->InputArgumentNames()) {
+    for (auto &each_var_name : op->InputArgumentNames(true)) {
       not_visited_vars.erase(each_var_name);
       ir::Node *var = nullptr;
       if (var_nodes.find(each_var_name) != var_nodes.end()) {

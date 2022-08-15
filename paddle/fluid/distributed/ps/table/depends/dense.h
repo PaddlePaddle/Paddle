@@ -254,9 +254,9 @@ class DAdamD2Sum : public DenseOptimizer {
     scale = (mat_ada_d2sum + scale).cwiseQuotient(mat_ada_g2sum + scale);
     scale = scale.cwiseSqrt();
     mat_mom_velocity =
-        (mat_mom_velocity - mat_grad) * mom_decay_rate[0] + mat_grad;
+        (mat_mom_velocity + mat_grad) * mom_decay_rate[0] - mat_grad;
 
-    mat_w -= learning_rate[0] * mat_mom_velocity.cwiseProduct(scale);
+    mat_w += learning_rate[0] * mat_mom_velocity.cwiseProduct(scale);
   }
 
   float* learning_rate;
@@ -299,7 +299,7 @@ class DSummary : public DenseOptimizer {
   }
 
   float* summary_decay_rate;
-  double summary_decay_rate_d = 0.9999999;
+  double summary_decay_rate_d = 0.999999;
   float* param;
 };
 

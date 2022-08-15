@@ -381,7 +381,7 @@ class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
             x_np, weight_np, bias_np, 'float32')
 
         def assert_equal(x, y):
-            self.assertTrue(np.array_equal(x, y))
+            np.testing.assert_array_equal(x, y)
 
         assert_equal(y_np_1, y_np_2)
         assert_equal(x_g_np_1, x_g_np_2)

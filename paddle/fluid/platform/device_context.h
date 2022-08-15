@@ -113,8 +113,8 @@ bool AllowTF32Cudnn();
 enum DeviceType {
   CPU = 0,
   CUDA = 1,
-  XPU = 2,
-  NPU = 3,
+  NPU = 2,
+  XPU = 3,
   IPU = 4,
   MLU = 5,
 

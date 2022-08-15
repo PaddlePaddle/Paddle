@@ -451,12 +451,13 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   auto attr_reader = ctx->Attrs();
   for (size_t i = 0; i < attr_names.size(); ++i) {
     auto& attr_name = attr_names[i];
-    VLOG(6) << "BuildInferMetaContext: " << attr_name << ": "
-            << attr_defs[i].type_index;
     auto* attr_ptr = attr_reader.GetAttr(attr_name);
+    bool is_attr_var = attr_ptr != nullptr && HasAttrVar(*attr_ptr);
+    VLOG(6) << "BuildInferMetaContext: " << attr_name << ": "
+            << attr_defs[i].type_index << ", is_attr_var: " << is_attr_var;
     switch (attr_defs[i].type_index) {
       case phi::AttributeType::SCALAR:
-        if (attr_ptr) {
+        if (attr_ptr && !is_attr_var) {
           auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
@@ -502,7 +503,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         break;
       case phi::AttributeType::INT_ARRAY:
         // When attr is a vector_tensor or tensor, transform it to IntArray
-        if (attr_ptr) {
+        if (attr_ptr && !is_attr_var) {
           auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::INTS:

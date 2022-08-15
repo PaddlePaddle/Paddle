@@ -600,7 +600,7 @@ class TestSliceApiWithTensor(unittest.TestCase):
                                ends=paddle.to_tensor(ends, dtype='int32'))
             a_2 = paddle.slice(a, axes=axes, starts=starts, ends=ends)
 
-            self.assertTrue(np.array_equal(a_1.numpy(), a_2.numpy()))
+            np.testing.assert_array_equal(a_1.numpy(), a_2.numpy())
 
     def test_bool_tensor(self):
         with paddle.fluid.dygraph.guard():
@@ -616,7 +616,7 @@ class TestSliceApiWithTensor(unittest.TestCase):
             y_np = tt[0:3, 1:5, 2:4]
 
             self.assertTrue(paddle.bool == y_paddle.dtype)
-            self.assertTrue(np.array_equal(y_paddle.numpy(), y_np))
+            np.testing.assert_array_equal(y_paddle.numpy(), y_np)
 
 
 class TestSliceApiEager(unittest.TestCase):
@@ -635,11 +635,11 @@ class TestSliceApiEager(unittest.TestCase):
                                    axes=axes,
                                    starts=paddle.to_tensor(starts),
                                    ends=paddle.to_tensor(ends))
-
+                np.testing.assert_array_equal(a_1.numpy(), a_2.numpy())
                 a_1.backward()
                 grad_truth = paddle.zeros_like(a)
                 grad_truth[-3:3, 0:2, 2:4] = 1
-                self.assertTrue(np.array_equal(grad_truth, a.gradient()))
+                np.testing.assert_array_equal(grad_truth, a.gradient())
 
                 self.assertTrue(np.allclose(a_1.numpy(), a[-3:3, 0:2, 2:4]))
 
@@ -710,10 +710,10 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
         self.assertTrue(self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR)
         self.assertEqual(self.sliced_arr.shape, self.shape)
-        self.assertTrue(np.array_equal(self.out, self.data))
-        self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x1, np.zeros_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x2, np.zeros_like(self.data)))
+        np.testing.assert_array_equal(self.out, self.data)
+        np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
+        np.testing.assert_array_equal(self.g_x1, np.zeros_like(self.data))
+        np.testing.assert_array_equal(self.g_x2, np.zeros_like(self.data))
 
     def test_case_2(self):
         main_program = fluid.Program()
@@ -722,12 +722,11 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(
             self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY)
         self.assertEqual(self.sliced_arr.shape, self.shape)
-        self.assertTrue(
-            np.array_equal(self.out,
-                           np.stack([self.data, self.data], axis=self.axis)))
-        self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x1, np.ones_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x2, np.zeros_like(self.data)))
+        np.testing.assert_array_equal(
+            self.out, np.stack([self.data, self.data], axis=self.axis))
+        np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
+        np.testing.assert_array_equal(self.g_x1, np.ones_like(self.data))
+        np.testing.assert_array_equal(self.g_x2, np.zeros_like(self.data))
 
     def test_case_3(self):
         main_program = fluid.Program()
@@ -736,13 +735,12 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(
             self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY)
         self.assertEqual(self.sliced_arr.shape, self.shape)
-        self.assertTrue(
-            np.array_equal(
-                self.out,
-                np.stack([self.data, self.data, self.data], axis=self.axis)))
-        self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x1, np.ones_like(self.data)))
-        self.assertTrue(np.array_equal(self.g_x2, np.ones_like(self.data)))
+        np.testing.assert_array_equal(
+            self.out, np.stack([self.data, self.data, self.data],
+                               axis=self.axis))
+        np.testing.assert_array_equal(self.g_x0, np.ones_like(self.data))
+        np.testing.assert_array_equal(self.g_x1, np.ones_like(self.data))
+        np.testing.assert_array_equal(self.g_x2, np.ones_like(self.data))
 
 
 class TestImperativeVarBaseGetItem(unittest.TestCase):
@@ -796,11 +794,11 @@ class TestInferShape(unittest.TestCase):
                 100,
             ], [0], [1])
             np_slice = x_arr[:, :, 0:1]
-            self.assertTrue(np.array_equal(pp_slice, np_slice))
+            np.testing.assert_array_equal(pp_slice, np_slice)
 
             pp_slice = paddle.slice(x, (-100, ), [0], [1])
             np_slice = x_arr[0:1]
-            self.assertTrue(np.array_equal(pp_slice, np_slice))
+            np.testing.assert_array_equal(pp_slice, np_slice)
 
             x_arr = np.array([], dtype=np.float32)
             x = paddle.to_tensor(np.reshape(x_arr, (0, 0, 0)))
