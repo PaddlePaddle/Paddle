@@ -1842,8 +1842,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           return false;
         }
       } else {
-#if !IS_TRT_VERSION_GE(7200)
-        VLOG(3) << "The version of TRT must be greater than 7.2";
+#if !IS_TRT_VERSION_GE(8000)
+        VLOG(3) << "The version of TRT must be greater than 8000";
         return false;
 #endif
       }
