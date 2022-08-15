@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 
 
 def func_ref(func, x, num_or_sections):
+    # Convert the num_or_sections in paddle to indices_or_sections in numpy
     # Do not support -1
     if isinstance(num_or_sections, int):
         indices_or_sections = num_or_sections
@@ -28,6 +29,7 @@ def func_ref(func, x, num_or_sections):
     return func(x, indices_or_sections)
 
 
+# TODO: add other split API, such as dsplit、hsplit
 test_list = [
     (paddle.vsplit, np.vsplit),
 ]
@@ -66,6 +68,9 @@ class TestSplitsAPI(unittest.TestCase):
 
 
 class TestSplitsSections(TestSplitsAPI):
+    """
+        Test num_or_sections which is a list and date type is float64.
+    """
 
     def setUp(self):
         self.shape = [6, 2, 4]
@@ -76,6 +81,9 @@ class TestSplitsSections(TestSplitsAPI):
 
 
 class TestSplitsFloat32(TestSplitsAPI):
+    """
+        Test num_or_sections which is an integer and data type is float32.
+    """
 
     def setUp(self):
         self.shape = [2, 3, 4]
@@ -85,7 +93,36 @@ class TestSplitsFloat32(TestSplitsAPI):
             else paddle.CPUPlace()
 
 
+class TestSplitsInt32(TestSplitsAPI):
+    """
+        Test data type int32.
+    """
+
+    def setUp(self):
+        self.shape = [5, 1, 2]
+        self.num_or_sections = 1
+        self.x_np = np.random.uniform(-1, 1, self.shape).astype('int32')
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+
+class TestSplitsInt64(TestSplitsAPI):
+    """
+        Test data type int64.
+    """
+
+    def setUp(self):
+        self.shape = [4, 3, 2]
+        self.num_or_sections = 2
+        self.x_np = np.random.uniform(-1, 1, self.shape).astype('int64')
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+
 class TestSplitsCPU(TestSplitsAPI):
+    """
+        Test cpu place and num_or_sections which is a tuple.
+    """
 
     def setUp(self):
         self.shape = [8, 2, 3, 5]
@@ -95,6 +132,9 @@ class TestSplitsCPU(TestSplitsAPI):
 
 
 class TestSplitsError(unittest.TestCase):
+    """
+        Test the situation that input shape less than 2.
+    """
 
     def setUp(self):
         self.num_or_sections = 1
