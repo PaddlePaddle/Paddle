@@ -592,7 +592,7 @@ def interpolate(x,
 
         if resample_type == "linear":
             if in_dygraph_mode():
-                out = _C_ops.final_state_linear_interp_v2(
+                out = _C_ops.final_state_linear_interp(
                     x, inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,

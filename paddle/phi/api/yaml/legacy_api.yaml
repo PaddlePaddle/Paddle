@@ -1428,16 +1428,16 @@
   kernel :
     func : less_than
 
-- api : linear_interp_v2
+- api : linear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
   output : Tensor(output)
   infer_meta :
     func : InterpolateInferMeta
   optional: out_size, size_tensor, scale_tensor
   kernel :
-    func : linear_interp_v2
+    func : linear_interp
     data_type : x
-  backward : linear_interp_v2_grad
+  backward : linear_interp_grad
 
 - api : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
@@ -2571,7 +2571,7 @@
   backward : swish_grad
 
 # sync_batch_norm
-- api : sync_batch_norm
+- api : sync_batch_norm_
   args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta :
@@ -2580,6 +2580,7 @@
     func : sync_batch_norm
     data_type : x
   backward : sync_batch_norm_grad
+  inplace : (mean -> mean_out), (variance -> variance_out)
 
 # take_along_axis
 - api : take_along_axis

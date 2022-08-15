@@ -34,18 +34,18 @@ static __forceinline__ __device__ void AtomicAdd(
 
 template <typename T>
 static __forceinline__ __device__ void AtomicAdd3D(T* data,
-                                                   int64_t d,
-                                                   int64_t h,
-                                                   int64_t w,
-                                                   int64_t sD,
-                                                   int64_t sH,
-                                                   int64_t sW,
-                                                   int64_t D,
-                                                   int64_t H,
-                                                   int64_t W,
+                                                   int d,
+                                                   int h,
+                                                   int w,
+                                                   int sD,
+                                                   int sH,
+                                                   int sW,
+                                                   int D,
+                                                   int H,
+                                                   int W,
                                                    T delta) {
   if (InBounds3D(d, h, w, D, H, W)) {
-    atomicAdd(data + d * sD + h * sH + w * sW, delta);
+    paddle::platform::CudaAtomicAdd(data + d * sD + h * sH + w * sW, delta);
   }
 }
 
