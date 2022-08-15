@@ -40,8 +40,8 @@ class VocabParallelEmbedding(Layer):
     def __init__(self,
                  num_embeddings,
                  embedding_dim,
-                 mp_group=None,
                  weight_attr=None,
+                 mp_group=None,
                  name=None):
         super(VocabParallelEmbedding, self).__init__()
 
@@ -107,12 +107,12 @@ class ColumnParallelLinear(Layer):
     def __init__(self,
                  in_features,
                  out_features,
-                 mp_group=None,
                  weight_attr=None,
                  has_bias=None,
                  gather_output=True,
-                 name=None,
-                 fuse_matmul_bias=False):
+                 fuse_matmul_bias=False,
+                 mp_group=None,
+                 name=None):
         super(ColumnParallelLinear, self).__init__()
 
         self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
@@ -197,12 +197,12 @@ class RowParallelLinear(Layer):
     def __init__(self,
                  in_features,
                  out_features,
-                 mp_group=None,
                  weight_attr=None,
                  has_bias=True,
                  input_is_parallel=False,
-                 name=None,
-                 fuse_matmul_bias=False):
+                 fuse_matmul_bias=False,
+                 mp_group=None,
+                 name=None):
         super(RowParallelLinear, self).__init__()
 
         self.in_features = in_features
