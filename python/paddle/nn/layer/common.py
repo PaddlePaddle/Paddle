@@ -945,7 +945,7 @@ class Pad1D(Layer):
     If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
             same padding in both dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
         mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
@@ -954,18 +954,17 @@ class Pad1D(Layer):
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
             Default is 'constant'.
-        value (float32, optional): The value to fill the padded areas. Default is 0.0
+        value (float, optional): The value to fill the padded areas. Default is 0.0
         data_format (str, optional): An string from: "NCL", "NLC". Specify the data format of the input data.
            Default is  "NCL"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional) : name (str, optional): For details, please refer to :ref:`api_guide_Name`.
+            Generally, no setting is required. Default: None.
 
     Returns:
         None
 
     Examples:
         .. code-block:: python
-         :name: code-example1
 
             import paddle
             import paddle.nn as nn
@@ -1016,7 +1015,7 @@ class Pad2D(Layer):
     than width-1. The height dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded. 
             The pad has the form (pad_left, pad_right, pad_top, pad_bottom). 
         mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
@@ -1025,7 +1024,7 @@ class Pad2D(Layer):
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
             Default is 'constant'.
-        value (float32, optional): The value to fill the padded areas. Default is 0.0
+        value (float, optional): The value to fill the padded areas. Default is 0.0
         data_format (str, optional): An string from: "NCHW", "NHWC". Specify the data format of the input data.
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
@@ -1036,7 +1035,6 @@ class Pad2D(Layer):
 
     Examples:
         .. code-block:: python
-         :name: code-example1
 
             import paddle
             import paddle.nn as nn
@@ -1157,7 +1155,7 @@ class Pad3D(Layer):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
         mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
@@ -1166,7 +1164,7 @@ class Pad3D(Layer):
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
             Default is 'constant'.
-        value (float32, optional): The value to fill the padded areas. Default is 0.0
+        value (float, optional): The value to fill the padded areas. Default is 0.0
         data_format (str, optional): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
            Default is  "NCDHW"
         name (str, optional) : The default value is None.  Normally there is no need for
@@ -1177,7 +1175,6 @@ class Pad3D(Layer):
 
     Examples:
         .. code-block:: python
-         :name: code-example1
 
             import paddle
             import paddle.nn as nn
