@@ -1709,7 +1709,6 @@ struct DeleteQuantDequantLinearOpPattern : public PatternBase {
   // PATTERN_DECL_NODE(dequantize_linear_op_scale);  // Can not add this node.
   // Todo: Wangzheee
   PATTERN_DECL_NODE(dequantize_linear_op_out);
-  PATTERN_DECL_NODE(any_op2);
 };
 
 // Reshape + Transpose + Matmul
