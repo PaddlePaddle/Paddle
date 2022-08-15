@@ -152,7 +152,7 @@ bool CompatMetaTensor::is_selected_rows() const {
     return var->IsType<phi::SelectedRows>();
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
-    return var->GetDataType() == proto::VarType::SELECTED_ROWS;
+    return var->GetType() == proto::VarType::SELECTED_ROWS;
   }
 }
 
@@ -162,7 +162,7 @@ bool CompatMetaTensor::is_dense() const {
     return var->IsType<phi::DenseTensor>();
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
-    return var->GetDataType() == proto::VarType::LOD_TENSOR;
+    return var->GetType() == proto::VarType::LOD_TENSOR;
   }
 }
 
@@ -172,7 +172,7 @@ bool CompatMetaTensor::is_tensor_array() const {
     return var->IsType<framework::LoDTensorArray>();
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
-    return var->GetDataType() == proto::VarType::LOD_TENSOR_ARRAY;
+    return var->GetType() == proto::VarType::LOD_TENSOR_ARRAY;
   }
 }
 
