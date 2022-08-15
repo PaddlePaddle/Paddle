@@ -1446,6 +1446,37 @@ AnalysisPredictor::GetInputTensorShape() {
   return input_shapes;
 }
 
+std::map<std::string, paddle_infer::DataType>
+AnalysisPredictor::GetInputType() {
+  std::map<std::string, paddle_infer::DataType> input_type;
+  std::vector<std::string> names = GetInputNames();
+  for (auto name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::PreconditionNotMet(
+            "Input %s does not exist inference_program_.", name));
+    auto dtype = var->GetDataType();
+    if (dtype == paddle::framework::proto::VarType::FP32) {
+      input_type[name] = paddle_infer::DataType::FLOAT32;
+    } else if (dtype == paddle::framework::proto::VarType::FP16) {
+      input_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::INT64) {
+      input_type[name] = paddle_infer::DataType::INT64;
+    } else if (dtype == paddle::framework::proto::VarType::INT32) {
+      input_type[name] = paddle_infer::DataType::INT32;
+    } else if (dtype == paddle::framework::proto::VarType::UINT8) {
+      input_type[name] = paddle_infer::DataType::UINT8;
+    } else if (dtype == paddle::framework::proto::VarType::INT8) {
+      input_type[name] = paddle_infer::DataType::INT8;
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported data type `%s` when get input dtype ", dtype));
+    }
+  }
+  return input_type;
+}
+
 std::vector<std::string> AnalysisPredictor::GetOutputNames() {
   std::vector<std::string> output_names;
   for (auto &item : idx2fetches_) {
@@ -2153,6 +2184,10 @@ Predictor::Predictor(const Config &config) {
 
 std::vector<std::string> Predictor::GetInputNames() {
   return predictor_->GetInputNames();
+}
+
+std::map<std::string, DataType> Predictor::GetInputType() {
+  return predictor_->GetInputType();
 }
 
 std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {
