@@ -42,6 +42,7 @@
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 
 namespace paddle {
 namespace imperative {
@@ -327,15 +328,6 @@ void TensorAdd(const VarType& src, VarType* dst) {
   if (dst_tensor->place() != place) {
     paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);
   }
-#define PADDLE_TENSOR_ADD(cpp_type)                                  \
-  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
-    TensorAddFunctor<cpp_type> func(                                 \
-        numel,                                                       \
-        src_tensor.data<cpp_type>(),                                 \
-        dst_tensor->mutable_data<cpp_type>(place));                  \
-    platform::VisitPlace(place, func);                               \
-    return;                                                          \
-  }
 
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place)) {
@@ -416,6 +408,21 @@ void TensorAdd(const VarType& src, VarType* dst) {
   }
 #endif
 
+#define PADDLE_TENSOR_ADD(cpp_type)                                  \
+  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
+    if (platform::is_gpu_place(place)) {                             \
+      auto gpu_ctx = static_cast<phi::GPUContext*>(                  \
+          platform::DeviceContextPool::Instance().Get(place));       \
+      phi::AddKernel<cpp_type, phi::GPUContext>(                     \
+          *gpu_ctx, src_tensor, *dst_tensor, dst_tensor);            \
+    } else if (platform::is_cpu_place(place)) {                      \
+      auto cpu_ctx = static_cast<phi::CPUContext*>(                  \
+          platform::DeviceContextPool::Instance().Get(place));       \
+      phi::AddKernel<cpp_type, phi::CPUContext>(                     \
+          *cpu_ctx, src_tensor, *dst_tensor, dst_tensor);            \
+    }                                                                \
+  }
+
   PADDLE_TENSOR_ADD(float);
 
 #ifndef PADDLE_WITH_XPU
@@ -429,40 +436,6 @@ void TensorAdd(const VarType& src, VarType* dst) {
 
 #undef PADDLE_TENSOR_ADD
 
-  if (data_type == framework::proto::VarType::FP16) {
-    if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      return TensorAddImpl<phi::GPUContext, platform::float16>(
-          src_tensor, dst_tensor, place);
-#else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Gradient accumulation of data type (%s) on place (%s) is not "
-          "supported in imperative mode",
-          framework::DataTypeToString(data_type),
-          place));
-#endif
-    } else if (platform::is_cpu_place(place)) {
-      return TensorAddImpl<phi::CPUContext, platform::float16>(
-          src_tensor, dst_tensor, place);
-    }
-  }
-  if (data_type == framework::proto::VarType::BF16) {
-    if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      return TensorAddImpl<phi::GPUContext, platform::bfloat16>(
-          src_tensor, dst_tensor, place);
-#else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Gradient accumulation of data type (%s) on place (%s) is not "
-          "supported in imperative mode",
-          framework::DataTypeToString(data_type),
-          place));
-#endif
-    } else if (platform::is_cpu_place(place)) {
-      return TensorAddImpl<phi::CPUContext, platform::bfloat16>(
-          src_tensor, dst_tensor, place);
-    }
-  }
   PADDLE_THROW(platform::errors::Unimplemented(
       "Gradient accumulation of data type (%s) on place (%s) is not "
       "supported in imperative mode",
