@@ -47,10 +47,10 @@ int CopyTensorByXPU(const LoDTensor& srcTensor,
       platform::errors::External("Execute function SetMeta failed by [%d]", r));
 
   int XPU_PlaceNo = 0;
-  if (std::getenv("XPU_VISIBLE_DEVICES") != nullptr)
-    XPU_PlaceNo = atoi(std::getenv("XPU_VISIBLE_DEVICES"));
-  else if (std::getenv("FLAGS_selected_xpus") != nullptr)
+  if (std::getenv("FLAGS_selected_xpus") != nullptr)
     XPU_PlaceNo = atoi(std::getenv("FLAGS_selected_xpus"));
+  else if (std::getenv("XPU_VISIBLE_DEVICES") != nullptr)
+    XPU_PlaceNo = atoi(std::getenv("XPU_VISIBLE_DEVICES"));
 
   if (flag == 0) {
     T* dstData =

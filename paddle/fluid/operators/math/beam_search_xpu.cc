@@ -36,10 +36,10 @@ int CopyData(const T *x, T **y, int len) {
 
   *y = reinterpret_cast<T *>(malloc(sizeof(T) * len));
   int XPU_PlaceNo = 0;
-  if (std::getenv("XPU_VISIBLE_DEVICES") != nullptr)
-    XPU_PlaceNo = atoi(std::getenv("XPU_VISIBLE_DEVICES"));
-  else if (std::getenv("FLAGS_selected_xpus") != nullptr)
+  if (std::getenv("FLAGS_selected_xpus") != nullptr)
     XPU_PlaceNo = atoi(std::getenv("FLAGS_selected_xpus"));
+  else if (std::getenv("XPU_VISIBLE_DEVICES") != nullptr)
+    XPU_PlaceNo = atoi(std::getenv("XPU_VISIBLE_DEVICES"));
 
   paddle::memory::Copy(paddle::platform::CPUPlace(),
                        *y,
