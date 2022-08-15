@@ -368,7 +368,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
         continue;
       }
       if (cluster_internals.count(var)) {
-        IR_NODE_LINK_TO(old_op2new_op.at(op), old_var2new_var.at(var));
+        IR_NODE_LINK_TO(old_op2new_op.at(op), old_var2new_var.at(var)); 
       } else if (cluster_outputs.count(var) && var->Var() != nullptr) {
         // Create new output var node to guarantee the independency of
         // subgraph. In other words, the subgraph has no connection with
@@ -550,8 +550,10 @@ void ReplaceSubGraphWithCinnOpNode(
 // all of op node supported by CINN. We using OpMapperRegistry
 // to check whether the op node supported by CINN.
 void SearchAllSubgraphs(Graph* graph) {
+  FLAGS_allow_cinn_ops="add;add_p;batch_norm;batch_norm_grad;broadcast_p;concat_p;conv2d;conv2d_grad;depthwise_conv2d;div_p;dropout;elementwise_add;elementwise_add_grad;elementwise_mul;feed;fetch;fill_any_like;fill_constant_p;gather_p;index_assign_p;index_select_p;matmul_p;mul;mul_p;pool2d;reduce_p;relu;relu6;relu_grad;reshape;reshape2;reshape2_grad;reshape_grad;reshape_p;scale;scatter_add_p;sigmoid;slice;slice_assign_p;slice_select_p;softmax;split_p;sqrt_p;sub_p;sum;tanh_p;transpose;transpose2;transpose_p";
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
   auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
+  LOG(INFO) << "allow_ops.size() = " << allow_ops.size();
   auto teller = [&allow_ops, &deny_ops](const Node* node) {
     bool registered = ::cinn::frontend::OpMapperRegistry::Global()->Find(
                           node->Name()) != nullptr;
@@ -573,6 +575,8 @@ void SearchAllSubgraphs(Graph* graph) {
   VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
   std::vector<GraphNodeVec> clusters =
       framework::ir::SubgraphDetector(graph, teller)();
+  LOG(INFO) << "---  detected " << clusters.size()
+             << " cinn supported subgraphs";
 
   auto cluster_debug_info = [](const GraphNodeSet& cluster) {
     std::string res = "(";

@@ -561,7 +561,6 @@ void AnalysisConfig::Update() {
           *static_cast<CpuPassStrategy *>(pass_builder_.get())));
     }
   }
-
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kTRTSubgraphPasses) {
@@ -638,7 +637,7 @@ void AnalysisConfig::Update() {
 #else
   if (enable_memory_optim_) {
 #endif
-    pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+    // pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
 
   if (use_lite_) {
@@ -687,7 +686,7 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_IPU compiled."));
 #endif
   }
-
+   // pass_builder()->AppendPass("build_cinn_pass");
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }

@@ -142,35 +142,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     //   "identity_scale_op_clean_pass",             //
     "is_test_pass",                               //
-        "simplify_with_basic_ops_pass",           //
-        "conv_bn_fuse_pass",                      //
-        "conv_eltwiseadd_bn_fuse_pass",           //
-        "embedding_eltwise_layernorm_fuse_pass",  //
-        "multihead_matmul_fuse_pass_v2",          //
-        "gpu_cpu_squeeze2_matmul_fuse_pass",      //
-        "gpu_cpu_reshape2_matmul_fuse_pass",      //
-        "gpu_cpu_flatten2_matmul_fuse_pass",      //
-        "gpu_cpu_map_matmul_v2_to_mul_pass",      //
-        "gpu_cpu_map_matmul_v2_to_matmul_pass",   //
-        "matmul_scale_fuse_pass",                 //
-        "multihead_matmul_fuse_pass_v3",          //
-        "gpu_cpu_map_matmul_to_mul_pass",         //
-        "fc_fuse_pass",                           //
-        "fc_elementwise_layernorm_fuse_pass",     //
-#if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
-                           // guaranteed at least v7
-// cudnn8.0 has memory leak problem in conv + eltwise + act, so we
-// disable the pass.
-#if !(CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8100)
-        "conv_elementwise_add_act_fuse_pass",   //
-        "conv_elementwise_add2_act_fuse_pass",  //
-#endif
-        "conv_elementwise_add_fuse_pass",      //
-#endif                                         //
-        "transpose_flatten_concat_fuse_pass",  //
-        // following pass should be located in the last, since it will
-        // work on all fused ops.
-        "runtime_context_cache_pass"
+        "build_cinn_pass"
   });
 
   use_gpu_ = true;
@@ -186,32 +158,7 @@ void GpuPassStrategy::EnableCUDNN() {
 void GpuPassStrategy::Exp_EnableUseGpuFp16() {
   passes_.assign({
     "is_test_pass",                               //
-        "simplify_with_basic_ops_pass",           //
-        "conv_bn_fuse_pass",                      //
-        "conv_eltwiseadd_bn_fuse_pass",           //
-        "embedding_eltwise_layernorm_fuse_pass",  //
-        "multihead_matmul_fuse_pass_v2",          //
-        "gpu_cpu_squeeze2_matmul_fuse_pass",      //
-        "gpu_cpu_reshape2_matmul_fuse_pass",      //
-        "gpu_cpu_flatten2_matmul_fuse_pass",      //
-        "gpu_cpu_map_matmul_v2_to_mul_pass",      //
-        "gpu_cpu_map_matmul_v2_to_matmul_pass",   //
-        "gpu_cpu_map_matmul_to_mul_pass",         //
-        // "fc_fuse_pass",                        //
-        "fc_elementwise_layernorm_fuse_pass",  //
-#if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
-                           // guaranteed at least v7
-// cudnn8.0 has memory leak problem in conv + eltwise + act, so we
-// disable the pass.
-#if !(CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8100)
-        "conv_elementwise_add_act_fuse_pass",   //
-        "conv_elementwise_add2_act_fuse_pass",  //
-#endif
-        "conv_elementwise_add_fuse_pass",      //
-#endif                                         //
-        "transpose_flatten_concat_fuse_pass",  //
-        "mixed_precision_configure_pass",      //
-        "runtime_context_cache_pass"           //
+    "build_cinn_pass"
   });
 
   use_gpu_fp16_ = true;
