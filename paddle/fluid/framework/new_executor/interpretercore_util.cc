@@ -680,6 +680,8 @@ void add_fetch(const std::vector<std::string>& fetch_names,
   fetch_holder->SetType(proto::VarType::FETCH_LIST);
   fetch_holder->SetPersistable(true);
 
+  VLOG(1) << "add fetch";
+
   int i = 0;
   for (auto& fetch_name : fetch_names) {
     // append fetch op
