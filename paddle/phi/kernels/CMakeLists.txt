@@ -84,6 +84,11 @@ set(COMMON_KERNEL_DEPS
     gpc
     utf8proc)
 
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_nccl)
+endif()
+
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
