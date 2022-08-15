@@ -29,7 +29,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, Dygraph2S
 
 def attr(x, attr):
     if isinstance(x, Variable) and attr == "size":
-        return lambda: x.size()
+        return x.size()
     else:
         return getattr(value, attr)
 
