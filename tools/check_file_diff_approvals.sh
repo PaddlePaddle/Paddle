@@ -262,12 +262,12 @@ fi
 ALL_ADDED_LINES_IN_TARGET_PATH=`git diff -U0 upstream/$BRANCH -- 'python/paddle/tests/' 'python/paddle/fluid/contrib/' 'python/paddle/fluid/tests/custom_op/' 'python/paddle/fluid/tests/unittests/' 'python/paddle/fluid/tests/*.py' | grep "^+" || true`
 INVALID_ASSERT_CHECK=`echo "$ALL_ADDED_LINES_IN_TARGET_PATH" | grep -E "self\.assert(True|Equal)\(\s*(np|numpy)\.(allclose|array_equal)" || true`
 if [ "${INVALID_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="It is recommended to use 'np.testing.assert_allclose' instead of 'self\.assert(True|Equal)\((np|numpy)\.(allclose|array_equal)'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md ]. If it is a mismatch, please request qili93 (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_ASSERT_CHECK}\n"
+    echo_line="It is recommended to use 'np.testing.assert_allclose' instead of 'self\.assert(True|Equal)\((np|numpy)\.(allclose|array_equal)'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background ]. If it is a mismatch, please request qili93 (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_ASSERT_CHECK}\n"
     check_approval 1 16605440 6836917
 fi
 INVALID_ASSERT_CHECK=`echo "$ALL_ADDED_LINES_IN_TARGET_PATH" | grep -zoE "self\.assert(True|Equal)\(\s\+\s*(np|numpy)\.(allclose|array_equal)" || true`
 if [ "${INVALID_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="It is recommended to use 'np.testing.assert_allclose' instead of 'self\.assert(True|Equal)\(\n(np|numpy)\.(allclose|array_equal)'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md ]. If it is a mismatch, please request qili93 (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_ASSERT_CHECK}\n"
+    echo_line="It is recommended to use 'np.testing.assert_allclose' instead of 'self\.assert(True|Equal)\(\n(np|numpy)\.(allclose|array_equal)'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background ]. If it is a mismatch, please request qili93 (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_ASSERT_CHECK}\n"
     check_approval 1 16605440 6836917
 fi
 
@@ -278,7 +278,7 @@ UNITTESTS_DIRS=('python/paddle/tests/'
 ALL_ADDED_LINES_IN_UNITTESTS_DIRS=`git diff -U0 upstream/$BRANCH -- ${UNITTESTS_DIRS[*]} | grep "^+" || true`
 INVALID_UNITTEST_ASSERT_CHECK=`echo "$ALL_ADDED_LINES_IN_UNITTESTS_DIRS" | grep -zoE '\+\s+self\.assert(True|Equal)\((\s*\+\s*)?(np|numpy)\.(allclose|array_equal)[^+]*' || true`
 if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="It is recommended to use 'np.testing.assert_allclose' and 'np.testing.array_equal' instead of 'self.assertTrue(np.allclose(...))' and 'self.assertTrue(np.array_equal(...))'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md ]. If it is a mismatch, please request qili93 (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_UNITTEST_ASSERT_CHECK}\n"
+    echo_line="It is recommended to use 'np.testing.assert_allclose' and 'np.testing.array_equal' instead of 'self.assertTrue(np.allclose(...))' and 'self.assertTrue(np.array_equal(...))'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background ]. If it is a mismatch, please request qili93 (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_UNITTEST_ASSERT_CHECK}\n"
     check_approval 1 16605440 6836917
 fi
 # Test end
