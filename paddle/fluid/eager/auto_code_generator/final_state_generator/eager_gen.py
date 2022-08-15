@@ -342,6 +342,7 @@ FORWARD_H_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/to_static/run_program_op_func.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 
+using CPUPlace = phi::CPUPlace;
 {}
 {}
 """

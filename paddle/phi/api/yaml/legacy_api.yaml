@@ -759,7 +759,7 @@
   backward : embedding_grad
 
 - api : empty
-  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=phi::CPUPlace())
+  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
     func : CreateInferMeta
@@ -972,7 +972,7 @@
   backward : frobenius_norm_grad
 
 - api : full
-  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=phi::CPUPlace())
+  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
     func : CreateInferMeta
@@ -985,7 +985,7 @@
 
 # full
 - api : full_
-  args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=phi::CPUPlace())
+  args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
   inplace : (output -> out)
   infer_meta :
@@ -998,7 +998,7 @@
     backend : place
 
 - api : full_batch_size_like
-  args : (Tensor input, int[] shape, DataType dtype, Scalar value, int input_dim_idx, int output_dim_idx, Place place=phi::CPUPlace())
+  args : (Tensor input, int[] shape, DataType dtype, Scalar value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
     func : FullBatchSizeLikeInferMeta
@@ -1859,7 +1859,7 @@
     func : one_hot
 
 - api : ones
-  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=phi::CPUPlace())
+  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
   invoke : full(shape, 1, dtype, place)
 
@@ -2808,7 +2808,7 @@
   backward : yolov3_loss_grad
 
 - api : zeros
-  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=phi::CPUPlace())
+  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
   invoke : full(shape, 0, dtype, place)
 
