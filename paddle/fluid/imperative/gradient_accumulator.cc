@@ -233,17 +233,6 @@ void XPUTensorAddFunctor(const platform::Place& place,
 }
 #endif
 
-template <typename DeviceContext, typename T>
-void TensorAddImpl(const framework::Tensor& src,
-                   framework::Tensor* dst,
-                   const platform::Place& place) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  paddle::platform::DeviceContext* ctx = pool.Get(place);
-  auto dev_ctx = dynamic_cast<DeviceContext*>(ctx);
-  phi::funcs::ElementwiseAddTo<DeviceContext, T> func;
-  func(dev_ctx, src, dst);
-}
-
 template <typename TType>
 TType* GetInnerMutableTensor(framework::Variable* dst) {
   auto* dst_tensor = dst->GetMutable<TType>();
@@ -432,13 +421,20 @@ void TensorAdd(const VarType& src, VarType* dst) {
     PADDLE_TENSOR_ADD(double, phi::CPUContext);
     PADDLE_TENSOR_ADD(platform::complex<float>, phi::CPUContext);
     PADDLE_TENSOR_ADD(platform::complex<double>, phi::CPUContext);
+
+#define TENSOR_ADD_EIGEN(T)                                           \
+  auto cpu_ctx = static_cast<phi::CPUContext*>(                       \
+      platform::DeviceContextPool::Instance().Get(place));            \
+  auto in = paddle::framework::EigenVector<T>::Flatten(src_tensor);   \
+  auto out = paddle::framework::EigenVector<T>::Flatten(*dst_tensor); \
+  auto& p = *(cpu_ctx->eigen_device());                               \
+  out.device(p) = out + in;
+
     if (data_type == framework::proto::VarType::BF16) {
-      return TensorAddImpl<phi::CPUContext, platform::bfloat16>(
-          src_tensor, dst_tensor, place);
+      TENSOR_ADD_EIGEN(phi::dtype::bfloat16);
     }
     if (data_type == framework::proto::VarType::FP16) {
-      return TensorAddImpl<phi::CPUContext, platform::float16>(
-          src_tensor, dst_tensor, place);
+      TENSOR_ADD_EIGEN(phi::dtype::float16);
     }
   }
 

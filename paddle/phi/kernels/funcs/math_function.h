@@ -72,14 +72,6 @@ struct RowwiseAdd {
 };
 
 template <typename DeviceContext, typename T>
-struct ElementwiseAddTo {
-  // dst = dst + src
-  void operator()(DeviceContext* ctx,
-                  const paddle::framework::Tensor& src,
-                  paddle::framework::Tensor* dst);
-};
-
-template <typename DeviceContext, typename T>
 struct ColwiseSum {
   void operator()(const DeviceContext& context,
                   const paddle::framework::Tensor& input,
