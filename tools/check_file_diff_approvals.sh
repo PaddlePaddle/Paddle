@@ -274,8 +274,6 @@ fi
 # Test start
 UNITTESTS_DIRS=('python/paddle/tests/'
                 'python/paddle/fluid/contrib/'
-                'python/paddle/fluid/tests/custom_op/'
-                'python/paddle/fluid/tests/unittests/'
                 'python/paddle/fluid/tests/')
 ALL_ADDED_LINES_IN_UNITTESTS_DIRS=`git diff -U0 upstream/$BRANCH -- ${UNITTESTS_DIRS[*]} | grep "^+" || true`
 INVALID_UNITTEST_ASSERT_CHECK=`echo "$ALL_ADDED_LINES_IN_UNITTESTS_DIRS" | grep -zoE '\+\s+self\.assert(True|Equal)\((\s*\+\s*)?(np|numpy)\.(allclose|array_equal)[^+]*' || true`
