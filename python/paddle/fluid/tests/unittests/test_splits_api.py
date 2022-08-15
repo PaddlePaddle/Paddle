@@ -100,7 +100,7 @@ class TestSplitsInt32(TestSplitsAPI):
 
     def setUp(self):
         self.shape = [5, 1, 2]
-        self.num_or_sections = 1
+        self.num_or_sections = 5
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('int32')
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
