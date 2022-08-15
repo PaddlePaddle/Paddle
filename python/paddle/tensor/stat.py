@@ -80,17 +80,20 @@ def mean(x, axis=None, keepdim=False, name=None):
             # [ 8.5 12.5 16.5]
     """
 
-    if isinstance(axis, int):
-        axis = [axis]
-    reduce_all = True if axis is None \
-        or len(axis)==0 \
-        or len(axis) == len(x.shape) else False
-    if axis is None or len(axis) == 0:
-        axis = [0]
+    if isinstance(axis, Variable):
+        reduce_all = False
+    else:
+        if isinstance(axis, int):
+            axis = [axis]
+        reduce_all = True if axis is None \
+            or len(axis)==0 \
+            or len(axis) == len(x.shape) else False
+        if axis is None or len(axis) == 0:
+            axis = [0]
 
     if in_dygraph_mode():
         if reduce_all:
-            axis = range(len(x.shape))
+            axis = list(range(len(x.shape)))
         return _C_ops.final_state_mean(x, axis, keepdim)
     if _in_legacy_dygraph():
         return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
@@ -99,10 +102,12 @@ def mean(x, axis=None, keepdim=False, name=None):
     check_variable_and_dtype(x, 'x/input',
                              ['uint16', 'float16', 'float32', 'float64'],
                              'mean/reduce_mean')
-    check_type(axis, 'axis/dim', (int, list, tuple), 'mean/reduce_mean')
+    check_type(axis, 'axis/dim', (int, list, tuple, Variable),
+               'mean/reduce_mean')
     if isinstance(axis, (list, tuple)):
         for item in axis:
-            check_type(item, 'elements of axis/dim', (int), 'mean/reduce_mean')
+            check_type(item, 'elements of axis/dim', (int, Variable),
+                       'mean/reduce_mean')
 
     helper = LayerHelper('mean', **locals())
     attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
