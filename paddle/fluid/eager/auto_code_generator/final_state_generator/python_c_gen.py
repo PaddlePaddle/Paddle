@@ -351,15 +351,11 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         num_args = len(
             forward_inputs_position_map.keys()) + len(orig_forward_attrs_list)
         dygraph_function_call_list = ["" for i in range(num_args)]
-        # amp_dygraph_function_call_list = ["" for i in range(num_args)]
         for name, (_, pos) in forward_inputs_position_map.items():
             dygraph_function_call_list[pos] = f"{name}"
-            # amp_dygraph_function_call_list[pos] = f"NEW_{name}"
         for name, _, _, pos in orig_forward_attrs_list:
             dygraph_function_call_list[pos] = f"{name}"
-            # amp_dygraph_function_call_list[pos] = f"{name}"
         dygraph_function_call_str = ",".join(dygraph_function_call_list)
-        # amp_dygraph_function_call_str = ",".join(amp_dygraph_function_call_list)
 
         # Generate Python-C Function Definitions
         fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
