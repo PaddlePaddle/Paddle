@@ -48,9 +48,13 @@ def tensor_badreturn_2(x):
 
 @paddle.jit.to_static
 def tensor_badreturn_3(x):
-    a = paddle.to_tensor([1.0, 2.0, 3.0], place=paddle.CUDAPlace(0), dtype="float64", stop_gradient=False)
+    a = paddle.to_tensor([1.0, 2.0, 3.0],
+                         place=paddle.CUDAPlace(0),
+                         dtype="float64",
+                         stop_gradient=False)
 
     return a
+
 
 class TestToTensorReturnVal(unittest.TestCase):
 
@@ -62,19 +66,22 @@ class TestToTensorReturnVal(unittest.TestCase):
         out1 = tensor_badreturn_1(x)
         out2 = tensor_badreturn_2(x)
         out3 = tensor_badreturn_3(x)
-        return  out0, out1, out2, out3
+        return out0, out1, out2, out3
 
     def test_to_tensor_badreturn(self):
         static_res = self._run(to_static=True)
         x = paddle.to_tensor([3])
         self.assertTrue(static_res[0].dtype == tensor_badreturn_0(x).dtype)
-        self.assertTrue(static_res[0].stop_gradient == tensor_badreturn_0(x).stop_gradient)
+        self.assertTrue(
+            static_res[0].stop_gradient == tensor_badreturn_0(x).stop_gradient)
 
         self.assertTrue(static_res[1].dtype == tensor_badreturn_1(x).dtype)
-        self.assertTrue(static_res[1].stop_gradient == tensor_badreturn_1(x).stop_gradient)
+        self.assertTrue(
+            static_res[1].stop_gradient == tensor_badreturn_1(x).stop_gradient)
 
-        self.assertTrue(static_res[2].dtype == tensor_badreturn_2(x).dtype,)
-        self.assertTrue(static_res[2].stop_gradient == tensor_badreturn_2(x).stop_gradient)
+        self.assertTrue(static_res[2].dtype == tensor_badreturn_2(x).dtype, )
+        self.assertTrue(
+            static_res[2].stop_gradient == tensor_badreturn_2(x).stop_gradient)
 
 
 class UnittestBase(unittest.TestCase):
@@ -120,7 +127,7 @@ class TestDropout(UnittestBase):
         starup_prog = Program()
         with program_guard(main_prog, starup_prog):
             fc = paddle.nn.Linear(10, 10)
-            x = paddle.randn(self.shapes[0])
+            x = paddle.to_tensor(paddle.randn(self.shapes[0]))
             x.stop_gradient = False
             feat = fc(x)
             # p is a Variable
