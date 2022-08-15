@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature BilinearInterpOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("bilinear_interp_v2",
+  return KernelSignature("bilinear_interp",
                          {"X", "OutSize", "SizeTensor", "Scale"},
                          {"data_layout",
                           "out_d",
@@ -92,7 +92,7 @@ KernelSignature BicubicInterpOpArgumentMapping(
 
 KernelSignature BilinearInterpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("bilinear_interp_v2_grad",
+  return KernelSignature("bilinear_interp_grad",
                          {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
                          {"data_layout",
                           "out_d",
@@ -165,6 +165,9 @@ KernelSignature BicubicInterpGradOpArgumentMapping(
 }
 
 }  // namespace phi
+
+PD_REGISTER_BASE_KERNEL_NAME(bilinear_interp_v2, bilinear_interp);
+PD_REGISTER_BASE_KERNEL_NAME(bilinear_interp_v2_grad, bilinear_interp_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(bilinear_interp_v2,
                            phi::BilinearInterpOpArgumentMapping);
