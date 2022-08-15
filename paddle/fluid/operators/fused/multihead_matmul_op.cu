@@ -264,8 +264,8 @@ __global__ void broadcast_batch(const T *src,
                           const int window_num) {
   int WindownumHeadSeqlen_id = blockIdx.x % (window_num * head_num * seq_len);
   int dst_offset = blockIdx.x * seq_len;
-  printf("@@@ broadcast_batch: blockIdx.x: %d, threadIdx.x: %d , WindownumHeadSeqlen_id: %d, dst_index:%d, src_index:%d \r\n",
-        blockIdx.x,threadIdx.x, WindownumHeadSeqlen_id, threadIdx.x + dst_offset,threadIdx.x+WindownumHeadSeqlen_id*seq_len);
+// printf("@#@@ broadcast_batch: blockIdx.x: %d, threadIdx.x: %d , WindownumHeadSeqlen_id: %d, dst_index:%d, src_index:%d \r\n",
+        // blockIdx.x,threadIdx.x, WindownumHeadSeqlen_id, threadIdx.x + dst_offset,threadIdx.x+WindownumHeadSeqlen_id*seq_len);
   if (threadIdx.x < seq_len) {
     dst[threadIdx.x + dst_offset] = src[threadIdx.x+WindownumHeadSeqlen_id*seq_len];
   }
@@ -303,11 +303,11 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     
     auto bias_qk_dims=bias_qk.dims();
     int window_num=bias_qk_dims[0];
-    printf("@@@@ multihead op \r\n");
-    printf("@@@ bias qk dims: %d %d %d %d \r\n",bias_qk_dims[0],bias_qk_dims[1],bias_qk_dims[2],bias_qk_dims[3]);
+  // printf("@#@@@ multihead op \r\n");
+  // printf("@#@@ bias qk dims: %d %d %d %d \r\n",bias_qk_dims[0],bias_qk_dims[1],bias_qk_dims[2],bias_qk_dims[3]);
     // print_float<T><<<1,1>>>(w_d,0);
     // print_float<T><<<1,1>>>(bias_d,0);
-    printf("\r\n @@@ scale %f: \r\n", scale);
+    // printf("\r\n @@@ scale %f: \r\n", scale);
     int head_number = context.Attr<int>("head_number");
     // compute q*k with eltadd
     auto &device_ctx = context.template device_context<DeviceContext>();
@@ -320,8 +320,8 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     int seq_len = input_dims[1];
     int hidden = input_dims[2];
 
-    print_float<T><<<1,1>>>(bias_qk_d,0,window_num*head_number*seq_len*seq_len);
-    cudaDeviceSynchronize();
+  // print_float<T><<<1,1>>>(bias_qk_d,0,window_num*head_number*seq_len*seq_len);
+    // cudaDeviceSynchronize();
 
     Tensor temp_bias_tensor;
     // if bias_qk is[batch, 1, 1, seq_len], the bias_qk_d need to be broadcasted
@@ -339,9 +339,9 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     // therefore, we broadcast bias_qk to [window_num*originalBatch, head_number, seq_len, seq_len]
     if(bias_qk.numel()==(window_num*head_number*seq_len*seq_len)){
       temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
-      printf("@@@@ type of multihead: %s \r\n",__PRETTY_FUNCTION__);
-      printf("@@@@ batch %d, windows %d, head_num %d, seq_len %d \r\n",
-            batch,window_num,head_number,seq_len);
+    // printf("@#@@@ type of multihead: %s \r\n",__PRETTY_FUNCTION__);
+    // printf("@#@@@ batch %d, windows %d, head_num %d, seq_len %d \r\n",
+            // batch,window_num,head_number,seq_len);
       auto *temp_qk_bias = temp_bias_tensor.mutable_data<T>(context.GetPlace());
       int grid = batch * head_number * seq_len;
       int block = round_up(seq_len);
@@ -349,9 +349,9 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
           bias_qk_d, temp_qk_bias, seq_len, head_number, window_num);
       bias_qk_d = static_cast<const T *>(temp_qk_bias);
     }
-    cudaDeviceSynchronize();
-    print_float<T><<<1,1>>>(bias_qk_d,0,batch * head_number * seq_len * seq_len);
-    cudaDeviceSynchronize();
+    // cudaDeviceSynchronize();
+  // print_float<T><<<1,1>>>(bias_qk_d,0,batch * head_number * seq_len * seq_len);
+    // cudaDeviceSynchronize();
     
     int all_head_size = w_dims[2];
     int head_size = all_head_size / head_number;

@@ -308,7 +308,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
         nvinfer1::ILayer* biasQK_constLayer = nullptr;
         if (is_BiasQK_directInput){
           auto biasqk_name=op_desc.Input("BiasQK").front();
-          VLOG(1)<<"@@@ directInput swin biasqk name: "<<biasqk_name;
+          // VLOG(1)<<"@@@ directInput swin biasqk name: "<<biasqk_name;
           auto biasqk_constlayer_outputname=biasqk_name+"_cl";
           auto* biasqk_v = scope.FindVar(biasqk_name);
           auto* biasqk_t = biasqk_v->GetMutable<framework::LoDTensor>();
@@ -332,7 +332,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
               half_biasqk_tensor->Resize({biasqk_t->numel()});
               auto* half_biasqk_data=half_biasqk_tensor->mutable_data<paddle::platform::float16>(platform::CPUPlace());
 
-              printf("@@@ biasqk_t->numel(): %ld \r\n",biasqk_t->numel());
+            // printf("@#@@ biasqk_t->numel(): %ld \r\n",biasqk_t->numel());
               for (int i=0;i<biasqk_t->numel();i++){
                 half_biasqk_data[i]=static_cast<paddle::platform::float16>(
                                       static_cast<const float*>(biasqk_const_weight.get().values)[i]);
@@ -346,12 +346,12 @@ class MultiheadMatMulOpConverter : public OpConverter {
               engine_, Constant, biasqk_dims, biasqk_const_nvWeight);
             biasQK_constLayer->setOutputType(0,nvinfer1::DataType::kHALF);
             biasQK_constLayer->setPrecision(nvinfer1::DataType::kHALF);
-            nvinfer1::IConstantLayer* biasQK_constLayer_tmp=static_cast<nvinfer1::IConstantLayer *>(biasQK_constLayer);
-            printf("@@ in convert biasqk_data 0 1 2 3 fp16: %f %f %f %f \r\n",
-              static_cast<double>(static_cast<const paddle::platform::float16 *>(biasQK_constLayer_tmp->getWeights().values)[0]),
-              static_cast<double>(static_cast<const paddle::platform::float16 *>(biasQK_constLayer_tmp->getWeights().values)[1]),
-              static_cast<double>(static_cast<const paddle::platform::float16 *>(biasQK_constLayer_tmp->getWeights().values)[2]),
-              static_cast<double>(static_cast<const paddle::platform::float16 *>(biasQK_constLayer_tmp->getWeights().values)[3]));
+            // nvinfer1::IConstantLayer* biasQK_constLayer_tmp=static_cast<nvinfer1::IConstantLayer *>(biasQK_constLayer);
+          // printf("@#@ in convert biasqk_data 0 1 2 3 fp16: %f %f %f %f \r\n",
+              // static_cast<double>(static_cast<const paddle::platform::float16 *>(biasQK_constLayer_tmp->getWeights().values)[0]),
+              // static_cast<double>(static_cast<const paddle::platform::float16 *>(biasQK_constLayer_tmp->getWeights().values)[1]),
+              // static_cast<double>(static_cast<const paddle::platform::float16 *>(biasQK_constLayer_tmp->getWeights().values)[2]),
+              // static_cast<double>(static_cast<const paddle::platform::float16 *>(biasQK_constLayer_tmp->getWeights().values)[3]));
           } else {
             auto biasqk_const_weight =
               engine_->GetFp32TrtWeight(biasqk_name, *biasqk_t);
@@ -359,18 +359,18 @@ class MultiheadMatMulOpConverter : public OpConverter {
               engine_, Constant, biasqk_dims, biasqk_const_weight.get());
             biasQK_constLayer->setOutputType(0,nvinfer1::DataType::kFLOAT);
             biasQK_constLayer->setPrecision(nvinfer1::DataType::kFLOAT);
-            float* biasqk_data = const_cast<float*>(static_cast<const float*>(
-              engine_->GetFp32TrtWeight(biasqk_name, *biasqk_t).get().values));
-            printf("@@ in convert biasqk_data fp32 0 1 2 3: %f %f %f %f \r\n",biasqk_data[0],biasqk_data[1],biasqk_data[2],biasqk_data[3]);
+            // float* biasqk_data = const_cast<float*>(static_cast<const float*>(
+              // engine_->GetFp32TrtWeight(biasqk_name, *biasqk_t).get().values));
+          // printf("@#@ in convert biasqk_data fp32 0 1 2 3: %f %f %f %f \r\n",biasqk_data[0],biasqk_data[1],biasqk_data[2],biasqk_data[3]);
           }
           biasQK_constLayer->getOutput(0)->setName(biasqk_constlayer_outputname.c_str());
           engine_->SetITensor(biasQK_constLayer->getOutput(0)->getName(),biasQK_constLayer->getOutput(0));
           op_desc.SetInput("BiasQK",{biasQK_constLayer->getOutput(0)->getName()});
-          VLOG(1)<<"@@@ biasQK_constLayer->getOutput(0)->getName()"<<biasQK_constLayer->getOutput(0)->getName();
+          // VLOG(1)<<"@@@ biasQK_constLayer->getOutput(0)->getName()"<<biasQK_constLayer->getOutput(0)->getName();
         }
         nvinfer1::ITensor* input_bias_qk = 
                 engine_->GetITensor(op_desc.Input("BiasQK").front());
-        VLOG(1)<<"@@@ biasqk name after const layer"<<op_desc.Input("BiasQK").front();
+        // VLOG(1)<<"@@@ biasqk name after const layer"<<op_desc.Input("BiasQK").front();
         
         TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                       static_cast<void*>(weight_data),
@@ -381,11 +381,22 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                     static_cast<void*>(bias_data),
                                     static_cast<size_t>(bias_t->numel())};
 
-        printf("@@@ weight 0 1 2 3: %f, %f, %f, %f\r\n",
-                weight_data[0],weight_data[1],weight_data[2],weight_data[3]);
-        printf("@@@ bias 0 1 2 3: %f, %f, %f, %f\r\n",
-                bias_data[0],bias_data[1],bias_data[2],bias_data[3]);
-
+      // printf("@#@@ weight 0 1 2 3: \r\n");
+      //   for(size_t i=0;i<static_cast<size_t>(weight_t->numel());i++){
+      //     printf("%f ", weight_data[i]);
+      //     if(i%49==48){
+      //       printf("\r\n");
+      //     }
+      //   }
+      //   printf("\r\n");
+      // // printf("@#@@ bias 0 1 2 3: \r\n");
+      //   for(size_t i=0;i<static_cast<size_t>(bias_t->numel());i++){
+      //     printf("%f ", bias_data[i]);
+      //     if(i%49==48){
+      //       printf("\r\n");
+      //     }
+      //   }
+      //   printf("\r\n");
         // add shuffle before fc
         std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
         nvinfer1::ITensor* input_shape_tensor = Shape(input);
