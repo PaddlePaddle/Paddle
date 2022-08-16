@@ -177,7 +177,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "sum",
       "shape",
       "squeeze2",
-      "unsqueeze2"};
+      "unsqueeze2",
+      "layernorm_shift_partition"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -286,7 +287,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shape",
       "squeeze2",
       "unsqueeze2",
-      "fused_token_prune"};
+      "fused_token_prune",
+      "layernorm_shift_partition"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,
@@ -2219,6 +2221,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
 #endif
+    }
+
+    if (op_type == "layernorm_shift_partition") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the layernorm_shift_partition does not support "
+                   "static shape yet";
+        return false;
+      }
     }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
