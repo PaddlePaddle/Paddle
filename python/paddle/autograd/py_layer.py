@@ -512,7 +512,7 @@ class EagerPyLayerContext(object):
                 class Tanh(PyLayer):
                     @staticmethod
                     def forward(ctx, x):
-                        return x, x+x
+                        return x+x+x, x+x
 
                     @staticmethod
                     def backward(ctx, grad, grad2):
@@ -523,7 +523,7 @@ class EagerPyLayerContext(object):
                     @staticmethod
                     def forward(ctx, x):
                         ctx.set_materialize_grads(False)
-                        return x, x+x
+                        return x+x+x, x+x
 
                     @staticmethod
                     def backward(ctx, grad, grad2):
