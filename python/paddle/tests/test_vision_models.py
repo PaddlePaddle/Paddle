@@ -17,6 +17,7 @@ import numpy as np
 import paddle
 from paddle.static import InputSpec
 import paddle.vision.models as models
+import numpy
 
 
 class TestVisonModels(unittest.TestCase):
@@ -162,6 +163,45 @@ class TestVisonModels(unittest.TestCase):
 
         x = np.array(np.random.random((2, 1, 28, 28)), dtype=np.float32)
         lenet.predict_batch(x)
+
+
+class TestApprove(unittest.TestCase):
+
+    def test_approve(self):
+        a_float = np.array([1.])
+        b_int = np.array([1])
+        self.assertTrue(np.allclose(a_float, a_float))
+        self.assertEqual(np.allclose(a_float, a_float), True)
+        self.assertTrue(np.array_equal(b_int, b_int))
+        self.assertEqual(np.array_equal(b_int, b_int), True)
+
+        self.assertTrue(numpy.allclose(a_float, a_float))
+        self.assertEqual(numpy.allclose(a_float, a_float), True)
+        self.assertTrue(numpy.array_equal(b_int, b_int))
+        self.assertEqual(numpy.array_equal(b_int, b_int), True)
+
+        # test a folded line
+        self.assertTrue(np.allclose(a_float, a_float),
+                        msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        self.assertEqual(np.allclose(a_float, a_float),
+                         True,
+                         msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        self.assertTrue(np.array_equal(b_int, b_int),
+                        msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        self.assertEqual(np.array_equal(b_int, b_int),
+                         True,
+                         msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+
+        self.assertTrue(numpy.allclose(a_float, a_float),
+                        msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        self.assertEqual(numpy.allclose(a_float, a_float),
+                         True,
+                         msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        self.assertTrue(numpy.array_equal(b_int, b_int),
+                        msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        self.assertEqual(numpy.array_equal(b_int, b_int),
+                         True,
+                         msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
 
 if __name__ == '__main__':
