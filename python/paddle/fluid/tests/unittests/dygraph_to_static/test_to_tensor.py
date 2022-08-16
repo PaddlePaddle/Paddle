@@ -22,6 +22,7 @@ import tempfile
 import paddle.inference as paddle_infer
 from paddle.fluid.framework import program_guard, Program
 import numpy as np
+from paddle.fluid import core
 
 
 @paddle.jit.to_static
@@ -41,8 +42,12 @@ def tensor_badreturn_1(x):
 
 @paddle.jit.to_static
 def tensor_badreturn_2(x):
+    if core.is_compiled_with_cuda():
+        place = paddle.CUDAPlace(0)
+    else:
+        place = paddle.CPUPlace()
     a = paddle.to_tensor([1.0, 2.0, 3.0],
-                         place=paddle.CPUPlace(),
+                         place=place,
                          dtype="int64",
                          stop_gradient=False)
 
@@ -51,10 +56,12 @@ def tensor_badreturn_2(x):
 
 @paddle.jit.to_static
 def tensor_badreturn_3(x):
-    a = paddle.to_tensor([1.0, 2.0, 3.0],
-                         place=paddle.CUDAPlace(0),
-                         dtype="float64",
-                         stop_gradient=False)
+    paddle.set_default_dtype("float64")
+    if core.is_compiled_with_cuda():
+        place = paddle.CUDAPlace(0)
+    else:
+        place = paddle.CPUPlace()
+    a = paddle.to_tensor([1.0, 2.0, 3.0], place=place)
 
     return a
 
@@ -125,10 +132,14 @@ class TestStatic(unittest.TestCase):
         starup_prog = Program()
         with program_guard(main_prog, starup_prog):
             fc = paddle.nn.Linear(2, 1)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            else:
+                place = paddle.CPUPlace()
             x = paddle.to_tensor(paddle.randn(self.shapes[0]),
                                  dtype='float64',
                                  stop_gradient=False,
-                                 place=paddle.CUDAPlace(0))
+                                 place=place)
             out = fc(x)
 
             sgd = paddle.optimizer.SGD()
