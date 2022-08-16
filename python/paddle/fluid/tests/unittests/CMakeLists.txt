@@ -948,7 +948,7 @@ if(WITH_DISTRIBUTE)
 
     if(WITH_MPI)
       bash_test_modules(test_mpi_comm START_BASH test_mpi_comm.sh ENVS
-                      PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+                        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
 
     if(WITH_GPU

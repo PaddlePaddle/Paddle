@@ -25,7 +25,10 @@ endif()
 
 if(WITH_MPI)
   list(APPEND MPI_SRCS mpi_comm.cc)
-  cc_library(dynload_mpi SRCS ${MPI_SRCS} DEPS dynamic_loader phi_dynload_mpi)
+  cc_library(
+    dynload_mpi
+    SRCS ${MPI_SRCS}
+    DEPS phi_dynload_mpi dynamic_loader)
 endif()
 
 # There is no macOS version of NCCL.
