@@ -9,7 +9,7 @@
 
 - api : bernoulli
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
