@@ -41,7 +41,10 @@ def tensor_badreturn_1(x):
 
 @paddle.jit.to_static
 def tensor_badreturn_2(x):
-    a = paddle.to_tensor([1.0, 2.0, 3.0], palace=paddle.CPUPlace() ,dtype="int64", stop_gradient=False)
+    a = paddle.to_tensor([1.0, 2.0, 3.0],
+                         palace=paddle.CPUPlace(),
+                         dtype="int64",
+                         stop_gradient=False)
 
     return a
 
@@ -125,7 +128,7 @@ class TestStatic(unittest.TestCase):
             x = paddle.to_tensor(paddle.randn(self.shapes[0]),
                                  dtype='float64',
                                  stop_gradient=False,
-                                 place= paddle.CUDAPlace(0))
+                                 place=paddle.CUDAPlace(0))
             out = fc(x)
 
             sgd = paddle.optimizer.SGD()
