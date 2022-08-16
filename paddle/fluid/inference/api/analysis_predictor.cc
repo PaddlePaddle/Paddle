@@ -1447,7 +1447,7 @@ AnalysisPredictor::GetInputTensorShape() {
 }
 
 std::map<std::string, paddle_infer::DataType>
-AnalysisPredictor::GetInputType() {
+AnalysisPredictor::GetInputTypes() {
   std::map<std::string, paddle_infer::DataType> input_type;
   std::vector<std::string> names = GetInputNames();
   for (auto name : names) {
@@ -2186,8 +2186,8 @@ std::vector<std::string> Predictor::GetInputNames() {
   return predictor_->GetInputNames();
 }
 
-std::map<std::string, DataType> Predictor::GetInputType() {
-  return predictor_->GetInputType();
+std::map<std::string, DataType> Predictor::GetInputTypes() {
+  return predictor_->GetInputTypes();
 }
 
 std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {

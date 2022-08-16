@@ -98,7 +98,7 @@ class PD_INFER_DECL Predictor {
   ///
   /// \return the map of input names and type
   ///
-  std::map<std::string, DataType> GetInputType();
+  std::map<std::string, DataType> GetInputTypes();
 
   ///
   /// \brief Get the input names

@@ -178,7 +178,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return the map of input names and type
   ///
-  std::map<std::string, paddle_infer::DataType> GetInputType() override;
+  std::map<std::string, paddle_infer::DataType> GetInputTypes() override;
 
   ///
   /// \brief Run the prediction engine
