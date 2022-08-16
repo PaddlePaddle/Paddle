@@ -22,6 +22,7 @@ def parse_line(line):
         for i in range(len(env_parts)):
             if env_parts[i][0:11] != "PYTHONPATH=": continue
             env_parts[i] += ":${PADDLE_BINARY_DIR}/python"
+            break
         envs = ";".join(env_parts)
 
     if len(conditions.strip()) == 0:
