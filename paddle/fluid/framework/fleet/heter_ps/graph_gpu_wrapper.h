@@ -48,10 +48,9 @@ class GraphGpuWrapper {
                            int feat_shape);
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
-  void load_node_and_edge(std::string etype,
-                          std::string ntype,
-                          std::string epath,
-                          std::string npath,
+  void load_node_and_edge(std::string etype2files,
+                          std::string ntype2files,
+                          std::string graph_data_local_path,
                           int part_num,
                           bool reverse);
   int32_t load_next_partition(int idx);
