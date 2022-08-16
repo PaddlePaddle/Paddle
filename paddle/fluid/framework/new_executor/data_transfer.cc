@@ -134,7 +134,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 
   bool run_phi_kernel = false;
 
-#ifndef PADDLE_WITH_ASCEND_CL || PADDLE_WITH_IPU
+#if !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_IPU)
   // check if phi kernel exists
   auto phi_kernel_map =
       phi::KernelFactory::Instance().SelectKernelMap(op_with_kernel->Type());
