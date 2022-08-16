@@ -48,7 +48,6 @@ from ...framework import no_grad
 from .. import functional as F
 from paddle import _C_ops
 from .. import Layer
-from paddle import in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
@@ -1116,7 +1115,7 @@ class SyncBatchNorm(_BatchNormBase):
                 not self.training, False, False, False)
             return sync_batch_norm_out
 
-        elif in_dynamic_mode():
+        elif _in_legacy_dygraph():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
                      self._data_format, "use_mkldnn", False, "fuse_with_relu",

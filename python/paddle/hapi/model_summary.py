@@ -175,7 +175,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
     else:
         _input_size = input_size
 
-    if not paddle.in_dynamic_mode():
+    if not paddle._non_static_mode():
         warnings.warn(
             "Your model was created in static mode, this may not get correct summary information!"
         )
@@ -298,7 +298,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
             params = 0
 
-            if paddle.in_dynamic_mode():
+            if paddle._non_static_mode():
                 layer_state_dict = layer._parameters
             else:
                 layer_state_dict = layer.state_dict()

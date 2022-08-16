@@ -23,7 +23,7 @@ from paddle.nn import functional as F
 import logging
 from paddle.fluid.log_helper import get_logger
 from paddle import _C_ops
-from paddle import in_dynamic_mode
+from paddle import _non_static_mode
 from paddle.nn import Layer
 
 __all__ = [
@@ -77,7 +77,7 @@ class FakeQuantAbsMax(Layer):
             self._scale = None
 
     def forward(self, input):
-        if in_dynamic_mode():
+        if _non_static_mode():
             attrs = ('bit_length', self._quant_bits)
             quant_out = _varbase_creator(type=input.type,
                                          name="{}.quantized.dequantized".format(
@@ -175,7 +175,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
         self._accum.stop_gradient = True
 
     def forward(self, input):
-        if in_dynamic_mode():
+        if _non_static_mode():
             attrs = ('moving_rate', self._moving_rate, 'bit_length',
                      self._quant_bits, 'is_test', not self.training)
             quant_out = _varbase_creator(type=input.type,
@@ -254,7 +254,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
             self._scale = None
 
     def forward(self, input):
-        if in_dynamic_mode():
+        if _non_static_mode():
             attrs = ('bit_length', self._quant_bits, 'quant_axis',
                      self._quant_axis)
             quant_out = _varbase_creator(type=input.type,
@@ -349,7 +349,7 @@ class MovingAverageAbsMaxScale(Layer):
         self._accum.stop_gradient = True
 
     def forward(self, input):
-        if in_dynamic_mode():
+        if _non_static_mode():
             attrs = ('moving_rate', self._moving_rate, 'is_test',
                      not self.training)
             state = self._state if self.training else None

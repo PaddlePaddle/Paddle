@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.layers import utils
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops, _non_static_mode
 from paddle.nn.functional.pooling import _update_padding_nd
 
 __all__ = []
@@ -74,7 +74,7 @@ def max_pool3d(x,
                 #[1, 2, 2, 2, 3]
     """
 
-    assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
+    assert _non_static_mode(), "Currently, Sparse API only support dynamic mode"
     assert x.is_sparse_coo(
     ), "Currently, sparse.relu only support the input of SparseCooTensor"
     assert data_format == 'NDHWC', "Currently, sparse.max_pool3d only support data format of 'NDHWC'"

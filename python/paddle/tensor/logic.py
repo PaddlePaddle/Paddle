@@ -327,7 +327,7 @@ def equal_all(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.final_state_equal_all(x, y)
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.equal_all(x, y)
 
     helper = LayerHelper("equal_all", **locals())
@@ -769,7 +769,7 @@ def is_tensor(x):
 
 
 def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
-    if paddle.in_dynamic_mode():
+    if paddle._non_static_dygraph():
         op = getattr(_C_ops, op_name)
         if binary_op:
             return op(x, y)

@@ -403,7 +403,7 @@ def nonzero(x, as_tuple=False):
 
     if in_dygraph_mode():
         outs = _C_ops.final_state_where_index(x)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         outs = _C_ops.where_index(x)
     else:
         helper = LayerHelper("where_index", **locals())
@@ -618,7 +618,7 @@ def where(condition, x=None, y=None, name=None):
     if x is None or y is None:
         raise ValueError("either both or neither of x and y should be given")
 
-    if not paddle.in_dynamic_mode():
+    if not paddle._non_static_mode():
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
         check_variable_and_dtype(x, 'x',
                                  ['float32', 'float64', 'int32', 'int64'],

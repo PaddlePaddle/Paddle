@@ -33,7 +33,7 @@ from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
 from paddle import _C_ops
-from paddle import in_dynamic_mode
+from paddle import _non_static_mode
 from paddle.framework import core
 from paddle.static import default_startup_program
 from paddle.static import program_guard
@@ -982,7 +982,7 @@ class RNNBase(LayerList):
             # should dropout state be persistable for static-graph
             self._dropout_state = self.create_variable(
                 dtype=core.VarDesc.VarType.UINT8)
-            if in_dynamic_mode():
+            if _non_static_mode():
                 with paddle.no_grad():
                     _C_ops.coalesce_tensor(self._all_weights, self._all_weights,
                                            self._flat_weight[0], "copy_data",
@@ -1009,7 +1009,7 @@ class RNNBase(LayerList):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
-        if in_dynamic_mode():
+        if _non_static_mode():
             _, _, out, state = _C_ops.rnn(
                 inputs, initial_states, self._all_weights, sequence_length,
                 self._dropout_state, self.state_components, 'dropout_prob',

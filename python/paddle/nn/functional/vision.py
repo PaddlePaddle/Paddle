@@ -20,8 +20,7 @@ from ...fluid import dygraph_utils
 import numpy as np
 from paddle import _C_ops
 from ...device import is_compiled_with_rocm
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 from paddle.framework import _non_static_mode
 
 __all__ = []
@@ -94,7 +93,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             out_shape, Variable) else out_shape
         return _C_ops.final_state_affine_grid(theta, _out_shape, use_cudnn,
                                               align_corners)
-    elif in_dynamic_mode():
+    elif _in_legacy_dygraph():
         _out_shape = out_shape.numpy().tolist() if isinstance(
             out_shape, Variable) else out_shape
         return _C_ops.affine_grid(theta, "output_shape", _out_shape,
@@ -277,7 +276,7 @@ def grid_sample(x,
     if in_dygraph_mode():
         return _C_ops.final_state_grid_sample(x, grid, mode, padding_mode,
                                               align_corners)
-    elif in_dynamic_mode():
+    elif _in_legacy_dygraph():
         attrs = ('mode', mode, 'padding_mode', padding_mode, 'align_corners',
                  align_corners, 'use_cudnn', use_cudnn)
         out = getattr(_C_ops, 'grid_sampler')(x, grid, *attrs)
@@ -334,7 +333,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
             "But recevie Attr(data_format): {} ".format(data_format))
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         return _C_ops.pixel_shuffle(x, "upscale_factor", upscale_factor,
                                     "data_format", data_format)
 

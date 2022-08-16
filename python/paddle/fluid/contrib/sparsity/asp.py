@@ -540,7 +540,7 @@ class ASPHelper(object):
         r"""
         This is the implementation of `sparsity.decorate`, for details please see explanation in `sparsity.decorate`.
         """
-        if paddle.in_dynamic_mode():
+        if paddle._non_static_mode():
             # main_prog and startup_prog would be used with paddle.static.program_guard
             # to create ASP masks. Moreover, main_prog is a key to map paddle.static.Program
             # to its own ASP informantion, like ASP mask variables. For dynamic graph, we use
@@ -605,7 +605,7 @@ class ASPHelper(object):
         r"""
         This is the implementation of `sparsity.prune_model`, for details please see explanation in `sparsity.prune_model`.
         """
-        if paddle.in_dynamic_mode():
+        if paddle._non_static_mode():
             main_program = paddle.static.default_main_program()
             asp_info = cls._get_program_asp_info(main_program)
 

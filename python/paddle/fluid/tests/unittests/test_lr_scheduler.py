@@ -299,7 +299,7 @@ def linear_warmup_lr(epoch_num,
     if tmp < 0:
         return start_lr + (end_lr - start_lr) * (float(epoch_num) /
                                                  float(warmup_steps))
-    elif paddle.in_dynamic_mode():
+    elif paddle._non_static_mode():
         if tmp < 3:
             return 0.5
         elif tmp < 6:

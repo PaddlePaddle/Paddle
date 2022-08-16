@@ -21,7 +21,6 @@ from ...static import Variable
 from ...tensor.creation import assign
 from ...fluid import dygraph_utils
 from ...tensor.layer_function_generator import templatedoc
-from paddle import in_dynamic_mode
 from paddle import _C_ops
 from ...fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
@@ -103,7 +102,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
 
     if in_dygraph_mode():
         return _C_ops.final_state_diag_embed(input, offset, dim1, dim2)
-    elif in_dynamic_mode():
+    elif _in_legacy_dygraph():
         return _C_ops.diag_embed(input, "offset", offset, "dim1", dim1, "dim2",
                                  dim2)
 

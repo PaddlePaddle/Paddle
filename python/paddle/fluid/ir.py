@@ -246,7 +246,7 @@ class RegisterPassHelper(object):
                         attr_map.operation.CopyFrom(mapped._operation)
 
     def SerializeMultiPassDesc(self):
-        switch_static_mode = paddle.in_dynamic_mode()
+        switch_static_mode = paddle._non_static_mode()
         if switch_static_mode:
             paddle.enable_static()
         multi_pass_desc = pass_desc_pb2.MultiPassDesc()

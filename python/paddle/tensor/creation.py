@@ -1162,7 +1162,7 @@ def diagflat(x, offset=0, name=None):
             #  [0 0 0 4 0]]
     """
     padding_value = 0
-    if paddle.in_dynamic_mode():
+    if paddle._non_static_mode():
         if len(x.shape) == 1:
             return _C_ops.diag_v2(x, "offset", offset, "padding_value",
                                   padding_value)
@@ -1370,7 +1370,7 @@ def empty(shape, dtype=None, name=None):
 
     dtype = convert_dtype(dtype)
 
-    if paddle.in_dynamic_mode():
+    if paddle._non_static_mode():
         shape = utils.convert_shape_to_list(shape)
         out = _C_ops.empty('shape', shape, 'dtype',
                            convert_np_dtype_to_dtype_(dtype))
@@ -1437,7 +1437,7 @@ def empty_like(x, dtype=None, name=None):
         dtype = x.dtype
     dtype = convert_dtype(dtype)
 
-    if paddle.in_dynamic_mode():
+    if paddle._non_static_mode():
         out = _C_ops.empty('shape', x.shape, 'dtype',
                            convert_np_dtype_to_dtype_(dtype))
         out.stop_gradient = True
@@ -1737,7 +1737,7 @@ def complex(real, imag, name=None):
     if in_dygraph_mode():
         return _C_ops.final_state_complex(real, imag)
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return paddle._C_ops.complex(real, imag)
 
     check_variable_and_dtype(real, 'real', ['float32', 'float64'], 'complex')

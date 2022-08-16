@@ -18,7 +18,7 @@ from ...fluid.dygraph import Flatten  # noqa: F401
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 from paddle.nn import Layer
-from paddle import in_dynamic_mode
+from paddle import _non_static_mode
 
 __all__ = []
 
@@ -1450,7 +1450,7 @@ class Embedding(Layer):
                                             dtype=self._dtype,
                                             is_bias=False)
 
-        if in_dynamic_mode() and padding_idx != -1:
+        if _non_static_mode() and padding_idx != -1:
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 

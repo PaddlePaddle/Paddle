@@ -23,7 +23,6 @@ from ...framework import ParamAttr
 from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops
-from paddle import in_dynamic_mode
 from paddle.fluid.framework import core, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
@@ -506,7 +505,7 @@ def local_response_norm(x,
             y = paddle.nn.functional.local_response_norm(x, size=5)
             print(y.shape)  # [3, 3, 112, 112]
         """
-    if not in_dynamic_mode():
+    if not _non_static_mode():
         check_variable_and_dtype(x, 'x', ['float32'], 'local_response_norm')
     if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
         raise ValueError(

@@ -17,7 +17,7 @@ from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.core import VarDesc
 from ...fluid import framework
 from ...fluid.framework import _current_expected_place
-from paddle import in_dynamic_mode
+from paddle import _non_static_mode
 from paddle.utils import unique_name
 from paddle import _C_ops
 from ... import fluid
@@ -282,6 +282,6 @@ class Dirac(Initializer):
                                     "out_dtype": var.dtype
                                 },
                                 stop_gradient=True)
-        if not in_dynamic_mode():
+        if not _non_static_mode():
             var.op = op
         return op

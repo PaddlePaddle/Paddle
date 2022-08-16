@@ -168,9 +168,9 @@ class TestImperative(unittest.TestCase):
         self.functional_dygraph_context()
 
     def functional_paddle_imperative_dygraph_context(self):
-        self.assertFalse(paddle.in_dynamic_mode())
+        self.assertFalse(paddle._non_static_mode())
         paddle.disable_static()
-        self.assertTrue(paddle.in_dynamic_mode())
+        self.assertTrue(paddle._non_static_mode())
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         var_inp = paddle.to_tensor(np_inp)
         mlp = MLP(input_size=2)
@@ -179,9 +179,9 @@ class TestImperative(unittest.TestCase):
         out.backward()
         dy_grad1 = mlp._linear1.weight.gradient()
         paddle.enable_static()
-        self.assertFalse(paddle.in_dynamic_mode())
+        self.assertFalse(paddle._non_static_mode())
         paddle.disable_static()
-        self.assertTrue(paddle.in_dynamic_mode())
+        self.assertTrue(paddle._non_static_mode())
         var_inp = paddle.to_tensor(np_inp)
         mlp = MLP(input_size=2)
         out = mlp(var_inp)
@@ -189,7 +189,7 @@ class TestImperative(unittest.TestCase):
         out.backward()
         dy_grad2 = mlp._linear1.weight.gradient()
         paddle.enable_static()
-        self.assertFalse(paddle.in_dynamic_mode())
+        self.assertFalse(paddle._non_static_mode())
         np.testing.assert_array_equal(dy_out1, dy_out2)
         np.testing.assert_array_equal(dy_grad1, dy_grad2)
 

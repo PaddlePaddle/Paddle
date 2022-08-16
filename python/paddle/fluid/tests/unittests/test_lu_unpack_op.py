@@ -124,7 +124,7 @@ class TestLU_UnpackOp(OpTest):
         self.python_out_sig = ["Pmat", "L", "U"]
         self.config()
         x = np.random.random(self.x_shape).astype(self.dtype)
-        if paddle.in_dynamic_mode():
+        if paddle._non_static_mode():
             xt = paddle.to_tensor(x)
             lu, pivots = paddle.linalg.lu(xt)
             lu = lu.numpy()

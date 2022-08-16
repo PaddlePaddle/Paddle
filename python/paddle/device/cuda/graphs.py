@@ -73,7 +73,7 @@ class CUDAGraph:
 
 def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
     assert mode in ALL_MODES
-    if not paddle.in_dynamic_mode():
+    if not paddle._non_static_mode():
         # static mode
         from paddle.fluid.framework import _cuda_graph_guard
         global cuda_graph_id

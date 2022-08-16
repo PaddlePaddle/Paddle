@@ -1257,7 +1257,7 @@ def flip(x, axis, name=None):
     if in_dygraph_mode():
         return _C_ops.final_state_flip(x, axis)
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.flip(x, "axis", axis)
 
     helper = LayerHelper("flip", **locals())
@@ -1451,7 +1451,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
 
-    if not paddle.in_dynamic_mode():
+    if not paddle._non_static_mode():
         check_variable_and_dtype(
             x, 'x',
             ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
@@ -2111,7 +2111,7 @@ def unique_consecutive(x,
         if len(outs) == 1:
             return outs[0]
         return tuple(outs)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
             'return_counts', return_counts, 'axis', axis)
@@ -3126,7 +3126,7 @@ def expand(x, shape, name=None):
     if in_dygraph_mode():
         return _C_ops.final_state_expand(x, shape)
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.expand_v2(x, 'shape', shape)
 
     if isinstance(shape, Variable):
@@ -3793,7 +3793,7 @@ def tensordot(x, y, axes=2, name=None):
     check_type(axes, 'axes', (int, tuple, list, Variable), op_type)
 
     def _var_to_list(var):
-        if paddle.in_dynamic_mode():
+        if paddle._non_static_mode():
             return tolist(var)
         raise TypeError(
             "The 'axes' with type 'Tensor' in " + op_type +
@@ -4123,7 +4123,9 @@ def moveaxis(x, source, destination, name=None):
     for i in range(len(src_dims)):
         perm[dst_dims[i]] = src_dims[i]
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_transpose(x, perm)
+    if _in_legacy_dygraph():
         out, _ = _C_ops.transpose2(x, 'axis', perm)
         return out
 

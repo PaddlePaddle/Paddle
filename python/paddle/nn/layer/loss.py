@@ -20,7 +20,7 @@ import paddle
 from .. import functional as F
 from paddle.fluid.framework import _varbase_creator, in_dygraph_mode, _in_legacy_dygraph
 from .. import Layer
-from paddle import in_dynamic_mode
+from paddle import _non_static_mode
 
 __all__ = []
 
@@ -593,7 +593,7 @@ class MSELoss(Layer):
         self.reduction = reduction
 
     def forward(self, input, label):
-        if not in_dynamic_mode():
+        if not _non_static_mode():
             fluid.data_feeder.check_variable_and_dtype(input, 'input',
                                                        ['float32', 'float64'],
                                                        'MSELoss')

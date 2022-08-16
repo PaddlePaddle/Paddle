@@ -143,7 +143,7 @@ class ImperativePTQ(object):
 
         # Load inference program
         is_dynamic_mode = False
-        if paddle.in_dynamic_mode():
+        if paddle._non_static_mode():
             is_dynamic_mode = True
             paddle.enable_static()
 

@@ -26,14 +26,12 @@ from ...tensor.math import add
 from ...fluid.layers import nn
 from paddle import _C_ops
 from paddle import get_flags
-from paddle import in_dynamic_mode
 from paddle.device import is_compiled_with_cuda
 from paddle.device import is_compiled_with_npu
-from paddle import in_dynamic_mode
 from paddle import get_flags
 from paddle.device import is_compiled_with_rocm
 from paddle.fluid.framework import _global_flags
-from paddle.fluid.framework import _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, _non_static_mode
 from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
@@ -173,7 +171,7 @@ def _conv_nd(x,
         else:
             return pre_bias
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn',
                  use_mkldnn, 'fuse_relu_before_depthwise_conv', False,
@@ -421,7 +419,7 @@ def conv1d(x,
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
                  'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
@@ -892,7 +890,7 @@ def conv1d_transpose(x,
     x = unsqueeze(x, axis=[squeeze_axis])
     weight = unsqueeze(weight, axis=[-1])
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         attrs = ('output_padding', output_padding, 'output_size', output_size,
                  'strides', stride, 'paddings', padding, 'padding_algorithm',
                  padding_algorithm, 'dilations', dilation, 'groups', groups,

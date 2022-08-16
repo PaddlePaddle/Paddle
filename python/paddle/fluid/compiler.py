@@ -733,8 +733,8 @@ class IpuStrategy(object):
             raise RuntimeError(
                 "Can not use IpuStrategy in non IPU compiled environment, please re-compile with WITH_IPU=ON."
             )
-        from paddle import in_dynamic_mode
-        if in_dynamic_mode():
+        from paddle import _non_static_mode
+        if _non_static_mode():
             self.register_patch()
 
     def register_patch(self):
@@ -798,8 +798,8 @@ class IpuStrategy(object):
                   ipu_strategy = static.IpuStrategy()
                   ipu_strategy.set_optimizer(optimizer)
         """
-        from paddle import in_dynamic_mode
-        if in_dynamic_mode():
+        from paddle import _non_static_mode
+        if _non_static_mode():
             self._optimizer = optimizer
             optimizer_attrs = self.parse_optimizer(optimizer)
             self._ipu_strategy.set_options(optimizer_attrs)

@@ -32,10 +32,8 @@ from ...fluid.framework import _varbase_creator, _in_legacy_dygraph, in_dygraph_
 from ...fluid import dygraph_utils
 
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode
 from paddle.tensor.creation import full
 from paddle.framework import core
-from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.static import default_main_program
 
 __all__ = []
@@ -477,11 +475,11 @@ def interpolate(x,
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-        if isinstance(out_shape, Variable) and not in_dynamic_mode():
+        if isinstance(out_shape, Variable) and not _non_static_mode():
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
         else:
-            if in_dynamic_mode():
+            if _non_static_mode():
                 if isinstance(out_shape, Variable):
                     out_shape = list(out_shape.numpy())
                 else:
@@ -557,7 +555,7 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[2]
 
     else:
-        if in_dynamic_mode() and isinstance(scale, Variable):
+        if _non_static_mode() and isinstance(scale, Variable):
             scale = list(scale.numpy())
         if isinstance(scale, Variable):
             scale.stop_gradient = True
@@ -583,7 +581,7 @@ def interpolate(x,
                 "Attr(scale)'s type should be float, int, list, tuple, or Tensor."
             )
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         attr_list = []
         for k, v in attrs.items():
             attr_list.append(k)
@@ -1076,7 +1074,7 @@ def dropout(x,
                          attrs=attrs)
         return out
     else:  #sometimes called dropout_nd #TODO: optimize with c++
-        if not in_dynamic_mode():
+        if not _non_static_mode():
             check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
         dtype = x.dtype
         keep_prob = 1 - p
@@ -1089,7 +1087,7 @@ def dropout(x,
 
             #get mask shape
             input_shape = x.shape
-            if not in_dynamic_mode():
+            if not _non_static_mode():
                 input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
@@ -1100,7 +1098,7 @@ def dropout(x,
                     "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}"
                     .format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
-            if not in_dynamic_mode():
+            if not _non_static_mode():
                 for i in drop_axes:
                     mask_shape[i] = input_shape_tensor[i]
             else:
@@ -1268,7 +1266,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     if p < 0 or p > 1:
         raise ValueError("p argument should between 0 and 1")
 
-    if not in_dynamic_mode():
+    if not _non_static_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'alpha_dropout')
 
@@ -1794,7 +1792,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         return _C_ops.final_state_label_smooth(label, prior_dist,
                                                float(epsilon))
 
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
@@ -1962,7 +1960,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         return _C_ops.final_state_class_center_sample(
             label, num_classes, num_samples, ring_id, rank, nranks, seed
             is not None, seed if seed is not None else 0)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         remapped_label, sampled_class_center = _C_ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed', seed
@@ -2112,7 +2110,7 @@ def fold(x,
     if in_dygraph_mode():
         out = _C_ops.final_state_fold(x, output_sizes, kernel_sizes, strides,
                                       paddings, dilations)
-    elif in_dynamic_mode():
+    elif _in_legacy_dygraph():
         out = _C_ops.fold(x, "output_sizes", output_sizes, "kernel_sizes",
                           kernel_sizes, "strides", strides, "paddings",
                           paddings, "dilations", dilations)

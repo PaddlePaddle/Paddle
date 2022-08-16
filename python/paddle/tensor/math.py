@@ -730,7 +730,7 @@ def floor_divide(x, y, name=None):
     """
     op_type = 'elementwise_floordiv'
     axis = -1
-    if paddle.in_dynamic_mode():
+    if paddle._non_static_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -770,7 +770,7 @@ def remainder(x, y, name=None):
     """
     op_type = 'elementwise_mod'
     axis = -1
-    if paddle.in_dynamic_mode():
+    if paddle._non_static_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -888,7 +888,7 @@ def maximum(x, y, name=None):
     op_type = 'elementwise_max'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if paddle._non_static_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -947,7 +947,7 @@ def minimum(x, y, name=None):
     op_type = 'elementwise_min'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if paddle._non_static_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -1624,7 +1624,7 @@ def mm(input, mat2, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.final_state_matmul(input, mat2, False, False)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         return _C_ops.matmul_v2(input, mat2)
 
     def __check_input(x, y):
@@ -1855,7 +1855,7 @@ def inner(x, y, name=None):
 
         if in_dygraph_mode():
             return _C_ops.final_state_matmul(nx, ny.T, False, False).reshape(dstshape)
-        elif paddle.in_dynamic_mode():
+        elif _in_legacy_dygraph():
             return _C_ops.matmul_v2(nx, ny.T).reshape(dstshape)
 
         def __check_input(x, y):
@@ -1919,7 +1919,7 @@ def outer(x, y, name=None):
 
     if in_dygraph_mode():
         return _C_ops.final_state_matmul(nx, ny, False, False)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         return _C_ops.matmul_v2(nx, ny)
 
     def __check_input(x, y):
@@ -2036,7 +2036,7 @@ def inverse(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.final_state_inverse(x)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         return _C_ops.inverse(x)
 
     def _check_input(x):
@@ -3782,7 +3782,7 @@ def conj(x, name=None):
     if in_dygraph_mode():
         return _C_ops.final_state_conj(x)
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.conj(x)
 
     check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'conj')
@@ -4110,7 +4110,7 @@ def erfinv(x, name=None):
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.erfinv(x)
 
     helper = LayerHelper('erfinv', **locals())
@@ -4173,7 +4173,7 @@ def rad2deg(x, name=None):
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.final_state_scale(x, rad2deg_scale, 0.0, True)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, 'scale', rad2deg_scale)
@@ -4230,7 +4230,7 @@ def deg2rad(x, name=None):
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.final_state_scale(x, deg2rad_scale, 0.0, True)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, 'scale', deg2rad_scale)
@@ -4314,7 +4314,7 @@ def gcd(x, y, name=None):
                   paddle.where(y_not_equal_0, paddle.mod(x, y_safe),paddle.zeros(y.shape, y.dtype)))
         return (paddle.where(x < y, y, x), paddle.where(x < y, x, y))
 
-    if paddle.in_dynamic_mode():
+    if paddle._non_static_mode():
         while _gcd_cond_fn(x, y):
             x, y = _gcd_body_fn(x, y)
 
@@ -4447,7 +4447,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     dtype = x.dtype
     axes = [axis]
     infer_flags = list(1 for i in range(len(axes)))
-    if paddle.in_dynamic_mode():
+    if paddle._non_static_mode():
         has_pend = False
         input_list = []
         if prepend is not None and append is not None:
@@ -4594,7 +4594,7 @@ def angle(x, name=None):
 
     if in_dygraph_mode():
         return _C_ops.final_state_angle(x)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         return _C_ops.angle(x)
 
     check_variable_and_dtype(x, 'x',

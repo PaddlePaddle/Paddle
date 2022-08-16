@@ -481,7 +481,7 @@ class ImperativeQuantizeOutputs(object):
         paddle.jit.save(layer=model, path=path, input_spec=input_spec, **config)
 
         is_dynamic_mode = False
-        if paddle.in_dynamic_mode():
+        if paddle._non_static_mode():
             is_dynamic_mode = True
             paddle.enable_static()
 

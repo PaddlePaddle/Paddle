@@ -25,7 +25,7 @@ import paddle.fluid.core as core
 def _dygraph_guard_(func):
 
     def __impl__(*args, **kwargs):
-        if paddle.in_dynamic_mode():
+        if paddle._non_static_mode():
             return func(*args, **kwargs)
         else:
             with fluid.dygraph.guard():

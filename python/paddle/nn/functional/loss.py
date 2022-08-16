@@ -27,7 +27,6 @@ from ...fluid.framework import _varbase_creator
 from ...static import Variable
 from paddle.utils import deprecated
 from paddle import _C_ops
-from paddle import in_dynamic_mode
 from paddle.framework import core, _non_static_mode
 from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode, _current_expected_place
 
@@ -1261,7 +1260,7 @@ def l1_loss(input, label, reduction='mean', name=None):
                                      'reduce_all', True)
         else:
             return unreduced
-    elif in_dynamic_mode():
+    elif _in_legacy_dygraph():
         unreduced = _elementwise_op_in_dygraph(input,
                                                label,
                                                axis=-1,
@@ -1588,7 +1587,7 @@ def mse_loss(input, label, reduction='mean', name=None):
             "'reduction' in 'mse_loss' should be 'sum', 'mean' or 'none', "
             "but received {}.".format(reduction))
 
-    if not in_dynamic_mode():
+    if not _non_static_mode():
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'mse_loss')
         check_variable_and_dtype(label, 'label', ['float32', 'float64'],
@@ -1938,7 +1937,7 @@ def margin_cross_entropy(logits,
             return loss
         else:
             return loss, softmax
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         softmax, loss = _C_ops.margin_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks,
             'margin1', margin1, 'margin2', margin2, 'margin3', margin3, 'scale',

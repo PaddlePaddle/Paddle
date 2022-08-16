@@ -115,7 +115,9 @@ def poisson(x, name=None):
 
     """
 
-    if paddle.in_dynamic_mode():
+    if paddle.in_dygraph_mode():
+        return _C_ops.final_state_poisson(x)
+    elif _in_legacy_dygraph():
         return _C_ops.poisson(x)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "poisson")
@@ -439,7 +441,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             # [1.00780561 3.78457445 5.81058198]  # random
 
     """
-    if not paddle.in_dynamic_mode():
+    if not paddle._non_static_mode():
         check_type(mean, 'mean', (int, float, Variable), 'normal')
         check_type(std, 'std', (int, float, Variable), 'normal')
         if isinstance(mean, Variable):
@@ -471,7 +473,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         return gaussian(shape=shape, mean=mean, std=std, name=name)
 
     out = out * std + mean
-    if not paddle.in_dynamic_mode():
+    if not paddle._non_static_mode():
         out.stop_grediant = True
     return out
 
@@ -879,7 +881,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             "randint_like's low must less then high, but received low = {0}, "
             "high = {1}".format(low, high))
 
-    if paddle.in_dynamic_mode():
+    if paddle._non_static_mode():
         shape = utils.convert_shape_to_list(shape)
         out = _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
                              0, 'dtype', core.VarDesc.VarType.INT64)
@@ -1053,7 +1055,7 @@ def exponential_(x, lam=1.0, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.final_state_exponential_(x, lam)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         return _C_ops.exponential_(x, "lambda", lam)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")

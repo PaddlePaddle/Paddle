@@ -30,7 +30,7 @@ class TestStaticGraphSupportMultipleInt(unittest.TestCase):
 
     def test_main(self):
         dtypes = ['uint8', 'int8', 'int16', 'int32', 'int64']
-        if paddle.in_dynamic_mode():
+        if paddle._non_static_mode():
             paddle.enable_static()
             disable_static = True
         else:

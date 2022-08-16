@@ -14,7 +14,7 @@
 
 __all__ = []
 
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops, _non_static_mode
 from paddle.fluid.layers.utils import convert_to_list
 from paddle.fluid.layers.nn import elementwise_add
 from ...creation import sparse_coo_tensor
@@ -32,7 +32,7 @@ def _conv3d(x,
             key=None,
             data_format="NDHWC",
             name=None):
-    assert in_dynamic_mode(), "Currently, only support dynamic mode"
+    assert _non_static_mode(), "Currently, only support dynamic mode"
     assert groups == 1, "Currently, only support groups=1"
 
     dims = 3

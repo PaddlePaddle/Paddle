@@ -22,7 +22,7 @@ class TestDygraphModeOfUnittest(unittest.TestCase):
 
     def test_dygraph_mode(self):
         self.assertTrue(
-            paddle.in_dynamic_mode(),
+            paddle._non_static_mode(),
             'Default Mode of Unittest should be dygraph mode, but get static mode.'
         )
 

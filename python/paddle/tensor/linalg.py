@@ -814,7 +814,7 @@ def cond(x, p=None, name=None):
             sum_out_1 = _C_ops.final_state_sum(pow_out, axis, None, keepdim)
             sum_out_2 = _C_ops.final_state_sum(sum_out_1, axis, None, keepdim)
             return _C_ops.pow(sum_out_2, 'factor', float(1. / porder))
-        elif paddle.in_dynamic_mode():
+        elif _in_legacy_dygraph():
             pow_out = _C_ops.pow(input, 'factor', porder)
             sum_out_1 = _C_ops.reduce_sum(pow_out, 'dim', axis, 'keepdim',
                                           keepdim, 'reduce_all', reduce_all)
@@ -945,7 +945,7 @@ def cond(x, p=None, name=None):
             return out
 
     def empty_tensor(input, shape):
-        if paddle.in_dynamic_mode():
+        if paddle._non_static_mode():
             return input.reshape(shape)
         raise ValueError("only support x is nonempty tensor in static mode")
 
@@ -1523,7 +1523,7 @@ def bmm(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.final_state_bmm(x, y)
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.bmm(x, y)
 
     helper = LayerHelper('bmm', **locals())
@@ -1786,7 +1786,7 @@ def slogdet(x, name=None):
     if in_dygraph_mode():
         return _C_ops.final_state_slogdet(x)
 
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         return _C_ops.slogdeterminant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
@@ -2110,7 +2110,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
 
     if in_dygraph_mode():
         lu, p, info = _C_ops.final_state_lu(x, pivot)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         lu, p, info = _C_ops.lu(x, 'pivot', pivot)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
@@ -2210,7 +2210,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
                                                unpack_pivots)
         return P, L, U
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         P, L, U = _C_ops.lu_unpack(x, y, 'unpack_ludata', unpack_ludata,
                                    'unpack_pivots', unpack_pivots)
         return P, L, U
@@ -2288,7 +2288,7 @@ def eig(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.final_state_eig(x)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         w, v = _C_ops.eig(x)
         return w, v
 
@@ -2360,7 +2360,7 @@ def eigvals(x, name=None):
 
     if in_dygraph_mode():
         return _C_ops.final_state_eigvals(x)
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         return _C_ops.eigvals(x)
 
     helper = LayerHelper('eigvals', **locals())
@@ -2946,7 +2946,7 @@ def triangular_solve(x,
         return _C_ops.final_state_triangular_solve(x, y, upper, transpose,
                                                    unitriangular)
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.triangular_solve(x, y, 'upper', upper, 'transpose',
                                        transpose, 'unitriangular',
                                        unitriangular)
@@ -3056,7 +3056,7 @@ def eigvalsh(x, UPLO='L', name=None):
         values, _ = _C_ops.final_state_eigvalsh(x, UPLO, x.stop_gradient)
         return values
 
-    elif paddle.in_dynamic_mode():
+    elif _in_legacy_dygraph():
         is_test = x.stop_gradient
         values, _ = _C_ops.eigvalsh(x, 'UPLO', UPLO, 'is_test', is_test)
         return values
