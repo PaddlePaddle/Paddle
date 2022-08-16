@@ -434,7 +434,8 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                     target_dtype = None
 
                 output = assign(data)
-                if target_dtype is not None and output.dtype != target_dtype:
+                if target_dtype is not None and hasattr(
+                        output, 'dtype') and output.dtype != target_dtype:
                     paddle.cast(output, target_dtype)
 
             output.stop_gradient = stop_gradient
