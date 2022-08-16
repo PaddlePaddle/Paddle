@@ -108,7 +108,7 @@ PyObject* pylayer_method_name(PyObject* self, PyObject* noargs) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* tensor_view(paddle::experimental::Tensor* tensor) {
+PyObject* new_tensor_with_impl(paddle::experimental::Tensor* tensor) {
   PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
@@ -298,10 +298,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
               reinterpret_cast<TensorObject*>(obj)->tensor.impl().get())) {
         if (not_inplace_tensorbases.count(
                 reinterpret_cast<TensorObject*>(obj)->tensor.impl().get())) {
-          PyTuple_SET_ITEM(
-              outputs_tuple,
-              i,
-              tensor_view(&(reinterpret_cast<TensorObject*>(obj)->tensor)));
+          PyTuple_SET_ITEM(outputs_tuple,
+                           i,
+                           new_tensor_with_impl(&(
+                               reinterpret_cast<TensorObject*>(obj)->tensor)));
         } else {
           inplace_tensors.insert(
               &(reinterpret_cast<TensorObject*>(obj)->tensor));
@@ -318,10 +318,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
             if (not_inplace_tensorbases.count(
                     reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
-              PyTuple_SetItem(
-                  obj,
-                  j,
-                  tensor_view(&(reinterpret_cast<TensorObject*>(o)->tensor)));
+              PyTuple_SetItem(obj,
+                              j,
+                              new_tensor_with_impl(&(
+                                  reinterpret_cast<TensorObject*>(o)->tensor)));
             } else {
               inplace_tensors.insert(
                   &(reinterpret_cast<TensorObject*>(o)->tensor));
@@ -346,10 +346,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
             if (not_inplace_tensorbases.count(
                     reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
-              PyTuple_SetItem(
-                  obj,
-                  j,
-                  tensor_view(&(reinterpret_cast<TensorObject*>(o)->tensor)));
+              PyTuple_SetItem(obj,
+                              j,
+                              new_tensor_with_impl(&(
+                                  reinterpret_cast<TensorObject*>(o)->tensor)));
             } else {
               inplace_tensors.insert(
                   &(reinterpret_cast<TensorObject*>(o)->tensor));
@@ -455,12 +455,6 @@ PyObject* pylayer_method_apply(PyObject* cls,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* pylayer_method_register_hook(PyObject* _self, PyObject* hook) {
-  EAGER_TRY
-  return nullptr;
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 PyObject* tensor_properties_get_container(PyLayerObject* self, void* closure) {
   EAGER_TRY
   if (self->container == nullptr) {
@@ -543,10 +537,6 @@ PyMethodDef pylayer_methods[] = {
     {"apply",
      (PyCFunction)(void (*)(void))pylayer_method_apply,
      METH_CLASS | METH_VARARGS | METH_KEYWORDS,
-     NULL},
-    {"register_hook",
-     (PyCFunction)(void (*)(void))pylayer_method_register_hook,
-     METH_O,
      NULL},
     {NULL, NULL, 0, NULL}};
 
