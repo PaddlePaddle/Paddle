@@ -33,7 +33,7 @@ KernelSignature BilinearInterpOpArgumentMapping(
 
 KernelSignature NearestInterpOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("nearest_interp_v2",
+  return KernelSignature("nearest_interp",
                          {"X", "OutSize", "SizeTensor", "Scale"},
                          {"data_layout",
                           "out_d",
@@ -62,7 +62,7 @@ KernelSignature TrilinearInterpOpArgumentMapping(
 
 KernelSignature LinearInterpOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("linear_interp_v2",
+  return KernelSignature("linear_interp",
                          {"X", "OutSize", "SizeTensor", "Scale"},
                          {"data_layout",
                           "out_d",
@@ -107,7 +107,7 @@ KernelSignature BilinearInterpGradOpArgumentMapping(
 
 KernelSignature NearestInterpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("nearest_interp_v2_grad",
+  return KernelSignature("nearest_interp_grad",
                          {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
                          {"data_layout",
                           "out_d",
@@ -136,7 +136,7 @@ KernelSignature TrilinearInterpGradOpArgumentMapping(
 
 KernelSignature LinearInterpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("linear_interp_v2_grad",
+  return KernelSignature("linear_interp_grad",
                          {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
                          {"data_layout",
                           "out_d",
@@ -166,7 +166,12 @@ KernelSignature BicubicInterpGradOpArgumentMapping(
 
 }  // namespace phi
 
+PD_REGISTER_BASE_KERNEL_NAME(linear_interp_v2, linear_interp);
+PD_REGISTER_BASE_KERNEL_NAME(nearest_interp_v2, nearest_interp);
 PD_REGISTER_BASE_KERNEL_NAME(bicubic_interp_v2, bicubic_interp);
+
+PD_REGISTER_BASE_KERNEL_NAME(linear_interp_v2_grad, linear_interp_grad);
+PD_REGISTER_BASE_KERNEL_NAME(nearest_interp_v2_grad, nearest_interp_grad);
 PD_REGISTER_BASE_KERNEL_NAME(bicubic_interp_v2_grad, bicubic_interp_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(bilinear_interp_v2,
