@@ -233,7 +233,7 @@ class PD_INFER_DECL PaddlePredictor {
 
   /// \brief Get the input type of the model.
   /// \return A map contains all the input names and type defined in the model.
-  virtual std::map<std::string, paddle_infer::DataType> GetInputType() {
+  virtual std::map<std::string, paddle_infer::DataType> GetInputTypes() {
     return {};
   }
 
