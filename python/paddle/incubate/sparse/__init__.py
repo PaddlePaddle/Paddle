@@ -42,9 +42,9 @@ from .binary import add
 from .binary import divide
 from .binary import multiply
 from .binary import subtract
+from .binary import is_same_shape
 
 from .multiary import addmm
-from .multiary import is_same_shape
 
 from . import nn
 

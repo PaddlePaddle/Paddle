@@ -16,10 +16,10 @@ from __future__ import print_function
 import unittest
 
 import paddle
-from paddle.incubate.sparse.multiary import is_same_shape
+from paddle.incubate.sparse.binary import is_same_shape
 
 
-class TestSparseMultiaryAPI(unittest.TestCase):
+class TestSparseIsSameShapeAPI(unittest.TestCase):
     """
     test paddle.incubate.sparse.is_same_shape
     """
