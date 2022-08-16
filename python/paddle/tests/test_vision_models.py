@@ -181,27 +181,61 @@ class TestApprove(unittest.TestCase):
         self.assertEqual(numpy.array_equal(b_int, b_int), True)
 
         # test a folded line
-        self.assertTrue(np.allclose(a_float, a_float),
-                        msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-        self.assertEqual(np.allclose(a_float, a_float),
-                         True,
-                         msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-        self.assertTrue(np.array_equal(b_int, b_int),
-                        msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-        self.assertEqual(np.array_equal(b_int, b_int),
-                         True,
-                         msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        if True:
+            if True:
+                if True:
+                    if True:
+                        if True:
+                            if True:
+                                if True:
+                                    if True:
+                                        a_float_long_long_long_name = a_float
+                                        b_int_long_long_long_name = b_int
+                                        self.assertTrue(
+                                            np.allclose(
+                                                a_float_long_long_long_name,
+                                                a_float_long_long_long_name),
+                                            msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                                        self.assertEqual(
+                                            np.allclose(
+                                                a_float_long_long_long_name,
+                                                a_float_long_long_long_name),
+                                            True,
+                                            msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                                        self.assertTrue(
+                                            np.array_equal(
+                                                b_int_long_long_long_name,
+                                                b_int_long_long_long_name),
+                                            msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                                        self.assertEqual(
+                                            np.array_equal(
+                                                b_int_long_long_long_name,
+                                                b_int_long_long_long_name),
+                                            True,
+                                            msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
-        self.assertTrue(numpy.allclose(a_float, a_float),
-                        msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-        self.assertEqual(numpy.allclose(a_float, a_float),
-                         True,
-                         msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-        self.assertTrue(numpy.array_equal(b_int, b_int),
-                        msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-        self.assertEqual(numpy.array_equal(b_int, b_int),
-                         True,
-                         msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                                        self.assertTrue(
+                                            numpy.allclose(
+                                                a_float_long_long_long_name,
+                                                a_float_long_long_long_name),
+                                            msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                                        self.assertEqual(
+                                            numpy.allclose(
+                                                a_float_long_long_long_name,
+                                                a_float_long_long_long_name),
+                                            True,
+                                            msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                                        self.assertTrue(
+                                            numpy.array_equal(
+                                                b_int_long_long_long_name,
+                                                b_int_long_long_long_name),
+                                            msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                                        self.assertEqual(
+                                            numpy.array_equal(
+                                                b_int_long_long_long_name,
+                                                b_int_long_long_long_name),
+                                            True,
+                                            msg="XXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
 
 if __name__ == '__main__':
