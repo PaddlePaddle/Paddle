@@ -73,11 +73,11 @@ class FusionSeqPoolCVMConcatGradKernel : public framework::OpKernel<T> {
         context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
 
     const Tensor* cvm = context.Input<Tensor>("CVM");
-    const T* cvm_data = cvm->data<T>();
+    // const T* cvm_data = cvm->data<T>();
 
     auto dxs = context.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
 
-    auto use_cvm = context.Attr<bool>("use_cvm");//TODO:
+    auto use_cvm = context.Attr<bool>("use_cvm");
     std::string pooltype = context.Attr<std::string>("pooltype");
     math::SequencePoolGradFunctor<DeviceContext, T> pool;
     size_t n = dxs.size();
@@ -98,6 +98,7 @@ class FusionSeqPoolCVMConcatGradKernel : public framework::OpKernel<T> {
       Tensor tmp_cvm_dx;
       T* tmp_cvm_dx_data = tmp_cvm_dx.mutable_data<T>({tmp_cvm_dx_bs, item_size}, context.GetPlace());
 
+      const T* cvm_data = cvm->data<T>();
       // for Input X do not have Lod Information.
       // if (dx->NumLevels() == 0) {//TODO:
         for (int x = 0; x < tmp_cvm_dx_bs; ++x) {
