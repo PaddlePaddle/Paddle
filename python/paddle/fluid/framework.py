@@ -2675,6 +2675,16 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
+        # read attr type index from op proto to avoid unexpected type
+        # conversions, e.g. narrowing conversion like double to float
+        try:
+            proto = OpProtoHolder.instance().get_op_proto(type)
+            self._attr_types = {}
+            for attr in proto.attrs:
+                self._attr_types[attr.name] = attr.type
+        except ValueError:
+            pass
+
         if _non_static_mode():
             if type is None:
                 raise ValueError(
@@ -3159,7 +3169,42 @@ class Operator(object):
                 isinstance(val, core.ProgramDesc):
             self.desc.set_serialized_attr(name, val.serialize_to_string())
         else:
-            self.desc._set_attr(name, val)
+            self._update_desc_plain_attr(name, val)
+
+    def _update_desc_plain_attr(self, name, val):
+        desc = self.desc
+        if not hasattr(self, "_attr_types") or (name not in self._attr_types):
+            desc._set_attr(name, val)
+            return
+
+        type_index = self._attr_types[name]
+        if type_index == core.AttrType.BOOL:
+            desc._set_bool_attr(name, val)
+        elif type_index == core.AttrType.INT:
+            desc._set_int32_attr(name, val)
+        elif type_index == core.AttrType.LONG:
+            desc._set_int64_attr(name, val)
+        elif type_index == core.AttrType.FLOAT:
+            desc._set_float32_attr(name, val)
+        # elif type_index == core.AttrType.FLOAT64:
+        #     desc._set_float64_attr(name, val)
+        elif type_index == core.AttrType.STRING:
+            desc._set_str_attr(name, val)
+        elif type_index == core.AttrType.BOOLS:
+            desc._set_bools_attr(name, val)
+        elif type_index == core.AttrType.INTS:
+            desc._set_int32s_attr(name, val)
+        elif type_index == core.AttrType.LONGS:
+            desc._set_int64s_attr(name, val)
+        elif type_index == core.AttrType.FLOATS:
+            desc._set_float32s_attr(name, val)
+        elif type_index == core.AttrType.FLOAT64S:
+            desc._set_float64s_attr(name, val)
+        elif type_index == core.AttrType.STRINGS:
+            desc._set_strs_attr(name, val)
+        else:
+            # defaults to old methods
+            desc._set_attr(name, val)
 
     @property
     def attr_names(self):
