@@ -476,4 +476,11 @@ void GraphSendUERecvInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaTensor* dst_count);
 
+void GraphSendUVInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& src_index,
+                          const MetaTensor& dst_index,
+                          const std::string& message_op,
+                          MetaTensor* out);
+
 }  // namespace phi
