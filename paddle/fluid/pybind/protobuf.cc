@@ -286,6 +286,8 @@ void BindOpDesc(pybind11::module *m) {
       .value("LONGS", pd::proto::AttrType::LONGS)
       .value("FLOAT", pd::proto::AttrType::FLOAT)
       .value("FLOATS", pd::proto::AttrType::FLOATS)
+      //  .value("FLOAT64", pd::proto::AttrType::FLOAT64)
+      .value("FLOAT64S", pd::proto::AttrType::FLOAT64S)
       .value("STRING", pd::proto::AttrType::STRING)
       .value("STRINGS", pd::proto::AttrType::STRINGS)
       .value("BOOL", pd::proto::AttrType::BOOLEAN)
@@ -361,6 +363,21 @@ void BindOpDesc(pybind11::module *m) {
           py::arg("with_attr_var") = false)
       .def("_set_attr", &pd::OpDesc::SetAttr)
       .def("remove_attr", &pd::OpDesc::RemoveAttr)
+      .def("_set_bool_attr", &pd::OpDesc::SetPlainAttr<bool>)
+      .def("_set_int32_attr", &pd::OpDesc::SetPlainAttr<int>)
+      .def("_set_int64_attr", &pd::OpDesc::SetPlainAttr<int64_t>)
+      .def("_set_float32_attr", &pd::OpDesc::SetPlainAttr<float>)
+      //  .def("_set_float64_attr", &pd::OpDesc::SetPlainAttr<double>)
+      .def("_set_str_attr", &pd::OpDesc::SetPlainAttr<std::string>)
+
+      .def("_set_bools_attr", &pd::OpDesc::SetPlainAttr<std::vector<bool>>)
+      .def("_set_int32s_attr", &pd::OpDesc::SetPlainAttr<std::vector<int>>)
+      .def("_set_int64s_attr", &pd::OpDesc::SetPlainAttr<std::vector<int64_t>>)
+      .def("_set_float32s_attr", &pd::OpDesc::SetPlainAttr<std::vector<float>>)
+      .def("_set_float64s_attr", &pd::OpDesc::SetPlainAttr<std::vector<double>>)
+      .def("_set_strs_attr",
+           &pd::OpDesc::SetPlainAttr<std::vector<std::string>>)
+
       .def(
           "attr",
           [](pd::OpDesc &self, const std::string &name, bool with_attr_var) {

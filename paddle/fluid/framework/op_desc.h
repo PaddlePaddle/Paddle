@@ -96,6 +96,15 @@ class OpDesc {
   void SetAttr(const std::string &name, const Attribute &v);
   void RemoveAttr(const std::string &name);
 
+  // NOTE(chenfeiyu): this template is added to avoid using a variant(Attribute)
+  // as a parameter of a function which is bound to python, which causes
+  // unexpected type conversion due to the overload resolution mechanism
+  // https://pybind11.readthedocs.io/en/stable/advanced/cast/stl.html#c-17-library-containers
+  template <typename T>
+  void SetPlainAttr(const std::string &name, const T &value) {
+    SetAttr(name, value);
+  }
+
   void SetVarAttr(const std::string &name, VarDesc *var);
 
   void SetVarsAttr(const std::string &name, std::vector<VarDesc *> vars);
