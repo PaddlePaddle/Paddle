@@ -27,13 +27,10 @@ limitations under the License. */
 namespace phi {
 
 template <typename T>
-__global__ void get_poisson(const int N,
-                            const T* in,
-                            T* out,
-                            unsigned int seed,
-                            unsigned int offset) {
+__global__ void get_poisson(
+    const int N, const T* in, T* out, unsigned int seed, unsigned int offset) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < N){
+  if (idx < N) {
 //
 //    curandStatePhilox4_32_10_t state;
 //    curand_init(seed, idx, offset, &state);
@@ -47,7 +44,6 @@ __global__ void get_poisson(const int N,
     hiprand_init(seed, idx, offset, &state);
     out[idx] = static_cast<T>(hiprand_poisson(&state, in[idx]));
 #endif
-
   }
 }
 
@@ -57,9 +53,7 @@ void PoissonKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   T* out_data = ctx.template Alloc<T>(out);
   const int size = x.numel();
 
-  int block_size =
-      std::min(256, ctx.GetMaxThreadsPerBlock());
-//  int block_size = ;
+  int block_size = std::min(256, ctx.GetMaxThreadsPerBlock());
   dim3 dim_block(block_size);
   dim3 dim_grid((size + block_size - 1) / block_size);
 
@@ -67,8 +61,7 @@ void PoissonKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   auto seed_offset = gen_cuda->IncrementOffset(20);
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;
-  get_poisson<T><<<dim_grid,dim_block>>>(size, x_data, out_data, seed, offset);
-
+  get_poisson<T><<<dim_grid, dim_block>>>(size, x_data, out_data, seed, offset);
 }
 
 }  // namespace phi
