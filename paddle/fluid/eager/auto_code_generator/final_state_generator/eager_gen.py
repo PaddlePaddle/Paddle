@@ -1113,102 +1113,63 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # Node Creation Pre-Processing
         # 1. Get Input AutoGradMeta
 
-        inputs_autograd_meta_list = []
-        compute_require_grad_args_list = ["trace_backward"]
-        is_has_input_autogradmeta = False
-        for name, (ttype, pos) in forward_inputs_position_map.items():
-            # Has corresponding grad output
-            has_corresponding_grad_output = False
-            if not self.is_forward_only:
-                for _, (_, corresponding_pos,
-                        _) in backward_grad_outputs_map.items():
-                    if pos == corresponding_pos:
-                        has_corresponding_grad_output = True
-            if has_corresponding_grad_output or (
-                    name in forward_inplace_map and forward_api_name
-                    not in inplace_check_blacklist) or self.is_forward_only:
-                input_autograd_meta_name = GetAutoGradMetaName(name)
-                if IsPlainTensorType(ttype):
-                    input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
-                        name)
-                    input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({name});\n"
-                    input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
-                inputs_autograd_meta_list.append(input_autograd_meta)
-                compute_require_grad_args_list.append(input_autograd_meta_name)
-                is_has_input_autogradmeta = True
+        if not self.is_forward_only:
+            inputs_autograd_meta_list = []
+            compute_require_grad_args_list = ["trace_backward"]
+            for name, (ttype, pos) in forward_inputs_position_map.items():
+                # Has corresponding grad output
+                has_corresponding_grad_output = False
+                if not self.is_forward_only:
+                    for _, (_, corresponding_pos,
+                            _) in backward_grad_outputs_map.items():
+                        if pos == corresponding_pos:
+                            has_corresponding_grad_output = True
+                if has_corresponding_grad_output or (
+                        name in forward_inplace_map and forward_api_name
+                        not in inplace_check_blacklist) or self.is_forward_only:
+                    input_autograd_meta_name = GetAutoGradMetaName(name)
+                    if IsPlainTensorType(ttype):
+                        input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
+                    else:
+                        assert IsVectorTensorType(ttype)
+                        input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
+                            name)
+                        input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({name});\n"
+                        input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
+                    inputs_autograd_meta_list.append(input_autograd_meta)
+                    compute_require_grad_args_list.append(
+                        input_autograd_meta_name)
 
-        inputs_autograd_meta_str = "\n".join(inputs_autograd_meta_list)
-        compute_require_grad_args_str = ",".join(compute_require_grad_args_list)
+            inputs_autograd_meta_str = "\n".join(inputs_autograd_meta_list)
+            compute_require_grad_args_str = ",".join(
+                compute_require_grad_args_list)
 
         # 2. Get Output AutoGradMeta
-        outputs_autograd_meta_list = []
-        outputs_autograd_meta_str = ""
-        num_fwd_outputs = len(forward_outputs_position_map.keys())
+        if not self.is_forward_only:
+            outputs_autograd_meta_list = []
+            num_fwd_outputs = len(forward_outputs_position_map.keys())
 
-        for name, (rtype, pos) in forward_outputs_position_map.items():
-            output_autograd_meta_name = GetAutoGradMetaName(name)
-            output_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
-            if num_fwd_outputs == 1:
-                if IsPlainTensorType(rtype):
-                    if is_inplaced and forward_inplace_map and name in forward_inplace_map.values(
-                    ):
-                        ind = list(forward_inplace_map.values()).index(name)
-                        if list(forward_inplace_map.keys()
-                                )[ind] in self.optional_inputs:
-                            output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta(&{name});"
-                        else:
-                            output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
-                    else:
+            for name, (rtype, pos) in forward_outputs_position_map.items():
+                output_autograd_meta_name = GetAutoGradMetaName(name)
+                output_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
+                if num_fwd_outputs == 1:
+                    if IsPlainTensorType(rtype):
                         output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
-                else:
-                    assert IsVectorTensorType(rtype)
-                    if is_inplaced and forward_inplace_map and name in forward_inplace_map.values(
-                    ):
-                        ind = list(forward_inplace_map.values()).index(name)
-                        if list(forward_inplace_map.keys()
-                                )[ind] in self.optional_inputs:
-                            output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta(&{name});\n"
-                            output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
-                        else:
-                            output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
-                            output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
                     else:
+                        assert IsVectorTensorType(rtype)
                         output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
                         output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
-            else:
-                # Tuple api_result
-                if IsPlainTensorType(rtype):
-                    if is_inplaced and forward_inplace_map and name in forward_inplace_map.values(
-                    ):
-                        ind = list(forward_inplace_map.values()).index(name)
-                        if list(forward_inplace_map.keys()
-                                )[ind] in self.optional_inputs:
-                            output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta(&{name});"
-                        else:
-                            output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
-                    else:
-                        output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
                 else:
-                    assert IsVectorTensorType(rtype)
-                    if is_inplaced and forward_inplace_map and name in forward_inplace_map.values(
-                    ):
-                        ind = list(forward_inplace_map.values()).index(name)
-                        if list(forward_inplace_map.keys()
-                                )[ind] in self.optional_inputs:
-                            output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta(&{name});\n"
-                            output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
-                        else:
-                            output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
-                            output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+                    # Tuple api_result
+                    if IsPlainTensorType(rtype):
+                        output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
                     else:
+                        assert IsVectorTensorType(rtype)
                         output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
                         output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
 
-            outputs_autograd_meta_list.append(output_autograd_meta)
-        outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
+                outputs_autograd_meta_list.append(output_autograd_meta)
+            outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
 
         # 3. Check Inplace
         check_inplace_str = ""
@@ -1924,7 +1885,7 @@ if __name__ == "__main__":
         api_yaml_path = api_yaml_paths[i]
 
         # string api is forwrad only
-        if "string" not in api_yaml_path:
+        if "strings_api" not in api_yaml_path:
             backward_yaml_path = backward_yaml_paths[i]
         else:
             backward_yaml_path = None
