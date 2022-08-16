@@ -1795,11 +1795,16 @@
     func : modulo
   backward : modulo_grad
 
-- api : momentum
+- api : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0, bool multi_precision = false, float rescale_grad = 1.0f)
   output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
-  invoke : momentum_impl(param, grad, velocity, learning_rate, master_param, mu, use_nesterov, regularization_method, regularization_coeff, multi_precision, rescale_grad)
+  infer_meta:
+    func : MomentumInferMeta
+  kernel :
+    func : momentum
+    data_type : param
   optional : master_param
+  inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
 
 - api : multi_dot
   args : (Tensor[] x)
