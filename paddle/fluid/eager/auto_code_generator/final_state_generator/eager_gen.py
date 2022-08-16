@@ -1885,7 +1885,7 @@ if __name__ == "__main__":
         api_yaml_path = api_yaml_paths[i]
 
         # string api is forwrad only
-        if "strings_api" not in api_yaml_path:
+        if not api_yaml_path.endswith('strings_api.yaml'):
             backward_yaml_path = backward_yaml_paths[i]
         else:
             backward_yaml_path = None
