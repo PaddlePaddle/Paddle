@@ -26,6 +26,7 @@
 
 namespace paddle {
 namespace distributed {
+namespace mpi {
 
 #define MPI_CHECK(cmd)                                                     \
   do {                                                                     \
@@ -43,8 +44,6 @@ bool CheckMpiCudaAware();
 
 void CheckValidInputs(const std::vector<phi::DenseTensor>& tensors);
 
-void CheckValidSizeAndType(const phi::DenseTensor& t_in,
-                           const std::vector<phi::DenseTensor>& inputs);
-
+}  // namespace mpi
 }  // namespace distributed
 }  // namespace paddle

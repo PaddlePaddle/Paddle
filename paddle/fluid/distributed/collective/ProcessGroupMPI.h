@@ -191,7 +191,7 @@ class ProcessGroupMPI : public ProcessGroup {
       const std::vector<phi::DenseTensor>& inputs);
 
  private:
-  bool stop_;
+  bool stop_{false};
   std::mutex pg_mutex;
   std::thread worker_thread;
   std::deque<std::tuple<std::unique_ptr<TaskEntry>, std::shared_ptr<MPITask>>>

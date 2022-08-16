@@ -18,6 +18,7 @@
 
 namespace paddle {
 namespace distributed {
+namespace mpi {
 
 MPI_Op ToMPIType(ReduceOp reduction) {
   static const std::map<ReduceOp, MPI_Op> red_type = {
@@ -50,17 +51,6 @@ void CheckValidInputs(const std::vector<phi::DenseTensor>& tensors) {
                         "Found CUDA Tensor. But CUDA-aware MPI not support!"));
 }
 
-void CheckValidSizeAndType(const phi::DenseTensor& t_in,
-                           const std::vector<phi::DenseTensor>& inputs) {
-  CheckValidInputs(inputs);
-  for (const auto& tensor : inputs) {
-    PADDLE_ENFORCE_EQ(
-        (tensor.numel() != t_in.numel()) || (tensor.dtype() != t_in.dtype()),
-        true,
-        platform::errors::InvalidArgument(
-            "Tensors are not same in data type or size!"));
-  }
-}
-
+}  //  namespace mpi
 }  //  namespace distributed
 }  //  namespace paddle
