@@ -1,5 +1,5 @@
-# Steps to add a unittests in this directory
-### step 1. Add Unittests files
+# Steps to add a unittest in this directory
+### step 1. Add Unittest files
     Add a file like test_c_identity.py
 ### step 2. Edit the `testslist.csv` file
     Add an item like test_c_identity in testslist.csv
