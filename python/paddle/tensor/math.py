@@ -500,16 +500,19 @@ def add(x, y, name=None):
 
         Out=X+Y
 
-        X : a tensor of any dimension.
-        Y: a tensor whose dimensions must be less than or equal to the dimensions of X.
+    $X$ the tensor of any dimension.
+    $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
     There are two cases for this operator:
-    1. The shape of Y is the same with X.
-    2. The shape of Y is a continuous subsequence of X.
+
+    1. The shape of $Y$ is the same with $X$.
+    2. The shape of $Y$ is a continuous subsequence of $X$.
+
     For case 2:
-    1. Broadcast Y to match the shape of X, where axis is the start dimension index for broadcasting Y onto X.
-    2. If axis is -1 (default), axis=rank(X)−rank(Y).
-    3. The trailing dimensions of size 1 for Y will be ignored for the consideration of subsequence, such as shape(Y) = (2, 1) => (2).
+
+    1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
+    2. If $axis$ is -1 (default), $axis$=rank($X$)−rank($Y$).
+    3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
 
         For example:
 
@@ -523,13 +526,12 @@ def add(x, y, name=None):
             shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
     Args:
-        x (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
-        y (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
-        with_quant_attr (BOOLEAN) – Whether the operator has attributes used by quantization.
-        name (string, optional) – Name of the output. Default is None. It’s used to print debug info for developers. Details: :ref:`api_guide_Name`
+        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
+        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
+        name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        N-dimension tensor. A location into which the result is stored. It’s dimension equals with x
+        N-D Tensor. A location into which the result is stored. It’s dimension equals with x.
 
     Examples:
 
@@ -1079,10 +1081,9 @@ def fmin(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 for func in [
-        add,
         multiply
 ]:
-    proto_dict = {'add': 'elementwise_add', 'multiply': 'elementwise_mul'}
+    proto_dict = {'multiply': 'elementwise_mul'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
 
     additional_args_lines = [
@@ -4708,3 +4709,45 @@ def frac(x, name=None):
             helper.append_op(
                 type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": y})
             return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def sgn(x, name=None):
+    """
+    For complex tensor, this API returns a new tensor whose elements have the same angles as the corresponding
+    elements of input and absolute values of one.
+    For other float dtype tensor,
+    this API returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero, same as paddle.sign.
+
+    Args:
+        x (Tensor): The input tensor, which data type should be float16, float32, float64, complex64, complex128.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A sign Tensor for real input, or normalized Tensor for complex input, shape and data type are same as input.
+
+    Examples:
+        .. code-block:: Python
+
+            import paddle
+
+            x = paddle.to_tensor([[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]])
+            print(paddle.sgn(x))
+            #[[0.6+0.8j       0.28-0.96j      0.+0.j      0.4472136+0.8944272j]
+            # [0.6+0.8j       1.+0.j          0.+0.j      -1.+0.j]]
+
+    """
+    if x.dtype not in [paddle.float16, paddle.float32, paddle.float64, paddle.complex64, paddle.complex128]:
+        raise TypeError(
+            "The data type of input must be one of ['float16', 'float32', 'float64', 'complex64', 'complex128'], but got {}"
+                .format(x.dtype))
+    if paddle.is_complex(x):
+        expand_x = paddle.as_real(x)
+        x_abs = paddle.abs(x)
+        x_abs = paddle.unsqueeze(x_abs, axis=-1)
+        output = expand_x / x_abs
+        zeros = paddle.zeros_like(output)
+        output = paddle.where(paddle.isnan(output), zeros, output)
+
+        return paddle.as_complex(output)
+    else:
+        return paddle.sign(x)

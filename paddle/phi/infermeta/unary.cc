@@ -58,33 +58,64 @@ void AffineGridInferMeta(const MetaTensor& input,
           theta_dims.size(),
           theta_dims));
 
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_GE(
       outputShape.GetData().size(),
       4,
       phi::errors::InvalidArgument(
-          "The size of attribute 'output_shape' in AffineGridOp should be "
+          "The size of attribute 'output_shape' in AffineGridOp should be >= "
           "4. But received output_shape's size=[%d].",
           outputShape.GetData().size()));
 
-  PADDLE_ENFORCE_EQ(
-      theta_dims[1],
-      2,
+  PADDLE_ENFORCE_LE(
+      outputShape.GetData().size(),
+      5,
       phi::errors::InvalidArgument(
-          "The second dimesion of input 'theta' in AffineGridOp should be 2. "
-          "But received second dimesion=[%d], dimesions=[%s]",
-          theta_dims[1],
-          theta_dims));
-  PADDLE_ENFORCE_EQ(
+          "The size of attribute 'output_shape' in AffineGridOp should be <= "
+          "5. But received output_shape's size=[%d].",
+          outputShape.GetData().size()));
+
+  PADDLE_ENFORCE_GE(theta_dims[1],
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The second dimesion of input 'theta' in AffineGridOp "
+                        "should be >= 2. "
+                        "But received second dimesion=[%d], dimesions=[%s]",
+                        theta_dims[1],
+                        theta_dims));
+
+  PADDLE_ENFORCE_LE(theta_dims[1],
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The second dimesion of input 'theta' in AffineGridOp "
+                        "should be <= 3. "
+                        "But received second dimesion=[%d], dimesions=[%s]",
+                        theta_dims[1],
+                        theta_dims));
+
+  PADDLE_ENFORCE_GE(
       theta_dims[2],
       3,
       phi::errors::InvalidArgument(
-          "The third dimesion of input 'theta' in AffineGridOp should be 3. "
+          "The third dimesion of input 'theta' in AffineGridOp should be >= 3. "
           "But received third dimesion=[%d], dimesions=[%s]",
           theta_dims[2],
           theta_dims));
 
-  // N * H * W * 2
-  output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, 2}));
+  PADDLE_ENFORCE_LE(
+      theta_dims[2],
+      4,
+      phi::errors::InvalidArgument(
+          "The third dimesion of input 'theta' in AffineGridOp should be <= 4. "
+          "But received third dimesion=[%d], dimesions=[%s]",
+          theta_dims[2],
+          theta_dims));
+  if (outputShape.GetData().size() == 4) {
+    // N * H * W * 2
+    output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, 2}));
+  } else {
+    // N * D * H * W * 3
+    output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, -1, 3}));
+  }
   output->set_dtype(input.dtype());
   output->share_lod(input);
 }

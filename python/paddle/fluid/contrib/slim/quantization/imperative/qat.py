@@ -48,7 +48,10 @@ class ImperativeQuantAware(object):
     """
 
     def __init__(self,
-                 quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
+                 quantizable_layer_type=[
+                     'Conv2D', 'Linear', 'Conv2DTranspose',
+                     'ColumnParallelLinear', 'RowParallelLinear'
+                 ],
                  weight_quantize_type='abs_max',
                  activation_quantize_type='moving_average_abs_max',
                  weight_bits=8,
@@ -431,12 +434,14 @@ class ImperativeQuantizeOutputs(object):
             parent_layer, sub_name = \
                 utils.find_parent_layer_and_sub_name(model, cur_name)
 
+            reduce_type = None
+
             if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
                 cur_quant_layer = quant_layers.FakeQuantMAOutputScaleLayer(
-                    cur_layer, self._moving_rate)
+                    cur_layer, self._moving_rate, reduce_type=reduce_type)
             else:
                 cur_quant_layer = quant_layers.MAOutputScaleLayer(
-                    cur_layer, self._moving_rate)
+                    cur_layer, self._moving_rate, reduce_type=reduce_type)
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 

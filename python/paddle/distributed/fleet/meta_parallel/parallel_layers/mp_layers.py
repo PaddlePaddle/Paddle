@@ -41,14 +41,16 @@ class VocabParallelEmbedding(Layer):
                  num_embeddings,
                  embedding_dim,
                  weight_attr=None,
+                 mp_group=None,
                  name=None):
         super(VocabParallelEmbedding, self).__init__()
 
         self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
-        )
+        ) if mp_group is None else mp_group
         self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
-        )
-        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
+        ) if mp_group is None else mp_group.nranks
+        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank(
+        ) if mp_group is None else mp_group.rank
 
         self.origin_num_embeddings = num_embeddings
         self.is_mp = (self.world_size > 1)
@@ -108,14 +110,15 @@ class ColumnParallelLinear(Layer):
                  weight_attr=None,
                  has_bias=None,
                  gather_output=True,
-                 name=None,
-                 fuse_matmul_bias=False):
+                 fuse_matmul_bias=False,
+                 mp_group=None,
+                 name=None):
         super(ColumnParallelLinear, self).__init__()
 
         self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
-        )
+        ) if mp_group is None else mp_group
         self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
-        )
+        ) if mp_group is None else mp_group.nranks
         self._name = name
         self.is_mp = (self.world_size > 1)
 
@@ -197,8 +200,9 @@ class RowParallelLinear(Layer):
                  weight_attr=None,
                  has_bias=True,
                  input_is_parallel=False,
-                 name=None,
-                 fuse_matmul_bias=False):
+                 fuse_matmul_bias=False,
+                 mp_group=None,
+                 name=None):
         super(RowParallelLinear, self).__init__()
 
         self.in_features = in_features
@@ -209,10 +213,11 @@ class RowParallelLinear(Layer):
         self._name = name
 
         self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
-        )
+        ) if mp_group is None else mp_group
         self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
-        )
-        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
+        ) if mp_group is None else mp_group.nranks
+        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank(
+        ) if mp_group is None else mp_group.rank
 
         self.is_mp = (self.world_size > 1)
         assert in_features % self.world_size == 0, (
@@ -288,14 +293,15 @@ class RowParallelLinear(Layer):
 
 class ParallelCrossEntropy(Layer):
 
-    def __init__(self, name=None):
+    def __init__(self, mp_group=None, name=None):
         super(ParallelCrossEntropy, self).__init__()
         self.name = name
         self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
-        )
+        ) if mp_group is None else mp_group
         self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
-        )
-        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
+        ) if mp_group is None else mp_group.nranks
+        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank(
+        ) if mp_group is None else mp_group.rank
 
     def forward(self, input, label):
         loss = paddle.distributed.collective._c_softmax_with_cross_entropy(

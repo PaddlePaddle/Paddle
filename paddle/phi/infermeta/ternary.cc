@@ -317,16 +317,6 @@ void InstanceNormInferMeta(const MetaTensor& x,
                     nullptr,
                     phi::errors::InvalidArgument(
                         "The y in InstanceNormInferMeta can't be nullptr."));
-  PADDLE_ENFORCE_NE(
-      saved_mean,
-      nullptr,
-      phi::errors::InvalidArgument(
-          "The saved_mean in InstanceNormInferMeta can't be nullptr."));
-  PADDLE_ENFORCE_NE(
-      saved_variance,
-      nullptr,
-      phi::errors::InvalidArgument(
-          "The saved_variance in InstanceNormInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
   PADDLE_ENFORCE_NE(phi::product(x_dims),
                     0,
@@ -401,17 +391,21 @@ void InstanceNormInferMeta(const MetaTensor& x,
     }
   }
   y->set_dims(x_dims);
-  saved_mean->set_dims({NxC});
-  saved_variance->set_dims({NxC});
   y->share_lod(x);
   y->set_dtype(x.dtype());
   y->set_layout(x.layout());
+  if (saved_mean) {
+    saved_mean->set_dims({NxC});
+  }
+  if (saved_variance) {
+    saved_variance->set_dims({NxC});
+  }
 }
 
 void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,
-                            const std::string& pool_type,
+                            const std::string& reduce_op,
                             const IntArray& out_size,
                             MetaTensor* out,
                             MetaTensor* dst_count) {
@@ -460,7 +454,7 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(dims_));
   out->set_dtype(x.dtype());
 
-  if (pool_type == "MEAN") {
+  if (reduce_op == "MEAN") {
     dst_count->set_dims({-1});
     dst_count->set_dtype(DataType::INT32);
   }
@@ -820,7 +814,7 @@ void MultiClassNMSInferMeta(const MetaTensor& bboxes,
 
   out->set_dims(phi::make_ddim({-1, box_dims[2] + 2}));
   out->set_dtype(bboxes.dtype());
-  index->set_dims(phi::make_ddim({-1, box_dims[2] + 2}));
+  index->set_dims(phi::make_ddim({-1, 1}));
   index->set_dtype(DataType::INT32);
   nms_rois_num->set_dims(phi::make_ddim({-1}));
   nms_rois_num->set_dtype(DataType::INT32);

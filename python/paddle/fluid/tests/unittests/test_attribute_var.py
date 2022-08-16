@@ -93,7 +93,7 @@ class TestTileTensorList(UnittestBase):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'tile_tensors')
 
-    def test_static(self):
+    def _test_static(self):
         main_prog = Program()
         starup_prog = Program()
         with program_guard(main_prog, starup_prog):
@@ -127,7 +127,7 @@ class TestTileTensor(UnittestBase):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'tile_tensor')
 
-    def test_static(self):
+    def _test_static(self):
         main_prog = Program()
         starup_prog = Program()
         with program_guard(main_prog, starup_prog):
