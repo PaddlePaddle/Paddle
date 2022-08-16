@@ -1,5 +1,5 @@
-# Steps to add a unittests in this directory
-### step 1. Add Unittests files
+# Steps to add a unittest in this directory
+### step 1. Add Unittest files
     Add a file like test_c_identity.py
 ### step 2. Edit the `testslist.csv` file
     Add an item like test_c_identity in testslist.csv
@@ -27,5 +27,5 @@
 * note:  
 When commiting the codes, you should commit both the testslist.csv and the generated CMakeLists.txt. Once you pulled the repo, you don't need to run this command untill you modify the testslists.csv file.
     
-### step 4. Run cmake and make and ctest
+### step 4. Build and test
     Build paddle and run ctest for the new unit test
