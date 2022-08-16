@@ -28,7 +28,7 @@ def process_envs(envs):
         Output: "http_proxy=;https_proxy=123.123.123.123:1230"
     """
     envs = envs.strip()
-    PYTHONPATH_pattern = re.compile("^PYTHONPATH=")
+
     envs_parts = envs.split(";")
     processed_envs = []
 
@@ -44,7 +44,8 @@ def process_envs(envs):
             f"""The environment option format is wrong. The env variable name can only contains'a-z', 'A-Z', '0-9' and '_',
 and the var can not contain space in either env names or values.
 However the var's format is '{p}'."""
-        if PYTHONPATH_pattern.search(p):
+
+        if re.compile("^PYTHONPATH=").search(p):
             p = _process_PYTHONPATH(p)
 
         processed_envs.append(p)
