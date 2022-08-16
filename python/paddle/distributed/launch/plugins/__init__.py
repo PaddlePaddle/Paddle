@@ -37,6 +37,11 @@ def process_args(ctx):
                     f'Device not found {d} from {argdev} for setting {ctx.node.device.labels}'
                 )
 
+    if ctx.args.ips:
+        ips = ctx.args.ips.split(',')
+        if '127.0.0.1' in ips and len(ips) != 1:
+            raise "127.0.0.1 in ips is not allowed in multi-nodes."
+
 
 def collective_compatible(ctx):
     if 'PADDLE_TRAINER_ENDPOINTS' in ctx.envs:

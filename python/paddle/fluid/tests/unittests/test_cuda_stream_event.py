@@ -128,7 +128,7 @@ class TestStreamGuard(unittest.TestCase):
                 # kernels to be completed on windows.
                 s.synchronize()
 
-            self.assertTrue(np.array_equal(np.array(c), np.array(d)))
+            np.testing.assert_array_equal(np.array(c), np.array(d))
 
     def test_stream_guard_default_stream(self):
         if paddle.is_compiled_with_cuda():

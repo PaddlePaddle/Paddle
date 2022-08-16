@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .message_passing import send_u_recv  # noqa: F401
+from .message_passing import send_ue_recv  # noqa: F401
+from .message_passing import send_uv  # noqa: F401
 from .math import segment_sum  # noqa: F401
 from .math import segment_mean  # noqa: F401
 from .math import segment_min  # noqa: F401
@@ -21,6 +24,9 @@ from .sampling import khop_sampler  # noqa: F401
 from .sampling import sample_neighbors  # noqa: F401
 
 __all__ = [
+    'send_u_recv',
+    'send_ue_recv',
+    'send_uv',
     'segment_sum',
     'segment_mean',
     'segment_min',

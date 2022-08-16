@@ -307,7 +307,7 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx,
   auto* x_data = x.data<T>();
   auto* y_data = y->data<T>();
 
-  if (!is_test) {
+  if (!is_test && mask) {
     auto* mask_data = mask->data<uint8_t>();
     size_t size = phi::product(mask->dims());
 
