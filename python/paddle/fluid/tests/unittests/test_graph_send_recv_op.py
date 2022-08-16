@@ -25,11 +25,11 @@ from op_test import OpTest
 def graph_send_recv_wrapper(x,
                             src_index,
                             dst_index,
-                            pool_type="sum",
+                            reduce_op="sum",
                             out_size=None,
                             name=None):
     return paddle.geometric.send_u_recv(x, src_index, dst_index,
-                                        pool_type.lower(), out_size, name)
+                                        reduce_op.lower(), out_size, name)
 
 
 class TestGraphSendRecvMaxOp(OpTest):
@@ -46,7 +46,7 @@ class TestGraphSendRecvMaxOp(OpTest):
 
         self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
-        self.attrs = {'pool_type': 'MAX'}
+        self.attrs = {'reduce_op': 'MAX'}
 
         out, self.gradient = compute_graph_send_recv_for_min_max(
             self.inputs, self.attrs)
@@ -76,7 +76,7 @@ class TestGraphSendRecvMinOp(OpTest):
 
         self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
-        self.attrs = {'pool_type': 'MIN'}
+        self.attrs = {'reduce_op': 'MIN'}
 
         out, self.gradient = compute_graph_send_recv_for_min_max(
             self.inputs, self.attrs)
@@ -107,7 +107,7 @@ class TestGraphSendRecvSumOp(OpTest):
 
         self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
-        self.attrs = {'pool_type': 'SUM'}
+        self.attrs = {'reduce_op': 'SUM'}
 
         out, _ = compute_graph_send_recv_for_sum_mean(self.inputs, self.attrs)
 
@@ -134,7 +134,7 @@ class TestGraphSendRecvMeanOp(OpTest):
 
         self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
-        self.attrs = {'pool_type': 'MEAN'}
+        self.attrs = {'reduce_op': 'MEAN'}
 
         out, dst_count = compute_graph_send_recv_for_sum_mean(
             self.inputs, self.attrs)
@@ -153,15 +153,15 @@ def compute_graph_send_recv_for_sum_mean(inputs, attributes):
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
 
-    pool_type = attributes['pool_type']
+    reduce_op = attributes['reduce_op']
 
     gather_x = x[src_index]
     target_shape = list(x.shape)
     results = np.zeros(target_shape, dtype=x.dtype)
-    if pool_type == 'SUM':
+    if reduce_op == 'SUM':
         for index, s_id in enumerate(dst_index):
             results[s_id, :] += gather_x[index, :]
-    elif pool_type == 'MEAN':
+    elif reduce_op == 'MEAN':
         count = np.zeros(target_shape[0], dtype=np.int32)
         for index, s_id in enumerate(dst_index):
             results[s_id, :] += gather_x[index, :]
@@ -169,7 +169,7 @@ def compute_graph_send_recv_for_sum_mean(inputs, attributes):
         results = results / count.reshape([-1, 1])
         results[np.isnan(results)] = 0
     else:
-        raise ValueError("Invalid pool_type, only SUM, MEAN supported!")
+        raise ValueError("Invalid reduce_op, only SUM, MEAN supported!")
 
     count = np.zeros(target_shape[0], dtype=np.int32)
     for index, s_id in enumerate(dst_index):
@@ -183,7 +183,7 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
 
-    pool_type = attributes['pool_type']
+    reduce_op = attributes['reduce_op']
 
     gather_x = x[src_index]
     target_shape = list(x.shape)
@@ -191,7 +191,7 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
     gradient = np.zeros_like(x)
 
     # Calculate forward output
-    if pool_type == "MAX":
+    if reduce_op == "MAX":
         first_set = set()
         for index, s_id in enumerate(dst_index):
             if s_id not in first_set:
@@ -200,7 +200,7 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
             else:
                 results[s_id, :] = np.maximum(results[s_id, :],
                                               gather_x[index, :])
-    elif pool_type == "MIN":
+    elif reduce_op == "MIN":
         first_set = set()
         for index, s_id in enumerate(dst_index):
             if s_id not in first_set:
@@ -210,7 +210,7 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
                 results[s_id, :] = np.minimum(results[s_id, :],
                                               gather_x[index, :])
     else:
-        raise ValueError("Invalid pool_type, only MAX, MIN supported!")
+        raise ValueError("Invalid reduce_op, only MAX, MIN supported!")
 
     # Calculate backward gradient
     index_size = len(src_index)

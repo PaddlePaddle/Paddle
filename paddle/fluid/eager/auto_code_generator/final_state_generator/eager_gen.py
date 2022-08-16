@@ -40,8 +40,11 @@ from codegen_utils import AssertMessage, GetIndent
 # keeping the code compatible, here we also skip inplace check in new dygraph temporarily,
 # and this will be fixed in the futrue.
 inplace_check_blacklist = set(["assign_out_"])
-# # --- Black Ops list that's NO NEED to apply backward code generation
-black_ops_list = ["conv2d", "conv2d_grad", "conv2d_grad_grad", "add_n"]
+
+# Black Ops list that's NO NEED to apply code generation
+black_ops_list = [
+    "conv2d", "conv2d_grad", "conv2d_grad_grad", "add_n", "add_n_grad"
+]
 
 
 ###########
@@ -381,6 +384,12 @@ CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = \
 """
   paddle::optional<paddle::experimental::Tensor> {}_optional;
   if( {}.impl() ) {}_optional = paddle::make_optional<paddle::experimental::Tensor>({});
+"""
+
+CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE = \
+"""
+  paddle::optional<std::vector<paddle::experimental::Tensor>> {}_optional;
+  if( !{}.empty() ) {}_optional = paddle::make_optional<std::vector<paddle::experimental::Tensor>>({});
 """
 
 CHECK_BACKWARD_INPLACE_TEMPLATE = \
@@ -948,11 +957,20 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         )
             else:
                 assert IsVectorTensorType(ttype)
-                arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
-                amp_tensors_vector_list.append(f"{name}")
-                amp_autocast_list.append(
-                    f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
-                )
+                if is_optional:
+                    arg_str = f"const paddle::optional<std::vector<paddle::experimental::Tensor>>& {name}"
+                    amp_tensors_vector_optional_list.append(
+                        f"if ({name}) amp_tensors_vector.push_back( *{name} );\n"
+                    )
+                    amp_autocast_optional_list.append(
+                        f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                    )
+                else:
+                    arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
+                    amp_tensors_vector_list.append(f"{name}")
+                    amp_autocast_list.append(
+                        f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                    )
 
             inputs_args_definition_list[pos] = arg_str
             inputs_args_declaration_list[pos] = arg_str
@@ -1109,7 +1127,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         kernel_trans2_op_name_str = f"auto op_name = phi::TransToFluidOpName(\"{forward_api_name}\");"
         amp_tensors_vector_list_str = "{ " + ",".join(
             amp_tensors_vector_list) + " }"
-        amp_tensors_vector_optional_list_str = "".join(
+        amp_tensors_vector_optional_list_str = "    ".join(
             amp_tensors_vector_optional_list)
         amp_get_dst_dtype_str = f"auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
         amp_autocast_list_str = "    ".join(
@@ -1374,7 +1392,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         inplace_check_str = ""
         optional_inplace_var_name = []
         # Grad Ins from TensorWrappers
-        for name, (_, is_fwd_input,
+        for name, (backward_input_type, is_fwd_input,
                    grad_api_position), in backward_forward_inputs_map.items():
             tensor_wrapper_name = GetSavedName(name)
             transformed_tensor_name = self.TransformToNextGradName(name)
@@ -1397,9 +1415,14 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     tensor_wrapper_intermidiate_tensor_str)
                 inplace_grad_input_str = transformed_tensor_name
             if is_optional:
-                tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
-                    transformed_tensor_name, transformed_tensor_name,
-                    transformed_tensor_name, transformed_tensor_name)
+                if backward_input_type == "std::vector<Tensor>":
+                    tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE.format(
+                        transformed_tensor_name, transformed_tensor_name,
+                        transformed_tensor_name, transformed_tensor_name)
+                else:
+                    tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
+                        transformed_tensor_name, transformed_tensor_name,
+                        transformed_tensor_name, transformed_tensor_name)
 
                 grad_api_args[
                     grad_api_position] = transformed_tensor_name + "_optional"
@@ -1637,7 +1660,6 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         if 'backward' not in forward_api_contents.keys(): return None
 
         backward_api_name = forward_api_contents['backward']
-        if backward_api_name in black_ops_list: return None
         assert backward_api_name in grad_api_dict.keys(), AssertMessage(
             backward_api_name, grad_api_dict.keys())
         backward_api_contents = grad_api_dict[backward_api_name]
@@ -1655,7 +1677,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
             backward_api_contents = self.GetBackwardAPIContents(
                 forward_api_contents)
             if backward_api_contents is None: continue
-            if forward_api_contents['api'] in black_ops_list: continue
+
             # Generate Dygraph Forward Function
             function_generator = DygraphForwardFunctionGenerator(
                 forward_api_contents, backward_api_contents, namespace)

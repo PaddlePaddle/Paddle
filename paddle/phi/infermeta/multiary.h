@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 namespace phi {
@@ -464,5 +465,15 @@ void Yolov3LossInferMeta(const MetaTensor& x,
                          MetaTensor* loss,
                          MetaTensor* objectness_mask,
                          MetaTensor* gt_match_mask);
+
+void GraphSendUERecvInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const MetaTensor& src_index,
+                              const MetaTensor& dst_index,
+                              const std::string& message_op,
+                              const std::string& reduce_op,
+                              const IntArray& out_size,
+                              MetaTensor* out,
+                              MetaTensor* dst_count);
 
 }  // namespace phi

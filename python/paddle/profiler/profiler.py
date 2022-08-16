@@ -23,7 +23,10 @@ import json
 
 import paddle
 from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
-                               TracerEventType)
+                               TracerEventType, enable_memory_recorder,
+                               enable_input_shape_recorder,
+                               disable_memory_recorder,
+                               disable_input_shape_recorder)
 
 from .utils import RecordEvent, wrap_optimizers
 from .profiler_statistic import StatisticData, _build_table, SortedKeys
@@ -279,6 +282,8 @@ class Profiler:
             This callable object will be called when ``scheduler`` returns ``ProfilerState.RECORD_AND_RETURN``. The default value is :ref:`export_chrome_tracing <api_paddle_profiler_export_chrome_tracing>` (./profiler_log/).
         timer_only (bool, optional): If it is True, the cost of Dataloader and every step of the model will be count without profiling. Otherwise, the model will
             be timed and profiled. Default: False.
+        record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
+        profile_memory (bool, optional): If it is True, collect tensor memory allocation and release information. Default: False.
 
     Examples:
         1. profiling range [2, 5).
@@ -396,6 +401,8 @@ class Profiler:
                  scheduler: Union[Callable[[int], ProfilerState], tuple,
                                   None] = None,
                  on_trace_ready: Optional[Callable[..., Any]] = None,
+                 record_shapes: Optional[bool] = False,
+                 profile_memory=False,
                  timer_only: Optional[bool] = False):
         supported_targets = _get_supported_targets()
         if targets:
@@ -447,6 +454,8 @@ class Profiler:
         self.record_event = None
         self.profiler_result = None
         self.timer_only = timer_only
+        self.record_shapes = record_shapes
+        self.profile_memory = profile_memory
 
     def __enter__(self):
         self.start()
@@ -481,6 +490,10 @@ class Profiler:
         benchmark().begin()
         if self.timer_only:
             return
+        if self.record_shapes:
+            enable_input_shape_recorder()
+        if self.profile_memory:
+            enable_memory_recorder()
         # CLOSED -> self.current_state
         utils._is_profiler_used = True
         if self.current_state == ProfilerState.READY:
@@ -520,6 +533,10 @@ class Profiler:
         benchmark().end()
         if self.timer_only:
             return
+        if self.record_shapes:
+            disable_input_shape_recorder()
+        if self.profile_memory:
+            disable_memory_recorder()
         # self.current_state -> CLOSED
         # In this situation, RECORD state is regarded as RECORD_AND_RETURN
         if self.record_event:
