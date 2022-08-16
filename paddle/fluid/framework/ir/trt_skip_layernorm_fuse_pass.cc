@@ -36,12 +36,13 @@ struct TrtSkipLayerNorm : public PatternBase {
   TrtSkipLayerNorm(PDPattern *pattern, const std::string &name_scope)
       : PatternBase(pattern, name_scope, "skip_layernorm") {}
 
-  PDNode *operator()(PDNode *x, PDNode *y);
+  PDNode *operator()(PDNode *x);
 
   // declare operator node's name
   PATTERN_DECL_NODE(elementwise);
   PATTERN_DECL_NODE(layer_norm);
   // declare variable node's name
+  PATTERN_DECL_NODE(elementwise_y);
   PATTERN_DECL_NODE(
       elementwise_out);  // (elementwise_input_x,elementwise_input_y)
                          // -> elementwise_out
@@ -52,10 +53,11 @@ struct TrtSkipLayerNorm : public PatternBase {
   PATTERN_DECL_NODE(layer_norm_variance);
 };
 
-PDNode *TrtSkipLayerNorm::operator()(PDNode *x, PDNode *y) {
+PDNode *TrtSkipLayerNorm::operator()(PDNode *x) {
   // Create nodes for elementwise add op.
-  x->assert_is_op_input("elementwise_add", "X");
-  y->assert_is_op_input("elementwise_add", "Y");
+  auto *elementwise_y = pattern->NewNode(elementwise_y_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("elementwise_add", "Y");
   auto *elementwise =
       pattern->NewNode(elementwise_repr())->assert_is_op("elementwise_add");
   auto *elementwise_out_var =
@@ -64,7 +66,7 @@ PDNode *TrtSkipLayerNorm::operator()(PDNode *x, PDNode *y) {
           ->assert_is_only_output_of_op("elementwise_add");
 
   // Add links for elementwise_add op.
-  elementwise->LinksFrom({x, y}).LinksTo({elementwise_out_var});
+  elementwise->LinksFrom({x, elementwise_y}).LinksTo({elementwise_out_var});
 
   // Create nodes for layer_norm op.
   elementwise_out_var->AsIntermediate()->assert_is_op_input("layer_norm");
@@ -113,18 +115,14 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
                 ->AsInput()
                 ->assert_is_op_input("elementwise_add", "X")
                 ->assert_var_not_persistable();
-  auto *y = gpd.mutable_pattern()
-                ->NewNode("skip_layernorm_fuse/y")
-                ->AsInput()
-                ->assert_is_op_input("elementwise_add", "Y")
-                ->assert_var_not_persistable();
+
   patterns::TrtSkipLayerNorm fused_pattern(gpd.mutable_pattern(),
                                            "skip_layernorm_fuse");
-  fused_pattern(x, y);
+  fused_pattern(x);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *graph) {
-    if (subgraph.count(x) <= 0 || subgraph.count(y) <= 0) {
+    if (subgraph.count(x) <= 0) {
       LOG(WARNING) << "The subgraph is empty.";
       return;
     }
@@ -135,6 +133,7 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     VLOG(4) << "handle TrtSkipLayerNorm fuse";
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_y, elementwise_y, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
@@ -149,12 +148,12 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     std::unordered_set<const Node *> del_node_set;
 
     // Create an TrtSkipLayerNorm op node
-    OpDesc new_desc(elementwise->Op()->Block());
+    OpDesc new_desc;
     new_desc.SetType("skip_layernorm");
 
     // inputs
     new_desc.SetInput("X", {subgraph.at(x)->Name()});
-    new_desc.SetInput("Y", {subgraph.at(y)->Name()});
+    new_desc.SetInput("Y", {elementwise_y->Name()});
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
 
@@ -168,6 +167,7 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetOutput("Out", {layer_norm_out->Name()});
 
     // attrs
+    new_desc.SetAttr("axis", elementwise->Op()->GetAttr("axis"));
     new_desc.SetAttr("epsilon", layer_norm->Op()->GetAttr("epsilon"));
     new_desc.SetAttr("begin_norm_axis",
                      layer_norm->Op()->GetAttr("begin_norm_axis"));
@@ -182,7 +182,7 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     GraphSafeRemoveNodes(graph, del_node_set);
 
     IR_NODE_LINK_TO(subgraph.at(x), fused_node);
-    IR_NODE_LINK_TO(subgraph.at(y), fused_node);
+    IR_NODE_LINK_TO(elementwise_y, fused_node);
     IR_NODE_LINK_TO(layer_norm_scale, fused_node);
     IR_NODE_LINK_TO(layer_norm_bias, fused_node);
     IR_NODE_LINK_TO(fused_node, layer_norm_out);

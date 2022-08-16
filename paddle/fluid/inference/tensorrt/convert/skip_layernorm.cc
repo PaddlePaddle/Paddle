@@ -31,10 +31,45 @@ class SkipLayerNormOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
-    auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
+
+    nvinfer1::ITensor* Y = nullptr;
+    auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
+    if (Y_v) {
+      // Y is weight
+      auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+      std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
+      auto y_weight = engine_->GetTrtWeight(op_desc.Input("Y").front(), *Y_t);
+
+      nvinfer1::Dims trt_dims_y;
+      trt_dims_y.nbDims = dims_y.size();
+      for (int i = 0; i < trt_dims_y.nbDims; i++) {
+        trt_dims_y.d[i] = dims_y[i];
+      }
+      // this is the special case when dims_y includes batch dimension!
+      // we need remove batch dimension!
+      if (!engine_->with_dynamic_shape() &&
+          trt_dims_y.nbDims == (input1->getDimensions().nbDims + 1)) {
+        trt_dims_y.nbDims--;
+        PADDLE_ENFORCE_EQ(trt_dims_y.d[0],
+                          1,
+                          platform::errors::InvalidArgument(
+                              "Elementwise op's Y is a weight "
+                              "including batch dimension. Please "
+                              "check if the 0th dimension equals 1."));
+        for (int i = 0; i < trt_dims_y.nbDims; i++) {
+          trt_dims_y.d[i] = trt_dims_y.d[i + 1];
+        }
+      }
+      Y = TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims_y, y_weight.get())
+              ->getOutput(0);
+    } else {
+      LOG(INFO) << "Y is tensor";
+      Y = engine_->GetITensor(op_desc.Input("Y").front());
+    }
+
     std::vector<nvinfer1::ITensor*> inputs;
     inputs.push_back(input1);
-    inputs.push_back(input2);
+    inputs.push_back(Y);
 
     bool enable_int8 = op_desc.HasAttr("enable_int8");
 

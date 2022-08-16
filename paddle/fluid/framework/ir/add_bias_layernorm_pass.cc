@@ -41,6 +41,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+void UnlinkNodes(ir::Node* a, ir::Node* b) {
+  a->outputs.erase(std::remove(a->outputs.begin(), a->outputs.end(), b),
+                   a->outputs.end());
+  b->inputs.erase(std::remove(b->inputs.begin(), b->inputs.end(), a),
+                  b->inputs.end());
+}
+
 AddBiasLayernormPass::AddBiasLayernormPass() {
   AddOpCompat(OpCompat("transpose2"))
       .AddInput("X")
@@ -56,7 +63,7 @@ AddBiasLayernormPass::AddBiasLayernormPass() {
       .AddAttr("axis")  // {0, 2, 1, 3}
       .IsType<std::vector<int>>()
       .End();
-  
+
   AddOpCompat(OpCompat("flatten_contiguous_range"))
       .AddInput("X")
       .IsTensor()
@@ -89,31 +96,31 @@ AddBiasLayernormPass::AddBiasLayernormPass() {
       .End();
 
   AddOpCompat(OpCompat("layer_norm"))
-        .AddInput("X")
-        .IsTensor()
-        .End()
-        .AddInput("Scale")
-        .IsTensor()
-        .End()
-        .AddInput("Bias")
-        .IsTensor()
-        .End()
-        .AddOutput("Y")
-        .IsTensor()
-        .End()
-        .AddOutput("Mean")
-        .IsTensor()
-        .End()
-        .AddOutput("Variance")
-        .IsTensor()
-        .End()
-        .AddAttr("epsilon")
-        .IsNumGE(0.0f)
-        .IsNumLE(0.001f)
-        .End()
-        .AddAttr("begin_norm_axis")
-        .IsNumGT(0)
-        .End();
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Mean")
+      .IsTensor()
+      .End()
+      .AddOutput("Variance")
+      .IsTensor()
+      .End()
+      .AddAttr("epsilon")
+      .IsNumGE(0.0f)
+      .IsNumLE(0.001f)
+      .End()
+      .AddAttr("begin_norm_axis")
+      .IsNumGT(0)
+      .End();
 }
 
 void AddBiasLayernormPass::ApplyImpl(ir::Graph* graph) const {
@@ -143,10 +150,10 @@ void AddBiasLayernormPass::ApplyImpl(ir::Graph* graph) const {
     }
     GET_NODES;
 
-    PADDLE_ENFORCE_NE(
-        subgraph.count(x),
-        0,
-        platform::errors::NotFound("Detector did not find input x of elementwise_add."));
+    PADDLE_ENFORCE_NE(subgraph.count(x),
+                      0,
+                      platform::errors::NotFound(
+                          "Detector did not find input x of elementwise_add."));
 
     // update elem_add weight axis
     auto* op = elementwise_add_op->Op();
@@ -155,23 +162,21 @@ void AddBiasLayernormPass::ApplyImpl(ir::Graph* graph) const {
       op->SetAttr("axis", 2);
     }
 
-    // relink nodes
+    // unlink nodes
     auto input_node = subgraph.at(x);
-    input_node->outputs.clear();
-    elementwise_add_op->inputs.clear();
-    elementwise_add_in_y->outputs.clear();
-    elementwise_add_out->outputs.clear();
-    flatten_op->inputs.clear();
-    transpose_out->outputs.clear();
-    layer_norm_op->inputs.clear();
-    layer_norm_in_bias->outputs.clear();
-    layer_norm_in_scale->outputs.clear();
+    UnlinkNodes(input_node, elementwise_add_op);
+    UnlinkNodes(elementwise_add_out, flatten_op);
+    UnlinkNodes(transpose_out, layer_norm_op);
+
+    // relink nodes
+    flatten_op->Op()->SetInput("X", {input_node->Name()});
     IR_NODE_LINK_TO(input_node, flatten_op);
+
+    elementwise_add_op->Op()->SetInput("X", {transpose_out->Name()});
     IR_NODE_LINK_TO(transpose_out, elementwise_add_op);
-    IR_NODE_LINK_TO(elementwise_add_in_y, elementwise_add_op);
+
+    layer_norm_op->Op()->SetInput("X", {elementwise_add_out->Name()});
     IR_NODE_LINK_TO(elementwise_add_out, layer_norm_op);
-    IR_NODE_LINK_TO(layer_norm_in_bias, layer_norm_op);
-    IR_NODE_LINK_TO(layer_norm_in_scale, layer_norm_op);
 
     ++fusion_count;
   };
