@@ -197,10 +197,11 @@ void BlockDesc::Flush() {
       var_names.emplace_back(var.name());
       var_names_set.insert(var.name());
     }
-
+    VLOG(4) << "vars in desc " << this->desc_->vars().size();
     this->desc_->mutable_vars()->Clear();
     for (const auto &name : var_names) {
       if (vars_.count(name)) {
+        VLOG(4) << "Flush " << name;
         this->desc_->mutable_vars()->Add()->CopyFrom(*vars_[name]->Proto());
         vars_[name]->SetNeedUpdate(false);
       }
@@ -208,6 +209,7 @@ void BlockDesc::Flush() {
 
     for (auto &var_desc : vars_) {
       if (var_names_set.count(var_desc.first) != 1) {
+        VLOG(4) << "Flush " << var_desc.first;
         this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
         var_desc.second->SetNeedUpdate(false);
       }
