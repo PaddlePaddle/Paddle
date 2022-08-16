@@ -162,6 +162,10 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
   std::unordered_set<std::string> no_need_buffer_ins;
   for (size_t i = 0; i < backward_ops.size(); ++i) {
     framework::OpDesc *op = backward_ops[i];
+    if (op->Type() == "share_buffer") {
+      VLOG(1) << "skip share_buffer op";
+      continue;
+    }
     // NOTE: skip NoNeedBufferVars of grad_op and GC its memory in advance.
     auto &op_info = op_info_map.Get(op->Type());
     auto &inferer = op_info.NoNeedBufferVarsInferer();

@@ -623,11 +623,6 @@ class PartialProgramLayer:
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
-        # -------监测program转换是否成功 -----
-        # print("self.whole_program: ", self.whole_program)
-        # print("self.forward_program: ", self.forward_program)
-        # print("self.backward_program: ", self.backward_program)
-
         attrs = [
             'global_block',
             self.program.desc.block(0), 'start_op_index', 0, 'end_op_index',
@@ -639,10 +634,6 @@ class PartialProgramLayer:
                 ('cuda_graph_capture_mode', self._cuda_graph_capture_mode,
                  'cuda_graph_pool_id', self._cuda_graph_pool_id))
 
-        print(
-            "=========================>partial_program: _is_enable_standalone_executor",
-            _is_enable_standalone_executor())
-        # print(self.forward_program)
         use_interpretorcore = _is_enable_standalone_executor()
         attrs.extend(('use_interpretorcore', use_interpretorcore))
         if use_interpretorcore:
@@ -739,17 +730,22 @@ class PartialProgramLayer:
             backward_builded_program = paddle.static.Program()
         # apply inplace for program
         self._apply_inplace_pass(forward_builded_program,
-                                 backward_builded_program, False)
+                                 backward_builded_program, True)
 
         return forward_builded_program, backward_builded_program
 
     def _apply_inplace_pass(self, forward_program, backward_program,
                             enable_inplace):
         if enable_inplace:
-            attr_types = {"use_cuda": "bool", "mem_opt_skip_vars": "list[str]"}
+            attr_types = {
+                "use_cuda": "bool",
+                "mem_opt_skip_vars": "list[str]",
+                "for_partial_block": "bool"
+            }
             empty_startup_program = paddle.static.Program()
             pass_name = "buffer_shared_inplace_pass"
             use_cuda = True if core.is_compiled_with_cuda() else False
+            for_partial_block = True
             # skip data var
             forward_mem_opt_skip_vars = []
             for var_name, var in forward_program.global_block().vars.items():
@@ -776,20 +772,17 @@ class PartialProgramLayer:
                 if isinstance(var, paddle.fluid.framework.Variable):
                     backward_mem_opt_skip_vars.append(var.desc.name())
 
-            # var_list = ['linear_0.tmp_1@GRAD', 'linear_1.tmp_1@GRAD', 'linear_2.tmp_1@GRAD', 'linear_0.tmp_0', 'linear_1.tmp_0', 'linear_2.tmp_0', 'eager_tmp_0', 'reshape2_100.tmp_0@GRAD', 'reshape2_101.tmp_0@GRAD', 'reshape2_10.tmp_0@GRAD', 'reshape2_11.tmp_0@GRAD', 'reshape2_12.tmp_0@GRAD', 'reshape2_13.tmp_0@GRAD', 'reshape2_14.tmp_0@GRAD', 'reshape2_15.tmp_0@GRAD', 'reshape2_16.tmp_0@GRAD', 'reshape2_17.tmp_0@GRAD', 'reshape2_18.tmp_0@GRAD', 'reshape2_19.tmp_0@GRAD', 'reshape2_1.tmp_0@GRAD', 'reshape2_20.tmp_0@GRAD', 'reshape2_21.tmp_0@GRAD', 'reshape2_22.tmp_0@GRAD', 'reshape2_23.tmp_0@GRAD', 'reshape2_24.tmp_0@GRAD', 'reshape2_25.tmp_0@GRAD', 'reshape2_26.tmp_0@GRAD', 'reshape2_27.tmp_0@GRAD', 'reshape2_28.tmp_0@GRAD', 'reshape2_29.tmp_0@GRAD', 'reshape2_2.tmp_0@GRAD', 'reshape2_30.tmp_0@GRAD', 'reshape2_31.tmp_0@GRAD', 'reshape2_32.tmp_0@GRAD', 'reshape2_33.tmp_0@GRAD', 'reshape2_34.tmp_0@GRAD', 'reshape2_35.tmp_0@GRAD', 'reshape2_36.tmp_0@GRAD', 'reshape2_37.tmp_0@GRAD', 'reshape2_38.tmp_0@GRAD', 'reshape2_39.tmp_0@GRAD', 'reshape2_3.tmp_0@GRAD', 'reshape2_40.tmp_0@GRAD', 'reshape2_41.tmp_0@GRAD', 'reshape2_42.tmp_0@GRAD', 'reshape2_43.tmp_0@GRAD', 'reshape2_44.tmp_0@GRAD', 'reshape2_45.tmp_0@GRAD', 'reshape2_46.tmp_0@GRAD', 'reshape2_47.tmp_0@GRAD', 'reshape2_48.tmp_0@GRAD', 'reshape2_49.tmp_0@GRAD', 'reshape2_4.tmp_0@GRAD', 'reshape2_50.tmp_0@GRAD', 'reshape2_51.tmp_0@GRAD', 'reshape2_52.tmp_0@GRAD', 'reshape2_53.tmp_0@GRAD', 'reshape2_54.tmp_0@GRAD', 'reshape2_55.tmp_0@GRAD', 'reshape2_56.tmp_0@GRAD', 'reshape2_57.tmp_0@GRAD', 'reshape2_58.tmp_0@GRAD', 'reshape2_59.tmp_0@GRAD', 'reshape2_5.tmp_0@GRAD', 'reshape2_60.tmp_0@GRAD', 'reshape2_61.tmp_0@GRAD', 'reshape2_62.tmp_0@GRAD', 'reshape2_63.tmp_0@GRAD', 'reshape2_64.tmp_0@GRAD', 'reshape2_65.tmp_0@GRAD', 'reshape2_66.tmp_0@GRAD', 'reshape2_67.tmp_0@GRAD', 'reshape2_68.tmp_0@GRAD', 'reshape2_69.tmp_0@GRAD', 'reshape2_6.tmp_0@GRAD', 'reshape2_70.tmp_0@GRAD', 'reshape2_71.tmp_0@GRAD', 'reshape2_72.tmp_0@GRAD', 'reshape2_73.tmp_0@GRAD', 'reshape2_74.tmp_0@GRAD', 'reshape2_75.tmp_0@GRAD', 'reshape2_76.tmp_0@GRAD', 'reshape2_77.tmp_0@GRAD', 'reshape2_78.tmp_0@GRAD', 'reshape2_79.tmp_0@GRAD', 'reshape2_7.tmp_0@GRAD', 'reshape2_80.tmp_0@GRAD', 'reshape2_81.tmp_0@GRAD', 'reshape2_82.tmp_0@GRAD', 'reshape2_83.tmp_0@GRAD', 'reshape2_84.tmp_0@GRAD', 'reshape2_85.tmp_0@GRAD', 'reshape2_86.tmp_0@GRAD', 'reshape2_87.tmp_0@GRAD', 'reshape2_88.tmp_0@GRAD', 'reshape2_89.tmp_0@GRAD', 'reshape2_8.tmp_0@GRAD', 'reshape2_90.tmp_0@GRAD', 'reshape2_91.tmp_0@GRAD', 'reshape2_92.tmp_0@GRAD', 'reshape2_93.tmp_0@GRAD', 'reshape2_94.tmp_0@GRAD', 'reshape2_95.tmp_0@GRAD', 'reshape2_96.tmp_0@GRAD', 'reshape2_97.tmp_0@GRAD', 'reshape2_98.tmp_0@GRAD', 'reshape2_99.tmp_0@GRAD', 'reshape2_9.tmp_0@GRAD', 'gru_unit_0.tmp_149', 'slice_0.tmp_0', 'slice_10.tmp_0', 'slice_11.tmp_0', 'slice_12.tmp_0', 'slice_13.tmp_0', 'slice_14.tmp_0', 'slice_15.tmp_0', 'slice_16.tmp_0', 'slice_17.tmp_0', 'slice_18.tmp_0', 'slice_19.tmp_0', 'slice_1.tmp_0', 'slice_20.tmp_0', 'slice_21.tmp_0', 'slice_22.tmp_0', 'slice_23.tmp_0', 'slice_24.tmp_0', 'slice_25.tmp_0', 'slice_26.tmp_0', 'slice_27.tmp_0', 'slice_28.tmp_0', 'slice_29.tmp_0', 'slice_2.tmp_0', 'slice_30.tmp_0', 'slice_31.tmp_0', 'slice_32.tmp_0', 'slice_33.tmp_0', 'slice_34.tmp_0', 'slice_35.tmp_0', 'slice_36.tmp_0', 'slice_37.tmp_0', 'slice_38.tmp_0', 'slice_39.tmp_0', 'slice_3.tmp_0', 'slice_40.tmp_0', 'slice_41.tmp_0', 'slice_42.tmp_0', 'slice_43.tmp_0', 'slice_44.tmp_0', 'slice_45.tmp_0', 'slice_46.tmp_0', 'slice_47.tmp_0', 'slice_48.tmp_0', 'slice_49.tmp_0', 'slice_4.tmp_0', 'slice_5.tmp_0', 'slice_6.tmp_0', 'slice_7.tmp_0', 'slice_8.tmp_0', 'slice_9.tmp_0', 'tmp_3', 'linear_2.tmp_1', 'gru_unit_0.b_0@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_101@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_104@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_107@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_110@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_113@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_116@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_119@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_11@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_122@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_125@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_128@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_131@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_134@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_137@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_140@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_143@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_146@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_14@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_17@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_20@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_23@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_26@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_29@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_2@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_32@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_35@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_38@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_41@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_44@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_47@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_50@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_53@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_56@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_59@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_5@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_62@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_65@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_68@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_71@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_74@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_77@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_80@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_83@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_86@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_89@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_8@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_92@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_95@GRAD@RENAME@block0@0', 'gru_unit_0.tmp_98@GRAD@RENAME@block0@0', 'gru_unit_0.w_0@GRAD@RENAME@block0@0', 'linear_0.tmp_1@GRAD@RENAME@block0@0', 'linear_1.tmp_2@GRAD', 'tanh_0.tmp_0@GRAD', 'linear_1.tmp_1', 'reduce_max_0.tmp_0']
-            # for i in range(216, 217):
-            #     data_vars.append(var_list[i])
-            # print(data_vars)
-
             attrs = {
                 "use_cuda": use_cuda,
-                "mem_opt_skip_vars": forward_mem_opt_skip_vars
+                "mem_opt_skip_vars": forward_mem_opt_skip_vars,
+                "for_partial_block": for_partial_block
             }
             _apply_pass(forward_program, empty_startup_program, pass_name,
                         attrs, attr_types)
             attrs = {
                 "use_cuda": use_cuda,
-                "mem_opt_skip_vars": backward_mem_opt_skip_vars
+                "mem_opt_skip_vars": backward_mem_opt_skip_vars,
+                "for_partial_block": for_partial_block
             }
             _apply_pass(backward_program, empty_startup_program, pass_name,
                         attrs, attr_types)
