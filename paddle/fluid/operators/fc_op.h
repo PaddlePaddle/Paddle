@@ -69,6 +69,9 @@ class FCOpKernel : public framework::OpKernel<T> {
     auto w_dims = w->dims();
     bool padding_weights = ctx.Attr<bool>("padding_weights");
 
+    auto& device_ctx = ctx.template device_context<DeviceContext>();
+    auto* allocator = const_cast<phi::Allocator*>(&device_ctx.GetAllocator());
+
     std::vector<int64_t> output_dims;
     FCOutputSize(
         input->dims(), w_dims, output_dims, in_num_col_dims, padding_weights);
@@ -82,7 +85,10 @@ class FCOpKernel : public framework::OpKernel<T> {
 
     const T* input_data = input->data<T>();
     const T* w_data = w->data<T>();
-    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    auto* output_data = reinterpret_cast<T*>(
+        output->AllocateFrom(allocator,
+                             paddle::experimental::CppTypeToDataType<T>::Type(),
+                             output->numel() * sizeof(T)));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     phi::funcs::FCFunctor<DeviceContext, T> fc;

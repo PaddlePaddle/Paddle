@@ -49,12 +49,20 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
 #else
     cudaGetDevice(&device_id);
 #endif
+
+    auto &dev_ctx = context.template device_context<phi::GPUContext>();
+    auto *allocator = const_cast<phi::Allocator *>(&dev_ctx.GetAllocator());
+
     in_ids_.Resize(in_dim);
     in_embs_.Resize(in_dim);
-    int64_t *in_ids_d =
-        in_ids_.mutable_data<int64_t>(platform::CUDAPlace(device_id));
-    int64_t *in_embs_d =
-        in_embs_.mutable_data<int64_t>(platform::CUDAPlace(device_id));
+    int64_t *in_ids_d = reinterpret_cast<int64_t *>(in_ids_.AllocateFrom(
+        allocator,
+        paddle::experimental::CppTypeToDataType<int64_t>::Type(),
+        in_ids_.numel() * sizeof(int64_t)));
+    int64_t *in_embs_d = reinterpret_cast<int64_t *>(in_embs_.AllocateFrom(
+        allocator,
+        paddle::experimental::CppTypeToDataType<int64_t>::Type(),
+        in_embs_.numel() * sizeof(int64_t)));
 
     std::vector<int64_t> in1s, in2s;
     for (int i = 0; i < input_num; ++i) {
@@ -99,7 +107,11 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
 
     auto *bias_d = bias->data<T>();
     auto *scale_d = scale->data<T>();
-    auto *output_d = out->mutable_data<T>(context.GetPlace());
+    auto *output_d = reinterpret_cast<T *>(
+        out->AllocateFrom(allocator,
+                          paddle::experimental::CppTypeToDataType<T>::Type(),
+                          out->numel() * sizeof(T)));
+
     float eps = context.Attr<float>("epsilon");
 
     if (std::is_same<T, paddle::platform::float16>::value) {

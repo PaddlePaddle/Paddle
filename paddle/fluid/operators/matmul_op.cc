@@ -15,6 +15,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/allocator.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -65,7 +67,12 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto &y = GET_DATA_SAFELY(
         context.Input<framework::Tensor>("Y"), "Input", "Y", "MatMul");
     auto *out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
+
+    auto &device_ctx = context.template device_context<DeviceContext>();
+    auto *allocator = const_cast<phi::Allocator *>(&device_ctx.GetAllocator());
+    out->AllocateFrom(allocator,
+                      paddle::experimental::CppTypeToDataType<T>::Type(),
+                      out->numel() * sizeof(T));
 
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(

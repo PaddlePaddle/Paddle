@@ -15,6 +15,7 @@
 #include <paddle/fluid/platform/device_context.h>
 
 #include <algorithm>
+#include <thread>
 #include <type_traits>
 
 #include "paddle/fluid/framework/op_registry.h"
@@ -275,6 +276,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     int head_number = context.Attr<int>("head_number");
     // compute q*k with eltadd
     auto &device_ctx = context.template device_context<DeviceContext>();
+    auto *allocator = const_cast<phi::Allocator *>(&device_ctx.GetAllocator());
     auto stream = device_ctx.stream();
     // should be (B * S * hidden)
     auto input_dims = input->dims();
@@ -287,7 +289,12 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     // if bias_qk is[batch, 1, 1, seq_len], the bias_qk_d need to be broadcasted
     if (bias_qk && bias_qk->numel() == (batch * seq_len)) {
       temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
-      auto *temp_qk_bias = temp_bias_tensor.mutable_data<T>(context.GetPlace());
+
+      auto *temp_qk_bias = reinterpret_cast<T *>(temp_bias_tensor.AllocateFrom(
+          allocator,
+          paddle::experimental::CppTypeToDataType<T>::Type(),
+          temp_bias_tensor.numel() * sizeof(T)));
+
       int grid = batch * head_number * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -310,7 +317,10 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
 
     auto *out = context.Output<framework::Tensor>("Out");
     out->Resize({batch, seq_len, all_head_size});
-    auto *output_d = out->mutable_data<T>(context.GetPlace());
+    auto *output_d = reinterpret_cast<T *>(
+        out->AllocateFrom(allocator,
+                          paddle::experimental::CppTypeToDataType<T>::Type(),
+                          out->numel() * sizeof(T)));
 
     // (B*S, hidden)
     const Tensor input_matrix =
@@ -324,7 +334,10 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
         phi::make_ddim({batch, seq_len, 3, head_number, head_size});
     temp_out_tensor.Resize(
         {batch * seq_len, phi::product(temp_out_dims) / (batch * seq_len)});
-    auto *temp_out_data = temp_out_tensor.mutable_data<T>(context.GetPlace());
+    auto *temp_out_data = reinterpret_cast<T *>(temp_out_tensor.AllocateFrom(
+        allocator,
+        paddle::experimental::CppTypeToDataType<T>::Type(),
+        temp_out_tensor.numel() * sizeof(T)));
 
     // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(device_ctx);
@@ -337,7 +350,11 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     int scratch_size = batch * head_number * seq_len * seq_len * 1;
     multihead_temp_tensor.Resize({scratch_size + temp_out_tensor.numel()});
     auto *multihead_temp_data =
-        multihead_temp_tensor.mutable_data<T>(context.GetPlace());
+        reinterpret_cast<T *>(multihead_temp_tensor.AllocateFrom(
+            allocator,
+            paddle::experimental::CppTypeToDataType<T>::Type(),
+            multihead_temp_tensor.numel() * sizeof(T)));
+
     auto *qkptr = multihead_temp_data;
     auto *tptr = multihead_temp_data + scratch_size;
 
