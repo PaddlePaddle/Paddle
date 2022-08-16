@@ -192,7 +192,7 @@ class QuantizationTransformPass(object):
             import paddle.fluid as fluid
             from paddle.fluid.contrib.slim.quantization \
                 import QuantizationTransformPass
-            from paddle.fluid.framework import IrGraph
+            from paddle.fluid.contrib.slim.graph import IrGraph
             from paddle.fluid import core
 
             graph = IrGraph(core.Graph(program.desc), for_test=False)
@@ -2057,7 +2057,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
             import paddle
             from paddle.fluid.contrib.slim.quantization \
                 import QuantizationTransformPassV2
-            from paddle.fluid.framework import IrGraph
+            from paddle.fluid.contrib.slim.graph import IrGraph
             from paddle.fluid import core
 
             graph = IrGraph(core.Graph(program.desc), for_test=False)
@@ -2312,7 +2312,7 @@ class AddQuantDequantPassV2(object):
             import paddle
             from paddle.fluid.contrib.slim.quantization \
                 import AddQuantDequantPassV2
-            from paddle.fluid.framework import IrGraph
+            from paddle.fluid.contrib.slim.graph import IrGraph
             from paddle.fluid import core
 
             graph = IrGraph(core.Graph(program.desc), for_test=False)
@@ -2443,7 +2443,7 @@ class ReplaceFakeQuantDequantPass(object):
             import paddle
             from paddle.fluid.contrib.slim.quantization \
                 import ReplaceFakeQuantDequantPass
-            from paddle.fluid.framework import IrGraph
+            from paddle.fluid.contrib.slim.graph import IrGraph
             from paddle.fluid import core
 
             graph = IrGraph(core.Graph(program.desc), for_test=False)
@@ -2568,7 +2568,7 @@ class QuantWeightPass(object):
             import paddle
             from paddle.fluid.contrib.slim.quantization \
                 import QuantWeightPass
-            from paddle.fluid.framework import IrGraph
+            from paddle.fluid.contrib.slim.graph import IrGraph
             from paddle.fluid import core
 
             graph = IrGraph(core.Graph(program.desc), for_test=False)
