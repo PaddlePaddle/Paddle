@@ -18,7 +18,7 @@ import paddle
 from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
                       matmul, mul, neg, reduce, reshape, scatter_add, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, log)
+                      transpose, log, max)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -290,6 +290,14 @@ def p_norm_orig2prim(op, x):
         raise RuntimeError('Only support lower l2/l1 norm currently')
 
 
+@REGISTER_ORIG2PRIM('elementwise_max')
+def elementwise_max_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+
+    return max(x, y)
+
+
 ## Register prim2orig lower rules
 
 
@@ -422,6 +430,11 @@ def fill_constant_prim2orig(op):
     return paddle.full(shape=op.attr('shape'),
                        fill_value=op.attr('value'),
                        dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
+
+
+@REGISTER_PRIM2ORIG('max_p')
+def max_prim2orig(op, x, y):
+    return paddle.maximum(x, y)
 
 
 ## Register linearize rules
@@ -644,6 +657,31 @@ def scatter_add_jvp(op, x_dot, y_dot):
     _, _, indextensor = op_position_inputs(op)
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, y_dot, indextensor, axis=axis)
+
+
+@REGISTER_JVP('max_p')
+def max_jvp(op, x_dot, y_dot):
+
+    def _balanced_eq(x, z, y):
+        z_zeros = fill_const(z.shape, 0)
+        z_ones = fill_const(z.shape, 1)
+        z_twos = fill_const(z.shape, 2)
+        return div(select(eq(x, z), z_ones, z_zeros),
+                   select(eq(y, z), z_twos, z_ones))
+
+    if x_dot is None and y_dot is None:
+        return None
+    x, y = op_position_inputs(op)
+    z, = op_position_outputs(op)
+    if y_dot is None:
+        return mul(x_dot, _balanced_eq(x, z, y))
+    elif x_dot is None:
+        return mul(y_dot, _balanced_eq(y, z, x))
+    else:
+        t1, t2 = mul(x_dot, _balanced_eq(x, z, y)), mul(y_dot,
+                                                        _balanced_eq(y, z, x))
+        z_dot = add(t1, t2)
+        return z_dot
 
 
 ## Register transpose rules

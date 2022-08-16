@@ -24,7 +24,8 @@ set(PRIM_OP_SRCS
     tanh_p_op.cc
     matmul_p_op.cc
     fill_constant_p_op.cc
-    log_p_op.cc)
+    log_p_op.cc
+    max_p_op.cc)
 
 cc_test(
   prim_op_test

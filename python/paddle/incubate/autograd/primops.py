@@ -315,3 +315,8 @@ def scatter_add(x, y, indextensor, axis, out=None):
                      outputs={'Z': out},
                      attrs=attrs)
     return out
+
+
+@REGISTER_FN('max_p', 'X', 'Y', 'Z')
+def max(x, y, out=None):
+    return _simple_binop(LayerHelper('max_p', **locals()))
