@@ -2688,6 +2688,18 @@
     data_type : dtype
     backend : place
 
+- api : triu_indices
+  args : (int rows, int cols, int offset, DataType dtype, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : TriuIndicesInferMeta
+    param : [rows, cols, offset, dtype]
+  kernel :
+    func : triu_indices
+    param : [rows, cols, offset, dtype]
+    data_type : dtype
+    backend : place
+
 - api : tril_triu
   args : (Tensor x,  int diagonal,  bool lower)
   output : Tensor(out)

@@ -152,4 +152,29 @@ void TrilIndicesInferMeta(
   out->set_dims(out_dims);
   out->set_dtype(dtype);
 }
+
+void TriuIndicesInferMeta(
+    int rows, int cols, int offset, DataType dtype, MetaTensor* out) {
+  // number of elements in the first row of the tril,bounded by [0, cols]
+  offset = offset - 1;
+  auto n_first_row =
+      offset > 0 ? std::min<int64_t>(cols, 1 + offset) : rows + offset > 0;
+  // number of elements in the last row of the tril, bounded by [0, cols]
+  auto n_last_row =
+      std::max<int64_t>(0, std::min<int64_t>(cols, rows + offset));
+  // number of rows, bounded by [0, rows]
+  auto n_row_all = std::max<int64_t>(0, std::min<int64_t>(rows, rows + offset));
+  auto n_row_trapezoid = (n_last_row - n_first_row + 1);
+  // calculate # of elements in the top trapezoid
+  auto tril_size = (n_first_row + n_last_row) * n_row_trapezoid >> 1;
+  // calculate # of elements in the bottom rectangle if there is any
+  auto diff_row = n_row_all - n_row_trapezoid;
+  if (diff_row > 0) {
+    tril_size += diff_row * cols;
+  }
+  std::vector<int64_t> tmp = {2, rows * cols - tril_size};
+  auto out_dims = phi::make_ddim(tmp);
+  out->set_dims(out_dims);
+  out->set_dtype(dtype);
+}
 }  // namespace phi
