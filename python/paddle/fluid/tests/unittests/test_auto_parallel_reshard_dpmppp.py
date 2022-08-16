@@ -29,6 +29,8 @@ from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.auto_parallel.cost import CostEstimator
+from paddle.distributed.auto_parallel.cluster import Cluster
 
 paddle.enable_static()
 _global_parallel_strategy = "dp_mp_pp"
@@ -196,6 +198,21 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 2
         dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
+
+        # test estimator
+        cluster = Cluster()
+        cluster.gen_default_config_cluster(device_count=8)
+        cost_estimator = CostEstimator(train_program, cluster)
+        global_cost = cost_estimator.estimate(dist_context)
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context)
+        # test cache
+        global_cost = cost_estimator.estimate(dist_context)
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context)
+        assert global_cost.time > 0
+        assert max_memory > 0
+
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()

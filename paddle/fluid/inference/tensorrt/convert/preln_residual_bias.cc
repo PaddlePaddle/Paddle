@@ -66,8 +66,8 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     plugin::DynamicPluginTensorRT* plugin = nullptr;
     if (with_fp16) {
-      auto half_ele_bias_data = new half[bias_size];
-      for (int i = 0; i < bias_size; i++) {
+      auto half_ele_bias_data = new half[ele_bias_size];
+      for (int i = 0; i < ele_bias_size; i++) {
         half_ele_bias_data[i] = static_cast<half>(ele_bias[i]);
       }
       plugin = new plugin::PrelnResidualBiasPluginDynamic(bias,
