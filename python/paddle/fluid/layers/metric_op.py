@@ -173,8 +173,8 @@ def auc(input,
 
             data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
             label = paddle.static.data(name="label", shape=[-1], dtype="int")
-            fc_out = paddle.static.nn.fc(input=data, size=2)
-            predict = paddle.nn.functional.softmax(input=fc_out)
+            fc_out = paddle.static.nn.fc(x=data, size=2)
+            predict = paddle.nn.functional.softmax(x=fc_out)
             result=paddle.static.auc(input=predict, label=label)
 
             place = paddle.CPUPlace()
@@ -186,7 +186,7 @@ def auc(input,
             output= exe.run(feed={"input": x,"label": y},
                              fetch_list=[result[0]])
             print(output)
-            #[array([0.5])]
+
     Examples 2:
         .. code-block:: python
 
@@ -196,9 +196,9 @@ def auc(input,
 
             data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
             label = paddle.static.data(name="label", shape=[-1], dtype="int")
-            fc_out = paddle.static.nn.fc(input=data, size=2)
-            predict = paddle.nn.functional.softmax(input=fc_out)
-            ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+            ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='float64')
+            fc_out = paddle.static.nn.fc(x=data, size=2)
+            predict = paddle.nn.functional.softmax(x=fc_out)
             result=paddle.static.auc(input=predict, label=label, ins_tag_weight=ins_tag_weight)
 
             place = paddle.CPUPlace()
@@ -207,10 +207,11 @@ def auc(input,
             exe.run(paddle.static.default_startup_program())
             x = np.random.rand(3,32,32).astype("float32")
             y = np.array([1,0,1])
-            output= exe.run(feed={"input": x,"label": y},
+            z = np.array([1,0,1])
+            output= exe.run(feed={"input": x,"label": y, "ins_tag_weight":z},
                              fetch_list=[result[0]])
             print(output)
-            #[array([0.5])]
+
     """
     helper = LayerHelper("auc", **locals())
 
