@@ -25,10 +25,6 @@ inline const char* xpuGetErrorString(int stat) {
   return phi::backends::xpu::xpuGetErrorString(stat);
 }
 
-inline const char* bkclGetErrorString(BKCLResult_t stat) {
-  return phi::backends::xpu::bkclGetErrorString(stat);
-}
-
 inline const char* xdnnGetErrorString(int stat) {
   return phi::backends::xpu::xdnnGetErrorString(stat);
 }
@@ -37,9 +33,15 @@ inline std::string build_xpu_error_msg(int stat) {
   return phi::backends::xpu::build_xpu_error_msg(stat);
 }
 
+#ifdef PADDLE_WITH_XPU_BKCL
 inline std::string build_xpu_error_msg(BKCLResult_t stat) {
   return phi::backends::xpu::build_xpu_error_msg(stat);
 }
+
+inline const char* bkclGetErrorString(BKCLResult_t stat) {
+  return phi::backends::xpu::bkclGetErrorString(stat);
+}
+#endif
 
 inline std::string build_xpu_xdnn_error_msg(int stat, std::string msg) {
   return phi::backends::xpu::build_xpu_xdnn_error_msg(stat, msg);

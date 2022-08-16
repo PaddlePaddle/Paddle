@@ -591,7 +591,17 @@ def interpolate(x,
         dy_attr = tuple(attr_list)
 
         if resample_type == "linear":
-            out = _C_ops.linear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_linear_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.linear_interp_v2(x, *dy_attr)
         elif resample_type == "bilinear":
             out = _C_ops.bilinear_interp_v2(x, *dy_attr)
         elif resample_type == "trilinear":
@@ -1557,7 +1567,7 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         name(str, optional): The default value is None. Normally there is no need for user
             to set this property.
 
-    Returns：
+    Returns: 
         Tensor, padded with 0 according to pad and data type is same as input.
 
     Examples:
@@ -1958,7 +1968,11 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_class_center_sample(
+            label, num_classes, num_samples, ring_id, rank, nranks, seed
+            is not None, seed if seed is not None else 0)
+    elif paddle.in_dynamic_mode():
         remapped_label, sampled_class_center = _C_ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed', seed
