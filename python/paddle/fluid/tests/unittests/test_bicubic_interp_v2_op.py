@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import interpolate
 from paddle._C_ops import final_state_bicubic_interp
 
@@ -348,7 +349,12 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
 
 class TestBicubicInterpOpAPI(unittest.TestCase):
 
-    def test_case(self):
+    def test_imperative_case(self):
+        with _test_eager_guard():
+            self.func_case()
+        self.func_case()
+
+    def func_case(self):
         np.random.seed(200)
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
         dim_data = np.array([12]).astype("int32")
