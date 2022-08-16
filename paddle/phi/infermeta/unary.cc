@@ -2613,12 +2613,24 @@ void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
   if (config.is_runtime) {
     ReduceInferMetaBase(x, vec_axis, keep_dim, reduce_all, out);
   } else {
-    auto x_rank = static_cast<size_t>(x.dims().size());
     std::vector<int64_t> vec_dim;
-    if (vec_axis.size() >= x_rank) {
-      vec_dim = {-1};
+    if (reduce_all) {
+      if (keep_dim) {
+        vec_dim = std::vector<int64_t>(x.dims().size(), 1);
+      } else {
+        vec_dim = {1};
+      }
     } else {
-      vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);
+      if (keep_dim) {
+        vec_dim = std::vector<int64_t>(x.dims().size(), 1);
+      } else {
+        auto x_rank = static_cast<size_t>(x.dims().size());
+        if (vec_axis.size() >= x_rank) {
+          vec_dim = {-1};
+        } else {
+          vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);
+        }
+      }
     }
     DDim out_dim = phi::make_ddim(vec_dim);
     out->set_dims(out_dim);

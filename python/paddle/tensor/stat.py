@@ -21,6 +21,7 @@ from ..framework import core
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.layers import utils
 import paddle
 from paddle import _C_ops
 
@@ -110,6 +111,9 @@ def mean(x, axis=None, keepdim=False, name=None):
                        'mean/reduce_mean')
 
     helper = LayerHelper('mean', **locals())
+
+    if utils._contain_var(axis):
+        axis = utils._convert_to_tensor_list(axis)
     attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='reduce_mean',

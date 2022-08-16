@@ -34,6 +34,7 @@ from ..fluid.framework import _in_legacy_dygraph
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
+from ..fluid.layers import utils
 
 # TODO: define math functions
 # yapf: disable
@@ -2183,6 +2184,8 @@ def max(x, axis=None, keepdim=False, name=None):
     helper = LayerHelper('max', **locals())
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max')
+    if utils._contain_var(axis):
+        axis = utils._convert_to_tensor_list(axis)
 
     out = helper.create_variable_for_type_inference(
             dtype=x.dtype)
@@ -2285,6 +2288,8 @@ def min(x, axis=None, keepdim=False, name=None):
     helper = LayerHelper('min', **locals())
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min')
+    if utils._contain_var(axis):
+        axis = utils._convert_to_tensor_list(axis)
 
     out = helper.create_variable_for_type_inference(
             dtype=x.dtype)
