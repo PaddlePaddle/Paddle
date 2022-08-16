@@ -3266,7 +3266,8 @@ function exec_samplecode_test() {
 
 
 function collect_ccache_hits() {
-    rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
+    #rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
+    rate=0
     echo "ccache hit rate: ${rate}%"
     echo "ipipe_log_param_Ccache_Hit_Rate: ${rate}%" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
