@@ -134,6 +134,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 
   bool run_phi_kernel = false;
 
+#ifndef PADDLE_WITH_ASCEND_CL || PADDLE_WITH_IPU
   // check if phi kernel exists
   auto phi_kernel_map =
       phi::KernelFactory::Instance().SelectKernelMap(op_with_kernel->Type());
@@ -151,6 +152,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
             "the %s op has no valid phi kernel.", op_with_kernel->Type()));
     run_phi_kernel = true;
   }
+#endif
 
   // 3. Execute transfer op and construct OpFuncNode
   OpFuncNode new_op_func_node;
