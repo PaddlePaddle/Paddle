@@ -558,6 +558,8 @@ XPUOpMap& get_kl2_ops() {
       {"transpose",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"truncated_gaussian_random",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"top_k",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
