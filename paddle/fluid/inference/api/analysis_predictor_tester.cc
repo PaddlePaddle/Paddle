@@ -105,7 +105,7 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_TRUE(predictor->sub_scope_);
   ASSERT_EQ(predictor->scope_->parent(), nullptr);
   ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
-  ASSERT_EQ(predictor->GetInputTypes().size(), 4);
+  ASSERT_EQ(predictor->GetInputTypes().size(), 4UL);
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
   PaddleTensor tensor;
@@ -390,7 +390,7 @@ TEST(Predictor, Run) {
   config.SetModel(FLAGS_dirname);
 
   auto predictor = CreatePredictor(config);
-  ASSERT_EQ(predictor->GetInputTypes().size(), 4);
+  ASSERT_EQ(predictor->GetInputTypes().size(), 4UL);
 
   auto w0 = predictor->GetInputHandle("firstw");
   auto w1 = predictor->GetInputHandle("secondw");
