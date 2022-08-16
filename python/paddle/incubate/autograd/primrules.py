@@ -735,7 +735,10 @@ def pow_jvp(op, x_dot, y_dot):
         t1 = mul(x_dot, mul(y, primops.pow(x, new_y)))
         return t1
 
-    z, = op_position_output(op)
+    if x_dot is None and y_dot is None:
+        return None
+    x, y = op_position_inputs(op)
+    z = op_position_output(op)
 
     if y_dot is None:
         return _compute_t1(x, y)
@@ -751,16 +754,16 @@ def pow_jvp(op, x_dot, y_dot):
 def max_jvp(op, x_dot, y_dot):
 
     def _balanced_eq(x, z, y):
-        z_zeros = fill_const(z.shape, 0)
-        z_ones = fill_const(z.shape, 1)
-        z_twos = fill_const(z.shape, 2)
+        z_zeros = fill_const(value=0.0, shape=z.shape, dtype=z.dtype)
+        z_ones = fill_const(value=1.0, shape=z.shape, dtype=z.dtype)
+        z_twos = fill_const(value=2.0, shape=z.shape, dtype=z.dtype)
         return div(select(eq(x, z), z_ones, z_zeros),
                    select(eq(y, z), z_twos, z_ones))
 
     if x_dot is None and y_dot is None:
         return None
     x, y = op_position_inputs(op)
-    z, = op_position_outputs(op)
+    z = op_position_output(op)
     if y_dot is None:
         return mul(x_dot, _balanced_eq(x, z, y))
     elif x_dot is None:

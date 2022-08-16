@@ -693,10 +693,14 @@ TEST(PrimOp, max_p) {
   auto *block = program.MutableBlock(0);
   std::vector<int64_t> shape{2, 3, 4};
 
+  std::string x = "x";
+  std::string y = "y";
+  std::string z = "z";
+
   NewVar(block, x, shape);
   NewVar(block, y, shape);
 
-  AppendOp(block, "max_p", {"X", {x}}, {"Y", {y}}, {{"Z", {z}}}, {});
+  AppendOp(block, "max_p", {{"X", {x}}, {"Y", {y}}}, {{"Z", {z}}}, {});
   ASSERT_EQ(block->Var("z")->GetType(), proto::VarType::LOD_TENSOR);
   ASSERT_EQ(block->Var("z")->GetDataType(), proto::VarType_Type_FP32);
   auto shapes = block->Var("z")->GetShape();

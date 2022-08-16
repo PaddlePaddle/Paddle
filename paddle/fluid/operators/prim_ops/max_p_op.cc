@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 class MaxPrimOp : public framework::OperatorBase {
  public:
-  MulPrimOp(const std::string &type,
+  MaxPrimOp(const std::string &type,
             const framework::VariableNameMap &inputs,
             const framework::VariableNameMap &outputs,
             const framework::AttributeMap &attrs)
