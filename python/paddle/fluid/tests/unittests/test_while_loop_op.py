@@ -587,7 +587,7 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
 
         np_x = np.array([1, 2, 3, 4, 5], dtype='int32')
         res = exe.run(main_program, feed={'x': np_x}, fetch_list=[z])
-        self.assertTrue(np.array_equal(res[0], [np.sum(np_x)]))
+        np.testing.assert_array_equal(res[0], [np.sum(np_x)])
 
 
 if __name__ == '__main__':

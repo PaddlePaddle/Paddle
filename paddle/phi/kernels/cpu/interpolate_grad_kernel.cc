@@ -1063,7 +1063,7 @@ PD_REGISTER_KERNEL(trilinear_interp_v2_grad,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(linear_interp_v2_grad,
+PD_REGISTER_KERNEL(linear_interp_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::LinearInterpGradKernel,

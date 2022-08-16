@@ -186,9 +186,8 @@ class TestEagerGrad(TestCase):
             out4 = paddle.mean(out3)
             egr_dout2, egr_dout3 = paddle.grad([out4], [out2, out3])
 
-            self.assertTrue(
-                np.array_equal(dout2_record_by_hook[0].numpy(),
-                               np.array([1., 2.])))
+            np.testing.assert_array_equal(dout2_record_by_hook[0].numpy(),
+                                          np.array([1.0, 2.0]))
 
         x1 = paddle.to_tensor([1.0, 2.0])
         x1.stop_gradient = False
@@ -203,8 +202,8 @@ class TestEagerGrad(TestCase):
 
         self.assertEqual(dout2.stop_gradient, egr_dout2.stop_gradient)
         self.assertEqual(dout3.stop_gradient, egr_dout3.stop_gradient)
-        self.assertTrue(np.array_equal(dout2.numpy(), egr_dout2.numpy()))
-        self.assertTrue(np.array_equal(dout3.numpy(), egr_dout3.numpy()))
+        np.testing.assert_array_equal(dout2.numpy(), egr_dout2.numpy())
+        np.testing.assert_array_equal(dout3.numpy(), egr_dout3.numpy())
 
 
 class TestDygraphDoubleGrad(TestCase):
@@ -392,15 +391,13 @@ class TestDygraphDoubleGrad(TestCase):
 
                     if grad_y is not None:
                         self.assertTrue(grad_y.stop_gradient)
-                        self.assertTrue(
-                            np.array_equal(grad_y.numpy(),
-                                           original_random_grad_y))
+                        np.testing.assert_array_equal(grad_y.numpy(),
+                                                      original_random_grad_y)
 
                     if grad_z is not None:
                         self.assertTrue(grad_z.stop_gradient)
-                        self.assertTrue(
-                            np.array_equal(grad_z.numpy(),
-                                           original_random_grad_z))
+                        np.testing.assert_array_equal(grad_z.numpy(),
+                                                      original_random_grad_z)
 
     def test_none_one_initial_gradient(self):
         with _test_eager_guard():
@@ -583,7 +580,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
             grad_2 = a.gradient()
 
-        self.assertTrue(np.array_equal(grad_1, grad_2))
+        np.testing.assert_array_equal(grad_1, grad_2)
 
     def test_compare(self):
         with _test_eager_guard():
@@ -647,8 +644,8 @@ class TestDoubleGradResNet(TestCase):
         g_numpy = g.numpy()
         self.assertEqual(list(g_numpy.shape), list(out.shape))
 
-        self.assertTrue(np.array_equal(egr_out, out))
-        self.assertTrue(np.array_equal(egr_g_numpy, g_numpy))
+        np.testing.assert_array_equal(egr_out, out)
+        np.testing.assert_array_equal(egr_g_numpy, g_numpy)
 
     @dygraph_guard
     def test_resnet_resnet101(self):
@@ -679,8 +676,8 @@ class TestDoubleGradResNet(TestCase):
         g_numpy = g.numpy()
         self.assertEqual(list(g_numpy.shape), list(out.shape))
 
-        self.assertTrue(np.array_equal(egr_out, out))
-        self.assertTrue(np.array_equal(egr_g_numpy, g_numpy))
+        np.testing.assert_array_equal(egr_out, out)
+        np.testing.assert_array_equal(egr_g_numpy, g_numpy)
 
 
 class TestDoubleGradBasics(TestCase):
@@ -705,22 +702,22 @@ class TestDoubleGradBasics(TestCase):
             new_x_g.backward()
 
             out_ref = np.ones([3, 3]) * 12.0
-            self.assertTrue(np.array_equal(out.numpy(), out_ref))
+            np.testing.assert_array_equal(out.numpy(), out_ref)
 
             new_x_g_ref = np.ones([3, 3]) * 6.0
             new_y_g_ref = np.ones([3, 3]) * 6.0
-            self.assertTrue(np.array_equal(new_x_g.numpy(), new_x_g_ref))
-            self.assertTrue(np.array_equal(new_y_g.numpy(), new_y_g_ref))
+            np.testing.assert_array_equal(new_x_g.numpy(), new_x_g_ref)
+            np.testing.assert_array_equal(new_y_g.numpy(), new_y_g_ref)
 
             x_grad_ref = np.ones([3, 3]) * 0.0
-            self.assertTrue(np.array_equal(x.grad.numpy(), x_grad_ref))
+            np.testing.assert_array_equal(x.grad.numpy(), x_grad_ref)
 
             y_grad_ref = np.ones([3, 3]) * 3.0
-            self.assertTrue(np.array_equal(y.grad.numpy(), y_grad_ref))
+            np.testing.assert_array_equal(y.grad.numpy(), y_grad_ref)
 
             grad_out_grad_ref = np.ones([3, 3]) * 6.0
-            self.assertTrue(
-                np.array_equal(grad_out.grad.numpy(), grad_out_grad_ref))
+            np.testing.assert_array_equal(grad_out.grad.numpy(),
+                                          grad_out_grad_ref)
 
 
 if __name__ == '__main__':

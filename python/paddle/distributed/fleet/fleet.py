@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,72 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import copy
 import warnings
 import paddle
 import os
 from types import MethodType
 import numpy as np
-from paddle.fluid.framework import dygraph_only, _global_flags
+from paddle.fluid.framework import _global_flags
 from paddle.fluid import compiler
-from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
-from .strategy_compiler import StrategyCompiler
-from .distributed_strategy import DistributedStrategy
-from .meta_optimizer_factory import MetaOptimizerFactory
-from .runtime_factory import RuntimeFactory
+from .base.role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
+from .base.strategy_compiler import StrategyCompiler
+from .base.distributed_strategy import DistributedStrategy
+from .base.meta_optimizer_factory import MetaOptimizerFactory
+from .base.runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.ir import apply_build_strategy
-from . import topology as tp
-from .topology import ParallelMode
-from ..meta_parallel import TensorParallel, model_parallel_random_seed
-from ..meta_parallel import PipelineParallel, ShardingParallel
-from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
+from .base import topology as tp
+from .meta_parallel import model_parallel_random_seed
 from paddle import _C_ops
 from paddle.fluid import core
-from paddle.fluid.dygraph import to_variable
-from paddle.distributed.fleet.utils.recompute import LegacyRecomputeFunction
-from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 
 __all__ = []
-
-_grad_scalar = None
-
-
-class _RecomputeModelWrapper(paddle.nn.Layer):
-
-    def __init__(self, model, segments=2, preserve_rng_state=True):
-        super(_RecomputeModelWrapper, self).__init__()
-        assert isinstance(model, paddle.nn.Sequential), (
-            "The model passed to RecomputeModelWrapper must be of type "
-            "paddle.nn.Sequential.")
-        self._model = model
-        self._segments = segments
-        self._preserve_rng_state = preserve_rng_state
-        self._layers = list(model.children())
-        self._segment_size = len(self._layers) // segments
-
-    def _run_func(self, begin, end):
-
-        def do_run(input):
-            for i in range(begin, end):
-                input = self._layers[i](input)
-            return input
-
-        return do_run
-
-    def _checkpoint(self, func, *args, **kwargs):
-        return LegacyRecomputeFunction.apply(func, self._preserve_rng_state,
-                                             *args)
-
-    def forward(self, input):
-        end = 0
-        for begin in range(0, self._segment_size * (self._segments - 1),
-                           self._segment_size):
-            end = begin + self._segment_size
-            input = self._checkpoint(self._run_func(begin, end), input)
-        return self._run_func(end, len(self._layers))(input)
 
 
 def apply_ir_passes(main_program, startup_program, config):
@@ -207,6 +163,7 @@ class Fleet(object):
         self._runtime_handle = None
         self._util = None
         self._context = {}
+        self.user_defined_optimizer = paddle.optimizer.Optimizer(0.0)
 
     def init(self, role_maker=None, is_collective=False, strategy=None):
         """
@@ -377,6 +334,7 @@ class Fleet(object):
                 ]
                 cg.set_comm_group('model', mp_rank, mp_degree, mp_ring_id,
                                   mp_group_ranks)
+        return self
 
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment
@@ -710,10 +668,60 @@ class Fleet(object):
                 # build net
                 # fleet.distributed_optimizer(...)
 
-                fleet.load_model("path", "mode")
+                fleet.load_model("path", mode=0)
 
         """
-        self._runtime_handle.load_model(path, mode)
+        self._runtime_handle._load_persistables(path, mode)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def load_one_table(self, table_id, path, mode):
+        """
+        load fleet one table from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.load_one_table(0, "path", mode=0)
+
+        """
+        self._runtime_handle._load_one_table(table_id, path, mode)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def load_inference_model(self, path, mode):
+        """
+        load fleet inference model from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.load_inference_model("path", mode=1)
+
+        """
+        self._runtime_handle._load_inference_model(path, mode)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -906,6 +914,70 @@ class Fleet(object):
     def save_cache_model(self, dirname, **configs):
         return self._runtime_handle._save_cache_model(dirname, **configs)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def check_save_pre_patch_done(self):
+        return self._runtime_handle._check_save_pre_patch_done()
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def save_one_table(self, table_id, path, mode):
+        """
+        save fleet one table from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.save_one_table(0, "path", mode=0)
+
+        """
+        self._runtime_handle._save_one_table(table_id, path, mode)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def save_dense_params(self,
+                          executor,
+                          dirname,
+                          scope,
+                          program,
+                          var_names=None):
+        """
+        save fleet one table from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                import paddle
+                place = paddle.fluid.CPUPlace()
+                exe = paddle.fluid.Executor(place)
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.save_dense_params(exe, "path", scope=paddle.static.global_scope(), program=paddle.static.default_main_program())
+
+        """
+        self._runtime_handle._save_dense_params(executor, dirname, scope,
+                                                program, var_names)
+
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 
@@ -953,414 +1025,7 @@ class Fleet(object):
 
         self._context = {}
 
-        if paddle.fluid.framework._non_static_mode():
-            if self.worker_num() > 1:
-                if self._user_defined_strategy.heter_ccl_mode == False:
-                    return HybridParallelOptimizer(optimizer, self._hcg,
-                                                   self._user_defined_strategy)
-                else:
-                    return HeterParallelOptimizer(optimizer,
-                                                  self._user_defined_strategy)
-            else:
-                return optimizer
         return self
-
-    @dygraph_only
-    def distributed_model(self, model):
-        """
-        Return distributed data parallel model (Only work in dygraph mode)
-
-        Args:
-            model (Layer): the user-defind model which inherits Layer.
-
-        Returns:
-            distributed data parallel model which inherits Layer.
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle
-                import paddle.nn as nn
-                from paddle.distributed import fleet
-
-                class LinearNet(nn.Layer):
-                    def __init__(self):
-                        super(LinearNet, self).__init__()
-                        self._linear1 = nn.Linear(10, 10)
-                        self._linear2 = nn.Linear(10, 1)
-
-                    def forward(self, x):
-                        return self._linear2(self._linear1(x))
-
-                # 1. initialize fleet environment
-                fleet.init(is_collective=True)
-
-                # 2. create layer & optimizer
-                layer = LinearNet()
-                loss_fn = nn.MSELoss()
-                adam = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=layer.parameters())
-
-                # 3. get data_parallel model using fleet
-                adam = fleet.distributed_optimizer(adam)
-                dp_layer = fleet.distributed_model(layer)
-
-                # 4. run layer
-                inputs = paddle.randn([10, 10], 'float32')
-                outputs = dp_layer(inputs)
-                labels = paddle.randn([10, 1], 'float32')
-                loss = loss_fn(outputs, labels)
-
-                print("loss:", loss.numpy())
-
-                loss.backward()
-
-                adam.step()
-                adam.clear_grad()
-
-
-        """
-        assert model is not None, "model should not be None"
-        if self.worker_num() <= 1:
-            return model
-
-        amp_enable = False
-        recompute_enable = False
-        strategy = self._user_defined_strategy
-        if strategy.amp == True:
-            amp_enable = True
-            amp_level = "O2" if strategy.amp_configs['use_pure_fp16'] else "O1"
-            if amp_level.upper() == "O2":
-                model = paddle.amp.decorate(models=model,
-                                            optimizers=None,
-                                            level="O2",
-                                            master_weight=None,
-                                            save_dtype=None)
-            init_loss_scaling = strategy.amp_configs['init_loss_scaling']
-            incr_ratio = strategy.amp_configs['incr_ratio']
-            decr_ratio = strategy.amp_configs['decr_ratio']
-            incr_every_n_steps = strategy.amp_configs['incr_every_n_steps']
-            decr_every_n_nan_or_inf = strategy.amp_configs[
-                'decr_every_n_nan_or_inf']
-            use_dynamic_loss_scaling = strategy.amp_configs[
-                'use_dynamic_loss_scaling']
-
-            global _grad_scalar
-            _grad_scalar = paddle.amp.GradScaler(
-                init_loss_scaling=init_loss_scaling,
-                incr_ratio=incr_ratio,
-                decr_ratio=decr_ratio,
-                incr_every_n_steps=incr_every_n_steps,
-                decr_every_n_nan_or_inf=decr_every_n_nan_or_inf,
-                use_dynamic_loss_scaling=use_dynamic_loss_scaling)
-
-        if strategy.recompute == True:
-            recompute_enable = True
-            model = _RecomputeModelWrapper(model)
-
-        if self._user_defined_strategy.heter_ccl_mode == True:
-            distributed_model = paddle.DataParallel(
-                model,
-                comm_buffer_size=self._user_defined_strategy.
-                fuse_grad_size_in_MB,
-                last_comm_buffer_size=self._user_defined_strategy.
-                last_comm_group_size_MB,
-                find_unused_parameters=self._user_defined_strategy.
-                find_unused_parameters)
-            return distributed_model
-
-        if self._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
-            model = ShardingParallel(model,
-                                     self._hcg,
-                                     strategy=self._user_defined_strategy)
-        elif self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
-
-            # NOTE (JZ-LIANG) init parameters broadcast within sharding group
-            # normally it should be done inside DataParallel
-            if self.sharding_degree > 1:
-                from paddle.distributed.fleet.utils.hybrid_parallel_util import broadcast_mp_parameters, broadcast_sharding_parameters
-                assert self.sharding_degree == self._hcg.get_sharding_parallel_world_size(
-                )
-                broadcast_sharding_parameters(model, self._hcg)
-            model = paddle.DataParallel(
-                model,
-                comm_buffer_size=self._user_defined_strategy.
-                fuse_grad_size_in_MB,
-                last_comm_buffer_size=self._user_defined_strategy.
-                last_comm_group_size_MB,
-                find_unused_parameters=self._user_defined_strategy.
-                find_unused_parameters)
-        elif self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
-            model = TensorParallel(model,
-                                   self._hcg,
-                                   strategy=self._user_defined_strategy)
-        elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
-            model = PipelineParallel(model,
-                                     self._hcg,
-                                     strategy=self._user_defined_strategy)
-
-        return model
-
-    @dygraph_only
-    def state_dict(self):
-        """
-        Get state dict information from optimizer.
-        (Only work in dygraph mode)
-
-        Returns: 
-            state_dict(dict) : dict contains all the Tensor used by optimizer
-
-        Examples:
-            .. code-block:: python
-
-                import numpy as np
-                import paddle
-                from paddle.distributed import fleet
-
-                fleet.init(is_collective=True)
-
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
-
-                layer = paddle.nn.Linear(13, 5)
-                adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
-
-                adam = fleet.distributed_optimizer(adam)
-                dp_layer = fleet.distributed_model(layer)
-                state_dict = adam.state_dict()
-        """
-        # imitate target optimizer retrieval
-        return self.user_defined_optimizer.state_dict()
-
-    @dygraph_only
-    def set_state_dict(self, state_dict):
-        """
-        Load optimizer state dict.
-        (Only work in dygraph mode)
-
-        Args: 
-            state_dict(dict) : Dict contains all the Tensor needed by optimizer
-
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                import numpy as np
-                import paddle
-                from paddle.distributed import fleet
-
-                fleet.init(is_collective=True)
-
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
-
-                layer = paddle.nn.Linear(13, 5)
-                adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
-
-                adam = fleet.distributed_optimizer(adam)
-                dp_layer = fleet.distributed_model(layer)
-                state_dict = adam.state_dict()
-                paddle.save(state_dict, "paddle_dy")
-                para_state_dict = paddle.load("paddle_dy")
-                adam.set_state_dict(para_state_dict)
-        """
-        # imitate target optimizer retrieval
-        return self.user_defined_optimizer.set_state_dict(state_dict)
-
-    @dygraph_only
-    def set_lr(self, value):
-        """
-        Set the value of the learning rate manually in the optimizer. 
-        (Only work in dygraph mode)
-
-        Args:
-            value (float|Tensor): the value of learning rate
-
-        Returns: 
-            None 
-
-        Examples:
-            .. code-block:: python
-
-                import numpy as np
-                import paddle
-                from paddle.distributed import fleet
-
-                fleet.init(is_collective=True)
-
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
-
-                layer = paddle.nn.Linear(13, 5)
-                adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
-
-                adam = fleet.distributed_optimizer(adam)
-                dp_layer = fleet.distributed_model(layer)
-
-                lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
-                for i in range(5):
-                    adam.set_lr(lr_list[i])
-                    lr = adam.get_lr()
-                    print("current lr is {}".format(lr))
-                # Print:
-                #    current lr is 0.2
-                #    current lr is 0.3
-                #    current lr is 0.4
-                #    current lr is 0.5
-                #    current lr is 0.6
-        """
-        # imitate target optimizer retrieval
-        return self.user_defined_optimizer.set_lr(value)
-
-    @dygraph_only
-    def get_lr(self):
-        """
-        Get current step learning rate.
-        (Only work in dygraph mode)
-
-        Returns:
-            float: The learning rate of the current step.
-
-        Examples:
-
-            .. code-block:: python
-
-                import numpy as np
-                import paddle
-                from paddle.distributed import fleet
-
-                fleet.init(is_collective=True)
-
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
-
-                layer = paddle.nn.Linear(13, 5)
-                adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
-
-                adam = fleet.distributed_optimizer(adam)
-                dp_layer = fleet.distributed_model(layer)
-
-                lr = adam.get_lr()
-                print(lr) # 0.01
-        """
-        # imitate target optimizer retrieval
-        return self.user_defined_optimizer.get_lr()
-
-    @dygraph_only
-    def step(self):
-        """
-        Execute the optimizer once.
-        (Only work in dygraph mode)
-
-        Returns:
-            None
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle
-                import paddle.nn as nn
-                from paddle.distributed import fleet
-
-                class LinearNet(nn.Layer):
-                    def __init__(self):
-                        super(LinearNet, self).__init__()
-                        self._linear1 = nn.Linear(10, 10)
-                        self._linear2 = nn.Linear(10, 1)
-
-                    def forward(self, x):
-                        return self._linear2(self._linear1(x))
-
-                # 1. initialize fleet environment
-                fleet.init(is_collective=True)
-
-                # 2. create layer & optimizer
-                layer = LinearNet()
-                loss_fn = nn.MSELoss()
-                adam = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=layer.parameters())
-
-                # 3. get data_parallel model using fleet
-                adam = fleet.distributed_optimizer(adam)
-                dp_layer = fleet.distributed_model(layer)
-
-                # 4. run layer
-                inputs = paddle.randn([10, 10], 'float32')
-                outputs = dp_layer(inputs)
-                labels = paddle.randn([10, 1], 'float32')
-                loss = loss_fn(outputs, labels)
-
-                print("loss:", loss.numpy())
-
-                loss.backward()
-
-                adam.step()
-                adam.clear_grad()
-
-
-        """
-        # imitate target optimizer retrieval
-        return self.user_defined_optimizer.step()
-
-    @dygraph_only
-    def clear_grad(self):
-        """
-        Clear the gradients of all optimized parameters for model.
-        (Only work in dygraph mode)
-
-        Returns: 
-            None
-
-        Examples:
-
-            .. code-block:: python
-
-                import paddle
-                import paddle.nn as nn
-                from paddle.distributed import fleet
-
-                class LinearNet(nn.Layer):
-                    def __init__(self):
-                        super(LinearNet, self).__init__()
-                        self._linear1 = nn.Linear(10, 10)
-                        self._linear2 = nn.Linear(10, 1)
-
-                    def forward(self, x):
-                        return self._linear2(self._linear1(x))
-
-                # 1. initialize fleet environment
-                fleet.init(is_collective=True)
-
-                # 2. create layer & optimizer
-                layer = LinearNet()
-                loss_fn = nn.MSELoss()
-                adam = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=layer.parameters())
-
-                # 3. get data_parallel model using fleet
-                adam = fleet.distributed_optimizer(adam)
-                dp_layer = fleet.distributed_model(layer)
-
-                # 4. run layer
-                inputs = paddle.randn([10, 10], 'float32')
-                outputs = dp_layer(inputs)
-                labels = paddle.randn([10, 1], 'float32')
-                loss = loss_fn(outputs, labels)
-
-                print("loss:", loss.numpy())
-
-                loss.backward()
-
-                adam.step()
-                adam.clear_grad()
-
-        """
-        # imitate target optimizer retrieval
-        return self.user_defined_optimizer.clear_grad()
 
     def _get_amp_optimizer(self):
         # imitate target optimizer retrieval
@@ -1588,7 +1253,7 @@ class Fleet(object):
 
         # Use the auto-parallel's routines instead
         if self._user_defined_strategy.semi_auto or self._user_defined_strategy.auto_search:
-            from ...auto_parallel.parallelizer import AutoParallelizer
+            from ..auto_parallel.parallelizer import AutoParallelizer
             auto_parallelizer = AutoParallelizer(self)
             optimize_ops, params_grads, dist_startup_prog, dist_main_prog = auto_parallelizer.parallelize(
                 loss, startup_program, parameter_list, no_grad_set)
@@ -1763,7 +1428,7 @@ class Fleet(object):
         optimize_ops = []
         params_grads = []
 
-        from ..meta_optimizers import ParameterServerOptimizer
+        from .meta_optimizers import ParameterServerOptimizer
         ps_optimizer = ParameterServerOptimizer(self.user_defined_optimizer)
         ps_optimizer._set_basic_info(losses, self._role_maker,
                                      self.user_defined_optimizer,
@@ -1798,67 +1463,3 @@ class Fleet(object):
         fleet.util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads
-
-    @dygraph_only
-    def distributed_scaler(self, scaler):
-
-        def unscale_method(self, optimizer):
-            if not self._enable:
-                return
-            if getattr(optimizer, '_param_groups', None) and isinstance(
-                    optimizer._param_groups[0], dict):
-                param_grads = []
-                param_grads_fp16 = []
-                param_grads_fp32 = []
-                for group in optimizer._param_groups:
-                    for param in group['params']:
-                        if param._grad_ivar() is not None:
-                            param_grads.append(param._grad_ivar())
-                            if param._grad_ivar(
-                            ).dtype == core.VarDesc.VarType.FP16:
-                                param_grads_fp16.append(param._grad_ivar())
-                            else:
-                                param_grads_fp32.append(param._grad_ivar())
-            else:
-                param_grads = [
-                    param._grad_ivar() for param in optimizer._parameter_list
-                    if param._grad_ivar() is not None
-                ]
-                param_grads_fp16 = [
-                    param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (
-                        param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
-                ]
-                param_grads_fp32 = [
-                    param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (
-                        param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
-                ]
-            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
-            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
-            if len(param_grads_fp16):
-                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
-                                                param_grads_fp16,
-                                                temp_found_inf_fp16)
-            if len(param_grads_fp32):
-                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
-                                                param_grads_fp32,
-                                                temp_found_inf_fp32)
-
-            self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
-            is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
-
-            # TODO(shenliang03) Since dp allreduce in the optimizer is
-            # after the gradscaler, check_finite needs to synchronize global
-            # information. In the future, we should use check_group to speed.
-            paddle.distributed.all_reduce(is_found_inf,
-                                          op=paddle.distributed.ReduceOp.MAX,
-                                          group=None)
-            self._found_inf = is_found_inf.numpy()[0]
-
-        # Only tensor_parallel and pipeline_parallel need to modify scaler
-        if self._hcg.get_parallel_mode() in (ParallelMode.TENSOR_PARALLEL,
-                                             ParallelMode.PIPELINE_PARALLEL):
-            scaler._unscale = MethodType(unscale_method, scaler)
-
-        return scaler

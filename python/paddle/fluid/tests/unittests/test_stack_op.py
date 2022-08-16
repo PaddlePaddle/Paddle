@@ -174,9 +174,8 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
-        self.assertTrue(
-            np.array_equal(res[0],
-                           np.stack([self.x] * self.iter_num, axis=self.axis)))
+        np.testing.assert_array_equal(
+            res[0], np.stack([self.x] * self.iter_num, axis=self.axis))
 
 
 class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
@@ -209,9 +208,8 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
-        self.assertTrue(
-            np.array_equal(res[0],
-                           np.stack([self.x] * self.iter_num, axis=self.axis)))
+        np.testing.assert_array_equal(
+            res[0], np.stack([self.x] * self.iter_num, axis=self.axis))
 
 
 class API_test(unittest.TestCase):
