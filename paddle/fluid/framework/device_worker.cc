@@ -39,7 +39,7 @@ std::string PrintLodTensorType(Tensor* tensor,
                                bool need_leading_separator = true) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
-    VLOG(3) << "access violation";
+    VLOG(4) << "access violation";
     return "access violation";
   }
   if (start >= end) return "";
