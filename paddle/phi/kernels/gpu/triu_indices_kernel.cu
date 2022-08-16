@@ -18,8 +18,8 @@
 #include <tuple>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -53,9 +53,9 @@ __device__ inline void get_coordinate_in_triu_trapezoid(int f,
                                                         int x,
                                                         T* row,
                                                         T* col) {
-  f <<= 1; // all statements use 2f, so only calculate it once here.
+  f <<= 1;  // all statements use 2f, so only calculate it once here.
   auto b = -1 - f;
-  auto cX4 = x << 3; // 4 * c = 4 * (2x) = 8x;
+  auto cX4 = x << 3;  // 4 * c = 4 * (2x) = 8x;
   *row = resolve_root_int<T>(b, cX4, x, -1);
   *col = x - ((f - *row + 1) * *row >> 1) + *row;
 }
@@ -95,16 +95,16 @@ void TriuIndicesKernel(const Context& dev_ctx,
                        int offset,
                        DataType dtype,
                        DenseTensor* out) {
-
   T* out_data = dev_ctx.template Alloc<T>(out);
   auto out_dims = out->dims();
   int triu_size = out_dims[1];
-  //  auto tensor = empty_cuda({2, triu_size}, dtype_opt, layout_opt, device_opt, pin_memory_opt);
+  //  auto tensor = empty_cuda({2, triu_size}, dtype_opt, layout_opt,
+  //  device_opt, pin_memory_opt);
 
   if (triu_size > 0) {
     // # of triu elements in the first row
-    auto m_first_row = offset > 0 ?
-                                  std::max<int>(cols - offset, 0) : // upper bounded by col
+    auto m_first_row = offset > 0 ? std::max<int>(cols - offset, 0)
+                                  :  // upper bounded by col
                            cols;
 
     // size of the top rectangle
@@ -125,7 +125,6 @@ void TriuIndicesKernel(const Context& dev_ctx,
                                                  cols,
                                                  rectangle_size,
                                                  triu_size);
-
   }
 }
 }  // namespace phi
