@@ -100,6 +100,7 @@ PD_DECLARE_KERNEL(slice_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cross_entropy_with_softmax, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cross_entropy_with_softmax_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_n, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace framework {
