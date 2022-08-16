@@ -34,14 +34,14 @@ def tensor_badreturn_0(x):
 @paddle.jit.to_static
 def tensor_badreturn_1(x):
     paddle.set_default_dtype("float64")
-    a = paddle.to_tensor([1.0, 2.0, 3.0])
+    a = paddle.to_tensor([1.0, 2.0, 3.0], stop_gradient=True)
 
     return a
 
 
 @paddle.jit.to_static
 def tensor_badreturn_2(x):
-    a = paddle.to_tensor([1.0, 2.0, 3.0], dtype="int64", stop_gradient=False)
+    a = paddle.to_tensor([1.0, 2.0, 3.0], palace=paddle.CPUPlace() ,dtype="int64", stop_gradient=False)
 
     return a
 
@@ -69,6 +69,7 @@ class TestToTensorReturnVal(unittest.TestCase):
         return out0, out1, out2, out3
 
     def test_to_tensor_badreturn(self):
+        paddle.disable_static()
         static_res = self._run(to_static=True)
         x = paddle.to_tensor([3])
         self.assertTrue(static_res[0].dtype == tensor_badreturn_0(x).dtype)
@@ -79,23 +80,24 @@ class TestToTensorReturnVal(unittest.TestCase):
         self.assertTrue(
             static_res[1].stop_gradient == tensor_badreturn_1(x).stop_gradient)
 
-        self.assertTrue(static_res[2].dtype == tensor_badreturn_2(x).dtype, )
+        self.assertTrue(static_res[2].dtype == tensor_badreturn_2(x).dtype)
         self.assertTrue(
             static_res[2].stop_gradient == tensor_badreturn_2(x).stop_gradient)
 
+        self.assertTrue(static_res[3].dtype == tensor_badreturn_3(x).dtype)
+        self.assertTrue(
+            static_res[3].stop_gradient == tensor_badreturn_3(x).stop_gradient)
 
-class UnittestBase(unittest.TestCase):
+
+class TestStatic(unittest.TestCase):
 
     def setUp(self):
+        self.shapes = [[5, 2]]
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.init_info()
+        self.save_path = os.path.join(self.temp_dir.name, 'dropout')
 
     def tearDwon(self):
         self.temp_dir.cleanup()
-
-    def init_info(self):
-        self.shapes = None
-        self.save_path = None
 
     def infer_prog(self):
         config = paddle_infer.Config(self.save_path + '.pdmodel',
@@ -114,29 +116,20 @@ class UnittestBase(unittest.TestCase):
 
         return output_data
 
-
-class TestDropout(UnittestBase):
-
-    def init_info(self):
-        self.shapes = [[10, 10]]
-        self.save_path = os.path.join(self.temp_dir.name, 'dropout')
-
     def test_static(self):
         paddle.enable_static()
         main_prog = Program()
         starup_prog = Program()
         with program_guard(main_prog, starup_prog):
-            fc = paddle.nn.Linear(10, 10)
-            x = paddle.to_tensor(paddle.randn(self.shapes[0]))
-            x.stop_gradient = False
-            feat = fc(x)
-            # p is a Variable
-            p = paddle.to_tensor([1])
-            out = paddle.nn.functional.dropout(feat, p=p)
+            fc = paddle.nn.Linear(2, 1)
+            x = paddle.to_tensor(paddle.randn(self.shapes[0]),
+                                 dtype='float64',
+                                 stop_gradient=False,
+                                 place= paddle.CUDAPlace(0))
+            out = fc(x)
+
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
-            # test _to_string
-            self.assertTrue("Var[" in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(starup_prog)
@@ -146,7 +139,7 @@ class TestDropout(UnittestBase):
 
             # Test for Inference Predictor
             infer_out = self.infer_prog()
-            self.assertEqual(infer_out.shape, (10, 10))
+            self.assertEqual(infer_out.shape, (5, 1))
 
 
 if __name__ == '__main__':
