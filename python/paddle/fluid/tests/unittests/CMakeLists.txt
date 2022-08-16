@@ -180,7 +180,6 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_collective_sendrecv)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_split_embedding)
   list(REMOVE_ITEM TEST_OPS test_collective_split_embedding_none_divisible)
   list(REMOVE_ITEM TEST_OPS test_collective_split_row_linear)
   list(REMOVE_ITEM TEST_OPS test_collective_split_col_linear)
@@ -1647,7 +1646,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_static_model_parallel_fused_multi_transformer
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(
-      test_collective_split_embedding
       test_collective_split_embedding_none_divisible
       test_collective_split_row_linear
       test_collective_split_col_linear
