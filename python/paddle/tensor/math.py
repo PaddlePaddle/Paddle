@@ -526,12 +526,12 @@ def add(x, y, name=None):
             shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
     Args:
-        x (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
-        y (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
-        name (string, optional) – Name of the output. Default is None. It’s used to print debug info for developers. Details: :ref:`api_guide_Name`
+        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
+        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
+        name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        N-dimension tensor. A location into which the result is stored. It’s dimension equals with x
+        N-D Tensor. A location into which the result is stored. It’s dimension equals with x.
 
     Examples:
 
