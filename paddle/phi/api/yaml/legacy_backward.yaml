@@ -1213,8 +1213,8 @@
   kernel :
     func : lerp_grad
 
-- backward_api : linear_interp_v2_grad
-  forward : linear_interp_v2 (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode) -> Tensor(output)
+- backward_api : linear_interp_grad
+  forward : linear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode) -> Tensor(output)
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
   output : Tensor(x_grad)
   infer_meta :
@@ -1222,7 +1222,7 @@
     param: [x]
   optional: out_size, size_tensor, scale_tensor
   kernel :
-    func : linear_interp_v2_grad
+    func : linear_interp_grad
     data_type : output_grad
 
 - backward_api : log10_grad
@@ -1618,6 +1618,18 @@
   kernel :
     func : multiply_triple_grad
   optional : fwd_grad_grad_x, fwd_grad_grad_y, grad_grad_out_grad
+
+- backward_api : nearest_interp_grad
+  forward : nearest_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : nearest_interp_grad
+    data_type : output_grad
 
 - backward_api : nll_loss_grad
   forward : nll_loss (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, str reduction) -> Tensor(out), Tensor(total_weight)

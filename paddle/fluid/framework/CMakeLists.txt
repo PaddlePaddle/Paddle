@@ -502,8 +502,14 @@ cc_test(
 
 cc_library(
   proto_desc
-  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc process_mesh_desc.cc
-  DEPS attribute shape_inference op_info operator glog version)
+  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc
+  DEPS attribute
+       shape_inference
+       op_info
+       operator
+       glog
+       version
+       dist_attr)
 
 if(WITH_CRYPTO)
   add_dependencies(proto_desc cryptopp)

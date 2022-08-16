@@ -16,7 +16,7 @@ import abc
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..dist_attribute import OperatorDistributedAttribute
-from ..utils import _get_comm_group, _get_corresponding_rank
+from ..utils import _get_comm_group, _get_corresponding_rank, is_optimize_op
 from ..process_group import new_process_group
 
 _g_distributed_operator_impl_containers = {}
@@ -428,7 +428,8 @@ def gradient_synchronization(dist_ctx, op, act_grad_names, out_grad_names,
         rank (int): global ranks index for current process.
     """
 
-    if len(act_grad_names) == 0 or len(out_grad_names) == 0:
+    if is_optimize_op(op) or len(act_grad_names) == 0 or len(
+            out_grad_names) == 0:
         return
 
     dp_group = get_data_parallel_group(dist_ctx, op, act_grad_names, rank)

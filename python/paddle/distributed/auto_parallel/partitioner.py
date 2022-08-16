@@ -282,7 +282,7 @@ class Partitioner(object):
                 grad_var_to_var = self._dist_context.dist_op_context.grad_var_to_var[
                     appended_grad_times]
                 dist_op_opt_impl.backward(self._dist_context, **kinputs,
-                                          **koutputs, **{"grad_var_to_var": []})
+                                          **koutputs, **{"grad_var_to_var": {}})
             else:
                 raise NotImplementedError(
                     "partitioner only support forward and backward, optimize ops, but got {}"
