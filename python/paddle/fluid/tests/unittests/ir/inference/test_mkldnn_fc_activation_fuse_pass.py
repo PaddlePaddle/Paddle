@@ -27,9 +27,9 @@ class TestFCActivationMkldnnFusePass(PassAutoScanTest):
         fc_wei = draw(st.sampled_from([64]))
         activation_type = draw(
             st.sampled_from([
-                'relu', 'gelu', 'tanh', 'sigmoid', 'swish', 'mish', 'sqrt',
-                'hard_swish', 'sigmoid', 'abs', 'relu6', 'clip', 'tanh',
-                'hard_sigmoid', 'leaky_relu'
+                'relu', 'gelu', 'swish', 'mish', 'sqrt', 'hard_swish',
+                'sigmoid', 'abs', 'relu6', 'clip', 'tanh', 'hard_sigmoid',
+                'leaky_relu'
             ]))
 
         def generate_input(shape):

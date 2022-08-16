@@ -31,14 +31,13 @@ void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
 }
 
 void FuseFCActOneDNNPass::FuseFCAct(Graph *graph, std::string &act_type) const {
-  auto fuse_pass_id = "fc_" + act_type + "_mkldnn_fuse_pass";
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init(fuse_pass_id, graph);
+  FusePassBase::Init("fc_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
-  patterns::OperatorActivation fc_act_pattern(gpd.mutable_pattern(),
-                                              fuse_pass_id);
+  patterns::OperatorActivation fc_act_pattern(
+      gpd.mutable_pattern(), "fc_" + act_type + "_mkldnn_fuse_pass");
   fc_act_pattern("fc", act_type);
 
   int found_fc_act_count = 0;
@@ -73,8 +72,8 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph, std::string &act_type) const {
                      : "gelu_erf";
     }
 
-    fc_op->SetAttr("fuse_activation", act_type);
     fc_op->SetAttr("use_mkldnn", true);
+    fc_op->SetAttr("fuse_activation", act_type);
     fc_op->SetOutput("Out", {act_out->Name()});
 
     IR_OP_VAR_LINK(fc, act_out);
@@ -84,7 +83,8 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph, std::string &act_type) const {
 
   gpd(graph, handler);
   AddStatis(found_fc_act_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      found_fc_act_count > 0)
     PrettyLogDetail(
         "---    fused %d fc with %s activation", found_fc_act_count, act_type);
 }
