@@ -1079,14 +1079,44 @@ std::string GraphTable::get_inverse_etype(std::string &etype) {
   return res;
 }
 
-int32_t GraphTable::load_node_and_edge_file(std::string etype,
-                                            std::string ntype,
-                                            std::string epath,
-                                            std::string npath,
+int32_t GraphTable::parse_type_to_typepath(std::string &type2files,
+                                           std::string graph_data_local_path,
+                                           std::vector<std::string> &res_type,
+                                           std::unordered_map<std::string, std::string> &res_type2path) {
+  auto type2files_split = paddle::string::split_string<std::string>(type2files, ",");
+  if (type2files_split.size() == 0) {
+    return -1;
+  }
+  for (auto one_type2file : type2files_split) {
+    auto one_type2file_split = paddle::string::split_string<std::string>(one_type2file, ":");
+    auto type = one_type2file_split[0];
+    auto type_dir = one_type2file_split[1];
+    res_type.push_back(type);
+    res_type2path[type] = graph_data_local_path + "/" + type_dir;
+  }
+  return 0;
+}
+
+int32_t GraphTable::load_node_and_edge_file(std::string etype2files,
+                                            std::string ntype2files,
+                                            std::string graph_data_local_path,
                                             int part_num,
                                             bool reverse) {
-  auto etypes = paddle::string::split_string<std::string>(etype, ",");
-  auto ntypes = paddle::string::split_string<std::string>(ntype, ",");
+  std::vector<std::string> etypes;
+  std::unordered_map<std::string, std::string> edge_to_edgedir;
+  int res = parse_type_to_typepath(etype2files, graph_data_local_path, etypes, edge_to_edgedir);
+  if (res != 0) {
+    VLOG(0) << "parse edge type and edgedir failed!";
+    return -1;
+  }
+  std::vector<std::string> ntypes;
+  std::unordered_map<std::string, std::string> node_to_nodedir;
+  res = parse_type_to_typepath(ntype2files, graph_data_local_path, ntypes, node_to_nodedir);
+  if (res != 0) {
+    VLOG(0) << "parse node type and nodedir failed!";
+    return -1;
+  }
+
   VLOG(0) << "etypes size: " << etypes.size();
   VLOG(0) << "whether reverse: " << reverse;
   is_load_reverse_edge = reverse;
@@ -1098,7 +1128,7 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype,
     tasks.push_back(
         _shards_task_pool[i % task_pool_size_]->enqueue([&, i, this]() -> int {
           if (i < etypes.size()) {
-            std::string etype_path = epath + "/" + etypes[i];
+            std::string etype_path = edge_to_edgedir[etypes[i]];
             auto etype_path_list = paddle::framework::localfs_list(etype_path);
             std::string etype_path_str;
             if (part_num > 0 && part_num < (int)etype_path_list.size()) {
@@ -1116,6 +1146,7 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype,
               this->load_edges(etype_path_str, true, r_etype);
             }
           } else {
+            std::string npath = node_to_nodedir[ntypes[0]];
             auto npath_list = paddle::framework::localfs_list(npath);
             std::string npath_str;
             if (part_num > 0 && part_num < (int)npath_list.size()) {

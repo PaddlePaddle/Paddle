@@ -537,14 +537,18 @@ class GraphTable : public Table {
   virtual int32_t Initialize(const GraphParameter &config);
   int32_t Load(const std::string &path, const std::string &param);
 
-  int32_t load_node_and_edge_file(std::string etype,
-                                  std::string ntype,
-                                  std::string epath,
-                                  std::string npath,
+  int32_t load_node_and_edge_file(std::string etype2files,
+                                  std::string ntype2files,
+                                  std::string graph_data_local_path,
                                   int part_num,
                                   bool reverse);
 
   std::string get_inverse_etype(std::string &etype);
+  
+  int32_t parse_type_to_typepath(std::string &type2files,
+                                 std::string graph_data_local_path,
+                                 std::vector<std::string> &res_type,
+                                 std::unordered_map<std::string, std::string> &res_type2path);
 
   int32_t load_edges(const std::string &path,
                      bool reverse,
