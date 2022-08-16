@@ -304,7 +304,10 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     if (!bias_qk) {
       int size = batch * head_number * seq_len * seq_len;
       temp_bias_tensor.Resize({size});
-      auto *temp_qk_bias = temp_bias_tensor.mutable_data<T>(context.GetPlace());
+      auto *temp_qk_bias = reinterpret_cast<T *>(temp_bias_tensor.AllocateFrom(
+          allocator,
+          paddle::experimental::CppTypeToDataType<T>::Type(),
+          temp_bias_tensor.numel() * sizeof(T)));
 #ifdef PADDLE_WITH_HIP
       hipMemset(temp_qk_bias, 0, sizeof(float) * size);
 #else
