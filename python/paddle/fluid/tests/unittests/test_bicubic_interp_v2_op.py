@@ -442,181 +442,178 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
 
 class TestBicubicOpError(unittest.TestCase):
 
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # the input of interpoalte must be Variable.
-            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
-                                         [[1, 1, 1, 1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, interpolate, x1)
+    def test_imperative_errors(self):
+        # the input of interpoalte must be Variable.
+        x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]],
+                                     fluid.CPUPlace())
+        self.assertRaises(TypeError, interpolate, x1)
 
-            def test_mode_type():
-                # mode must be "BILINEAR" "TRILINEAR" "NEAREST" "BICUBIC"
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+        def test_mode_type():
+            # mode must be "BILINEAR" "TRILINEAR" "NEAREST" "BICUBIC"
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
 
-                out = interpolate(x,
-                                  size=[12, 12],
-                                  mode='UNKONWN',
-                                  align_corners=False)
+            out = interpolate(x,
+                              size=[12, 12],
+                              mode='UNKONWN',
+                              align_corners=False)
 
-            def test_input_shape():
-                x = fluid.data(name="x", shape=[2], dtype="float32")
-                out = interpolate(x,
-                                  size=[12, 12],
-                                  mode='BICUBIC',
-                                  align_corners=False)
+        def test_input_shape():
+            x = fluid.data(name="x", shape=[2], dtype="float32")
+            out = interpolate(x,
+                              size=[12, 12],
+                              mode='BICUBIC',
+                              align_corners=False)
 
-            def test_align_corcers():
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                interpolate(x, size=[12, 12], mode='BICUBIC', align_corners=3)
+        def test_align_corcers():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            interpolate(x, size=[12, 12], mode='BICUBIC', align_corners=3)
 
-            def test_out_shape():
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                out = interpolate(x,
-                                  size=[12],
-                                  mode='bicubic',
-                                  align_corners=False)
+        def test_out_shape():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            out = interpolate(x, size=[12], mode='bicubic', align_corners=False)
 
-            def test_attr_data_format():
-                # for 5-D input, data_format only can be NCDHW or NDHWC
-                input = fluid.data(name="input",
-                                   shape=[2, 3, 6, 9, 4],
-                                   dtype="float32")
-                out = interpolate(input,
-                                  size=[4, 8, 4, 5],
-                                  mode='trilinear',
-                                  data_format='NHWC')
-
-            def test_actual_shape():
-                # the actual_shape  must be Variable.
-                x = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
-                                            [[1, 1, 1, 1]], fluid.CPUPlace())
-                out = interpolate(x,
-                                  size=[12, 12],
-                                  mode='BICUBIC',
-                                  align_corners=False)
-
-            def test_scale_value():
-                # the scale must be greater than zero.
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                out = interpolate(x,
-                                  size=None,
-                                  mode='BICUBIC',
-                                  align_corners=False,
-                                  scale_factor=-2.0)
-
-            def test_attr_5D_input():
-                # for 5-D input, data_format only can be NCDHW or NDHWC
-                input = fluid.data(name="input",
-                                   shape=[2, 3, 6, 9, 4],
-                                   dtype="float32")
-                out = interpolate(input,
-                                  size=[4, 8, 4, 5],
-                                  mode='trilinear',
-                                  data_format='NDHWC')
-
-            def test_scale_type():
-                # the scale must be greater than zero.
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                scale = fluid.create_lod_tensor(np.array([-1, 3, 5,
-                                                          5]), [[1, 1, 1, 1]],
-                                                fluid.CPUPlace())
-                out = interpolate(x,
-                                  size=None,
-                                  mode='bicubic',
-                                  align_corners=False,
-                                  scale_factor=scale)
-
-            def test_align_mode():
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                out = interpolate(x,
-                                  size=None,
-                                  mode='nearest',
-                                  align_corners=False,
-                                  align_mode=2,
-                                  scale_factor=1.0)
-
-            def test_outshape_and_scale():
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                out = interpolate(x,
-                                  size=None,
-                                  mode='bicubic',
-                                  align_corners=False,
-                                  scale_factor=None)
-
-            def test_align_corners_and_nearest():
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                out = interpolate(x,
-                                  size=None,
-                                  mode='nearest',
-                                  align_corners=True,
-                                  scale_factor=None)
-
-            def test_scale_shape():
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                out = interpolate(x,
-                                  size=None,
-                                  mode='nearest',
-                                  align_corners=False,
-                                  scale_factor=[1, 2, 2])
-
-            def test_scale_value_1():
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                out = interpolate(x,
-                                  size=None,
-                                  mode='bicubic',
-                                  align_corners=False,
-                                  scale_factor=[1, 2, 2])
-
-            def test_size_and_scale():
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                out = interpolate(x,
-                                  size=None,
-                                  mode='bicubic',
-                                  align_corners=False,
-                                  scale_factor=None)
-
-            def test_size_and_scale2():
-                x = fluid.data(name="input",
+        def test_attr_data_format():
+            # for 5-D input, data_format only can be NCDHW or NDHWC
+            input = fluid.data(name="input",
                                shape=[2, 3, 6, 9, 4],
                                dtype="float32")
-                out = interpolate(x,
-                                  size=[2, 2, 2],
-                                  mode='trilinear',
-                                  align_corners=False,
-                                  scale_factor=2.0)
+            out = interpolate(input,
+                              size=[4, 8, 4, 5],
+                              mode='trilinear',
+                              data_format='NHWC')
 
-            def test_size_type():
-                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-                out = interpolate(x,
-                                  size={2, 2},
-                                  mode='bicubic',
-                                  align_corners=False)
+        def test_actual_shape():
+            # the actual_shape  must be Variable.
+            x = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]],
+                                        fluid.CPUPlace())
+            out = interpolate(x,
+                              size=[12, 12],
+                              mode='BICUBIC',
+                              align_corners=False)
 
-            def test_input_shape_1():
-                x = fluid.data(name="x", shape=[2, 1, 0, 0], dtype="float32")
-                out = interpolate(x,
-                                  size=[3, 3],
-                                  mode="bicubic",
-                                  align_corners=False)
+        def test_scale_value():
+            # the scale must be greater than zero.
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            out = interpolate(x,
+                              size=None,
+                              mode='BICUBIC',
+                              align_corners=False,
+                              scale_factor=-2.0)
 
-            self.assertRaises(ValueError, test_mode_type)
-            self.assertRaises(ValueError, test_input_shape)
-            self.assertRaises(TypeError, test_align_corcers)
-            self.assertRaises(ValueError, test_attr_data_format)
-            self.assertRaises(TypeError, test_actual_shape)
-            self.assertRaises(ValueError, test_scale_value)
-            self.assertRaises(ValueError, test_out_shape)
-            self.assertRaises(ValueError, test_attr_5D_input)
-            self.assertRaises(TypeError, test_scale_type)
-            self.assertRaises(ValueError, test_align_mode)
-            self.assertRaises(ValueError, test_outshape_and_scale)
-            self.assertRaises(ValueError, test_align_corners_and_nearest)
-            self.assertRaises(ValueError, test_scale_shape)
-            self.assertRaises(ValueError, test_scale_value_1)
-            self.assertRaises(ValueError, test_size_and_scale)
-            self.assertRaises(ValueError, test_size_and_scale2)
-            self.assertRaises(TypeError, test_size_type)
-            self.assertRaises(ValueError, test_input_shape_1)
+        def test_attr_5D_input():
+            # for 5-D input, data_format only can be NCDHW or NDHWC
+            input = fluid.data(name="input",
+                               shape=[2, 3, 6, 9, 4],
+                               dtype="float32")
+            out = interpolate(input,
+                              size=[4, 8, 4, 5],
+                              mode='trilinear',
+                              data_format='NDHWC')
+
+        def test_scale_type():
+            # the scale must be greater than zero.
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            scale = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                            [[1, 1, 1, 1]], fluid.CPUPlace())
+            out = interpolate(x,
+                              size=None,
+                              mode='bicubic',
+                              align_corners=False,
+                              scale_factor=scale)
+
+        def test_align_mode():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            out = interpolate(x,
+                              size=None,
+                              mode='nearest',
+                              align_corners=False,
+                              align_mode=2,
+                              scale_factor=1.0)
+
+        def test_outshape_and_scale():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            out = interpolate(x,
+                              size=None,
+                              mode='bicubic',
+                              align_corners=False,
+                              scale_factor=None)
+
+        def test_align_corners_and_nearest():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            out = interpolate(x,
+                              size=None,
+                              mode='nearest',
+                              align_corners=True,
+                              scale_factor=None)
+
+        def test_scale_shape():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            out = interpolate(x,
+                              size=None,
+                              mode='nearest',
+                              align_corners=False,
+                              scale_factor=[1, 2, 2])
+
+        def test_scale_value_1():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            out = interpolate(x,
+                              size=None,
+                              mode='bicubic',
+                              align_corners=False,
+                              scale_factor=[1, 2, 2])
+
+        def test_size_and_scale():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            out = interpolate(x,
+                              size=None,
+                              mode='bicubic',
+                              align_corners=False,
+                              scale_factor=None)
+
+        def test_size_and_scale2():
+            x = fluid.data(name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
+            out = interpolate(x,
+                              size=[2, 2, 2],
+                              mode='trilinear',
+                              align_corners=False,
+                              scale_factor=2.0)
+
+        def test_size_type():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            out = interpolate(x,
+                              size={2, 2},
+                              mode='bicubic',
+                              align_corners=False)
+
+        def test_input_shape_1():
+            x = fluid.data(name="x", shape=[2, 1, 0, 0], dtype="float32")
+            out = interpolate(x,
+                              size=[3, 3],
+                              mode="bicubic",
+                              align_corners=False)
+
+        self.assertRaises(ValueError, test_mode_type)
+        self.assertRaises(ValueError, test_input_shape)
+        self.assertRaises(TypeError, test_align_corcers)
+        self.assertRaises(ValueError, test_attr_data_format)
+        self.assertRaises(TypeError, test_actual_shape)
+        self.assertRaises(ValueError, test_scale_value)
+        self.assertRaises(ValueError, test_out_shape)
+        self.assertRaises(ValueError, test_attr_5D_input)
+        self.assertRaises(TypeError, test_scale_type)
+        self.assertRaises(ValueError, test_align_mode)
+        self.assertRaises(ValueError, test_outshape_and_scale)
+        self.assertRaises(ValueError, test_align_corners_and_nearest)
+        self.assertRaises(ValueError, test_scale_shape)
+        self.assertRaises(ValueError, test_scale_value_1)
+        self.assertRaises(ValueError, test_size_and_scale)
+        self.assertRaises(ValueError, test_size_and_scale2)
+        self.assertRaises(TypeError, test_size_type)
+        self.assertRaises(ValueError, test_input_shape_1)
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            self.test_imperative_errors()
 
 
 if __name__ == "__main__":
