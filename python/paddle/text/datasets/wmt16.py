@@ -103,7 +103,6 @@ class WMT16(Dataset):
                 model = SimpleNet()
                 src_ids, trg_ids, trg_ids_next = model(src_ids, trg_ids, trg_ids_next)
                 print(src_ids.numpy(), trg_ids.numpy(), trg_ids_next.numpy())
-
     """
 
     def __init__(self,

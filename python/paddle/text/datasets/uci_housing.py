@@ -72,7 +72,6 @@ class UCIHousing(Dataset):
                 model = SimpleNet()
                 feature, target = model(feature, target)
                 print(feature.numpy().shape, target.numpy())
-
     """
 
     def __init__(self, data_file=None, mode='train', download=True):
