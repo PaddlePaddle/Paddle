@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,15 +18,7 @@
 
 namespace paddle {
 namespace framework {
-class OpDesc;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
-namespace framework {
 namespace ir {
-
-class Graph;
 
 void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
@@ -35,12 +27,8 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   Init("fc_mkldnn_pass", graph);
 
   GraphPatternDetector gpd;
-  auto* x = gpd.mutable_pattern()
-                ->NewNode("fc_mkldnn_pass/x")
-                ->AsInput()
-                ->assert_is_op_input("fc", "Input");
   patterns::FCMKLDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
-  fc_pattern(x, true /*with bias*/);
+  fc_pattern();
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
