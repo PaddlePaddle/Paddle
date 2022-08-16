@@ -298,7 +298,11 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
       int size = batch * head_number * seq_len * seq_len;
       temp_bias_tensor.Resize({size});
       auto *temp_qk_bias = temp_bias_tensor.mutable_data<T>(context.GetPlace());
+#ifdef PADDLE_WITH_HIP
+      hipMemset(temp_qk_bias, 0, sizeof(float) * size);
+#else
       cudaMemset(temp_qk_bias, 0, sizeof(float) * size);
+#endif
       bias_qk_d = static_cast<const T *>(temp_qk_bias);
     }
     int all_head_size = w_dims[2];
