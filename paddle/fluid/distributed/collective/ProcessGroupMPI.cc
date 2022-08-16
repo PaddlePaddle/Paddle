@@ -237,7 +237,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Broadcast(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const BroadcastOptions& opts) {
-  CheckValidInputs(in_tensors);
+  mpi::CheckValidInputs(in_tensors);
   const auto places = GetPlaceList(in_tensors);
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
@@ -260,7 +260,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllReduce(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const AllreduceOptions& opts) {
-  CheckValidInputs(in_tensors);
+  mpi::CheckValidInputs(in_tensors);
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
@@ -270,7 +270,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllReduce(
                                 data.data(),
                                 data.numel(),
                                 mpiDatatype.at(data.dtype()),
-                                ToMPIType(opts.reduce_op),
+                                mpi::ToMPIType(opts.reduce_op),
                                 pg_comm));
       };
   auto entry = std::make_unique<TaskEntry>(
@@ -293,7 +293,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Barrier(
 // NOTE: MPI_send tag set gid_
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Send(
     std::vector<phi::DenseTensor>& tensors, int dst_rank) {
-  CheckValidInputs(tensors);
+  mpi::CheckValidInputs(tensors);
 
   auto& tensor = tensors[0];
   MPI_Request request = MPI_REQUEST_NULL;
@@ -314,7 +314,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Send(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Recv(
     std::vector<phi::DenseTensor>& tensors, int src_rank) {
-  CheckValidInputs(tensors);
+  mpi::CheckValidInputs(tensors);
 
   auto& tensor = tensors[0];
   MPI_Request request = MPI_REQUEST_NULL;
@@ -336,7 +336,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Recv(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllGather(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors) {
-  CheckValidInputs(in_tensors);
+  mpi::CheckValidInputs(in_tensors);
 
   PADDLE_ENFORCE_EQ(out_tensors.size() == 1,
                     true,
@@ -367,8 +367,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllGather(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllToAll(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors) {
-  CheckValidInputs(in_tensors);
-  CheckValidInputs(out_tensors);
+  mpi::CheckValidInputs(in_tensors);
+  mpi::CheckValidInputs(out_tensors);
 
   PADDLE_ENFORCE_EQ(in_tensors[0].numel() == out_tensors[0].numel() &&
                         in_tensors[0].dtype() == out_tensors[0].dtype(),
@@ -400,7 +400,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Reduce(
     std::vector<phi::DenseTensor>& tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const ReduceOptions& opts) {
-  CheckValidInputs(tensors);
+  mpi::CheckValidInputs(tensors);
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
@@ -414,7 +414,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Reduce(
                              recvbuf,
                              data.numel(),
                              mpiDatatype.at(data.dtype()),
-                             ToMPIType(opts.reduce_op),
+                             mpi::ToMPIType(opts.reduce_op),
                              opts.root_rank,
                              pg_comm));
       };
@@ -427,7 +427,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Scatter(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const ScatterOptions& opts) {
-  CheckValidInputs(in_tensors);
+  mpi::CheckValidInputs(in_tensors);
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {

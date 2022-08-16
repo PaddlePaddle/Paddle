@@ -225,6 +225,7 @@ bool IsCompiledWithMPI() {
 #endif
 }
 
+// NOTE some mpi lib can support cuda aware, support it in the future.
 bool IsCompiledWithMPIAWARE() {
 #ifdef PADDLE_WITH_MPI_AWARE
   return true;
