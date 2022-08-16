@@ -24,9 +24,9 @@ KernelSignature IndexAddOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature IndexAddGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("index_add_grad",
-                         {"Out@GRAD", "Index", "AddValue"},
+                         {"Index", "AddValue", "Out@GRAD"},
                          {"axis"},
-                         {"X@GRAD"});
+                         {"X@GRAD", "AddValue@GRAD"});
 }
 
 }  // namespace phi

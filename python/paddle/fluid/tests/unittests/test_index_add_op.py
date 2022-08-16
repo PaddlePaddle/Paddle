@@ -29,6 +29,7 @@ class TestIndexAddOp(unittest.TestCase):
         self.setType()
         self.setPlace()
         self.config()
+        self.check_backward = True
         self.generate_input_data()
 
         self.index_shape = tuple([self.index_size])
@@ -65,6 +66,8 @@ class TestIndexAddOp(unittest.TestCase):
                                           high=self.x_shape[axis],
                                           size=self.index_size).astype(
                                               self.index_type)
+        if self.check_backward:
+            self.dout_np = np.random.random(self.x_shape).astype(self.x_type)
 
     def compute_index_add_ref(self):
         axis = self.axis
@@ -72,15 +75,12 @@ class TestIndexAddOp(unittest.TestCase):
             axis = self.axis + len(self.x_shape)
         if axis != 0:
             outer_loop = np.prod(self.x_shape[:axis]).astype(int)
-            print("outer_loop: ", outer_loop)
             x_reshape = [outer_loop] + list(self.x_shape[axis:])
-            print("x_reshape: ", x_reshape)
             x_np_reshape = np.reshape(self.x_np, tuple(x_reshape))
 
             add_value_reshape = [
                 np.prod(self.add_value_shape[:axis]).astype(int)
             ] + list(self.add_value_shape[axis:])
-            print("add_value_reshape: ", add_value_reshape)
 
             add_value_np_reshape = np.reshape(self.add_value_np,
                                               tuple(add_value_reshape))
@@ -99,19 +99,45 @@ class TestIndexAddOp(unittest.TestCase):
         ref_out = np.reshape(out_np, self.x_shape)
         return ref_out
 
+    def compute_index_add_backward_ref(self):
+        axis = self.axis
+        if self.axis < 0:
+            axis = self.axis + len(self.x_shape)
+
+        x_grad = self.dout_np
+
+        dout_tensor = paddle.to_tensor(self.dout_np)
+        index = paddle.to_tensor(self.index_np)
+        add_value_grad = paddle.index_select(dout_tensor, index, axis)
+
+        return x_grad, add_value_grad.numpy()
+
     def run_imperative(self, device):
         paddle.device.set_device(device)
-        input_tensor = paddle.to_tensor(self.x_np)
+        input_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
         index = paddle.to_tensor(self.index_np)
-        add_value = paddle.to_tensor(self.add_value_np)
+        add_value = paddle.to_tensor(self.add_value_np, stop_gradient=False)
 
         out = paddle.index_add(input_tensor, index, add_value, axis=self.axis)
         ref_out = self.compute_index_add_ref()
-
         np.testing.assert_allclose(ref_out,
                                    out.numpy(),
                                    rtol=self.rtol,
                                    atol=self.atol)
+
+        if self.check_backward:
+            dout_tensor = paddle.to_tensor(self.dout_np)
+            paddle.autograd.backward([out], [dout_tensor], retain_graph=True)
+            ref_x_grad, ref_add_value_grad = self.compute_index_add_backward_ref(
+            )
+            np.testing.assert_allclose(ref_x_grad,
+                                       input_tensor.grad.numpy(),
+                                       rtol=self.rtol,
+                                       atol=self.atol)
+            np.testing.assert_allclose(ref_add_value_grad,
+                                       add_value.grad.numpy(),
+                                       rtol=self.rtol,
+                                       atol=self.atol)
 
     def run_static(self, device):
         x = paddle.static.data(name='X', shape=self.x_shape, dtype=self.x_type)
@@ -165,7 +191,7 @@ class TestIndexAddOp(unittest.TestCase):
 class TestIndexAddOpMoreType(TestIndexAddOp):
 
     def setType(self):
-        self.x_type = np.float16
+        self.x_type = np.float64
         self.index_type = np.int64
 
 
@@ -204,14 +230,6 @@ class TestIndexAdOpCase5(TestIndexAddOp):
         self.index_size = 4
         self.add_value_shape = (10, 4)
 
-
-# class TestIndexAdOpGPU(TestIndexAddOp):
-#     def setPlace(self):
-#         self.place = []
-#         if paddle.is_compiled_with_cuda():
-#             self.place.append('gpu')
-#         else:
-#             self.place.append('cpu')
 
 if __name__ == '__main__':
     unittest.main()

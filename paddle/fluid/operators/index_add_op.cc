@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
@@ -64,12 +65,12 @@ class IndexAddGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("index_add_grad");
     op->SetInput("Index", this->Input("Index"));
+    op->SetInput("AddValue", this->Input("AddValue"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    // limin-todo: need to get grad_addvalue?
-    // op->SetOutput(framework::GradVarName("AddValue"),
-    //               this->InputGrad("AddValue"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("AddValue"),
+                  this->InputGrad("AddValue"));
   }
 };
 
@@ -91,8 +92,6 @@ DECLARE_INPLACE_OP_INFERER(IndexAddGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexAddGradNoNeedBufferVarsInferer, "X");
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -109,13 +108,15 @@ REGISTER_OPERATOR(index_add,
                   ops::IndexAddInplaceInferer,
                   IndexAddInferShapeFunctor);
 
-// DECLARE_INFER_SHAPE_FUNCTOR(index_add_grad, IndexAddGradInferShapeFunctor,
-//                             PD_INFER_META(phi::IndexAddGradInferMeta));
-
-// REGISTER_OPERATOR(index_add_grad, ops::IndexAddGradOp,
-//                   ops::IndexAddGradInplaceInferer,
-//                   IndexAddGradInferShapeFunctor);
+DECLARE_INFER_SHAPE_FUNCTOR(index_add_grad,
+                            IndexAddGradInferShapeFunctor,
+                            PD_INFER_META(phi::IndexAddGradInferMeta));
 
 REGISTER_OPERATOR(index_add_grad,
                   ops::IndexAddGradOp,
-                  ops::IndexAddGradNoNeedBufferVarsInferer);
+                  ops::IndexAddGradInplaceInferer,
+                  IndexAddGradInferShapeFunctor);
+
+// REGISTER_OPERATOR(index_add_grad,
+//                   ops::IndexAddGradOp,
+//                   ops::IndexAddGradNoNeedBufferVarsInferer);

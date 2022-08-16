@@ -1498,28 +1498,6 @@ void IndexAddInferMeta(const MetaTensor& x,
   output->share_lod(x);
 }
 
-/*
-// limin-todo:
-void IndexAddTensorGradInferMeta(const MetaTensor& out_grad,
-                                  const MetaTensor&index,
-                                  int axis,
-                                  MetaTensor* x_grad,
-                                  MetaTensor* add_tensor_grad) {
-  auto do_dims = out_grad.dims();
-  if (x_grad) {
-    x_grad->set_dims(do_dims);
-    x_grad->set_dtype(out_grad.dtype());
-    x_grad->set_layout(out_grad.layout());
-    x_grad->share_lod(out_grad);
-  }
-  // limin-todo:
-  if (add_tensor_grad) {
-    add_tensor_grad->set_dims(phi::make_ddim({1}));
-    add_tensor_grad->set_dtype(out_grad.dtype());
-  }
-}
-*/
-
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_y = y.dims();
