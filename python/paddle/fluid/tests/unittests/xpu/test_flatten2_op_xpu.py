@@ -93,10 +93,8 @@ class XPUTestFlatten2Op(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('flatten2')
-support_types_for_grad = get_xpu_op_support_types('mean')
 for stype in support_types:
-    if stype in support_types_for_grad:
-        create_test_class(globals(), XPUTestFlatten2Op, stype)
+    create_test_class(globals(), XPUTestFlatten2Op, stype)
 
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,7 @@ attr_types_map = {
     'Scalar(int)': 'const Scalar&',
     'Scalar(int64_t)': 'const Scalar&',
     'Scalar(float)': 'const Scalar&',
+    'Scalar[]': 'const std::vector<Scalar>&',
     'Place': 'Place',
     'DataLayout': 'DataLayout',
     'DataType': 'DataType',
@@ -58,6 +59,7 @@ opmaker_attr_types_map = {
     'Scalar(int)': 'int',
     'Scalar(int64_t)': 'int64_t',
     'Scalar(float)': 'float',
+    'Scalar[]': 'std::vector<Scalar>',
     'Place': 'int',
     'DataLayout': 'int',
     'DataType': 'int',
@@ -83,7 +85,8 @@ output_type_map = {'Tensor': 'Tensor', 'Tensor[]': 'std::vector<Tensor>'}
 phi_attr_types_map = attr_types_map.copy()
 phi_attr_types_map.update({
     'IntArray': 'const phi::IntArray&',
-    'Scalar': 'const phi::Scalar&'
+    'Scalar': 'const phi::Scalar&',
+    'Scalar[]': 'std::vector<phi::Scalar>&'
 })
 
 #--------------------------- phi dense tensor ---------------------------

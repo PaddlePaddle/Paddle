@@ -744,6 +744,65 @@ class TestDataset(unittest.TestCase):
 
         temp_dir.cleanup()
 
+    def test_run_with_inmemory_dataset_train_debug_mode(self):
+        """
+        Testcase for InMemoryDataset from create to run.
+        """
+
+        temp_dir = tempfile.TemporaryDirectory()
+        dump_a_path = os.path.join(temp_dir.name, 'test_run_with_dump_a.txt')
+        dump_b_path = os.path.join(temp_dir.name, 'test_run_with_dump_b.txt')
+
+        with open(dump_a_path, "w") as f:
+            data = "1 a 1 a 1 1 2 3 3 4 5 5 5 5 1 1\n"
+            data += "1 b 1 b 1 2 2 3 4 4 6 6 6 6 1 2\n"
+            data += "1 c 1 c 1 3 2 3 5 4 7 7 7 7 1 3\n"
+            f.write(data)
+        with open(dump_b_path, "w") as f:
+            data = "1 d 1 d 1 4 2 3 3 4 5 5 5 5 1 4\n"
+            data += "1 e 1 e 1 5 2 3 4 4 6 6 6 6 1 5\n"
+            data += "1 f 1 f 1 6 2 3 5 4 7 7 7 7 1 6\n"
+            data += "1 g 1 g 1 7 2 3 6 4 8 8 8 8 1 7\n"
+            f.write(data)
+
+        slots = ["slot1", "slot2", "slot3", "slot4"]
+        slots_vars = []
+        for slot in slots:
+            var = fluid.layers.data(name=slot,
+                                    shape=[1],
+                                    dtype="int64",
+                                    lod_level=1)
+            slots_vars.append(var)
+
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset.init(batch_size=32,
+                     thread_num=1,
+                     pipe_command="cat",
+                     data_feed_type="SlotRecordInMemoryDataFeed",
+                     use_var=slots_vars)
+        dataset._init_distributed_settings(parse_ins_id=True,
+                                           parse_content=True,
+                                           fea_eval=True,
+                                           candidate_size=10000)
+        dataset.set_filelist([dump_a_path, dump_b_path])
+        dataset.load_into_memory()
+
+        paddle.enable_static()
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        exe.run(startup_program)
+        for i in range(2):
+            try:
+                exe.train_from_dataset(main_program, dataset, debug=True)
+            except ImportError as e:
+                pass
+            except Exception as e:
+                self.assertTrue(False)
+
+        temp_dir.cleanup()
+
 
 class TestDatasetWithDataLoader(TestDataset):
     """

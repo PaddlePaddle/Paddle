@@ -146,7 +146,7 @@ void MarkNodeForDeletion(Node *node) { node->Op()->SetAttr("delete_node", 1); }
 
 bool IsMarkedForDeletion(Node *node) {
   return node->Op()->HasAttr("delete_node") &&
-         BOOST_GET_CONST(int, node->Op()->GetAttr("delete_node")) > 0;
+         PADDLE_GET_CONST(int, node->Op()->GetAttr("delete_node")) > 0;
 }
 
 int RemoveTailReduction(Graph *graph,

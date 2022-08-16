@@ -367,8 +367,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 
   if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    tensor_check<platform::CUDADeviceContext>(
-        op_type, var_name, *tensor, place);
+    tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",

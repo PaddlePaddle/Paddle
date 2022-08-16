@@ -33,6 +33,9 @@ def download_file():
     if paddle.is_compiled_with_npu():
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_npu')
 
+    if paddle.is_compiled_with_mlu():
+        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_mlu')
+
     f = requests.get(url)
     data = f.text
     status_code = f.status_code

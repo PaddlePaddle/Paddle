@@ -170,9 +170,5 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
 template class MatrixSolveFunctor<GPUContext, float>;
 template class MatrixSolveFunctor<GPUContext, double>;
 
-// TODO(wuweilong): remove these instantiations later
-template class MatrixSolveFunctor<paddle::platform::CUDADeviceContext, float>;
-template class MatrixSolveFunctor<paddle::platform::CUDADeviceContext, double>;
-
 }  // namespace funcs
 }  // namespace phi

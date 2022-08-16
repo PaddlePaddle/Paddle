@@ -17,11 +17,9 @@ import unittest
 import numpy as np
 import paddle
 import paddle.static
-from op_test_ipu import IPUOpTest
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):

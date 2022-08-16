@@ -114,9 +114,9 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
     T* out_data = output->mutable_data<T>(ctx.GetPlace());
     // initialize
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+    auto& place =
+        *ctx.template device_context<phi::GPUContext>().eigen_device();
     out_eigen.device(place) = out_eigen.constant(static_cast<T>(0));
 
     CBLAS_TRANSPOSE transA = CblasNoTrans;
@@ -127,7 +127,7 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
     int64_t strideA = ins_num * in_dim;
     int64_t strideB = in_dim * out_dim;
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     blas.BatchedGEMM(transA,
                      transB,
                      ins_num,
@@ -169,9 +169,9 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
     auto in_dim = input_dims[2];
     auto out_dim = w_dims[2];
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+    auto& place =
+        *ctx.template device_context<phi::GPUContext>().eigen_device();
     // initialize
     dx->mutable_data<T>(ctx.GetPlace());
     auto dx_eigen = framework::EigenVector<T>::Flatten(*dx);
@@ -199,7 +199,7 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
                      out_dim,
                      db_data);
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     T alpha = 1;
     T beta = 0;
 
@@ -238,7 +238,7 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using GPUCtx = paddle::platform::CUDADeviceContext;
+using GPUCtx = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(batch_fc,
                         ops::BatchFCCUDAKernel<GPUCtx, float>,
                         ops::BatchFCCUDAKernel<GPUCtx, double>);

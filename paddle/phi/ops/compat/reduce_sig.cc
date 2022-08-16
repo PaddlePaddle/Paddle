@@ -83,6 +83,22 @@ KernelSignature ReduceMaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("unregistered", {}, {}, {});
 }
 
+KernelSignature ReduceAMaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X")) {
+    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
+    // InferShape, so we must return the "max_raw" KernelSignature.
+    // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
+    // the "max_raw" KernelSignature
+    if (ctx.IsForInferShape() || reduce_all) {
+      return KernelSignature(
+          "amax_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+    }
+    return KernelSignature("amax", {"X"}, {"dim", "keep_dim"}, {"Out"});
+  }
+  return KernelSignature("unregistered", {}, {}, {});
+}
+
 KernelSignature ReduceMinOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
     bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
@@ -95,6 +111,22 @@ KernelSignature ReduceMinOpArgumentMapping(const ArgumentMappingContext& ctx) {
           "min_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
     }
     return KernelSignature("min", {"X"}, {"dim", "keep_dim"}, {"Out"});
+  }
+  return KernelSignature("unregistered", {}, {}, {});
+}
+
+KernelSignature ReduceAMinOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X")) {
+    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
+    // InferShape, so we must return the "min_raw" KernelSignature.
+    // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
+    // the "min_raw" KernelSignature
+    if (ctx.IsForInferShape() || reduce_all) {
+      return KernelSignature(
+          "amin_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+    }
+    return KernelSignature("amin", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
   return KernelSignature("unregistered", {}, {}, {});
 }
@@ -151,9 +183,25 @@ KernelSignature ReduceMaxGradOpArgumentMapping(
                          {"X@GRAD"});
 }
 
+KernelSignature ReduceAMaxGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("amax_grad",
+                         {"X", "Out", "Out@GRAD"},
+                         {"dim", "keep_dim", "reduce_all"},
+                         {"X@GRAD"});
+}
+
 KernelSignature ReduceMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("min_grad",
+                         {"X", "Out", "Out@GRAD"},
+                         {"dim", "keep_dim", "reduce_all"},
+                         {"X@GRAD"});
+}
+
+KernelSignature ReduceAMinGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("amin_grad",
                          {"X", "Out", "Out@GRAD"},
                          {"dim", "keep_dim", "reduce_all"},
                          {"X@GRAD"});
@@ -173,6 +221,8 @@ PD_REGISTER_BASE_KERNEL_NAME(reduce_sum, sum);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_mean, mean);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_max, max);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_min, min);
+PD_REGISTER_BASE_KERNEL_NAME(reduce_amax, amax);
+PD_REGISTER_BASE_KERNEL_NAME(reduce_amin, amin);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_prod, prod);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_all, all);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_any, any);
@@ -182,12 +232,16 @@ PD_REGISTER_BASE_KERNEL_NAME(reduce_mean_grad, mean_grad);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_prod_grad, prod_grad);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_max_grad, max_grad);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_min_grad, min_grad);
+PD_REGISTER_BASE_KERNEL_NAME(reduce_amax_grad, amax_grad);
+PD_REGISTER_BASE_KERNEL_NAME(reduce_amin_grad, amin_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(reduce_sum, phi::ReduceSumOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_mean, phi::ReduceMeanOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_prod, phi::ReduceProdOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_max, phi::ReduceMaxOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(reduce_amax, phi::ReduceAMaxOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_min, phi::ReduceMinOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(reduce_amin, phi::ReduceAMinOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_all, phi::ReduceAllOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_any, phi::ReduceAnyOpArgumentMapping);
 
@@ -199,5 +253,9 @@ PD_REGISTER_ARG_MAPPING_FN(reduce_prod_grad,
                            phi::ReduceProdGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_max_grad,
                            phi::ReduceMaxGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(reduce_amax_grad,
+                           phi::ReduceAMaxGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_min_grad,
                            phi::ReduceMinGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(reduce_amin_grad,
+                           phi::ReduceAMinGradOpArgumentMapping);

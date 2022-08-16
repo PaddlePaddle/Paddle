@@ -82,7 +82,7 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     const auto xs = ctx.MultiInput<framework::Tensor>("X");
     const auto* scale = ctx.Input<framework::Tensor>("Scale");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
@@ -92,8 +92,7 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
     bool* found_inf_data = found_inf->mutable_data<bool>(dev_ctx.GetPlace());
 
     framework::Tensor inverse_scale =
-        ctx.AllocateTmpTensor<MPDType, platform::CUDADeviceContext>({1},
-                                                                    dev_ctx);
+        ctx.AllocateTmpTensor<MPDType, phi::GPUContext>({1}, dev_ctx);
     MPDType* inverse_scale_v = inverse_scale.template data<MPDType>();
 
     InverseAndMemset<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(

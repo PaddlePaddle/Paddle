@@ -76,6 +76,7 @@ class XPUCacheArray {
   }
 
   void print() {}
+  void print_collision(int i) {}
 
 #if defined(__xpu__)
   __device__ ValType* find(const KeyType& key) {
@@ -137,8 +138,12 @@ class HashTable {
            size_t len,
            StreamType stream);
 
-  template <typename StreamType>
-  void get(const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
+  template <typename StreamType, typename GPUAccessor>
+  void get(const KeyType* d_keys,
+           char* d_vals,
+           size_t len,
+           StreamType stream,
+           GPUAccessor& fv_accessor);
 
   void show();
 
@@ -150,9 +155,9 @@ class HashTable {
 
 #if defined(PADDLE_WITH_CUDA)
 
-  template <typename GradType, typename Sgd, typename StreamType>
+  template <typename Sgd, typename StreamType>
   void update(const KeyType* d_keys,
-              const GradType* d_grads,
+              const float* d_grads,
               size_t len,
               Sgd sgd,
               StreamType stream);
@@ -188,6 +193,8 @@ class HashTable {
     VLOG(3) << "hashtable set pull value size: " << pull_feature_value_size_
             << " push value size: " << push_grad_value_size_;
   }
+
+  void show_collision(int id) { return container_->print_collision(id); }
 
   std::unique_ptr<phi::RWLock> rwlock_{nullptr};
 

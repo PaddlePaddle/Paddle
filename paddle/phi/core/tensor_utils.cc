@@ -35,6 +35,19 @@ void Copy(const Context& dev_ctx,
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
 
+  if (&src == dst) {
+    if (paddle::platform::is_same_place(src_place, dst_place)) {
+      VLOG(6) << "Skip copy the same data(" << src_ptr << ") from " << src_place
+              << " to " << dst_place;
+    } else {
+      VLOG(6) << "Src and dst are the same Tensor, in-place copy data("
+              << src_ptr << ") from " << src_place << " to " << dst_place;
+      const DenseTensor src_copy = src;
+      Copy(dev_ctx, src_copy, dst_place, blocking, dst);
+    }
+    return;
+  }
+
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
 
@@ -52,6 +65,10 @@ void Copy(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU
   } else if (paddle::platform::is_xpu_place(dst_place)) {
+    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (paddle::platform::is_custom_place(dst_place)) {
     dst_ptr = dev_ctx.Alloc(dst, src.dtype());
 #endif
   }
@@ -196,10 +213,9 @@ void Copy(const Context& dev_ctx,
     paddle::memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
 #endif
-  }
 #ifdef PADDLE_WITH_XPU
-  else if (paddle::platform::is_xpu_place(src_place) &&  // NOLINT
-           paddle::platform::is_cpu_place(dst_place)) {
+  } else if (paddle::platform::is_xpu_place(src_place) &&  // NOLINT
+             paddle::platform::is_cpu_place(dst_place)) {
     paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (paddle::platform::is_cpu_place(src_place) &&
              paddle::platform::is_xpu_place(dst_place)) {
@@ -212,11 +228,40 @@ void Copy(const Context& dev_ctx,
       return;
     }
     paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (paddle::platform::is_custom_place(src_place) &&  // NOLINT
+             paddle::platform::is_cpu_place(dst_place)) {
+    auto stream =
+        blocking
+            ? nullptr
+            : reinterpret_cast<const paddle::platform::CustomDeviceContext&>(
+                  dev_ctx)
+                  .stream();
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
+             paddle::platform::is_custom_place(dst_place)) {
+    auto stream =
+        blocking
+            ? nullptr
+            : reinterpret_cast<const paddle::platform::CustomDeviceContext&>(
+                  dev_ctx)
+                  .stream();
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  } else if (paddle::platform::is_custom_place(src_place) &&  // NOLINT
+             paddle::platform::is_custom_place(dst_place)) {
+    auto stream =
+        blocking
+            ? nullptr
+            : reinterpret_cast<const paddle::platform::CustomDeviceContext&>(
+                  dev_ctx)
+                  .stream();
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
-#endif
 }
 
 template <typename Context>
@@ -359,4 +404,11 @@ template void Copy(const XPUContext& dev_ctx,
                    DenseTensor* dst);
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+template void Copy(const CustomContext& dev_ctx,
+                   const DenseTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   DenseTensor* dst);
+#endif
 }  // namespace phi

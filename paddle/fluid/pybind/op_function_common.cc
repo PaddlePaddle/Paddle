@@ -87,7 +87,8 @@ bool PyObject_CheckLongOrToLong(PyObject** obj) {
 bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
   // sometimes users provide PyLong or numpy.int64 but attr is float
   if (PyFloat_Check(*obj) || PyLong_Check(*obj) ||
-      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype)) {  // NOLINT
+      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
+      PyObject_IsInstance(*obj, (PyObject*)p_tensor_type)) {     // NOLINT
     return true;
   }
   if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT

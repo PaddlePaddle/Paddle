@@ -473,7 +473,7 @@ class TestIrfft2(unittest.TestCase):
 @parameterize((TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'), [
     ('test_bool_input',
      (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-         np.bool_), None, -1, 'backward', NotImplementedError),
+         np.bool_), None, -1, 'backward', RuntimeError),
     ('test_n_nagative', np.random.randn(4, 4, 4) +
      1j * np.random.randn(4, 4, 4), -1, -1, 'backward', ValueError),
     ('test_n_zero', np.random.randn(4, 4) + 1j * np.random.randn(4, 4), 0, -1,
@@ -543,7 +543,7 @@ class TestIrfftException(unittest.TestCase):
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [('test_bool_input',
       (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-          np.bool_), None, (-2, -1), 'backward', NotImplementedError),
+          np.bool_), None, (-2, -1), 'backward', RuntimeError),
      ('test_n_nagative',
       np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (-1, -2),
       (-2, -1), 'backward', ValueError),
@@ -625,7 +625,7 @@ class TestIrfft2Exception(unittest.TestCase):
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [('test_bool_input',
       (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-          np.bool_), None, (-2, -1), 'backward', NotImplementedError),
+          np.bool_), None, (-2, -1), 'backward', RuntimeError),
      ('test_n_nagative',
       np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (-1, -2),
       (-2, -1), 'backward', ValueError),

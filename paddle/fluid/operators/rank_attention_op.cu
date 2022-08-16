@@ -62,7 +62,7 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
 
     int block_matrix_row = max_rank * x_fea_dim;
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     int max_ins = std::max(ins_num, max_size);
 
@@ -83,8 +83,8 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     auto ins_rank_eigen = framework::EigenVector<T>::Flatten(*ins_rank);
     auto out_eigen = framework::EigenVector<T>::Flatten(*Out);
 
-    auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto &place =
+        *ctx.template device_context<phi::GPUContext>().eigen_device();
 
     param_help_eigen.device(place) =
         param_help_eigen.constant(static_cast<T>(0));
@@ -135,7 +135,7 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     int64_t strideA = block_matrix_row;
     int64_t strideB = block_matrix_row * para_col;
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     blas.BatchedGEMM(transA,
                      transB,
                      1,
@@ -176,9 +176,9 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
     auto rank_offset_dims = rank_offset->dims();
     auto max_rank = (rank_offset_dims[1] - 1) / 2;
     int block_matrix_row = max_rank * x_fea_dim;
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
+    auto &place =
+        *ctx.template device_context<phi::GPUContext>().eigen_device();
 
     int max_ins = std::max(ins_num, max_size);
     // initialize out grad
@@ -201,7 +201,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
     const T *ins_rank_data = ins_rank->data<T>();
     T *param_grad_data = param_grad.data<T>();
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     T alpha = 1;
     T beta = 0;
 
@@ -242,7 +242,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using GPUCtx = paddle::platform::CUDADeviceContext;
+using GPUCtx = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(rank_attention,
                         ops::RankAttentionCUDAKernel<GPUCtx, float>,
                         ops::RankAttentionCUDAKernel<GPUCtx, double>);

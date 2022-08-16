@@ -771,10 +771,18 @@ bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
   return var->Name() == op->Op()->Output(argument)[nth];
 }
 
-void GraphSafeRemoveNodes(Graph *graph,
-                          const std::unordered_set<const Node *> &nodes) {
+void GraphSafeRemoveNodes(
+    Graph *graph,
+    const std::unordered_set<const Node *> &nodes,
+    std::unordered_set<std::shared_ptr<Node>> *saved_nodes) {
   for (auto *node : nodes) {
-    graph->RemoveNode(const_cast<Node *>(node));
+    if (saved_nodes != nullptr) {
+      // prevent unique_ptr node from being released
+      saved_nodes->insert(
+          std::move(graph->RemoveNode(const_cast<Node *>(node))));
+    } else {
+      graph->RemoveNode(const_cast<Node *>(node));
+    }
   }
 
   for (auto *node : graph->Nodes()) {
@@ -2010,6 +2018,33 @@ PDNode *patterns::ElementwiseOp::operator()(
   return out_var;
 }
 
+PDNode *patterns::MatmulElementwiseAdd::operator()(
+    const std::string &matmul_type, bool as_x) {
+  auto matmul_op =
+      pattern->NewNode(matmul_op_repr())->assert_is_op(matmul_type);
+  auto matmul_out =
+      pattern->NewNode(matmul_out_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output(matmul_type, "Out")
+          ->assert_is_only_output_of_op(matmul_type)
+          ->assert_is_op_input("elementwise_add", as_x ? "X" : "Y");
+  auto elementwise_addend =
+      pattern->NewNode(elementwise_addend_repr())
+          ->AsInput()
+          ->assert_is_op_input("elementwise_add", as_x ? "Y" : "X");
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
+  auto elementwise_add_out =
+      pattern->NewNode(elementwise_add_out_repr())
+          ->AsOutput()
+          ->assert_is_op_output("elementwise_add", "Out");
+
+  matmul_op->LinksTo({matmul_out});
+  elementwise_add_op->LinksFrom({matmul_out, elementwise_addend})
+      .LinksTo({elementwise_add_out});
+  return elementwise_add_out;
+}
+
 PDNode *patterns::ResidualElementwise::operator()(
     PDNode *op_var,
     PDNode *residual_var,
@@ -2799,7 +2834,7 @@ void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
   auto reshape1_op =
       pattern->NewNode(reshape1_op_repr())->assert_is_op("reshape2");
   reshape1_op->assert_more([&](Node *x) {
-    return BOOST_GET_CONST(std::vector<int>, x->Op()->GetAttr("shape"))
+    return PADDLE_GET_CONST(std::vector<int>, x->Op()->GetAttr("shape"))
                .size() == 5;
   });
 
@@ -2957,16 +2992,14 @@ void patterns::DeleteQuantDequantLinearOpPattern::operator()() {
   auto dequantize_linear_op_out =
       pattern->NewNode(dequantize_linear_op_out_repr())
           ->AsIntermediate()
-          ->assert_is_op_output("dequantize_linear", "Y");
-
-  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+          ->assert_is_op_output("dequantize_linear", "Y")
+          ->AsOutput();
 
   quantize_linear_op
       ->LinksFrom({quantize_linear_op_x, quantize_linear_op_scale})
       .LinksTo({quantize_linear_op_out});
   dequantize_linear_op->LinksFrom({quantize_linear_op_out})
       .LinksTo({dequantize_linear_op_out});
-  any_op2->LinksFrom({dequantize_linear_op_out});
 }
 
 PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(

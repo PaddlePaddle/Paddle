@@ -78,8 +78,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     VLOG(3) << "Loading data for GPU.";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto *dev_ctx =
-        dynamic_cast<const platform::CUDADeviceContext *>(pool.Get(place));
+    auto *dev_ctx = dynamic_cast<const phi::GPUContext *>(pool.Get(place));
     auto gpu_place = place;
     memory::Copy(gpu_place,
                  static_cast<void *>(input_tensor_ptr),
@@ -91,9 +90,22 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Paddle wasn't compiled with CUDA, but place is GPU."));
 #endif
+  } else if (platform::is_xpu_place(place)) {
+    VLOG(3) << "Loading data for XPU.";
+#if defined(PADDLE_WITH_XPU)
+    auto xpu_place = place;
+    memory::Copy(xpu_place,
+                 static_cast<void *>(input_tensor_ptr),
+                 platform::CPUPlace(),
+                 input_data.data.data(),
+                 input_data.data.length());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Paddle wasn't compiled with XPU, but place is XPU."));
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "DistModel only supports CPU and GPU."));
+        "DistModel only supports CPU and GPU and XPU."));
   }
 
   framework::LoD dst_lod;
@@ -190,9 +202,12 @@ bool DistModel::PreparePlace() {
     place_ = paddle::platform::CUDAPlace(config_.device_id);
   } else if (config_.place == "CPU") {
     place_ = paddle::platform::CPUPlace();
+  } else if (config_.place == "XPU") {
+    place_ = paddle::platform::XPUPlace(config_.device_id);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place must be choosen from GPU or CPU, but got %s.", config_.place));
+        "Place must be choosen from GPU or CPU or XPU, but got %s.",
+        config_.place));
   }
   return true;
 }
@@ -277,6 +292,29 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     gen_nccl_id_op->SetAttr("op_role",
                             static_cast<int>(framework::OpRole::kForward));
     gen_nccl_id_op->CheckAttrs();
+    framework::OpDesc *comm_init_op = block->AppendOp();
+    comm_init_op->SetType("c_comm_init");
+    comm_init_op->SetInput("X", {tmp_var_name});
+    comm_init_op->SetAttr("rank", rank);
+    comm_init_op->SetAttr("nranks", nranks);
+    comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("op_role",
+                          static_cast<int>(framework::OpRole::kForward));
+    comm_init_op->CheckAttrs();
+  } else if (config_.place == "XPU") {
+    framework::VarDesc *new_var = block->Var(tmp_var_name);
+    new_var->SetType(framework::proto::VarType::RAW);
+    new_var->SetPersistable(true);
+    framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
+    gen_bkcl_id_op->SetType("c_gen_bkcl_id");
+    gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
+    gen_bkcl_id_op->SetAttr("rank", rank);
+    gen_bkcl_id_op->SetAttr("endpoint", config_.current_endpoint);
+    gen_bkcl_id_op->SetAttr("other_endpoints", peer_endpoints);
+    gen_bkcl_id_op->SetAttr("ring_id", ring_id);
+    gen_bkcl_id_op->SetAttr("op_role",
+                            static_cast<int>(framework::OpRole::kForward));
+    gen_bkcl_id_op->CheckAttrs();
     framework::OpDesc *comm_init_op = block->AppendOp();
     comm_init_op->SetType("c_comm_init");
     comm_init_op->SetInput("X", {tmp_var_name});
@@ -416,7 +454,7 @@ bool DistModel::PrepareFeedAndFetch() {
   for (auto *op : program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
       VLOG(3) << "feed op with feed var: " << op->Output("Out")[0];
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
@@ -446,7 +484,7 @@ bool DistModel::PrepareFeedAndFetch() {
       }
     } else if (op->Type() == "fetch") {
       VLOG(3) << "fetch op with fetch var: " << op->Input("X")[0];
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
       }
@@ -507,7 +545,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
   VLOG(3) << "DistModel is fetch results.";
   output_data->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
-    int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
+    int idx = PADDLE_GET_CONST(int, fetches_[i]->GetAttr("col"));
     VLOG(3) << "Fetching data for [" << idx_to_fetches_[idx] << "]";
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(idx),
@@ -518,7 +556,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
+    auto &fetch = PADDLE_GET(framework::LoDTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(output_data->at(i));
     output->name = idx_to_fetches_[idx];

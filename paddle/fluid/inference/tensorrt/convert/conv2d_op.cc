@@ -55,7 +55,7 @@ void ConvertConv2d(TensorRTEngine* engine,
 
   if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-    float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+    float in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
     engine->SetTensorDynamicRange(X, in_scale);
 #endif
   }
@@ -70,17 +70,17 @@ void ConvertConv2d(TensorRTEngine* engine,
   const int n_input = Y_t->dims()[1];
   const int filter_h = Y_t->dims()[2];
   const int filter_w = Y_t->dims()[3];
-  const int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
+  const int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
   const std::vector<int> dilations =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
   const std::vector<int> strides =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
   std::vector<int> paddings =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
   std::string padding_algorithm = "EXPLICIT";
   if (op_desc.HasAttr("padding_algorithm"))
     padding_algorithm =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
   if (padding_algorithm == "VALID") {
     for (size_t i = 0; i < paddings.size(); i++) {
       paddings[i] = 0;

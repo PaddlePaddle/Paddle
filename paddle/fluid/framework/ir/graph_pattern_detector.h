@@ -163,7 +163,7 @@ struct PDNode {
   PDNode* assert_op_attr(const std::string& attr_name, const T& attr) {
     asserts_.emplace_back([=](Node* x) {
       return x && x->IsOp() && x->Op()->HasAttr(attr_name) &&
-             BOOST_GET_CONST(T, x->Op()->GetAttr(attr_name)) == attr;
+             PADDLE_GET_CONST(T, x->Op()->GetAttr(attr_name)) == attr;
     });
     return this;
   }
@@ -392,8 +392,10 @@ bool HasOutput(Node* op, const std::string& argument);
 bool IsNthOutput(Node* var, Node* op, const std::string& argument, size_t nth);
 
 // Graph safely remove some nodes, will automatically clean up the edges.
-void GraphSafeRemoveNodes(Graph* graph,
-                          const std::unordered_set<const Node*>& nodes);
+void GraphSafeRemoveNodes(
+    Graph* graph,
+    const std::unordered_set<const Node*>& nodes,
+    std::unordered_set<std::shared_ptr<Node>>* saved_nodes = nullptr);
 
 // Some pre-defined patterns those can be reused in multiple passes.
 // The related Fluid Layer or Op should be one pattern here for better re-usage
@@ -1034,6 +1036,21 @@ struct ElementwiseOp : public PatternBase {
 
   PATTERN_DECL_NODE(elementwise_op);
   PATTERN_DECL_NODE(elementwise_out);
+};
+
+struct MatmulElementwiseAdd : public PatternBase {
+  MatmulElementwiseAdd(PDPattern* pattern,
+                       const std::string& name_scope,
+                       const std::string& matmul_type,
+                       bool as_x)
+      : PatternBase(pattern, name_scope, "matmul_elementwise_add") {}
+
+  PDNode* operator()(const std::string& matmul_type, bool as_x);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(elementwise_addend);
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_out);
 };
 
 // Residual Elementwise ops
@@ -1692,7 +1709,6 @@ struct DeleteQuantDequantLinearOpPattern : public PatternBase {
   // PATTERN_DECL_NODE(dequantize_linear_op_scale);  // Can not add this node.
   // Todo: Wangzheee
   PATTERN_DECL_NODE(dequantize_linear_op_out);
-  PATTERN_DECL_NODE(any_op2);
 };
 
 // Reshape + Transpose + Matmul

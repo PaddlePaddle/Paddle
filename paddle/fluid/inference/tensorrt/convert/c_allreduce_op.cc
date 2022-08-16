@@ -59,9 +59,9 @@ class CAllReduceOpConverter : public OpConverter {
             "But received Out's size %u.",
             output_num));
     // Get attrs
-    int ring_id = BOOST_GET_CONST(int, op_desc.GetAttr("ring_id"));
+    int ring_id = PADDLE_GET_CONST(int, op_desc.GetAttr("ring_id"));
     bool use_calc_stream =
-        BOOST_GET_CONST(bool, op_desc.GetAttr("use_calc_stream"));
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("use_calc_stream"));
 
     nvinfer1::ILayer* layer = nullptr;
 #if IS_TRT_VERSION_GE(6000)

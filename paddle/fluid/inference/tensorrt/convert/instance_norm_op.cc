@@ -42,7 +42,7 @@ class InstanceNormOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
-    float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+    float eps = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
 
     auto* scale_var = scope.FindVar(op_desc.Input("Scale")[0]);
     auto* bias_var = scope.FindVar(op_desc.Input("Bias")[0]);

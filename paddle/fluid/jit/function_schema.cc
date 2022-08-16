@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/jit/function_schema.h"
 
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/enforce.h"
 
 #include "paddle/fluid/jit/function_utils.h"
@@ -52,24 +53,21 @@ void FunctionSchema::AddOutputArg(const std::string& name) {
 FunctionInfo::FunctionInfo(const std::string& func_name,
                            const std::vector<std::string>& param_names,
                            const framework::ProgramDesc& program_desc)
-    : func_name_(func_name),
-      param_names_(param_names),
-      program_desc_(program_desc) {
+    : func_name_(func_name), param_names_(param_names) {
+  program_desc_.reset(new framework::ProgramDesc(program_desc));
   // Parse FunctionSchema
-  for (auto& in_name : program_desc_.GetFeedTargetNames()) {
+  for (auto& in_name : program_desc_->GetFeedTargetNames()) {
     schema_.AddInputArg(in_name);
   }
-  for (auto& out_name : program_desc_.GetFetchTargetNames()) {
+  for (auto& out_name : program_desc_->GetFetchTargetNames()) {
     schema_.AddOutputArg(out_name);
   }
-  // remove feed fetch op
-  utils::RemoveFeedFetch(&program_desc_);
 }
 
 const std::string& FunctionInfo::FunctionName() const { return func_name_; }
 
 const framework::ProgramDesc& FunctionInfo::ProgramDesc() const {
-  return program_desc_;
+  return *program_desc_.get();
 }
 
 const std::vector<std::string>& FunctionInfo::ParamNames() const {
@@ -82,6 +80,10 @@ const std::vector<std::string> FunctionInfo::InputArgNames() const {
 
 const std::vector<std::string> FunctionInfo::OutputArgNames() const {
   return schema_.OutputArgNames();
+}
+
+void FunctionInfo::RemoveDescFeedFetch() {
+  utils::RemoveFeedFetch(program_desc_.get());
 }
 
 }  // namespace jit

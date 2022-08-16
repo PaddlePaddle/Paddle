@@ -403,9 +403,9 @@ static inline int GetNumUsedThreads(const int max_threads_per_seq,
 }
 
 template <typename T>
-class BeamSearchFunctor<platform::CUDADeviceContext, T> {
+class BeamSearchFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const phi::GPUContext& context,
                   const framework::LoDTensor* pre_ids,
                   const framework::LoDTensor* pre_scores,
                   const framework::LoDTensor* ids,
@@ -531,10 +531,10 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template class BeamSearchFunctor<platform::CUDADeviceContext, int>;
-template class BeamSearchFunctor<platform::CUDADeviceContext, int64_t>;
-template class BeamSearchFunctor<platform::CUDADeviceContext, float>;
-template class BeamSearchFunctor<platform::CUDADeviceContext, double>;
+template class BeamSearchFunctor<phi::GPUContext, int>;
+template class BeamSearchFunctor<phi::GPUContext, int64_t>;
+template class BeamSearchFunctor<phi::GPUContext, float>;
+template class BeamSearchFunctor<phi::GPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

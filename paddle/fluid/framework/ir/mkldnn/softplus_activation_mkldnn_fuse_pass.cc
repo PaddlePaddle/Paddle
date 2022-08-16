@@ -62,7 +62,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
 
     if (softplus_op->HasAttr("use_mkldnn")) {
       PADDLE_ENFORCE_EQ(
-          BOOST_GET_CONST(bool, softplus_op->GetAttr("use_mkldnn")),
+          PADDLE_GET_CONST(bool, softplus_op->GetAttr("use_mkldnn")),
           true,
           platform::errors::PreconditionNotMet("The softplus + activation "
                                                "fusion may happen only when "
@@ -78,7 +78,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     }
 
     if (act_type == "gelu" && activation_op->HasAttr("approximate") &&
-        BOOST_GET_CONST(bool, activation_op->GetAttr("approximate")))
+        PADDLE_GET_CONST(bool, activation_op->GetAttr("approximate")))
       softplus_op->SetAttr("fuse_activation", std::string("gelu_tanh"));
     else
       softplus_op->SetAttr("fuse_activation", act_type);

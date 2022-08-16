@@ -32,7 +32,7 @@ TEST(PhiUtils, TransPhiKernelKeyToOpKernelType) {
 
 #ifdef PADDLE_WITH_MKLDNN
   phi::KernelKey kernel_key_mkldnn(
-      phi::Backend::MKLDNN, phi::DataLayout::NCHW, phi::DataType::FLOAT32);
+      phi::Backend::ONEDNN, phi::DataLayout::NCHW, phi::DataType::FLOAT32);
   op_kernel_type =
       paddle::framework::TransPhiKernelKeyToOpKernelType(kernel_key_mkldnn);
   ASSERT_EQ(op_kernel_type.data_type_, paddle::framework::proto::VarType::FP32);
@@ -76,7 +76,7 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type_mkldnn);
   ASSERT_EQ(kernel_key_mkldnn.dtype(), phi::DataType::FLOAT32);
   ASSERT_EQ(kernel_key_mkldnn.layout(), phi::DataLayout::MKLDNN);
-  ASSERT_EQ(kernel_key_mkldnn.backend(), phi::Backend::MKLDNN);
+  ASSERT_EQ(kernel_key_mkldnn.backend(), phi::Backend::ONEDNN);
 #endif
 
 #ifdef PADDLE_WITH_CUDA

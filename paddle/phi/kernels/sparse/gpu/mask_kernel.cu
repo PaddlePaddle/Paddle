@@ -111,7 +111,7 @@ void SparseMaskKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const SparseCooTensor& mask,
                       SparseCooTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       mask.non_zero_indices().dtype(), "SparseMaskGPUKernel", ([&] {
         SparseMaskGPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
@@ -238,6 +238,7 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
       x_indexs_ptr, x_indexs.numel(), table.data<int>());
   config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, mask_indexs.numel(), 1);
+
   const int VecBytes = 16;
   const int VecSize = VecBytes / sizeof(T);
   if (stride % VecSize == 0) {
@@ -269,7 +270,7 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             const DenseTensor& mask_indices,
                             DenseTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "SparseMaskHelperGPUKernel", ([&] {
         SparseMaskHelperGPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));

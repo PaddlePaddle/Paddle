@@ -180,6 +180,9 @@ void prune_impl(const proto::ProgramDesc& input,
                 std::map<int, int>* pruned_origin_block_id_map) {
   auto& block = input.blocks(block_id);
   auto& ops = block.ops();
+  auto add_dependent_var = [&](const std::string& name) {
+    if (feed_var_names.count(name) == 0) dependent_vars->insert(name);
+  };
 
   bool expect_feed = true;
   for (auto& op_desc : ops) {
@@ -245,8 +248,17 @@ void prune_impl(const proto::ProgramDesc& input,
       // For eval / infer mode, there is no optimize op in program.
       for (auto& var : op_desc.inputs()) {
         for (auto& argu : var.arguments()) {
-          if (feed_var_names.count(argu) == 0) {
-            dependent_vars->insert(argu);
+          add_dependent_var(argu);
+        }
+      }
+      // NOTE(dev): All attibute with VarDesc type is considered as Input,
+      // so they shall be added into dependent_vars.
+      for (auto& attr : op_desc.attrs()) {
+        if (attr.type() == proto::AttrType::VAR) {
+          add_dependent_var(attr.var_name());
+        } else if (attr.type() == proto::AttrType::VARS) {
+          for (auto& name : attr.vars_name()) {
+            add_dependent_var(name);
           }
         }
       }
@@ -331,20 +343,30 @@ void prune_impl(const proto::ProgramDesc& input,
   }
 
   std::set<std::string> var_names;
+  auto add_var_names = [&](const std::string& name) {
+    if (var_map.count(name) != 0) var_names.insert(name);
+  };
   for (const auto& op : *op_field) {
     auto& input_field = op.inputs();
     for (auto& input_var : input_field) {
       for (auto& arg : input_var.arguments()) {
-        if (var_map.count(arg) != 0) {
-          var_names.insert(arg);
-        }
+        add_var_names(arg);
       }
     }
     auto& output_field = op.outputs();
     for (auto& output_var : output_field) {
       for (auto& arg : output_var.arguments()) {
-        if (var_map.count(arg) != 0) {
-          var_names.insert(arg);
+        add_var_names(arg);
+      }
+    }
+    // NOTE(dev): All attibute with VarDesc type is considered as Input,
+    // so they shall be added into dependent_vars.
+    for (auto& attr : op.attrs()) {
+      if (attr.type() == proto::AttrType::VAR) {
+        add_var_names(attr.var_name());
+      } else if (attr.type() == proto::AttrType::VARS) {
+        for (auto& name : attr.vars_name()) {
+          add_var_names(name);
         }
       }
     }
@@ -458,7 +480,7 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
   for (size_t i = 0; i < origin_clone.Size(); i++) {
     auto block_ops = origin_clone.Block(i).AllOps();
     for (auto op : block_ops) {
-      int op_role = BOOST_GET_MUTABLE(
+      int op_role = PADDLE_GET_MUTABLE(
           int, op->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
       if (op_role == (static_cast<int>(OpRole::kBackward) |
                       static_cast<int>(OpRole::kLoss))) {

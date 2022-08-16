@@ -150,8 +150,7 @@ template <typename T>
 void UniformRandom(const framework::ExecutionContext& context,
                    framework::Tensor* tensor) {
   int64_t size = tensor->numel();
-  auto& dev_cxt =
-      context.template device_context<platform::CUDADeviceContext>();
+  auto& dev_cxt = context.template device_context<phi::GPUContext>();
   T* data = tensor->mutable_data<T>(dev_cxt.GetPlace());
   if (size <= 0) return;
   unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));

@@ -93,6 +93,14 @@ class MLPLayer(nn.Layer):
                           })
         w_out = self.word_embeddings(input)
         out = self.linear0(w_out)
+        param = paddle.fluid.layers.create_parameter([4096, 4096],
+                                                     paddle.float32)
+        auto.shard_tensor(param,
+                          dist_attr={
+                              "process_mesh": PP_MESH_0,
+                              "dims_mapping": [0, -1]
+                          })
+        out = paddle.fluid.layers.mul(out, param)
         gelu_out = F.gelu(out, approximate=True)
         out = self.linear1(gelu_out)
         out1 = self.linear2(gelu_out)
@@ -228,7 +236,7 @@ class TestMLPReshard(unittest.TestCase):
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
-
+        print_program_with_dist_attr(dist_main_prog, dist_context)
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
 
@@ -255,12 +263,6 @@ class TestMLPReshard(unittest.TestCase):
                                       "dims_mapping": [-1, -1]
                                   })
 
-            # y = paddle.distributed.shard_op(paddle.matmul, process_mesh, {
-            #     x.name: [-1, -1],
-            #     w.name: [-1, -1]
-            # }, **{"x": x,
-            #       "y": w})[0]
-
             y = paddle.distributed.shard_op(paddle.matmul,
                                             dist_attr={
                                                 "process_mesh": process_mesh,
@@ -270,7 +272,7 @@ class TestMLPReshard(unittest.TestCase):
                                                 w: {
                                                     "dims_mapping": [-1, -1]
                                                 }
-                                            })(x, w)[0]
+                                            })(x, w)
 
         rank_id = 0
         dist_context = DistributedContext()

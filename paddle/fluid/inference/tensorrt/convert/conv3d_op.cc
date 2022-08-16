@@ -51,7 +51,7 @@ void ConvertConv3d(TensorRTEngine* engine,
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
   if (enable_int8) {
-    float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+    float in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
     engine->SetTensorDynamicRange(X, in_scale);
   }
 
@@ -66,17 +66,17 @@ void ConvertConv3d(TensorRTEngine* engine,
   const int filter_d = Y_t->dims()[2];
   const int filter_h = Y_t->dims()[3];
   const int filter_w = Y_t->dims()[4];
-  const int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
+  const int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
   const std::vector<int> dilations =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
   const std::vector<int> strides =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
   const std::vector<int> paddings =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
   std::string padding_algorithm = "EXPLICIT";
   if (op_desc.HasAttr("padding_algorithm"))
     padding_algorithm =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
 
   nvinfer1::Dims3 nv_ksize(filter_d, filter_h, filter_w);
   nvinfer1::Dims3 nv_dilations(dilations[0], dilations[1], dilations[2]);

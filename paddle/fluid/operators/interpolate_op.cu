@@ -1337,8 +1337,8 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
   }
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto* input_grad_data = input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
-  auto& device_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+  auto& device_ctx = ctx.template device_context<phi::GPUContext>();
+  phi::funcs::SetConstant<phi::GPUContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_w == out_w) {
@@ -1432,8 +1432,8 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
   }
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto* input_grad_data = input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
-  auto& device_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+  auto& device_ctx = ctx.template device_context<phi::GPUContext>();
+  phi::funcs::SetConstant<phi::GPUContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
@@ -1581,8 +1581,8 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
     dim_grad = {n, in_d, in_h, in_w, c};
   }
   auto* input_grad_data = input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
-  auto& device_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+  auto& device_ctx = ctx.template device_context<phi::GPUContext>();
+  phi::funcs::SetConstant<phi::GPUContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {

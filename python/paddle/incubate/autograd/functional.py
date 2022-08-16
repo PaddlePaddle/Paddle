@@ -565,13 +565,15 @@ def _grad(ys, xs, v=None):
             inputs.
     """
     if paddle.fluid._non_static_mode():
+        # paddle.grad returns a list though the inputs is a signle Tensor. The
+        # follow code snippet fixes the problem by return the first element of
+        # xs_grad when the xs is a signle Tensor.
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
+        if isinstance(xs, paddle.fluid.framework.Variable) and isinstance(
+                xs_grad, typing.Sequence) and len(xs_grad) > 0:
+            xs_grad = xs_grad[0]
     else:
         xs_grad = paddle.incubate.autograd.grad(ys, xs, v)
-
-    if isinstance(xs, paddle.fluid.framework.Variable):
-        xs_grad = xs_grad[0]
-
     return _replace_none_with_zero_tensor(xs_grad, xs)
 
 

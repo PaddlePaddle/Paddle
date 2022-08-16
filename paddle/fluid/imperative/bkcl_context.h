@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/imperative/parallel_context.h"
+#include "paddle/fluid/platform/device/xpu/xpu_resource_pool.h"
 #include "xpu/bkcl.h"
 
 namespace paddle {
@@ -52,6 +53,13 @@ class BKCLParallelContext : public ParallelContext {
   void WaitComm(int ring_id) override;
 
   void SynchronizeCompute() override;
+
+ private:
+  // used for comm wait compute, compute_stream-->event-->comm_stream[ring_id]
+  std::vector<std::shared_ptr<platform::XpuEventObject>> compute_events_;
+
+  // used for compute wait comm, comm_stream[ring_id]-->event-->compute_stream
+  std::vector<std::shared_ptr<platform::XpuEventObject>> comm_events_;
 };
 
 }  //  namespace imperative

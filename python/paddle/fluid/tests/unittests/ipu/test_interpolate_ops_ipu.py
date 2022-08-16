@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -32,7 +30,7 @@ class TestBase(IPUOpTest):
         self.set_op_attrs()
 
     def set_data_feed(self):
-        x = np.random.uniform(size=[2, 3, 6, 10])
+        x = np.random.uniform(size=[1, 2, 6, 10])
         self.feed_fp32 = {"x": x.astype(np.float32)}
         self.feed_fp16 = {"x": x.astype(np.float16)}
 

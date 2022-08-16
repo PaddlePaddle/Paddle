@@ -408,7 +408,7 @@ class Transform(object):
 
 
 # TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
-def _lower(block, reverse):
+def _lower(block, reverse, blacklist):
     # Some functions which are only used in _lower.
     def bind(args, to_bind, value_table):
         for i in range(len(args)):
@@ -452,7 +452,7 @@ def _lower(block, reverse):
     for op_idx in range(len(block.ops)):
         op = block.ops[op_idx]
         ops_to_remove.append(op_idx)
-        if lookup_fn(op.type) is not None:
+        if lookup_fn(op.type) is not None and op.type not in blacklist:
             input_args = get_input_var_list(op)
             bind(input_args, to_bind, value_table)
 
@@ -535,11 +535,11 @@ def orig2prim(block=None):
     block = default_main_program().current_block() if block is None else block
     assert block == default_main_program().current_block(
     ), f'block is neither None nor current block of main program'
-    _lower(block, reverse=False)
+    _lower(block, reverse=False, blacklist=[])
 
 
 @framework.static_only
-def prim2orig(block=None):
+def prim2orig(block=None, blacklist=None):
     """
     .. note::
         **ONLY available in the static mode.**
@@ -554,7 +554,11 @@ def prim2orig(block=None):
         block(paddle.static.Block|None, optional): The
             target block to process on. Default None, and will
             process on the current block of main program.
-    
+        blacklist(list[string]|None, optional): The names of automatic
+            differential basic operator that will not be transformed
+            into original operators. Default None, and the blacklist
+            is treated as empty list.
+
     Examples:
 
         .. code-block:: python
@@ -576,4 +580,5 @@ def prim2orig(block=None):
     block = default_main_program().current_block() if block is None else block
     assert block == default_main_program().current_block(
     ), f'block is neither None nor current block of main program'
-    _lower(block, reverse=True)
+    blacklist = [] if blacklist is None else blacklist
+    _lower(block, reverse=True, blacklist=blacklist)

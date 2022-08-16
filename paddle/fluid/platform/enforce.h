@@ -122,7 +122,7 @@ using namespace ::phi::enforce;  // NOLINT
 #endif
 
 /*
- * Summary: This BOOST_GET(_**) series macros are used to call paddle::get
+ * Summary: This PADDLE_GET(_**) series macros are used to call paddle::get
  *   safely. paddle::get is not a completely safe api, although it will not
  *   go wrong in most cases, but in extreme cases, it may fail and directly
  *   throw a paddle::bad_variant_access const exception, without any stack
@@ -137,17 +137,17 @@ using namespace ::phi::enforce;  // NOLINT
  *
  * Examples:
  *     - unsafe writing: int x = paddle::get<int>(y);
- *     - safe writing: int x = BOOST_GET(int, y);
+ *     - safe writing: int x = PADDLE_GET(int, y);
  *
  * Note: GCC 4.8 cannot select right overloaded function here, so need
  *    to define different functions and macros here, after we upgreade
- *    CI gcc version, we can only define one BOOST_GET macro.
+ *    CI gcc version, we can only define one PADDLE_GET macro.
  */
 namespace details {
 
 using namespace phi::enforce::details;  // NOLINT
 
-#define DEFINE_SAFE_BOOST_GET(                                               \
+#define DEFINE_SAFE_PADDLE_GET(                                              \
     __InputType, __OutputType, __OutputTypePtr, __FuncName)                  \
   template <typename OutputType, typename InputType>                         \
   auto __FuncName(                                                           \
@@ -172,25 +172,25 @@ using namespace phi::enforce::details;  // NOLINT
     }                                                                        \
   }
 
-DEFINE_SAFE_BOOST_GET(InputType&, OutputType&, OutputType*, SafeBoostGet);
-DEFINE_SAFE_BOOST_GET(const InputType&,
-                      const OutputType&,
-                      const OutputType*,
-                      SafeBoostGetConst);
-DEFINE_SAFE_BOOST_GET(InputType&&,
-                      OutputType,
-                      OutputType*,
-                      SafeBoostGetMutable);
+DEFINE_SAFE_PADDLE_GET(InputType&, OutputType&, OutputType*, SafeBoostGet);
+DEFINE_SAFE_PADDLE_GET(const InputType&,
+                       const OutputType&,
+                       const OutputType*,
+                       SafeBoostGetConst);
+DEFINE_SAFE_PADDLE_GET(InputType&&,
+                       OutputType,
+                       OutputType*,
+                       SafeBoostGetMutable);
 
 }  // namespace details
 
-#define BOOST_GET(__TYPE, __VALUE)                 \
+#define PADDLE_GET(__TYPE, __VALUE)                \
   paddle::platform::details::SafeBoostGet<__TYPE>( \
       __VALUE, #__VALUE, __FILE__, __LINE__)
-#define BOOST_GET_CONST(__TYPE, __VALUE)                \
+#define PADDLE_GET_CONST(__TYPE, __VALUE)               \
   paddle::platform::details::SafeBoostGetConst<__TYPE>( \
       __VALUE, #__VALUE, __FILE__, __LINE__)
-#define BOOST_GET_MUTABLE(__TYPE, __VALUE)                \
+#define PADDLE_GET_MUTABLE(__TYPE, __VALUE)               \
   paddle::platform::details::SafeBoostGetMutable<__TYPE>( \
       __VALUE, #__VALUE, __FILE__, __LINE__)
 

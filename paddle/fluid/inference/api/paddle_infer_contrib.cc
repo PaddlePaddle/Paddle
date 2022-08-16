@@ -158,8 +158,7 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     paddle::platform::CUDAPlace gpu_place(dst.device_);
-    auto* dev_ctx = static_cast<const paddle::platform::CUDADeviceContext*>(
-        pool.Get(gpu_place));
+    auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.Get(gpu_place));
 
     if (src.place() == PlaceType::kCPU) {
       paddle::memory::Copy(gpu_place,

@@ -35,7 +35,7 @@ std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(const Tensor& tensor);
 paddle::optional<phi::DenseTensor> TensorToDenseTensor(
     const paddle::optional<Tensor>& tensor);
 
-std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
+std::unique_ptr<std::vector<phi::DenseTensor*>> TensorToDenseTensor(
     const std::vector<Tensor>& tensors);
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor);
@@ -60,6 +60,9 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 
 phi::MetaTensor MakeMetaTensor(
     const paddle::optional<phi::SelectedRows>& tensor);
+
+std::vector<phi::MetaTensor> MakeMetaTensor(
+    const paddle::optional<std::vector<const phi::DenseTensor*>>& tensors);
 
 /* ------------------ for output ----------------------- */
 

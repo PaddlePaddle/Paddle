@@ -58,7 +58,7 @@ struct TestGatherOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CUDAPlace(i);
         gpu_list_.push_back(p);
-        ctxs_.emplace_back(new p::CUDADeviceContext(p));
+        ctxs_.emplace_back(new phi::GPUContext(p));
       }
 #else
       PADDLE_THROW(
