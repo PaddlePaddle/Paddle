@@ -42,7 +42,7 @@ def tensor_badreturn_1(x):
 @paddle.jit.to_static
 def tensor_badreturn_2(x):
     a = paddle.to_tensor([1.0, 2.0, 3.0],
-                         palace=paddle.CPUPlace(),
+                         place=paddle.CPUPlace(),
                          dtype="int64",
                          stop_gradient=False)
 
