@@ -138,9 +138,8 @@ class TestDygraph(unittest.TestCase):
                 np.array([[1, 3], [3, 5]]).astype(np.float32))
             y1 = fluid.dygraph.to_variable(
                 np.array([[2, 5], [6, 8]]).astype(np.float32))
-            self.assertTrue(
-                np.array_equal(
-                    paddle.dot(x1, y1).numpy(), np.array([[17], [58]])))
+            np.testing.assert_array_equal(
+                paddle.dot(x1, y1).numpy(), np.array([[17], [58]]))
 
 
 class TestComplexDotOp(OpTest):

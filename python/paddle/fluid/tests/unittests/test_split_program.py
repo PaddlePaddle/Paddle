@@ -66,8 +66,10 @@ class TestSplitProgram(unittest.TestCase):
             self.assertEqual(len(vars_actual), len(vars_expected))
             for actual, expected in zip(vars_actual, vars_expected):
                 self.assertEqual(actual.shape, expected.shape)
-                self.assertTrue(np.array_equal(actual, expected),
-                                '{}\n{}\n'.format(actual, expected))
+                np.testing.assert_array_equal(actual,
+                                              expected,
+                                              err_msg='{}\n{}\n'.format(
+                                                  actual, expected))
 
     def get_places(self):
         places = [paddle.CPUPlace()]

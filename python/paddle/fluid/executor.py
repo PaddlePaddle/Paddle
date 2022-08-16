@@ -394,19 +394,9 @@ def _to_name_str(var):
 
 
 def _is_enable_standalone_executor():
-    """
-    Whether to use experimental executor `StandaloneExecutor`.
-    """
-    flag = False
-    from ..distributed.fleet import fleet
-    # use standalone_executor by default if not distributed
-    if fleet._role_maker is None and framework._enable_standalone_executor_ is None:
-        framework._enable_standalone_executor_ = 1
-
-    if framework._enable_standalone_executor_ in [1, '1', True, 'True', 'true']:
-        flag = True
-
-    return flag
+    return framework._enable_standalone_executor_ is None or framework._enable_standalone_executor_ in [
+        1, '1', True, 'True', 'true'
+    ]
 
 
 def _prepare_fleet_executor():
@@ -426,8 +416,13 @@ def _prepare_fleet_executor():
     return fleet_exe
 
 
+def _get_strong_program_cache_key_for_new_exe(program, feed, fetch_list):
+    return program.desc.cached_hash_str() + _get_program_cache_key(
+        feed, fetch_list)
+
+
 def _get_strong_program_cache_key(program, feed, fetch_list):
-    # NOTE(xiongkun) id(proram) may be duplicate. So add addition var_name as cache key.
+    # TODO(zhiqiu): use hash_str to generate cache key as above
     def _get_varname_from_block(block):
         block_str = []
         for var_name in list(block.vars.keys()):
@@ -1284,6 +1279,17 @@ class Executor(object):
                 #  [-0.44514108 -0.2345845 ]]
 
         """
+        # Temporary FLAGS, just for testing the performance of program cache
+        force_use_program_cache = os.environ.get(
+            'FLAGS_FORCE_USE_PROGRAM_CACHE', None)
+        if force_use_program_cache is not None:
+            use_program_cache = force_use_program_cache in [
+                1, '1', True, 'True', 'true'
+            ]
+            warnings.warn(
+                f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE",
+                UserWarning)
+
         try:
             res = self._run_impl(program=program,
                                  feed=feed,
@@ -1394,45 +1400,70 @@ class Executor(object):
                     place, core.CustomPlace):
                 return False
 
+            use_standalone_executor_for_compiled_program = os.environ.get(
+                'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
+                None) in [1, '1', True, 'True', 'true']
+
+            # Only support fleet when 'FLAGS_CONVERT_GRAPH_TO_PROGRAM' is set to true
+            from paddle.distributed.fleet import fleet
+            if fleet._role_maker is not None and not use_standalone_executor_for_compiled_program:
+                warnings.warn("Standalone executor is not used for fleet",
+                              UserWarning)
+                return False
+
             compiled = isinstance(program, compiler.CompiledProgram)
             if compiled:
                 # Unsupported case 1 : the CompiledProgram is constructed by Graph
                 if program._program is None:
+                    warnings.warn("Standalone executor is not used for Graph",
+                                  UserWarning)
                     return False
 
                 # Unsupported case 2: data parallel
                 if program._is_data_parallel and len(
                         program._get_places(place, program._places)) != 1:
+                    warnings.warn(
+                        "Standalone executor is not used for data parallel",
+                        UserWarning)
                     return False
 
                 # Unsupported case 3 : parallel graph
                 if core.globals()['FLAGS_enable_parallel_graph'] in [
                         1, '1', True, 'True', 'true'
                 ]:
+                    warnings.warn(
+                        "Standalone executor is not used for parallel graph",
+                        UserWarning)
                     return False
 
                 # Unsupported case 4: inference
                 if program._is_inference:
+                    warnings.warn(
+                        "Standalone executor is not used for inference",
+                        UserWarning)
                     return False
 
                 # Unsupported case 5: CUDA Graph
                 if program._build_strategy is not None and program._build_strategy.allow_cuda_graph_capture:
+                    warnings.warn(
+                        "Standalone executor is not used for CUDA Graph",
+                        UserWarning)
                     return False
 
                 # Unsupported case 6: distributed
                 if program._build_strategy is not None and (
                         program._build_strategy.is_distribution
                         or program._build_strategy.num_trainers > 1):
+                    warnings.warn(
+                        "Standalone executor is not used for distribution",
+                        UserWarning)
                     return False
 
-                # Unsupported case 6 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM
-                if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
-                                  None) not in [1, '1', True, 'True', 'true']:
-                    return False
-
-                return True
+                return use_standalone_executor_for_compiled_program
             else:
                 if isinstance(program._graph, compiler.CompiledProgram):
+                    warnings.warn("Standalone executor is not used for Graph",
+                                  UserWarning)
                     return False
                 assert isinstance(program, Program)
                 return True
@@ -1455,8 +1486,8 @@ class Executor(object):
                         % (type(feed)))
                 feed = self._update_feed(program, feed)
 
-                key = _get_strong_program_cache_key(inner_program, feed,
-                                                    fetch_list)
+                key = _get_strong_program_cache_key_for_new_exe(
+                    inner_program, feed, fetch_list)
 
                 # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
                 # while use program to geet _StandaloneExecutor

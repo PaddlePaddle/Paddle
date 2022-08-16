@@ -438,7 +438,12 @@
   forward : conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(out)
   args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
   output : Tensor(input_grad), Tensor(filter_grad)
-  invoke : conv2d_grad_impl(input, filter, out_grad,  strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search, input_grad, filter_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [input, filter]
+  kernel :
+    func : conv2d_grad
+    use_gpudnn : true
   backward : conv2d_grad_grad
 
 - backward_api : conv2d_grad_grad
@@ -478,7 +483,12 @@
   forward : conv3d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(out)
   args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
   output : Tensor(input_grad), Tensor(filter_grad)
-  invoke : conv3d_grad_impl(input, filter, out_grad,  strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search, input_grad, filter_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [input, filter]
+  kernel :
+    func : conv3d_grad
+    use_gpudnn : true
   backward : conv3d_grad_grad
 
 - backward_api : conv3d_grad_grad
@@ -644,8 +654,8 @@
   backward : divide_double_grad
 
 - backward_api : dropout_grad
-  forward : dropout (Tensor x, Tensor seed_tensor, float p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(mask)
-  args : (Tensor mask, Tensor out_grad, float p, bool is_test, str mode)
+  forward : dropout (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(mask)
+  args : (Tensor mask, Tensor out_grad, Scalar p, bool is_test, str mode)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -739,16 +749,6 @@
   args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool sparse=false)
   output : Tensor(weight_grad)
   invoke : embedding_grad_impl(x, weight, out_grad, padding_idx, sparse, weight_grad)
-
-- backward_api : erfinv_grad
-  forward : erfinv (Tensor x) -> Tensor(out)
-  args : (Tensor out, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out]
-  kernel :
-    func : erfinv_grad
 
 - backward_api : exp_grad
   forward : exp (Tensor x) -> Tensor(out)
@@ -951,14 +951,26 @@
     func : gelu_grad
 
 - backward_api : graph_send_recv_grad
-  forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0) -> Tensor(out), Tensor(dst_count)
-  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str pool_type = "SUM")
+  forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0}) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str reduce_op = "SUM")
   output : Tensor(x_grad)
   infer_meta :
     func : GeneralUnaryGradInferMeta
     param : [x]
   kernel :
     func : graph_send_recv_grad
+    data_type : out_grad
+  optional: out, dst_count
+
+- backward_api : graph_send_ue_recv_grad
+  forward : graph_send_ue_recv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op, str reduce_op, IntArray out_size) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str message_op, str reduce_op)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : graph_send_ue_recv_grad
     data_type : out_grad
   optional: out, dst_count
 
@@ -1200,6 +1212,18 @@
     param : [x, y]
   kernel :
     func : lerp_grad
+
+- backward_api : linear_interp_grad
+  forward : linear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : linear_interp_grad
+    data_type : output_grad
 
 - backward_api : log10_grad
   forward : log10 (Tensor x) -> Tensor(out)
@@ -1594,6 +1618,18 @@
   kernel :
     func : multiply_triple_grad
   optional : fwd_grad_grad_x, fwd_grad_grad_y, grad_grad_out_grad
+
+- backward_api : nearest_interp_grad
+  forward : nearest_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : nearest_interp_grad
+    data_type : output_grad
 
 - backward_api : nll_loss_grad
   forward : nll_loss (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, str reduction) -> Tensor(out), Tensor(total_weight)

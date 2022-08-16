@@ -2992,16 +2992,14 @@ void patterns::DeleteQuantDequantLinearOpPattern::operator()() {
   auto dequantize_linear_op_out =
       pattern->NewNode(dequantize_linear_op_out_repr())
           ->AsIntermediate()
-          ->assert_is_op_output("dequantize_linear", "Y");
-
-  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+          ->assert_is_op_output("dequantize_linear", "Y")
+          ->AsOutput();
 
   quantize_linear_op
       ->LinksFrom({quantize_linear_op_x, quantize_linear_op_scale})
       .LinksTo({quantize_linear_op_out});
   dequantize_linear_op->LinksFrom({quantize_linear_op_out})
       .LinksTo({dequantize_linear_op_out});
-  any_op2->LinksFrom({dequantize_linear_op_out});
 }
 
 PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(

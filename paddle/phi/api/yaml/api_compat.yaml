@@ -86,6 +86,12 @@
   outputs :
     out : Out
 
+- api : erfinv
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - api : lgamma
   inputs :
     x : X

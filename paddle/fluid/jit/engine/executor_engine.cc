@@ -22,7 +22,7 @@ namespace paddle {
 namespace jit {
 
 ExecutorEngine::ExecutorEngine(const std::shared_ptr<FunctionInfo> &info,
-                               const Name2VariableMap &params_dict,
+                               const VariableMap &params_dict,
                                const phi::Place &place)
     : info_(info), place_(place), inner_exe_(place_) {
   info_->RemoveDescFeedFetch();

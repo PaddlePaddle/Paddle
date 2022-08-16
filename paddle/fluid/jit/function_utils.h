@@ -33,8 +33,7 @@ class Scope;
 
 namespace jit {
 using Variable = paddle::framework::Variable;
-using Name2VariableMap =
-    std::unordered_map<std::string, std::shared_ptr<Variable>>;
+using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
 using DenseTensor = phi::DenseTensor;
 using Tensor = paddle::experimental::Tensor;
 
@@ -52,14 +51,14 @@ void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
                     framework::Scope *scope);
 
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
-                          const Name2VariableMap &params_dict,
+                          const VariableMap &params_dict,
                           framework::Scope *scope);
 
 void RemoveFeedFetch(framework::ProgramDesc *program_desc);
 
 template <typename T>
 std::shared_ptr<T> MakeEngine(const std::shared_ptr<FunctionInfo> &info,
-                              const Name2VariableMap &params_dict,
+                              const VariableMap &params_dict,
                               const phi::Place &place) {
   return std::make_shared<T>(info, params_dict, place);
 }

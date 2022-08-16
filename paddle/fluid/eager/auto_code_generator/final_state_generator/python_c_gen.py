@@ -54,45 +54,15 @@ atype_to_parsing_function = {
 # This list contains ops that do not need to generate amp logic
 # All optimizer ops in this list
 no_amp_list = [
-    'adam_',
-    'adam',
-    'adamw_',
-    'adamw',
-    'average_accumulates',
-    'average_accumulates_',
-    'decayed_adagrad_',
-    'decayed_adagrad',
-    'dgc_momentum_',
-    'dgc_momentum',
-    'distributed_fused_lamb_',
-    'distributed_fused_lamb',
-    'dpsgd_',
-    'dpsgd',
-    'ftrl_',
-    'ftrl',
-    'lamb_',
-    'lamb',
-    'lars_momentum_',
-    'lars_momentum',
-    'merged_adam_',
-    'merged_adam',
-    'merged_momentum_',
-    'merged_momentum',
-    'momentum_',
-    'momentum',
-    'proximal_adagrad_',
-    'proximal_adagrad',
-    'proximal_gd_',
-    'proximal_gd',
-    'rmsprop_',
-    'rmsprop',
-    'sgd_',
-    'sgd',
-    'lamb_',
-    'lamb',
-    'assign_value_',
-    'sparse_momentum_',
-    'sparse_momentum',
+    'adam_', 'adam', 'adamw_', 'adamw', 'average_accumulates',
+    'average_accumulates_', 'decayed_adagrad_', 'decayed_adagrad',
+    'dgc_momentum_', 'dgc_momentum', 'distributed_fused_lamb_',
+    'distributed_fused_lamb', 'dpsgd_', 'dpsgd', 'ftrl_', 'ftrl', 'lamb_',
+    'lamb', 'lars_momentum_', 'lars_momentum', 'merged_adam_', 'merged_adam',
+    'merged_momentum_', 'merged_momentum', 'momentum_', 'momentum',
+    'proximal_adagrad_', 'proximal_adagrad', 'proximal_gd_', 'proximal_gd',
+    'rmsprop_', 'rmsprop', 'sgd_', 'sgd', 'lamb_', 'lamb', 'assign_value_',
+    'sparse_momentum_', 'sparse_momentum', 'full_'
 ]
 
 
@@ -390,9 +360,14 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 inplace_args_pos_map[name] = pos
             is_optional = (name in optional_inputs)
             if IsVectorTensorType(ttype):
-                get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
-                    name, "GetTensorListFromArgs", forward_api_name, name, pos,
-                    "false")
+                if is_optional:
+                    get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                        name, "GetOptionalTensorListFromArgs", forward_api_name,
+                        name, pos, "true")
+                else:
+                    get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                        name, "GetTensorListFromArgs", forward_api_name, name,
+                        pos, "false")
             else:
                 if is_optional:
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(

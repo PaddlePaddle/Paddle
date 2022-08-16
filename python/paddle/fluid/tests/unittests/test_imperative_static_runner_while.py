@@ -232,7 +232,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
                 static_param_init_value.keys())
         for key, value in six.iteritems(static_param_init_value):
             key = dict_old_new_init[key]
-            self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
+            np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         self.assertTrue(np.allclose(static_out, dy_out))
 
