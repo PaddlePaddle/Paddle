@@ -309,9 +309,9 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
           attr_type == proto::AttrType::VARS) {
         dst_op->UpdateVarAttr(attr_name, attr_value);
       } else if (attr_type == proto::AttrType::BLOCK) {
-        auto block_id = PADDLE_GET_CONST(BlockDesc *, attr_value)->ID();
-        dst_op->SetBlockAttr(attr_name, prog_->MutableBlock(block_id));
-        VLOG(10) << "Set block attr " << attr_name << " id " << block_id;
+        dst_op->SetBlockAttr(attr_name,
+                             PADDLE_GET_CONST(BlockDesc *, attr_value));
+        VLOG(10) << "Set block attr " << attr_name;
       } else if (attr_type == proto::AttrType::BLOCKS) {
         auto old_blocks =
             PADDLE_GET_CONST(std::vector<BlockDesc *>, attr_value);
