@@ -16,6 +16,14 @@
 def parse_line(line):
     name, os_, arch, timeout, run_type, launcher, dist_ut_port, run_serial, envs, conditions = line.strip(
     ).split(",")
+
+    if envs[0:10] == "PYTHONPATH" or ";PYTHONPATH=" in envs:
+        env_parts = envs.split(";")
+        for i in range(len(env_parts)):
+            if env_parts[i][0:11] != "PYTHONPATH=": continue
+            env_parts[i] += ":${PADDLE_BINARY_DIR}/python"
+        envs = ";".join(env_parts)
+
     if len(conditions.strip()) == 0:
         conditions = ""
     else:

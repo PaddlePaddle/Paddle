@@ -6,32 +6,52 @@ set(LOCAL_ALL_ARCH ON)
 set(LOCAL_ALL_PLAT ON)
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_allreduce MODULES test_allreduce ENVS
-    "PADDLE_DIST_UT_PORT=20071;PYTHONPATH=..;http_proxy=;https_proxy=")
+    test_allreduce
+    MODULES
+    test_allreduce
+    ENVS
+    "PADDLE_DIST_UT_PORT=20071;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy="
+  )
   set_tests_properties(test_allreduce PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_broadcast MODULES test_broadcast ENVS
-    "PADDLE_DIST_UT_PORT=20073;PYTHONPATH=..;http_proxy=;https_proxy=")
+    test_broadcast
+    MODULES
+    test_broadcast
+    ENVS
+    "PADDLE_DIST_UT_PORT=20073;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy="
+  )
   set_tests_properties(test_broadcast PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_c_concat MODULES test_c_concat ENVS
-    "PADDLE_DIST_UT_PORT=20075;PYTHONPATH=..;http_proxy=;https_proxy=")
+    test_c_concat
+    MODULES
+    test_c_concat
+    ENVS
+    "PADDLE_DIST_UT_PORT=20075;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy="
+  )
   set_tests_properties(test_c_concat PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_c_identity MODULES test_c_identity ENVS
-    "PADDLE_DIST_UT_PORT=20077;PYTHONPATH=..;http_proxy=;https_proxy=")
+    test_c_identity
+    MODULES
+    test_c_identity
+    ENVS
+    "PADDLE_DIST_UT_PORT=20077;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy="
+  )
   set_tests_properties(test_c_identity PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_c_split MODULES test_c_split ENVS
-    "PADDLE_DIST_UT_PORT=20079;PYTHONPATH=..;http_proxy=;https_proxy=")
+    test_c_split
+    MODULES
+    test_c_split
+    ENVS
+    "PADDLE_DIST_UT_PORT=20079;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy="
+  )
   set_tests_properties(test_c_split PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
 if((WITH_ROCM OR WITH_GPU) AND (LINUX))
@@ -42,7 +62,8 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=20081;PYTHONPATH=..;http_proxy=;https_proxy=")
+    "PADDLE_DIST_UT_PORT=20081;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy="
+  )
   set_tests_properties(test_collective_split_embedding PROPERTIES TIMEOUT "300"
                                                                   RUN_SERIAL 1)
 endif()
