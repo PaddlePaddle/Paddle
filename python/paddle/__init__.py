@@ -653,5 +653,5 @@ __all__ = [  # noqa
     'heaviside',
     'tril_indices',
     'sgn',
-    'triu_indices'
+    'triu_indices',
 ]
