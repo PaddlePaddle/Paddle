@@ -29,7 +29,7 @@ namespace jit {
 class ExecutorEngine : public BaseEngine {
  public:
   ExecutorEngine(const std::shared_ptr<FunctionInfo> &info,
-                 const Name2VariableMap &params_dict,
+                 const VariableMap &params_dict,
                  const phi::Place &place);
 
   ~ExecutorEngine() noexcept {}
