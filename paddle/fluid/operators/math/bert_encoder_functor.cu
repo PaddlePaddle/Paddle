@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+#include "paddle/fluid/platform/dynload/cublasLt.h"
 
 namespace paddle {
 namespace operators {
@@ -556,33 +557,120 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
                              const T *bias_qk,
                              T alpha,
                              T beta) {
+
   CBLAS_TRANSPOSE transA = !q_trans ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !k_trans ? CblasNoTrans : CblasTrans;
-  printf("@@@ MatMulWithHeadQK: batch_size:%d, head_num:%d, seq_len:%d\r\n",
-         batch_size,head_num,seq_len);
-  printf("@@@@ biasqk\r\n");
-  print_float<T><<<1,1,0,context.stream()>>>(bias_qk,0,batch_size*head_num*seq_len*seq_len);
-  cudaDeviceSynchronize();
-  printf("\r\n");
-  printf("@@@@ q\r\n");
-  print_float<T><<<1,1,0,context.stream()>>>(q_buf_,0,batch_size*head_num*size_per_head*seq_len);
-  cudaDeviceSynchronize();
-  printf("\r\n");
+// printf("@#@@ MatMulWithHeadQK: batch_size:%d, head_num:%d, seq_len:%d\r\n",
+        //  batch_size,head_num,seq_len);
+// printf("@#@@@ biasqk\r\n");
+// print_float<T><<<1,1,0,context.stream()>>>(bias_qk,0,batch_size*head_num*seq_len*seq_len);
+  // cudaDeviceSynchronize();
+  // printf("\r\n");
+// printf("@#@@@ q\r\n");
+// print_float<T><<<1,1,0,context.stream()>>>(q_buf_,0,batch_size*head_num*size_per_head*seq_len);
+  // cudaDeviceSynchronize();
+  // printf("\r\n");
 
-  printf("@@@@ k\r\n");
-  print_float<T><<<1,1,0,context.stream()>>>(k_buf_,0,batch_size*head_num*size_per_head*seq_len);
-  cudaDeviceSynchronize();
-  printf("\r\n");
+// printf("@#@@@ k\r\n");
+// print_float<T><<<1,1,0,context.stream()>>>(k_buf_,0,batch_size*head_num*size_per_head*seq_len);
+  // cudaDeviceSynchronize();
+  // printf("\r\n");
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
-  auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(context);
   auto stream = context.stream();
+  if (std::is_same<T, half>::value){
+    size_t workspace_size = static_cast<size_t>(12) * 1024 * 1024;
+    memory::allocation::AllocationPtr workspace = 
+        memory::Alloc(context,workspace_size);
+    cublasLtHandle_t lt_handle = context.cublaslt_handle();
+    if (lt_handle==nullptr) {
+      platform::dynload::cublasLtCreate(&lt_handle);
+    }
+    cublasLtMatmulDesc_t operation_desc = NULL;
+    int64_t M = q_trans ? size_per_head : seq_len;
+    int64_t K = k_trans ? seq_len : size_per_head;
+    int64_t N = k_trans ? size_per_head : seq_len;
+    cudaDataType_t q_type, k_type, qk_type, scale_type;
+    cublasComputeType_t compute_type;
+    run_type alpha_half=static_cast<run_type>(alpha);
+    run_type beta_half=static_cast<run_type>(0.0f);
+    compute_type=CUBLAS_COMPUTE_16F;
+    q_type=CUDA_R_16F;
+    k_type=CUDA_R_16F;
+    qk_type=CUDA_R_16F;
+    scale_type=CUDA_R_16F;
+    cublasLtMatrixLayout_t q_desc = NULL, k_desc = NULL, qk_desc = NULL;
+    cublasLtEpilogue_t epi = CUBLASLT_EPILOGUE_BIAS;
+    platform::dynload::cublasLtMatrixLayoutCreate(&q_desc,q_type,M,K,seq_len * size_per_head);
+    platform::dynload::cublasLtMatrixLayoutCreate(&k_desc,k_type,K,N,seq_len * size_per_head);
+    platform::dynload::cublasLtMatrixLayoutCreate(&qk_desc,qk_type,M,N,seq_len * size_per_head);
+
+    platform::dynload::cublasLtMatmulDescCreate(&operation_desc, compute_type, scale_type);
+    platform::dynload::cublasLtMatmulDescSetAttribute(operation_desc,
+                                   CUBLASLT_MATMUL_DESC_TRANSA,
+                                   &q_trans, 
+                                   sizeof(cublasOperation_t));
+    platform::dynload::cublasLtMatmulDescSetAttribute(operation_desc,
+                                   CUBLASLT_MATMUL_DESC_TRANSA,
+                                   &k_trans,
+                                   sizeof(cublasOperation_t));
+    platform::dynload::cublasLtMatmulDescSetAttribute(operation_desc,
+                                   CUBLASLT_MATMUL_DESC_EPILOGUE,
+                                   &epi,
+                                   sizeof(cublasLtEpilogue_t));
+    // cublasLtMatmulDescSetAttribute(operation_desc,
+    //                                CUBLASLT_MATMUL_DESC_BIAS_POINTER,
+    //                                &bias_qk,
+    //                                sizeof(const void*));
+    // auto algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(lt_handle,
+    //                                                           operation_desc,
+    //                                                           k_desc,
+    //                                                           q_desc,
+    //                                                           qk_desc,
+    //                                                           alpha_half,
+    //                                                           beta_half,
+    //                                                           k_buf_,
+    //                                                           q_buf_,
+    //                                                           qk_buf_,
+    //                                                           qk_buf_,
+    //                                                           stream,
+    //                                                           workspace->ptr(),
+    //                                                           workspace_size);
+    const cublasLtMatmulAlgo_t* algo = nullptr;                                    
+    PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatmul(
+        lt_handle,
+        operation_desc,
+        static_cast<const void *>(&alpha_half),
+        static_cast<const void *>(q_buf_),
+        q_desc,
+        static_cast<const void *>(k_buf_),
+        k_desc,
+        static_cast<const void *>(&beta_half),
+        static_cast<const void *>(qk_buf_),
+        qk_desc,
+        static_cast<void *>(qk_buf_),
+        qk_desc,
+        algo,
+        workspace->ptr(),
+        workspace_size,
+        stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatmulDescDestroy(operation_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatrixLayoutDestroy(q_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatrixLayoutDestroy(k_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatrixLayoutDestroy(qk_desc));
+  } else if(std::is_same<T,float>::value) {
+  auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(context);
 
   blas.BatchedGEMM(transA,
                    transB,
-                   seq_len,
-                   seq_len,
-                   size_per_head,
+                   seq_len, //M
+                   seq_len, //N
+                   size_per_head, //K
                    static_cast<run_type>(alpha),
                    reinterpret_cast<run_type *>(q_buf_),
                    reinterpret_cast<run_type *>(k_buf_),
@@ -591,11 +679,12 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
                    batch_size * head_num,
                    seq_len * size_per_head,
                    seq_len * size_per_head);
-  printf("@@@ in functor, qk gemm result: \r\n");
-  cudaDeviceSynchronize();
-  print_float<run_type><<<1,1>>>(reinterpret_cast<run_type *>(qk_buf_),0,batch_size*head_num*seq_len*seq_len);
-  cudaDeviceSynchronize();
-  printf("\r\n");
+  }
+  // printf("@#@@ in functor, qk gemm result: \r\n");
+  // cudaDeviceSynchronize();
+  // print_float<run_type><<<1,1>>>(reinterpret_cast<run_type *>(qk_buf_),0,batch_size*head_num*seq_len*seq_len);
+  // cudaDeviceSynchronize();
+  // printf("\r\n");
   if (seq_len <= 1024) {
     int grid = batch_size * head_num * seq_len;
     int block = seq_len;
@@ -651,11 +740,11 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
           qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
     }
   }
-  printf("@@@ in functor, qk softmax result: \r\n");
-  cudaDeviceSynchronize();
-  print_float<run_type><<<1,1>>>(reinterpret_cast<run_type *>(qk_buf_),0,batch_size*head_num*seq_len*seq_len);
-  cudaDeviceSynchronize();
-  printf("\r\n");
+// printf("@#@@ in functor, qk softmax result: \r\n");
+  // cudaDeviceSynchronize();
+// print_float<run_type><<<1,1>>>(reinterpret_cast<run_type *>(qk_buf_),0,batch_size*head_num*seq_len*seq_len);
+  // cudaDeviceSynchronize();
+  // printf("\r\n");
 }
 
 template <typename T>
@@ -706,6 +795,7 @@ void MultiHeadGPUComputeFunctor<T>::operator()(const phi::GPUContext &dev_ctx,
                                                T *tptr,
                                                T alpha,
                                                T beta) {
+
   auto stream = dev_ctx.stream();
   const int tsize = batch * head_num * seq_len * head_size;
   
@@ -714,6 +804,7 @@ void MultiHeadGPUComputeFunctor<T>::operator()(const phi::GPUContext &dev_ctx,
   T *kptr = qptr + tsize;
   T *vptr = kptr + tsize;
   // batch gemm stride, softmaxwithscale.
+
   MatMulWithHeadQK<T>(dev_ctx,
                       head_num,
                       seq_len,

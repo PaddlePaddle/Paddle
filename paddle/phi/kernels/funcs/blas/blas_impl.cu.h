@@ -1437,7 +1437,6 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   const int64_t strideC = M * N;
-
 #if CUDA_VERSION >= 9010
   if ((FLAGS_enable_cublas_tensor_op_math && (std::is_same<T, float>::value)) ||
       std::is_same<T, phi::dtype::float16>::value) {
@@ -1465,7 +1464,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       b = static_cast<void *>(&beta);
       compute_type = CUDA_R_16F;
     }
-
+    VLOG(3)<<"@@@ call cublasGemmStridedBatchedEx";
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cublasGemmStridedBatchedEx(handle,

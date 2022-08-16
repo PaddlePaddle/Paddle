@@ -332,12 +332,6 @@ __global__ void print_float(const T *src, int start_index, int end_index){
   }
 }
 
-void QkvToContextPluginDynamic::attachToContext(cudnnContext* cudnnContext,
-                                          cublasContext* cublasContext,
-                                          nvinfer1::IGpuAllocator* gpuAllocator)
-    TRT_NOEXCEPT {
-  dyl::cublasLtCreate(&cublas_);
-}
 
 int QkvToContextPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
