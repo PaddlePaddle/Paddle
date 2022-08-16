@@ -82,137 +82,6 @@ static void MoveOrCopyVar(framework::Variable* dst,
   }
 }
 
-template <typename T>
-class TensorAddFunctor
-    : public std::unary_function<const platform::Place&, void> {
- public:
-  TensorAddFunctor(int64_t numel, const T* x, T* y)
-      : numel_(numel), x_(x), y_(y) {}
-
-  void operator()(const platform::CPUPlace& place) const {
-    phi::CPUContext* ctx = dynamic_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(*ctx);
-    blas.AXPY(numel_, 1., x_, y_);
-  }
-
-#ifdef PADDLE_WITH_XPU
-  void operator()(const platform::XPUPlace& place) const {
-    using XPUType = typename XPUTypeTrait<T>::Type;
-    platform::XPUDeviceContext* ctx = dynamic_cast<platform::XPUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    int r = xpu::add<XPUType>(ctx->x_context(),
-                              reinterpret_cast<const XPUType*>(x_),
-                              reinterpret_cast<const XPUType*>(y_),
-                              reinterpret_cast<XPUType*>(y_),
-                              static_cast<int>(numel_));
-    PADDLE_ENFORCE_EQ(
-        r,
-        XPU_SUCCESS,
-        platform::errors::External(
-            "XPU add kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
-  }
-#else
-  void operator()(const platform::XPUPlace& place) const {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Gradient accumulation on place (%s) "
-        "is not supported in imperative mode",
-        place));
-  }
-#endif
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void operator()(const platform::CUDAPlace& place) const {
-    phi::GPUContext* ctx = dynamic_cast<phi::GPUContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(*ctx);
-    blas.AXPY(numel_, 1., x_, y_);
-  }
-#else
-  void operator()(const platform::CUDAPlace& place) const {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Gradient accumulation on place (%s) "
-        "is not supported in imperative mode",
-        place));
-  }
-#endif
-
-#ifdef PADDLE_WITH_MLU
-  void operator()(const platform::MLUPlace& place) const {
-    // TODO(fwg): SUPPORT it
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Gradient accumulation on place (%s) "
-        "is not supported in imperative mode",
-        place));
-  }
-#else
-  void operator()(const platform::MLUPlace& place) const {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Gradient accumulation on place (%s) "
-        "is not supported in imperative mode",
-        place));
-  }
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  void operator()(const platform::NPUPlace& place) const {
-    // TODO(zhiqiu): SUPPORT it
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Gradient accumulation on place (%s) "
-        "is not supported in imperative mode",
-        place));
-  }
-#else
-  void operator()(const platform::NPUPlace& place) const {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Gradient accumulation on place (%s) "
-        "is not supported in imperative mode",
-        place));
-  }
-#endif
-
-  void operator()(const platform::NPUPinnedPlace& place) const {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Gradient accumulation on place (%s) "
-        "is not supported in imperative mode",
-        place));
-  }
-  // there is NO blas in CUDAPinnedPlace
-  void operator()(const platform::CUDAPinnedPlace& place) const {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Gradient accumulation on place (%s) "
-        "is not supported in imperative mode",
-        place));
-  }
-  // there is NO support in IPUPlace
-  void operator()(const platform::IPUPlace& place) const {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Gradient accumulation on place (%s) "
-        "is not supported in imperative mode",
-        place));
-  }
-  void operator()(const platform::CustomPlace& place) const {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    platform::CustomDeviceContext* ctx =
-        dynamic_cast<platform::CustomDeviceContext*>(
-            platform::DeviceContextPool::Instance().Get(place));
-    phi::stream::Stream stream(place, ctx->stream());
-    auto device = phi::DeviceManager::GetDeviceWithPlace(place);
-    device->BlasAXPBY<T>(stream, static_cast<size_t>(numel_), 1., x_, 1., y_);
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Gradient accumulation on place (%s) "
-        "is not supported in imperative mode",
-        place));
-#endif
-  }
-
- private:
-  int64_t numel_;
-  const T* x_;
-  mutable T* y_;
-};
-
 #ifdef PADDLE_WITH_XPU
 template <typename T>
 void XPUTensorAddFunctor(const platform::Place& place,
@@ -318,6 +187,72 @@ void TensorAdd(const VarType& src, VarType* dst) {
     paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);
   }
 
+#define PADDLE_TENSOR_ADD(T, CONTEXT)                                          \
+  if (data_type == framework::DataTypeTrait<T>::DataType()) {                  \
+    auto cpu_ctx = static_cast<CONTEXT*>(                                      \
+        platform::DeviceContextPool::Instance().Get(place));                   \
+    phi::AddKernel<T, CONTEXT>(*cpu_ctx, src_tensor, *dst_tensor, dst_tensor); \
+    return;                                                                    \
+  }
+
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_TENSOR_ADD(float, phi::GPUContext);
+    PADDLE_TENSOR_ADD(double, phi::GPUContext);
+    PADDLE_TENSOR_ADD(phi::dtype::float16, phi::GPUContext);
+    PADDLE_TENSOR_ADD(phi::dtype::bfloat16, phi::GPUContext);
+    PADDLE_TENSOR_ADD(platform::complex<float>, phi::GPUContext);
+    PADDLE_TENSOR_ADD(platform::complex<double>, phi::GPUContext);
+#endif
+  }
+
+#define TENSOR_ADD_EIGEN(T)                                           \
+  auto cpu_ctx = static_cast<phi::CPUContext*>(                       \
+      platform::DeviceContextPool::Instance().Get(place));            \
+  auto in = paddle::framework::EigenVector<T>::Flatten(src_tensor);   \
+  auto out = paddle::framework::EigenVector<T>::Flatten(*dst_tensor); \
+  auto& p = *(cpu_ctx->eigen_device());                               \
+  out.device(p) = out + in;                                           \
+  return;
+
+  if (platform::is_cpu_place(place)) {
+    PADDLE_TENSOR_ADD(float, phi::CPUContext);
+    PADDLE_TENSOR_ADD(double, phi::CPUContext);
+    PADDLE_TENSOR_ADD(platform::complex<float>, phi::CPUContext);
+    PADDLE_TENSOR_ADD(platform::complex<double>, phi::CPUContext);
+    if (data_type == framework::proto::VarType::BF16) {
+      TENSOR_ADD_EIGEN(phi::dtype::bfloat16);
+    }
+    if (data_type == framework::proto::VarType::FP16) {
+      TENSOR_ADD_EIGEN(phi::dtype::float16);
+    }
+  }
+
+#define PADDLE_TENSOR_ADD_CUSTOM(T)                              \
+  if (data_type == framework::DataTypeTrait<T>::DataType()) {    \
+    platform::CustomDeviceContext* ctx =                         \
+        static_cast<platform::CustomDeviceContext*>(             \
+            platform::DeviceContextPool::Instance().Get(place)); \
+    phi::stream::Stream stream(place, ctx->stream());            \
+    auto device = phi::DeviceManager::GetDeviceWithPlace(place); \
+    device->BlasAXPBY<T>(stream,                                 \
+                         static_cast<size_t>(numel),             \
+                         1.,                                     \
+                         src_tensor.data<T>(),                   \
+                         1.,                                     \
+                         dst_tensor->mutable_data<T>(place));    \
+    return;                                                      \
+  }
+
+  if (platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    PADDLE_TENSOR_ADD_CUSTOM(float);
+    PADDLE_TENSOR_ADD_CUSTOM(double);
+    PADDLE_TENSOR_ADD_CUSTOM(platform::complex<float>);
+    PADDLE_TENSOR_ADD_CUSTOM(platform::complex<double>);
+#endif
+  }
+
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place)) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -396,50 +331,6 @@ void TensorAdd(const VarType& src, VarType* dst) {
     return;
   }
 #endif
-
-#define PADDLE_TENSOR_ADD(T, CONTEXT)                                          \
-  if (data_type == framework::DataTypeTrait<T>::DataType()) {                  \
-    auto cpu_ctx = static_cast<CONTEXT*>(                                      \
-        platform::DeviceContextPool::Instance().Get(place));                   \
-    phi::AddKernel<T, CONTEXT>(*cpu_ctx, src_tensor, *dst_tensor, dst_tensor); \
-    return;                                                                    \
-  }
-
-  if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    PADDLE_TENSOR_ADD(float, phi::GPUContext);
-    PADDLE_TENSOR_ADD(double, phi::GPUContext);
-    PADDLE_TENSOR_ADD(phi::dtype::float16, phi::GPUContext);
-    PADDLE_TENSOR_ADD(phi::dtype::bfloat16, phi::GPUContext);
-    PADDLE_TENSOR_ADD(platform::complex<float>, phi::GPUContext);
-    PADDLE_TENSOR_ADD(platform::complex<double>, phi::GPUContext);
-#endif
-  }
-
-  if (platform::is_cpu_place(place)) {
-    PADDLE_TENSOR_ADD(float, phi::CPUContext);
-    PADDLE_TENSOR_ADD(double, phi::CPUContext);
-    PADDLE_TENSOR_ADD(platform::complex<float>, phi::CPUContext);
-    PADDLE_TENSOR_ADD(platform::complex<double>, phi::CPUContext);
-
-#define TENSOR_ADD_EIGEN(T)                                           \
-  auto cpu_ctx = static_cast<phi::CPUContext*>(                       \
-      platform::DeviceContextPool::Instance().Get(place));            \
-  auto in = paddle::framework::EigenVector<T>::Flatten(src_tensor);   \
-  auto out = paddle::framework::EigenVector<T>::Flatten(*dst_tensor); \
-  auto& p = *(cpu_ctx->eigen_device());                               \
-  out.device(p) = out + in;                                           \
-  return;
-
-    if (data_type == framework::proto::VarType::BF16) {
-      TENSOR_ADD_EIGEN(phi::dtype::bfloat16);
-    }
-    if (data_type == framework::proto::VarType::FP16) {
-      TENSOR_ADD_EIGEN(phi::dtype::float16);
-    }
-  }
-
-#undef PADDLE_TENSOR_ADD
 
   PADDLE_THROW(platform::errors::Unimplemented(
       "Gradient accumulation of data type (%s) on place (%s) is not "
