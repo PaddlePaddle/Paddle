@@ -65,9 +65,10 @@ class TestCustomKernelLoad(unittest.TestCase):
         y = paddle.to_tensor(y_data)
         out = paddle.dot(x, y)
 
-        self.assertTrue(
-            np.array_equal(out.numpy(), result),
-            "custom kernel dot out: {},\n numpy dot out: {}".format(
+        np.testing.assert_array_equal(
+            out.numpy(),
+            result,
+            err_msg='custom kernel dot out: {},\n numpy dot out: {}'.format(
                 out.numpy(), result))
 
     def tearDown(self):

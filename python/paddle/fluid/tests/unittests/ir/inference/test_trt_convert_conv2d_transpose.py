@@ -62,14 +62,14 @@ class TrtConvertConv2dTransposeTest(TrtLayerAutoScanTest):
                      3]).astype(np.float32)
 
         for num_channels in [2, 4, 6]:
-            for batch in [1, 2, 4]:
-                for strides in [[1, 1], [2, 2], [1, 2]]:
+            for batch in [1, 4]:
+                for strides in [[2, 2], [1, 2]]:
                     for paddings in [[0, 3], [1, 2, 3, 4]]:
                         for groups in [2]:
                             for padding_algorithm in [
                                     'EXPLICIT', 'SAME', 'VALID'
                             ]:
-                                for dilations in [[1, 1], [2, 2], [1, 2]]:
+                                for dilations in [[2, 2], [1, 2]]:
                                     for data_format in ['NCHW']:
 
                                         self.num_channels = num_channels

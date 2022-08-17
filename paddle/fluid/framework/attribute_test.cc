@@ -19,6 +19,7 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/utils/any.h"
 
 TEST(Attribute, GetAttrValueToAny) {
@@ -71,6 +72,25 @@ TEST(Attribute, GetAttrValueToAny) {
   EXPECT_EQ(vec_bool.size(), 2UL);
   EXPECT_EQ(vec_bool[0], true);
   EXPECT_EQ(vec_bool[1], true);
+
+  paddle::framework::VarDesc var_desc("axis");
+  paddle::framework::Attribute var_attr(&var_desc);
+  auto rlt_var_attr = paddle::framework::GetAttrValue(var_attr);
+  auto var_desc_ptr =
+      paddle::any_cast<paddle::framework::VarDesc*>(rlt_var_attr);
+  EXPECT_NE(var_desc_ptr, nullptr);
+  EXPECT_EQ(var_desc_ptr->Name(), var_desc.Name());
+
+  paddle::framework::VarDesc var2_desc("prob");
+  std::vector<paddle::framework::VarDesc*> vars_desc{&var_desc, &var2_desc};
+  paddle::framework::Attribute vars_attr(vars_desc);
+
+  auto rlt_vars_attr = paddle::framework::GetAttrValue(vars_attr);
+  auto rlt_vars_desc =
+      paddle::any_cast<std::vector<paddle::framework::VarDesc*>>(rlt_vars_attr);
+  EXPECT_EQ(rlt_vars_desc.size(), vars_desc.size());
+  EXPECT_EQ(rlt_vars_desc[0]->Name(), vars_desc[0]->Name());
+  EXPECT_EQ(rlt_vars_desc[1]->Name(), vars_desc[1]->Name());
 
   paddle::framework::ProgramDesc prog;
   paddle::framework::proto::BlockDesc proto_block;

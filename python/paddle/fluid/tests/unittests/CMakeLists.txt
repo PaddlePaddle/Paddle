@@ -82,6 +82,7 @@ list(APPEND DIST_TEST_OPS test_collective_alltoall_single)
 list(APPEND DIST_TEST_OPS test_eager_dist_api)
 list(APPEND DIST_TEST_OPS test_collective_batch_isend_irecv)
 list(APPEND DIST_TEST_OPS test_collective_reduce_scatter)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_qat)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
@@ -352,6 +353,7 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_eager_dist_api)
   list(REMOVE_ITEM TEST_OPS test_collective_batch_isend_irecv)
   list(REMOVE_ITEM TEST_OPS test_collective_reduce_scatter)
+  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_qat)
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
@@ -1562,6 +1564,8 @@ set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
+set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
@@ -1606,6 +1610,7 @@ if(WITH_DISTRIBUTE
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT 100)
   set_tests_properties(test_collective_batch_isend_irecv PROPERTIES TIMEOUT 100)
   set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT 100)
+  set_tests_properties(test_parallel_dygraph_qat PROPERTIES TIMEOUT 120)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
     set_tests_properties(test_parallel_dygraph_sparse_embedding
                          PROPERTIES TIMEOUT 200)
@@ -1759,3 +1764,9 @@ set_tests_properties(test_renorm_op_without_eager PROPERTIES TIMEOUT 120)
 py_test_modules(
   test_eager_deletion_padding_rnn_for_interpretercore MODULES
   test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+# ExecutionStrategy is deprecated in standalone executor
+set_tests_properties(test_parallel_executor_dry_run
+                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
+set_tests_properties(test_parallel_executor_drop_scope
+                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")

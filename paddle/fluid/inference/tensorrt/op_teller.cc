@@ -1820,24 +1820,32 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       const auto input_shape = input_desc->GetShape();
       const auto head_number =
           PADDLE_GET_CONST(int, desc.GetAttr("head_number"));
-
-      auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
-      const auto biasqk_shape = biasqk_desc->GetShape();
-      // The BiasQK's shape requires to be
-      // [batch, 1, 1, length] or [batch, head, length, length].
-      bool has_same_shape = head_number == biasqk_shape[1] &&
-                            input_shape[1] == biasqk_shape[2] &&
-                            input_shape[1] == biasqk_shape[3];
-      bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
+      auto inputs = desc.Inputs();
+      bool has_bias_qk = (inputs.find("BiasQK") == inputs.end()) ? false : true;
+      if (has_bias_qk) {
+        auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
+        const auto biasqk_shape = biasqk_desc->GetShape();
+        // The BiasQK's shape requires to be
+        // [batch, 1, 1, length] or [batch, head, length, length].
+        bool has_same_shape = head_number == biasqk_shape[1] &&
+                              input_shape[1] == biasqk_shape[2] &&
                               input_shape[1] == biasqk_shape[3];
-      if (!(has_same_shape || is_broadcastable)) {
-        VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
-                << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
-                << ", " << head_number << ", " << input_shape[1] << ", "
-                << input_shape[1] << "] but [" << biasqk_shape[0] << ", "
-                << biasqk_shape[1] << ", " << biasqk_shape[2] << ", "
-                << biasqk_shape[3] << "].";
+        bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
+                                input_shape[1] == biasqk_shape[3];
+        if (!(has_same_shape || is_broadcastable)) {
+          VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
+                  << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
+                  << ", " << head_number << ", " << input_shape[1] << ", "
+                  << input_shape[1] << "] but [" << biasqk_shape[0] << ", "
+                  << biasqk_shape[1] << ", " << biasqk_shape[2] << ", "
+                  << biasqk_shape[3] << "].";
+          return false;
+        }
+      } else {
+#if !IS_TRT_VERSION_GE(8000)
+        VLOG(3) << "The version of TRT must be greater than 8000";
         return false;
+#endif
       }
     }
 
