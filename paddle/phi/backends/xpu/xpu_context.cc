@@ -98,7 +98,6 @@ struct XPUContext::Impl {
     context_ = xpu::create_context();
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache();
-    xpu_stream_create(&context_->xpu_stream);
   }
 
   void SetXContext(xpu::Context* context) { context_ = context; }
@@ -125,6 +124,7 @@ XPUContext::~XPUContext() = default;
 const Place& XPUContext::GetPlace() const { return impl_->GetPlace(); }
 
 void XPUContext::SetXPUStream(XPUStream stream) { impl_->SetStream(stream); }
+
 XPUStream XPUContext::stream() const { return impl_->stream(); }
 
 backends::xpu::XPUVersion XPUContext::xpu_version() const {

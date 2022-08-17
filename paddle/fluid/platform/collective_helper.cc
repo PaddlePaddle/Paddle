@@ -289,7 +289,6 @@ class BKCLCommImpl : public BKCLComm {
 
   void set_dev_ctx(std::unique_ptr<XPUDeviceContext>&& dev_ctx) {
     dev_ctx_ = std::move(dev_ctx);
-    VLOG(0) << "set_dev_ctx dev_ctx_ " << dev_ctx_.get();
   }
   XPUDeviceContext* dev_context() const override { return dev_ctx_.get(); }
 
@@ -354,9 +353,6 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
   XPUStream comm_stream;
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&comm_stream));
   dev_ctx->SetXPUStream(comm_stream);
-  VLOG(0) << "comm " << comm << " rank " << rank << " ring_id " << ring_id
-          << " dev_id " << dev_id << " set comm_stream " << comm_stream
-          << " dev_ctx " << dev_ctx.get();
 
   BKCLCommImpl* c = new BKCLCommImpl;
   c->set_ring_id(ring_id);

@@ -283,7 +283,7 @@ class BKCLCommunicator {
     if (bkcl_ids.size() == 0) {
       auto ptr = new platform::BKCLContextMap(places);
       ptr->init();
-      VLOG(0) << "init local trainer";
+      VLOG(1) << "init local trainer";
       flat_ctxs_.emplace_back(ptr);
     } else {
       PADDLE_ENFORCE_EQ(bkcl_ids.size(),
@@ -294,7 +294,7 @@ class BKCLCommunicator {
         auto ptr = new platform::BKCLContextMap(
             places, bkcl_ids[i], trainers_num, trainer_id);
         ptr->init();
-        VLOG(0) << "init trainer_id:" << trainer_id << ", comm no:" << i;
+        VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
         flat_ctxs_.emplace_back(ptr);
       }
     }
@@ -307,6 +307,7 @@ class BKCLCommunicator {
       for (size_t p = 0; p < places.size(); ++p) {
         int rank = trainer_id * places.size() + p;
         int dev_id = places[p].device;
+        platform::SetXPUDeviceId(dev_id);
         auto &ctx = flat_ctxs_[ring_id]->contexts_.at(dev_id);
         BKCLCommContext::Instance().AssignBKCLComm(
             ctx.comm_, nranks, rank, dev_id, ring_id);

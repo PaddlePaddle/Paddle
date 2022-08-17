@@ -304,7 +304,7 @@ class ParallelExecutorPrivate {
 
 #if defined(PADDLE_WITH_XPU_BKCL)
   void InitBKCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
-    VLOG(0) << "bkcl comm num:" << bst.bkcl_comm_num_ << ", nranks:" << nranks_
+    VLOG(1) << "bkcl comm num:" << bst.bkcl_comm_num_ << ", nranks:" << nranks_
             << ", num_trainers:" << bst.num_trainers_
             << ", trainer_id:" << bst.trainer_id_;
 
