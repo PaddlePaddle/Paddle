@@ -145,7 +145,7 @@ def main():
                     labels_spec=labels_spec,
                     strategy=dist_strategy)
     engine.prepare(optimizer=optimizer, loss=loss_func)
-    res = engine.fit(train_dataset, batch_size=None)
+    engine.fit(train_dataset, batch_size=None)
 
     dist_context = engine.dist_context
     block = engine.main_program.global_block()
