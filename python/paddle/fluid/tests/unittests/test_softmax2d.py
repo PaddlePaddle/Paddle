@@ -36,7 +36,7 @@ class TestSoftmax2DAPI(unittest.TestCase):
             m = paddle.nn.Softmax2D()
             out = m(x)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+            res, = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_softmax(self.x_np, self.axis)
         np.testing.assert_allclose(out_ref, res, rtol=1e-05)
 
