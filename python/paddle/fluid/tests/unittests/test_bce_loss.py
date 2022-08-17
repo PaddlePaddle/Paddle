@@ -43,16 +43,16 @@ def test_static_layer(place,
             bce_loss = paddle.nn.loss.BCELoss(reduction=reduction)
         res = bce_loss(input, label)
         exe = paddle.static.Executor(place)
-        static_result = exe.run(prog,
-                                feed={
-                                    "input": input_np,
-                                    "label": label_np
-                                } if weight_np is None else {
-                                    "input": input_np,
-                                    "label": label_np,
-                                    "weight": weight_np
-                                },
-                                fetch_list=[res])
+        static_result, = exe.run(prog,
+                                 feed={
+                                     "input": input_np,
+                                     "label": label_np
+                                 } if weight_np is None else {
+                                     "input": input_np,
+                                     "label": label_np,
+                                     "weight": weight_np
+                                 },
+                                 fetch_list=[res])
     return static_result
 
 
@@ -83,16 +83,16 @@ def test_static_functional(place,
                                                             label,
                                                             reduction=reduction)
         exe = paddle.static.Executor(place)
-        static_result = exe.run(prog,
-                                feed={
-                                    "input": input_np,
-                                    "label": label_np
-                                } if weight_np is None else {
-                                    "input": input_np,
-                                    "label": label_np,
-                                    "weight": weight_np
-                                },
-                                fetch_list=[res])
+        static_result, = exe.run(prog,
+                                 feed={
+                                     "input": input_np,
+                                     "label": label_np
+                                 } if weight_np is None else {
+                                     "input": input_np,
+                                     "label": label_np,
+                                     "weight": weight_np
+                                 },
+                                 fetch_list=[res])
     return static_result
 
 
