@@ -459,9 +459,9 @@
   args : (Tensor label, int num_classes, int num_samples, int ring_id, int rank, int nranks, bool fix_seed, int seed)
   output : Tensor(remapped_label), Tensor(sampled_local_class_center)
   infer_meta :
-    func : ClassCenterSampleInferMeta 
+    func : ClassCenterSampleInferMeta
   kernel :
-    func : class_center_sample 
+    func : class_center_sample
 
 - api : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
@@ -672,6 +672,16 @@
     func : DiagEmbedInferMeta
   kernel :
     func : diag_embed
+
+- api : distribute_fpn_proposals
+  args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
+  output : Tensor[]{max_level - min_level + 1}, Tensor[]{max_level - min_level + 1}, Tensor
+  infer_meta :
+    func : DistributeFpnProposalsInferMeta
+  kernel :
+    func : distribute_fpn_proposals
+    data_type : fpn_rois
+  optional : rois_num
 
 - api : divide
   args : (Tensor x, Tensor y)
