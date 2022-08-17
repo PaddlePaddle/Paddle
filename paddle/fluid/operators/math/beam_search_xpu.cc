@@ -30,29 +30,21 @@ namespace paddle {
 namespace operators {
 namespace math {
 template <typename T>
-int CopyData(const T *x, T **y, int len) {
+int CopyData(const T *x, T **y, int len, const Place &place) {
   if (nullptr == x || nullptr == y || len <= 0)
     return xpu::Error_t::INVALID_PARAM;
 
   *y = reinterpret_cast<T *>(malloc(sizeof(T) * len));
-  int XPU_PlaceNo = 0;
-  if (std::getenv("FLAGS_selected_xpus") != nullptr)
-    XPU_PlaceNo = atoi(std::getenv("FLAGS_selected_xpus"));
-  else if (std::getenv("XPU_VISIBLE_DEVICES") != nullptr)
-    XPU_PlaceNo = atoi(std::getenv("XPU_VISIBLE_DEVICES"));
 
-  paddle::memory::Copy(paddle::platform::CPUPlace(),
-                       *y,
-                       paddle::platform::XPUPlace(XPU_PlaceNo),
-                       x,
-                       len * sizeof(T));
+  paddle::memory::Copy(
+      paddle::platform::CPUPlace(), *y, place, x, len * sizeof(T));
   return xpu::Error_t::SUCCESS;
 }
 
 template <typename T>
-void CopyDataByCondition(const T *x, T **y, int len) {
+void CopyDataByCondition(const T *x, T **y, int len, const Place &place) {
   if (x != nullptr) {
-    int r = CopyData(x, y, len);
+    int r = CopyData(x, y, len, place);
     PADDLE_ENFORCE_EQ(
         r,
         xpu::Error_t::SUCCESS,
@@ -85,7 +77,8 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
                                         level,
                                         beam_size,
                                         end_id,
-                                        is_accumulated);
+                                        is_accumulated,
+                                        ids->place());
     auto selected_items = ToMap(items, high_level.back());
     if (FLAGS_v == 3) {
       VLOG(3) << "selected_items:";
@@ -97,7 +90,8 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
       }
     }
 
-    PruneEndBeams(pre_ids, abs_lod, &selected_items, level, end_id);
+    PruneEndBeams(
+        pre_ids, abs_lod, &selected_items, level, end_id, ids->place());
     // calculate the output tensor's height
     size_t num_instances = std::accumulate(
         std::begin(selected_items),
@@ -195,11 +189,12 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
                      const framework::LoD &abs_lod,
                      std::vector<std::vector<Item>> *items,
                      size_t lod_level,
-                     int end_id) {
+                     int end_id,
+                     const Place &place) {
     auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
     int64_t *pre_ids_data = nullptr;
     CopyDataByCondition<int64_t>(
-        pre_ids_data_xpu, &pre_ids_data, pre_ids->numel());
+        pre_ids_data_xpu, &pre_ids_data, pre_ids->numel(), place);
 
     auto &high_level = abs_lod[lod_level];
     for (size_t src_idx = 0; src_idx < high_level.size() - 1; ++src_idx) {
@@ -281,7 +276,8 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
       size_t lod_level,
       size_t beam_size,
       int end_id,
-      bool is_accumulated) {
+      bool is_accumulated,
+      const Place &place) {
     std::vector<std::vector<Item>> result;
 
     // find the current candidates
@@ -290,20 +286,21 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
     auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
     int64_t *pre_ids_data = nullptr;
     CopyDataByCondition<int64_t>(
-        pre_ids_data_xpu, &pre_ids_data, pre_ids->numel());
+        pre_ids_data_xpu, &pre_ids_data, pre_ids->numel(), place);
 
     auto *pre_scores_data_xpu = pre_scores->data<float>();
     float *pre_scores_data = nullptr;
     CopyDataByCondition<float>(
-        pre_scores_data_xpu, &pre_scores_data, pre_scores->numel());
+        pre_scores_data_xpu, &pre_scores_data, pre_scores->numel(), place);
 
     auto *ids_data_xpu = ids ? ids->data<int64_t>() : nullptr;
     int64_t *ids_data = nullptr;
-    CopyDataByCondition<int64_t>(ids_data_xpu, &ids_data, ids->numel());
+    CopyDataByCondition<int64_t>(ids_data_xpu, &ids_data, ids->numel(), place);
 
     auto *scores_data_xpu = scores->data<float>();
     float *scores_data = nullptr;
-    CopyDataByCondition<float>(scores_data_xpu, &scores_data, scores->numel());
+    CopyDataByCondition<float>(
+        scores_data_xpu, &scores_data, scores->numel(), place);
 
     size_t num_seqs = scores->NumElements(lod_level);
     size_t seq_width = 1;

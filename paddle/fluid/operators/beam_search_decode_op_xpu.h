@@ -35,7 +35,8 @@ int SetMeta(const LoDTensor& srcTensor, LoDTensor* dstTensor) {
 template <typename T>
 int CopyTensorByXPU(const LoDTensor& srcTensor,
                     LoDTensor* dstTensor,
-                    int flag) {
+                    int flag,
+                    const Place& place) {
   const T* srcData = srcTensor.template data<T>();
   if (nullptr == srcData || nullptr == dstTensor || flag < 0 || flag > 1)
     return xpu::Error_t::INVALID_PARAM;
@@ -46,24 +47,18 @@ int CopyTensorByXPU(const LoDTensor& srcTensor,
       xpu::Error_t::SUCCESS,
       platform::errors::External("Execute function SetMeta failed by [%d]", r));
 
-  int XPU_PlaceNo = 0;
-  if (std::getenv("FLAGS_selected_xpus") != nullptr)
-    XPU_PlaceNo = atoi(std::getenv("FLAGS_selected_xpus"));
-  else if (std::getenv("XPU_VISIBLE_DEVICES") != nullptr)
-    XPU_PlaceNo = atoi(std::getenv("XPU_VISIBLE_DEVICES"));
-
   if (flag == 0) {
     T* dstData =
         dstTensor->template mutable_data<T>(paddle::platform::CPUPlace());
     paddle::memory::Copy(paddle::platform::CPUPlace(),
                          dstData,
-                         paddle::platform::XPUPlace(XPU_PlaceNo),
+                         place,
                          srcData,
                          srcTensor.numel() * sizeof(T));
   } else {
     T* dstData =
         dstTensor->template mutable_data<T>(paddle::platform::XPUPlace());
-    paddle::memory::Copy(paddle::platform::XPUPlace(XPU_PlaceNo),
+    paddle::memory::Copy(place,
                          dstData,
                          paddle::platform::CPUPlace(),
                          srcData,
@@ -75,18 +70,20 @@ int CopyTensorByXPU(const LoDTensor& srcTensor,
 
 const int CopyTensorByType(const LoDTensor& srcTensor,
                            LoDTensor* dstTensor,
-                           int flag) {
+                           int flag,
+                           const Place& place) {
   int r = 0;
   if (srcTensor.dtype() == paddle::experimental::DataType::FLOAT32)
-    r = CopyTensorByXPU<float>(srcTensor, dstTensor, flag);
+    r = CopyTensorByXPU<float>(srcTensor, dstTensor, flag, place);
   else if (srcTensor.dtype() == paddle::experimental::DataType::FLOAT16)
-    r = CopyTensorByXPU<paddle::platform::float16>(srcTensor, dstTensor, flag);
+    r = CopyTensorByXPU<paddle::platform::float16>(
+        srcTensor, dstTensor, flag, place);
   else if (srcTensor.dtype() == paddle::experimental::DataType::FLOAT64)
-    r = CopyTensorByXPU<double>(srcTensor, dstTensor, flag);
+    r = CopyTensorByXPU<double>(srcTensor, dstTensor, flag, place);
   else if (srcTensor.dtype() == paddle::experimental::DataType::INT32)
-    r = CopyTensorByXPU<int>(srcTensor, dstTensor, flag);
+    r = CopyTensorByXPU<int>(srcTensor, dstTensor, flag, place);
   else if (srcTensor.dtype() == paddle::experimental::DataType::INT64)
-    r = CopyTensorByXPU<int64_t>(srcTensor, dstTensor, flag);
+    r = CopyTensorByXPU<int64_t>(srcTensor, dstTensor, flag, place);
   else
     return xpu::Error_t::INVALID_PARAM;
 
@@ -117,7 +114,7 @@ struct BeamSearchDecodeXPUFunctor {
       for (auto& step_id : step_ids) {
         framework::LoDTensor out;
         if (step_id.numel() > 0) {
-          r = CopyTensorByType(step_id, &out, 0);
+          r = CopyTensorByType(step_id, &out, 0, step_ids[0].place());
           PADDLE_ENFORCE_EQ(
               r,
               xpu::Error_t::SUCCESS,
@@ -135,7 +132,7 @@ struct BeamSearchDecodeXPUFunctor {
       for (auto& step_score : step_scores) {
         framework::LoDTensor out;
         if (step_score.numel() > 0) {
-          r = CopyTensorByType(step_score, &out, 0);
+          r = CopyTensorByType(step_score, &out, 0, step_scores[0].place());
           PADDLE_ENFORCE_EQ(
               r,
               xpu::Error_t::SUCCESS,

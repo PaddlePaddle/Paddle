@@ -85,14 +85,16 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
 
     if (platform::is_xpu_place(ids->at(0).place())) {
       int r = 0;
-      r = CopyTensorByXPU<int64_t>(*sentenceIds, sentenceIds_temp, 1);
+      r = CopyTensorByXPU<int64_t>(
+          *sentenceIds, sentenceIds_temp, 1, ids->at(0).place());
       PADDLE_ENFORCE_EQ(
           r,
           xpu::Error_t::SUCCESS,
           platform::errors::External(
               "Execute function CopyTensorByXPU failed by [%d]", r));
 
-      r = CopyTensorByType(*sentenceScores, sentenceScores_temp, 1);
+      r = CopyTensorByType(
+          *sentenceScores, sentenceScores_temp, 1, ids->at(0).place());
       PADDLE_ENFORCE_EQ(
           r,
           xpu::Error_t::SUCCESS,
