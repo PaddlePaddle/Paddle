@@ -258,7 +258,7 @@ class TestGatherNdAPI2(unittest.TestCase):
         index = fluid.dygraph.to_variable(index_1)
         output = paddle.fluid.layers.gather(input, index)
         output_np = output.numpy()
-        expected_output = np.array([3, 4])
+        expected_output = np.array([[3, 4]])
         np.testing.assert_allclose(output_np, expected_output, rtol=1e-05)
         paddle.enable_static()
 
