@@ -1084,7 +1084,7 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             ValueError,
             test_nll_loss_function_reduction_imperative_not_sum_mean_none)
 
-
+"""
 class TestNllLossZeroDim(unittest.TestCase):
 
     def test_dygraph(self):
@@ -1118,7 +1118,7 @@ class TestNllLossZeroDim(unittest.TestCase):
             self.assertEqual(result[0].shape, ())
 
         paddle.disable_static()
-
+"""
 
 if __name__ == "__main__":
     paddle.enable_static()

@@ -98,7 +98,10 @@ def linspace(start, stop, num, dtype=None, name=None):
     if not isinstance(num, Variable):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_linspace(tensor_start, tensor_stop,
+                                           tensor_num, dtype)
+    if _in_legacy_dygraph():
         return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                dtype)
 
@@ -1162,7 +1165,14 @@ def diagflat(x, offset=0, name=None):
             #  [0 0 0 4 0]]
     """
     padding_value = 0
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if len(x.shape) == 1:
+            return _C_ops.final_state_diag(x, offset, padding_value)
+        else:
+            y = _C_ops.final_state_flatten(x, 0, -1)
+            return _C_ops.final_state_diag(y, offset, padding_value)
+
+    if _in_legacy_dygraph():
         if len(x.shape) == 1:
             return _C_ops.diag_v2(x, "offset", offset, "padding_value",
                                   padding_value)
@@ -1370,7 +1380,14 @@ def empty(shape, dtype=None, name=None):
 
     dtype = convert_dtype(dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        out = _C_ops.final_state_empty(shape, convert_np_dtype_to_dtype_(dtype),
+                                       _current_expected_place())
+        out.stop_gradient = True
+        return out
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         out = _C_ops.empty('shape', shape, 'dtype',
                            convert_np_dtype_to_dtype_(dtype))
@@ -1437,7 +1454,14 @@ def empty_like(x, dtype=None, name=None):
         dtype = x.dtype
     dtype = convert_dtype(dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_empty(x.shape,
+                                       convert_np_dtype_to_dtype_(dtype),
+                                       _current_expected_place())
+        out.stop_gradient = True
+        return out
+
+    if _in_legacy_dygraph():
         out = _C_ops.empty('shape', x.shape, 'dtype',
                            convert_np_dtype_to_dtype_(dtype))
         out.stop_gradient = True

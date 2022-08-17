@@ -200,17 +200,21 @@ class RecurrentOpTest1(unittest.TestCase):
         num_grad = self.get_numerical_gradient()
         for idx, name in enumerate(self.grad_data_field):
             self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
-            self.assertTrue(
-                np.isclose(num_grad[idx], ana_grad[idx], rtol=rtol).all(),
-                "num_grad (" + name + ") has diff at " + str(self.place) +
-                "\nExpect " + str(num_grad[idx]) + "\n" + "But Got" +
-                str(ana_grad[idx]) + " in class " + self.__class__.__name__)
+            np.testing.assert_allclose(
+                num_grad[idx],
+                ana_grad[idx],
+                rtol=rtol,
+                atol=1e-8,
+                err_msg='num_grad (' + name + ') has diff at ' +
+                str(self.place) + '\nExpect ' + str(num_grad[idx]) + '\n' +
+                'But Got' + str(ana_grad[idx]) + ' in class ' +
+                self.__class__.__name__)
 
     def check_forward(self):
         pd_output = self.forward()
         py_output = self.py_rnn.forward()
         self.assertEqual(pd_output.shape, py_output.shape)
-        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.01).all())
+        np.testing.assert_allclose(pd_output, py_output, rtol=0.01)
 
     def get_numerical_gradient(self, delta=0.005):
         dloss_dout = 1.0

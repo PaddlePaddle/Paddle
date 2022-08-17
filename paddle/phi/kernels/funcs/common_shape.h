@@ -63,8 +63,8 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
     if (axis + x_dims.size() < max_dim) {
       std::fill(x_dims_array + axis + x_dims.size(), x_dims_array + max_dim, 1);
     }
-    std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
     std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array + axis);
+    std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
   }
 
   for (int i = 0; i < max_dim; i++) {

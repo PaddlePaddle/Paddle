@@ -144,8 +144,8 @@ static inline phi::Array<T, ElementCount> VectorToArray(
 }
 
 static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
-                                               int dim_size,
-                                               bool reduce_all) {
+                                            int dim_size,
+                                            bool reduce_all) {
   std::vector<int> reduce_dims;
   if (reduce_all) {
     reduce_dims.resize(dim_size);
@@ -1073,8 +1073,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
 #endif
   dev_ctx.Alloc<Ty>(y);
 
-  // 0D Tensor has only one element, 
-  // just copy itself because calculate result is itself
+  // 0D Tensor has only one element, just copy
+  // itself because calculate result is itself
   if (x.dims().size() == 0) {
     phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
     return;

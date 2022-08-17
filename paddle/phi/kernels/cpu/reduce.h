@@ -212,15 +212,18 @@ void Reduce(const DeviceContext& dev_ctx,
       break;
     }
   }
-  // 'reduce_dim is []' means reduce_all
+  // 'reduce_dim is []' means reduce_all=True
   bool empty_dim = (dims.size()==0);
   reduce_all = (reduce_all || full_dim || empty_dim);
 
   // no need to cast dtype
   if (out_dtype == phi::DataType::UNDEFINED || out_dtype == x.dtype()) {
     // do reduce sum
-    phi::ReduceKernelImpl<DeviceContext, T, T, Functor>(
-        dev_ctx, x, out, dims, keep_dim, reduce_all);
+    PD_VISIT_ALL_TYPES(
+        x.dtype(), "ReduceKernelImpl", ([&] {
+          phi::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
+              dev_ctx, x, out, dims, keep_dim, reduce_all);
+        }));
   } else {
     // cast x tensor to out_dtype
     auto tmp_tensor = phi::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
@@ -228,7 +231,7 @@ void Reduce(const DeviceContext& dev_ctx,
     // do reduce sum
     PD_VISIT_ALL_TYPES(
         out_dtype, "ReduceKernelImpl", ([&] {
-          phi::ReduceKernelImpl<DeviceContext, data_t, data_t, Functor>(
+          phi::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
               dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
         }));
   }
