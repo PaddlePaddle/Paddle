@@ -43,7 +43,6 @@ namespace platform {
 inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
   if (type == framework::proto::VarType::FP32) {
     return BKCL_FLOAT;
-<<<<<<< HEAD
   } else if (type == framework::proto::VarType::INT64) {
     return BKCL_INT64;
   } else if (type == framework::proto::VarType::INT32) {
@@ -56,12 +55,6 @@ inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "BKCL currently only support FP32, INT64, INT32, FP64 and FP16, other "
         "data types are not supported."));
-=======
-  } else {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("BKCL currently only support FP32, "
-                                        "other data types are not supported."));
->>>>>>> move change to other pr
   }
 }
 
