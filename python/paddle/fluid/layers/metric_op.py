@@ -164,7 +164,7 @@ def auc(input,
         batch_stat_pos, batch_stat_neg, stat_pos, stat_neg ]
         Data type is Tensor, supporting float32, float64.
 
-    Examples 1:
+    Examples:
         .. code-block:: python
 
             import paddle
@@ -186,10 +186,9 @@ def auc(input,
             output= exe.run(feed={"input": x,"label": y},
                              fetch_list=[result[0]])
             print(output)
-
-    Examples 2:
-        .. code-block:: python
-
+            
+            #you can learn the usage of ins_tag_weight by the following code.
+            '''
             import paddle
             import numpy as np
             paddle.enable_static()
@@ -211,6 +210,7 @@ def auc(input,
             output= exe.run(feed={"input": x,"label": y, "ins_tag_weight":z},
                              fetch_list=[result[0]])
             print(output)
+            '''
 
     """
     helper = LayerHelper("auc", **locals())
