@@ -421,22 +421,30 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     else:
 
         def call_assign(data, dtype=None, stop_grandient=None):
+
+            def get_dtype_str(input_dtype):
+                if isinstance(input_dtype, paddle.dtype):
+                    _, dtype_str = str(input_dtype).split('.')
+                    return dtype_str
+                else:
+                    return str(input_dtype)
+
             if isinstance(data,
                           (Variable, core.VarBase)) and (dtype is None or dtype
                                                          == data.dtype):
                 output = data
             else:
                 if dtype:
-                    target_dtype = dtype
+                    target_dtype = get_dtype_str(dtype)
                 elif hasattr(data, 'dtype'):
-                    target_dtype = data.dtype
+                    target_dtype = get_dtype_str(data.dtype)
                 else:
                     target_dtype = None
 
                 output = assign(data)
-                if target_dtype is not None and hasattr(
-                        output, 'dtype') and output.dtype != target_dtype:
-                    paddle.cast(output, target_dtype)
+                if target_dtype is not None and get_dtype_str(
+                        output.dtype) != target_dtype:
+                    output = paddle.cast(output, target_dtype)
 
             output.stop_gradient = stop_gradient
 
