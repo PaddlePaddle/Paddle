@@ -49,7 +49,7 @@ class TestTF32OnMatmul(unittest.TestCase):
                 data2 = paddle.to_tensor(input_array2)
                 out = paddle.matmul(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
-            self.assertTrue(np.allclose(expected_result, out.numpy(), 1e-03))
+            np.testing.assert_allclose(expected_result, out.numpy(), rtol=0.001)
             core.set_cublas_switch(True)  # restore the switch
         else:
             pass
