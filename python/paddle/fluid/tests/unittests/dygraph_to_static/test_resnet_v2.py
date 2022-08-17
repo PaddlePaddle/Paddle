@@ -340,7 +340,7 @@ class TestResnet(unittest.TestCase):
     def predict_analysis_inference(self, data):
         output = PredictorTools(self.model_save_dir, self.model_filename,
                                 self.params_filename, [data])
-        out = output()
+        out, = output()
         return out
 
     def train(self, to_static):
