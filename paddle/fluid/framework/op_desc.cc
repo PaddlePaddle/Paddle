@@ -430,6 +430,12 @@ OpDesc::OpDesc(const std::string &type,
   InitRuntimeAttributeMapByOpExtraInfo(type, &runtime_attrs_);
 }
 
+OpDesc::OpDesc(const OpDesc &other) {
+  CopyFrom(other);
+  block_ = other.block_;
+  need_update_ = true;
+}
+
 OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
   CopyFrom(other);
   block_ = block;
@@ -447,6 +453,9 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   runtime_attrs_ = op_desc.runtime_attrs_;
   // The record of original_id_ is only for auto parallel.
   original_id_ = op_desc.original_id_;
+  if (op_desc.dist_attr_) {
+    dist_attr_.reset(new OperatorDistAttr(*op_desc.dist_attr_));
+  }
   need_update_ = true;
 }
 
@@ -495,6 +504,15 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     }
   }
   this->block_ = block;
+}
+
+// Explicitly implement the assign operator, Since the added
+// unique_ptr data member does not have the implicit assign operator.
+OpDesc &OpDesc::operator=(const OpDesc &other) {
+  CopyFrom(other);
+  block_ = other.block_;
+  need_update_ = true;
+  return *this;
 }
 
 proto::OpDesc *OpDesc::Proto() {
@@ -961,7 +979,15 @@ void OpDesc::Flush() {
       paddle::visit(visitor, attr);
     };
 
-    for (auto &attr : attrs_) {
+    std::vector<std::pair<std::string, Attribute>> sorted_attrs{attrs_.begin(),
+                                                                attrs_.end()};
+    std::sort(
+        sorted_attrs.begin(),
+        sorted_attrs.end(),
+        [](std::pair<std::string, Attribute> a,
+           std::pair<std::string, Attribute> b) { return a.first < b.first; });
+
+    for (auto &attr : sorted_attrs) {
       set_attr_desc(attr.first, attr.second);
     }
     for (auto &attr : runtime_attrs_) {
@@ -1034,6 +1060,20 @@ void OpDesc::InferVarType(BlockDesc *block) const {
     InferVarTypeContext context(this, block);
     info.infer_var_type_(&context);
   }
+}
+
+OperatorDistAttr *OpDesc::MutableDistAttr() {
+  if (dist_attr_) {
+    return dist_attr_.get();
+  } else {
+    dist_attr_.reset(new OperatorDistAttr(*this));
+    return dist_attr_.get();
+  }
+}
+
+void OpDesc::SetDistAttr(const OperatorDistAttr &dist_attr) {
+  MutableDistAttr();
+  *dist_attr_ = dist_attr;
 }
 
 void OpDesc::UpdateVarAttr(const std::string &name, const Attribute &attr) {

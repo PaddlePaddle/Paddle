@@ -15,11 +15,13 @@ limitations under the License. */
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -31,6 +33,8 @@ class VarDesc;
 class BlockDesc;
 class ProgramDesc;
 
+using paddle::distributed::auto_parallel::OperatorDistAttr;
+
 class OpDesc {
  public:
   OpDesc() {}
@@ -40,11 +44,15 @@ class OpDesc {
          const VariableNameMap &outputs,
          const AttributeMap &attrs);
 
+  OpDesc(const OpDesc &desc);
+
   OpDesc(const proto::OpDesc &desc, BlockDesc *block);
 
   explicit OpDesc(BlockDesc *block) : block_(block) {}
 
   OpDesc(const OpDesc &other, BlockDesc *block);
+
+  OpDesc &operator=(const OpDesc &other);
 
   void CopyFrom(const OpDesc &op_desc);
 
@@ -87,6 +95,15 @@ class OpDesc {
 
   void SetAttr(const std::string &name, const Attribute &v);
   void RemoveAttr(const std::string &name);
+
+  // NOTE(chenfeiyu): this template is added to avoid using a variant(Attribute)
+  // as a parameter of a function which is bound to python, which causes
+  // unexpected type conversion due to the overload resolution mechanism
+  // https://pybind11.readthedocs.io/en/stable/advanced/cast/stl.html#c-17-library-containers
+  template <typename T>
+  void SetPlainAttr(const std::string &name, const T &value) {
+    SetAttr(name, value);
+  }
 
   void SetVarAttr(const std::string &name, VarDesc *var);
 
@@ -173,12 +190,14 @@ class OpDesc {
 
   void UpdateVarAttr(const std::string &name, const Attribute &attr);
 
-  // The Id() and OrignalId() are only used for auto parallel.
+  bool NeedUpdate() const { return need_update_; }
+
+  // The following methods are only used for auto parallel.
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
-
-  bool NeedUpdate() const { return need_update_; }
+  OperatorDistAttr *MutableDistAttr();
+  void SetDistAttr(const OperatorDistAttr &dist_attr);
 
  private:
   friend class ProgramDesc;
@@ -197,13 +216,6 @@ class OpDesc {
     return ret_val;
   }
 
-  // This thread-safe implementation seems to be redudent since the neural
-  // networks are usually constructed in a single thread
-  static uint64_t GenerateId() {
-    static std::atomic<std::uint64_t> uid{0};
-    // Must start from one
-    return ++uid;
-  }
   // it it really needed? or just mantain a ptr from block?
   proto::OpDesc desc_;
   BlockDesc *block_{nullptr};  // not_own
@@ -219,13 +231,15 @@ class OpDesc {
   // local changes should be synchronized, need_update_ should be set to true.
   bool need_update_{false};
 
-  // Note: the id_ is unique (only for auto parallel).
+  // Note: the following members are only used for auto_parallel for now.
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> uid{0};
+    // Must start from one
+    return ++uid;
+  }
   uint64_t id_ = GenerateId();
-  // Note: the orignal_id_ is used for referring to the original OpDesc
-  // that the current OpDesc is built from (only for auto parallel).
-  // The default original_id_ is same as the id_, which means the
-  // current OpDesc is not built from the other one.
   uint64_t original_id_ = id_;
+  std::unique_ptr<OperatorDistAttr> dist_attr_;
 };
 
 std::vector<std::string> AttrVarNames(const Attribute &attr);

@@ -1040,7 +1040,14 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseFcPadding(config_.use_fc_padding());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
-  argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
+  if (model_precision_ == phi::DataType::FLOAT32) {
+    argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
+  } else {
+    // TODO(inference): mixed precision temporarily not support memory_optim
+    LOG_FIRST_N(WARNING, 1) << "mixed precision model temporarily not support "
+                               "memory optim, so we just turn off that.";
+    argument_.SetEnableMemoryOptim(false);
+  }
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   argument_.SetPredictorID(predictor_id_);
