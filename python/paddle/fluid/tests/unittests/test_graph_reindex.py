@@ -213,7 +213,7 @@ class TestGeometricGraphReindex(unittest.TestCase):
         reindex_src, reindex_dst, out_nodes = \
             paddle.geometric.graph_reindex(x, neighbors, count,
                                           value_buffer, index_buffer,
-                                          flag_buffer_hashtable=True)
+                                          has_buffer_hashtable=True)
         self.assertTrue(np.allclose(self.reindex_src, reindex_src))
         self.assertTrue(np.allclose(self.reindex_dst, reindex_dst))
         self.assertTrue(np.allclose(self.out_nodes, out_nodes))
@@ -299,7 +299,7 @@ class TestGeometricGraphReindex(unittest.TestCase):
             reindex_src_2, reindex_dst_2, out_nodes_2 = \
                 paddle.geometric.graph_reindex(x, neighbors, count,
                                               value_buffer, index_buffer,
-                                              flag_buffer_hashtable=True)
+                                              has_buffer_hashtable=True)
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             ret = exe.run(feed={

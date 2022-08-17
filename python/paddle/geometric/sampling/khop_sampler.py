@@ -19,6 +19,8 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 from paddle import _C_ops
 
+__all__ = []
+
 
 def khop_sampler(row,
                  colptr,

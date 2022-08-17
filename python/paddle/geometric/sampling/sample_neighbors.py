@@ -19,6 +19,8 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 from paddle import _C_ops
 
+__all__ = []
+
 
 def sample_neighbors(row,
                      colptr,
@@ -27,7 +29,7 @@ def sample_neighbors(row,
                      perm_buffer=None,
                      sample_size=-1,
                      return_eids=False,
-                     flag_perm_buffer=False,
+                     has_perm_buffer=False,
                      name=None):
     """
     Graph Sample Neighbors API.
@@ -53,13 +55,13 @@ def sample_neighbors(row,
         eids (Tensor): The eid information of the input graph. If return_eids is True,
                             then `eids` should not be None. The data type should be the 
                             same with `row`. Default is None.
-        perm_buffer (Tensor): Permutation buffer for fisher-yates sampling. If `flag_perm_buffer`
+        perm_buffer (Tensor): Permutation buffer for fisher-yates sampling. If `has_perm_buffer`
                               is True, then `perm_buffer` should not be None. The data type should
                               be the same with `row`. Default is None. 
         sample_size (int): The number of neighbors we need to sample. Default value is 
                            -1, which means returning all the neighbors of the input nodes.
         return_eids (bool): Whether to return eid information of sample edges. Default is False.
-        flag_perm_buffer (bool): Using the permutation for fisher-yates sampling in GPU. Default 
+        has_perm_buffer (bool): Using the permutation for fisher-yates sampling in GPU. Default 
                                  value is false, means not using it. 
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
@@ -94,17 +96,17 @@ def sample_neighbors(row,
             raise ValueError(
                 f"`eids` should not be None if `return_eids` is True.")
 
-    if flag_perm_buffer:
+    if has_perm_buffer:
         if perm_buffer is None:
             raise ValueError(
-                f"`perm_buffer` should not be None if `flag_perm_buffer`"
+                f"`perm_buffer` should not be None if `has_perm_buffer`"
                 "is True.")
 
     if _non_static_mode():
         out_neighbors, out_count, out_eids = _C_ops.graph_sample_neighbors(
             row, colptr, input_nodes, eids, perm_buffer, "sample_size",
             sample_size, "return_eids", return_eids, "flag_perm_buffer",
-            flag_perm_buffer)
+            has_perm_buffer)
         if return_eids:
             return out_neighbors, out_count, out_eids
         return out_neighbors, out_count
@@ -118,7 +120,7 @@ def sample_neighbors(row,
     if return_eids:
         check_variable_and_dtype(eids, "Eids", ("int32", "int64"),
                                  "graph_sample_neighbors")
-    if flag_perm_buffer:
+    if has_perm_buffer:
         check_variable_and_dtype(perm_buffer, "Perm_Buffer", ("int32", "int64"),
                                  "graph_sample_neighbors")
 
@@ -132,8 +134,7 @@ def sample_neighbors(row,
                          "Col_Ptr": colptr,
                          "X": input_nodes,
                          "Eids": eids if return_eids else None,
-                         "Perm_Buffer":
-                         perm_buffer if flag_perm_buffer else None
+                         "Perm_Buffer": perm_buffer if has_perm_buffer else None
                      },
                      outputs={
                          "Out": out_neighbors,
@@ -143,7 +144,7 @@ def sample_neighbors(row,
                      attrs={
                          "sample_size": sample_size,
                          "return_eids": return_eids,
-                         "flag_perm_buffer": flag_perm_buffer
+                         "flag_perm_buffer": has_perm_buffer
                      })
     if return_eids:
         return out_neighbors, out_count, out_eids

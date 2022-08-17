@@ -19,13 +19,15 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 from paddle import _C_ops
 
+__all__ = []
+
 
 def graph_reindex(x,
                   neighbors,
                   count,
                   value_buffer=None,
                   index_buffer=None,
-                  flag_buffer_hashtable=False,
+                  has_buffer_hashtable=False,
                   name=None):
     """
     Graph Reindex API.
@@ -57,7 +59,7 @@ def graph_reindex(x,
                                     be int32, and should be filled with -1.
         index_buffer (Tensor|None): Index buffer for hashtable. The data type should 
                                     be int32, and should be filled with -1.
-        flag_buffer_hashtable (bool): Whether to use buffer for hashtable to speed up.
+        has_buffer_hashtable (bool): Whether to use buffer for hashtable to speed up.
                                       Default is False. Only useful for gpu version currently.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
@@ -102,15 +104,15 @@ def graph_reindex(x,
         # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
 
     """
-    if flag_buffer_hashtable:
+    if has_buffer_hashtable:
         if value_buffer is None or index_buffer is None:
             raise ValueError(f"`value_buffer` and `index_buffer` should not"
-                             "be None if `flag_buffer_hashtable` is True.")
+                             "be None if `has_buffer_hashtable` is True.")
 
     if _non_static_mode():
         reindex_src, reindex_dst, out_nodes = \
             _C_ops.graph_reindex(x, neighbors, count, value_buffer, index_buffer,
-                                 "flag_buffer_hashtable", flag_buffer_hashtable)
+                                 "flag_buffer_hashtable", has_buffer_hashtable)
         return reindex_src, reindex_dst, out_nodes
 
     check_variable_and_dtype(x, "X", ("int32", "int64"), "graph_reindex")
@@ -118,7 +120,7 @@ def graph_reindex(x,
                              "graph_reindex")
     check_variable_and_dtype(count, "Count", ("int32"), "graph_reindex")
 
-    if flag_buffer_hashtable:
+    if has_buffer_hashtable:
         check_variable_and_dtype(value_buffer, "HashTable_Value", ("int32"),
                                  "graph_reindex")
         check_variable_and_dtype(index_buffer, "HashTable_Value", ("int32"),
@@ -137,14 +139,14 @@ def graph_reindex(x,
                          "Count":
                          count,
                          "HashTable_Value":
-                         value_buffer if flag_buffer_hashtable else None,
+                         value_buffer if has_buffer_hashtable else None,
                          "HashTable_Index":
-                         index_buffer if flag_buffer_hashtable else None,
+                         index_buffer if has_buffer_hashtable else None,
                      },
                      outputs={
                          "Reindex_Src": reindex_src,
                          "Reindex_Dst": reindex_dst,
                          "Out_Nodes": out_nodes
                      },
-                     attrs={"flag_buffer_hashtable": flag_buffer_hashtable})
+                     attrs={"flag_buffer_hashtable": has_buffer_hashtable})
     return reindex_src, reindex_dst, out_nodes
