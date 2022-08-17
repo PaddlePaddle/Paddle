@@ -69,6 +69,11 @@ std::vector<Tensor> PrepareInputs(const phi::Place& place) {
   return utils::ToTensors({t});
 }
 
+TEST(CpuLayerTest, Function) {
+  auto func_null = Function();
+  EXPECT_TRUE(!func_null.IsValid());
+}
+
 TEST(CpuLayerTest, Construct) {
   auto place = phi::CPUPlace();
   std::string path = "./multi_program_load/export";
@@ -102,8 +107,6 @@ TEST(CpuLayerTest, Construct) {
   auto out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
-  auto func_null = layer.Function();
-  EXPECT_TRUE(!func_null.IsValid());
   auto func = layer.Function("infer");
   EXPECT_TRUE(func.IsValid());
   outs = func(inputs);
