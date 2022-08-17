@@ -1322,7 +1322,7 @@ class Completer:
                 # TODO:
                 # 1. move `generate_optimizer` before `partitioner`
                 # 2. implement grad_clip completion by `dist_op`
-                # 3. allreduce dist_gloabl_norm (mp-group) and no_dist_global_norm (pp-group)
+                # 3. allreduce dist_gloabl_norm (mp-group) and no_dist_global_norm (pp-group, sharding-group)
                 if _is_gradient_clip_op(op):
                     if op.type in [
                             "sum", "sqrt", "fill_constant", "elementwise_max",

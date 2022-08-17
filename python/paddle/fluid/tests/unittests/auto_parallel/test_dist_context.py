@@ -26,7 +26,7 @@ import paddle.nn.functional as F
 
 from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.dist_context import DistributedContext, set_default_distributed_context
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
