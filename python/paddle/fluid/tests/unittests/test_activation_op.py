@@ -549,9 +549,9 @@ class TestSinh(TestActivation):
             pd_sinh_out = fluid.layers.sinh(data_x)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
-            np_sinh_res = exe.run(fluid.default_main_program(),
-                                  feed={"data_x": input_x},
-                                  fetch_list=[pd_sinh_out])
+            np_sinh_res, = exe.run(fluid.default_main_program(),
+                                   feed={"data_x": input_x},
+                                   fetch_list=[pd_sinh_out])
 
         expected_res = np.sinh(input_x)
         np.testing.assert_allclose(np_sinh_res, expected_res, rtol=1e-05)
@@ -622,9 +622,9 @@ class TestCosh(TestActivation):
             pd_cosh_out = paddle.cosh(data_x)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
-            np_cosh_res = exe.run(fluid.default_main_program(),
-                                  feed={"data_x": input_x},
-                                  fetch_list=[pd_cosh_out])
+            np_cosh_res, = exe.run(fluid.default_main_program(),
+                                   feed={"data_x": input_x},
+                                   fetch_list=[pd_cosh_out])
 
         expected_res = np.cosh(input_x)
         np.testing.assert_allclose(np_cosh_res, expected_res, rtol=1e-05)
@@ -2261,9 +2261,9 @@ class TestLog2(TestActivation):
             out1 = paddle.log2(data_x)
             exe = paddle.static.Executor(place=fluid.CPUPlace())
             exe.run(paddle.static.default_startup_program())
-            res1 = exe.run(paddle.static.default_main_program(),
-                           feed={"data_x": input_x},
-                           fetch_list=[out1])
+            res1, = exe.run(paddle.static.default_main_program(),
+                            feed={"data_x": input_x},
+                            fetch_list=[out1])
         expected_res = np.log2(input_x)
         np.testing.assert_allclose(res1, expected_res, rtol=1e-05)
 
@@ -2314,9 +2314,9 @@ class TestLog10(TestActivation):
             out1 = paddle.log10(data_x)
             exe = paddle.static.Executor(place=paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
-            res1 = exe.run(paddle.static.default_main_program(),
-                           feed={"data_x": input_x},
-                           fetch_list=[out1])
+            res1, = exe.run(paddle.static.default_main_program(),
+                            feed={"data_x": input_x},
+                            fetch_list=[out1])
         expected_res = np.log10(input_x)
         np.testing.assert_allclose(res1, expected_res, rtol=1e-05)
 
@@ -2361,9 +2361,9 @@ class TestLog1p(TestActivation):
             out1 = paddle.log1p(data_x)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
-            res1 = exe.run(fluid.default_main_program(),
-                           feed={"data_x": input_x},
-                           fetch_list=[out1])
+            res1, = exe.run(fluid.default_main_program(),
+                            feed={"data_x": input_x},
+                            fetch_list=[out1])
         expected_res = np.log1p(input_x)
         np.testing.assert_allclose(res1, expected_res, rtol=1e-05)
 
