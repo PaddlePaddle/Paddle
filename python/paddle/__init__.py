@@ -416,6 +416,7 @@ __all__ = [  # noqa
     'cumprod',
     'logcumsumexp',
     'logit',
+    'LazyInit',
     'sign',
     'is_empty',
     'equal',
@@ -652,5 +653,5 @@ __all__ = [  # noqa
     'put_along_axis',
     'heaviside',
     'tril_indices',
-    'sgn',
+    'sgn'
 ]

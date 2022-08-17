@@ -134,32 +134,6 @@ class LazyInit(object):
 
         return instance
 
-    def __enter__(self):
-        """
-        Context manager to support 'with' keyword.
-
-        Examples:
-    
-            .. code-block:: python
-
-                from paddle import LazyInit
-                from paddle.nn import Linear
-
-                with LazyInit() as lz:
-                    fc = Linear(10, 10)
-
-                    print(lz.startup_program())
-                
-                # outer 'with'
-                for param in fc.parameters():
-                    param.initialize()
-        """
-        _lazy_guard.enable()
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        _lazy_guard.disable()
-
     @staticmethod
     def startup_program():
         """

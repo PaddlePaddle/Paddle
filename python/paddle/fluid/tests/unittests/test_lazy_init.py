@@ -54,17 +54,6 @@ class TestInitializerBase(unittest.TestCase):
         program = fc.startup_program
         self.check_program(program)
 
-    def test_guard(self):
-
-        with LazyInit() as lz:
-            fc = Linear(10,
-                        10,
-                        weight_attr=self.weight_attr,
-                        bias_attr=self.bias_attr)
-            program = lz.startup_program()
-
-        self.check_program(program)
-
     def check_program(self, program):
         self.assertEqual(program.block(0).var("weight").shape, (10, 10))
         self.assertEqual(program.block(0).var("bias").shape, (10, ))
@@ -79,15 +68,6 @@ class TestDygraphLazy(TestInitializerBase):
                               10,
                               weight_attr=self.weight_attr,
                               bias_attr=self.bias_attr)
-
-        self.check_data(fc)
-
-    def test_guard(self):
-        with LazyInit() as lz:
-            fc = Linear(10,
-                        10,
-                        weight_attr=self.weight_attr,
-                        bias_attr=self.bias_attr)
 
         self.check_data(fc)
 
