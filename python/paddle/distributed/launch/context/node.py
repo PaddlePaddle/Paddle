@@ -49,6 +49,8 @@ class Node(object):
         for _ in range(100):
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+                             struct.pack('ii', 1, 0))
                 s.bind(('', 0))
                 port = s.getsockname()[1]
                 if port in self._allocated_ports:

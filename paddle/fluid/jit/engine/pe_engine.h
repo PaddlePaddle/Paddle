@@ -42,7 +42,7 @@ using Graph = framework::ir::Graph;
 class PEEngine : public BaseEngine {
  public:
   PEEngine(const std::shared_ptr<FunctionInfo> &info,
-           const Name2VariableMap &params_dict,
+           const VariableMap &params_dict,
            const phi::Place &place);
 
   ~PEEngine() noexcept {}

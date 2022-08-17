@@ -201,7 +201,7 @@ class TestPruneUnusedParamInProgram(unittest.TestCase):
             model.eval()
             input_ids = paddle.to_tensor(input_ids)
             out = model(input_ids)
-            self.assertTrue(np.array_equal(out.numpy(), [[15, 11]]))
+            np.testing.assert_array_equal(out.numpy(), [[15, 11]])
 
 
 if __name__ == '__main__':

@@ -2611,15 +2611,21 @@ def sigmoid_focal_loss(logit,
                 .format(normalizer_dims))
 
     if _non_static_mode():
-        one = _varbase_creator(dtype=logit.dtype)
-        _C_ops.fill_constant(one, 'value', float(1.0), 'force_cpu', False,
-                             'dtype', one.dtype, 'str_value', '1.0', 'shape',
-                             logit.shape)
         if in_dygraph_mode():
+            place = _current_expected_place()
+            one = _C_ops.final_state_full(logit.shape, float(1.0), logit.dtype,
+                                          place)
+
             loss = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
                 logit, label, False, -100)
-        else:
+
+        elif _in_legacy_dygraph():
+            one = _varbase_creator(dtype=logit.dtype)
+            _C_ops.fill_constant(one, 'value', float(1.0), 'force_cpu', False,
+                                 'dtype', one.dtype, 'str_value', '1.0',
+                                 'shape', logit.shape)
             loss = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+
         pred = _C_ops.sigmoid(logit)
         p_t = _C_ops.elementwise_add(
             _C_ops.elementwise_mul(pred, label),
