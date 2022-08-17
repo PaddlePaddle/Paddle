@@ -1929,18 +1929,16 @@ AnalysisPredictor::~AnalysisPredictor() {
                               "./profile.log");
   }
   if (sub_scope_) {
-    scope_->DeleteScope(sub_scope_);
-  }
-
-  if (framework::global_transfer_scope_key().find(executor_->scope()) !=
-      framework::global_transfer_scope_key().end()) {
-    auto scope_key_set =
-        framework::global_transfer_scope_key()[executor_->scope()];
-    for (auto iter = scope_key_set.begin(); iter != scope_key_set.end();
-         iter++) {
-      framework::global_transfer_data_cache().erase(*iter);
+    if (framework::global_transfer_scope_key().find(sub_scope_) !=
+        framework::global_transfer_scope_key().end()) {
+      auto scope_key_set = framework::global_transfer_scope_key()[sub_scope_];
+      for (auto iter = scope_key_set.begin(); iter != scope_key_set.end();
+           iter++) {
+        framework::global_transfer_data_cache().erase(*iter);
+      }
+      framework::global_transfer_scope_key().erase(sub_scope_);
     }
-    framework::global_transfer_scope_key().erase(executor_->scope());
+    scope_->DeleteScope(sub_scope_);
   }
 
 #if PADDLE_WITH_MKLDNN
