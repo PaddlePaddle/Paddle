@@ -28,7 +28,7 @@ class TestBF16DataType(unittest.TestCase):
         b_fp32 = b_bf16.astype(np.float32)
         c_fp32 = np.matmul(a_fp32, b_fp32)
 
-        self.assertTrue(np.allclose(c_bf16, c_fp32))
+        np.testing.assert_allclose(c_bf16, c_fp32, rtol=1e-05)
 
 
 if __name__ == "__main__":

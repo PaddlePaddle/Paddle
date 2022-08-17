@@ -84,7 +84,7 @@ class TestConvNet(IPUOpTest):
         ipu_loss = self.run_model(True).flatten()
         cpu_loss = self.run_model(False).flatten()
 
-        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-10))
+        np.testing.assert_allclose(ipu_loss, cpu_loss, rtol=1e-05, atol=1e-10)
 
 
 if __name__ == "__main__":
