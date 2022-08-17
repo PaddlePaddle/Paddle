@@ -119,11 +119,11 @@ class TestSearchSortedAPI(unittest.TestCase):
                                             dtype="float64")
                 out = paddle.searchsorted(sorted_sequence, values)
                 exe = paddle.static.Executor(place)
-                res = exe.run(feed={
+                res, = exe.run(feed={
                     'SortedSequence': self.sorted_sequence,
                     'Values': self.values
                 },
-                              fetch_list=out)
+                               fetch_list=out)
             out_ref = np.searchsorted(self.sorted_sequence, self.values)
             np.testing.assert_allclose(out_ref, res, rtol=1e-05)
 
