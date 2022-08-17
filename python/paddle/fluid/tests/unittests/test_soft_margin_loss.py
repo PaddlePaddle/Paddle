@@ -36,12 +36,12 @@ def test_static_layer(
         sm_loss = paddle.nn.loss.SoftMarginLoss(reduction=reduction)
         res = sm_loss(input, label)
         exe = paddle.static.Executor(place)
-        static_result = exe.run(prog,
-                                feed={
-                                    "input": input_np,
-                                    "label": label_np
-                                },
-                                fetch_list=[res])
+        static_result, = exe.run(prog,
+                                 feed={
+                                     "input": input_np,
+                                     "label": label_np
+                                 },
+                                 fetch_list=[res])
     return static_result
 
 
@@ -66,12 +66,12 @@ def test_static_functional(
                                                     label,
                                                     reduction=reduction)
         exe = paddle.static.Executor(place)
-        static_result = exe.run(prog,
-                                feed={
-                                    "input": input_np,
-                                    "label": label_np
-                                },
-                                fetch_list=[res])
+        static_result, = exe.run(prog,
+                                 feed={
+                                     "input": input_np,
+                                     "label": label_np
+                                 },
+                                 fetch_list=[res])
     return static_result
 
 
