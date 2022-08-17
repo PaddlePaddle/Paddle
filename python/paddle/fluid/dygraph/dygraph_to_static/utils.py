@@ -545,7 +545,7 @@ def create_assign_node(name, node):
     return targets, assign_node
 
 
-def ast_to_func(ast_root, dyfunc, delete_on_exit=False):
+def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
     TODO: If only decorate one of inner function instead of decorating the main
