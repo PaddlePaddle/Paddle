@@ -30,7 +30,7 @@ def segment_sum(data, segment_ids, name=None):
     where sum is over j such that `segment_ids[j] == i`.
 
     Args:
-        data (Tensor): A tensor, available data type float32, float64, int32, int64.
+        data (Tensor): A tensor, available data type float32, float64, int32, int64, float16.
         segment_ids (Tensor): A 1-D tensor, which have the same size
                             with the first dimension of input data. 
                             Available data type is int32, int64.
@@ -57,9 +57,9 @@ def segment_sum(data, segment_ids, name=None):
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "SUM")
         return out
 
-    check_variable_and_dtype(data, "X",
-                             ("float32", "float64", "int32", "int64"),
-                             "segment_pool")
+    check_variable_and_dtype(
+        data, "X", ("float32", "float64", "int32", "int64", "float16"),
+        "segment_pool")
     check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
                              "segment_pool")
 
@@ -90,7 +90,7 @@ def segment_mean(data, segment_ids, name=None):
     of all index 'segment_ids[j] == i'.
 
     Args:
-        data (tensor): a tensor, available data type float32, float64, int32, int64.
+        data (tensor): a tensor, available data type float32, float64, int32, int64, float16.
         segment_ids (tensor): a 1-d tensor, which have the same size 
                             with the first dimension of input data. 
                             available data type is int32, int64.
@@ -118,9 +118,9 @@ def segment_mean(data, segment_ids, name=None):
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MEAN")
         return out
 
-    check_variable_and_dtype(data, "X",
-                             ("float32", "float64", "int32", "int64"),
-                             "segment_pool")
+    check_variable_and_dtype(
+        data, "X", ("float32", "float64", "int32", "int64", "float16"),
+        "segment_pool")
     check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
                              "segment_pool")
 
@@ -150,7 +150,7 @@ def segment_min(data, segment_ids, name=None):
     where min is over j such that `segment_ids[j] == i`.
 
     Args:
-        data (tensor): a tensor, available data type float32, float64, int32, int64.
+        data (tensor): a tensor, available data type float32, float64, int32, int64, float16.
         segment_ids (tensor): a 1-d tensor, which have the same size
                             with the first dimension of input data. 
                             available data type is int32, int64.
@@ -179,9 +179,9 @@ def segment_min(data, segment_ids, name=None):
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MIN")
         return out
 
-    check_variable_and_dtype(data, "X",
-                             ("float32", "float64", "int32", "int64"),
-                             "segment_pool")
+    check_variable_and_dtype(
+        data, "X", ("float32", "float64", "int32", "int64", "float16"),
+        "segment_pool")
     check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
                              "segment_pool")
 
@@ -211,7 +211,7 @@ def segment_max(data, segment_ids, name=None):
     where max is over j such that `segment_ids[j] == i`.
 
     Args:
-        data (tensor): a tensor, available data type float32, float64, int32, int64.
+        data (tensor): a tensor, available data type float32, float64, int32, int64, float16.
         segment_ids (tensor): a 1-d tensor, which have the same size
                             with the first dimension of input data. 
                             available data type is int32, int64.
@@ -241,9 +241,9 @@ def segment_max(data, segment_ids, name=None):
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MAX")
         return out
 
-    check_variable_and_dtype(data, "X",
-                             ("float32", "float64", "int32", "int64"),
-                             "segment_pool")
+    check_variable_and_dtype(
+        data, "X", ("float32", "float64", "int32", "int64", "float16"),
+        "segment_pool")
     check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
                              "segment_pool")
 
