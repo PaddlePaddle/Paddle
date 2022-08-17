@@ -54,10 +54,10 @@ class TestNormalization(unittest.TestCase):
             self.set_inputs(place)
             exe = fluid.Executor(place)
 
-            output = exe.run(fluid.default_main_program(),
-                             feed=self.inputs,
-                             fetch_list=self.fetch_list,
-                             return_numpy=True)
+            output, = exe.run(fluid.default_main_program(),
+                              feed=self.inputs,
+                              fetch_list=self.fetch_list,
+                              return_numpy=True)
             self.op_output = output
 
     def set_inputs(self, place):
