@@ -378,7 +378,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     ENVS
     "PADDLE_DIST_UT_PORT=20135;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
-  set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT "121" RUN_SERIAL
+  set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT "120" RUN_SERIAL
                                                       1)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
@@ -389,5 +389,16 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     ENVS
     "PADDLE_DIST_UT_PORT=20137;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
-  set_tests_properties(test_new_group_api PROPERTIES TIMEOUT "122" RUN_SERIAL 1)
+  set_tests_properties(test_new_group_api PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
+    test_broadcast_tensors_op
+    MODULES
+    test_broadcast_tensors_op
+    ENVS
+    "PADDLE_DIST_UT_PORT=20139;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_broadcast_tensors_op PROPERTIES TIMEOUT "120"
+                                                            RUN_SERIAL 1)
 endif()
