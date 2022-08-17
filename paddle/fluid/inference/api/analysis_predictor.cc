@@ -1932,12 +1932,16 @@ AnalysisPredictor::~AnalysisPredictor() {
     scope_->DeleteScope(sub_scope_);
   }
 
-  auto scope_key_set =
-      framework::global_transfer_scope_key()[executor_->scope()];
-  for (auto iter = scope_key_set.begin(); iter != scope_key_set.end(); iter++) {
-    framework::global_transfer_data_cache().erase(*iter);
+  if (framework::global_transfer_scope_key().find(executor_->scope()) !=
+      framework::global_transfer_scope_key().end()) {
+    auto scope_key_set =
+        framework::global_transfer_scope_key()[executor_->scope()];
+    for (auto iter = scope_key_set.begin(); iter != scope_key_set.end();
+         iter++) {
+      framework::global_transfer_data_cache().erase(*iter);
+    }
+    framework::global_transfer_scope_key().erase(executor_->scope());
   }
-  framework::global_transfer_scope_key().erase(executor_->scope());
 
 #if PADDLE_WITH_MKLDNN
   if (mkldnn_quantizer_) {
