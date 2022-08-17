@@ -340,7 +340,7 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
                                   'boxes': boxes_lod_data
                               },
                               fetch_list=[out.name])
-            self.assertTrue(np.allclose(out_res, expect_out))
+            np.testing.assert_allclose(out_res, expect_out, rtol=1e-05)
 
 
 if __name__ == '__main__':

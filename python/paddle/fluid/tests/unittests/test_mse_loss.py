@@ -106,9 +106,9 @@ class TestNNMseLoss(unittest.TestCase):
 
             sub = input_np - label_np
             expected = np.mean(sub * sub)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
     def test_NNMseLoss_sum(self):
@@ -146,9 +146,9 @@ class TestNNMseLoss(unittest.TestCase):
 
             sub = input_np - label_np
             expected = np.sum(sub * sub)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
     def test_NNMseLoss_none(self):
@@ -186,9 +186,9 @@ class TestNNMseLoss(unittest.TestCase):
 
             sub = input_np - label_np
             expected = (sub * sub)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
 
@@ -229,9 +229,9 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
             sub = input_np - target_np
             expected = np.mean(sub * sub)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
     def test_NNFunctionalMseLoss_sum(self):
@@ -269,9 +269,9 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
             sub = input_np - target_np
             expected = np.sum(sub * sub)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
     def test_NNFunctionalMseLoss_none(self):
@@ -309,9 +309,9 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
             sub = input_np - target_np
             expected = sub * sub
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
 

@@ -48,7 +48,7 @@ class TestSquareErrorCost(unittest.TestCase):
                              },
                              fetch_list=[output])
 
-            self.assertTrue(np.isclose(np_result, result).all())
+            np.testing.assert_allclose(np_result, result, rtol=1e-05)
 
 
 class TestSquareErrorInvalidInput(unittest.TestCase):

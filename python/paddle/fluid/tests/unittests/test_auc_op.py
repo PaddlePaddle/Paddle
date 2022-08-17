@@ -137,7 +137,7 @@ class TestAucAPI(unittest.TestCase):
         },
                          fetch_list=[result[0]])
         auc_np = np.array([0.66666667]).astype("float32")
-        self.assertTrue(np.allclose(output, auc_np))
+        np.testing.assert_allclose(output, auc_np, rtol=1e-05)
 
 
 class TestAucOpError(unittest.TestCase):

@@ -132,7 +132,10 @@ class TestDygraphWeightNorm(unittest.TestCase):
         expect_output = self.weight_normalize(before_weight, self.dim)
 
         for expect, actual in zip(expect_output, self.actual_outputs):
-            self.assertTrue(np.allclose(np.array(actual), expect, atol=0.001))
+            np.testing.assert_allclose(np.array(actual),
+                                       expect,
+                                       rtol=1e-05,
+                                       atol=0.001)
 
 
 class TestDygraphWeightNormCase1(TestDygraphWeightNorm):

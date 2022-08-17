@@ -146,17 +146,26 @@ class TestSoftMarginLoss(unittest.TestCase):
                                                    reduction)
                     expected = calc_softmarginloss(input_np, label_np,
                                                    reduction)
-                    self.assertTrue(np.allclose(static_result, expected))
-                    self.assertTrue(np.allclose(static_result, dy_result))
-                    self.assertTrue(np.allclose(dy_result, expected))
+                    np.testing.assert_allclose(static_result,
+                                               expected,
+                                               rtol=1e-05)
+                    np.testing.assert_allclose(static_result,
+                                               dy_result,
+                                               rtol=1e-05)
+                    np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
                     static_functional = test_static_functional(
                         place, input_np, label_np, reduction)
                     dy_functional = test_dygraph_functional(
                         place, input_np, label_np, reduction)
-                    self.assertTrue(np.allclose(static_functional, expected))
-                    self.assertTrue(
-                        np.allclose(static_functional, dy_functional))
-                    self.assertTrue(np.allclose(dy_functional, expected))
+                    np.testing.assert_allclose(static_functional,
+                                               expected,
+                                               rtol=1e-05)
+                    np.testing.assert_allclose(static_functional,
+                                               dy_functional,
+                                               rtol=1e-05)
+                    np.testing.assert_allclose(dy_functional,
+                                               expected,
+                                               rtol=1e-05)
 
     def test_SoftMarginLoss_error(self):
         paddle.disable_static()

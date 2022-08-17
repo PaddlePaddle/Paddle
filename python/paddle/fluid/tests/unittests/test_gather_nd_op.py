@@ -248,7 +248,7 @@ class TestGatherNdAPI2(unittest.TestCase):
             },
                               fetch_list=[out])
             expected_output = np.array([[3, 4]])
-        self.assertTrue(np.allclose(result, expected_output))
+        np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
     def test_imperative(self):
         paddle.disable_static()
@@ -259,7 +259,7 @@ class TestGatherNdAPI2(unittest.TestCase):
         output = paddle.fluid.layers.gather(input, index)
         output_np = output.numpy()
         expected_output = np.array([3, 4])
-        self.assertTrue(np.allclose(output_np, expected_output))
+        np.testing.assert_allclose(output_np, expected_output, rtol=1e-05)
         paddle.enable_static()
 
 

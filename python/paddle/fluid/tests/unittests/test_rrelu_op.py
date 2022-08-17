@@ -78,13 +78,13 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                               feed={"input": in_np},
                               fetch_list=[res1])
 
-            self.assertTrue(np.allclose(fetches[0], res_np1))
+            np.testing.assert_allclose(fetches[0], res_np1, rtol=1e-05)
 
             res_np2 = ref_rrelu(in_np, self.lower_1, self.upper_1)
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": in_np},
                               fetch_list=[res2])
-            self.assertTrue(np.allclose(fetches[0], res_np2))
+            np.testing.assert_allclose(fetches[0], res_np2, rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -121,8 +121,8 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
             out_ref_1 = ref_rrelu(self.x_np, self.lower_0, self.upper_0)
             out_ref_2 = ref_rrelu(self.x_np, self.lower_1, self.upper_1)
-            self.assertEqual(np.allclose(out_ref_1, res_1), True)
-            self.assertEqual(np.allclose(out_ref_2, res_2), True)
+            np.testing.assert_allclose(out_ref_1, res_1, rtol=1e-05)
+            np.testing.assert_allclose(out_ref_2, res_2, rtol=1e-05)
             self.assertTrue(
                 check_output(self.x_np, res_3[0], self.lower_1, self.upper_1))
 
@@ -164,7 +164,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             x = paddle.to_tensor(self.x_np)
             out = F.rrelu(x, lower, upper, training=False)
             out_ref = ref_rrelu(self.x_np, lower, upper)
-            self.assertEqual(np.allclose(out_ref, out), True)
+            np.testing.assert_allclose(out_ref, out, rtol=1e-05)
             paddle.enable_static()
 
     def test_dygraph_functional(self):
