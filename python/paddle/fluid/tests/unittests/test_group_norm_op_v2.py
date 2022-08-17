@@ -156,14 +156,8 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 data_pd = paddle.to_tensor(data)
                 result1 = gn1(data_pd).numpy()
                 result2 = gn2(data_pd).numpy()
-                np.testing.assert_allclose(result1,
-                                           expect_res1,
-                                           rtol=1e-05,
-                                           atol=1e-05)
-                np.testing.assert_allclose(result2,
-                                           expect_res2,
-                                           rtol=1e-05,
-                                           atol=1e-05)
+                self.assertTrue(np.allclose(result1, expect_res1, atol=1e-5))
+                self.assertTrue(np.allclose(result2, expect_res2, atol=1e-5))
 
     def test_eager_api(self):
         with _test_eager_guard():
