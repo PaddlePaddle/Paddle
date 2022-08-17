@@ -1324,15 +1324,16 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
             (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
+        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'
+
            - 'constant' mode, uses a constant value to pad the input tensor.
            - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
            - 'replicate' mode, uses input boundaries to pad the input tensor.
            - 'circular' mode, uses circular input to pad the input tensor.
-            Default is 'constant'
-        value (float, optional): The value to fill the padded areas in 'constant' mode . Default is 0.0
+
+        value (float, optional): The value to fill the padded areas in 'constant' mode . Default is :math:`0.0`，
         data_format (str, optional): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
-           the input data. Default is "NCHW"
+           the input data. Default is "NCHW"，
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
                     
     Returns: 

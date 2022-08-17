@@ -835,7 +835,7 @@ class NLLLoss(Layer):
             to each class. If given, it has to be a 1D Tensor whose size is `[C, ]`. Otherwise,
             it treated as if having all ones. the data type is
             float32, float64, Default is ``'None'``.
-        ignore_index (int64, optional): Specifies a target value that is ignored
+        ignore_index (int, optional): Specifies a target value that is ignored
             and does not contribute to the input gradient.
         reduction (str, optional): Indicate how to average the loss,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -843,8 +843,7 @@ class NLLLoss(Layer):
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
             if `reduction` is ``'none'``, no reduction will be apllied.
             Default is ``'mean'``.
-         name (str, optional): Name for the operation (optional, default is None).
-             For more information, please refer to :ref:`api_guide_Name`.
+         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
         input (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of classes.
