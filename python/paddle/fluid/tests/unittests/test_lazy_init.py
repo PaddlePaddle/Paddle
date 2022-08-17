@@ -83,12 +83,10 @@ class TestDygraphLazy(TestInitializerBase):
         out = model(x)
         self.assertEqual(out.shape, [2, 10])
 
-        self.assertTrue(
-            np.array_equal(model.weight.numpy(),
-                           np.ones([10, 10], dtype=np.float32) * 0.6))
-        self.assertTrue(
-            np.array_equal(model.bias.numpy(),
-                           np.ones([10], dtype=np.float32) * 0.3))
+        np.testing.assert_array_equal(model.weight.numpy(),
+                                      np.ones([10, 10], dtype=np.float32) * 0.6)
+        np.testing.assert_array_equal(model.bias.numpy(),
+                                      np.ones([10], dtype=np.float32) * 0.3)
 
 
 class TestUniform(TestInitializerBase):
