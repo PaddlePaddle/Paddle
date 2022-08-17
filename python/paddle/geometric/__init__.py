@@ -21,7 +21,6 @@ from .math import segment_min  # noqa: F401
 from .math import segment_max  # noqa: F401
 from .sampling import graph_reindex  # noqa: F401
 from .sampling import heter_graph_reindex  # noqa: F401
-from .sampling import khop_sampler  # noqa: F401
 from .sampling import sample_neighbors  # noqa: F401
 
 __all__ = [
@@ -34,6 +33,5 @@ __all__ = [
     'segment_max',
     'graph_reindex',
     'heter_graph_reindex',
-    'khop_sampler',
     'sample_neighbors',
 ]

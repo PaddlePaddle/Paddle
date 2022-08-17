@@ -21,11 +21,6 @@ from paddle import _C_ops
 import paddle.utils.deprecated as deprecated
 
 
-@deprecated(
-    since="2.4.0",
-    update_to="paddle.geometric.khop_sampler",
-    level=1,
-    reason="paddle.incubate.graph_khop_sampler will be removed in future")
 def graph_khop_sampler(row,
                        colptr,
                        input_nodes,
