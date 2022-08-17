@@ -79,7 +79,7 @@ def test_static(place,
         else:
             res = call_bce_layer(logit, label, weight, reduction, pos_weight)
         exe = paddle.static.Executor(place)
-        static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
+        static_result, = exe.run(prog, feed=feed_dict, fetch_list=[res])
     return static_result
 
 
