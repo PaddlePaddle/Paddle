@@ -57,6 +57,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   for (auto *op_node : op_node_sorted) {
     if (!op_node->IsOp()) continue;
     if (op_node->Op()->Type() == "feed") continue;
+    if (op_node->Op()->Type() != "unsqueeze2") continue;
     bool input_persis = true;
     for (auto in_node : op_node->inputs) {
       if (!in_node->Var()->Persistable()) {
@@ -102,7 +103,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       }
       op->Run(*new_scope, platform::CPUPlace());
       for (auto out_node : op_node->outputs) {
-        // this out_node is useless, do not set it Persistable
+        // this out_node is useless, do not set it persistable
         if (out_node->outputs.size() == 0L) continue;
         auto out_desc = out_node->Var();
         auto out_name = out_desc->Name();
