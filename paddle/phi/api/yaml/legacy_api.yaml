@@ -691,7 +691,7 @@
 
 - api : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
-  output : Tensor[]{max_level - min_level + 1}, Tensor[]{max_level - min_level + 1}, Tensor
+  output : Tensor[](multi_fpn_rois){max_level - min_level + 1}, Tensor[](multi_level_rois_num){max_level - min_level + 1}, Tensor(restore_index)
   infer_meta :
     func : DistributeFpnProposalsInferMeta
   kernel :
