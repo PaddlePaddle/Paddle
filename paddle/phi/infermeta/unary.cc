@@ -3141,7 +3141,7 @@ void SqueezeInferMeta(const MetaTensor& x,
     int output_size = x.dims().size() - axes.GetData().size();
     std::vector<int64_t> vec_out_dims(output_size, -1);
     out->set_dims(phi::make_ddim(vec_out_dims));
-  } else if (!axes.GetData().empty()) {
+  } else {
     std::vector<int32_t> tmp;
     tmp.reserve(axes.GetData().size());
     std::for_each(axes.GetData().begin(),
