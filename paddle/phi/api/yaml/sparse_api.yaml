@@ -82,7 +82,7 @@
 
 - api : conv3d
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
-  output : Tensor(out), Tensor(rulebook), Tensor(counter) 
+  output : Tensor(out), Tensor(rulebook), Tensor(counter)
   kernel :
     func : conv3d_coo{sparse_coo, dense -> sparse_coo, dense, dense}
     layout : x
@@ -292,6 +292,15 @@
            csr_values{sparse_csr -> dense}
     layout : x
   backward : values_grad
+
+- api : values_add
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : values_add_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
+           values_add_coo_dense{sparse_coo, dense -> sparse_coo}
+    layout : x
+  backward : values_add_grad
 
 - api: addmm
   args : (Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0)

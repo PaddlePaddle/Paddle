@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
@@ -107,6 +108,22 @@ std::vector<SparseCooTensor> ElementWiseDivideCooGrad(
       dev_ctx, x, y, out, dout, &dx, &dy);
   return std::vector<SparseCooTensor>{dx, dy};
 }
+
+template <typename T, typename Context>
+void ValuesAddCooCooGradKernel(const Context& dev_ctx,
+                               const SparseCooTensor& x,
+                               const SparseCooTensor& y,
+                               const SparseCooTensor& dout,
+                               SparseCooTensor* dx,
+                               SparseCooTensor* dy);
+
+template <typename T, typename Context>
+void ValuesAddCooDenseGradKernel(const Context& dev_ctx,
+                                 const SparseCooTensor& x,
+                                 const DenseTensor& y,
+                                 const SparseCooTensor& dout,
+                                 SparseCooTensor* dx,
+                                 DenseTensor* dy);
 
 }  // namespace sparse
 }  // namespace phi

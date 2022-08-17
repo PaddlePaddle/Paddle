@@ -19,6 +19,7 @@ from operator import __add__, __sub__, __mul__, __truediv__
 import numpy as np
 import paddle
 from paddle.fluid.framework import _test_eager_guard
+import paddle.incubate.sparse as sparse
 
 op_list = [__add__, __sub__, __mul__, __truediv__]
 
@@ -133,6 +134,22 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         if paddle.device.get_device() == "cpu":
             for op in op_list:
                 self.func_test_coo(op)
+
+    def test_values_add(self):
+        a = paddle.randn((2, 3))
+        sp_a = a.to_sparse_coo(2)
+        b = paddle.randn((2, 3))
+        sp_b = b.to_sparse_coo(2)
+        #1. c.values() = a.values() + b.values()
+        sp_c = sparse.values_add(sp_a, sp_b)
+        ref_c = sp_a.values() + sp_b.values()
+        self.assertTrue(np.allclose(sp_c.values().numpy(), ref_c.numpy()))
+
+        #2. c.values() = a.values() + b
+        bias = paddle.randn((sp_a.values().shape[-1], ))
+        sp_c = sparse.values_add(sp_a, bias)
+        ref_c = sp_a.values() + bias
+        self.assertTrue(np.allclose(sp_c.values().numpy(), ref_c.numpy()))
 
 
 if __name__ == "__main__":

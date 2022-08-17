@@ -399,3 +399,45 @@ def divide(x, y, name=None):
         if y.dtype != x.dtype:
             y = _C_ops.final_state_sparse_cast(y, None, x.dtype)
         return _C_ops.final_state_sparse_divide(x, y)
+
+
+def values_add(x, y, name=None):
+    """
+    Add two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
+    type（SparseCooTensor or SparseCsrTensor）.If input is SparseCooTensor, x and y's sparse_dim should be identical.
+    The equation is:
+
+    .. math::
+        out = x + y
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: the result tensor.
+
+    Examples:
+
+    ..  code-block:: python
+
+        import paddle
+        from paddle.fluid.framework import _test_eager_guard
+
+        paddle.device.set_device("cpu")
+
+        with _test_eager_guard():
+            x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
+            y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
+            sparse_x = x.to_sparse_csr()
+            sparse_y = y.to_sparse_csr()
+            sparse_z = paddle.incubate.sparse.add(sparse_x, sparse_y)
+            print(sparse_z.to_dense())
+
+        # [[ 0., -1.,  0.,  0.],
+        # [ 0.,  2., -6.,  0.],
+        # [ 6.,  8.,  4.,  8.]]
+
+    """
+    return _C_ops.final_state_sparse_values_add(x, y)
