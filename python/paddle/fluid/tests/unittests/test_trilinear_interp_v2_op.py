@@ -21,7 +21,6 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import interpolate
-from paddle._C_ops import final_state_trilinear_interp
 
 np.random.seed(123)
 
@@ -49,10 +48,11 @@ def trilinear_interp_test(x,
         if not isinstance(SizeTensor, list) and not isinstance(
                 SizeTensor, tuple):
             SizeTensor = [SizeTensor]
-    return final_state_trilinear_interp(x, OutSize, SizeTensor, Scale,
-                                        data_layout, out_d, out_h, out_w, scale,
-                                        interp_method, align_corners,
-                                        align_mode)
+    return paddle._C_ops.final_state_trilinear_interp(x, OutSize, SizeTensor,
+                                                      Scale, data_layout, out_d,
+                                                      out_h, out_w, scale,
+                                                      interp_method,
+                                                      align_corners, align_mode)
 
 
 def trilinear_interp_np(input,
@@ -782,6 +782,16 @@ class TestTrilinearInterpAPI(unittest.TestCase):
             np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 4, 1))))
         for i in range(len(results) - 1):
             self.assertTrue(np.allclose(results[i + 1], expect_res))
+
+        # Follow the calculation of preceding out6, out7, out8.
+        # To pass CI-coverage, calculate out9 without verifying accuracy.
+        # Preceding PR link: https://github.com/PaddlePaddle/Paddle/pull/26520/files#diff-ee0c2b73d08659e90a8f3ac48451a6588d35e1613742f864f9aad4394e12c290
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(x_data)
+            out9 = interpolate(x,
+                               size=[12, 18, 8],
+                               mode='trilinear',
+                               data_format="NCDHW")
 
 
 class TestTrilinearInterpOpException(unittest.TestCase):
