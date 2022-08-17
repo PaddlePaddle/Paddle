@@ -24,6 +24,8 @@
 
 namespace phi {
 
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+
 template <typename T, typename Context>
 void IndexAddGradKernel(const Context& ctx,
                         const DenseTensor& index,
