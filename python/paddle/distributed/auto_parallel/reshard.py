@@ -30,10 +30,13 @@ from .cost import build_comm_desc, CommContext
 from .cost import AllgatherOpCost, SendOpCost
 from .cost import SliceOpCost, SplitOpCost, ConcatOpCost
 from .cluster import Cluster
-from .utils import print_program_with_dist_attr
+from .utils import print_program_with_dist_attr, _is_gradient_clip_op
 
-# NOTE: If op in _g_special_ops, it will not be resharded.
+# NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
+_g_gradient_clip_ops = [
+    "sum", "sqrt", "fill_constant", "elementwise_max", "elementwise_div"
+]
 
 
 def get_var_with_recursion(var_name, block, program):
@@ -1076,8 +1079,10 @@ class Resharder:
         return True
 
     def is_special_op(self, op):
-        global _g_special_ops
+        global _g_special_ops, _g_gradient_clip_ops
         if op.type in _g_special_ops:
+            return True
+        if _is_gradient_clip_op(op) and op.type in _g_gradient_clip_ops:
             return True
         return False
 

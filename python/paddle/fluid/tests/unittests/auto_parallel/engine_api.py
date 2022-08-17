@@ -110,11 +110,12 @@ def train(fetch):
     loss = paddle.nn.CrossEntropyLoss()
     scheduler = paddle.optimizer.lr.CosineAnnealingDecay(learning_rate=0.00001,
                                                          T_max=10)
-    optimizer = paddle.optimizer.Adam(learning_rate=scheduler,
-                                      beta1=0.9,
-                                      beta2=0.999,
-                                      epsilon=1e-08,
-                                      grad_clip=None)
+    optimizer = paddle.optimizer.Adam(
+        learning_rate=scheduler,
+        beta1=0.9,
+        beta2=0.999,
+        epsilon=1e-08,
+        grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0))
 
     inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
     labels_spec = InputSpec([batch_size], 'int64', 'label')

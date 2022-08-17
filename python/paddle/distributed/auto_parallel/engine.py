@@ -307,7 +307,7 @@ class Engine:
             mode].dist_startup_programs
         self._feed_vars[mode] = self._dist_contexts[mode].serial_feed_vars
         self._fetch_vars[mode] = self._dist_contexts[mode].serial_fetch_vars
-        self._optimizer = self._dist_contexts[mode].serial_optimizer
+        self._lr_optimizer = self._dist_contexts[mode]._lr_optimizer
 
         if self._nranks > 1:
             # Traverse different rank programs and traverse each op of them,
@@ -437,7 +437,7 @@ class Engine:
                                           return_numpy=return_numpy)
                 if lr_scheduler is not None:
                     lr_scheduler.step()
-                    train_logs["lr"] = self._optimizer.get_lr()
+                    train_logs["lr"] = self._lr_optimizer.get_lr()
                 train_logs["step"] = step
                 # inner fetches
                 if fetch_loss:
