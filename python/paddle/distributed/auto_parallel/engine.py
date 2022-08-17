@@ -16,7 +16,6 @@ import time
 import copy
 import logging
 from collections import defaultdict
-import socket
 
 import paddle
 import paddle.utils as utils
@@ -35,7 +34,6 @@ from paddle.fluid.framework import Operator, Parameter, _non_static_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
-from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
 from .hepler import ProgramHelper
@@ -76,7 +74,16 @@ class Engine:
         self._cur_rank = paddle.distributed.get_rank()
         self._nranks = paddle.distributed.get_world_size()
         self._saver = DistributedSaver()
-        self._logger = get_logger(logging.INFO)
+
+        # TODO: add logger module
+        self._logger = logging.getLogger()
+        self._logger.propagate = False
+        self._logger.setLevel(logging.INFO)
+        log_handler = logging.StreamHandler()
+        log_format = logging.Formatter(
+            '[%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+        log_handler.setFormatter(log_format)
+        self._logger.addHandler(log_handler)
 
         self._orig_main_prog = static.default_main_program()
         self._orig_startup_prog = static.default_startup_program()
@@ -435,10 +442,10 @@ class Engine:
                                           fetch_list=fetch_list,
                                           use_program_cache=use_cache,
                                           return_numpy=return_numpy)
+                train_logs["step"] = step
                 if lr_scheduler is not None:
                     lr_scheduler.step()
                     train_logs["lr"] = self._lr_optimizer.get_lr()
-                train_logs["step"] = step
                 # inner fetches
                 if fetch_loss:
                     train_logs["train_loss"] = outs[0][0]
