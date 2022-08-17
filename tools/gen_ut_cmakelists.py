@@ -15,6 +15,13 @@
 import re
 
 
+# function to process pythonpath env
+# append "${PADDLE_BINARY_DIR}/python" to PYTHONPATH
+def _process_PYTHONPATH(pythonpath_option):
+    pythonpath_option += ":${PADDLE_BINARY_DIR}/python"
+    return pythonpath_option
+
+
 def process_envs(envs):
     """
     Desc:
@@ -31,12 +38,6 @@ def process_envs(envs):
 
     envs_parts = envs.split(";")
     processed_envs = []
-
-    # function to process pythonpath env
-    # append "${PADDLE_BINARY_DIR}/python" to PYTHONPATH
-    def _process_PYTHONPATH(pythonpath_option):
-        pythonpath_option += ":${PADDLE_BINARY_DIR}/python"
-        return pythonpath_option
 
     for p in envs_parts:
         assert " " not in p and \
