@@ -339,7 +339,7 @@ class ResNetHelper:
     def predict_analysis_inference(self, data):
         output = PredictorTools(self.model_save_dir, self.model_filename,
                                 self.params_filename, [data])
-        out = output()
+        out, = output()
         return out
 
 
