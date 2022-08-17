@@ -204,11 +204,12 @@ class TestReorderLoDTensor(unittest.TestCase):
         self.inputs[self.data_desc[0][0]].set_recursive_sequence_lengths(
             input_lod)
         # preserve the output of LodTensor with implicit lod to compare
-        expect_output = [
+        expect_outputs = [
             np.array(actual_output) for actual_output in self.actual_outputs
         ]
         self.run_program()
-        for actual_output in self.actual_outputs:
+        for actual_output, expect_output in zip(self.actual_outputs,
+                                                expect_outputs):
             np.testing.assert_allclose(np.array(actual_output),
                                        expect_output,
                                        rtol=1e-05,
