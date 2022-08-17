@@ -106,18 +106,18 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             out_3 = F.rrelu(x_2, self.lower_1, self.upper_1, training=True)
 
             exe = paddle.static.Executor(place=place)
-            res_1 = exe.run(fluid.default_main_program(),
-                            feed={"x": self.x_np},
-                            fetch_list=out_1,
-                            use_prune=True)
-            res_2 = exe.run(fluid.default_main_program(),
-                            feed={"x2": self.x_np},
-                            fetch_list=out_2,
-                            use_prune=True)
-            res_3 = exe.run(fluid.default_main_program(),
-                            feed={"x2": self.x_np},
-                            fetch_list=out_3,
-                            use_prune=True)
+            res_1, = exe.run(fluid.default_main_program(),
+                             feed={"x": self.x_np},
+                             fetch_list=out_1,
+                             use_prune=True)
+            res_2, = exe.run(fluid.default_main_program(),
+                             feed={"x2": self.x_np},
+                             fetch_list=out_2,
+                             use_prune=True)
+            res_3, = exe.run(fluid.default_main_program(),
+                             feed={"x2": self.x_np},
+                             fetch_list=out_3,
+                             use_prune=True)
 
             out_ref_1 = ref_rrelu(self.x_np, self.lower_0, self.upper_0)
             out_ref_2 = ref_rrelu(self.x_np, self.lower_1, self.upper_1)
