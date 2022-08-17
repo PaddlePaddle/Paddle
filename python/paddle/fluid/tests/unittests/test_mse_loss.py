@@ -40,12 +40,12 @@ class TestMseLoss(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
-            result = exe.run(fluid.default_main_program(),
-                             feed={
-                                 "input": input_val,
-                                 "label": label_val
-                             },
-                             fetch_list=[output])
+            result, = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "input": input_val,
+                                  "label": label_val
+                              },
+                              fetch_list=[output])
 
             np.testing.assert_allclose(np_result, result, rtol=1e-05)
 
@@ -91,12 +91,12 @@ class TestNNMseLoss(unittest.TestCase):
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
-                static_result = exe.run(prog,
-                                        feed={
-                                            "input": input_np,
-                                            "label": label_np
-                                        },
-                                        fetch_list=[ret])
+                static_result, = exe.run(prog,
+                                         feed={
+                                             "input": input_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[ret])
 
             with fluid.dygraph.guard():
                 mse_loss = paddle.nn.loss.MSELoss()
@@ -131,12 +131,12 @@ class TestNNMseLoss(unittest.TestCase):
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
-                static_result = exe.run(prog,
-                                        feed={
-                                            "input": input_np,
-                                            "label": label_np
-                                        },
-                                        fetch_list=[ret])
+                static_result, = exe.run(prog,
+                                         feed={
+                                             "input": input_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[ret])
 
             with fluid.dygraph.guard():
                 mse_loss = paddle.nn.loss.MSELoss(reduction='sum')
@@ -171,12 +171,12 @@ class TestNNMseLoss(unittest.TestCase):
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
-                static_result = exe.run(prog,
-                                        feed={
-                                            "input": input_np,
-                                            "label": label_np
-                                        },
-                                        fetch_list=[ret])
+                static_result, = exe.run(prog,
+                                         feed={
+                                             "input": input_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[ret])
 
             with fluid.dygraph.guard():
                 mse_loss = paddle.nn.loss.MSELoss(reduction='none')
@@ -214,12 +214,12 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "target": target_np
-                                    },
-                                    fetch_list=[mse_loss])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "target": target_np
+                                     },
+                                     fetch_list=[mse_loss])
 
             paddle.disable_static()
             dy_ret = paddle.nn.functional.mse_loss(paddle.to_tensor(input_np),
@@ -254,12 +254,12 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
                 exe = paddle.static.Executor(place)
                 exe.run(startup_prog)
-                static_result = exe.run(prog,
-                                        feed={
-                                            "input": input_np,
-                                            "target": target_np
-                                        },
-                                        fetch_list=[mse_loss])
+                static_result, = exe.run(prog,
+                                         feed={
+                                             "input": input_np,
+                                             "target": target_np
+                                         },
+                                         fetch_list=[mse_loss])
 
             paddle.disable_static()
             dy_ret = paddle.nn.functional.mse_loss(paddle.to_tensor(input_np),
@@ -294,12 +294,12 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
                 exe = paddle.static.Executor(place)
                 exe.run(startup_prog)
-                static_result = exe.run(prog,
-                                        feed={
-                                            "input": input_np,
-                                            "target": target_np
-                                        },
-                                        fetch_list=[mse_loss])
+                static_result, = exe.run(prog,
+                                         feed={
+                                             "input": input_np,
+                                             "target": target_np
+                                         },
+                                         fetch_list=[mse_loss])
 
             paddle.disable_static()
             dy_ret = paddle.nn.functional.mse_loss(paddle.to_tensor(input_np),
