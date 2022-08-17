@@ -963,11 +963,8 @@ def _run_dygraph(instance, input, program_holder):
     attrs.extend(('use_interpretorcore', True))
     if use_interpretorcore:
         attrs.extend(
-            ('forward_global_block',
-             forward_program.block(0), 'backward_global_block',
-             program_holder.backward_program.block(0), 'forward_program_id',
-             _hash_with_id(forward_program, instance), 'backward_program_id',
-             _hash_with_id(program_holder.backward_program, instance)))
+            ('forward_global_block', forward_program.block(0),
+             'backward_global_block', program_holder.backward_program.block(0)))
 
     _C_ops.run_program(_valid_vars(input_vars), _valid_vars(persistable_vars),
                        _valid_vars(output_vars), tmp_scope_vec,

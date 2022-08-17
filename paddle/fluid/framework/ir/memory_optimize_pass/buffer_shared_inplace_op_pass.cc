@@ -174,7 +174,7 @@ GetInplaceVars(const BlockDesc &block,
       0,
       platform::errors::Unimplemented("Inplace can only perform in block 0."));
   // only take block 0 gc_vars
-  const auto op_gc_vars = GetEagerDeletionCleanVars(
+  const auto op_gc_vars = GetEagerDeletionCleanVarsForPartial(
       *block.Program(), skip_vars, for_partial_block)[0];
   const auto all_ops = block.AllOps();
   PADDLE_ENFORCE_EQ(op_gc_vars.size(),

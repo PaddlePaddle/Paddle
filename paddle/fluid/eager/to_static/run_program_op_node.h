@@ -220,8 +220,7 @@ static void ShareTensorsFromScopeWithPartialBlock(
       auto *dst_tensor = const_cast<phi::DenseTensor *>(
           dynamic_cast<const phi::DenseTensor *>(tensors[i]->impl().get()));
       VLOG(1) << "share " << name << "(" << var << ")"
-              << " from scope"
-              << " data is: " << src_tensor;
+              << " from scope";
       *dst_tensor = src_tensor;
     } else if (var->IsType<phi::SelectedRows>()) {
       auto &src_tensor = var->Get<phi::SelectedRows>();

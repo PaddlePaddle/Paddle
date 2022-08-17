@@ -381,50 +381,6 @@ class PartialProgramLayer:
     def _infer_pure_fp16_program_id(self):
         return _hash_with_id(self._infer_pure_fp16_program, self)
 
-    # forward
-    @LazyInitialized
-    def _train_forward_program_id(self):
-        program_id = _hash_with_id(self._train_forward_program, self)
-        core._set_cached_executor_build_strategy(program_id,
-                                                 self._build_strategy)
-        return program_id
-
-    @LazyInitialized
-    def _train_amp_forward_program_id(self):
-        program_id = _hash_with_id(self._train_amp_forward_program, self)
-        core._set_cached_executor_build_strategy(program_id,
-                                                 self._build_strategy)
-        return program_id
-
-    @LazyInitialized
-    def _train_pure_fp16_forward_program_id(self):
-        program_id = _hash_with_id(self._train_pure_fp16_forward_program, self)
-        core._set_cached_executor_build_strategy(program_id,
-                                                 self._build_strategy)
-        return program_id
-
-    # backward
-    @LazyInitialized
-    def _train_backward_program_id(self):
-        program_id = _hash_with_id(self._train_backward_program, self)
-        core._set_cached_executor_build_strategy(program_id,
-                                                 self._build_strategy)
-        return program_id
-
-    @LazyInitialized
-    def _train_amp_backward_program_id(self):
-        program_id = _hash_with_id(self._train_amp_backward_program, self)
-        core._set_cached_executor_build_strategy(program_id,
-                                                 self._build_strategy)
-        return program_id
-
-    @LazyInitialized
-    def _train_pure_fp16_backward_program_id(self):
-        program_id = _hash_with_id(self._train_pure_fp16_backward_program, self)
-        core._set_cached_executor_build_strategy(program_id,
-                                                 self._build_strategy)
-        return program_id
-
     @property
     def whole_program_id(self):
         if self.training:
@@ -441,35 +397,6 @@ class PartialProgramLayer:
                 return self._infer_pure_fp16_program_id
             else:
                 return self._infer_program_id
-
-    @property
-    def forward_program_id(self):
-        if self.training:
-            if _in_amp_guard():
-                return self._train_amp_forward_program_id
-            elif _in_pure_fp16_guard():
-                return self._train_pure_fp16_forward_program_id
-            else:
-                return self._train_forward_program_id
-        else:
-            if _in_amp_guard():
-                return self._infer_amp_program_id
-            elif _in_pure_fp16_guard():
-                return self._infer_pure_fp16_program_id
-            else:
-                return self._infer_program_id
-
-    @property
-    def backward_program_id(self):
-        if self.training:
-            if _in_amp_guard():
-                return self._train_amp_backward_program_id
-            elif _in_pure_fp16_guard():
-                return self._train_pure_fp16_backward_program_id
-            else:
-                return self._train_backward_program_id
-        else:
-            return _hash_with_id(paddle.static.Program(), self)
 
     def _verify_program(self, main_program):
         """
@@ -639,9 +566,7 @@ class PartialProgramLayer:
         if use_interpretorcore:
             attrs.extend(
                 ('forward_global_block', self.forward_program.desc.block(0),
-                 'backward_global_block', self.backward_program.desc.block(0),
-                 'forward_program_id', self.forward_program_id,
-                 'backward_program_id', self.backward_program_id))
+                 'backward_global_block', self.backward_program.desc.block(0)))
 
         _C_ops.run_program(self._valid_vars(in_vars),
                            self._valid_vars(self._params),

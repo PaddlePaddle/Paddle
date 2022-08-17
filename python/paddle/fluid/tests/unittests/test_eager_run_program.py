@@ -133,11 +133,8 @@ class TestRunProgram(unittest.TestCase):
             attrs.extend(('use_interpretorcore', use_interpretorcore))
             if use_interpretorcore:
                 attrs.extend(
-                    ('forward_global_block',
-                     forward_program.desc.block(0), 'backward_global_block',
-                     backward_program.desc.block(0), 'forward_program_id',
-                     _hash_with_id(forward_program), 'backward_program_id',
-                     _hash_with_id(backward_program)))
+                    ('forward_global_block', forward_program.desc.block(0),
+                     'backward_global_block', backward_program.desc.block(0)))
 
             _C_ops.run_program([x_t, y_t], [fake_var], [out_t], [scope],
                                [fake_var], None, *attrs)

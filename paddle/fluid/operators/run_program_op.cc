@@ -130,16 +130,6 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
                         "(BlockDesc *)"
                         "The global block of executed backward program desc.")
         .SetDefault(nullptr);
-    AddAttr<int64_t>(
-        "forward_program_id",
-        "(int64_t)"
-        "The unique hash id used as cache key for ExecutorInfoCache.")
-        .SetDefault(0);
-    AddAttr<int64_t>(
-        "backward_program_id",
-        "(int64_t)"
-        "The unique hash id used as cache key for ExecutorInfoCache.")
-        .SetDefault(0);
     AddComment(R"DOC(
 RunProgram operator.
 

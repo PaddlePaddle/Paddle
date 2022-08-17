@@ -241,12 +241,8 @@ class RunProgramOpTest(unittest.TestCase):
             self.attrs.extend(('use_interpretorcore', use_interpretorcore))
             if use_interpretorcore:
                 self.attrs.extend(
-                    ('forward_global_block',
-                     forward_program_desc.block(0), 'backward_global_block',
-                     backward_program_desc.block(0), 'forward_program_id',
-                     _hash_with_id(forward_program_desc,
-                                   self), 'backward_program_id',
-                     _hash_with_id(backward_program_desc, self)))
+                    ('forward_global_block', forward_program_desc.block(0),
+                     'backward_global_block', backward_program_desc.block(0)))
 
             _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
                                outputs['OutScope'], outputs['DOut'], None,
@@ -269,12 +265,8 @@ class RunProgramOpTest(unittest.TestCase):
             self.attrs.extend(('use_interpretorcore', use_interpretorcore))
             if use_interpretorcore:
                 self.attrs.extend(
-                    ('forward_global_block',
-                     forward_program_desc.block(0), 'backward_global_block',
-                     backward_program_desc.block(0), 'forward_program_id',
-                     _hash_with_id(forward_program_desc,
-                                   self), 'backward_program_id',
-                     _hash_with_id(backward_program_desc, self)))
+                    ('forward_global_block', forward_program_desc.block(0),
+                     'backward_global_block', backward_program_desc.block(0)))
 
             _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
                                outputs['OutScope'], outputs['DOut'], None,
