@@ -104,13 +104,13 @@ class TestHeavisideAPI_float64(unittest.TestCase):
                 out = paddle.heaviside(x, y)
 
             exe = paddle.static.Executor(place=place)
-            res = exe.run(prog,
-                          feed={
-                              f"x_{self.dtype}": self.x_np,
-                              f"y_{self.dtype}": self.y_np
-                          },
-                          fetch_list=out,
-                          use_prune=True)
+            res, = exe.run(prog,
+                           feed={
+                               f"x_{self.dtype}": self.x_np,
+                               f"y_{self.dtype}": self.y_np
+                           },
+                           fetch_list=out,
+                           use_prune=True)
 
             np.testing.assert_allclose(res, self.out_np, rtol=1e-05)
 
