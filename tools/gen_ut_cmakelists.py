@@ -146,6 +146,9 @@ def parse_line(line):
     name, os_, archs, timeout, run_type, launcher, dist_ut_port, run_serial, envs, conditions = line.strip(
     ).split(",")
 
+    # It means the line is the header of the table
+    # when the var name is "name". So we skip this
+    # line and return an empty string directly.
     if name == "name":
         return ""
 
