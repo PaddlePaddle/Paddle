@@ -237,7 +237,7 @@ if __name__ == "__main__":
         default=[],
         nargs="+",
         help=
-        "input a files named testslist.csv and output a CmakeLists.txt in the same directory"
+        "Input a list of files named testslist.csv and output files named CmakeLists.txt in the same directories as the csv files respectly"
     )
     parser.add_argument(
         "--dirpaths",
@@ -247,7 +247,7 @@ if __name__ == "__main__":
         default=[],
         nargs="+",
         help=
-        "input a dir path that including a file named testslist.csv and output a CmakeLists.txt in this directories"
+        "Input a list of dir paths including files named testslist.csv and output CmakeLists.txt in these directories respectly"
     )
     args = parser.parse_args()
 
