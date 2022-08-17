@@ -428,7 +428,7 @@ class TestNumpyTests(unittest.TestCase):
 
         p = np.ones((1, 5)) / 2
         q = np.ones((5, 5)) / 2
-        self.check_output("...ij,...jk->...ik", p, p)
+        self.check_output("...ij,...jk->...ik", p, p.T)
         self.check_output("...ij,...jk->...ik", p, q)
 
         x = np.eye(2).astype('float')
