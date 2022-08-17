@@ -131,7 +131,6 @@ class KernelContext {
     }
     if (is_empty_vector) {
       v.clear();
-      return v;
     }
     return v;
   }
