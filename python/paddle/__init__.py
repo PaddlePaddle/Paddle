@@ -653,5 +653,5 @@ __all__ = [  # noqa
     'put_along_axis',
     'heaviside',
     'tril_indices',
-    'sgn'
+    'sgn',
 ]
