@@ -41,12 +41,12 @@ class TestSquareErrorCost(unittest.TestCase):
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
-            result = exe.run(fluid.default_main_program(),
-                             feed={
-                                 "input": input_val,
-                                 "label": label_val
-                             },
-                             fetch_list=[output])
+            result, = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "input": input_val,
+                                  "label": label_val
+                              },
+                              fetch_list=[output])
 
             np.testing.assert_allclose(np_result, result, rtol=1e-05)
 
