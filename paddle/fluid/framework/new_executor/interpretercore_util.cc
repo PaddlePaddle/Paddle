@@ -204,18 +204,14 @@ void build_variable_scope(const framework::BlockDesc& block,
                           bool use_local_scope) {
   VLOG(3) << "Creating Variables";
   auto inner_scope = var_scope->GetMutableScope();
-  VLOG(3) << "inner_scope is: " << inner_scope;
 
   // NOTE(zhiqiu): if create_local_scope_ is true, the persistable is
   // created in var_scope.scope_ , and other scope is created in local scope.
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
 
-  VLOG(2) << "local_scope ptr is: " << local_scope;
-
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
-    VLOG(3) << "var_name is: " << var_name;
     // TODO(xiongkun): user may create a variable with name that exists before.
     // under such circumstances, we should raise a error. Currently we can't
     // get the var_desc of startup_program, so leave it later.
@@ -241,7 +237,6 @@ void build_variable_scope(const framework::BlockDesc& block,
     }
     var_scope->AddVar(var_name, var_desc);
   }
-  VLOG(4) << "end build_variable_scope: =========";
 }
 
 void create_all_ops(const framework::BlockDesc& block,
@@ -302,8 +297,6 @@ std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
         }
       }
       auto* var = local_scope->FindVar(var_name);
-      VLOG(3) << "build_variable_map get Variable " << var_name
-              << " global, which pointer is " << var;
       auto var_id = var_scope->VarId(var_name);
       vars.push_back(var);
       ids.push_back(var_id);
@@ -394,10 +387,8 @@ void deal_operator_base(const platform::Place& place,
     PADDLE_THROW(
         platform::errors::Fatal("Unsupported current place %s", place));
   }
-  VLOG(4) << "deal_operator_base: get op_func_node";
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
-  VLOG(4) << "deal_operator_base: Run op_base";
   std::unordered_set<int> no_data_transform_index;
   for (auto& it : op_func_node->input_index) {
     for (auto& id : it.second) {
@@ -416,10 +407,8 @@ void build_op_func_list(const platform::Place& place,
                         VariableScope* var_scope,
                         bool use_local_scope,
                         bool used_for_jit) {
-  VLOG(2) << "build_op_func_list";
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
-  VLOG(2) << "scope_ is: " << var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
       ops_unique;  // its elements will be moved to vec_func_list
   // Step 1: create all ops for current block.
@@ -439,14 +428,12 @@ void build_op_func_list(const platform::Place& place,
 #ifdef PADDLE_WITH_MKLDNN
   platform::RegisterModelLayout(ops_unique, place);
 #endif
-  VLOG(2) << "create all ops: " << ops_unique.size();
   // its elements will be moved to vec_func_list
   std::vector<std::shared_ptr<OperatorBase>> ops;
   for (auto& op_unique : ops_unique) {
     ops.emplace_back(std::move(op_unique));
   }
   auto unused_var_map = get_unused_vars(block, ops);
-  VLOG(2) << "get unused_var_map: " << unused_var_map.size();
 
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
@@ -691,7 +678,6 @@ void build_op_func_list(const platform::Place& place,
     for (auto& var_name : delete_vars) {
       auto* var = local_scope->FindVar(var_name);
       if (var == nullptr || skip_gc_vars.find(var_name) != skip_gc_vars.end()) {
-        VLOG(6) << "skip gc var is: " << var_name;
         continue;
       }
 

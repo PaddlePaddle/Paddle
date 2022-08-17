@@ -44,10 +44,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 namespace paddle {
 namespace framework {
 
-Scope::~Scope() {
-  VLOG(2) << "delete Scope ptr is: " << this;
-  DropKids();
-}
+Scope::~Scope() { DropKids(); }
 
 Scope& Scope::NewScope() const {
   Scope* child = new Scope(this);
@@ -118,12 +115,9 @@ const Scope* Scope::FindScope(const std::string& name) const {
 void Scope::DropKids() {
   {
     SCOPE_KIDS_WRITER_LOCK
-    VLOG(2) << "scope size is : " << kids_.size();
     for (Scope* s : kids_) {
-      VLOG(2) << "delete scope of : " << s;
       delete s;
       s = nullptr;
-      VLOG(2) << "s set to nullptr : " << s;
     }
     kids_.clear();
   }
@@ -170,10 +164,8 @@ void Scope::DeleteScope(Scope* scope) const {
     this->kids_.erase(it);
     // When making memory benchmark on Fluid, we have to delete scope sync.
     if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
-      VLOG(1) << "delete scope sync";
       delete scope;
     } else {
-      VLOG(1) << "delete scope async";
       Async([scope] { delete scope; });
     }
   }

@@ -346,8 +346,6 @@ class PartialProgramLayer:
         else:
             return paddle.static.Program()
 
-    # ==================== program id for infer/train =================== #
-    # whole
     @LazyInitialized
     def _train_program_id(self):
         program_id = _hash_with_id(self._train_program, self)
@@ -573,7 +571,6 @@ class PartialProgramLayer:
                            self._valid_vars(out_vars), self._create_scope_vec(),
                            self._double_grads, self._cuda_graph_vec, *attrs)
         restored_nest_out = self._restore_out(out_vars)
-        print("==============> end run program")
         return self._remove_no_value(restored_nest_out)
 
     def _cast_fp16_if_pure_fp16(self, in_vars):
@@ -624,8 +621,6 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _add_build_strategy_for(self, whole_program, forward_end_op_index):
-        " 根据输入的整图program，拆分出前向program、反向program，最后应用inplace策略 "
-        # create forward_program
         if (forward_end_op_index > 0):
             forward_compiled_program = paddle.static.CompiledProgram(
                 whole_program,
@@ -638,7 +633,7 @@ class PartialProgramLayer:
             forward_builded_program = ir_graph.to_program()
         else:
             forward_builded_program = whole_program
-        # create backward_program
+
         start_op_index = forward_end_op_index + 2 * len(self._outputs.var_ids)
         end_op_index = whole_program.desc.block(0).op_size()
         if (start_op_index < end_op_index):
@@ -653,7 +648,7 @@ class PartialProgramLayer:
             backward_builded_program = ir_graph.to_program()
         else:
             backward_builded_program = paddle.static.Program()
-        # apply inplace for program
+
         self._apply_inplace_pass(forward_builded_program,
                                  backward_builded_program, True)
 

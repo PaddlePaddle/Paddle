@@ -138,8 +138,6 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
       auto t = std::dynamic_pointer_cast<phi::SelectedRows>(tensor_base);
       *dst_tensor = *t;
     }
-    VLOG(2) << "Share tensor " << name << " into var " << var << " of scope "
-            << scope;
   }
 }
 
@@ -173,9 +171,7 @@ static void ShareTensorsFromScope(
       auto &src_tensor = var->Get<phi::DenseTensor>();
       auto *dst_tensor = const_cast<phi::DenseTensor *>(
           dynamic_cast<const phi::DenseTensor *>(tensors[i]->impl().get()));
-      VLOG(1) << "share " << name << "(" << var << ")"
-              << " from scope"
-              << " data is: " << src_tensor;
+      VLOG(2) << "share " << name << " from scope";
       *dst_tensor = src_tensor;
     } else if (var->IsType<phi::SelectedRows>()) {
       auto &src_tensor = var->Get<phi::SelectedRows>();
@@ -191,12 +187,7 @@ static void ShareTensorsFromScopeWithPartialBlock(
     const paddle::framework::BlockDesc &forward_global_block,
     const paddle::framework::BlockDesc &backward_global_block,
     paddle::framework::Scope *scope) {
-  VLOG(2) << "Share tensors from scope " << scope;
   for (size_t i = 0; i < tensors.size(); ++i) {
-    // NOTE: In case of setting out_tmp.stop_gradient = True in model code, all
-    // parameters before generating out_tmp have no @GRAD, it will raise error
-    // because we can't find them in scope. So we skip sharing these vars or
-    // var@GRAD if they don't appear in global block.
     auto &name = tensors[i]->name();
     if (name == paddle::framework::kEmptyVarName || name == "Fake_var" ||
         (!forward_global_block.HasVar(name) &&
@@ -204,8 +195,6 @@ static void ShareTensorsFromScopeWithPartialBlock(
       VLOG(2) << "find tensor name is " << name << ", skip it!";
       continue;
     }
-    // NOTE: Here skip not found var is dangerous, if a bug is caused here,
-    // the result is grad calculation error, which will be very hidden!
     auto *var = scope->FindVar(name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
@@ -219,8 +208,7 @@ static void ShareTensorsFromScopeWithPartialBlock(
       auto &src_tensor = var->Get<phi::DenseTensor>();
       auto *dst_tensor = const_cast<phi::DenseTensor *>(
           dynamic_cast<const phi::DenseTensor *>(tensors[i]->impl().get()));
-      VLOG(1) << "share " << name << "(" << var << ")"
-              << " from scope";
+      VLOG(2) << "share " << name << " from scope";
       *dst_tensor = src_tensor;
     } else if (var->IsType<phi::SelectedRows>()) {
       auto &src_tensor = var->Get<phi::SelectedRows>();
@@ -235,20 +223,15 @@ static void BuildScopeByBlock(
     const paddle::framework::InterpreterCore &interpreter_core,
     const paddle::framework::BlockDesc &block,
     paddle::framework::Scope *scope) {
-  VLOG(2) << "Build scope(" << scope << ") by block";
   for (auto &var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
-    // TODO(xiongkun): user may create a variable with name that exists before.
-    // under such circumstances, we should raise a error. Currently we can't
-    // get the var_desc of startup_program, so leave it later.
     if (var_name == paddle::framework::kEmptyVarName) {
       continue;
     }
     if (!scope->FindLocalVar(var_name)) {
       auto *ptr = scope->Var(var_name);
       InitializeVariable(ptr, var_desc->GetType());
-      VLOG(2) << "Initialize Block Variable " << var_name << "(" << ptr
-              << "), which type is " << static_cast<int>(var_desc->GetType());
+      VLOG(2) << "Initialize Block Variable " << var_name;
     }
   }
   auto &data_transfer_added_vars =
@@ -259,8 +242,7 @@ static void BuildScopeByBlock(
                        static_cast<paddle::framework::proto::VarType::Type>(
                            data_transfer_added_vars[i].second));
     VLOG(2) << "Initialize Transfer Added Variable "
-            << data_transfer_added_vars[i].first << "(" << ptr
-            << "), which type is " << data_transfer_added_vars[i].second;
+            << data_transfer_added_vars[i].first;
   }
 }
 
@@ -302,22 +284,17 @@ inline void RunProgramAPI(
   VLOG(2) << "The number of sub scopes before forward: "
           << out_scope_vec->front()->kids().size();
   paddle::framework::Scope &scope = global_inner_scope->NewScope();
-  VLOG(2) << "RunProgramOpKernel will use scope " << &scope
-          << " to execute program " << program_id;
 
   bool use_interpretorcore =
       PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
 
   if (use_interpretorcore) {
-    VLOG(2)
-        << "RunProgramOpKernel will use interpretercore to execute program.";
+    VLOG(2) << "RunProgramOp use interpretercore to execute program.";
 
-    // (1) get all tensor names
     auto input_names = details::GetTensorsName(x);
     auto output_names = details::GetTensorsName(out);
     auto dout_names = details::GetTensorsName(dout);
 
-    // (2) get all program & block
     auto *forward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc *, attrs.at("forward_global_block"));
     auto *backward_global_block = PADDLE_GET_CONST(
@@ -325,22 +302,18 @@ inline void RunProgramAPI(
     auto *forward_program = forward_global_block->Program();
     auto *backward_program = backward_global_block->Program();
 
-    // (3) get interpretercore by cache
     auto &interpretercore_info_cache =
         paddle::framework::InterpreterCoreInfoCache::Instance();
 
     if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/false)) {
       VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
-
       // Step 1. share input_vars & parameters into scope
       details::ShareTensorsIntoScope(x, &scope);
       details::ShareTensorsIntoScope(params, &scope);
-
       // Step 2. create new interpretercore
       auto interpreter_core =
           paddle::framework::CreateInterpreterCoreInfoToCache(
               *forward_program, place, /*is_grad=*/false, program_id, &scope);
-
       // Step 3. get all eager gc vars
       std::set<std::string> skip_eager_delete_vars =
           paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
@@ -353,12 +326,9 @@ inline void RunProgramAPI(
       interpretercore_info_cache.UpdateSkipEagerDeleteVars(
           program_id, false, skip_eager_delete_vars);
       VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
-
       // Step 4. interpretercore run
       if (forward_global_block->OpSize() > 0) {
-        VLOG(2) << "interpreter_core->Run start.";
         interpreter_core->Run({});
-        VLOG(2) << "interpreter_core->Run done.";
       }
       // Step 5. Get Output
       details::ShareTensorsFromScopeWithPartialBlock(
@@ -367,36 +337,28 @@ inline void RunProgramAPI(
           dout, *forward_global_block, *backward_global_block, &scope);
     } else {
       VLOG(2) << "Get interpretercore cahce by program:" << program_id;
-
       // Step 1. get cache interpretercore
       auto &cached_value =
           interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false);
       auto &interpreter_core = cached_value.core_;
-
       // Step 2. update scope for cache interpretercore
       details::ShareTensorsIntoScope(x, &scope);
       details::ShareTensorsIntoScope(params, &scope);
       details::BuildScopeByBlock(
           *interpreter_core.get(), *forward_global_block, &scope);
       interpreter_core->reset_scope(&scope);
-
       // Step 3. interpretercore run
       if (forward_global_block->OpSize() > 0) {
-        VLOG(2) << "interpreter_core->Run start.";
         interpreter_core->Run({});
-        VLOG(2) << "interpreter_core->Run done.";
       }
-
       // Step 4. Get Output
       details::ShareTensorsFromScopeWithPartialBlock(
           out, *forward_global_block, *backward_global_block, &scope);
       details::ShareTensorsFromScopeWithPartialBlock(
           dout, *forward_global_block, *backward_global_block, &scope);
     }
-    // (4) Debug info: scope info when run end
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
-    // (5) Drop all children scopes while testing.
     if (is_test) {
       VLOG(1) << "is test, after forward, drop kids";
       out_scope_vec->front()->DropKids();
@@ -406,11 +368,8 @@ inline void RunProgramAPI(
 #ifdef PADDLE_WITH_MKLDNN
     if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
 #endif
-    VLOG(2) << "===========-> End of RunProgramAPI";
-
   } else {
-    VLOG(2) << "RunProgramOpKernel execute with parallel_executor.";
-
+    VLOG(2) << "RunProgramOp execute with parallel_executor.";
     // share input_vars & parameters into scope
     details::ShareTensorsIntoScope(x, &scope);
     details::ShareTensorsIntoScope(params, &scope);
@@ -487,7 +446,6 @@ inline void RunProgramGradAPI(
 
   bool use_interpretorcore =
       PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
-
   auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
 
   auto *out_scope_vec = &step_scope;
@@ -506,15 +464,11 @@ inline void RunProgramGradAPI(
                         "least one sub scope."));
 
   auto &scope = *(global_inner_scope->kids().front());
-  VLOG(2) << "RunProgramGradOpKernel will use scope " << &scope
-          << " to execute program " << program_id;
   const auto &place = egr::Controller::Instance().GetExpectedPlace();
 
   if (use_interpretorcore) {
-    VLOG(2) << "RunProgramGradOpKernel will use interpretercore to execute "
-               "program.";
+    VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
 
-    // (1) get all block
     auto *forward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc *, attrs.at("forward_global_block"));
     auto *backward_global_block = PADDLE_GET_CONST(
@@ -522,9 +476,7 @@ inline void RunProgramGradAPI(
     auto *backward_program = backward_global_block->Program();
 
     auto out_grad_names = details::GetTensorsName(out_grad);
-    // NOTE: after PR22939 [Add double grad] merged, the grad op maker's
-    //   SetOutput will set to None if the input var stop_gradient=True,
-    //   it will cause an NotFound error when ctx.OutputNames() is called
+
     std::vector<std::string> x_grad_names;
     std::vector<std::string> param_grad_names;
     if (!x_grad.empty()) {
@@ -533,13 +485,11 @@ inline void RunProgramGradAPI(
     if (!params_grad.empty()) {
       param_grad_names = details::GetTensorsName(params_grad);
     }
-    // (2) get interpretercore by cahce
+
     auto &interpretercore_info_cache =
         paddle::framework::InterpreterCoreInfoCache::Instance();
-
     if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/true)) {
       VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
-
       details::ShareTensorsIntoScope(out_grad, &scope);
       auto interpreter_core =
           paddle::framework::CreateInterpreterCoreInfoToCache(
@@ -556,14 +506,11 @@ inline void RunProgramGradAPI(
       interpretercore_info_cache.UpdateSkipEagerDeleteVars(
           program_id, /*is_grad=*/true, skip_eager_delete_vars);
       VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
-
       if (backward_global_block->OpSize() > 0) {
         // Debug info: scope info when run end
         VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(
             out_scope_vec->front());
-        VLOG(2) << "interpreter_core->Run start.";
         interpreter_core->Run({});
-        VLOG(2) << "interpreter_core->Run done.";
       }
     } else {
       VLOG(2) << "Get interpretercore cahce by program:" << program_id;
@@ -580,9 +527,7 @@ inline void RunProgramGradAPI(
         // Debug info: scope info when run end
         VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(
             out_scope_vec->front());
-        VLOG(2) << "interpreter_core->Run start.";
         interpreter_core->Run({});
-        VLOG(2) << "interpreter_core->Run done.";
       }
     }
     // Step 4. get outputs
@@ -592,11 +537,9 @@ inline void RunProgramGradAPI(
         params_grad, *forward_global_block, *backward_global_block, &scope);
 
     // Step5. drop current scope
-    VLOG(1) << "after run grad api, delete scope";
     global_inner_scope->DeleteScope(&scope);
     VLOG(2) << "The number of sub scopes after backward: "
             << global_inner_scope->kids().size();
-    VLOG(2) << "End of RunProgramGradAPI";
   } else {
     auto *global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc *,
                                           attrs.at("global_block"));

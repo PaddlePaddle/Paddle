@@ -61,8 +61,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       var_scope_(scope),
       stream_analyzer_(place),
       used_for_jit_(used_for_jit) {
-  VLOG(2) << "InterpreterCore(): " << this << " on " << place_
-          << " place ptr is: " << &place_;
+  VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   is_build_ = false;
 
@@ -191,7 +190,6 @@ paddle::framework::FetchList InterpreterCore::Run(
                                                        create_local_scope_,
                                                        used_for_jit_);
     is_build_ = true;
-    VLOG(2) << "Done build_op_func_list ----------";
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
@@ -295,7 +293,6 @@ std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
 }
 
 void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
-  VLOG(2) << "BuildAndCacheInstructionCtx";
   Scope* inner_scope =
       create_local_scope_ ? local_scope_ : var_scope_.GetMutableScope();
   VariableValueMap ins_map;
@@ -410,7 +407,6 @@ void InterpreterCore::BuildOperatorDependences() {
   auto op_nums = vec_instruction_.size();
   dependecy_count_.resize(op_nums);
   auto op2downstream = dependency_builder_.Build(vec_instruction_);
-
   for (size_t op = 0; op < vec_instruction_.size(); ++op) {
     auto op_list = op2downstream[op];
     std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
@@ -437,8 +433,6 @@ void InterpreterCore::ClearLoDTensorArrayInLocalScope() {
 
 void InterpreterCore::Convert(
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
-  VLOG(2) << "start Convert : ---- op_func_node size is: "
-          << op_func_nodes->size();
   auto& vec_meta_info = var_scope_.MutableVecMetaInfo();
   auto var_nums = var_scope_.VarSize();
   input_var2op_info_.resize(var_nums);
@@ -600,7 +594,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = create_local_scope_ ? var_scope_.GetMutableLocalScope()
                                            : var_scope_.GetMutableScope();
-  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
@@ -643,13 +636,11 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
           paddle::framework::details::GetMutableTensorFromVar(pair.second);
       if (in.dims() == out->dims()) {
         out->ShareBufferWith(in);
-        VLOG(1) << "set inplace: " << pair.second << " -> " << pair.first;
       }
     }
   }
 
   {
-    VLOG(1) << "start compute kernel: compute";
     platform::RecordEvent compute_event(
         "compute",
         platform::TracerEventType::OperatorInner,
@@ -1043,7 +1034,6 @@ void InterpreterCore::Prepare(
                         "but received %d != %d",
                         feed_names.size(),
                         feed_tensors.size()));
-  VLOG(2) << "start interpreter core Prepare";
   auto FeedInput = [&] {
     VLOG(4) << "Feed inputs";
     for (size_t i = 0; i < feed_names.size(); ++i) {
@@ -1060,7 +1050,6 @@ void InterpreterCore::Prepare(
   };
 
   if (!is_build_) {
-    VLOG(2) << "start interpreter core Prepare: not build";
     paddle::framework::interpreter::build_variable_scope(
         block_, &var_scope_, create_local_scope_);
     FeedInput();

@@ -956,8 +956,6 @@ def _run_dygraph(instance, input, program_holder):
         end_op_index, 'is_test', instance._is_test, 'program_id',
         _hash_with_id(trace_program, instance)
     ]
-    print("=========================>io: _is_enable_standalone_executor",
-          _is_enable_standalone_executor())
 
     use_interpretorcore = _is_enable_standalone_executor()
     attrs.extend(('use_interpretorcore', True))

@@ -564,7 +564,6 @@ VariableScope::VariableScope(Scope* scope) {
   var_list_.push_back(nullptr);
   vec_meta_info_.emplace_back(0, nullptr);
   scope_ = scope;
-  VLOG(2) << "construct VarScope by Scope " << scope;
   PADDLE_ENFORCE_NE(
       scope,
       nullptr,
@@ -578,10 +577,7 @@ Scope* VariableScope::GetMutableScope() const { return scope_; }
 
 Scope* VariableScope::GetMutableLocalScope() const { return local_scope_; }
 
-void VariableScope::SetScope(Scope* scope) {
-  VLOG(4) << "Set scope: " << scope;
-  scope_ = scope;
-}
+void VariableScope::SetScope(Scope* scope) { scope_ = scope; }
 
 void VariableScope::SetLocalScope(Scope* local_scope) {
   VLOG(4) << "Set local scope: " << local_scope;
@@ -628,18 +624,13 @@ size_t VariableScope::VarSize() const { return name2id_.size(); }
 
 void VariableScope::AddVar(const std::string& name,
                            framework::VarDesc* var_desc) {
-  VLOG(2) << "VariableScope :: AddVar";
   if (!HasVar(name)) {
-    VLOG(2) << "not has var, add var";
     auto id = VarSize();
-    VLOG(2) << "add var id is: " << id;
     name2id_[name] = id;
     vec_meta_info_.emplace_back(0, var_desc);
     if (local_scope_ != nullptr) {
-      VLOG(2) << "local_scope_ is not null" << local_scope_;
       var_list_.push_back(local_scope_->FindVar(name));
     } else {
-      VLOG(2) << "local_scope_ is null" << local_scope_;
       var_list_.push_back(scope_->FindVar(name));
     }
     PADDLE_ENFORCE_EQ(
@@ -758,7 +749,6 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   // NOTE: Because execution_ctx_ is constructed by `scope&`, so we fake an
   // empty here to avoid illegal local reference.
   static framework::Scope scope_;
-  VLOG(2) << "Reset Context create a temp scope, ptr is: " << &scope_;
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
 }

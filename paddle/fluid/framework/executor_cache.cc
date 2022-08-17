@@ -140,18 +140,6 @@ void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
   }
 }
 
-/*
- * NOTE(Aurelius84): In ParallelExecutor, memory optimized pass will be applied.
- * To avoid eagerly deleting last alive variables which are necessary in
- * backward program, we firstly parse these variable names as
- * skip_eager_vars. While executing pe.run skip_eager_vars are used to
- * skip memory optimization.
- *
- * Variables satisfying the following rules are considered as skip_eager_var:
- *
- *   1. it is an output var in run_program_op
- *   2. it is an input var used in backward_op
- */
 std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
     const ProgramDesc &backward_program) {
   std::set<std::string> skip_eager_delete_vars;
@@ -188,9 +176,6 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
       op_outputs.emplace(out_arg_name);
     }
   }
-  // For the grad op input variables, if it is not output of grad_op, it may
-  // be output of forward op and we should set the variables as skip_var to
-  // prevent it being deleted when grad op is called multiple times.
   for (const std::string &var_name : op_inputs) {
     if (op_outputs.find(var_name) == op_outputs.end()) {
       VLOG(1) << "skip eager var: " << var_name;
@@ -299,29 +284,17 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
     bool is_grad,
     int64_t program_id,
     framework::Scope *scope) {
-  VLOG(1) << "No interpretercore from cache by: <program_id: " << program_id
-          << ", is_grad: " << is_grad << ">.";
-
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-
   if (interpretercore_info_cache.Size() > 4u /* max_cached_size*/) {
-    VLOG(2) << "The cached_info size has exceeded max_cached_size: 4, so "
-               "clear all cache!";
     interpretercore_info_cache.Finalize();
   }
-  // 2. Create a new exe.
-  VLOG(1) << "Create a new interpretercore for: <program_id: " << program_id
-          << ", is_grad: " << is_grad << ">.";
-  VLOG(2) << "scope ptr is: " << scope;
   auto core = std::make_shared<InterpreterCore>(
       place,
       program_desc.Block(0),
       /*skip_gc_vars=*/std::set<std::string>(),
       scope,
       /*used_for_jit=*/true);
-
-  // 3. Insert exe into cached map.
   auto &cached_value =
       interpretercore_info_cache.GetMutable(program_id, is_grad);
   cached_value.core_ = core;
