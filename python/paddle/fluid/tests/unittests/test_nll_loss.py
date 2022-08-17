@@ -96,12 +96,12 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss()
@@ -139,12 +139,12 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
@@ -187,13 +187,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -237,13 +237,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -277,13 +277,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -314,13 +314,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -356,12 +356,12 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss()
@@ -394,12 +394,12 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
@@ -435,13 +435,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -476,13 +476,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -518,13 +518,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -561,12 +561,12 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss()
@@ -606,13 +606,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -655,13 +655,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -705,13 +705,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -754,13 +754,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
