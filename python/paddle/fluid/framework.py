@@ -6795,6 +6795,17 @@ class EagerParamBase(_core_eager_eagertensor):
 
         self.is_distributed = kwargs.get('is_distributed', False)
         # self.block = default_main_program().global_block()
+        self.init_func = None
+
+    def set_init_func(self, obj):
+        self.init_func = obj
+
+    @dygraph_only
+    def initialize(self):
+        assert self.init_func is not None, "Required self.init_func is not None, but received None."
+        self.init_func()
+        # clear function handle to release resource
+        self.init_func = None
 
     @property
     def trainable(self):

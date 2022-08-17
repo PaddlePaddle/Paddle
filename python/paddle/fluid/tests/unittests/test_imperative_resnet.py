@@ -414,24 +414,26 @@ class TestDygraphResnet(unittest.TestCase):
 
         print("static", static_out)
         print("dygraph", dy_out)
-        self.assertTrue(np.allclose(static_out, dy_out))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+            np.testing.assert_allclose(value,
+                                       dy_param_init_value[key],
+                                       rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
         self.assertEqual(len(dy_grad_value), len(static_grad_value))
         for key, value in six.iteritems(static_grad_value):
-            self.assertTrue(np.allclose(value, dy_grad_value[key]))
+            np.testing.assert_allclose(value, dy_grad_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
         self.assertEqual(len(dy_param_value), len(static_param_value))
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key]))
+            np.testing.assert_allclose(value, dy_param_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 

@@ -139,9 +139,9 @@ REGISTER_PASS(vit_attention_fuse_pass,
 REGISTER_PASS_CAPABILITY(vit_attention_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .GE("reshape2", 0)
-            .GE("transpose2", 0)
-            .GE("slice", 0)
-            .GE("scale", 0)
-            .GE("softmax", 0)
-            .GE("matmul_v2", 0));
+            .EQ("reshape2", 0)
+            .EQ("transpose2", 0)
+            .EQ("slice", 0)
+            .EQ("scale", 0)
+            .EQ("softmax", 0)
+            .EQ("matmul_v2", 0));
