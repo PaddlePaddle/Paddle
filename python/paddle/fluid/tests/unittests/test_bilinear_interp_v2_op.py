@@ -21,7 +21,6 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.nn.functional import interpolate
 import paddle
-from paddle._C_ops import final_state_bilinear_interp
 
 
 def bilinear_interp_test(x,
@@ -47,9 +46,11 @@ def bilinear_interp_test(x,
         if not isinstance(SizeTensor, list) and not isinstance(
                 SizeTensor, tuple):
             SizeTensor = [SizeTensor]
-    return final_state_bilinear_interp(x, OutSize, SizeTensor, Scale,
-                                       data_layout, out_d, out_h, out_w, scale,
-                                       interp_method, align_corners, align_mode)
+    return paddle._C_ops.final_state_bilinear_interp(x, OutSize, SizeTensor,
+                                                     Scale, data_layout, out_d,
+                                                     out_h, out_w, scale,
+                                                     interp_method,
+                                                     align_corners, align_mode)
 
 
 def bilinear_interp_np(input,
