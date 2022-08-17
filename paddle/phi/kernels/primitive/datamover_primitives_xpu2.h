@@ -1224,7 +1224,7 @@ __device__ __inline__ void ReadDataBc(T* dst,
  * dst: The register pointer of the thread, the size is NX.
  * init_data: The register pointer of init data, the size is NX.
  */
-template <typename T, int NX, int NY, >
+template <typename T, int NX, int NY>
 __device__ __forceinline__ void InitWithDataIndex(T* dst, int block_offset) {
   int thread_offset = block_offset + core_id() * NX;
 #pragma unroll
