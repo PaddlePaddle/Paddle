@@ -2613,6 +2613,14 @@ void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
   if (config.is_runtime) {
     ReduceInferMetaBase(x, vec_axis, keep_dim, reduce_all, out);
   } else {
+    bool is_all_minus_one =
+        std::all_of(vec_axis.begin(), vec_axis.end(), [](int64_t axis) {
+          return axis == -1;
+        });
+    if (!is_all_minus_one) {
+      ReduceInferMetaBase(x, vec_axis, keep_dim, reduce_all, out);
+      return;
+    }
     std::vector<int64_t> vec_dim;
     if (reduce_all) {
       if (keep_dim) {
@@ -2622,7 +2630,7 @@ void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
       }
     } else {
       if (keep_dim) {
-        vec_dim = std::vector<int64_t>(x.dims().size(), 1);
+        vec_dim = std::vector<int64_t>(x.dims().size(), -1);
       } else {
         auto x_rank = static_cast<size_t>(x.dims().size());
         if (vec_axis.size() >= x_rank) {
