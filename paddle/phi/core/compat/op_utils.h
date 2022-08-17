@@ -75,7 +75,9 @@ const std::unordered_set<std::string> deprecated_op_names(
      "linear_interp",
      "linear_interp_grad",
      "nearest_interp",
-     "nearest_interp_grad"});
+     "nearest_interp_grad",
+     "bicubic_interp",
+     "bicubic_interp_grad"});
 
 class DefaultKernelSignatureMap {
  public:
