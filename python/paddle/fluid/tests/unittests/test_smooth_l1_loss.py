@@ -58,12 +58,12 @@ class SmoothL1Loss(unittest.TestCase):
             ret = smooth_l1_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_ret = exe.run(prog,
-                                 feed={
-                                     'input': input_np,
-                                     'label': label_np,
-                                 },
-                                 fetch_list=[ret])
+            static_ret, = exe.run(prog,
+                                  feed={
+                                      'input': input_np,
+                                      'label': label_np,
+                                  },
+                                  fetch_list=[ret])
             self.assertIsNotNone(static_ret)
         with fluid.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
@@ -90,12 +90,12 @@ class SmoothL1Loss(unittest.TestCase):
             ret = smooth_l1_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_ret = exe.run(prog,
-                                 feed={
-                                     'input': input_np,
-                                     'label': label_np,
-                                 },
-                                 fetch_list=[ret])
+            static_ret, = exe.run(prog,
+                                  feed={
+                                      'input': input_np,
+                                      'label': label_np,
+                                  },
+                                  fetch_list=[ret])
             self.assertIsNotNone(static_ret)
         with fluid.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
@@ -122,12 +122,12 @@ class SmoothL1Loss(unittest.TestCase):
             ret = smooth_l1_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_ret = exe.run(prog,
-                                 feed={
-                                     'input': input_np,
-                                     'label': label_np,
-                                 },
-                                 fetch_list=[ret])
+            static_ret, = exe.run(prog,
+                                  feed={
+                                      'input': input_np,
+                                      'label': label_np,
+                                  },
+                                  fetch_list=[ret])
             self.assertIsNotNone(static_ret)
         with fluid.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
@@ -155,12 +155,12 @@ class SmoothL1Loss(unittest.TestCase):
             ret = smooth_l1_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_ret = exe.run(prog,
-                                 feed={
-                                     'input': input_np,
-                                     'label': label_np,
-                                 },
-                                 fetch_list=[ret])
+            static_ret, = exe.run(prog,
+                                  feed={
+                                      'input': input_np,
+                                      'label': label_np,
+                                  },
+                                  fetch_list=[ret])
             self.assertIsNotNone(static_ret)
         with fluid.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(delta=delta)
