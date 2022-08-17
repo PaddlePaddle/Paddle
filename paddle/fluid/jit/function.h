@@ -27,7 +27,7 @@ using Tensor = paddle::experimental::Tensor;
 
 class Function {
  public:
-  Function() = default;
+  Function() : engine_(nullptr) {}
   explicit Function(BaseEngine* engine);
 
   std::vector<Tensor> operator()(const std::vector<Tensor>& inputs) const;
@@ -35,7 +35,7 @@ class Function {
   std::vector<DenseTensor> operator()(
       const std::vector<DenseTensor>& inputs) const;
 
-  bool IsValid() { return engine_ != nullptr; }
+  bool IsValid() const { return engine_ != nullptr; }
 
   ~Function() = default;
 

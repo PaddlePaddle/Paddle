@@ -1,5 +1,4 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -103,6 +102,8 @@ TEST(CpuLayerTest, Construct) {
   auto out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
+  auto func_null = layer.Function();
+  EXPECT_TRUE(!func_null.IsValid());
   auto func = layer.Function("infer");
   EXPECT_TRUE(func.IsValid());
   outs = func(inputs);
