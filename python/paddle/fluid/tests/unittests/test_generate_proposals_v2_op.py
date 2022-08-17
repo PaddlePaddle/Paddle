@@ -297,9 +297,9 @@ class TestGenerateProposalsV2Op(OpTest):
 #             pre_nms_top_n=10,
 #             post_nms_top_n=5,
 #             return_rois_num=True)
-#         self.assertTrue(np.allclose(self.roi_expected, rois.numpy()))
-#         self.assertTrue(np.allclose(self.roi_probs_expected, roi_probs.numpy()))
-#         self.assertTrue(np.allclose(self.rois_num_expected, rois_num.numpy()))
+#         np.testing.assert_allclose(self.roi_expected, rois.numpy(), rtol=1e-5)
+#         np.testing.assert_allclose(self.roi_probs_expected, roi_probs.numpy(), rtol=1e-5)
+#         np.testing.assert_allclose(self.rois_num_expected, rois_num.numpy(), rtol=1e-5)
 
 #     def test_static(self):
 #         paddle.enable_static()
@@ -340,10 +340,9 @@ class TestGenerateProposalsV2Op(OpTest):
 #             fetch_list=[rois.name, roi_probs.name, rois_num.name],
 #             return_numpy=False)
 
-#         self.assertTrue(np.allclose(self.roi_expected, np.array(rois)))
-#         self.assertTrue(
-#             np.allclose(self.roi_probs_expected, np.array(roi_probs)))
-#         self.assertTrue(np.allclose(self.rois_num_expected, np.array(rois_num)))
+#         np.testing.assert_allclose(self.roi_expected, np.array(rois), rtol=1e-5)
+#         np.testing.assert_allclose(self.roi_probs_expected, np.array(roi_probs), rtol=1e-5)
+#         np.testing.assert_allclose(self.rois_num_expected, np.array(rois_num), rtol=1e-5)
 
 if __name__ == '__main__':
     paddle.enable_static()

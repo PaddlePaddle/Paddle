@@ -41,7 +41,7 @@ class TestComplexTraceLayer(unittest.TestCase):
                     result = tensor.trace(var_x, offset=1, axis1=0,
                                           axis2=2).numpy()
                     target = np.trace(input, offset=1, axis1=0, axis2=2)
-                    self.assertTrue(np.allclose(result, target))
+                    np.testing.assert_allclose(result, target, rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():
