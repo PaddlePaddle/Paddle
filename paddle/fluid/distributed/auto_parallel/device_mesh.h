@@ -161,6 +161,23 @@ class Machine {
 
   void set_id(int64_t id) { id_ = id; }
 
+  const std::unordered_map<int64_t, const Device*>& devices() const {
+    return devices_;
+  }
+
+  const std::unordered_map<int64_t, std::unordered_map<int64_t, const Link*>>&
+  links() const {
+    return links_;
+  }
+
+  const Device& device(int64_t global_id) const {
+    return *devices_.at(global_id);
+  }
+
+  const Link& link(int64_t source_id, int64_t target_id) const {
+    return *links_.at(source_id).at(target_id);
+  }
+
   bool contains(int64_t device_id) const;
 
   void add_device(const Device& device);
@@ -196,8 +213,11 @@ class DeviceMesh {
   const std::vector<std::string>& dim_names() const { return dim_names_; }
 
   std::string device_type() const {
-    if (empty()) return std::string();
-    return std::begin(devices_)->second.type();
+    if (empty()) return "UNKNOWN";
+    if (devices_.empty())
+      return "UNKNOWN";
+    else
+      return std::begin(devices_)->second.type();
   }
 
   const std::unordered_map<int64_t, Device>& devices() const {
@@ -209,12 +229,20 @@ class DeviceMesh {
     return links_;
   }
 
+  const std::unordered_map<int64_t, Machine>& machines() const {
+    return machines_;
+  }
+
   const Device& device(int64_t global_id) const {
     return devices_.at(global_id);
   }
 
   const Link& link(int64_t source_id, int64_t target_id) const {
     return links_.at(source_id).at(target_id);
+  }
+
+  const Machine& machine(int64_t machine_id) const {
+    return machines_.at(machine_id);
   }
 
   int64_t size() const;

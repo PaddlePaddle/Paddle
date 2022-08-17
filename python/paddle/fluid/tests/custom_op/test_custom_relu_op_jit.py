@@ -71,10 +71,11 @@ class TestJITLoad(unittest.TestCase):
                     out = custom_relu_static(custom_op, device, dtype, x)
                     pd_out = custom_relu_static(custom_op, device, dtype, x,
                                                 False)
-                    self.assertTrue(
-                        np.array_equal(out, pd_out),
-                        "custom op out: {},\n paddle api out: {}".format(
-                            out, pd_out))
+                    np.testing.assert_array_equal(
+                        out,
+                        pd_out,
+                        err_msg='custom op out: {},\n paddle api out: {}'.
+                        format(out, pd_out))
 
     def func_dynamic(self):
         for device in self.devices:
@@ -87,14 +88,16 @@ class TestJITLoad(unittest.TestCase):
                                                       x)
                     pd_out, pd_x_grad = custom_relu_dynamic(
                         custom_op, device, dtype, x, False)
-                    self.assertTrue(
-                        np.array_equal(out, pd_out),
-                        "custom op out: {},\n paddle api out: {}".format(
-                            out, pd_out))
-                    self.assertTrue(
-                        np.array_equal(x_grad, pd_x_grad),
-                        "custom op x grad: {},\n paddle api x grad: {}".format(
-                            x_grad, pd_x_grad))
+                    np.testing.assert_array_equal(
+                        out,
+                        pd_out,
+                        err_msg='custom op out: {},\n paddle api out: {}'.
+                        format(out, pd_out))
+                    np.testing.assert_array_equal(
+                        x_grad,
+                        pd_x_grad,
+                        err_msg='custom op x grad: {},\n paddle api x grad: {}'.
+                        format(x_grad, pd_x_grad))
 
     def test_dynamic(self):
         with _test_eager_guard():

@@ -42,7 +42,7 @@ from .. import compat as cpt
 from .lr import LRScheduler
 import copy
 from paddle import _C_ops
-from paddle.fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check
+from paddle.fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check, _current_expected_place, in_dygraph_mode
 
 __all__ = []
 
@@ -473,7 +473,12 @@ class Optimizer(object):
         self._learning_rate = float(value)
         current_lr = self._global_learning_rate()
         if current_lr is not None:
-            if framework._non_static_mode():
+            if in_dygraph_mode():
+                place = _current_expected_place()
+                _C_ops.final_state_full_(current_lr, list(current_lr.shape),
+                                         float(value), current_lr.dtype, place)
+
+            elif _in_legacy_dygraph():
                 _C_ops.fill_constant(current_lr, 'value', float(value), 'dtype',
                                      current_lr.dtype, 'shape',
                                      list(current_lr.shape))

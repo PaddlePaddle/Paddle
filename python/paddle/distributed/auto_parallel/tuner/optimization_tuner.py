@@ -266,7 +266,7 @@ class OptimizationTuner:
             config["input_data"] = self._baseline_dist_context.serial_feed_vars["inputs"] \
                 + self._baseline_dist_context.serial_feed_vars["labels"]
             if config["use_pure_fp16"]:
-                config["base_opt"] = dist_context.optimizer
+                config["base_opt"] = dist_context.serial_optimizer
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply([main_program], [startup_program],
                                               pass_context)
@@ -368,6 +368,10 @@ class OptimizationTuner:
             str(self.device_id),
             "--ctx_filename",
             ctx_path,
+            "--profile_start_step",
+            str(self._config.profile_start_step),
+            "--profile_end_step",
+            str(self._config.profile_end_step),
         ])
         cmd_args = "-m paddle.distributed.auto_parallel.tuner.profiler" + " " + profile_args
         cmd = [sys.executable, "-u"] + coverage_args + shlex.split(cmd_args)
