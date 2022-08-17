@@ -18,7 +18,6 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 from paddle import _C_ops
-import paddle.utils.deprecated as deprecated
 
 
 def graph_khop_sampler(row,
