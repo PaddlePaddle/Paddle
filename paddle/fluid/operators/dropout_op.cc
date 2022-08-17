@@ -71,7 +71,8 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                             true,
                             platform::errors::InvalidArgument(
                                 "'dropout_prob' must be between 0.0 and 1.0."));
-        });
+        })
+        .SupportTensor();
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
