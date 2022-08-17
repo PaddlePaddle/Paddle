@@ -121,6 +121,7 @@ class TestOutDtype(unittest.TestCase):
 class TestMaxWithTensorAxis1(unittest.TestCase):
 
     def setUp(self):
+        paddle.seed(2022)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.save_path = os.path.join(self.temp_dir.name,
                                       'max_with_tensor_axis')

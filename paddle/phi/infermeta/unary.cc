@@ -2610,17 +2610,9 @@ void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
                                      MetaTensor* out,
                                      MetaConfig config) {
   std::vector<int64_t> vec_axis = axis.GetData();
-  if (config.is_runtime) {
+  if (config.is_runtime || !axis.FromTensor()) {
     ReduceInferMetaBase(x, vec_axis, keep_dim, reduce_all, out);
   } else {
-    bool is_all_minus_one =
-        std::all_of(vec_axis.begin(), vec_axis.end(), [](int64_t axis) {
-          return axis == -1;
-        });
-    if (!is_all_minus_one) {
-      ReduceInferMetaBase(x, vec_axis, keep_dim, reduce_all, out);
-      return;
-    }
     std::vector<int64_t> vec_dim;
     if (reduce_all) {
       if (keep_dim) {
