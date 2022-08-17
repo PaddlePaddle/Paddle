@@ -134,9 +134,9 @@ class TestNormalAPI(unittest.TestCase):
             ret = ret.flatten().reshape([self.repeat_num, -1])
             mean = np.mean(ret, axis=0)
             std = np.std(ret, axis=0)
-            mean_ref=self.mean.reshape([1, -1]) \
+            mean_ref=self.mean.flatten() \
                 if isinstance(self.mean, np.ndarray) else self.mean
-            std_ref=self.std.reshape([1, -1]) \
+            std_ref=self.std.flatten() \
                 if isinstance(self.std, np.ndarray) else self.std
             np.testing.assert_allclose(mean_ref, mean, rtol=0.2, atol=0.2)
             np.testing.assert_allclose(std_ref, std, rtol=0.2, atol=0.2)
