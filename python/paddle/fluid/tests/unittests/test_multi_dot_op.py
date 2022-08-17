@@ -256,11 +256,11 @@ class APITestMultiDot(unittest.TestCase):
             exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.random.rand(3, 2).astype("float64")
             data2 = np.random.rand(2, 3).astype("float64")
-            np_res = exe.run(feed={
+            np_res, = exe.run(feed={
                 'x0': data1,
                 'x1': data2
             },
-                             fetch_list=[result])
+                              fetch_list=[result])
             expected_result = np.linalg.multi_dot([data1, data2])
 
         np.testing.assert_allclose(
