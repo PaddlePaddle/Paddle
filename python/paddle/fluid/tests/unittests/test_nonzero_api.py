@@ -38,7 +38,7 @@ class TestNonZeroAPI(unittest.TestCase):
                            fetch_list=[z.name],
                            return_numpy=False)
         expect_out = np.array([[0, 0], [1, 1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
@@ -52,7 +52,7 @@ class TestNonZeroAPI(unittest.TestCase):
                            fetch_list=[z.name],
                            return_numpy=False)
         expect_out = np.array([[0], [1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_nonzero_api(self):
         data = np.array([[True, False], [False, True]])
@@ -64,7 +64,7 @@ class TestNonZeroAPI(unittest.TestCase):
                            fetch_list=[y.name],
                            return_numpy=False)
         expect_out = np.array([[0, 0], [1, 1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
@@ -75,7 +75,7 @@ class TestNonZeroAPI(unittest.TestCase):
                            fetch_list=[y.name],
                            return_numpy=False)
         expect_out = np.array([[0], [1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
         data_x = np.array([[True, False], [False, True]])
