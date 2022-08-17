@@ -677,10 +677,11 @@ class TestTrilinearInterpAPI(unittest.TestCase):
                                          out_h=18,
                                          out_w=8,
                                          align_mode=1)
-        self.assertTrue(
-            np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 4, 1))))
+        np.testing.assert_allclose(results[0],
+                                   np.transpose(expect_res, (0, 2, 3, 4, 1)),
+                                   rtol=1e-05)
         for i in range(len(results) - 1):
-            self.assertTrue(np.allclose(results[i + 1], expect_res))
+            np.testing.assert_allclose(results[i + 1], expect_res, rtol=1e-05)
 
 
 class TestTrilinearInterpOpException(unittest.TestCase):

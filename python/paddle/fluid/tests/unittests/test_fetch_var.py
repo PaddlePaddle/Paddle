@@ -33,10 +33,7 @@ class TestFetchVar(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_main_program(), feed={}, fetch_list=[])
         fetched_x = fluid.executor._fetch_var("x")
-        np.testing.assert_array_equal(fetched_x,
-                                      self.val,
-                                      err_msg='fetch_x=%s val=%s' %
-                                      (fetched_x, self.val))
+        np.testing.assert_array_equal(fetched_x, self.val)
         self.assertEqual(fetched_x.dtype, self.val.dtype)
 
 

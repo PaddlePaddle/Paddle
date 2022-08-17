@@ -199,7 +199,9 @@ def get_user_defined_strategy(config):
         "dump_fields_path": config.get("runner.dump_fields_path", ""),
         "dump_fields": config.get("runner.dump_fields", []),
         "dump_param": config.get("runner.dump_param", []),
-        "stat_var_names": config.get("stat_var_names", [])
+        "stat_var_names": config.get("stat_var_names", []),
+        "local_sparse": config.get("runner.local_sparse", []),
+        "remote_sparse": config.get("runner.remote_sparse", [])
     }
     print("strategy:", strategy.trainer_desc_configs)
 

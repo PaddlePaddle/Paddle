@@ -398,9 +398,9 @@ class API_Test_Add_n(unittest.TestCase):
             expected_dx = np.array([[1, 1, 1], [1, 1, 1]])
             expected_dy = np.array([[1, 1, 1], [1, 1, 1]])
 
-            self.assertTrue(np.allclose(out, expected_out))
-            self.assertTrue(np.allclose(dx, expected_dx))
-            self.assertTrue(np.allclose(dy, expected_dy))
+            np.testing.assert_allclose(out, expected_out, rtol=1e-05)
+            np.testing.assert_allclose(dx, expected_dx, rtol=1e-05)
+            np.testing.assert_allclose(dy, expected_dy, rtol=1e-05)
 
 
 class TestRaiseSumError(unittest.TestCase):

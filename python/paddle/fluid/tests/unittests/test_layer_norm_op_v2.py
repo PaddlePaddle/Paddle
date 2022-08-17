@@ -49,7 +49,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_eager(self):
         places = [fluid.CPUPlace()]
@@ -80,8 +80,8 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1, g1 = compute_v1(x)
             y2, g2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
-            self.assertTrue(np.allclose(g1, g2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
+            np.testing.assert_allclose(g1, g2, rtol=1e-05)
 
     def test_static(self):
         paddle.enable_static()
@@ -113,7 +113,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
 
 class TestLayerNormFunction(unittest.TestCase):
@@ -159,11 +159,11 @@ class TestLayerNormFunction(unittest.TestCase):
             y0 = compute_v0(x)
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y0, y1))
-            self.assertTrue(np.allclose(y0, y2))
+            np.testing.assert_allclose(y0, y1, rtol=1e-05)
+            np.testing.assert_allclose(y0, y2, rtol=1e-05)
             y3 = compute_v3(x)
             y4 = compute_v4(x)
-            self.assertTrue(np.allclose(y3, y4))
+            np.testing.assert_allclose(y3, y4, rtol=1e-05)
 
             self.assertRaises(ValueError,
                               paddle.nn.functional.layer_norm,
