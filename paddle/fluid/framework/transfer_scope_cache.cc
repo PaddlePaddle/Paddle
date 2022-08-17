@@ -49,6 +49,7 @@ Scope* TryCreateTransferScope(OpKernelType type0,
   if (it != global_transfer_data_cache().end()) {
     new_scope = global_transfer_data_cache()[infer_cache_key];
   } else {
+    new_scope = &scope->NewScope();
     global_transfer_data_cache()[infer_cache_key] = new_scope;
   }
   global_transfer_scope_cache().insert(new_scope);
