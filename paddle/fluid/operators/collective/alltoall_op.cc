@@ -75,8 +75,6 @@ class AllToAllOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(AllToAllInplaceInferer, {"X", "Out"});
-
 }  // namespace operators
 }  // namespace paddle
 
