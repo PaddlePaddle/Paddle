@@ -132,10 +132,12 @@ class TestModelCastBF16(unittest.TestCase):
                 amp_fun=_amp_fun,
                 startup_prog=startup_prog)
 
-        self.assertTrue(
-            np.allclose(cutf(static_ret_bf16), cutf(static_ret), 1e-2))
-        self.assertTrue(
-            np.allclose(cutf(static_ret_bf16), cutf(ret_fp32bf16), 1e-2))
+        np.testing.assert_allclose(cutf(static_ret_bf16),
+                                   cutf(static_ret),
+                                   rtol=0.01)
+        np.testing.assert_allclose(cutf(static_ret_bf16),
+                                   cutf(ret_fp32bf16),
+                                   rtol=0.01)
 
         with self.static_graph():
             t = layers.data(name='t', shape=[size, size], dtype='float32')
