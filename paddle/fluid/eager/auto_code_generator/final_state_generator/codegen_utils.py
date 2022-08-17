@@ -373,7 +373,7 @@ class FunctionGeneratorBase:
 
         # Special Op Attributes
         self.optional_inputs = []  #[name, ...]
-        self.need_buffers = []  #[name, ...]
+        self.no_need_buffers = []  #[name, ...]
         self.intermediate_outputs = []  #[name, ...]
         self.forward_inplace_map = {}  #{name : name, ...}
 
