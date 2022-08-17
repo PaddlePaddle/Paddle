@@ -1460,16 +1460,14 @@ void IndexAddInferMeta(const MetaTensor& x,
 
   int real_axis = axis >= 0 ? axis : axis + input_dim.size();
 
-  PADDLE_ENFORCE_EQ(
-      index_dim.size() == 1 ||
-          (index_dim.size() == 2 && (index_dim[1] == 1 || index_dim[0] == 1)),
-      true,
-      phi::errors::InvalidArgument(
-          "The 'shape' of Input(Index) must be 1-D tensor. "
-          "But received: the 'shape' of Input(Index) is [%s], "
-          "the dimension of Input(Index) is [%d].",
-          index_dim,
-          index_dim.size()));
+  PADDLE_ENFORCE_EQ(index_dim.size() == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The 'shape' of Input(Index) must be 1-D tensor. "
+                        "But received: the 'shape' of Input(Index) is [%s], "
+                        "the dimension of Input(Index) is [%d].",
+                        index_dim,
+                        index_dim.size()));
 
   PADDLE_ENFORCE_EQ(
       index_dim[0] != 0,

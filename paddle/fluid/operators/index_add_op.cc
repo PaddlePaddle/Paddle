@@ -116,7 +116,3 @@ REGISTER_OPERATOR(index_add_grad,
                   ops::IndexAddGradOp,
                   ops::IndexAddGradInplaceInferer,
                   IndexAddGradInferShapeFunctor);
-
-// REGISTER_OPERATOR(index_add_grad,
-//                   ops::IndexAddGradOp,
-//                   ops::IndexAddGradNoNeedBufferVarsInferer);

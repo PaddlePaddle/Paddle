@@ -995,7 +995,6 @@ void IndexAddGradInferMeta(const MetaTensor& index,
     x_grad->set_layout(out_grad.layout());
     x_grad->share_lod(out_grad);
   }
-  // limin-todo:
   if (add_value_grad) {
     add_value_grad->set_dims(add_value_dims);
     add_value_grad->set_dtype(add_value.dtype());
