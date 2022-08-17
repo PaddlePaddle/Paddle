@@ -556,7 +556,7 @@ def predict_dygraph_jit(args, data):
 def predict_analysis_inference(args, data):
     output = PredictorTools(args.model_save_dir, args.model_filename,
                             args.params_filename, [data])
-    out = output()
+    out, = output()
     return out
 
 
