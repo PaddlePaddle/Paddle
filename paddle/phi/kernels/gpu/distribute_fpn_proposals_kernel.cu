@@ -103,8 +103,8 @@ __global__ void GPUDistFpnProposalsHelper(const int nthreads,
 template <typename T, typename Context>
 void DistributeFpnProposalsKernel(
     const Context& ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
+    const DenseTensor& fpnrois,
+    const DenseTensor& roisnum,
     int min_level,
     int max_level,
     int refer_level,
@@ -115,20 +115,20 @@ void DistributeFpnProposalsKernel(
     std::vector<DenseTensor*> multi_level_roisnum) {
   int num_level = max_level - min_level + 1;
 
-  // check that the x is not empty
-  if (!y.initialized()) {
+  // check that the fpnrois is not empty
+  if (!roisnum.initialized()) {
     PADDLE_ENFORCE_EQ(
-        x.lod().size(),
+        fpnrois.lod().size(),
         1UL,
         phi::errors::InvalidArgument("DistributeFpnProposalsOp needs LoD"
                                      "with one level"));
   }
 
   std::vector<size_t> fpn_rois_lod;
-  if (y.initialized()) {
-    fpn_rois_lod = GetLodFromRoisNum<Context>(ctx, &y);
+  if (roisnum.initialized()) {
+    fpn_rois_lod = GetLodFromRoisNum<Context>(ctx, &roisnum);
   } else {
-    fpn_rois_lod = x.lod().back();
+    fpn_rois_lod = fpnrois.lod().back();
   }
   int lod_size = fpn_rois_lod.size() - 1;
   int roi_num = fpn_rois_lod[lod_size];
@@ -162,7 +162,7 @@ void DistributeFpnProposalsKernel(
   // get target levels and sub_lod list
   GPUDistFpnProposalsHelper<T><<<dist_blocks, threads, 0, ctx.stream()>>>(
       roi_num,
-      x.data<T>(),
+      fpnrois.data<T>(),
       lod_size,
       refer_level,
       refer_scale,
@@ -257,7 +257,7 @@ void DistributeFpnProposalsKernel(
       start = end;
       multi_fpn_rois[i]->Resize(phi::make_ddim({sub_rois_num, kBoxDim}));
       ctx.template Alloc<T>(multi_fpn_rois[i]);
-      phi::funcs::GPUGather<T>(ctx, x, sub_idx, multi_fpn_rois[i]);
+      phi::funcs::GPUGather<T>(ctx, fpnrois, sub_idx, multi_fpn_rois[i]);
     } else {
       multi_fpn_rois[i]->Resize(phi::make_ddim({sub_rois_num, kBoxDim}));
       ctx.template Alloc<T>(multi_fpn_rois[i]);

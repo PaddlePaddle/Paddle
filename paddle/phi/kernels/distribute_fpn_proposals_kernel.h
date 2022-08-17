@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
@@ -42,8 +41,8 @@ inline std::vector<size_t> GetLodFromRoisNum(const Context& ctx,
 template <typename T, typename Context>
 void DistributeFpnProposalsKernel(
     const Context& ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
+    const DenseTensor& fpnrois,
+    const DenseTensor& roisnum,
     int min_level,
     int max_level,
     int refer_level,

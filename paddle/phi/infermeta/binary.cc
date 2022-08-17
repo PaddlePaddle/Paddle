@@ -952,8 +952,8 @@ void DistInferMeta(const MetaTensor& x,
 }
 
 void DistributeFpnProposalsInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& y,
+    const DenseTensor& fpnrois,
+    const DenseTensor& roisnum,
     int min_level,
     int max_level,
     int refer_level,
@@ -997,7 +997,7 @@ void DistributeFpnProposalsInferMeta(
   }
   if (!config.is_runtime) {
     for (size_t i = 0; i < num_out_rois; ++i) {
-      multi_fpn_rois[i]->share_lod(x);
+      multi_fpn_rois[i]->share_lod(fpnrois);
     }
   }
 }

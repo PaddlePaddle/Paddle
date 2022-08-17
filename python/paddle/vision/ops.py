@@ -905,9 +905,14 @@ def distribute_fpn_proposals(fpn_rois,
                  refer_level, 'refer_scale', refer_scale, 'pixel_offset',
                  pixel_offset)
         multi_rois, restore_ind, rois_num_per_level = _C_ops.distribute_fpn_proposals(
-            fpn_rois, rois_num, num_lvl, num_lvl, *attrs)
+            fpn_rois, rois_num, *attrs)
         return multi_rois, restore_ind, rois_num_per_level
-
+    elif in_dygraph_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        multi_rois, restore_ind, rois_num_per_level = _C_ops.final_state_distribute_fpn_proposals(
+            fpn_rois, rois_num, min_level, max_level, refer_level, refer_scale,
+            pixel_offset)
+        return multi_rois, restore_ind, rois_num_per_level
     else:
         check_variable_and_dtype(fpn_rois, 'fpn_rois', ['float32', 'float64'],
                                  'distribute_fpn_proposals')

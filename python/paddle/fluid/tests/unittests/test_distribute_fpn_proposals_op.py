@@ -23,6 +23,10 @@ import paddle
 from op_test import OpTest
 
 
+def python_distribute_fpn_proposals():
+    pass
+
+
 class TestDistributeFPNProposalsOp(OpTest):
 
     def set_data(self):
@@ -118,6 +122,7 @@ class TestDistributeFPNProposalsOp(OpTest):
 
     def setUp(self):
         self.op_type = "distribute_fpn_proposals"
+        self.python_api = python_distribute_fpn_proposals
         self.set_data()
 
     def test_check_output(self):

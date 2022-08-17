@@ -140,8 +140,8 @@ void DistInferMeta(const MetaTensor& x,
                    MetaTensor* out);
 
 void DistributeFpnProposalsInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& y,
+    const DenseTensor& fpnrois,
+    const DenseTensor& roisnum,
     int min_level,
     int max_level,
     int refer_level,

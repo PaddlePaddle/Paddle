@@ -40,8 +40,8 @@ static inline T BBoxArea(const T* box, bool pixel_offset) {
 template <typename T, typename Context>
 void DistributeFpnProposalsKernel(
     const Context& ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
+    const DenseTensor& fpnrois,
+    const DenseTensor& roisnum,
     int min_level,
     int max_level,
     int refer_level,
@@ -52,22 +52,22 @@ void DistributeFpnProposalsKernel(
     std::vector<DenseTensor*> multi_level_roisnum) {
   const int num_level = max_level - min_level + 1;
 
-  // check that the input x is not empty
-  if (!y.initialized()) {
+  // check that the input fpnrois is not empty
+  if (!roisnum.initialized()) {
     PADDLE_ENFORCE_EQ(
-        x.lod().size(),
+        fpnrois.lod().size(),
         1UL,
         phi::errors::InvalidArgument("DistributeFpnProposalsOp needs LoD "
                                      "with one level. But received level is %d",
-                                     x.lod().size()));
+                                     fpnrois.lod().size()));
   }
 
   std::vector<size_t> fpn_rois_lod;
   int fpn_rois_num;
-  if (y.initialized()) {
-    fpn_rois_lod = GetLodFromRoisNum<Context>(ctx, &y);
+  if (roisnum.initialized()) {
+    fpn_rois_lod = GetLodFromRoisNum<Context>(ctx, &roisnum);
   } else {
-    fpn_rois_lod = x.lod().back();
+    fpn_rois_lod = fpnrois.lod().back();
   }
   fpn_rois_num = fpn_rois_lod[fpn_rois_lod.size() - 1];
   std::vector<int> target_level;
@@ -76,7 +76,7 @@ void DistributeFpnProposalsKernel(
   std::vector<int> num_rois_level(num_level, 0);
   std::vector<int> num_rois_level_integral(num_level + 1, 0);
   for (size_t i = 0; i < fpn_rois_lod.size() - 1; ++i) {
-    auto fpn_rois_slice = x.Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
+    auto fpn_rois_slice = fpnrois.Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
     const T* rois_data = fpn_rois_slice.data<T>();
     for (int j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
       // get the target level of current rois
@@ -112,7 +112,7 @@ void DistributeFpnProposalsKernel(
   std::vector<int> restore_index_inter(fpn_rois_num, -1);
   // distribute the rois into different fpn level by target level
   for (size_t i = 0; i < fpn_rois_lod.size() - 1; ++i) {
-    auto fpn_rois_slice = x.Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
+    auto fpn_rois_slice = fpnrois.Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
     const T* rois_data = fpn_rois_slice.data<T>();
     size_t cur_offset = fpn_rois_lod[i];
     // std::vector<size_t > lod_offset[num_level];

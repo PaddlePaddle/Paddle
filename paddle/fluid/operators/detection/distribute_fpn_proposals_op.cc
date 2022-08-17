@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
-
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -95,9 +93,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     DistributeFpnProposalsInferShapeFunctor);
 
-REGISTER_OP_CPU_KERNEL(distribute_fpn_proposals,
-                       ops::DistributeFpnProposalsOpKernel<float>,
-                       ops::DistributeFpnProposalsOpKernel<double>);
 REGISTER_OP_VERSION(distribute_fpn_proposals)
     .AddCheckpoint(
         R"ROC(
