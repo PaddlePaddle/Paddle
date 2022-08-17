@@ -49,7 +49,7 @@ class TestDygraphWeightNorm(unittest.TestCase):
         ndims = len(shape)
         shape_numel = reduce(lambda x, y: x * y, shape)
         if dim == -1:
-            return np.linalg.norm(w, axis=None, keepdims=True)
+            return np.linalg.norm(w, axis=None, keepdims=True).flatten()
         elif dim == 0:
             tile_shape = list(w.shape)
             tile_shape[0] = 1
