@@ -126,7 +126,7 @@ def graph_reindex(x,
     if flag_buffer_hashtable:
         check_variable_and_dtype(value_buffer, "HashTable_Value", ("int32"),
                                  "graph_reindex")
-        check_variable_and_dtype(index_buffer, "HashTable_Value", ("int32"),
+        check_variable_and_dtype(index_buffer, "HashTable_Index", ("int32"),
                                  "graph_reindex")
 
     helper = LayerHelper("graph_reindex", **locals())

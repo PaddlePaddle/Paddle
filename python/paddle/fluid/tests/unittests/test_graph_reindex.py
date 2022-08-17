@@ -275,6 +275,40 @@ class TestGeometricGraphReindex(unittest.TestCase):
         self.assertTrue(np.allclose(reindex_dst, reindex_dst_))
         self.assertTrue(np.allclose(out_nodes, out_nodes_))
 
+    def test_heter_reindex_result_v3(self):
+        paddle.disable_static()
+        x = np.arange(5).astype("int64")
+        neighbors1 = np.random.randint(100, size=20).astype("int64")
+        count1 = np.array([2, 8, 4, 3, 3], dtype="int32")
+        neighbors2 = np.random.randint(100, size=20).astype("int64")
+        count2 = np.array([4, 5, 1, 6, 4], dtype="int32")
+        neighbors = np.concatenate([neighbors1, neighbors2])
+        count = np.concatenate([count1, count2])
+
+        # Get numpy result.
+        out_nodes = list(x)
+        for neighbor in neighbors:
+            if neighbor not in out_nodes:
+                out_nodes.append(neighbor)
+        out_nodes = np.array(out_nodes, dtype="int64")
+        reindex_dict = {node: ind for ind, node in enumerate(out_nodes)}
+        reindex_src = np.array([reindex_dict[node] for node in neighbors])
+        reindex_dst = []
+        for count in [count1, count2]:
+            for node, c in zip(x, count):
+                for i in range(c):
+                    reindex_dst.append(reindex_dict[node])
+        reindex_dst = np.array(reindex_dst, dtype="int64")
+
+        neighbors = [paddle.to_tensor(neighbors1), paddle.to_tensor(neighbors2)]
+        count = [paddle.to_tensor(count1), paddle.to_tensor(count2)]
+        reindex_src_, reindex_dst_, out_nodes_ = \
+            paddle.geometric.heter_graph_reindex(paddle.to_tensor(x),
+                                                 neighbors, count)
+        self.assertTrue(np.allclose(reindex_src, reindex_src_))
+        self.assertTrue(np.allclose(reindex_dst, reindex_dst_))
+        self.assertTrue(np.allclose(out_nodes, out_nodes_))
+
     def test_reindex_result_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
