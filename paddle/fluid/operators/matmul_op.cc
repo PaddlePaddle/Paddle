@@ -65,7 +65,9 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto &y = GET_DATA_SAFELY(
         context.Input<framework::Tensor>("Y"), "Input", "Y", "MatMul");
     auto *out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
+
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(

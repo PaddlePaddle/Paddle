@@ -78,7 +78,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = fluid.dygraph.to_variable(b_np)
             res = a / b
             #NOTE: Not sure why array_equal fails on windows, allclose is acceptable
-            self.assertTrue(np.allclose(res.numpy(), a_np / b_np))
+            np.testing.assert_allclose(res.numpy(), a_np / b_np, rtol=1e-05)
 
     def test_div(self):
         with _test_eager_guard():
@@ -157,7 +157,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             b = 0.1
             res = a / b
-            self.assertTrue(np.allclose(res.numpy(), a_np / b))
+            np.testing.assert_allclose(res.numpy(), a_np / b, rtol=1e-05)
 
     def test_div_scalar(self):
         with _test_eager_guard():
@@ -172,7 +172,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
             res = a**b
-            self.assertTrue(np.allclose(res.numpy(), a_np**b_np))
+            np.testing.assert_allclose(res.numpy(), a_np**b_np, rtol=1e-05)
 
     def test_pow(self):
         with _test_eager_guard():
@@ -388,11 +388,10 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             x = fluid.layers.ones((2, 2), dtype="float32")
             y = t * x
 
-            self.assertTrue(
-                np.allclose(y.numpy(),
-                            t * np.ones((2, 2), dtype="float32"),
-                            rtol=1e-05,
-                            atol=0.0))
+            np.testing.assert_allclose(y.numpy(),
+                                       t * np.ones((2, 2), dtype='float32'),
+                                       rtol=1e-05,
+                                       atol=0.0)
 
     def test_np_left_mul(self):
         with _test_eager_guard():
