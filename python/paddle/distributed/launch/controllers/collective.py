@@ -93,7 +93,7 @@ class CollectiveController(Controller):
         self.pod.replicas = self.pod_replicas()
 
         # rank will be reset when restart
-        self.pod.rank = self.ctx.args.rank
+        self.pod.rank = int(self.ctx.args.rank)
 
         port = self.ctx.node.get_free_port()
 
