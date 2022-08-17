@@ -299,7 +299,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         input = paddle.to_tensor(input_1)
         output = self.unsqueeze(input, axis=(1, 2))
         out_np = output.numpy()
-        expected_out = np.expand_dims(input_1, axis=1)
+        expected_out = np.expand_dims(input_1, axis=(1, 2))
         np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
 
