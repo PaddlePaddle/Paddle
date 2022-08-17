@@ -142,9 +142,9 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                 for alpha in alphas:
                     for gamma in gammas:
                         for normalizer_np in normalizer_nps:
-                            static_result = test_static(place, logit_np,
-                                                        label_np, normalizer_np,
-                                                        alpha, gamma, reduction)
+                            static_result, = test_static(
+                                place, logit_np, label_np, normalizer_np, alpha,
+                                gamma, reduction)
                             dy_result = test_dygraph(place, logit_np, label_np,
                                                      normalizer_np, alpha,
                                                      gamma, reduction)
