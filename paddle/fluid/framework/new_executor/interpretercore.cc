@@ -309,6 +309,7 @@ void InterpreterCore::BuildInplace() {
       continue;
     }
 
+    VLOG(4) << "yoki1: op register inplace: " << op_base->Type();
     auto in_to_outs = op_base->Info().infer_inplace_(
         platform::is_gpu_place(instr.DeviceContext().GetPlace()));
 
@@ -318,6 +319,7 @@ void InterpreterCore::BuildInplace() {
       // Check Input Inplace
       auto& in_param = pair.first;
       auto& out_param = pair.second;
+      VLOG(4) << "yoki2: in_param: " << in_param << "  out_param: " << out_param;
       auto iter_in = inputs.find(in_param);
       auto iter_out = outputs.find(out_param);
       if (iter_in == inputs.end() || iter_in->second.empty()) {
@@ -326,6 +328,8 @@ void InterpreterCore::BuildInplace() {
         continue;
       }
       if (iter_out == outputs.end() && iter_out->second.empty()) {
+        VLOG(4) << "yoki3: Cannot inplace because Output(" << out_param
+                << ") is not found or empty in " << op_base->Type();
         continue;
       }
       // yoki: confirm it's ok?
@@ -360,59 +364,72 @@ void InterpreterCore::BuildInplace() {
 
       const std::string& invar_name = var_scope_.GetNameById(invar_id);
       const std::string& outvar_name = var_scope_.GetNameById(outvar_id);
+      VLOG(4) << "yoki: invar_name: " << invar_name << "   outvar_name: " << outvar_name;
       // IsVarPairReusable: they are not the same var.
       if (invar_name == outvar_name) {
+        VLOG(4) << "yoki4: Cannot inplace because invar_name " << invar_name << " is the same as outvar_name " << outvar_name;
         continue;
       }
 
       // IsInVarReusable
       if (invar_name == kEmptyVarName) {
+        VLOG(4) << "yoki5: invar_name: empty var";
         continue;
       }
 
       if (reused_in_var_names.find(invar_name) != reused_in_var_names.end()) {
+        VLOG(4) << "yoki6: reused_in_var_names: " << invar_name;
         continue;
       }
 
       auto in_var_desc = var_scope_.VarDesc(invar_id);
       if (in_var_desc && in_var_desc->Persistable()) {
+        VLOG(4) << "yoki7: invar is persistable var";
         continue;
       }
       if (var_scope_.GetVarSikpInplace(invar_id)) {
+        VLOG(4) << "yoki8: feed skip inplace";
         continue;
       }
 
       if (in_var_desc->GetType() != proto::VarType::LOD_TENSOR) {
+        VLOG(4) << "yoki9: input not lod tensor";
         continue;
       }
 
       // IsVarPairReusable: input var does not occur in output of op.
       if (outputs.find(in_param) != outputs.end()) {
+        VLOG(4) << "yoki10: in_param occur in outputs";
         continue;
       }
 
       // IsOutVarReusable
       if (outvar_name == kEmptyVarName) {
+        VLOG(4) << "yoki11: outvar_name empty var";
         continue;
       }
 
       if (reused_out_var_names.find(outvar_name) !=
           reused_out_var_names.end()) {
+        VLOG(4) << "yoki12: reused_out_var_name: " << outvar_name;
         continue;
       }
 
       auto out_var_desc = var_scope_.VarDesc(outvar_id);
       // is it needed?
       if (out_var_desc && out_var_desc->Persistable()) {
+        VLOG(4) << "yoki13: out_var persistable";
         continue;
       }
 
       if (out_var_desc->GetType() != proto::VarType::LOD_TENSOR) {
+        VLOG(4) << "yoki14: output not lod tensor";
         continue;
       }
 
       // out var does not occur in input of op.
       if (inputs.find(out_param) != inputs.end()) {
+        VLOG(4) << "yoki15: out var does not occur in input of op";
         continue;
       }
 
@@ -429,6 +446,7 @@ void InterpreterCore::BuildInplace() {
 
       // Update last_live_ops
       last_live_ops_[invar_id] = last_live_ops_[outvar_id];
+      VLOG(4) << "yoki finish";
     }
   }
 }
