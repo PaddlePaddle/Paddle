@@ -20,8 +20,7 @@
 namespace phi {
 
 template <typename T>
-struct ErfinvCUDAFunctor {
-  HOSTDEVICE inline ErfinvCUDAFunctor() {}
+struct ErfinvFunctor {
   HOSTDEVICE inline T operator()(const T x) const { return erfinv(x); }
 };
 
@@ -30,7 +29,7 @@ void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   ctx.template Alloc<T>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
-  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, ErfinvCUDAFunctor<T>());
+  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, ErfinvFunctor<T>());
 }
 
 }  // namespace phi
