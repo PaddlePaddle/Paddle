@@ -48,7 +48,7 @@ class TestFracAPI(unittest.TestCase):
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+            res, = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_frac(self.x_np)
         np.testing.assert_allclose(out_ref, res, rtol=1e-05)
 
