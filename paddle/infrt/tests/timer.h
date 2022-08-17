@@ -15,6 +15,7 @@
 #pragma once
 
 #include <chrono>
+#include <algorithm>
 
 namespace infrt {
 namespace tests {
