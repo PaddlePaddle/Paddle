@@ -24,12 +24,17 @@ import sys
 import importlib
 import paddle.dataset
 import six.moves.cPickle as pickle
+import tempfile
 import glob
 import paddle
 
 __all__ = []
 
 HOME = os.path.expanduser('~')
+
+if not os.access(HOME, os.W_OK):
+    HOME = tempfile.gettempdir()
+
 DATA_HOME = os.path.join(HOME, '.cache', 'paddle', 'dataset')
 
 
