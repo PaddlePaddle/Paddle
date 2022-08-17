@@ -1864,6 +1864,7 @@ def tril_indices(row, col, offset=0, dtype='int64'):
                          })
     return out
 
+
 def triu_indices(row, col, offset=0, dtype='int64'):
     """
     Return the indices of the upper triangular part of the 2-D matrix
