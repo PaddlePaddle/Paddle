@@ -268,7 +268,10 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
                                           ProgramDesc *startup_program) const {
   bool use_cuda = Get<bool>(kUseCuda);
   auto skip_vars = Get<std::vector<std::string>>("mem_opt_skip_vars");
-  bool for_partial_block = Get<bool>("for_partial_block");
+  bool for_partial_block = false;
+  if (Has("for_partial_block")) {
+    for_partial_block = Get<bool>("for_partial_block");
+  }
 
   auto *block = main_program->MutableBlock(0);
   auto inplace_vars =
