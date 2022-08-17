@@ -1860,7 +1860,8 @@
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
-    func : multiply
+    func : multiply {dense, dense -> dense},
+           multiply_sr {selected_rows, dense -> selected_rows}
   backward : multiply_grad
 
 - api : nearest_interp
