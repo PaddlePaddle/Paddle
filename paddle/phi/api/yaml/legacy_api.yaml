@@ -1901,7 +1901,6 @@
     func : NormInferMeta
   kernel :
     func : norm
-  intermediate : norm
   backward : norm_grad
 
 - api : not_equal
