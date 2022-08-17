@@ -60,9 +60,9 @@ class TestPassBuilder(unittest.TestCase):
                 test_loss, = exe.run(test_cp,
                                      fetch_list=[loss.name],
                                      feed=feed_dict)
-                train_loss = exe.run(train_cp,
-                                     fetch_list=[loss.name],
-                                     feed=feed_dict)
+                train_loss, = exe.run(train_cp,
+                                      fetch_list=[loss.name],
+                                      feed=feed_dict)
 
                 avg_test_loss_val = np.array(test_loss).mean()
                 if math.isnan(float(avg_test_loss_val)):
