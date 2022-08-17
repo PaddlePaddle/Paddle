@@ -32,7 +32,7 @@ def ref_prelu(x, weight):
     neg_indices = x <= 0
     assert x.shape == neg_indices.shape
     x_t[neg_indices] = (x_t * weight)[neg_indices]
-    return (x_t, )
+    return x_t
 
 
 def ref_prelu_nn(x, num_parameters, init):
