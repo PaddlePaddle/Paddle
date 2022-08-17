@@ -352,10 +352,8 @@ class _ProgramHolder(object):
     def _add_build_strategy_for(self, input_program, start_op_index,
                                 end_op_index):
         compiled_program = paddle.static.CompiledProgram(
-            input_program,
-            build_strategy=paddle.static.BuildStrategy(),
-            start_op_index=start_op_index,
-            end_op_index=end_op_index)
+            core.Graph(input_program.desc, start_op_index, end_op_index),
+            build_strategy=paddle.static.BuildStrategy())
         compiled_program._compile(core.Scope(),
                                   framework._current_expected_place())
         ir_graph = framework.IrGraph(compiled_program._graph)

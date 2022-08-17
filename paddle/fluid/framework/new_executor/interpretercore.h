@@ -66,10 +66,6 @@ class InterpreterCore {
 
   void reset_scope(Scope* new_scope);
 
-  void SetUsedForJit(bool is_used_for_jit) { used_for_jit_ = is_used_for_jit; }
-
-  bool GetUsedForJit() { return used_for_jit_; }
-
  private:
   bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
 

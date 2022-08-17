@@ -72,10 +72,8 @@ def _create_out(var):
 @switch_to_static_graph
 def _add_build_strategy_for(input_program, start_op_index, end_op_index):
     compiled_program = paddle.static.CompiledProgram(
-        input_program,
-        build_strategy=paddle.static.BuildStrategy(),
-        start_op_index=start_op_index,
-        end_op_index=end_op_index)
+        core.Graph(input_program.desc, start_op_index, end_op_index),
+        build_strategy=paddle.static.BuildStrategy())
     compiled_program._compile(core.Scope(),
                               paddle.framework._current_expected_place())
     ir_graph = paddle.fluid.framework.IrGraph(compiled_program._graph)

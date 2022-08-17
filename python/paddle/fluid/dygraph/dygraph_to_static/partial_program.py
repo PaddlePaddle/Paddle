@@ -623,10 +623,8 @@ class PartialProgramLayer:
     def _add_build_strategy_for(self, whole_program, forward_end_op_index):
         if (forward_end_op_index > 0):
             forward_compiled_program = paddle.static.CompiledProgram(
-                whole_program,
-                build_strategy=self._build_strategy,
-                start_op_index=0,
-                end_op_index=forward_end_op_index)
+                core.Graph(whole_program.desc, 0, forward_end_op_index),
+                build_strategy=self._build_strategy)
             forward_compiled_program._compile(
                 core.Scope(), framework._current_expected_place())
             ir_graph = framework.IrGraph(forward_compiled_program._graph)
@@ -638,10 +636,8 @@ class PartialProgramLayer:
         end_op_index = whole_program.desc.block(0).op_size()
         if (start_op_index < end_op_index):
             backward_compiled_program = paddle.static.CompiledProgram(
-                whole_program,
-                build_strategy=self._build_strategy,
-                start_op_index=start_op_index,
-                end_op_index=end_op_index)
+                core.Graph(whole_program.desc, start_op_index, end_op_index),
+                build_strategy=self._build_strategy)
             backward_compiled_program._compile(
                 core.Scope(), framework._current_expected_place())
             ir_graph = framework.IrGraph(backward_compiled_program._graph)
