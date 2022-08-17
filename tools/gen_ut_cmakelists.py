@@ -125,6 +125,16 @@ def process_os(os_):
     return os_
 
 
+# check whether run_serial is 0, 1 or empty
+def process_run_serial(run_serial):
+    rs = run_serial.strip()
+    assert rs in ["1", "0", ""], \
+        f"""the value of run_serial must be one of 0, 1 or empty. But this value is {rs}"""
+    if rs == "":
+        rs = "0"
+    return rs
+
+
 def parse_line(line):
     """
     Desc:
@@ -143,12 +153,22 @@ def parse_line(line):
             endif()"
     """
 
+    # A line contains name, os_, archs, timeout, run_type, launcher, dist_ut_port, run_serial, envs, conditions, etc.
+    # Following are descriptions of each variable:
+    #
+    # * `name`: the test's name
+    # * `os`: The supported operator system, ignoring case. If the test run in multiple operator systems, use ";" to split systems, forexample, `apple;linux` means the test runs on both Apple and Linux. The supported values are `linux`,`win32` and `apple`. If the value is empty, this means the test runs on all opertaor systems.
+    # * `arch`: the device's architecture. similar to `os`, multiple valuse ars splited by ";" and ignoring case. The supported arhchetectures are `gpu`, `xpu`, `npu` and `rocm`.
+    # * `timeout`: timeout of a unittest, whose unit is second.
+    # * `run_type`: run_type of a unittest. Supported values are `NIGHTLY`, `EXCLUSIVE`, `CINN`, `DIST`, `GPUPS`, `INFER`，which are case-insensitive. Multiple Values are splited by ":".
+    # * `launcher`: the test launcher.Supported values are test_runner.py, dist_test.sh and custom scripts' name.
+    # * `dist_ut_port`: the starting port used in a distributed unit test
+    # * `run_serial`: whether in serial mode. the value can be 1 or 0. Default(empty) is 0
+    # * `ENVS`: required environments. multiple envirenmonts are splited by ";".
+    # * `conditions`: extra required conditions for some tests. the value is a boolean expression in cmake programmer.
     name, os_, archs, timeout, run_type, launcher, dist_ut_port, run_serial, envs, conditions = line.strip(
     ).split(",")
 
-    # It means the line is the header of the table
-    # when the var name is "name". So we skip this
-    # line and return an empty string directly.
     if name == "name":
         return ""
 
@@ -156,6 +176,7 @@ def parse_line(line):
     conditions = process_conditions(conditions)
     archs = proccess_archs(archs)
     os_ = process_os(os_)
+    run_serial = process_run_serial(run_serial)
 
     cmd = ""
 
@@ -196,10 +217,12 @@ def gen_cmakelists(current_work_dir):
 # and then run the command `python3 ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py -f ${CURRENT_DIRECTORY}/testslist.csv`
 set(LOCAL_ALL_ARCH ON)
 set(LOCAL_ALL_PLAT ON)\n"""
-    for line in open(f"{current_work_dir}/testslist.csv"):
-        cmds += parse_line(line)
+    with open(f"{current_work_dir}/testslist.csv") as csv_file:
+        for line in csv_file:
+            cmds += parse_line(line)
     print(cmds, end="")
-    print(cmds, end="", file=open(f"{current_work_dir}/CMakeLists.txt", "w"))
+    with open(f"{current_work_dir}/CMakeLists.txt", "w") as cmake_file:
+        print(cmds, end="", file=cmake_file)
 
 
 if __name__ == "__main__":
