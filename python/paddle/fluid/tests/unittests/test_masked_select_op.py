@@ -89,12 +89,12 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
 
-        res = exe.run(paddle.static.default_main_program(),
-                      feed={
-                          "x": np_x,
-                          "mask": np_mask
-                      },
-                      fetch_list=[out])
+        res, = exe.run(paddle.static.default_main_program(),
+                       feed={
+                           "x": np_x,
+                           "mask": np_mask
+                       },
+                       fetch_list=[out])
         np.testing.assert_allclose(res, np_out, rtol=1e-05)
 
 
