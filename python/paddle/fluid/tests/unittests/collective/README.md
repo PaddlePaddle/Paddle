@@ -9,7 +9,7 @@
 * `os`: The supported operator system, ignoring case. If the test run in multiple operator systems, use ";" to split systems, forexample, `apple;linux` means the test runs on both Apple and Linux. The supported values are `linux`,`win32` and `apple`. If the value is empty, this means the test runs on all opertaor systems.
 * `arch`: the device's architecture. similar to `os`, multiple valuse ars splited by ";" and ignoring case. The supported arhchetectures are `gpu`, `xpu`, `npu` and `rocm`.
 * `timeout`: timeout of a unittest, whose unit is second.
-* `run_type`: run_type of a unittest. Supported values are `NIGHTLY`, `EXCLUSIVE`, `CINN`, `DIST`, `GPUPS`, `INFER`，which are case-insensitive. Multiple Values are splited by ":".
+* `run_type`: run_type of a unittest. Supported values are `NIGHTLY`, `EXCLUSIVE`, `CINN`, `DIST`, `GPUPS`, `INFER`, `EXCLUSIVE:NIGHTLY`, `DIST:NIGHTLY`，which are case-insensitive. 
 * `launcher`: the test launcher.Supported values are test_runner.py, dist_test.sh and custom scripts' name.
 * `dist_ut_port`: the starting port used in a distributed unit test
 * `run_serial`: whether in serial mode. the value can be 1 or 0.Default (empty) is 0.

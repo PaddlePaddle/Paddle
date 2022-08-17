@@ -135,6 +135,14 @@ def process_run_serial(run_serial):
     return rs
 
 
+def process_run_type(run_type):
+    rt = run_type.strip()
+    assert re.compile("^(NIGHTLY|EXCLUSIVE|CINN|DIST|GPUPS|INFER|EXCLUSIVE:NIGHTLY|DIST:NIGHTLY)$").search(rt), \
+        f""" run_type must be one of 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'""" \
+        f"""but the run_type is {rt}"""
+    return rt
+
+
 def parse_line(line):
     """
     Desc:
@@ -160,7 +168,7 @@ def parse_line(line):
     # * `os`: The supported operator system, ignoring case. If the test run in multiple operator systems, use ";" to split systems, forexample, `apple;linux` means the test runs on both Apple and Linux. The supported values are `linux`,`win32` and `apple`. If the value is empty, this means the test runs on all opertaor systems.
     # * `arch`: the device's architecture. similar to `os`, multiple valuse ars splited by ";" and ignoring case. The supported arhchetectures are `gpu`, `xpu`, `npu` and `rocm`.
     # * `timeout`: timeout of a unittest, whose unit is second.
-    # * `run_type`: run_type of a unittest. Supported values are `NIGHTLY`, `EXCLUSIVE`, `CINN`, `DIST`, `GPUPS`, `INFER`，which are case-insensitive. Multiple Values are splited by ":".
+    # * `run_type`: run_type of a unittest. Supported values are `NIGHTLY`, `EXCLUSIVE`, `CINN`, `DIST`, `GPUPS`, `INFER`, `EXCLUSIVE:NIGHTLY`, `DIST:NIGHTLY`，which are case-insensitive.
     # * `launcher`: the test launcher.Supported values are test_runner.py, dist_test.sh and custom scripts' name.
     # * `dist_ut_port`: the starting port used in a distributed unit test
     # * `run_serial`: whether in serial mode. the value can be 1 or 0. Default(empty) is 0
@@ -177,6 +185,7 @@ def parse_line(line):
     archs = proccess_archs(archs)
     os_ = process_os(os_)
     run_serial = process_run_serial(run_serial)
+    run_type = process_run_type(run_type)
 
     cmd = ""
 
@@ -218,8 +227,16 @@ def gen_cmakelists(current_work_dir):
 set(LOCAL_ALL_ARCH ON)
 set(LOCAL_ALL_PLAT ON)\n"""
     with open(f"{current_work_dir}/testslist.csv") as csv_file:
-        for line in csv_file:
-            cmds += parse_line(line)
+        for i, line in enumerate(csv_file.readlines()):
+            try:
+                cmds += parse_line(line)
+            except Exception as e:
+                print("===============PARSE LINE ERRORS OCCUR==========")
+                print(e)
+                print(f"[ERROR FILE]: {current_work_dir}/testslist.csv")
+                print(f"[ERROR LINE {i+1}]: {line.strip()}")
+                exit(1)
+
     print(cmds, end="")
     with open(f"{current_work_dir}/CMakeLists.txt", "w") as cmake_file:
         print(cmds, end="", file=cmake_file)
