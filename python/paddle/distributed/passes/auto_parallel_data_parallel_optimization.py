@@ -16,6 +16,7 @@ from collections import OrderedDict
 
 import paddle
 from paddle.fluid.framework import default_main_program
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.auto_parallel.operators.common import is_data_parallel_scale_op, is_data_parallel_reduce_op
 from paddle.distributed.auto_parallel.utils import is_loss_grad_op, is_optimize_op, ring_id_to_process_group
 from .pass_base import PassBase, PassType, register_pass
@@ -90,13 +91,9 @@ class DataParallelOptimizationPass(PassBase):
         self._remove_grad_scaling()
 
     def _calc_comm_overlap(self):
-        print("_calc_comm_overlap" * 8)
-
         if not self._could_be_overlap():
             return
-        print("_calc_overlap_comms" * 8)
         self._calc_overlap_comms()
-        print("_update_wait_comms" * 8)
         self._update_wait_comms()
 
     def _fuse_allreduce(self):
@@ -248,7 +245,10 @@ class DataParallelOptimizationPass(PassBase):
                                               type='c_wait_compute',
                                               inputs={'X': []},
                                               outputs={'Out': []},
-                                              attrs={'ring_id': ring_id})
+                                              attrs={
+                                                  'op_role': OpRole.Backward,
+                                                  'ring_id': ring_id
+                                              })
 
         block._sync_with_cpp()
 
@@ -272,4 +272,7 @@ class DataParallelOptimizationPass(PassBase):
                                           type='c_wait_comm',
                                           inputs={'X': []},
                                           outputs={'Out': []},
-                                          attrs={'ring_id': ring_id})
+                                          attrs={
+                                              'op_role': OpRole.Backward,
+                                              'ring_id': ring_id
+                                          })
