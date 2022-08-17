@@ -302,7 +302,7 @@ class TestMNISTWithToStatic(TestMNIST):
                                                   params_filename, inputs):
         output = PredictorTools(model_path, model_filename, params_filename,
                                 inputs)
-        out = output()
+        out, = output()
         return out
 
 
