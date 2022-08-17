@@ -66,9 +66,9 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
         np.testing.assert_allclose(a_np - 10, b_np, rtol=1e-05)
 
     @prog_scope()
@@ -78,9 +78,9 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
         np.testing.assert_allclose(10 - a_np, b_np, rtol=1e-05)
 
     @prog_scope()
@@ -90,9 +90,9 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
         np.testing.assert_allclose(a_np * 10, b_np, rtol=1e-05)
 
     @prog_scope()
@@ -102,9 +102,9 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
         np.testing.assert_allclose(10 * a_np, b_np, rtol=1e-05)
 
     @prog_scope()
@@ -114,9 +114,9 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
         np.testing.assert_allclose(a_np / 10, b_np, rtol=1e-05)
 
     @prog_scope()
@@ -127,9 +127,9 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32') + 1e-2
 
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
         np.testing.assert_allclose(10 / a_np, b_np, rtol=1e-05)
 
     @prog_scope()
@@ -141,12 +141,12 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
         b_np = np.random.random(size=[10, 1]).astype('float32') + 1e-2
-        c_np = exe.run(fluid.default_main_program(),
-                       feed={
-                           "a": a_np,
-                           'b': b_np
-                       },
-                       fetch_list=[c])
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
         np.testing.assert_allclose(a_np / b_np, c_np, rtol=1e-05)
 
     @prog_scope()
@@ -158,12 +158,12 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
         b_np = np.random.random(size=[10, 1]).astype('float32')
-        c_np = exe.run(fluid.default_main_program(),
-                       feed={
-                           "a": a_np,
-                           'b': b_np
-                       },
-                       fetch_list=[c])
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
         np.testing.assert_allclose(a_np * b_np, c_np, rtol=1e-05)
 
     @prog_scope()
@@ -175,12 +175,12 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
         b_np = np.random.random(size=[10, 1]).astype('float32')
-        c_np = exe.run(fluid.default_main_program(),
-                       feed={
-                           "a": a_np,
-                           'b': b_np
-                       },
-                       fetch_list=[c])
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
         np.testing.assert_allclose(a_np + b_np, c_np, rtol=1e-05)
 
     @prog_scope()
@@ -192,12 +192,12 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = np.random.random(size=[10, 1]).astype('float32')
         b_np = np.random.random(size=[10, 1]).astype('float32')
-        c_np = exe.run(fluid.default_main_program(),
-                       feed={
-                           "a": a_np,
-                           'b': b_np
-                       },
-                       fetch_list=[c])
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
         np.testing.assert_allclose(a_np - b_np, c_np, rtol=1e-05)
 
     @prog_scope()
@@ -266,9 +266,9 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float32')
 
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
         np.testing.assert_allclose(-a_np, b_np, rtol=1e-05)
 
     @prog_scope()
@@ -279,9 +279,9 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float64')
 
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
         np.testing.assert_allclose(a_np.astype('float32'), b_np, rtol=1e-05)
 
     def test_bitwise_and(self):
@@ -384,12 +384,12 @@ class TestMathOpPatches(unittest.TestCase):
         b_np = np.random.uniform(-1, 1, size=[3, 5]).astype('float32')
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
-        c_np = exe.run(paddle.static.default_main_program(),
-                       feed={
-                           "a": a_np,
-                           "b": b_np
-                       },
-                       fetch_list=[c])
+        c_np, = exe.run(paddle.static.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            "b": b_np
+                        },
+                        fetch_list=[c])
         np.testing.assert_allclose(a_np @ b_np, c_np, rtol=1e-05)
 
 
