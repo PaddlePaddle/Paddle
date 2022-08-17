@@ -5825,6 +5825,11 @@ class Program(object):
         ]
         res._sync_with_cpp()
 
+        attrs_cliped_black_list = [
+            core.op_proto_and_checker_maker.kOpRoleAttrName(),
+            core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+        ]
+
         for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
             for var in block.all_vars():
@@ -5835,14 +5840,14 @@ class Program(object):
                 if op.type() not in OpProtoHolder.instance().op_proto_map:
                     continue
 
+                if not clip_extra:
+                    continue
+
                 extra_attrs_map = core.get_op_extra_attrs(op.type())
                 for name in op.attr_names():
                     if name in extra_attrs_map:
                         op.remove_attr(name)
                         continue
-
-                if not clip_extra:
-                    continue
 
                 proto = OpProtoHolder.instance().get_op_proto(op.type())
                 remove_input_list = []
@@ -5857,8 +5862,9 @@ class Program(object):
                         break
                     if not find:
                         remove_input_list.append(name)
-                for name in remove_input_list:
-                    op.remove_input(name)
+                # The extra input of op will be removed in the future
+                # for name in remove_input_list:
+                #     op.remove_input(name)
 
                 remove_output_list = []
                 for name in op.output_names():
@@ -5872,8 +5878,9 @@ class Program(object):
                         break
                     if not find:
                         remove_output_list.append(name)
-                for name in remove_output_list:
-                    op.remove_output(name)
+                # The extra input of op will be removed in the future
+                # for name in remove_output_list:
+                #     op.remove_output(name)
 
                 remove_attr_list = []
                 op_quant_name = core.op_proto_and_checker_maker.kOpWithQuantAttrName(
@@ -5886,6 +5893,8 @@ class Program(object):
                     "weight_quant_scale"
                 ]
                 for name in op.attr_names():
+                    if name in attrs_cliped_black_list:
+                        continue
                     if quant:
                         if name in quant_attrs:
                             continue
