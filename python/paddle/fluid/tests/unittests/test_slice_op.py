@@ -641,7 +641,9 @@ class TestSliceApiEager(unittest.TestCase):
                 grad_truth[-3:3, 0:2, 2:4] = 1
                 np.testing.assert_array_equal(grad_truth, a.gradient())
 
-                self.assertTrue(np.allclose(a_1.numpy(), a[-3:3, 0:2, 2:4]))
+                np.testing.assert_allclose(a_1.numpy(),
+                                           a[-3:3, 0:2, 2:4],
+                                           rtol=1e-05)
 
 
 class TestSliceApiWithLoDTensorArray(unittest.TestCase):

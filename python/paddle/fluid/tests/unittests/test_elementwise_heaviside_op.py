@@ -64,19 +64,19 @@ class TestHeavisideBroadcast(unittest.TestCase):
 
         res = paddle.heaviside(self.tensor_1, self.tensor_2)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected1))
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
 
         res = paddle.heaviside(self.tensor_2, self.tensor_3)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected2))
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
 
         res = paddle.heaviside(self.tensor_2, self.tensor_4)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected3))
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
 
         res = paddle.heaviside(self.tensor_4, self.tensor_5)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected4))
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
 
 class TestHeavisideAPI_float64(unittest.TestCase):

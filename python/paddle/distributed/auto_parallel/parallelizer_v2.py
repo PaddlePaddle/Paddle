@@ -149,6 +149,7 @@ class Parallelizer:
             paddle.enable_static()
         else:
             optimizer = copy.deepcopy(optimizer)
+        self._dist_context._serial_optimizer = optimizer
         with program_guard(main_program, startup_program):
             optimizer_ops = optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
