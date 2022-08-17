@@ -62,7 +62,7 @@ class API_TestBmm(unittest.TestCase):
             },
                               fetch_list=[result_bmm])
             expected_result = np.matmul(input1, input2)
-        self.assertTrue(np.allclose(expected_result, result))
+        np.testing.assert_allclose(expected_result, result, rtol=1e-05)
 
 
 class API_TestDygraphBmm(unittest.TestCase):
@@ -78,7 +78,7 @@ class API_TestDygraphBmm(unittest.TestCase):
             out = paddle.bmm(x, y)
             out_np = out.numpy()
         expected_result = np.matmul(input1, input2)
-        self.assertTrue(np.allclose(expected_result, out_np))
+        np.testing.assert_allclose(expected_result, out_np, rtol=1e-05)
 
 
 class TestBmmAPIError(unittest.TestCase):

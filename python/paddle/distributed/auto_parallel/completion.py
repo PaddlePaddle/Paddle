@@ -1300,6 +1300,10 @@ class Completer:
 
     def complete_update_annotation(self, serial_main_program):
         """Complete the annotation of vars and ops in the update phase for parallel program."""
+        # Copy the dist tensors and dist ops annotated by users from the default context
+        # global mesh
+        from paddle.distributed.auto_parallel.process_group import get_world_process_group
+        world_ranks = get_world_process_group().ranks
 
         # Notice: serial_main_program is actually a dist_main_program of current rank,
         # and must be passed into this function.
@@ -1371,7 +1375,7 @@ class Completer:
                     if not learning_rate_completed:
                         learning_rate_completed = True
                         var_dist_attr = TensorDistributedAttribute()
-                        var_dist_attr.process_mesh = ref_process_mesh
+                        var_dist_attr.process_mesh = world_ranks
                         var_dist_attr.dims_mapping = [-1]
                         self._dist_context.set_tensor_dist_attr_for_program(
                             learning_var, var_dist_attr)
