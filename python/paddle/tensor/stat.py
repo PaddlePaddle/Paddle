@@ -18,7 +18,7 @@ import numpy as np
 from ..static import Variable
 from ..framework import LayerHelper
 from ..framework import core
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
@@ -233,9 +233,7 @@ def numel(x, name=None):
 
 
     """
-    if in_dygraph_mode():
-        return _C_ops.final_state_size(x)
-    elif _in_legacy_dygraph():
+    if _non_static_mode():
         return _C_ops.size(x)
 
     if not isinstance(x, Variable):
