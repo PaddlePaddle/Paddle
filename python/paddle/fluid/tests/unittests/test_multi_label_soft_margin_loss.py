@@ -86,7 +86,7 @@ def test_static(place,
                                                       reduction=reduction)
 
         exe = paddle.static.Executor(place)
-        static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
+        static_result, = exe.run(prog, feed=feed_dict, fetch_list=[res])
     return static_result
 
 
