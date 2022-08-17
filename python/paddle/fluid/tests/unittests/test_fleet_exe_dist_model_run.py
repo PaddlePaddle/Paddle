@@ -86,7 +86,9 @@ class TestDistModelRun(unittest.TestCase):
         print("load inference model api rst:", load_inference_model_rst)
 
         # step 5: compare two results
-        self.assertTrue(np.allclose(dist_model_rst, load_inference_model_rst))
+        np.testing.assert_allclose(dist_model_rst,
+                                   load_inference_model_rst,
+                                   rtol=1e-05)
 
 
 if __name__ == '__main__':

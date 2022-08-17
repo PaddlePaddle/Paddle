@@ -126,10 +126,14 @@ class TestBasicGRUUnit(unittest.TestCase):
         np_hidden_out, np_cell_out = step(step_input_np, pre_hidden_np,
                                           pre_cell_np, gate_w, gate_b)
 
-        self.assertTrue(
-            np.allclose(api_hidden_out, np_hidden_out, rtol=1e-4, atol=0))
-        self.assertTrue(
-            np.allclose(api_cell_out, np_cell_out, rtol=1e-4, atol=0))
+        np.testing.assert_allclose(api_hidden_out,
+                                   np_hidden_out,
+                                   rtol=0.0001,
+                                   atol=0)
+        np.testing.assert_allclose(api_cell_out,
+                                   np_cell_out,
+                                   rtol=0.0001,
+                                   atol=0)
 
 
 if __name__ == '__main__':

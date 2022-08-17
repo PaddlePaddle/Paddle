@@ -120,7 +120,9 @@ class TestFoldAPI(TestFoldOp):
                 m = paddle.nn.Fold(**self.attrs)
                 m.eval()
                 result = m(input)
-                self.assertTrue(np.allclose(result.numpy(), self.outputs['Y']))
+                np.testing.assert_allclose(result.numpy(),
+                                           self.outputs['Y'],
+                                           rtol=1e-05)
 
     def test_info(self):
         str(paddle.nn.Fold(**self.attrs))
@@ -206,7 +208,7 @@ class TestFoldOpError(unittest.TestCase):
             self.assertRaises(AssertionError, test_dilations_shape)
             self.assertRaises(AssertionError, test_strides_shape)
             self.assertRaises(ValueError, test_output_size)
-            self.assertRaises(ValueError, test_output_size_2)
+            self.assertRaises(TypeError, test_output_size_2)
             self.assertRaises(ValueError, test_block_h_w)
             self.assertRaises(ValueError, test_GT_0)
 
