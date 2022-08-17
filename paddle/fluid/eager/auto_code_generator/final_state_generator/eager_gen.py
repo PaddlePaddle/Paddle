@@ -209,6 +209,26 @@ FORWARD_FUNCTION_TEMPLATE = \
 }}
 """
 
+
+FORWARD_ONLY_FUNCTION_TEMPLATE = \
+"""
+{} {}({}) {{
+  // Dygraph Record Event
+{}
+  // AMP Logic
+{}
+
+  // Forward API Call
+  VLOG(3) << \"Final State Running: \" << \"{}\";
+{}
+  // Get Outputs
+{}
+
+  // Returns
+  return {};
+}}
+"""
+
 FORWARD_BODY_TEMPLATE = \
 """  if(require_any_grad) {{
 {}
@@ -297,6 +317,7 @@ FORWARD_CC_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 
+#include "paddle/phi/api/include/strings_api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -321,6 +342,7 @@ FORWARD_H_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/to_static/run_program_op_func.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 
+using CPUPlace = phi::CPUPlace;
 {}
 {}
 """
@@ -405,6 +427,27 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = \
 CHECK_NAN_AND_INF_TEMPLATE = \
 """  if (FLAGS_check_nan_inf) {{ egr::CheckTensorHasNanOrInf("{}", {}); }}
 """
+
+# This list contains ops that do not need to generate amp logic
+# All optimizer ops in this list
+no_amp_list = [
+    'adam_', 'adam', 'adamw_', 'adamw', 'average_accumulates',
+    'average_accumulates_', 'decayed_adagrad_', 'decayed_adagrad',
+    'dgc_momentum_', 'dgc_momentum', 'distributed_fused_lamb_',
+    'distributed_fused_lamb', 'dpsgd_', 'dpsgd', 'ftrl_', 'ftrl', 'lamb_',
+    'lamb', 'lars_momentum_', 'lars_momentum', 'merged_adam_', 'merged_adam',
+    'merged_momentum_', 'merged_momentum', 'momentum_', 'momentum',
+    'proximal_adagrad_', 'proximal_adagrad', 'proximal_gd_', 'proximal_gd',
+    'rmsprop_', 'rmsprop', 'sgd_', 'sgd', 'lamb_', 'lamb', 'assign_value_',
+    'sparse_momentum_', 'sparse_momentum', 'full_'
+]
+
+inplace_optional_out_type_map = {
+    "Tensor":
+    "paddle::optional<paddle::experimental::Tensor>&",
+    "std::vector<Tensor>":
+    "paddle::optional<std::vector<paddle::experimental::Tensor>>&"
+}
 
 
 #######################
@@ -513,15 +556,16 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         ), "Unable to find \"args\" in api.yaml"
         assert 'output' in forward_api_contents.keys(
         ), "Unable to find \"output\" in api.yaml"
-        assert 'backward' in forward_api_contents.keys(
-        ), "Unable to find \"backward\" in api.yaml"
 
-        assert 'args' in grad_api_contents.keys(
-        ), "Unable to find \"args\" in backward.yaml"
-        assert 'output' in grad_api_contents.keys(
-        ), "Unable to find \"output\" in backward.yaml"
-        assert 'forward' in grad_api_contents.keys(
-        ), "Unable to find \"forward\" in backward.yaml"
+        if grad_api_contents is not None:
+            assert 'backward' in forward_api_contents.keys(
+            ), "Unable to find \"backward\" in api.yaml"
+            assert 'args' in grad_api_contents.keys(
+            ), "Unable to find \"args\" in backward.yaml"
+            assert 'output' in grad_api_contents.keys(
+            ), "Unable to find \"output\" in backward.yaml"
+            assert 'forward' in grad_api_contents.keys(
+            ), "Unable to find \"forward\" in backward.yaml"
 
     def ForwardsValidationCheck(self):
         forward_inputs_list = self.forward_inputs_list
@@ -629,6 +673,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         self.forward_inputs_list, self.forward_attrs_list, self.forward_returns_list = ParseYamlForwardFromBackward(
             backward_forward_str)
 
+    def CollectForwardInfoFromYamlForward(self):
+        self.forward_inputs_list, self.forward_attrs_list, self.forward_returns_list = ParseYamlForwardFromBackward(
+            self.forward_api_contents['args'] + " -> " +
+            self.forward_api_contents['output'])
+
     def SlotNameMatching(self):
         backward_inputs_list = self.backward_inputs_list
         backward_returns_list = self.backward_returns_list
@@ -694,6 +743,14 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                 backward_output_pos
             ]
 
+    def GetPassStopGradientArgsList(self, forward_outputs_position_map):
+        pass_stop_gradient_args_list = ["false"]
+        for name, (_, _) in forward_outputs_position_map.items():
+            output_autograd_meta_name = GetAutoGradMetaName(name)
+            pass_stop_gradient_args_list.append(output_autograd_meta_name)
+        pass_stop_gradient_args_str = ",".join(pass_stop_gradient_args_list)
+        return pass_stop_gradient_args_str
+
     def GenerateNodeCreationCodes(self, for_backward=False):
         forward_api_name = self.forward_api_name
         forward_inputs_position_map = self.forward_inputs_position_map
@@ -706,11 +763,8 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         optional_inputs = self.optional_inputs
 
         # Pass Stop Gradient Args
-        pass_stop_gradient_args_list = ["false"]
-        for name, (_, _) in forward_outputs_position_map.items():
-            output_autograd_meta_name = GetAutoGradMetaName(name)
-            pass_stop_gradient_args_list.append(output_autograd_meta_name)
-        pass_stop_gradient_args_str = ",".join(pass_stop_gradient_args_list)
+        pass_stop_gradient_args_str = self.GetPassStopGradientArgsList(
+            forward_outputs_position_map)
 
         # Node Construction
         num_backward_inputs = len(forward_outputs_position_map.keys())
@@ -851,10 +905,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         ##########################
         # Parse forward and backward inplace_map
         self.ParseForwardInplaceInfo()
-        self.ParseBackwardInplaceInfo()
-
-        # Parse no_need_buffer
-        self.ParseNoNeedBuffer()
+        if self.grad_api_contents is not None:
+            self.ParseBackwardInplaceInfo()
+            # Parse no_need_buffer
+            self.ParseNoNeedBuffer()
 
         # Parse optional_inputs
         self.ParseDispensable()
@@ -863,11 +917,15 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         self.ParseIntermediate()
         self.IntermediateValidationCheck()
 
-        # Initialize backward_forward_str, backward_inputs_list, backward_attrs_list, backward_returns_list
-        self.CollectBackwardInfo()
+        if self.grad_api_contents is not None:
+            # Initialize backward_forward_str, backward_inputs_list, backward_attrs_list, backward_returns_list
+            self.CollectBackwardInfo()
 
-        # Initialize forward_inputs_list, forward_attrs_list, forward_returns_list
-        self.CollectForwardInfoFromBackwardContents()
+            # Initialize forward_inputs_list, forward_attrs_list, forward_returns_list
+            self.CollectForwardInfoFromBackwardContents()
+
+        if self.is_forward_only:
+            self.CollectForwardInfoFromYamlForward()
 
         # Initialize orig_forward_inputs_list, orig_forward_attrs_list, orig_forward_returns_list
         self.CollectOriginalForwardInfo()
@@ -882,11 +940,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         self.DetermineForwardPositionMap(self.forward_inputs_list,
                                          self.forward_returns_list)
 
-        # Initialize backward_forward_inputs_map, backward_grad_inputs_map, backward_grad_outputs_map
-        self.SlotNameMatching()
-
-        # Backward Validation Check
-        self.BackwardValidationCheck()
+        if self.grad_api_contents is not None:
+            # Initialize backward_forward_inputs_map, backward_grad_inputs_map, backward_grad_outputs_map
+            self.SlotNameMatching()
+            # Backward Validation Check
+            self.BackwardValidationCheck()
 
 
 class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
@@ -909,7 +967,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         forward_inputs_position_map = self.forward_inputs_position_map
         forward_outputs_position_map = self.forward_outputs_position_map
         forward_attrs_list = self.forward_attrs_list
-        backward_grad_outputs_map = self.backward_grad_outputs_map
+        if not self.is_forward_only:
+            backward_grad_outputs_map = self.backward_grad_outputs_map
 
         optional_inputs = self.optional_inputs
         intermediate_outputs = self.intermediate_outputs
@@ -934,7 +993,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             is_optional = (name in optional_inputs)
             if IsPlainTensorType(ttype):
                 if is_optional:
-                    arg_str = f"const paddle::optional<paddle::experimental::Tensor>& {name}"
+                    if self.is_forward_only and is_inplaced and forward_inplace_map and name in forward_inplace_map.keys(
+                    ):
+                        arg_str = f"paddle::optional<paddle::experimental::Tensor>& {name}"
+                    else:
+                        arg_str = f"const paddle::optional<paddle::experimental::Tensor>& {name}"
                     amp_tensors_vector_optional_list.append(
                         f"if ({name}) amp_tensors_vector.push_back({{ *{name} }});\n"
                     )
@@ -1028,15 +1091,27 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             if IsPlainTensorType(rtype):
                 if is_inplaced and forward_inplace_map and name in forward_inplace_map.values(
                 ):
-                    returns_type_list[pos] = "paddle::experimental::Tensor&"
+                    ind = list(forward_inplace_map.values()).index(name)
+                    if list(forward_inplace_map.keys()
+                            )[ind] in self.optional_inputs:
+                        returns_type_list[pos] = inplace_optional_out_type_map[
+                            rtype]
+                    else:
+                        returns_type_list[pos] = "paddle::experimental::Tensor&"
                 else:
                     returns_type_list[pos] = "paddle::experimental::Tensor"
             else:
                 assert IsVectorTensorType(rtype)
                 if is_inplaced and forward_inplace_map and name in forward_inplace_map.values(
                 ):
-                    returns_type_list[
-                        pos] = "std::vector<paddle::experimental::Tensor>&"
+                    ind = list(forward_inplace_map.values()).index(name)
+                    if list(forward_inplace_map.keys()
+                            )[ind] in self.optional_inputs:
+                        returns_type_list[pos] = inplace_optional_out_type_map[
+                            rtype]
+                    else:
+                        returns_type_list[
+                            pos] = "std::vector<paddle::experimental::Tensor>&"
                 else:
                     returns_type_list[
                         pos] = "std::vector<paddle::experimental::Tensor>"
@@ -1052,56 +1127,64 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
         # Node Creation Pre-Processing
         # 1. Get Input AutoGradMeta
-        inputs_autograd_meta_list = []
-        compute_require_grad_args_list = ["trace_backward"]
-        for name, (ttype, pos) in forward_inputs_position_map.items():
-            # Has corresponding grad output
-            has_corresponding_grad_output = False
-            for _, (_, corresponding_pos,
-                    _) in backward_grad_outputs_map.items():
-                if pos == corresponding_pos:
-                    has_corresponding_grad_output = True
-            if has_corresponding_grad_output or (
-                    name in forward_inplace_map
-                    and forward_api_name not in inplace_check_blacklist):
-                input_autograd_meta_name = GetAutoGradMetaName(name)
-                if IsPlainTensorType(ttype):
-                    input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
-                        name)
-                    input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({name});\n"
-                    input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
-                inputs_autograd_meta_list.append(input_autograd_meta)
-                compute_require_grad_args_list.append(input_autograd_meta_name)
-        inputs_autograd_meta_str = "\n".join(inputs_autograd_meta_list)
-        compute_require_grad_args_str = ",".join(compute_require_grad_args_list)
+
+        if not self.is_forward_only:
+            inputs_autograd_meta_list = []
+            compute_require_grad_args_list = ["trace_backward"]
+            for name, (ttype, pos) in forward_inputs_position_map.items():
+                # Has corresponding grad output
+                has_corresponding_grad_output = False
+                if not self.is_forward_only:
+                    for _, (_, corresponding_pos,
+                            _) in backward_grad_outputs_map.items():
+                        if pos == corresponding_pos:
+                            has_corresponding_grad_output = True
+                if has_corresponding_grad_output or (
+                        name in forward_inplace_map and forward_api_name
+                        not in inplace_check_blacklist) or self.is_forward_only:
+                    input_autograd_meta_name = GetAutoGradMetaName(name)
+                    if IsPlainTensorType(ttype):
+                        input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
+                    else:
+                        assert IsVectorTensorType(ttype)
+                        input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
+                            name)
+                        input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({name});\n"
+                        input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
+                    inputs_autograd_meta_list.append(input_autograd_meta)
+                    compute_require_grad_args_list.append(
+                        input_autograd_meta_name)
+
+            inputs_autograd_meta_str = "\n".join(inputs_autograd_meta_list)
+            compute_require_grad_args_str = ",".join(
+                compute_require_grad_args_list)
 
         # 2. Get Output AutoGradMeta
-        outputs_autograd_meta_list = []
-        num_fwd_outputs = len(forward_outputs_position_map.keys())
-        for name, (rtype, pos) in forward_outputs_position_map.items():
-            output_autograd_meta_name = GetAutoGradMetaName(name)
-            output_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
-            if num_fwd_outputs == 1:
-                if IsPlainTensorType(rtype):
-                    output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
-                else:
-                    assert IsVectorTensorType(rtype)
-                    output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
-                    output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
-            else:
-                # Tuple api_result
-                if IsPlainTensorType(rtype):
-                    output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
-                else:
-                    assert IsVectorTensorType(rtype)
-                    output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
-                    output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+        if not self.is_forward_only:
+            outputs_autograd_meta_list = []
+            num_fwd_outputs = len(forward_outputs_position_map.keys())
 
-            outputs_autograd_meta_list.append(output_autograd_meta)
-        outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
+            for name, (rtype, pos) in forward_outputs_position_map.items():
+                output_autograd_meta_name = GetAutoGradMetaName(name)
+                output_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
+                if num_fwd_outputs == 1:
+                    if IsPlainTensorType(rtype):
+                        output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
+                    else:
+                        assert IsVectorTensorType(rtype)
+                        output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
+                        output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+                else:
+                    # Tuple api_result
+                    if IsPlainTensorType(rtype):
+                        output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
+                    else:
+                        assert IsVectorTensorType(rtype)
+                        output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
+                        output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+
+                outputs_autograd_meta_list.append(output_autograd_meta)
+            outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
 
         # 3. Check Inplace
         check_inplace_str = ""
@@ -1117,8 +1200,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     inplace_name, inplace_name)
 
         # Node Creation
-        self.GenerateNodeCreationCodes()
-        node_creation_str = self.node_creation_str
+        if not self.is_forward_only:
+            self.GenerateNodeCreationCodes()
+            node_creation_str = self.node_creation_str
+        else:
+            node_creation_str = ""
 
         dygraph_event_str = f"{indent}paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);\n"
         forward_function_name = GetDygraphForwardFunctionName(forward_api_name)
@@ -1144,13 +1230,30 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 amp_autocast_list_str, amp_call_str)
 
         # Generate forward_definition_str and forward_declaration_str
-        self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
-            returns_type_str, forward_function_name, inputs_args_definition_str,
-            dygraph_event_str, amp_logic_str, inputs_autograd_meta_str,
-            forward_function_name, forward_call_str, check_nan_inf_str,
-            get_outputs_str, outputs_autograd_meta_str,
-            compute_require_grad_args_str, check_inplace_str,
-            bump_inplace_version_str, node_creation_str, returns_str)
+        if not self.is_forward_only:
+            self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
+                returns_type_str, forward_function_name,
+                inputs_args_definition_str, dygraph_event_str, amp_logic_str,
+                inputs_autograd_meta_str, forward_function_name,
+                forward_call_str, check_nan_inf_str, get_outputs_str,
+                outputs_autograd_meta_str, compute_require_grad_args_str,
+                check_inplace_str, bump_inplace_version_str, node_creation_str,
+                returns_str)
+        else:
+            if (len(amp_tensors_vector_list) > 0) and (self.forward_api_name
+                                                       not in no_amp_list):
+                self.forward_definition_str += FORWARD_ONLY_FUNCTION_TEMPLATE.format(
+                    returns_type_str, forward_function_name,
+                    inputs_args_definition_str, dygraph_event_str,
+                    amp_logic_str, forward_function_name, forward_call_str,
+                    get_outputs_str, returns_str)
+            else:
+                self.forward_definition_str += FORWARD_ONLY_FUNCTION_TEMPLATE.format(
+                    returns_type_str, forward_function_name,
+                    inputs_args_definition_str, dygraph_event_str, " ",
+                    forward_function_name, forward_call_str, get_outputs_str,
+                    returns_str)
+
         self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
 
     def GenerateInplacedForwardDygraphFunctions(self):
@@ -1648,11 +1751,18 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         self.node_declaration_str = ""
         self.node_definition_str = ""
 
+    def CollectIsForwardOnly(self, forward_api_contents):
+        self.is_forward_only = False if 'backward' in forward_api_contents.keys(
+        ) else True
+
     def ParseYamlContents(self):
         self.ParseForwardYamlContents()
 
         backward_yaml_path = self.backward_yaml_path
-        self.grad_api_dict = ReadBwdFile(backward_yaml_path)
+
+        # string api is forward_only, no backward_yaml respectively
+        if backward_yaml_path is not None:
+            self.grad_api_dict = ReadBwdFile(backward_yaml_path)
 
     def GetBackwardAPIContents(self, forward_api_contents):
         grad_api_dict = self.grad_api_dict
@@ -1674,9 +1784,13 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         for forward_api_contents in forward_api_list:
             if forward_api_contents['api'] in black_ops_list: continue
 
-            backward_api_contents = self.GetBackwardAPIContents(
-                forward_api_contents)
-            if backward_api_contents is None: continue
+            self.CollectIsForwardOnly(forward_api_contents)
+
+            if self.is_forward_only:
+                backward_api_contents = None
+            else:
+                backward_api_contents = self.GetBackwardAPIContents(
+                    forward_api_contents)
 
             # Generate Dygraph Forward Function
             function_generator = DygraphForwardFunctionGenerator(
@@ -1688,6 +1802,8 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
 
             # Generate Dygraph GradNode Function
             while True:
+                if backward_api_contents is None:
+                    break
                 next_grad_api_contents = self.GetBackwardAPIContents(
                     backward_api_contents)
 
@@ -1787,7 +1903,12 @@ if __name__ == "__main__":
 
     for i in range(len(api_yaml_paths)):
         api_yaml_path = api_yaml_paths[i]
-        backward_yaml_path = backward_yaml_paths[i]
+
+        # string api is forwrad only
+        if not api_yaml_path.endswith('strings_api.yaml'):
+            backward_yaml_path = backward_yaml_paths[i]
+        else:
+            backward_yaml_path = None
 
         generator = DygraphForwardAndNodesGenerator(api_yaml_path,
                                                     backward_yaml_path)

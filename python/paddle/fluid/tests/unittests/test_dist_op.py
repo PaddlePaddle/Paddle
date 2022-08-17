@@ -183,7 +183,7 @@ class TestDistAPI(unittest.TestCase):
                               'y': y_i
                           },
                           fetch_list=[result])
-            self.assertTrue(np.allclose(dist(x_i, y_i, p), out[0]))
+            np.testing.assert_allclose(dist(x_i, y_i, p), out[0], rtol=1e-05)
 
 
 if __name__ == '__main__':

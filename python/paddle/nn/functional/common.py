@@ -592,7 +592,7 @@ def interpolate(x,
 
         if resample_type == "linear":
             if in_dygraph_mode():
-                out = _C_ops.final_state_linear_interp_v2(
+                out = _C_ops.final_state_linear_interp(
                     x, inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,
@@ -617,9 +617,29 @@ def interpolate(x,
         elif resample_type == "trilinear":
             out = _C_ops.trilinear_interp_v2(x, *dy_attr)
         elif resample_type == "nearest":
-            out = _C_ops.nearest_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_nearest_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.nearest_interp_v2(x, *dy_attr)
         elif resample_type == "bicubic":
-            out = _C_ops.bicubic_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_bicubic_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.bicubic_interp_v2(x, *dy_attr)
         return out
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type='{}_interp_v2'.format(resample_type),

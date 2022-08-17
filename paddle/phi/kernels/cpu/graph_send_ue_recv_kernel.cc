@@ -22,7 +22,7 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/graph_send_ue_recv_funcs.h"
-#include "paddle/phi/kernels/impl/graph_messaage_passing_impl.h"
+#include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 
 namespace phi {
 

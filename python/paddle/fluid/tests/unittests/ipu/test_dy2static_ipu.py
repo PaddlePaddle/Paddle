@@ -114,7 +114,7 @@ class TestBase(IPUD2STest):
     def test_training(self):
         ipu_loss = self._test(True).flatten()
         cpu_loss = self._test(False).flatten()
-        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-4))
+        np.testing.assert_allclose(ipu_loss, cpu_loss, rtol=1e-05, atol=1e-4)
 
 
 class TestSaveLoad(TestBase):

@@ -67,9 +67,12 @@ class TestMultinomialOp(OpTest):
         # normalize the input to get the probability
         prob = self.input_np / self.input_np.sum(axis=-1, keepdims=True)
         sample_prob = self.sample_output(np.array(outs[0]))
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
 
 
 class TestMultinomialOp2(TestMultinomialOp):
@@ -112,9 +115,12 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_one_dimension(out.numpy(), 4)
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
 
     def test_dygraph2(self):
         # input probability is a matrix, and replacement is True
@@ -125,9 +131,12 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_two_dimension(out.numpy(), [3, 4])
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
         paddle.enable_static()
 
     def test_dygraph3(self):
@@ -170,9 +179,12 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_one_dimension(out, 4)
         prob = x_np / x_np.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
 
 
 class TestMultinomialAlias(unittest.TestCase):
