@@ -89,7 +89,7 @@ class AutoTuneStatus {
 
   bool use_autotune_{false};
   int64_t start_step_id_{1};
-  int64_t stop_step_id_{21};
+  int64_t stop_step_id_{10};
   int64_t current_steps_id_{-1};
   int64_t previous_hits_{0};
   int64_t previous_misses_{0};
