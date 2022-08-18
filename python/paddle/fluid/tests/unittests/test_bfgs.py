@@ -89,10 +89,16 @@ class TestBfgs(unittest.TestCase):
 
             x0 = np.random.random(size=[dimension]).astype('float32')
             results = test_static_graph(func=func, x0=x0)
-            self.assertTrue(np.allclose(minimum, results[2]))
+            np.testing.assert_allclose(minimum,
+                                       results[2],
+                                       rtol=1e-05,
+                                       atol=1e-8)
 
             results = test_dynamic_graph(func=func, x0=x0)
-            self.assertTrue(np.allclose(minimum, results[2].numpy()))
+            np.testing.assert_allclose(minimum,
+                                       results[2].numpy(),
+                                       rtol=1e-05,
+                                       atol=1e-8)
 
     def test_inf_minima(self):
         extream_point = np.array([-1, 2]).astype('float32')
@@ -120,7 +126,7 @@ class TestBfgs(unittest.TestCase):
         x0 = np.array([0.82], dtype='float64')
 
         results = test_static_graph(func, x0, dtype='float64')
-        self.assertTrue(np.allclose(0.8, results[2]))
+        np.testing.assert_allclose(0.8, results[2], rtol=1e-05, atol=1e-8)
 
     def func_rosenbrock(self):
         # The Rosenbrock function is a standard optimization test case.
@@ -139,7 +145,7 @@ class TestBfgs(unittest.TestCase):
         x0 = np.random.random(size=[2]).astype('float32')
 
         results = test_dynamic_graph(func, x0)
-        self.assertTrue(np.allclose(minimum, results[2]))
+        np.testing.assert_allclose(minimum, results[2], rtol=1e-05, atol=1e-8)
 
     def test_rosenbrock(self):
         with _test_eager_guard():
@@ -156,7 +162,10 @@ class TestBfgs(unittest.TestCase):
 
         # test initial_inverse_hessian_estimate is good
         results = test_static_graph_H0(func, x0, H0, dtype='float32')
-        self.assertTrue(np.allclose([0., 0.], results[2]))
+        np.testing.assert_allclose([0.0, 0.0],
+                                   results[2],
+                                   rtol=1e-05,
+                                   atol=1e-8)
         self.assertTrue(results[0][0])
 
         # test initial_inverse_hessian_estimate is bad

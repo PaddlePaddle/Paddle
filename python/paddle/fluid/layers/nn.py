@@ -2259,7 +2259,11 @@ def pool2d(input,
             pool_padding = [0, 0]
 
     pool_padding = update_padding(pool_padding, data_format)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_pool2d(input, pool_size, pool_stride,
+                                         pool_padding, ceil_mode, exclusive,
+                                         data_format, pool_type, global_pooling,
+                                         False, padding_algorithm)
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
@@ -6608,12 +6612,22 @@ def squeeze(input, axes, name=None):
         'float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64',
         'complex64', 'complex128'
     ], 'squeeze')
-    check_type(axes, 'axis/axes', (list, tuple), 'squeeze')
+    check_type(axes, 'axis/axes', (list, tuple, Variable), 'squeeze')
+
+    attrs = {}
+    if isinstance(axes, Variable):
+        axes.stop_gradient = True
+        attrs["axes"] = axes
+    elif isinstance(axes, (list, tuple)):
+        if utils._contain_var(axes):
+            attrs["axes"] = utils._convert_to_tensor_list(axes)
+        else:
+            attrs["axes"] = axes
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(type="squeeze2",
                      inputs={"X": input},
-                     attrs={"axes": axes},
+                     attrs=attrs,
                      outputs={
                          "Out": out,
                          "XShape": x_shape
