@@ -32,6 +32,15 @@ SparseCooTensor::SparseCooTensor(const DenseTensor& non_zero_indices,
   meta_.dtype = non_zero_elements.dtype();
 }
 
+SparseCooTensor::SparseCooTensor(const DenseTensor& non_zero_indices,
+                                 const DenseTensor& non_zero_elements,
+                                 const SparseTensorMeta& meta)
+    : non_zero_indices_(non_zero_indices),
+      non_zero_elements_(non_zero_elements),
+      coalesced_(false) {
+  set_meta(meta);
+}
+
 SparseCooTensor::SparseCooTensor(DenseTensor&& non_zero_indices,
                                  DenseTensor&& non_zero_elements,
                                  const DDim& dims)
@@ -41,6 +50,15 @@ SparseCooTensor::SparseCooTensor(DenseTensor&& non_zero_indices,
   meta_.dims = dims;
   meta_.layout = DataLayout::NCHW;
   meta_.dtype = non_zero_elements.dtype();
+}
+
+SparseCooTensor::SparseCooTensor(DenseTensor&& non_zero_indices,
+                                 DenseTensor&& non_zero_elements,
+                                 const SparseTensorMeta& meta)
+    : non_zero_indices_(non_zero_indices),
+      non_zero_elements_(non_zero_elements),
+      coalesced_(false) {
+  set_meta(meta);
 }
 
 SparseCooTensor::SparseCooTensor(const SparseCooTensor& other)

@@ -204,7 +204,7 @@ class TestSparseConvert(unittest.TestCase):
             crows = [0, 2, 3, 5]
             cols = [1, 3, 2, 0, 1]
             values = [1, 2, 3, 4, 5]
-            dense_x = paddle.to_tensor(x)
+            dense_x = paddle.to_tensor(x, dtype='float32')
             out = dense_x.to_sparse_csr()
             assert np.array_equal(out.crows().numpy(), crows)
             assert np.array_equal(out.cols().numpy(), cols)
