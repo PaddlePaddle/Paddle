@@ -57,7 +57,7 @@ __device__ inline void get_coordinate_in_triu_trapezoid(int f,
   auto b = -1 - f;
   auto cX4 = x << 3;  // 4 * c = 4 * (2x) = 8x;
   *row = resolve_root_int<T>(b, cX4, x, -1);
-  *col = (x - ((f - *row + 1) * (*row >> 1))) + *row;
+  *col = (x - (((f - *row + 1) * *row) >> 1)) + *row;
 }
 
 template <typename T>
