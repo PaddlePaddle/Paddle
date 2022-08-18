@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-
 #include <error.h>
 #include <mpi.h>
 #include <iostream>

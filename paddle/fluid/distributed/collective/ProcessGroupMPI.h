@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <mpi.h>
 #include <chrono>
 #include <map>
 #include <string>
