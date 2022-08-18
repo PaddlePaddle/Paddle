@@ -92,7 +92,7 @@ about:
 """
 
         self.blt_const = r""" 
-pip install paddle_bfloat==0.1.7
+pip install paddle_bfloat==0.1.7 -f C:\package
 """
 
         self.python36 = r"    - python>=3.6, <3.7"
@@ -112,14 +112,25 @@ pip install paddle_bfloat==0.1.7
     - cudatoolkit>=10.2, <10.3
     - cudnn>=7.6, <7.7
     """
-        self.cuda112 = r"""
+        if platform.system() == "Windows":
+            self.cuda112 = r"""
+    - cudatoolkit>=11.2, <11.3
+    - cudnn>=8.2, <8.3
+    """
+        else:
+            self.cuda112 = r"""
     - cudatoolkit>=11.2, <11.3
     - cudnn>=8.1, <8.2
+    """ 
+        self.cuda116 = r"""
+    - cudatoolkit>=11.6, <11.7
+    - cudnn>=8.4, <8.5
     """
 
         self.cuda_info = [(self.cuda101, "cuda10.1", ".post101"),
                           (self.cuda102, "cuda10.2", ""),
-                          (self.cuda112, "cuda11.2", ".post112")]
+                          (self.cuda112, "cuda11.2", ".post112"),
+                          (self.cuda116, "cuda11.6", ".post116")]
         self.py_str = ["py36", "py37", "py38", "py39"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install /package/paddlepaddle"
