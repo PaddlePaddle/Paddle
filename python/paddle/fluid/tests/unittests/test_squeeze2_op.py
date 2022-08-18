@@ -103,6 +103,7 @@ class TestSqueeze2AxesTensor(UnittestBase):
             # axes is a Variable
             axes = paddle.assign([0, 2])
             out = paddle.squeeze(feat, axes)
+            out2 = paddle.fluid.layers.squeeze(feat, axes)
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
@@ -110,9 +111,10 @@ class TestSqueeze2AxesTensor(UnittestBase):
 
             exe = paddle.static.Executor()
             exe.run(starup_prog)
-            res = exe.run(fetch_list=[feat, out])
+            res = exe.run(fetch_list=[feat, out, out2])
             self.assertEqual(res[0].shape, (1, 2, 1, 3, 10))
             self.assertEqual(res[1].shape, (2, 3, 10))
+            self.assertEqual(res[2].shape, (2, 3, 10))
 
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)
             # Test for Inference Predictor
@@ -141,6 +143,7 @@ class TestSqueeze2AxesTensorList(UnittestBase):
                 paddle.full([1], 2, dtype='int32')
             ]
             out = paddle.squeeze(feat, axes)
+            out2 = paddle.fluid.layers.squeeze(feat, axes)
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
@@ -148,9 +151,10 @@ class TestSqueeze2AxesTensorList(UnittestBase):
 
             exe = paddle.static.Executor()
             exe.run(starup_prog)
-            res = exe.run(fetch_list=[feat, out])
+            res = exe.run(fetch_list=[feat, out, out2])
             self.assertEqual(res[0].shape, (1, 2, 1, 3, 10))
             self.assertEqual(res[1].shape, (2, 3, 10))
+            self.assertEqual(res[2].shape, (2, 3, 10))
 
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)
             # Test for Inference Predictor
