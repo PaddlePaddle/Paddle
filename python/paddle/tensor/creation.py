@@ -427,19 +427,18 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                                                          == data.dtype):
                 output = data
             else:
-
-                if not isinstance(data, np.ndarray):
-                    if np.isscalar(data) and not isinstance(data, str):
-                        data = np.array([data])
-                    elif isinstance(data, (list, tuple)):
-                        data = np.array(data)
-
                 if dtype:
                     target_dtype = convert_dtype(dtype)
                 elif hasattr(data, 'dtype'):
                     target_dtype = convert_dtype(data.dtype)
                 else:
                     target_dtype = None
+
+                if not isinstance(data, np.ndarray):
+                    if np.isscalar(data) and not isinstance(data, str):
+                        data = np.array([data])
+                    elif isinstance(data, (list, tuple)):
+                        data = np.array(data)
 
                 output = assign(data)
                 if target_dtype is not None and convert_dtype(
