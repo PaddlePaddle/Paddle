@@ -76,6 +76,8 @@ const std::unordered_set<std::string> deprecated_op_names(
      "linear_interp_grad",
      "bilinear_interp",
      "bilinear_interp_grad",
+     "trilinear_interp",
+     "trilinear_interp_grad",
      "nearest_interp",
      "nearest_interp_grad",
      "bicubic_interp",
