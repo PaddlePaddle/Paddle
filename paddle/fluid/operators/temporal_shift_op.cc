@@ -10,12 +10,13 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/temporal_shift_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/op_registry.h"
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -147,15 +148,19 @@ class TemporalShiftGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(temporal_shift, TemporalShiftInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(temporal_shift,
+                            TemporalShiftInferShapeFunctor,
                             PD_INFER_META(phi::TemporalShiftInferMeta));
-REGISTER_OPERATOR(temporal_shift, ops::TemporalShiftOp,
+REGISTER_OPERATOR(temporal_shift,
+                  ops::TemporalShiftOp,
                   ops::TemporalShiftOpMaker,
                   ops::TemporalShiftGradOpMaker<paddle::framework::OpDesc>,
                   ops::TemporalShiftGradOpMaker<paddle::imperative::OpBase>,
                   TemporalShiftInferShapeFunctor);
 REGISTER_OPERATOR(temporal_shift_grad, ops::TemporalShiftOpGrad);
-REGISTER_OP_CPU_KERNEL(temporal_shift, ops::TemporalShiftKernel<float>,
+REGISTER_OP_CPU_KERNEL(temporal_shift,
+                       ops::TemporalShiftKernel<float>,
                        ops::TemporalShiftKernel<double>);
-REGISTER_OP_CPU_KERNEL(temporal_shift_grad, ops::TemporalShiftGradKernel<float>,
+REGISTER_OP_CPU_KERNEL(temporal_shift_grad,
+                       ops::TemporalShiftGradKernel<float>,
                        ops::TemporalShiftGradKernel<double>);

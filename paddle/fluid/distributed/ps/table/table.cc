@@ -16,13 +16,11 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/common/registerer.h"
-
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
-#include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
-
 #include "paddle/fluid/distributed/ps/table/ctr_accessor.h"
 #include "paddle/fluid/distributed/ps/table/ctr_double_accessor.h"
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
+#include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
 #include "paddle/fluid/distributed/ps/table/memory_sparse_geo_table.h"
 #include "paddle/fluid/distributed/ps/table/memory_sparse_table.h"
 #include "paddle/fluid/distributed/ps/table/sparse_accessor.h"
@@ -51,6 +49,7 @@ REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseNaiveSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
+REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseSharedAdamSGDRule);
 
 int32_t TableManager::Initialize() {
   static bool initialized = false;

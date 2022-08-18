@@ -41,6 +41,7 @@ def DataTypeCast(date_type):
 
 
 class TestCollectiveAPIRunnerBase(object):
+
     def get_model(self, train_prog, startup_prog, rank, indata=None):
         raise NotImplementedError(
             "get model should be implemented by child class.")
@@ -95,6 +96,7 @@ from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
+
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
@@ -103,6 +105,7 @@ class TestDistBase(unittest.TestCase):
         self._python_interp = sys.executable
 
     def _find_free_port(self):
+
         def __free_port():
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as s:
@@ -145,18 +148,16 @@ class TestDistBase(unittest.TestCase):
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         tr0_pipe = open("/tmp/tr0_err_%d.log" % os.getpid(), "w")
         tr1_pipe = open("/tmp/tr1_err_%d.log" % os.getpid(), "w")
-        #print(tr0_cmd) 
-        tr0_proc = subprocess.Popen(
-            tr0_cmd.strip().split(),
-            stdout=subprocess.PIPE,
-            stderr=tr0_pipe,
-            env=env0)
+        #print(tr0_cmd)
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr0_pipe,
+                                    env=env0)
 
-        tr1_proc = subprocess.Popen(
-            tr0_cmd.strip().split(),
-            stdout=subprocess.PIPE,
-            stderr=tr1_pipe,
-            env=env1)
+        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr1_pipe,
+                                    env=env1)
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
@@ -200,8 +201,8 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
             required_envs["GLOO_LOG_LEVEL"] = "TRACE"
-        tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file,
-                                                         required_envs)
+        tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
+            model_file, required_envs)
         np_data_type = DataTypeCast(data_type)
         np.random.seed(pid0)
         input1 = np.random.random((10, 1000)).astype(np_data_type)
@@ -209,24 +210,26 @@ class TestDistBase(unittest.TestCase):
         input2 = np.random.random((10, 1000)).astype(np_data_type)
         if col_type == "broadcast":
             need_result = input2
-            self.assertTrue(np.allclose(tr0_out, need_result))
-            self.assertTrue(np.allclose(tr1_out, need_result))
+            np.testing.assert_allclose(tr0_out, need_result)
+            np.testing.assert_allclose(tr1_out, need_result)
         elif col_type == "allreduce":
             need_result = input1 + input2
-            self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
-            self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+            np.testing.assert_allclose(tr0_out,
+                                       need_result,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(tr1_out,
+                                       need_result,
+                                       rtol=1e-05,
+                                       atol=1e-05)
         elif col_type == "reduce":
             need_result = input1 + input2
-            self.assertTrue(np.allclose(tr0_out, need_result))
+            np.testing.assert_allclose(tr0_out, need_result)
         elif col_type == "allgather":
             need_result = np.vstack((input1, input2))
             tr_out0 = np.vstack((tr0_out[0], tr0_out[1]))
             tr_out1 = np.vstack((tr1_out[0], tr1_out[1]))
-            self.assertTrue(np.allclose(tr_out0, need_result))
-            self.assertTrue(np.allclose(tr_out1, need_result))
+            np.testing.assert_allclose(tr_out0, need_result)
+            np.testing.assert_allclose(tr_out1, need_result)
         else:
             pass

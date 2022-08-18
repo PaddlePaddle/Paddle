@@ -39,12 +39,14 @@ class TopkV2XPUKernel : public framework::OpKernel<T> {
     const auto& sorted = static_cast<bool>(ctx.Attr<bool>("sorted"));
     const auto& largest = static_cast<bool>(ctx.Attr<bool>("largest"));
     PADDLE_ENFORCE_EQ(
-        sorted, true,
+        sorted,
+        true,
         platform::errors::External(
             "XPU API does not support unsorted topk operation currently."
             " Operator will be supported in future update."));
     PADDLE_ENFORCE_EQ(
-        largest, true,
+        largest,
+        true,
         platform::errors::External(
             "XPU API does not support smallest topk operation currently."
             " Operator will be supported in future update."));
@@ -70,25 +72,37 @@ class TopkV2XPUKernel : public framework::OpKernel<T> {
       const size_t row =
           phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const size_t col = in_dims[in_dims.size() - 1];
-      int r = xpu::sorted_topk<T>(dev_ctx.x_context(), in_data, output_data,
-                                  indices_int_data, row, col, k);
+      int r = xpu::sorted_topk<T>(dev_ctx.x_context(),
+                                  in_data,
+                                  output_data,
+                                  indices_int_data,
+                                  row,
+                                  col,
+                                  k);
       PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
+          r,
+          XPU_SUCCESS,
           platform::errors::External(
               "XPU API return wrong value[%d %s] in call kernel name "
               "[%s], please check "
               "where Baidu Kunlun Card is properly installed.",
-              r, XPUAPIErrorMsg[r], "sorted_topk"));
+              r,
+              XPUAPIErrorMsg[r],
+              "sorted_topk"));
       r = xpu::cast_v2<int32_t, int64_t>(dev_ctx.x_context(),
                                          (const int32_t*)indices_int_data,
-                                         indices_data, indices->numel());
+                                         indices_data,
+                                         indices->numel());
       PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
+          r,
+          XPU_SUCCESS,
           platform::errors::External(
               "XPU API return wrong value[%d %s] in call kernel name "
               "[%s], please check "
               "where Baidu Kunlun Card is properly installed.",
-              r, XPUAPIErrorMsg[r], "cast_v2"));
+              r,
+              XPUAPIErrorMsg[r],
+              "cast_v2"));
 
     } else {
       // do transpose if axis is not the last dim of input
@@ -118,13 +132,18 @@ class TopkV2XPUKernel : public framework::OpKernel<T> {
       T* trans_in_data = RAII_GUARD.alloc_l3_or_gm<T>(input->numel());
 
       // Transpose and save interval output to trans_in
-      int r = xpu::transpose<T>(dev_ctx.x_context(), in_data, trans_in_data,
-                                x_shape_host, trans_axes);
+      int r = xpu::transpose<T>(dev_ctx.x_context(),
+                                in_data,
+                                trans_in_data,
+                                x_shape_host,
+                                trans_axes);
       PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
+          r,
+          xpu::Error_t::SUCCESS,
           platform::errors::External("XPU API 1st Transpose kernel"
                                      " returns wrong value[%d %s]!",
-                                     r, XPUAPIErrorMsg[r]));
+                                     r,
+                                     XPUAPIErrorMsg[r]));
 
       T* trans_out_data = RAII_GUARD.alloc_l3_or_gm<T>(output->numel());
       int64_t* trans_idx_data =
@@ -136,27 +155,38 @@ class TopkV2XPUKernel : public framework::OpKernel<T> {
       const size_t col = trans_dims[trans_dims.size() - 1];
 
       // Do top k on transposed input
-      r = xpu::sorted_topk<T>(dev_ctx.x_context(), trans_in_data,
-                              trans_out_data, trans_idx_int32_data, row, col,
+      r = xpu::sorted_topk<T>(dev_ctx.x_context(),
+                              trans_in_data,
+                              trans_out_data,
+                              trans_idx_int32_data,
+                              row,
+                              col,
                               k);
       PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
+          r,
+          XPU_SUCCESS,
           platform::errors::External(
               "XPU API return wrong value[%d %s] in call kernel name "
               "[%s], please check "
               "where Baidu Kunlun Card is properly installed.",
-              r, XPUAPIErrorMsg[r], "sorted_topk"));
+              r,
+              XPUAPIErrorMsg[r],
+              "sorted_topk"));
 
       r = xpu::cast_v2<int32_t, int64_t>(dev_ctx.x_context(),
                                          (const int32_t*)trans_idx_int32_data,
-                                         trans_idx_data, indices->numel());
+                                         trans_idx_data,
+                                         indices->numel());
       PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
+          r,
+          XPU_SUCCESS,
           platform::errors::External(
               "XPU API return wrong value[%d %s in call kernel name "
               "[%s], please check "
               "where Baidu Kunlun Card is properly installed.",
-              r, XPUAPIErrorMsg[r], "cast_v2"));
+              r,
+              XPUAPIErrorMsg[r],
+              "cast_v2"));
 
       // Transpose back to original dims
       std::vector<int> trans_back_axes;
@@ -172,21 +202,30 @@ class TopkV2XPUKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < trans_back_axes.size(); ++i) {
         trans_out_shape_host[i] = trans_out_dims[i];
       }
-      r = xpu::transpose<T>(dev_ctx.x_context(), trans_out_data, output_data,
-                            trans_out_shape_host, trans_back_axes);
+      r = xpu::transpose<T>(dev_ctx.x_context(),
+                            trans_out_data,
+                            output_data,
+                            trans_out_shape_host,
+                            trans_back_axes);
       PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
+          r,
+          xpu::Error_t::SUCCESS,
           platform::errors::External("XPU API 2nd Transpose kernel"
                                      " returns wrong value[%d %s]",
-                                     r, XPUAPIErrorMsg[r]));
-      r = xpu::transpose<int64_t>(dev_ctx.x_context(), trans_idx_data,
-                                  indices_data, trans_out_shape_host,
+                                     r,
+                                     XPUAPIErrorMsg[r]));
+      r = xpu::transpose<int64_t>(dev_ctx.x_context(),
+                                  trans_idx_data,
+                                  indices_data,
+                                  trans_out_shape_host,
                                   trans_back_axes);
       PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
+          r,
+          xpu::Error_t::SUCCESS,
           platform::errors::External("XPU API 3rd Transpose kernel"
                                      " returns wrong value[%d %s]",
-                                     r, XPUAPIErrorMsg[r]));
+                                     r,
+                                     XPUAPIErrorMsg[r]));
     }
   }
 };

@@ -43,6 +43,7 @@ def _obtain_optimizer_parameters_list(optimizer):
 
 
 class HybridParallelClipGrad:
+
     def __init__(self, clip, hcg):
         self._clip = clip
         self._hcg = hcg
@@ -67,8 +68,8 @@ class HybridParallelClipGrad:
             sum_square = layers.reduce_sum(square)
 
             not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
-                hasattr(p, 'is_firstly_shared') and
-                getattr(p, 'is_firstly_shared', True))
+                hasattr(p, 'is_firstly_shared')
+                and getattr(p, 'is_firstly_shared', True))
 
             if not_shared_enable:
                 if p.is_distributed:
@@ -88,19 +89,19 @@ class HybridParallelClipGrad:
         else:
             global_norm_dist_fp16 = layers.concat(sum_square_dist_fp16)
             global_norm_dist_fp16 = layers.reduce_sum(global_norm_dist_fp16)
-            global_norm_dist_fp16 = paddle.cast(
-                global_norm_dist_fp16, dtype=paddle.float32)
+            global_norm_dist_fp16 = paddle.cast(global_norm_dist_fp16,
+                                                dtype=paddle.float32)
 
         # global norm of non-distributed FP16 params_and_grads
         if len(sum_square_not_dist_fp16) == 0:
-            global_norm_not_dist_fp16 = paddle.to_tensor(
-                [0.], dtype=paddle.float32)
+            global_norm_not_dist_fp16 = paddle.to_tensor([0.],
+                                                         dtype=paddle.float32)
         else:
             global_norm_not_dist_fp16 = layers.concat(sum_square_not_dist_fp16)
             global_norm_not_dist_fp16 = layers.reduce_sum(
                 global_norm_not_dist_fp16)
-            global_norm_not_dist_fp16 = paddle.cast(
-                global_norm_not_dist_fp16, dtype=paddle.float32)
+            global_norm_not_dist_fp16 = paddle.cast(global_norm_not_dist_fp16,
+                                                    dtype=paddle.float32)
 
         # global norm of distributed FP32 params_and_grads
         global_norm_dist_fp32 = layers.concat(sum_square_dist_fp32) if len(
@@ -110,9 +111,9 @@ class HybridParallelClipGrad:
 
         # global norm of non-distributed FP32 params_and_grads
         global_norm_not_dist_fp32 = layers.concat(
-            sum_square_not_dist_fp32) if len(
-                sum_square_not_dist_fp32) != 0 else paddle.to_tensor(
-                    [0.], dtype=paddle.float32)
+            sum_square_not_dist_fp32
+        ) if len(sum_square_not_dist_fp32) != 0 else paddle.to_tensor(
+            [0.], dtype=paddle.float32)
         global_norm_not_dist_fp32 = layers.reduce_sum(global_norm_not_dist_fp32)
 
         global_norm_var_dist = global_norm_dist_fp16 + global_norm_dist_fp32
@@ -140,12 +141,13 @@ class HybridParallelClipGrad:
         global_norm_var_fp32 = layers.sqrt(global_norm_var_dist +
                                            global_norm_var_not_dist)
 
-        max_global_norm = layers.fill_constant(
-            shape=[1], dtype=global_norm_var_fp32.dtype, value=self.clip_norm)
-        clip_var = layers.elementwise_div(
-            x=max_global_norm,
-            y=layers.elementwise_max(
-                x=global_norm_var_fp32, y=max_global_norm))
+        max_global_norm = layers.fill_constant(shape=[1],
+                                               dtype=global_norm_var_fp32.dtype,
+                                               value=self.clip_norm)
+        clip_var = layers.elementwise_div(x=max_global_norm,
+                                          y=layers.elementwise_max(
+                                              x=global_norm_var_fp32,
+                                              y=max_global_norm))
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
         for p, g in params_grads:
             if g is None:
@@ -179,12 +181,12 @@ class HybridParallelOptimizer:
 
         self._need_dp = (self._hcg.get_data_parallel_world_size() > 1)
 
-        # NOTE(shenliang03): Because of the pure DataParallel mode, the gradient synchronization 
-        # is achieved through reducer, so there is no need to call fuse_allreduce in optimizer. 
+        # NOTE(shenliang03): Because of the pure DataParallel mode, the gradient synchronization
+        # is achieved through reducer, so there is no need to call fuse_allreduce in optimizer.
         self._dp_enable = not self._use_dp_mode and self._need_dp
 
-        self._sharding_enable = (
-            self._hcg.get_sharding_parallel_world_size() > 1)
+        self._sharding_enable = (self._hcg.get_sharding_parallel_world_size() >
+                                 1)
 
         if isinstance(self._inner_opt._grad_clip,
                       ClipGradByGlobalNorm) and not self._use_dp_mode:
@@ -224,7 +226,7 @@ class HybridParallelOptimizer:
                  parameters=None,
                  no_grad_set=None):
 
-        # minimize does not support parameters in the form of param_group, 
+        # minimize does not support parameters in the form of param_group,
         # so no need use _obtain_optimizer_parameters_list
         parameter_list = parameters if parameters \
             else self._inner_opt._parameter_list

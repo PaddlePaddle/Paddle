@@ -14,11 +14,16 @@
 #pragma once
 
 #include <set>
+
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/utils/string/string_helper.h"
+
+DECLARE_bool(einsum_opt);
 
 namespace phi {
 
@@ -596,6 +601,11 @@ void EinsumKernelImpl(const Context& dev_ctx,
                                   out);
     // Reshape Procedure
   } else if (inputs.size() == 1) {
+    if (cache[0] != nullptr) {  // For compatibility, may be cache is nullptr if
+                                // loading the program from v2.3.0
+      (*cache[0]) = *(inputs[0]);  // ShareBuffer for backward, because backward
+                                   // we can only see cached tensor.
+    }
     auto reduce_A = PerformReduction<T, Context>(dev_ctx,
                                                  *inputs[0],
                                                  label2perms[0],
@@ -624,7 +634,8 @@ void EinsumKernelRaw(const Context& dev_ctx,
                      const std::vector<const DenseTensor*>& inputs,
                      const std::string& equation,
                      DenseTensor* out,
-                     std::vector<DenseTensor*> cache) {
+                     std::vector<DenseTensor*> cache,
+                     std::vector<DenseTensor*> xshape) {
   std::vector<char> tmp;
   // for the sake of compatibility, we may load and run v2.3 EinsumOp. Output
   // may have nullptr and the cache.size() is not equal to inputs.size(). refer

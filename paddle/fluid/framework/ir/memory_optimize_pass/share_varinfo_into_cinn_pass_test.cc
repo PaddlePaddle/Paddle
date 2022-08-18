@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <memory>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
@@ -41,9 +42,11 @@ static ProgramDesc BuildProgramInsideCinnLaunchOp() {
   block->Var("var4");
   block->Var("var5");
 
-  auto add_op = std::unique_ptr<OpDesc>(
-      new OpDesc("elementwise_add", {{"X", {"var1"}}, {"Y", {"var2"}}},
-                 {{"Out", {"var3"}}}, {}));
+  auto add_op =
+      std::unique_ptr<OpDesc>(new OpDesc("elementwise_add",
+                                         {{"X", {"var1"}}, {"Y", {"var2"}}},
+                                         {{"Out", {"var3"}}},
+                                         {}));
   block->AppendAllocatedOp(std::move(add_op));
   auto mul_op = std::unique_ptr<OpDesc>(new OpDesc(
       "mul", {{"X", {"var3"}}, {"Y", {"var4"}}}, {{"Out", {"var5"}}}, {}));
@@ -61,8 +64,10 @@ static ProgramDesc BuildProgramWithCinnLaunchOp(int64_t compilation_key) {
   block->Var("var5");
 
   auto cinn_launch_op = std::unique_ptr<OpDesc>(
-      new OpDesc("cinn_launch", {{"X", {"var1", "var2", "var4"}}},
-                 {{"Out", {"var5"}}}, {{"compilation_key", compilation_key}}));
+      new OpDesc("cinn_launch",
+                 {{"X", {"var1", "var2", "var4"}}},
+                 {{"Out", {"var5"}}},
+                 {{"compilation_key", compilation_key}}));
   block->AppendAllocatedOp(std::move(cinn_launch_op));
   return program;
 }
@@ -73,8 +78,10 @@ struct TestPassContext {
     details::BuildStrategy build_strategy;
     details::ExecutionStrategy exec_strategy;
     exec_strategy.use_device_ = paddle::platform::kCUDA;
-    executor.reset(new ParallelExecutor(platform::CUDAPlace(0), &scope,
-                                        exec_strategy, build_strategy,
+    executor.reset(new ParallelExecutor(platform::CUDAPlace(0),
+                                        &scope,
+                                        exec_strategy,
+                                        build_strategy,
                                         graph.get()));
   }
 

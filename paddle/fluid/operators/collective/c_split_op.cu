@@ -30,9 +30,13 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__global__ void SplitFromRank(const T* input, T* output, const int rows,
-                              const int columns, const int rank,
-                              const int nranks, const int limit) {
+__global__ void SplitFromRank(const T* input,
+                              T* output,
+                              const int rows,
+                              const int columns,
+                              const int rank,
+                              const int nranks,
+                              const int limit) {
   CUDA_KERNEL_LOOP(i, limit) {
     int row = i / columns;
     int col = i % columns;
@@ -59,22 +63,27 @@ class CSplitOpCUDAKernel : public framework::OpKernel<T> {
     int rank = ctx.Attr<int>("rank");
     auto place = ctx.GetPlace();
 
-    PADDLE_ENFORCE_GE(rank, 0, platform::errors::PreconditionNotMet(
-                                   "The value of rank (%d) for c_split must be "
-                                   "greater than or equal to 0.",
-                                   rank));
-    PADDLE_ENFORCE_GE(nranks, 2,
+    PADDLE_ENFORCE_GE(rank,
+                      0,
+                      platform::errors::PreconditionNotMet(
+                          "The value of rank (%d) for c_split must be "
+                          "greater than or equal to 0.",
+                          rank));
+    PADDLE_ENFORCE_GE(nranks,
+                      2,
                       platform::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_split must be "
                           "greater than or equal to 2.",
                           nranks));
-    PADDLE_ENFORCE_LT(rank, nranks,
+    PADDLE_ENFORCE_LT(rank,
+                      nranks,
                       platform::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_split must be "
                           "less than that of nranks (%d).",
-                          rank, nranks));
+                          rank,
+                          nranks));
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto dims = x->dims();
     auto dims_size = dims.size();
     // final dim
@@ -91,9 +100,13 @@ class CSplitOpCUDAKernel : public framework::OpKernel<T> {
     dims[dims_size - 1] /= nranks;
     out->mutable_data<T>(dims, place);
 
-    SplitFromRank<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        x->data<T>(), out->data<T>(), remain_numel, end_size, rank, nranks,
-        limit);
+    SplitFromRank<T><<<blocks, threads, 0, dev_ctx.stream()>>>(x->data<T>(),
+                                                               out->data<T>(),
+                                                               remain_numel,
+                                                               end_size,
+                                                               rank,
+                                                               nranks,
+                                                               limit);
   }
 };
 }  // namespace operators
@@ -102,7 +115,8 @@ class CSplitOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(c_split, ops::CSplitOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(c_split,
+                        ops::CSplitOpCUDAKernel<float>,
                         ops::CSplitOpCUDAKernel<double>,
                         ops::CSplitOpCUDAKernel<int>,
                         ops::CSplitOpCUDAKernel<int64_t>,

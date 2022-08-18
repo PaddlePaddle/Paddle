@@ -23,9 +23,19 @@ template <typename T, typename Context>
 void DropoutGradRawKernel(const Context& dev_ctx,
                           const DenseTensor& mask,
                           const DenseTensor& out_grad,
-                          float p,
+                          const Scalar& p,
                           bool is_test,
                           const std::string& mode,
                           DenseTensor* x_grad);
+
+template <typename T, typename Context>
+void DropoutNdGradKernel(const Context& dev_ctx,
+                         const DenseTensor& mask,
+                         const DenseTensor& out_grad,
+                         const Scalar& p,
+                         bool is_test,
+                         const std::string& mode,
+                         const std::vector<int>& axis,
+                         DenseTensor* x_grad);
 
 }  // namespace phi

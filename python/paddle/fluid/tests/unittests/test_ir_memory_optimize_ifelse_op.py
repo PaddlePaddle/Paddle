@@ -33,6 +33,7 @@ from ir_memory_optimize_net_base import TestIrMemOptBase
 
 
 class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
+
     def check_network_convergence(self,
                                   use_cuda=True,
                                   use_mem_opt=False,
@@ -64,12 +65,12 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
 
             prob = ie()
             loss = layers.cross_entropy(input=prob[0], label=label)
-            avg_loss = layers.mean(loss)
+            avg_loss = paddle.mean(loss)
 
             optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(avg_loss, startup_prog)
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=200)
+            train_reader = paddle.batch(paddle.dataset.mnist.train(),
+                                        batch_size=200)
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
@@ -98,8 +99,10 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
                     y_data = y_data.reshape((y_data.shape[0], 1))
 
                     outs = exe.run(train_cp,
-                                   feed={'x': x_data,
-                                         'y': y_data},
+                                   feed={
+                                       'x': x_data,
+                                       'y': y_data
+                                   },
                                    fetch_list=[avg_loss])
 
                     loop += 1
@@ -113,14 +116,14 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
         print(ret1)
         ret2 = self.check_network_convergence(False, False)
         print(ret2)
-        self.assertTrue(np.allclose(ret1, ret2))
+        np.testing.assert_allclose(ret1, ret2, rtol=1e-05)
 
         if fluid.core.is_compiled_with_cuda():
             ret1 = self.check_network_convergence(True, True)
             print(ret1)
             ret2 = self.check_network_convergence(True, False)
             print(ret2)
-            self.assertTrue(np.allclose(ret1, ret2))
+            np.testing.assert_allclose(ret1, ret2, rtol=1e-05)
 
 
 if __name__ == "__main__":

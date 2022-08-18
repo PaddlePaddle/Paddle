@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <thrust/random.h>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -60,8 +61,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 
     int device_id = context.GetPlace().GetDeviceId();
     auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
-    auto& dev_cxt =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto& dev_cxt = context.template device_context<phi::GPUContext>();
 
     if (seed == 0) {
       // use global Generator seed

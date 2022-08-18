@@ -35,17 +35,16 @@ with fluid.program_guard(main_program=prog):
     label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 
     cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
 
 prog_clip = prog.clone()
 prog_clip.block(0).var(hidden1.name)._set_error_clip(
-    fluid.clip.ErrorClipByValue(
-        max=CLIP_MAX, min=CLIP_MIN))
+    fluid.clip.ErrorClipByValue(max=CLIP_MAX, min=CLIP_MIN))
 
 avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
 fluid.backward.append_backward(loss=avg_cost)
-fluid.backward.append_backward(
-    loss=avg_cost_clip, callbacks=[fluid.clip.error_clip_callback])
+fluid.backward.append_backward(loss=avg_cost_clip,
+                               callbacks=[fluid.clip.error_clip_callback])
 
 hidden1_grad = prog.block(0).var(hidden1.name + "@GRAD")
 hidden1_grad_clip = prog_clip.block(0).var(hidden1.name + "@GRAD")
@@ -53,10 +52,9 @@ hidden1_grad_clip = prog_clip.block(0).var(hidden1.name + "@GRAD")
 hidden2_grad = prog.block(0).var(hidden2.name + "@GRAD")
 hidden2_grad_clip = prog_clip.block(0).var(hidden2.name + "@GRAD")
 
-train_reader = paddle.batch(
-    paddle.reader.shuffle(
-        paddle.dataset.mnist.train(), buf_size=8192),
-    batch_size=BATCH_SIZE)
+train_reader = paddle.batch(paddle.reader.shuffle(paddle.dataset.mnist.train(),
+                                                  buf_size=8192),
+                            batch_size=BATCH_SIZE)
 
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
@@ -75,8 +73,7 @@ for data in train_reader():
         prog_clip,
         feed=feeder.feed(data),
         fetch_list=[hidden1_grad_clip, hidden2_grad_clip])
-    if not ((out1.clip(
-            min=CLIP_MIN, max=CLIP_MAX) == out1_clip).all() and
+    if not ((out1.clip(min=CLIP_MIN, max=CLIP_MAX) == out1_clip).all() and
             (out2 == out2_clip).all()):
         exit(1)
 

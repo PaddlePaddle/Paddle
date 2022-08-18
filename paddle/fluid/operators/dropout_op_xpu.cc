@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {
@@ -43,8 +44,11 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
       int seed_data = 0;
       if (seed) {
         if (platform::is_xpu_place(seed->place())) {
-          memory::Copy(platform::CPUPlace(), &seed_data, seed->place(),
-                       seed->data<int>(), sizeof(int));
+          memory::Copy(platform::CPUPlace(),
+                       &seed_data,
+                       seed->place(),
+                       seed->data<int>(),
+                       sizeof(int));
         } else {
           seed_data = *(seed->data<int>());
         }
@@ -59,11 +63,13 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
       // Special case when dropout_prob is 1.0
       if (dropout_prob == 1.0f) {
         int r = xpu::constant(dev_ctx.x_context(),
-                              reinterpret_cast<XPUTyp*>(y_data), y->numel(),
+                              reinterpret_cast<XPUTyp*>(y_data),
+                              y->numel(),
                               XPUTyp(0));
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
         r = xpu::constant(dev_ctx.x_context(),
-                          reinterpret_cast<XPUTyp*>(mask_data), mask->numel(),
+                          reinterpret_cast<XPUTyp*>(mask_data),
+                          mask->numel(),
                           XPUTyp(0));
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
         return;
@@ -71,15 +77,22 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
       int r = xpu::dropout(dev_ctx.x_context(),
                            reinterpret_cast<const XPUTyp*>(x->data<T>()),
                            reinterpret_cast<XPUTyp*>(y->data<T>()),
-                           reinterpret_cast<XPUTyp*>(mask_data), seed_data,
-                           mask->numel(), is_upscale, dropout_prob);
+                           reinterpret_cast<XPUTyp*>(mask_data),
+                           seed_data,
+                           mask->numel(),
+                           is_upscale,
+                           dropout_prob);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout");
     } else {
       float scale =
           (is_upscale) ? (1.0) : (static_cast<float>(1.0f - dropout_prob));
-      int r = xpu::scale(
-          dev_ctx.x_context(), reinterpret_cast<const XPUTyp*>(x_data),
-          reinterpret_cast<XPUTyp*>(y_data), x->numel(), false, scale, 0.0f);
+      int r = xpu::scale(dev_ctx.x_context(),
+                         reinterpret_cast<const XPUTyp*>(x_data),
+                         reinterpret_cast<XPUTyp*>(y_data),
+                         x->numel(),
+                         false,
+                         scale,
+                         0.0f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
@@ -90,7 +103,8 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(!context.Attr<bool>("is_test"), true,
+    PADDLE_ENFORCE_EQ(!context.Attr<bool>("is_test"),
+                      true,
                       platform::errors::InvalidArgument(
                           "GradOp is only callable when is_test is false"));
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
@@ -121,8 +135,11 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
           (dropout_prob == 1.0f) ? (1.0f) : (1.0f / (1.0f - dropout_prob));
       int r = xpu::scale(dev_ctx.x_context(),
                          reinterpret_cast<const XPUType*>(mask->data<T>()),
-                         reinterpret_cast<XPUType*>(mask_new), mask->numel(),
-                         false, scale, 0.0f);
+                         reinterpret_cast<XPUType*>(mask_new),
+                         mask->numel(),
+                         false,
+                         scale,
+                         0.0f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       r = xpu::mul(dev_ctx.x_context(),
                    reinterpret_cast<const XPUType*>(grad_y->data<T>()),
@@ -136,7 +153,8 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
                             reinterpret_cast<const XPUType*>(mask->data<T>()),
                             reinterpret_cast<const XPUType*>(grad_y->data<T>()),
                             reinterpret_cast<XPUType*>(grad_x->data<T>()),
-                            dropout_prob, grad_y->numel());
+                            dropout_prob,
+                            grad_y->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout_grad");
     }
   }
@@ -146,7 +164,8 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_XPU_KERNEL(
-    dropout, ops::DropoutXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    dropout,
+    ops::DropoutXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::DropoutXPUKernel<paddle::platform::XPUDeviceContext, plat::float16>);
 REGISTER_OP_XPU_KERNEL(
     dropout_grad,

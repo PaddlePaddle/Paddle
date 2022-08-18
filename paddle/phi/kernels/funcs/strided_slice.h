@@ -20,7 +20,7 @@
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -74,10 +74,14 @@ static void StridedSliceOutDims(const std::vector<int64_t>& starts,
 
     if (start_index < 0) {
       start_index = start_index + axis_size;
+      start_index = std::max<int64_t>(start_index, 0);
     }
     if (end_index < 0) {
       if (!(end_index == -1 && stride_index < 0)) {  // skip None stop condition
         end_index = end_index + axis_size;
+        if (end_index < 0) {
+          end_index = 0;
+        }
       }
     }
 

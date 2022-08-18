@@ -29,12 +29,14 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
     auto* boxes = ctx.Output<Tensor>("Boxes");
     auto* variances = ctx.Output<Tensor>("Variances");
 
-    PADDLE_ENFORCE_EQ(boxes->dims(), variances->dims(),
+    PADDLE_ENFORCE_EQ(boxes->dims(),
+                      variances->dims(),
                       platform::errors::Unimplemented(
                           "the shape of boxes and variances must be same in "
                           "the npu kernel of prior_box, but got boxes->dims() "
                           "= [%s], variances->dims() = [%s]",
-                          boxes->dims(), variances->dims()));
+                          boxes->dims(),
+                          variances->dims()));
 
     auto min_sizes = ctx.Attr<std::vector<float>>("min_sizes");
     auto max_sizes = ctx.Attr<std::vector<float>>("max_sizes");
@@ -83,11 +85,15 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
     variances->mutable_data<T>(place);
 
     framework::TensorCopy(
-        out_boxes, place,
-        ctx.template device_context<platform::NPUDeviceContext>(), boxes);
+        out_boxes,
+        place,
+        ctx.template device_context<platform::NPUDeviceContext>(),
+        boxes);
     framework::TensorCopy(
-        out_variances, place,
-        ctx.template device_context<platform::NPUDeviceContext>(), variances);
+        out_variances,
+        place,
+        ctx.template device_context<platform::NPUDeviceContext>(),
+        variances);
   }
 };
 
@@ -98,5 +104,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    prior_box, ops::PriorBoxNPUKernel<plat::NPUDeviceContext, float>,
+    prior_box,
+    ops::PriorBoxNPUKernel<plat::NPUDeviceContext, float>,
     ops::PriorBoxNPUKernel<plat::NPUDeviceContext, plat::float16>);

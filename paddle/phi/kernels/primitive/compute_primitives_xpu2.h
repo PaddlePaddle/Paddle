@@ -48,7 +48,7 @@ static inline __device__ void sync_all() {
 
 #define ncores 64
 template <typename T, typename OpFunc, int VecSize>
-__device__ void BlockXReduce(T* data, OpFunc reducer) {
+__device__ void BlockXReduce(T* out, const T* data, OpFunc reducer) {
   __shared__ T sum_array[ncores * VecSize];
   int core_idx = core_id() * VecSize;
   mfence();
@@ -57,21 +57,22 @@ __device__ void BlockXReduce(T* data, OpFunc reducer) {
 #pragma unroll
   for (int i = 0; i < VecSize; i++) {
     mfence();
-    sum_array[core_idx + i] = data[i];
+    sum_array[i * ncores + core_idx] = data[i];
     mfence();
-    data[i] = 0;
   }
   sync_all();
 #pragma unroll
   for (int i = 0; i < VecSize; i++) {
+    T start = data[i * ncores];
 #pragma unroll
-    for (int j = 0; j < ncores; j++) {
+    for (int j = 1; j < ncores; j++) {
       mfence();
-      T tmp = sum_array[j * VecSize + i];
+      T tmp = sum_array[i * ncores + j];
       mfence();
-      data[i] = reducer(data[i], tmp);
+      start = reducer(start, tmp);
       mfence();
     }
+    out[i] = start;
   }
   sync_all();
 }
@@ -346,7 +347,7 @@ __device__ __forceinline__ void Reduce(T* out,
     if (reduce_last_dim) {
 #pragma unroll
       for (int i = 0; i < NY * NX; i++) {  // reduce along blockDim.x
-        details::BlockXReduce<T, ReduceFunctor, 1>(&out[i], reducer);
+        details::BlockXReduce<T, ReduceFunctor, 1>(&out[i], &in[i], reducer);
       }
     }
   } else {  // else  kLocalMode
@@ -361,28 +362,28 @@ __device__ __forceinline__ void Reduce(T* out,
 }
 
 /*
-* @brief Fill register with a constant according to OpFunc
-*
-* @template paraments
-* InT: The data type of in1 and in2.
-* OutT: The data type of out.
-* NX: The number of data columns loaded by each thread.
-* NY: The number of data rows loaded by each thread.
-* BlockSize: Identifies the current device thread index method. For xpu,
-* core_id() is used as the index.
-* OpFunc: Compute functor which has an operator() as following
-*     template <typename InT>
-*     struct XxxFunctor {
-*       HOSTDEVICE InT operator()()
-* const {
-*         return a;
-*       }
-*     };
-*
-* @param
-* out: The register pointer of out, the size is NX * NY.
-* compute: Compute function which was declared like OpFunc<InT>().
-*/
+ * @brief Fill register with a constant according to OpFunc
+ *
+ * @template paraments
+ * InT: The data type of in1 and in2.
+ * OutT: The data type of out.
+ * NX: The number of data columns loaded by each thread.
+ * NY: The number of data rows loaded by each thread.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
+ * OpFunc: Compute functor which has an operator() as following
+ *     template <typename InT>
+ *     struct XxxFunctor {
+ *       HOSTDEVICE InT operator()()
+ * const {
+ *         return a;
+ *       }
+ *     };
+ *
+ * @param
+ * out: The register pointer of out, the size is NX * NY.
+ * compute: Compute function which was declared like OpFunc<InT>().
+ */
 template <typename InT,
           typename OutT,
           int NX,

@@ -14,13 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-
-#include "paddle/phi/kernels/complex_kernel.h"
-
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 

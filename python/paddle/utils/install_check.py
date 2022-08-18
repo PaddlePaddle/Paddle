@@ -27,8 +27,9 @@ def _simple_network():
     """
     Define a simple network composed by a single linear layer.
     """
-    input = paddle.static.data(
-        name="input", shape=[None, 2, 2], dtype="float32")
+    input = paddle.static.data(name="input",
+                               shape=[None, 2, 2],
+                               dtype="float32")
     weight = paddle.create_parameter(
         shape=[2, 3],
         dtype="float32",
@@ -126,15 +127,17 @@ def _run_dygraph_single(use_cuda, use_xpu, use_npu):
         name="weight", initializer=paddle.nn.initializer.Constant(value=0.5))
     bias_attr = paddle.ParamAttr(
         name="bias", initializer=paddle.nn.initializer.Constant(value=1.0))
-    linear = paddle.nn.Linear(
-        2, 4, weight_attr=weight_attr, bias_attr=bias_attr)
+    linear = paddle.nn.Linear(2,
+                              4,
+                              weight_attr=weight_attr,
+                              bias_attr=bias_attr)
     input_np = _prepare_data(1)
     input_tensor = paddle.to_tensor(input_np)
     linear_out = linear(input_tensor)
     out = paddle.tensor.sum(linear_out)
     out.backward()
-    opt = paddle.optimizer.Adam(
-        learning_rate=0.001, parameters=linear.parameters())
+    opt = paddle.optimizer.Adam(learning_rate=0.001,
+                                parameters=linear.parameters())
     opt.step()
 
 
@@ -195,8 +198,8 @@ def _run_static_parallel(use_cuda, use_xpu, use_npu, device_list):
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
         compiled_prog = paddle.static.CompiledProgram(
-            train_prog).with_data_parallel(
-                loss_name=loss.name, places=device_list)
+            train_prog).with_data_parallel(loss_name=loss.name,
+                                           places=device_list)
 
         if use_cuda:
             place = paddle.CUDAPlace(0)
@@ -269,8 +272,8 @@ def run_check():
 
     try:
         _run_static_parallel(use_cuda, use_xpu, use_npu, device_list)
-        print("PaddlePaddle works well on {} {}s.".format(device_count,
-                                                          device_str))
+        print("PaddlePaddle works well on {} {}s.".format(
+            device_count, device_str))
         print(
             "PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now."
         )
@@ -280,8 +283,8 @@ def run_check():
             "\n 1. There is not enough GPUs visible on your system"
             "\n 2. Some GPUs are occupied by other process now"
             "\n 3. NVIDIA-NCCL2 is not installed correctly on your system. Please follow instruction on https://github.com/NVIDIA/nccl-tests "
-            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html".
-            format(device_count, device_str))
+            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html"
+            .format(device_count, device_str))
 
         logging.warning("\n Original Error is: {}".format(e))
         print("PaddlePaddle is installed successfully ONLY for single {}! "

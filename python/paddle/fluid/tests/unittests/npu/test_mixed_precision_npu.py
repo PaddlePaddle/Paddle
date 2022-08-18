@@ -15,6 +15,7 @@
 import unittest
 import sys
 import paddle
+
 sys.path.append("..")
 import test_mixed_precision
 
@@ -22,6 +23,7 @@ paddle.enable_static()
 
 
 class AMPTestNpu(test_mixed_precision.AMPTest):
+
     def setUp(self):
         self.place = paddle.NPUPlace(0)
 

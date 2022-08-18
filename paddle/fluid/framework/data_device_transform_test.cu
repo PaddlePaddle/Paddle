@@ -13,17 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/fluid/framework/phi_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -76,7 +74,10 @@ class TestKernel : public OpKernel<float> {
     output->mutable_data<T>(ctx.GetPlace());
 
     phi::funcs::TransformFunctor<AddFunctor<T>, T, DeviceContext> functor(
-        *input, *input, output, ctx.template device_context<DeviceContext>(),
+        *input,
+        *input,
+        output,
+        ctx.template device_context<DeviceContext>(),
         AddFunctor<T>());
     functor.Run();
   }
@@ -86,14 +87,13 @@ class TestKernel : public OpKernel<float> {
 }  // namespace paddle
 
 REGISTER_OP_WITHOUT_GRADIENT(
-    test_op, paddle::framework::TestOpWithKernel,
+    test_op,
+    paddle::framework::TestOpWithKernel,
     paddle::framework::OpKernelTestProtoAndCheckerMaker);
-REGISTER_OP_CPU_KERNEL(
-    test_op,
-    paddle::framework::TestKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    test_op,
-    paddle::framework::TestKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(test_op,
+                       paddle::framework::TestKernel<phi::CPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(test_op,
+                        paddle::framework::TestKernel<phi::GPUContext, float>);
 
 static void BuildVar(const std::string& param_name,
                      std::initializer_list<const char*> arguments,
@@ -160,7 +160,8 @@ TEST(Operator, CPUtoGPU) {
 
   paddle::framework::Tensor output_tensor;
   paddle::framework::TensorCopy(output2->Get<paddle::framework::LoDTensor>(),
-                                paddle::platform::CPUPlace(), *dev_ctx,
+                                paddle::platform::CPUPlace(),
+                                *dev_ctx,
                                 &output_tensor);
 
   dev_ctx->Wait();

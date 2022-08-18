@@ -63,6 +63,7 @@ def parallel_matmul(lm_output, logit_weights, parallel_output):
 
 
 class SimpleMPNet(fluid.dygraph.Layer):
+
     def __init__(self, vocab_size, hidden_size, inner_size, output_size, np_fc1,
                  np_fc2, mp_id):
         super(SimpleMPNet, self).__init__()
@@ -113,6 +114,7 @@ class SimpleMPNet(fluid.dygraph.Layer):
 
 
 class SimpleDPNet(fluid.dygraph.Layer):
+
     def __init__(self, vocab_size, hidden_size, inner_size, output_size, np_fc1,
                  np_fc2):
 
@@ -156,6 +158,7 @@ class SimpleDPNet(fluid.dygraph.Layer):
 
 
 class TestDistMPTraning(unittest.TestCase):
+
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -210,13 +213,15 @@ class TestDistMPTraning(unittest.TestCase):
         for _ in range(5):
             np_data = np.random.randint(0, vocab_size, (
                 batch_size,
-                seq_length, ))
+                seq_length,
+            ))
             batch = paddle.to_tensor(np_data)
             loss_a = self.train_batch(batch, model_a, optimizer_a, True)
             loss_b = self.train_batch(batch, model_b, optimizer_b, False)
 
-            np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=1e-6)
+            np.testing.assert_allclose(loss_a.numpy(),
+                                       loss_b.numpy(),
+                                       rtol=1e-6)
 
 
 if __name__ == "__main__":

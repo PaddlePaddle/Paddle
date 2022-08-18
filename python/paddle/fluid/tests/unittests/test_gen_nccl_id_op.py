@@ -67,6 +67,7 @@ def run_gen_ncc_id(attr):
 
 
 class TestGenNcclIdOp(unittest.TestCase):
+
     def setUp(self):
         try:
             self._dist_ut_port_0 = int(os.environ["PADDLE_DIST_UT_PORT"])

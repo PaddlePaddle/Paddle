@@ -29,6 +29,8 @@ class ReduceMaxMKLDNNKernel : public ReduceMKLDNNKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(reduce_max, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(reduce_max,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::ReduceMaxMKLDNNKernel<float>,
                    ops::ReduceMaxMKLDNNKernel<paddle::platform::bfloat16>);

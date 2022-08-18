@@ -1,0 +1,1 @@
+filter=-readability/wonkycase,-syntax,-convention/filename,-package/stdargs,-whitespace/indent,-whitespace/extra,-linelength,-readability/mixedcase

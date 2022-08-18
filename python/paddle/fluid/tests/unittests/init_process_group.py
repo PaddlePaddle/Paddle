@@ -30,6 +30,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
 class TestProcessGroupFp32(unittest.TestCase):
+
     def setUp(self):
         self.config()
 

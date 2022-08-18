@@ -66,7 +66,7 @@ class TransposeMKLDNNHandler {
  protected:
   dnnl::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
                                      std::vector<int>& axis          // NOLINT
-                                     ) {
+  ) {
     size_t ndims = axis.size();
 
     std::vector<int64_t> strides(ndims);
@@ -75,8 +75,8 @@ class TransposeMKLDNNHandler {
       strides[axis[i]] = total_stride;
       total_stride *= nchw_tz[axis[i]];
     }
-    dnnl::memory::desc mem_d(nchw_tz, platform::MKLDNNGetDataType<T>(),
-                             strides);
+    dnnl::memory::desc mem_d(
+        nchw_tz, platform::MKLDNNGetDataType<T>(), strides);
 
     return mem_d;
   }
@@ -92,7 +92,8 @@ template <typename T>
 class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
+                      true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL Transpose must use CPUPlace"));
     auto& dev_ctx =
@@ -122,8 +123,8 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                                 transpose_src_memory_p);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    transpose_p->execute(astream, *transpose_src_memory_p,
-                         *transpose_dst_memory_p);
+    transpose_p->execute(
+        astream, *transpose_src_memory_p, *transpose_dst_memory_p);
     astream.wait();
 
     output->set_layout(DataLayout::kNCHW);
@@ -135,7 +136,8 @@ template <typename T>
 class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
+                      true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL TransposeGrad must use CPUPlace"));
     auto* out_grad =
@@ -173,8 +175,8 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                                 transpose_src_memory_p);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    transpose_p->execute(astream, *transpose_src_memory_p,
-                         *transpose_dst_memory_p);
+    transpose_p->execute(
+        astream, *transpose_src_memory_p, *transpose_dst_memory_p);
     astream.wait();
   }
 };
@@ -184,31 +186,46 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN,
-                                    ::paddle::platform::CPUPlace, FP32,
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    FP32,
                                     ops::kTransposeMKLDNNFP32,
                                     ops::TransposeMKLDNNOpKernel<float>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN,
-                                    ::paddle::platform::CPUPlace, U8,
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    U8,
                                     ops::kTransposeMKLDNNINT8,
                                     ops::TransposeMKLDNNOpKernel<uint8_t>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN,
-                                    ::paddle::platform::CPUPlace, S8,
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    S8,
                                     ops::kTransposeMKLDNNINT8,
                                     ops::TransposeMKLDNNOpKernel<int8_t>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    transpose2, MKLDNN, ::paddle::platform::CPUPlace, BF16,
+    transpose2,
+    MKLDNN,
+    ::paddle::platform::CPUPlace,
+    BF16,
     ops::kTransposeMKLDNNFP32,
     ops::TransposeMKLDNNOpKernel<paddle::platform::bfloat16>);
 
-REGISTER_OP_KERNEL(transpose, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(transpose,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNOpKernel<float>);
 
-REGISTER_OP_KERNEL(transpose_grad, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(transpose_grad,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
 
-REGISTER_OP_KERNEL(transpose2_grad, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(transpose2_grad,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);

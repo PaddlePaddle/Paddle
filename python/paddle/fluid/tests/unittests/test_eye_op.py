@@ -24,6 +24,7 @@ import paddle.fluid.framework as framework
 
 
 class TestEyeOp(OpTest):
+
     def setUp(self):
         '''
 	Test eye op with specified shape
@@ -44,6 +45,7 @@ class TestEyeOp(OpTest):
 
 
 class TestEyeOp1(OpTest):
+
     def setUp(self):
         '''
 	Test eye op with default parameters
@@ -60,6 +62,7 @@ class TestEyeOp1(OpTest):
 
 
 class TestEyeOp2(OpTest):
+
     def setUp(self):
         '''
         Test eye op with specified shape
@@ -76,6 +79,7 @@ class TestEyeOp2(OpTest):
 
 
 class API_TestTensorEye(unittest.TestCase):
+
     def test_out(self):
         with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10)

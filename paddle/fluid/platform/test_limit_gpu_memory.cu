@@ -37,8 +37,8 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
   size_t avail, total;
   {
     size_t actual_avail, actual_total;
-    RecordedGpuMemGetInfo(&avail, &total, &actual_avail, &actual_total,
-                          DEVICE_ID);
+    RecordedGpuMemGetInfo(
+        &avail, &total, &actual_avail, &actual_total, DEVICE_ID);
     ASSERT_EQ(total, limit);
     ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
   }

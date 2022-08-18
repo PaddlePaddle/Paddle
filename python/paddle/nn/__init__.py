@@ -51,6 +51,7 @@ from .layer.activation import Tanhshrink  # noqa: F401
 from .layer.activation import ThresholdedReLU  # noqa: F401
 from .layer.activation import LogSoftmax  # noqa: F401
 from .layer.activation import Maxout  # noqa: F401
+from .layer.activation import RReLU  # noqa: F401
 from .layer.common import Pad1D  # noqa: F401
 from .layer.common import Pad2D  # noqa: F401
 from .layer.common import ZeroPad2D  # noqa: F401
@@ -103,9 +104,14 @@ from .layer.loss import NLLLoss  # noqa: F401
 from .layer.loss import BCELoss  # noqa: F401
 from .layer.loss import KLDivLoss  # noqa: F401
 from .layer.loss import MarginRankingLoss  # noqa: F401
+from .layer.loss import MultiLabelSoftMarginLoss
 from .layer.loss import CTCLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
+from .layer.loss import CosineEmbeddingLoss  # noqa: F401
+from .layer.loss import TripletMarginWithDistanceLoss
+from .layer.loss import TripletMarginLoss
+from .layer.loss import SoftMarginLoss
 from .layer.norm import BatchNorm  # noqa: F401
 from .layer.norm import SyncBatchNorm  # noqa: F401
 from .layer.norm import GroupNorm  # noqa: F401
@@ -152,15 +158,14 @@ from . import functional  # noqa: F401
 from . import initializer  # noqa: F401
 from . import quant  # noqa: F401
 
-#TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
+# TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
 import paddle.utils.deprecated as deprecated
 
 
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.nn.funcitional.diag_embed",
-    level=1,
-    reason="diag_embed in paddle.nn will be removed in future")
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.funcitional.diag_embed",
+            level=1,
+            reason="diag_embed in paddle.nn will be removed in future")
 def diag_embed(*args):
     '''
         alias name of paddle.nn.functional.diag_embed
@@ -168,11 +173,10 @@ def diag_embed(*args):
     return functional.diag_embed(*args)
 
 
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.nn.utils.remove_weight_norm",
-    level=1,
-    reason="remove_weight_norm in paddle.nn will be removed in future")
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.utils.remove_weight_norm",
+            level=1,
+            reason="remove_weight_norm in paddle.nn will be removed in future")
 def remove_weight_norm(*args):
     '''
         alias name of paddle.nn.utils.remove_weight_norm
@@ -180,11 +184,10 @@ def remove_weight_norm(*args):
     return utils.remove_weight_norm(*args)
 
 
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.nn.utils.weight_norm",
-    level=1,
-    reason="weight_norm in paddle.nn will be removed in future")
+@deprecated(since="2.0.0",
+            update_to="paddle.nn.utils.weight_norm",
+            level=1,
+            reason="weight_norm in paddle.nn will be removed in future")
 def weight_norm(*args):
     '''
         alias name of paddle.nn.utils.weight_norm
@@ -192,125 +195,131 @@ def weight_norm(*args):
     return utils.weight_norm(*args)
 
 
-__all__ = [     #noqa
-           'BatchNorm',
-           'CELU',
-           'GroupNorm',
-           'LayerNorm',
-           'SpectralNorm',
-           'BatchNorm1D',
-           'BatchNorm2D',
-           'BatchNorm3D',
-           'InstanceNorm1D',
-           'InstanceNorm2D',
-           'InstanceNorm3D',
-           'SyncBatchNorm',
-           'LocalResponseNorm',
-           'Embedding',
-           'Linear',
-           'Upsample',
-           'UpsamplingNearest2D',
-           'UpsamplingBilinear2D',
-           'Pad1D',
-           'Pad2D',
-           'Pad3D',
-           'CosineSimilarity',
-           'Dropout',
-           'Dropout2D',
-           'Dropout3D',
-           'Bilinear',
-           'AlphaDropout',
-           'Unfold',
-           'Fold',
-           'RNNCellBase',
-           'SimpleRNNCell',
-           'LSTMCell',
-           'GRUCell',
-           'RNN',
-           'BiRNN',
-           'SimpleRNN',
-           'LSTM',
-           'GRU',
-           'dynamic_decode',
-           'MultiHeadAttention',
-           'Maxout',
-           'Softsign',
-           'Transformer',
-           'MSELoss',
-           'LogSigmoid',
-           'BeamSearchDecoder',
-           'ClipGradByNorm',
-           'ReLU',
-           'PairwiseDistance',
-           'BCEWithLogitsLoss',
-           'SmoothL1Loss',
-           'MaxPool3D',
-           'AdaptiveMaxPool2D',
-           'Hardshrink',
-           'Softplus',
-           'KLDivLoss',
-           'AvgPool2D',
-           'L1Loss',
-           'LeakyReLU',
-           'AvgPool1D',
-           'AdaptiveAvgPool3D',
-           'AdaptiveMaxPool3D',
-           'NLLLoss',
-           'Conv1D',
-           'Sequential',
-           'Hardswish',
-           'Conv1DTranspose',
-           'AdaptiveMaxPool1D',
-           'TransformerEncoder',
-           'Softmax',
-           'Softmax2D',
-           'ParameterList',
-           'Conv2D',
-           'Softshrink',
-           'Hardtanh',
-           'TransformerDecoderLayer',
-           'CrossEntropyLoss',
-           'GELU',
-           'SELU',
-           'Silu',
-           'Conv2DTranspose',
-           'CTCLoss',
-           'ThresholdedReLU',
-           'AdaptiveAvgPool2D',
-           'MaxPool1D',
-           'Layer',
-           'TransformerDecoder',
-           'Conv3D',
-           'Tanh',
-           'Conv3DTranspose',
-           'Flatten',
-           'AdaptiveAvgPool1D',
-           'Tanhshrink',
-           'HSigmoidLoss',
-           'PReLU',
-           'TransformerEncoderLayer',
-           'AvgPool3D',
-           'MaxPool2D',
-           'MarginRankingLoss',
-           'LayerList',
-           'ClipGradByValue',
-           'BCELoss',
-           'Hardsigmoid',
-           'ClipGradByGlobalNorm',
-           'LogSoftmax',
-           'Sigmoid',
-           'Swish',
-           'Mish',
-           'PixelShuffle',
-           'PixelUnshuffle',
-           'ChannelShuffle',
-           'ELU',
-           'ReLU6',
-           'LayerDict',
-           'ZeroPad2D',
-           'MaxUnPool1D',
-           'MaxUnPool2D',
-           'MaxUnPool3D',
-           'HingeEmbeddingLoss',
-           'Identity',
+__all__ = [  # noqa
+    'BatchNorm',
+    'CELU',
+    'GroupNorm',
+    'LayerNorm',
+    'SpectralNorm',
+    'BatchNorm1D',
+    'BatchNorm2D',
+    'BatchNorm3D',
+    'InstanceNorm1D',
+    'InstanceNorm2D',
+    'InstanceNorm3D',
+    'SyncBatchNorm',
+    'LocalResponseNorm',
+    'Embedding',
+    'Linear',
+    'Upsample',
+    'UpsamplingNearest2D',
+    'UpsamplingBilinear2D',
+    'Pad1D',
+    'Pad2D',
+    'Pad3D',
+    'CosineSimilarity',
+    'Dropout',
+    'Dropout2D',
+    'Dropout3D',
+    'Bilinear',
+    'AlphaDropout',
+    'Unfold',
+    'Fold',
+    'RNNCellBase',
+    'SimpleRNNCell',
+    'LSTMCell',
+    'GRUCell',
+    'RNN',
+    'BiRNN',
+    'SimpleRNN',
+    'LSTM',
+    'GRU',
+    'dynamic_decode',
+    'MultiHeadAttention',
+    'Maxout',
+    'Softsign',
+    'Transformer',
+    'MSELoss',
+    'LogSigmoid',
+    'BeamSearchDecoder',
+    'ClipGradByNorm',
+    'ReLU',
+    'PairwiseDistance',
+    'BCEWithLogitsLoss',
+    'SmoothL1Loss',
+    'MaxPool3D',
+    'AdaptiveMaxPool2D',
+    'Hardshrink',
+    'Softplus',
+    'KLDivLoss',
+    'AvgPool2D',
+    'L1Loss',
+    'LeakyReLU',
+    'AvgPool1D',
+    'AdaptiveAvgPool3D',
+    'AdaptiveMaxPool3D',
+    'NLLLoss',
+    'Conv1D',
+    'Sequential',
+    'Hardswish',
+    'Conv1DTranspose',
+    'AdaptiveMaxPool1D',
+    'TransformerEncoder',
+    'Softmax',
+    'Softmax2D',
+    'ParameterList',
+    'Conv2D',
+    'Softshrink',
+    'Hardtanh',
+    'TransformerDecoderLayer',
+    'CrossEntropyLoss',
+    'GELU',
+    'SELU',
+    'Silu',
+    'Conv2DTranspose',
+    'CTCLoss',
+    'ThresholdedReLU',
+    'AdaptiveAvgPool2D',
+    'MaxPool1D',
+    'Layer',
+    'TransformerDecoder',
+    'Conv3D',
+    'Tanh',
+    'Conv3DTranspose',
+    'Flatten',
+    'AdaptiveAvgPool1D',
+    'Tanhshrink',
+    'HSigmoidLoss',
+    'PReLU',
+    'TransformerEncoderLayer',
+    'AvgPool3D',
+    'MaxPool2D',
+    'MarginRankingLoss',
+    'LayerList',
+    'ClipGradByValue',
+    'BCELoss',
+    'Hardsigmoid',
+    'ClipGradByGlobalNorm',
+    'LogSoftmax',
+    'Sigmoid',
+    'Swish',
+    'Mish',
+    'PixelShuffle',
+    'PixelUnshuffle',
+    'ChannelShuffle',
+    'ELU',
+    'ReLU6',
+    'LayerDict',
+    'ZeroPad2D',
+    'MaxUnPool1D',
+    'MaxUnPool2D',
+    'MaxUnPool3D',
+    'MultiLabelSoftMarginLoss',
+    'HingeEmbeddingLoss',
+    'Identity',
+    'CosineEmbeddingLoss',
+    'RReLU',
+    'TripletMarginWithDistanceLoss',
+    'TripletMarginLoss',
+    'SoftMarginLoss',
 ]

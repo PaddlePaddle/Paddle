@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
 #include <string>
+
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -74,20 +75,23 @@ static void ModifyWhileOpAndWhileGradOpAttr(const OpVariant &fwd_op,
     }
   }
 
-  SetSkipVars(fwd_op, std::vector<std::string>(forward_skip_vars.begin(),
-                                               forward_skip_vars.end()));
+  SetSkipVars(fwd_op,
+              std::vector<std::string>(forward_skip_vars.begin(),
+                                       forward_skip_vars.end()));
 
   // Find all skippable variables in while_grad_op
   // The skipped variables are those which would be used across time steps.
   auto &fwd_input = fwd_op.Inputs().at(kX);
   auto &in_grads = bwd_op.Outputs().at(framework::GradVarName(kX));
   PADDLE_ENFORCE_EQ(
-      fwd_input.size(), in_grads.size(),
+      fwd_input.size(),
+      in_grads.size(),
       platform::errors::PreconditionNotMet(
           "Backward output gradient number does not match forward input number."
           "The number of forward input number is %d and the number of backward "
           "output geadient number is %d.",
-          fwd_input.size(), in_grads.size()));
+          fwd_input.size(),
+          in_grads.size()));
 
   std::unordered_set<std::string> backward_skip_vars;
   for (size_t i = 0; i < in_grads.size(); ++i) {
@@ -98,8 +102,9 @@ static void ModifyWhileOpAndWhileGradOpAttr(const OpVariant &fwd_op,
     backward_skip_vars.insert(framework::GradVarName(fwd_input[i]));
   }
 
-  SetSkipVars(bwd_op, std::vector<std::string>(backward_skip_vars.begin(),
-                                               backward_skip_vars.end()));
+  SetSkipVars(bwd_op,
+              std::vector<std::string>(backward_skip_vars.begin(),
+                                       backward_skip_vars.end()));
 }
 
 // Find all while_ops and while_grad_ops in the graph or program
@@ -109,12 +114,14 @@ static void FindAllWhileAndWhileGradOp(const framework::ProgramDesc &program,
                                        std::vector<OpVariant> *while_ops,
                                        std::vector<OpVariant> *while_grad_ops) {
   PADDLE_ENFORCE_GE(
-      while_ops->size(), while_grad_ops->size(),
+      while_ops->size(),
+      while_grad_ops->size(),
       platform::errors::PreconditionNotMet(
           "There are more while_grad_ops than forward while_ops in the graph "
           "or program, the number of while_ops is %d and the number of "
           "while_grad_ops is %d.",
-          while_ops->size(), while_grad_ops->size()));
+          while_ops->size(),
+          while_grad_ops->size()));
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
     for (size_t j = 0; j < block.OpSize(); ++j) {
@@ -128,16 +135,19 @@ static void FindAllWhileAndWhileGradOp(const framework::ProgramDesc &program,
   }
 
   PADDLE_ENFORCE_GE(
-      while_ops->size(), while_grad_ops->size(),
+      while_ops->size(),
+      while_grad_ops->size(),
       platform::errors::InvalidArgument(
           "There are more while_grad_ops than forward while_ops in the graph "
           "or program, the number of while_ops is %d and the number of "
           "while_grad_ops is %d.",
-          while_ops->size(), while_grad_ops->size()));
+          while_ops->size(),
+          while_grad_ops->size()));
 }
 
 static void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(
-    const framework::ProgramDesc &program, std::vector<OpVariant> *while_ops,
+    const framework::ProgramDesc &program,
+    std::vector<OpVariant> *while_ops,
     std::vector<OpVariant> *while_grad_ops) {
   FindAllWhileAndWhileGradOp(program, while_ops, while_grad_ops);
 
@@ -155,7 +165,8 @@ static void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(
     const OpVariant *matched_fwd_op = nullptr;
     for (auto &fwd_op : while_op_set) {
       if (IsMatchedWhileOpAndWhileGradOp(fwd_op, bwd_op)) {
-        PADDLE_ENFORCE_EQ(matched_fwd_op, nullptr,
+        PADDLE_ENFORCE_EQ(matched_fwd_op,
+                          nullptr,
                           platform::errors::PreconditionNotMet(
                               "Found multiple while forward ops match while "
                               "grad ops."));
@@ -171,7 +182,8 @@ static void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(
 }
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-    const framework::ProgramDesc &program, int block_id,
+    const framework::ProgramDesc &program,
+    int block_id,
     const std::vector<std::unique_ptr<framework::OperatorBase>> &all_ops) {
   // If block_id is not 0, returns
   // This is because all while_ops and while_grad_ops in the whole program
@@ -192,8 +204,8 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
       bwd_ops.emplace_back(op.get());
     }
   }
-  PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(program, &fwd_ops,
-                                                      &bwd_ops);
+  PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(
+      program, &fwd_ops, &bwd_ops);
 }
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
@@ -203,8 +215,8 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
   std::vector<OpVariant> fwd_ops = while_ops;
   std::vector<OpVariant> bwd_ops = while_grad_ops;
 
-  PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(program, &fwd_ops,
-                                                      &bwd_ops);
+  PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(
+      program, &fwd_ops, &bwd_ops);
 }
 
 // Make while_op could run on GPU place
@@ -213,16 +225,17 @@ bool GetCondData(const framework::LoDTensor &cond) {
     return cond.data<bool>()[0];
   }
   // when platform::is_gpu_place(cond.place()) or
-  // platform::is_npu_place(cond.place()) is true
+  // platform::is_npu_place(cond.place()) or
+  // platform::is_xpu_place(cond.place()) is true
   std::unique_ptr<framework::LoDTensor> cpu_cond{new framework::LoDTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU)
   framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "This version of PaddlePaddle does NOT support GPU/NPU but got GPU/NPU "
-      "tensor "
-      "Cond in WhileOp. Please compile WITH_GPU or WITH_ASCEND_CL option."));
+      "This version of PaddlePaddle does NOT support GPU/NPU/XPU but got "
+      "GPU/NPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
+      "WITH_ASCEND_CL or WITH_XPU option."));
 #endif
   return cpu_cond->data<bool>()[0];
 }

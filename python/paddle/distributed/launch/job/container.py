@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,6 +37,7 @@ class Container(object):
         self._grace_period = 10
 
         self._log_handler = None
+        self._shell = False
 
     @property
     def entrypoint(self):
@@ -70,6 +71,14 @@ class Container(object):
     def errfile(self, err):
         self._err = err
 
+    @property
+    def shell(self):
+        return self._shell
+
+    @shell.setter
+    def shell(self, shell):
+        self._shell = shell
+
     def update_env(self, env={}, **kwargs):
         env = {k: v for k, v in env.items() if isinstance(v, str)}
         self._env.update(env)
@@ -90,7 +99,7 @@ class Container(object):
             d = os.path.dirname(pth)
             if not os.path.isdir(d):
                 os.makedirs(d, exist_ok=True)
-            return open(pth, 'w')
+            return open(pth, 'a')
         except:
             return None
 
@@ -106,8 +115,17 @@ class Container(object):
         elif self._err:
             self._stderr = self._get_fd(self._err) or sys.stderr
 
-        self._proc = ProcessContext(
-            self._entrypoint, env=self._env, out=self._stdout, err=self._stderr)
+        if not self._log_handler:
+            self._log_handler = open(self._out)
+            self._log_handler.seek(0, 2)
+            self._log_start_offset = self._log_handler.tell()
+
+        self._proc = ProcessContext(self._entrypoint,
+                                    env=self._env,
+                                    out=self._stdout,
+                                    err=self._stderr,
+                                    shell=self._shell)
+
         self._proc.start()
 
     def terminate(self, force=False):
@@ -119,7 +137,11 @@ class Container(object):
             return self._proc.terminate(force)
 
     def wait(self, timeout=None):
-        self._proc.wait(timeout)
+        try:
+            self._proc.wait(timeout)
+            return True
+        except Exception:
+            return False
 
     @property
     def exit_code(self):
@@ -143,7 +165,8 @@ class Container(object):
             self._entrypoint,
             self.exit_code,
             self.errfile,
-            self._env, )
+            self._env,
+        )
 
     def logs(self, fn=None, offset=0, whence=1, limit=1000):
         if not self._log_handler:
@@ -154,13 +177,16 @@ class Container(object):
 
         try:
             if offset != 0 or whence != 1:
+                if whence == 0 and offset < self._log_start_offset:
+                    offset = self._log_start_offset
                 self._log_handler.seek(offset, whence)
 
             for _ in range(limit):
                 line = self._log_handler.readline()
                 if not line:
-                    break
+                    return False
                 fn.write(line)
+            return True
         except:
             return
 

@@ -21,6 +21,7 @@ paddle.enable_static()
 
 
 class TestDistMnistNCCL2FleetApi(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -40,6 +41,7 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
 
 
 class FleetCollectiveTest(unittest.TestCase):
+
     def test_open_sync_batch_norm(self):
         import paddle.fluid as fluid
         import paddle.fluid.incubate.fleet.base.role_maker as role_maker
@@ -51,7 +53,7 @@ class FleetCollectiveTest(unittest.TestCase):
 
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
-        loss = fluid.layers.mean(hidden)
+        loss = paddle.mean(hidden)
 
         optimizer = fluid.optimizer.AdamOptimizer()
 
@@ -61,8 +63,8 @@ class FleetCollectiveTest(unittest.TestCase):
         dist_strategy = DistributedStrategy()
         dist_strategy.sync_batch_norm = True
 
-        dist_optimizer = fleet.distributed_optimizer(
-            optimizer, strategy=dist_strategy)
+        dist_optimizer = fleet.distributed_optimizer(optimizer,
+                                                     strategy=dist_strategy)
         dist_optimizer.minimize(loss)
 
         self.assertEqual(dist_strategy.exec_strategy.num_threads, 1)

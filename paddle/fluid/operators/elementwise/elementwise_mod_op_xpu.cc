@@ -15,11 +15,11 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
@@ -41,7 +41,8 @@ class ElementwiseModXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_XPU_KERNEL(elementwise_mod, ops::ElementwiseModXPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(elementwise_mod,
+                       ops::ElementwiseModXPUKernel<float>,
                        ops::ElementwiseModXPUKernel<paddle::platform::float16>,
                        ops::ElementwiseModXPUKernel<int32_t>,
                        ops::ElementwiseModXPUKernel<int64_t>);

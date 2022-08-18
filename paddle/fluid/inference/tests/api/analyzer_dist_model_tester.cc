@@ -60,8 +60,8 @@ TEST(test_dist_model, dist_model) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputHandle(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   out_data.resize(out_num);
   output_t->CopyToCpu(out_data.data());
   std::cout << "Output data." << std::endl;

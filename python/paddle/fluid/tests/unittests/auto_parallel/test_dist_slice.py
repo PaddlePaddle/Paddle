@@ -25,12 +25,11 @@ def make_program_dp2():
     start_program = paddle.fluid.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
-        auto.shard_tensor(
-            x,
-            dist_attr={
-                "process_mesh": auto.ProcessMesh([0, 1]),
-                "dims_mapping": [0, -1, -1]
-            })
+        auto.shard_tensor(x,
+                          dist_attr={
+                              "process_mesh": auto.ProcessMesh([0, 1]),
+                              "dims_mapping": [0, -1, -1]
+                          })
         tmp_0 = x[0]
         tmp_1 = x[:, 0, :]
         tmp_2 = x[:, :, 1]
@@ -43,12 +42,11 @@ def make_program_serial():
     start_program = paddle.fluid.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
-        auto.shard_tensor(
-            x,
-            dist_attr={
-                "process_mesh": auto.ProcessMesh([0]),
-                "dims_mapping": [-1, -1, -1]
-            })
+        auto.shard_tensor(x,
+                          dist_attr={
+                              "process_mesh": auto.ProcessMesh([0]),
+                              "dims_mapping": [-1, -1, -1]
+                          })
         tmp_0 = x[0]
         tmp_1 = x[:, 0, :]
         tmp_2 = x[:, :, 1]
@@ -78,6 +76,7 @@ def parallelizer(program_func, rank):
 
 
 class TestDistSlice(unittest.TestCase):
+
     def test_dist_slice_dp2(self):
         for rank in range(2):
             dist_main_prog, dist_context = parallelizer(make_program_dp2, rank)
@@ -94,7 +93,8 @@ class TestDistSlice(unittest.TestCase):
         ops = dist_main_prog.global_block().ops
         for op in ops:
             op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
-            assert op_dist_attr.impl_type == "slice"
+            # We amend this impl_type after completion
+            assert op_dist_attr.impl_type == "default"
             for out in op.output_arg_names:
                 var_dims_mapping = op_dist_attr.get_output_dims_mapping(out)
                 ref_dims_mapping = [-1 for i in range(len(var_dims_mapping))]

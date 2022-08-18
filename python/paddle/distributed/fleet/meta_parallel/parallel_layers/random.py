@@ -18,7 +18,7 @@ import numpy as np
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _non_static_mode, default_main_program
+from paddle.fluid.framework import _non_static_mode, default_main_program, Variable
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
@@ -105,12 +105,13 @@ def determinate_seed(rng_name):
     helper = LayerHelper('seed', **locals())
     out = helper.create_variable_for_type_inference(dtype=paddle.int32)
     # set force_cpu to reduce sync copy from CPU->GPU->CPU, and reduce pipeline hang
-    helper.append_op(
-        type='seed',
-        outputs={'Out': out},
-        attrs={'deterministic': True,
-               'rng_name': rng_name,
-               'force_cpu': True})
+    helper.append_op(type='seed',
+                     outputs={'Out': out},
+                     attrs={
+                         'deterministic': True,
+                         'rng_name': rng_name,
+                         'force_cpu': True
+                     })
     return out
 
 
@@ -186,11 +187,12 @@ def dropout(x,
     if rng_name is None:
         return paddle.nn.functional.dropout(x, p, axis, training, mode, name)
 
-    # fast return for p == 0
-    if p == 0: return x
+    if not isinstance(p, (float, int, Variable)):
+        raise TypeError("p argument should be a number(int|float) or Variable")
 
-    assert isinstance(p, (float, int)), \
-        TypeError("p argument should be a number")
+    # fast return for p == 0
+    if isinstance(p, (int, float)) and p == 0: return x
+
     assert 0 <= p <= 1, ValueError("p argument should between 0 and 1")
     assert mode in ('downscale_in_infer', 'upscale_in_train'), \
         ValueError(
@@ -210,6 +212,11 @@ def dropout(x,
 
     seed = determinate_seed(rng_name)
 
+    if isinstance(p, Variable) and not p.shape != [1]:
+        raise TypeError(
+            "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}"
+            .format(p.shape))
+
     helper = LayerHelper('dropout', **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'dropout')
@@ -218,15 +225,18 @@ def dropout(x,
     mask = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-    helper.append_op(
-        type='dropout',
-        inputs={'X': [x],
-                'Seed': seed},
-        outputs={'Out': [out],
-                 'Mask': [mask]},
-        attrs={
-            'dropout_prob': p,
-            'is_test': not training,
-            'dropout_implementation': mode,
-        })
+    helper.append_op(type='dropout',
+                     inputs={
+                         'X': [x],
+                         'Seed': seed
+                     },
+                     outputs={
+                         'Out': [out],
+                         'Mask': [mask]
+                     },
+                     attrs={
+                         'dropout_prob': p,
+                         'is_test': not training,
+                         'dropout_implementation': mode,
+                     })
     return out

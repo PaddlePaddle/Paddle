@@ -71,8 +71,8 @@ class TestFoldOp(OpTest):
                                     w_offset * self.dilations[1])
                         if (h_out >= 0 and h_out < self.output_sizes[0]) and (
                                 w_out >= 0 and w_out < self.output_sizes[1]):
-                            output[b, c_out, h_out, w_out] += self.x[
-                                b, c, w + col_width * h]
+                            output[b, c_out, h_out,
+                                   w_out] += self.x[b, c, w + col_width * h]
 
         self.outputs = output
 
@@ -91,13 +91,14 @@ class TestFoldOp(OpTest):
 
     def setUp(self):
         self.op_type = 'fold'
+        self.python_api = paddle.nn.functional.fold
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Y', check_eager=True)
 
 
 class TestFoldAPI(TestFoldOp):
@@ -106,6 +107,7 @@ class TestFoldAPI(TestFoldOp):
 
     def setUp(self):
         self.op_type = 'fold'
+        self.python_api = paddle.nn.functional.fold
         self.set_data()
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -118,13 +120,16 @@ class TestFoldAPI(TestFoldOp):
                 m = paddle.nn.Fold(**self.attrs)
                 m.eval()
                 result = m(input)
-                self.assertTrue(np.allclose(result.numpy(), self.outputs['Y']))
+                np.testing.assert_allclose(result.numpy(),
+                                           self.outputs['Y'],
+                                           rtol=1e-05)
 
     def test_info(self):
         str(paddle.nn.Fold(**self.attrs))
 
 
 class TestFoldOpError(unittest.TestCase):
+
     def test_errors(self):
         from paddle.nn.functional import fold
         from paddle.fluid.framework import Program, program_guard
@@ -143,61 +148,59 @@ class TestFoldOpError(unittest.TestCase):
             def test_padding_shape():
                 # padding_size must be 2 or 4
                 x = paddle.randn(shape=[2, 6, 6], dtype="float32")
-                out = fold(
-                    x,
-                    output_sizes=[2, 3],
-                    kernel_sizes=[2, 2],
-                    paddings=[2, 2, 3])
+                out = fold(x,
+                           output_sizes=[2, 3],
+                           kernel_sizes=[2, 2],
+                           paddings=[2, 2, 3])
 
             def test_dilations_shape():
-                # dialtions_size must be 2 
+                # dialtions_size must be 2
                 x = paddle.randn(shape=[2, 6, 6], dtype="float32")
-                out = fold(
-                    x,
-                    output_sizes=[2, 3],
-                    kernel_sizes=[2, 2],
-                    dilations=[2, 2, 3])
+                out = fold(x,
+                           output_sizes=[2, 3],
+                           kernel_sizes=[2, 2],
+                           dilations=[2, 2, 3])
 
             def test_strides_shape():
                 # strids_size must be 2
                 x = paddle.randn(shape=[2, 6, 6], dtype="float32")
-                out = fold(
-                    x,
-                    output_sizes=[2, 3],
-                    kernel_sizes=[2, 2],
-                    strides=[2, 2, 3])
+                out = fold(x,
+                           output_sizes=[2, 3],
+                           kernel_sizes=[2, 2],
+                           strides=[2, 2, 3])
 
             def test_output_size():
                 # im_h * im_w must be L
                 x = paddle.randn(shape=[2, 6, 6], dtype="float32")
-                out = fold(
-                    x, output_sizes=[6, 6], kernel_sizes=[2, 2],
-                    strides=[1, 1])
+                out = fold(x,
+                           output_sizes=[6, 6],
+                           kernel_sizes=[2, 2],
+                           strides=[1, 1])
 
             def test_output_size_2():
                 # out_size must GT 1
                 x = paddle.randn(shape=[2, 6, 6], dtype="float32")
-                out = fold(
-                    x,
-                    output_sizes=[0.1, 0.2],
-                    kernel_sizes=[2, 2],
-                    strides=[1, 1])
+                out = fold(x,
+                           output_sizes=[0.1, 0.2],
+                           kernel_sizes=[2, 2],
+                           strides=[1, 1])
 
             def test_block_h_w():
                 # test_block_h_w GT 0
                 x = paddle.randn(shape=[2, 1, 1], dtype="float32")
-                out = fold(
-                    x, output_sizes=[1, 1], kernel_sizes=[2, 2], strides=1)
+                out = fold(x,
+                           output_sizes=[1, 1],
+                           kernel_sizes=[2, 2],
+                           strides=1)
 
             def test_GT_0():
                 x = paddle.randn(shape=[2, 1, 1], dtype="float32")
-                out = fold(
-                    x,
-                    output_sizes=[0, 0],
-                    kernel_sizes=[0, 0],
-                    dilations=0,
-                    paddings=[0, 0],
-                    strides=0)
+                out = fold(x,
+                           output_sizes=[0, 0],
+                           kernel_sizes=[0, 0],
+                           dilations=0,
+                           paddings=[0, 0],
+                           strides=0)
 
             self.assertRaises(AssertionError, test_input_shape)
             self.assertRaises(AssertionError, test_kernel_shape)
@@ -205,7 +208,7 @@ class TestFoldOpError(unittest.TestCase):
             self.assertRaises(AssertionError, test_dilations_shape)
             self.assertRaises(AssertionError, test_strides_shape)
             self.assertRaises(ValueError, test_output_size)
-            self.assertRaises(ValueError, test_output_size_2)
+            self.assertRaises(TypeError, test_output_size_2)
             self.assertRaises(ValueError, test_block_h_w)
             self.assertRaises(ValueError, test_GT_0)
 

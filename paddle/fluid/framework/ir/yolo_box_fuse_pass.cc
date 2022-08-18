@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/yolo_box_fuse_pass.h"
+
 #include <string>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -199,9 +201,11 @@ void YoloBoxFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE(nms_out_rois_num);
 #undef GET_IR_NODE
 
+    auto* block = yolo_box0->Op()->Block();
+
 // create yolo_box_head
 #define CREATE_YOLO_BOX_HEAD(idx_)                                         \
-  framework::OpDesc yolo_box_head##idx_##_op_desc;                         \
+  framework::OpDesc yolo_box_head##idx_##_op_desc(block);                  \
   yolo_box_head##idx_##_op_desc.SetType("yolo_box_head");                  \
   yolo_box_head##idx_##_op_desc.SetInput("X",                              \
                                          {yolo_box##idx_##_in_x->Name()}); \
@@ -222,7 +226,7 @@ void YoloBoxFusePass::ApplyImpl(ir::Graph* graph) const {
 #undef CREATE_YOLO_BOX_HEAD
 
     // create yolo_box_post
-    framework::OpDesc yolo_box_post_op_desc;
+    framework::OpDesc yolo_box_post_op_desc(block);
     yolo_box_post_op_desc.SetType("yolo_box_post");
     yolo_box_post_op_desc.SetInput("Boxes0", {yolo_box0_out_boxes->Name()});
     yolo_box_post_op_desc.SetInput("Boxes1", {yolo_box1_out_boxes->Name()});
@@ -263,31 +267,32 @@ void YoloBoxFusePass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(yolo_box_post, nms_out_rois_num);
 
     // delete useless node
-    GraphSafeRemoveNodes(graph, {elt_div,
-                                 cast,
-                                 yolo_box0,
-                                 yolo_box1,
-                                 yolo_box2,
-                                 concat0,
-                                 transpose0,
-                                 transpose1,
-                                 transpose2,
-                                 concat1,
-                                 nms,
-                                 elt_div_out,
-                                 cast_out,
-                                 yolo_box0_out_scores,
-                                 yolo_box1_out_scores,
-                                 yolo_box2_out_scores,
-                                 concat0_out,
-                                 transpose0_out,
-                                 transpose1_out,
-                                 transpose2_out,
-                                 transpose0_out_xshape,
-                                 transpose1_out_xshape,
-                                 transpose2_out_xshape,
-                                 concat1_out,
-                                 nms_out_index});
+    GraphSafeRemoveNodes(graph,
+                         {elt_div,
+                          cast,
+                          yolo_box0,
+                          yolo_box1,
+                          yolo_box2,
+                          concat0,
+                          transpose0,
+                          transpose1,
+                          transpose2,
+                          concat1,
+                          nms,
+                          elt_div_out,
+                          cast_out,
+                          yolo_box0_out_scores,
+                          yolo_box1_out_scores,
+                          yolo_box2_out_scores,
+                          concat0_out,
+                          transpose0_out,
+                          transpose1_out,
+                          transpose2_out,
+                          transpose0_out_xshape,
+                          transpose1_out_xshape,
+                          transpose2_out_xshape,
+                          concat1_out,
+                          nms_out_index});
     found_subgraph_count++;
   };
 

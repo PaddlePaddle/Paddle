@@ -56,8 +56,10 @@ void SerializeToMultiVarMsgAndIOBuf(
     const std::string& message_name,
     const std::vector<std::string>& send_var_name_val,
     const std::vector<std::string>& recv_var_name_val,
-    const platform::DeviceContext& ctx, const framework::Scope* scope,
-    MultiVarMsg* request, butil::IOBuf* iobuf) {
+    const platform::DeviceContext& ctx,
+    const framework::Scope* scope,
+    MultiVarMsg* request,
+    butil::IOBuf* iobuf) {
   // 1. message_name
   request->set_message_name(message_name);
 
@@ -87,7 +89,8 @@ void SerializeToMultiVarMsgAndIOBuf(
 }
 
 void SerializeLodTensor(framework::Variable* var,
-                        const platform::DeviceContext& ctx, VarMsg* var_msg,
+                        const platform::DeviceContext& ctx,
+                        VarMsg* var_msg,
                         butil::IOBuf* iobuf) {
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   var_msg->set_type(::paddle::distributed::LOD_TENSOR);
@@ -116,10 +119,12 @@ void SerializeLodTensor(framework::Variable* var,
     char* temp_ptr =
         new char[tensor->numel() *
                  framework::DataTypeSize(tensor->dtype())];  // NOLINT
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
-        platform::CPUPlace(), temp_ptr, tensor->place(), tensor->data(),
+        platform::CPUPlace(),
+        temp_ptr,
+        tensor->place(),
+        tensor->data(),
         tensor->numel() * framework::SizeOfType(
                               framework::TransToProtoVarType(tensor->dtype())),
         stream);
@@ -132,7 +137,8 @@ void SerializeLodTensor(framework::Variable* var,
 }
 
 void SerializeSelectedRows(framework::Variable* var,
-                           const platform::DeviceContext& ctx, VarMsg* var_msg,
+                           const platform::DeviceContext& ctx,
+                           VarMsg* var_msg,
                            butil::IOBuf* iobuf) {
   phi::SelectedRows* slr = var->GetMutable<phi::SelectedRows>();
   auto* tensor = slr->mutable_value();
@@ -161,10 +167,12 @@ void SerializeSelectedRows(framework::Variable* var,
     char* temp_ptr =
         new char[tensor->numel() *
                  framework::DataTypeSize(tensor->dtype())];  // NOLINT
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
-        platform::CPUPlace(), temp_ptr, tensor->place(), tensor->data(),
+        platform::CPUPlace(),
+        temp_ptr,
+        tensor->place(),
+        tensor->data(),
         tensor->numel() * framework::SizeOfType(
                               framework::TransToProtoVarType(tensor->dtype())),
         stream);
@@ -204,7 +212,8 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
        ++recv_var_index) {
     const auto& msg = multi_msg.var_messages(recv_var_index);
     auto* var = scope->FindVar(msg.varname());
-    PADDLE_ENFORCE_NE(var, nullptr,
+    PADDLE_ENFORCE_NE(var,
+                      nullptr,
                       platform::errors::InvalidArgument(
                           "Not find variable %s in scope.", msg.varname()));
     if (msg.type() == ::paddle::distributed::LOD_TENSOR) {
@@ -215,7 +224,8 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
   }
 }
 
-void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
+void DeserializeLodTensor(framework::Variable* var,
+                          const VarMsg& msg,
                           butil::IOBufBytesIterator& io_buffer_itr,  // NOLINT
                           const platform::DeviceContext& ctx) {
   const auto place = ctx.GetPlace();
@@ -253,18 +263,21 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
                  framework::DataTypeSize(tensor->dtype())];     // NOLINT
     io_buffer_itr.copy_and_forward((void*)(&data_len), 8);      // NOLINT
     io_buffer_itr.copy_and_forward((void*)temp_ptr, data_len);  // NOLINT
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(
-        place, tensor_data, platform::CPUPlace(), (void*)temp_ptr,  // NOLINT
-        tensor->numel() * framework::DataTypeSize(tensor->dtype()), stream);
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
+    memory::Copy(place,
+                 tensor_data,
+                 platform::CPUPlace(),
+                 (void*)temp_ptr,  // NOLINT
+                 tensor->numel() * framework::DataTypeSize(tensor->dtype()),
+                 stream);
     delete[] temp_ptr;
 #endif
   }
 }
 
 void DeserializeSelectedRows(
-    framework::Variable* var, const VarMsg& msg,
+    framework::Variable* var,
+    const VarMsg& msg,
     butil::IOBufBytesIterator& io_buffer_itr,  // NOLINT
     const platform::DeviceContext& ctx) {
   const auto place = ctx.GetPlace();
@@ -295,9 +308,11 @@ void DeserializeSelectedRows(
     unsigned long data_len;                                  // NOLINT
     io_buffer_itr.copy_and_forward((void*)(&data_len), 8);   // NOLINT
     io_buffer_itr.copy_and_forward(temp_ptr, data_len);
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(place, tensor_data, platform::CPUPlace(), temp_ptr,
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
+    memory::Copy(place,
+                 tensor_data,
+                 platform::CPUPlace(),
+                 temp_ptr,
                  tensor->numel() * framework::DataTypeSize(tensor->dtype()),
                  stream);
     delete[] temp_ptr;

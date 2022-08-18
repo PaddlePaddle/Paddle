@@ -26,6 +26,7 @@ import hypothesis.strategies as st
 
 
 class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 

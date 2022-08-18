@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@ from paddle.fluid.layers.learning_rate_scheduler import exponential_decay, noam_
 
 @register_pass("add_lr_decay_table_pass")
 class AddLrDecayTablePass(PassBase):
+
     def __init__(self):
         super(AddLrDecayTablePass, self).__init__()
 
@@ -101,8 +102,8 @@ class AddLrDecayTablePass(PassBase):
                     % lr_decay_steps)
         else:
             raise ValueError(
-                "Not supported current LearningRate strategy, please use follow decay strategy: {}".
-                format(schedler_decay))
+                "Not supported current LearningRate strategy, please use follow decay strategy: {}"
+                .format(schedler_decay))
 
         return decay_main_program, decay_startup_program, lr_name
 
@@ -125,6 +126,7 @@ class AddLrDecayTablePass(PassBase):
 
 @register_pass("add_listen_and_serv_pass")
 class AddListenAndServPass(PassBase):
+
     def __init__(self):
         super(AddListenAndServPass, self).__init__()
 
@@ -152,12 +154,15 @@ class AddListenAndServPass(PassBase):
             "rpc_send_thread_num": -1,
             "rpc_prefetch_thread_num": -1
         }
-        main_program.global_block().append_op(
-            type="listen_and_serv", inputs={'X': []}, outputs={}, attrs=opt)
+        main_program.global_block().append_op(type="listen_and_serv",
+                                              inputs={'X': []},
+                                              outputs={},
+                                              attrs=opt)
 
 
 @register_pass("add_rpc_global_flags_pass")
 class AddRpcGlobalFlagsPass(PassBase):
+
     def __init__(self):
         super(AddRpcGlobalFlagsPass, self).__init__()
 
@@ -173,6 +178,7 @@ class AddRpcGlobalFlagsPass(PassBase):
 
 @register_pass("add_optimizer_pass")
 class AddOptimizerPass(PassBase):
+
     def __init__(self):
         super(AddOptimizerPass, self).__init__()
 
@@ -188,6 +194,7 @@ class AddOptimizerPass(PassBase):
 
 @register_pass("add_geo_optimizer_pass")
 class AddGeoOptimizerPass(PassBase):
+
     def __init__(self):
         super(AddGeoOptimizerPass, self).__init__()
 
@@ -203,6 +210,7 @@ class AddGeoOptimizerPass(PassBase):
 
 @register_pass("build_pserver_startup_program_pass")
 class BuildPserverStartupProgramPass(PassBase):
+
     def __init__(self):
         super(BuildPserverStartupProgramPass, self).__init__()
 
@@ -218,6 +226,7 @@ class BuildPserverStartupProgramPass(PassBase):
 
 @register_pass("delete_unused_in_startup_pass")
 class DeleteUnusedInStartupPass(PassBase):
+
     def __init__(self):
         super(DeleteUnusedInStartupPass, self).__init__()
 

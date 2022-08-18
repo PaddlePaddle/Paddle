@@ -26,10 +26,10 @@ import hypothesis.strategies as st
 
 
 class TestConvEltwiseAddFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         if attrs[0]['data_format'] == "NHWC" and attrs[1]['axis'] != 3:
@@ -49,17 +49,17 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
         out_channel = groups * out_channel_factor
         batch_size = draw(st.integers(min_value=1, max_value=4))
         dilations = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=2), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=2),
+                     min_size=2,
+                     max_size=2))
         paddings = draw(
-            st.lists(
-                st.integers(
-                    min_value=0, max_value=2), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=0, max_value=2),
+                     min_size=2,
+                     max_size=2))
         strides = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=2), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=2),
+                     min_size=2,
+                     max_size=2))
 
         x_shape = [
             batch_size, in_channel, 64, 64
@@ -80,26 +80,26 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
         def generate_scale_bias():
             return np.random.random(bias_shape).astype(np.float32)
 
-        conv2d_op = OpConfig(
-            "conv2d",
-            inputs={
-                "Input": ["input_data"],
-                "Filter": ["conv2d_weight"],
-            },
-            outputs={"Output": ["conv_output"]},
-            data_format=data_format,
-            dilations=dilations,
-            padding_algorithm=padding_algorithm,
-            groups=groups,
-            paddings=paddings,
-            strides=strides,
-            is_test=True)
-        eltwise_op = OpConfig(
-            "elementwise_add",
-            inputs={"X": ["conv_output"],
-                    "Y": ["conv2d_bias"]},
-            outputs={"Out": ["elementwise_output"]},
-            axis=axis)
+        conv2d_op = OpConfig("conv2d",
+                             inputs={
+                                 "Input": ["input_data"],
+                                 "Filter": ["conv2d_weight"],
+                             },
+                             outputs={"Output": ["conv_output"]},
+                             data_format=data_format,
+                             dilations=dilations,
+                             padding_algorithm=padding_algorithm,
+                             groups=groups,
+                             paddings=paddings,
+                             strides=strides,
+                             is_test=True)
+        eltwise_op = OpConfig("elementwise_add",
+                              inputs={
+                                  "X": ["conv_output"],
+                                  "Y": ["conv2d_bias"]
+                              },
+                              outputs={"Out": ["elementwise_output"]},
+                              axis=axis)
         ops = [conv2d_op, eltwise_op]
 
         program_config = ProgramConfig(
@@ -132,7 +132,7 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
         yield config, ['conv2d_fusion'], (1e-4, 1e-4)
 
     def add_ignore_pass_case(self):
-        # If the problem has been fixed, the judgment 
+        # If the problem has been fixed, the judgment
         # in is_program_valid needs to be deleted!!!
         def teller1(program_config, predictor_config):
             if program_config.ops[0].attrs['data_format'] == "NHWC":
@@ -149,7 +149,8 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            passes=["conv_elementwise_add_fuse_pass"], )
+            passes=["conv_elementwise_add_fuse_pass"],
+        )
 
 
 if __name__ == "__main__":

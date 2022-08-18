@@ -20,9 +20,8 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -57,23 +56,30 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
         if self.is_training:
             ch = self.feed_shape[0][1]
-            conv1 = paddle.static.nn.conv2d(
-                x, num_filters=ch, filter_size=3, bias_attr=False)
+            conv1 = paddle.static.nn.conv2d(x,
+                                            num_filters=ch,
+                                            filter_size=3,
+                                            bias_attr=False)
             scale = paddle.ParamAttr(trainable=True)
             bias = paddle.ParamAttr(trainable=True)
-            out = paddle.fluid.layers.nn.layer_norm(
-                conv1, param_attr=scale, bias_attr=bias, **self.attrs)
+            out = paddle.fluid.layers.nn.layer_norm(conv1,
+                                                    param_attr=scale,
+                                                    bias_attr=bias,
+                                                    **self.attrs)
             loss = paddle.mean(out)
             self.fetch_list = [loss.name]
         else:
             scale = self.attrs['scale']
             bias = self.attrs['shift']
-            out = paddle.fluid.layers.nn.layer_norm(
-                x, param_attr=scale, bias_attr=bias, **self.attrs)
+            out = paddle.fluid.layers.nn.layer_norm(x,
+                                                    param_attr=scale,
+                                                    bias_attr=bias,
+                                                    **self.attrs)
             self.fetch_list = [out.name]
 
         if self.is_training:
@@ -83,8 +89,8 @@ class TestBase(IPUOpTest):
             elif self.optimizer == 'adam':
                 optimizer = paddle.optimizer.Adam(learning_rate=1e-2)
             elif self.optimizer == 'lamb':
-                optimizer = paddle.optimizer.Lamb(
-                    learning_rate=1e-2, lamb_weight_decay=0.0)
+                optimizer = paddle.optimizer.Lamb(learning_rate=1e-2,
+                                                  lamb_weight_decay=0.0)
             if optimizer is not None:
                 optimizer.minimize(loss)
 
@@ -101,6 +107,7 @@ class TestBase(IPUOpTest):
 
 @unittest.skip('raise error')
 class TestCase1(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {
             "scale": False,
@@ -112,6 +119,7 @@ class TestCase1(TestBase):
 
 @unittest.skip('raise error')
 class TestCase2(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {
             "scale": True,
@@ -122,6 +130,7 @@ class TestCase2(TestBase):
 
 
 class TestCase3(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {
             "scale": True,
@@ -133,6 +142,7 @@ class TestCase3(TestBase):
 
 
 class TestTrainCase1(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {
             "scale": True,
@@ -152,6 +162,7 @@ class TestTrainCase1(TestBase):
 
 
 class TestTrainCase3(TestBase):
+
     def set_atol(self):
         super().set_atol()
         self.atol = 5e-3

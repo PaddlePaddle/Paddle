@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import sys
+
 sys.path.append("..")
 import op_test
 import unittest
@@ -158,10 +159,10 @@ def test(unit_test, use_npu=False, test_error=False):
             META_DATA = dict(TEST_META_WRONG_SHAPE_DATA)
         for shape_data in META_DATA.values():
             for data_type in SUPPORTED_DTYPES:
-                meta_data['x_np'] = np_data_generator(
-                    shape_data['x_shape'], dtype=data_type)
-                meta_data['y_np'] = np_data_generator(
-                    shape_data['y_shape'], dtype=data_type)
+                meta_data['x_np'] = np_data_generator(shape_data['x_shape'],
+                                                      dtype=data_type)
+                meta_data['y_np'] = np_data_generator(shape_data['y_shape'],
+                                                      dtype=data_type)
                 if meta_data['binary_op'] and test_error:
                     # catch C++ Exception
                     unit_test.assertRaises(BaseException, run_static,
@@ -176,11 +177,12 @@ def test(unit_test, use_npu=False, test_error=False):
                 else:
                     np_result = np_op(meta_data['x_np'])
                 unit_test.assertTrue((static_result == np_result).all())
-                unit_test.assertTrue((dygraph_result.numpy() == np_result).all(
-                ))
+                unit_test.assertTrue(
+                    (dygraph_result.numpy() == np_result).all())
 
 
 def test_type_error(unit_test, use_npu, type_str_map):
+
     def check_type(op_str, x, y, binary_op):
         op = getattr(paddle, op_str)
         error_type = ValueError
@@ -215,10 +217,12 @@ def test_type_error(unit_test, use_npu, type_str_map):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-            x = paddle.static.data(
-                name='x', shape=[10], dtype=type_str_map['x'])
-            y = paddle.static.data(
-                name='y', shape=[10], dtype=type_str_map['y'])
+            x = paddle.static.data(name='x',
+                                   shape=[10],
+                                   dtype=type_str_map['x'])
+            y = paddle.static.data(name='y',
+                                   shape=[10],
+                                   dtype=type_str_map['y'])
             check_type(meta_data['op_str'], x, y, binary_op)
 
 
@@ -230,6 +234,7 @@ def type_map_factory():
 
 
 class TestCPU(unittest.TestCase):
+
     def test(self):
         test(self)
 
@@ -243,6 +248,7 @@ class TestCPU(unittest.TestCase):
 
 
 class TestNPU(unittest.TestCase):
+
     def test(self):
         test(self, True)
 

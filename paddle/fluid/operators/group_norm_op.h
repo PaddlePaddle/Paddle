@@ -17,6 +17,7 @@ limitations under the License. */
 #include <array>
 #include <numeric>
 #include <string>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"

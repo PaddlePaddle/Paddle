@@ -33,41 +33,36 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-//     in_var  emb       in_var   emb
-//       |      |          |       |
-//     lookup_table      lookup_table
-//           |                 |
-//        lkt_var           lkt_var
-//            \                /
-//             elementwise_add
-//                    |
-//               elt_out_var
+//     in_var  emb
+//       |      |
+//     lookup_table
+//           |
+//        lkt_var
+
 //
 struct SetTransformerInputConvert : public PatternBase {
   SetTransformerInputConvert(PDPattern *pattern, const std::string &name_scope)
-      : PatternBase(pattern, name_scope, "transformer_input_convert") {}
-
-  void operator()();
-
+      : PatternBase(pattern, name_scope, "transformer_input_convert_pass") {}
+  void operator()(const std::string &pos_id);
   // declare operator node's name
-  PATTERN_DECL_NODE(lookup_table1);
-  PATTERN_DECL_NODE(lookup_table2);
-  PATTERN_DECL_NODE(elementwise);
-
+  PATTERN_DECL_NODE(lookup_table);
   // declare variable node's name
-  PATTERN_DECL_NODE(lookup_table1_x);
-  PATTERN_DECL_NODE(lookup_table1_w);
-  PATTERN_DECL_NODE(lookup_table1_out);
-  PATTERN_DECL_NODE(lookup_table2_x);
-  PATTERN_DECL_NODE(lookup_table2_w);
-  PATTERN_DECL_NODE(lookup_table2_out);
-  PATTERN_DECL_NODE(elementwise_out);
+  PATTERN_DECL_NODE(lookup_table_id);
+};
+
+struct MultiheadMatmulOP : public PatternBase {
+  MultiheadMatmulOP(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "transformer_input_convert_pass") {}
+  void operator()();
+  // declare operator node's name
+  PATTERN_DECL_NODE(multihead_matmul);
+  PATTERN_DECL_NODE(multihead_matmul_out);
 };
 }  // namespace patterns
 
 class SetTransformerInputConvertPass : public FusePassBase {
  public:
-  SetTransformerInputConvertPass();
+  SetTransformerInputConvertPass() {}
   virtual ~SetTransformerInputConvertPass() {}
 
  protected:

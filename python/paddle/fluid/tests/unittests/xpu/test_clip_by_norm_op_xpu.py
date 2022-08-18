@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import sys
+
 sys.path.append("..")
 import unittest
 import numpy as np
@@ -26,6 +27,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestXPUClipByNormOp(XPUOpTest):
+
     def setUp(self):
         self.op_type = "clip_by_norm"
         self.dtype = np.float32
@@ -34,7 +36,9 @@ class TestXPUClipByNormOp(XPUOpTest):
         self.initTestCase()
         input = np.random.random(self.shape).astype("float32")
         input[np.abs(input) < self.max_relative_error] = 0.5
-        self.inputs = {'X': input, }
+        self.inputs = {
+            'X': input,
+        }
         self.attrs = {}
         self.attrs['max_norm'] = self.max_norm
         norm = np.sqrt(np.sum(np.square(input)))
@@ -56,18 +60,21 @@ class TestXPUClipByNormOp(XPUOpTest):
 
 
 class TestCase1(TestXPUClipByNormOp):
+
     def initTestCase(self):
         self.shape = (100, )
         self.max_norm = 1e20
 
 
 class TestCase2(TestXPUClipByNormOp):
+
     def initTestCase(self):
         self.shape = (16, 16)
         self.max_norm = 0.1
 
 
 class TestCase3(TestXPUClipByNormOp):
+
     def initTestCase(self):
         self.shape = (4, 8, 16)
         self.max_norm = 1.0

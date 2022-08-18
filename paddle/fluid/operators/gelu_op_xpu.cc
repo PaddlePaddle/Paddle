@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -39,9 +40,10 @@ class GeluXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     int r = xpu::gelu<XPUType>(dev_ctx.x_context(), x_data, y_data, x->numel());
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU gelu kernel return wrong value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+        r,
+        XPU_SUCCESS,
+        platform::errors::External(
+            "XPU gelu kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
   }
 };
 
@@ -63,11 +65,17 @@ class GeluGradXPUKernel : public framework::OpKernel<T> {
     XPUType* dx_data = reinterpret_cast<XPUType*>(dx->mutable_data<T>(place));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    int r = xpu::gelu_grad<XPUType>(dev_ctx.x_context(), x_data, nullptr,
-                                    dout_data, dx_data, dout->numel());
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    int r = xpu::gelu_grad<XPUType>(dev_ctx.x_context(),
+                                    x_data,
+                                    nullptr,
+                                    dout_data,
+                                    dx_data,
+                                    dout->numel());
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU gelu_grad kernel return wrong value[%d %s]", r,
+                          "XPU gelu_grad kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -78,7 +86,8 @@ class GeluGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
-    gelu, ops::GeluXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    gelu,
+    ops::GeluXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::GeluXPUKernel<paddle::platform::XPUDeviceContext,
                        paddle::platform::float16>);
 

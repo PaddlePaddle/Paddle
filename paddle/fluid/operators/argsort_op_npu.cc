@@ -23,8 +23,10 @@ using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 static void TranposeNPU(const framework::ExecutionContext& ctx,
-                        const aclrtStream& stream, std::vector<int64_t>* perm,
-                        const Tensor& in, Tensor* out) {
+                        const aclrtStream& stream,
+                        std::vector<int64_t>* perm,
+                        const Tensor& in,
+                        Tensor* out) {
   out->mutable_data<T>(ctx.GetPlace());
   NpuOpRunner runner;
   runner.SetType("Transpose")
@@ -35,7 +37,8 @@ static void TranposeNPU(const framework::ExecutionContext& ctx,
 }
 
 static void CastToInt64(const framework::ExecutionContext& ctx,
-                        const aclrtStream& stream, const Tensor& in,
+                        const aclrtStream& stream,
+                        const Tensor& in,
                         Tensor* out) {
   out->mutable_data<int64_t>(ctx.GetPlace());
   NpuOpRunner runner;
@@ -47,7 +50,8 @@ static void CastToInt64(const framework::ExecutionContext& ctx,
 }
 
 static void CastToFP32(const framework::ExecutionContext& ctx,
-                       const aclrtStream& stream, const Tensor& in,
+                       const aclrtStream& stream,
+                       const Tensor& in,
                        Tensor* out) {
   out->mutable_data<float>(ctx.GetPlace());
   NpuOpRunner runner;
@@ -117,8 +121,8 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
         trans_output.mutable_data<float>(trans_dims, ctx.GetPlace());
         trans_indices.mutable_data<int32_t>(trans_dims, ctx.GetPlace());
 
-        const auto& runner = NpuOpRunner("Sort", {trans_input},
-                                         {trans_output, trans_indices}, attr);
+        const auto& runner = NpuOpRunner(
+            "Sort", {trans_input}, {trans_output, trans_indices}, attr);
         runner.Run(stream);
 
         TranposeNPU<float>(ctx, stream, &perm, trans_output, &output_fp32);
@@ -155,8 +159,8 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
         trans_output.mutable_data<T>(trans_dims, ctx.GetPlace());
         trans_indices.mutable_data<int32_t>(trans_dims, ctx.GetPlace());
 
-        const auto& runner = NpuOpRunner("Sort", {trans_input},
-                                         {trans_output, trans_indices}, attr);
+        const auto& runner = NpuOpRunner(
+            "Sort", {trans_input}, {trans_output, trans_indices}, attr);
         runner.Run(stream);
 
         TranposeNPU<T>(ctx, stream, &perm, trans_output, output);
@@ -171,8 +175,10 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
 template <typename T, typename Type>
 static void FullAssignNPU(const framework::ExecutionContext& ctx,
                           const aclrtStream& stream,
-                          const framework::DDim in_dims, const Tensor& input,
-                          const Tensor& indices, Tensor* t_out) {
+                          const framework::DDim in_dims,
+                          const Tensor& input,
+                          const Tensor& indices,
+                          Tensor* t_out) {
   const int64_t input_height =
       phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
   const int64_t input_width = in_dims[in_dims.size() - 1];
@@ -192,8 +198,8 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
     indexs_value.push_back(i * input_width);
   }
   Tensor indexs_tmp(indices.type());
-  framework::TensorFromVector<int64_t>(indexs_value, ctx.device_context(),
-                                       &indexs_tmp);
+  framework::TensorFromVector<int64_t>(
+      indexs_value, ctx.device_context(), &indexs_tmp);
   indexs_tmp.Resize(phi::make_ddim(std::vector<int64_t>{input_height, 1}));
 
   Tensor indices_index(indices.type());
@@ -209,9 +215,10 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
   Tensor out_tmp(t_out->type());
   out_tmp.ShareDataWith(*t_out);
 
-  const auto& runner =
-      NpuOpRunner("TensorScatterUpdate", {input_tmp, indices_index, input_tmp},
-                  {out_tmp}, {});
+  const auto& runner = NpuOpRunner("TensorScatterUpdate",
+                                   {input_tmp, indices_index, input_tmp},
+                                   {out_tmp},
+                                   {});
   runner.Run(stream);
 }
 
@@ -255,8 +262,8 @@ class ArgsortGradNPUKernel : public framework::OpKernel<T> {
 
       Tensor trans_dx(dO->type());
       trans_dx.Resize(trans_dims);
-      FullAssignNPU<T, int64_t>(ctx, stream, trans_dims, trans_dout, trans_ids,
-                                &trans_dx);
+      FullAssignNPU<T, int64_t>(
+          ctx, stream, trans_dims, trans_dout, trans_ids, &trans_dx);
 
       TranposeNPU<T>(ctx, stream, &perm, trans_dx, dX);
     }
@@ -269,11 +276,13 @@ class ArgsortGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(argsort, ops::ArgsortNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(argsort,
+                       ops::ArgsortNPUKernel<float>,
 #ifdef PADDLE_WITH_ASCEND_INT64
                        ops::ArgsortNPUKernel<int64_t>,
 #endif
                        ops::ArgsortNPUKernel<plat::float16>);
 
-REGISTER_OP_NPU_KERNEL(argsort_grad, ops::ArgsortGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(argsort_grad,
+                       ops::ArgsortGradNPUKernel<float>,
                        ops::ArgsortGradNPUKernel<paddle::platform::float16>);

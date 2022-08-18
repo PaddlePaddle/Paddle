@@ -24,6 +24,7 @@ paddle.enable_static()
 
 
 class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
+
     def test_gradient_merge_optimizer(self):
         train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
         )

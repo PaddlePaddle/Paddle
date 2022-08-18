@@ -14,12 +14,13 @@ limitations under the License. */
 
 #if defined PADDLE_WITH_PSCORE
 #include <stdlib.h>
+
 #include <memory>
+#include <random>
+#include <sstream>
 #include <string>
 #include <thread>  // NOLINT
 
-#include <random>
-#include <sstream>
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
@@ -86,7 +87,8 @@ void CreateVarsOnScope(framework::Scope* scope) {
   res_var->GetMutable<framework::LoDTensor>();
 }
 
-void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnServer(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
   auto w = scope->Var("w")->GetMutable<phi::SelectedRows>();
@@ -101,7 +103,8 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
   }
 }
 
-void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
   auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
@@ -135,7 +138,7 @@ void StartSendAndRecvServer(std::string endpoint) {
   framework::Scope scope;
   platform::CPUPlace place;
   framework::Executor exe(place);
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
   LOG(INFO) << "before AppendSendAndRecvBlock";
   auto block = AppendSendAndRecvBlock(&program);
   std::string in_var_name("x");
@@ -157,11 +160,13 @@ void StartSendAndRecvServer(std::string endpoint) {
       distributed::HeterServer::GetInstance();
   b_rpc_service->SetEndPoint(endpoint);
   LOG(INFO) << "before HeterServer::RegisterServiceHandler";
-  b_rpc_service->RegisterServiceHandler(
-      in_var_name, [&](const MultiVarMsg* request, MultiVarMsg* response,
-                       brpc::Controller* cntl) -> int {
-        return b_req_handler->Handle(request, response, cntl);
-      });
+  b_rpc_service->RegisterServiceHandler(in_var_name,
+                                        [&](const MultiVarMsg* request,
+                                            MultiVarMsg* response,
+                                            brpc::Controller* cntl) -> int {
+                                          return b_req_handler->Handle(
+                                              request, response, cntl);
+                                        });
 
   b_rpc_service->SetServiceHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
@@ -201,9 +206,10 @@ TEST(SENDANDRECV, CPU) {
       std::unordered_map<int,
                          std::shared_ptr<::paddle::framework::BlockingQueue<
                              std::pair<std::string, int>>>>;
-  using SharedTaskQueue = std::shared_ptr<std::unordered_map<
-      int, std::shared_ptr<::paddle::framework::BlockingQueue<
-               std::pair<std::string, int>>>>>;
+  using SharedTaskQueue = std::shared_ptr<
+      std::unordered_map<int,
+                         std::shared_ptr<::paddle::framework::BlockingQueue<
+                             std::pair<std::string, int>>>>>;
   SharedTaskQueue task_queue_(new TaskQueue{});
   (*task_queue_)[0] = std::make_shared<
       ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>();
@@ -214,13 +220,14 @@ TEST(SENDANDRECV, CPU) {
       distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
           .get();
 
-  PADDLE_ENFORCE_NE(rpc_client, nullptr,
+  PADDLE_ENFORCE_NE(rpc_client,
+                    nullptr,
                     platform::errors::InvalidArgument(
                         "Client Start Fail, Check Your Code & Env"));
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 
   framework::Executor exe(place);
   // create var on local scope
@@ -282,13 +289,15 @@ TEST(SENDANDRECV, CPU) {
   LOG(INFO) << "client get from task queue";
 
   PADDLE_ENFORCE_EQ(
-      task.first, "x",
+      task.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
-      task2.first, "x",
+      task2.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 

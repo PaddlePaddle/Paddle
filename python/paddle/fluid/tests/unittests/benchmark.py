@@ -27,6 +27,7 @@ from op_test import OpTest
 
 
 class BenchmarkSuite(OpTest):
+
     def timeit_function(self, callback, iters, *args, **kwargs):
         assert iters != 0, "Iters should >= 1"
         start = time.time()
@@ -45,13 +46,11 @@ class BenchmarkSuite(OpTest):
             actual_t = np.array(item_gpu_out)
             var_name = variable if isinstance(
                 variable, six.string_types) else variable.name
-            self.assertTrue(
-                np.allclose(
-                    actual_t, expect_t, atol=atol),
-                "Output (" + var_name + ") has diff" + str(actual_t) + "\n" +
-                str(expect_t))
-            self.assertListEqual(actual.lod(),
-                                 expect.lod(),
+            np.testing.assert_allclose(actual_t,
+                                       expect_t,
+                                       rtol=1e-05,
+                                       atol=atol)
+            self.assertListEqual(actual.lod(), expect.lod(),
                                  "Output (" + var_name + ") has different lod")
 
     def _get_input_names(self):
@@ -98,13 +97,12 @@ class BenchmarkSuite(OpTest):
     def timeit_grad_with_place(self, place, iters=100):
         inputs_to_check = self._get_input_names()
         output_names = self._get_output_names()
-        return self.timeit_function(
-            self._get_gradient,
-            iters,
-            inputs_to_check,
-            place,
-            output_names,
-            no_grad_set=None)
+        return self.timeit_function(self._get_gradient,
+                                    iters,
+                                    inputs_to_check,
+                                    place,
+                                    output_names,
+                                    no_grad_set=None)
 
     def timeit_grad(self, iters=100):
         places = self._get_places()

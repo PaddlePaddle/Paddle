@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -87,7 +88,8 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
 }
 
 #ifdef PADDLE_WITH_GLOO
-int retry_do_func(std::function<int(void)> func, uint32_t max_try_time,
+int retry_do_func(std::function<int(void)> func,
+                  uint32_t max_try_time,
                   uint32_t retry_interval_ms) {
   for (uint32_t i = 0; i < max_try_time; ++i) {
     if (func() == 0) {
@@ -108,10 +110,12 @@ std::vector<char> HdfsStore::get(const std::string& key) {
   // block until key is set
   wait({key});
   int ret = retry_do_func(
-      [&path]() { return paddle::framework::fs_exists(path) ? 0 : -1; }, 5,
+      [&path]() { return paddle::framework::fs_exists(path) ? 0 : -1; },
+      5,
       wait_sleep_ms_);
   bool is_exists = (ret == 0);
-  PADDLE_ENFORCE_EQ(is_exists, true,
+  PADDLE_ENFORCE_EQ(is_exists,
+                    true,
                     paddle::platform::errors::NotFound(
                         "HdfsStore::get, path not exists: " + path));
 
@@ -132,8 +136,10 @@ std::vector<char> HdfsStore::get(const std::string& key) {
         }
         return err_no;
       },
-      5, wait_sleep_ms_);
-  PADDLE_ENFORCE_EQ(read_status, 0,
+      5,
+      wait_sleep_ms_);
+  PADDLE_ENFORCE_EQ(read_status,
+                    0,
                     paddle::platform::errors::Fatal(
                         "HdfsStore::get, path read faied: " + path));
 #endif
@@ -164,7 +170,8 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
         }
       }
       PADDLE_THROW(paddle::platform::errors::ExecutionTimeout(
-          "TIMEOUT self_rank = %d pair_rank = %d", self_rank_,
+          "TIMEOUT self_rank = %d pair_rank = %d",
+          self_rank_,
           last_check_rank));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
@@ -282,7 +289,8 @@ void ParallelConnectContext::connectFullMesh(
           }
           VLOG(0) << "peer connected success";
         },
-        i, connect_threads.size()));
+        i,
+        connect_threads.size()));
   }
   for (uint32_t i = 0; i < connect_threads.size(); ++i) {
     connect_threads[i]->join();

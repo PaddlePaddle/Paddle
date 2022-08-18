@@ -55,27 +55,30 @@ def create_model(data, rank):
             operation='linear',
             axis=0,
             num_partitions=MODEL_PARALLEL_SIZE,
-            weight_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
-                    np_weight_part)),
-            bias_attr=False, )
+            weight_attr=paddle.ParamAttr(initializer=fluid.initializer.
+                                         NumpyArrayInitializer(np_weight_part)),
+            bias_attr=False,
+        )
     else:
         result = fluid.layers.fc(
             data,
             size=OUT_SIZE,
             param_attr=paddle.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(np_weight)),
-            bias_attr=False, )
+            bias_attr=False,
+        )
 
     predict = paddle.sum(result)
     return predict
 
 
 class TestModelParallel(TestDistRunnerBase):
+
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
-        data_in = fluid.data(
-            name='data_in', shape=[batch_size, IN_SIZE], dtype=DTYPE)
+        data_in = fluid.data(name='data_in',
+                             shape=[batch_size, IN_SIZE],
+                             dtype=DTYPE)
 
         if dist_strategy:
             data_loader = fluid.io.DataLoader.from_generator(
@@ -95,8 +98,8 @@ class TestModelParallel(TestDistRunnerBase):
         opt = fluid.optimizer.SGD(0.1)
 
         if dist_strategy:
-            dist_opt = fleet.distributed_optimizer(
-                optimizer=opt, strategy=strategy)
+            dist_opt = fleet.distributed_optimizer(optimizer=opt,
+                                                   strategy=strategy)
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)

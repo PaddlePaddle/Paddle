@@ -31,6 +31,7 @@ def numpy_corr(np_arr, rowvar=True, dtype='float64'):
 
 
 class Corr_Test(unittest.TestCase):
+
     def setUp(self):
         self.shape = [4, 5]
 
@@ -51,11 +52,14 @@ class Corr_Test(unittest.TestCase):
                 corr = paddle.linalg.corrcoef(tensor)
                 np_corr = numpy_corr(np_arr, rowvar=True, dtype=dtype)
                 if dtype == 'float32':
-                    self.assertTrue(
-                        np.allclose(
-                            np_corr, corr.numpy(), atol=1.e-5))
+                    np.testing.assert_allclose(np_corr,
+                                               corr.numpy(),
+                                               rtol=1e-05,
+                                               atol=1e-05)
                 else:
-                    self.assertTrue(np.allclose(np_corr, corr.numpy()))
+                    np.testing.assert_allclose(np_corr,
+                                               corr.numpy(),
+                                               rtol=1e-05)
 
     def test_tensor_corr_rowvar(self):
         typelist = ['float64', 'float32']
@@ -75,30 +79,37 @@ class Corr_Test(unittest.TestCase):
                 corr = paddle.linalg.corrcoef(tensor, rowvar=False)
                 np_corr = numpy_corr(np_arr, rowvar=False, dtype=dtype)
                 if dtype == 'float32':
-                    self.assertTrue(
-                        np.allclose(
-                            np_corr, corr.numpy(), atol=1.e-5))
+                    np.testing.assert_allclose(np_corr,
+                                               corr.numpy(),
+                                               rtol=1e-05,
+                                               atol=1e-05)
                 else:
-                    self.assertTrue(np.allclose(np_corr, corr.numpy()))
+                    np.testing.assert_allclose(np_corr,
+                                               corr.numpy(),
+                                               rtol=1e-05)
 
 
 # Input(x) only support N-D (1<=N<=2) tensor
 class Corr_Test2(Corr_Test):
+
     def setUp(self):
         self.shape = [10]
 
 
 class Corr_Test3(Corr_Test):
+
     def setUp(self):
         self.shape = [4, 5]
 
 
 # Input(x) only support N-D (1<=N<=2) tensor
 class Corr_Test4(unittest.TestCase):
+
     def setUp(self):
         self.shape = [2, 5, 2]
 
     def test_errors(self):
+
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
@@ -109,6 +120,7 @@ class Corr_Test4(unittest.TestCase):
 
 # test unsupported complex input
 class Corr_Comeplex_Test(unittest.TestCase):
+
     def setUp(self):
         self.dtype = 'complex128'
 
@@ -120,6 +132,7 @@ class Corr_Comeplex_Test(unittest.TestCase):
 
 
 class Corr_Test5(Corr_Comeplex_Test):
+
     def setUp(self):
         self.dtype = 'complex64'
 

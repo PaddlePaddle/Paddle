@@ -90,8 +90,10 @@ inline void vec_scal(const int n, const T a, const T* x, T* y) {
 }
 
 template <>
-inline void vec_scal<float, platform::avx>(const int n, const float a,
-                                           const float* x, float* y) {
+inline void vec_scal<float, platform::avx>(const int n,
+                                           const float a,
+                                           const float* x,
+                                           float* y) {
 #ifdef __AVX__
   constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
@@ -124,14 +126,18 @@ inline void vec_scal<float, platform::avx>(const int n, const float a,
 }
 
 template <>
-inline void vec_scal<float, platform::avx2>(const int n, const float a,
-                                            const float* x, float* y) {
+inline void vec_scal<float, platform::avx2>(const int n,
+                                            const float a,
+                                            const float* x,
+                                            float* y) {
   vec_scal<float, platform::avx>(n, a, x, y);
 }
 
 template <>
-inline void vec_scal<float, platform::avx512f>(const int n, const float a,
-                                               const float* x, float* y) {
+inline void vec_scal<float, platform::avx512f>(const int n,
+                                               const float a,
+                                               const float* x,
+                                               float* y) {
   // TODO(TJ): enable me
   vec_scal<float, platform::avx2>(n, a, x, y);
 }
@@ -145,7 +151,8 @@ inline void vec_sum(const size_t n, const T* x, T* s) {
 }
 
 template <>
-inline void vec_sum<float, platform::avx>(const size_t n, const float* x,
+inline void vec_sum<float, platform::avx>(const size_t n,
+                                          const float* x,
                                           float* s) {
 #ifdef __AVX__
   constexpr unsigned int block = YMM_FLOAT_BLOCK;
@@ -166,8 +173,9 @@ inline void vec_sum<float, platform::avx>(const size_t n, const float* x,
 
   __m256 hsum = _mm256_hadd_ps(tmp, tmp);
   hsum = _mm256_add_ps(hsum, _mm256_permute2f128_ps(hsum, hsum, 0x1));
-  _mm_store_ss(s, _mm_hadd_ps(_mm256_castps256_ps128(hsum),
-                              _mm256_castps256_ps128(hsum)));
+  _mm_store_ss(
+      s,
+      _mm_hadd_ps(_mm256_castps256_ps128(hsum), _mm256_castps256_ps128(hsum)));
 
   for (; i < n; i++) {
     s[0] += x[i];
@@ -185,8 +193,10 @@ inline void vec_mul(const size_t n, const T* x, const T* y, T* z) {
 }
 
 template <>
-inline void vec_mul<float, platform::avx>(const size_t n, const float* x,
-                                          const float* y, float* z) {
+inline void vec_mul<float, platform::avx>(const size_t n,
+                                          const float* x,
+                                          const float* y,
+                                          float* z) {
 #ifdef __AVX__
   constexpr unsigned int block = YMM_FLOAT_BLOCK;
   if (n < block) {
@@ -218,8 +228,10 @@ inline void vec_mul_reduce(const size_t n, const T* x, const T* y, T* z) {
 }
 
 template <>
-inline void vec_mul_reduce<float, platform::avx>(const size_t n, const float* x,
-                                                 const float* y, float* z) {
+inline void vec_mul_reduce<float, platform::avx>(const size_t n,
+                                                 const float* x,
+                                                 const float* y,
+                                                 float* z) {
 #ifdef __AVX__
   constexpr unsigned int block = YMM_FLOAT_BLOCK;
   if (n < block) {
@@ -239,8 +251,9 @@ inline void vec_mul_reduce<float, platform::avx>(const size_t n, const float* x,
 
   __m256 hsum = _mm256_hadd_ps(tmp, tmp);
   hsum = _mm256_add_ps(hsum, _mm256_permute2f128_ps(hsum, hsum, 0x1));
-  _mm_store_ss(z, _mm_hadd_ps(_mm256_castps256_ps128(hsum),
-                              _mm256_castps256_ps128(hsum)));
+  _mm_store_ss(
+      z,
+      _mm_hadd_ps(_mm256_castps256_ps128(hsum), _mm256_castps256_ps128(hsum)));
 
   for (; i < n; i++) {
     z[0] += x[i] * y[i];
@@ -258,8 +271,10 @@ inline void vec_bias_sub(const int n, const T a, const T* x, T* y) {
 }
 
 template <>
-inline void vec_bias_sub<float, platform::avx>(const int n, const float a,
-                                               const float* x, float* y) {
+inline void vec_bias_sub<float, platform::avx>(const int n,
+                                               const float a,
+                                               const float* x,
+                                               float* y) {
 #ifdef __AVX__
   constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
@@ -292,14 +307,18 @@ inline void vec_bias_sub<float, platform::avx>(const int n, const float a,
 }
 
 template <>
-inline void vec_bias_sub<float, platform::avx2>(const int n, const float a,
-                                                const float* x, float* y) {
+inline void vec_bias_sub<float, platform::avx2>(const int n,
+                                                const float a,
+                                                const float* x,
+                                                float* y) {
   vec_bias_sub<float, platform::avx>(n, a, x, y);
 }
 
 template <>
-inline void vec_bias_sub<float, platform::avx512f>(const int n, const float a,
-                                                   const float* x, float* y) {
+inline void vec_bias_sub<float, platform::avx512f>(const int n,
+                                                   const float a,
+                                                   const float* x,
+                                                   float* y) {
   // TODO(TJ): enable me
   vec_bias_sub<float, platform::avx2>(n, a, x, y);
 }
@@ -313,9 +332,8 @@ inline void vec_cross(const int n, const T* x, const T* y, const T* z, T* out) {
 }
 
 template <>
-inline void vec_cross<float, platform::avx>(const int n, const float* x,
-                                            const float* y, const float* z,
-                                            float* out) {
+inline void vec_cross<float, platform::avx>(
+    const int n, const float* x, const float* y, const float* z, float* out) {
 #ifdef __AVX__
   constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
@@ -350,16 +368,14 @@ inline void vec_cross<float, platform::avx>(const int n, const float* x,
 }
 
 template <>
-inline void vec_cross<float, platform::avx2>(const int n, const float* x,
-                                             const float* y, const float* z,
-                                             float* out) {
+inline void vec_cross<float, platform::avx2>(
+    const int n, const float* x, const float* y, const float* z, float* out) {
   vec_cross<float, platform::avx>(n, x, y, z, out);
 }
 
 template <>
-inline void vec_cross<float, platform::avx512f>(const int n, const float* x,
-                                                const float* y, const float* z,
-                                                float* out) {
+inline void vec_cross<float, platform::avx512f>(
+    const int n, const float* x, const float* y, const float* z, float* out) {
   // TODO(TJ): enable me
   vec_cross<float, platform::avx>(n, x, y, z, out);
 }
@@ -372,8 +388,10 @@ inline void vec_clip(const size_t n, const T a, const T* x, T* y) {
 }
 
 template <>
-inline void vec_clip<float, platform::avx>(const size_t n, const float a,
-                                           const float* x, float* y) {
+inline void vec_clip<float, platform::avx>(const size_t n,
+                                           const float a,
+                                           const float* x,
+                                           float* y) {
 #ifdef __AVX__
   constexpr unsigned int block = YMM_FLOAT_BLOCK;
   if (n < block) {
@@ -405,8 +423,10 @@ inline void vec_add_bias(const int n, const T a, const T* x, T* y) {
 }
 
 template <>
-inline void vec_add_bias<float, platform::avx>(const int n, const float a,
-                                               const float* x, float* y) {
+inline void vec_add_bias<float, platform::avx>(const int n,
+                                               const float a,
+                                               const float* x,
+                                               float* y) {
 #ifdef __AVX__
   constexpr int block = YMM_FLOAT_BLOCK;
   if (n < block) {
@@ -439,14 +459,18 @@ inline void vec_add_bias<float, platform::avx>(const int n, const float a,
 }
 
 template <>
-inline void vec_add_bias<float, platform::avx2>(const int n, const float a,
-                                                const float* x, float* y) {
+inline void vec_add_bias<float, platform::avx2>(const int n,
+                                                const float a,
+                                                const float* x,
+                                                float* y) {
   vec_add_bias<float, platform::avx>(n, a, x, y);
 }
 
 template <>
-inline void vec_add_bias<float, platform::avx512f>(const int n, const float a,
-                                                   const float* x, float* y) {
+inline void vec_add_bias<float, platform::avx512f>(const int n,
+                                                   const float a,
+                                                   const float* x,
+                                                   float* y) {
   // TODO(TJ): enable me
   vec_add_bias<float, platform::avx2>(n, a, x, y);
 }
@@ -472,7 +496,8 @@ inline void vec_sigmoid(const int n, const T* x, T* y) {
 }
 
 template <>
-inline void vec_sigmoid<float, platform::avx>(const int n, const float* x,
+inline void vec_sigmoid<float, platform::avx>(const int n,
+                                              const float* x,
                                               float* y) {
 #ifdef __AVX__
   constexpr int block = YMM_FLOAT_BLOCK;
@@ -531,13 +556,15 @@ inline void vec_sigmoid<float, platform::avx>(const int n, const float* x,
 }
 
 template <>
-inline void vec_sigmoid<float, platform::avx2>(const int n, const float* x,
+inline void vec_sigmoid<float, platform::avx2>(const int n,
+                                               const float* x,
                                                float* y) {
   vec_sigmoid<float, platform::avx>(n, x, y);
 }
 
 template <>
-inline void vec_sigmoid<float, platform::avx512f>(const int n, const float* x,
+inline void vec_sigmoid<float, platform::avx512f>(const int n,
+                                                  const float* x,
                                                   float* y) {
   // TODO(TJ): enable me
   vec_sigmoid<float, platform::avx2>(n, x, y);
@@ -560,7 +587,8 @@ inline void vec_relu(const int n, const T* x, T* y) {
 }
 
 template <>
-inline void vec_relu<float, platform::avx>(const int n, const float* x,
+inline void vec_relu<float, platform::avx>(const int n,
+                                           const float* x,
                                            float* y) {
 #ifdef __AVX__
   constexpr int block = YMM_FLOAT_BLOCK;
@@ -594,13 +622,15 @@ inline void vec_relu<float, platform::avx>(const int n, const float* x,
 }
 
 template <>
-inline void vec_relu<float, platform::avx2>(const int n, const float* x,
+inline void vec_relu<float, platform::avx2>(const int n,
+                                            const float* x,
                                             float* y) {
   vec_relu<float, platform::avx>(n, x, y);
 }
 
 template <>
-inline void vec_relu<float, platform::avx512f>(const int n, const float* x,
+inline void vec_relu<float, platform::avx512f>(const int n,
+                                               const float* x,
                                                float* y) {
   // TODO(TJ): enable me
   vec_relu<float, platform::avx2>(n, x, y);

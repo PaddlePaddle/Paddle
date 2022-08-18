@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <thrust/complex.h>
+
 #include <bitset>
 #include <iostream>
 

@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import sys
+
 sys.path.append("..")
 import paddle.fluid.core as core
 import unittest
@@ -30,6 +31,7 @@ def sigmoid_array(x):
 
 
 class TestXPULogLossOp(OpTest):
+
     def setUp(self):
         self.op_type = 'log_loss'
         samples_num = 100

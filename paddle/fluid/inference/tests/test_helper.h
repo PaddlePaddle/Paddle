@@ -44,7 +44,9 @@ bool cpu_place_used(const paddle::PaddlePlace& place) {
 
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor* input,
-                 paddle::framework::DDim dims, T lower, T upper) {
+                 paddle::framework::DDim dims,
+                 T lower,
+                 T upper) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
@@ -57,7 +59,8 @@ void SetupTensor(paddle::framework::LoDTensor* input,
 
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor* input,
-                 paddle::framework::DDim dims, const std::vector<T>& data) {
+                 paddle::framework::DDim dims,
+                 const std::vector<T>& data) {
   CHECK_EQ(phi::product(dims), static_cast<int64_t>(data.size()));
   T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
   memcpy(input_ptr, data.data(), input->numel() * sizeof(T));
@@ -65,7 +68,9 @@ void SetupTensor(paddle::framework::LoDTensor* input,
 
 template <typename T>
 void SetupLoDTensor(paddle::framework::LoDTensor* input,
-                    const paddle::framework::LoD& lod, T lower, T upper) {
+                    const paddle::framework::LoD& lod,
+                    T lower,
+                    T upper) {
   input->set_lod(lod);
   int dim = lod[0][lod[0].size() - 1];
   SetupTensor<T>(input, {dim, 1}, lower, upper);
@@ -110,8 +115,10 @@ void CheckError(const paddle::framework::LoDTensor& output1,
 }
 
 std::unique_ptr<paddle::framework::ProgramDesc> InitProgram(
-    paddle::framework::Executor* executor, paddle::framework::Scope* scope,
-    const std::string& dirname, const bool is_combined = false,
+    paddle::framework::Executor* executor,
+    paddle::framework::Scope* scope,
+    const std::string& dirname,
+    const bool is_combined = false,
     const std::string& prog_filename = "__model_combined__",
     const std::string& param_filename = "__params_combined__") {
   std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
@@ -120,9 +127,10 @@ std::unique_ptr<paddle::framework::ProgramDesc> InitProgram(
     // Hard-coding the file names of program and parameters in unittest.
     // The file names should be consistent with that used in Python API
     //  `fluid.io.save_inference_model`.
-    inference_program =
-        paddle::inference::Load(executor, scope, dirname + "/" + prog_filename,
-                                dirname + "/" + param_filename);
+    inference_program = paddle::inference::Load(executor,
+                                                scope,
+                                                dirname + "/" + prog_filename,
+                                                dirname + "/" + param_filename);
   } else {
     // Parameters are saved in separate files sited in the specified
     // `dirname`.
@@ -132,15 +140,16 @@ std::unique_ptr<paddle::framework::ProgramDesc> InitProgram(
 }
 
 std::vector<std::vector<int64_t>> GetFeedTargetShapes(
-    const std::string& dirname, const bool is_combined = false,
+    const std::string& dirname,
+    const bool is_combined = false,
     const std::string& prog_filename = "__model_combined__",
     const std::string& param_filename = "__params_combined__") {
   auto place = paddle::platform::CPUPlace();
   auto executor = paddle::framework::Executor(place);
   auto* scope = new paddle::framework::Scope();
 
-  auto inference_program = InitProgram(&executor, scope, dirname, is_combined,
-                                       prog_filename, param_filename);
+  auto inference_program = InitProgram(
+      &executor, scope, dirname, is_combined, prog_filename, param_filename);
   auto& global_block = inference_program->Block(0);
 
   const std::vector<std::string>& feed_target_names =
@@ -160,7 +169,8 @@ template <typename Place, bool CreateVars = true, bool PrepareContext = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    const std::vector<paddle::framework::FetchType*>& cpu_fetchs,
-                   const int repeat = 1, const bool is_combined = false) {
+                   const int repeat = 1,
+                   const bool is_combined = false) {
   // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
@@ -234,11 +244,19 @@ void TestInference(const std::string& dirname,
     bool CreateLocalScope = CreateVars;
     if (PrepareContext) {
       ctx = executor.Prepare(*inference_program, 0);
-      executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
-                                  &fetch_targets, CreateLocalScope, CreateVars);
+      executor.RunPreparedContext(ctx.get(),
+                                  scope,
+                                  &feed_targets,
+                                  &fetch_targets,
+                                  CreateLocalScope,
+                                  CreateVars);
     } else {
-      executor.Run(*inference_program, scope, &feed_targets, &fetch_targets,
-                   CreateLocalScope, CreateVars);
+      executor.Run(*inference_program,
+                   scope,
+                   &feed_targets,
+                   &fetch_targets,
+                   CreateLocalScope,
+                   CreateVars);
     }
 
     // Enable the profiler
@@ -251,12 +269,19 @@ void TestInference(const std::string& dirname,
       if (PrepareContext) {
         // Note: if you change the inference_program, you need to call
         // executor.Prepare() again to get a new ExecutorPrepareContext.
-        executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
-                                    &fetch_targets, CreateLocalScope,
+        executor.RunPreparedContext(ctx.get(),
+                                    scope,
+                                    &feed_targets,
+                                    &fetch_targets,
+                                    CreateLocalScope,
                                     CreateVars);
       } else {
-        executor.Run(*inference_program, scope, &feed_targets, &fetch_targets,
-                     CreateLocalScope, CreateVars);
+        executor.Run(*inference_program,
+                     scope,
+                     &feed_targets,
+                     &fetch_targets,
+                     CreateLocalScope,
+                     CreateVars);
       }
     }
 

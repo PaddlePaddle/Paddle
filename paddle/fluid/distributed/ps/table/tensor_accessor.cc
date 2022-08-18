@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/tensor_accessor.h"
+
 #include "Eigen/Dense"
 
 namespace paddle {
@@ -43,7 +44,8 @@ bool CommMergeAccessor::Save(float * /*value*/, int /*param*/) { return true; }
 int32_t CommMergeAccessor::Create(float **value, size_t num) { return 0; }
 
 // 从values中选取到select_values中
-int32_t CommMergeAccessor::Select(float **select_values, const float **values,
+int32_t CommMergeAccessor::Select(float **select_values,
+                                  const float **values,
                                   size_t num) {
   return 0;
 }
@@ -61,12 +63,14 @@ int32_t CommMergeAccessor::Merge(float **update_values,
 // 将update_values聚合到一起，通过it.next判定是否进入下一个key
 //  int32_t merge(float** update_values, iterator it);
 // 将update_values更新应用到values中
-int32_t CommMergeAccessor::Update(float **values, const float **update_values,
+int32_t CommMergeAccessor::Update(float **values,
+                                  const float **update_values,
                                   size_t num) {
   return 0;
 }
 
-int CommMergeAccessor::SetWeight(float **values, const float **update_values,
+int CommMergeAccessor::SetWeight(float **values,
+                                 const float **update_values,
                                  size_t num) {
   return 0;
 }

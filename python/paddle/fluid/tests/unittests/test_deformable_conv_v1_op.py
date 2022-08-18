@@ -92,8 +92,8 @@ def dconv_im2col_gemm(input, offset, filter, group, conv_param):
                                                    im_h, im_w)
                             val_out = val
 
-                            col_buffer[n, c * f_h * f_w + kh * f_w + kw, h *
-                                       in_w + w] = val_out
+                            col_buffer[n, c * f_h * f_w + kh * f_w + kw,
+                                       h * in_w + w] = val_out
 
     out = np.zeros((in_n, group, int(out_c // group), out_h * out_w))
     weight = filter.reshape(group, int(out_c // group), f_c * f_h * f_w)
@@ -122,6 +122,7 @@ def deform_conv2d_wrapper(x,
 
 
 class TestModulatedDeformableConvOp(OpTest):
+
     def setUp(self):
         self.python_api = deform_conv2d_wrapper
         self.op_type = "deformable_conv_v1"
@@ -162,19 +163,17 @@ class TestModulatedDeformableConvOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Input', 'Offset', 'Filter'],
-            'Output',
-            max_relative_error=0.05,
-            check_eager=True)
+        self.check_grad(['Input', 'Offset', 'Filter'],
+                        'Output',
+                        max_relative_error=0.05,
+                        check_eager=True)
 
     def test_check_grad_no_filter(self):
-        self.check_grad(
-            ['Input', 'Offset'],
-            'Output',
-            max_relative_error=0.1,
-            no_grad_set=set(['Filter']),
-            check_eager=True)
+        self.check_grad(['Input', 'Offset'],
+                        'Output',
+                        max_relative_error=0.1,
+                        no_grad_set=set(['Filter']),
+                        check_eager=True)
 
     def init_test_case(self):
         self.pad = [1, 1]
@@ -203,6 +202,7 @@ class TestModulatedDeformableConvOp(OpTest):
 
 
 class TestWithStride(TestModulatedDeformableConvOp):
+
     def init_test_case(self):
         self.pad = [3, 3]
         self.stride = [2, 2]
@@ -220,6 +220,7 @@ class TestWithStride(TestModulatedDeformableConvOp):
 
 
 class TestWithDilation(TestModulatedDeformableConvOp):
+
     def init_test_case(self):
         self.pad = [2, 2]
         self.stride = [1, 1]
@@ -240,6 +241,7 @@ class TestWithDilation(TestModulatedDeformableConvOp):
 
 
 class TestWith1x1(TestModulatedDeformableConvOp):
+
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -257,6 +259,7 @@ class TestWith1x1(TestModulatedDeformableConvOp):
 
 
 class TestWithGroup(TestModulatedDeformableConvOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -278,38 +281,42 @@ class TestWithGroup(TestModulatedDeformableConvOp):
 
 
 class TestWithDouble(TestModulatedDeformableConvOp):
+
     def init_type(self):
         self.dtype = np.float64
 
 
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
+
     def test_error(self):
+
         def test_invalid_input():
             input = [1, 3, 32, 32]
-            offset = fluid.data(
-                name='offset', shape=[None, 3, 32, 32], dtype='float32')
-            loss = fluid.layers.deformable_conv(
-                input,
-                offset,
-                mask=None,
-                num_filters=4,
-                filter_size=1,
-                modulated=False)
+            offset = fluid.data(name='offset',
+                                shape=[None, 3, 32, 32],
+                                dtype='float32')
+            loss = fluid.layers.deformable_conv(input,
+                                                offset,
+                                                mask=None,
+                                                num_filters=4,
+                                                filter_size=1,
+                                                modulated=False)
 
         self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_offset():
-            input = fluid.data(
-                name='input', shape=[None, 3, 32, 32], dtype='int32')
-            offset = fluid.data(
-                name='offset', shape=[None, 3, 32, 32], dtype='float32')
-            loss = fluid.layers.deformable_conv(
-                input,
-                offset,
-                mask=None,
-                num_filters=4,
-                filter_size=1,
-                modulated=False)
+            input = fluid.data(name='input',
+                               shape=[None, 3, 32, 32],
+                               dtype='int32')
+            offset = fluid.data(name='offset',
+                                shape=[None, 3, 32, 32],
+                                dtype='float32')
+            loss = fluid.layers.deformable_conv(input,
+                                                offset,
+                                                mask=None,
+                                                num_filters=4,
+                                                filter_size=1,
+                                                modulated=False)
 
         self.assertRaises(TypeError, test_invalid_offset)
 

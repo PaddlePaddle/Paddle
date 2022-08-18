@@ -20,9 +20,11 @@ limitations under the License. */
 #include <pslib.h>
 #endif
 #include <ThreadPool.h>
+
 #include <atomic>
 #include <ctime>
 #include <map>
+#include <mutex>
 #include <random>
 #include <string>
 #include <unordered_map>
@@ -37,6 +39,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
+#include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 
 namespace paddle {
 namespace framework {
@@ -83,7 +86,8 @@ class FleetWrapper {
   }
 
   // set client to client communication config
-  void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,
+  void SetClient2ClientConfig(int request_timeout_ms,
+                              int connect_timeout_ms,
                               int max_retry);
 
   void SetPullLocalThreadNum(int thread_num) {
@@ -91,18 +95,24 @@ class FleetWrapper {
   }
 
 #ifdef PADDLE_WITH_PSLIB
-  void HeterPullSparseVars(int workerid, std::shared_ptr<HeterTask> task,
+  void HeterPullSparseVars(int workerid,
+                           std::shared_ptr<HeterTask> task,
                            const uint64_t table_id,
                            const std::vector<std::string>& var_names,
                            int fea_dim,
                            const std::vector<std::string>& var_emb_names);
 
   void HeterPushSparseVars(
-      std::shared_ptr<HeterTask> task, const Scope& scope,
-      const uint64_t table_id, const std::vector<std::string>& sparse_key_names,
-      const std::vector<std::string>& sparse_grad_names, const int emb_dim,
+      std::shared_ptr<HeterTask> task,
+      const Scope& scope,
+      const uint64_t table_id,
+      const std::vector<std::string>& sparse_key_names,
+      const std::vector<std::string>& sparse_grad_names,
+      const int emb_dim,
       std::vector<::std::future<int32_t>>* push_sparse_status,
-      const bool use_cvm, const bool dump_slot, const bool no_cvm);
+      const bool use_cvm,
+      const bool dump_slot,
+      const bool no_cvm);
 #endif
 
   typedef std::function<void(int, int)> HeterCallBackFunc;
@@ -111,7 +121,8 @@ class FleetWrapper {
   // Pull sparse variables from server in sync mode
   // Param<in>: scope, table_id, var_names, fea_keys, fea_dim, var_emb_names
   // Param<out>: fea_values
-  void PullSparseVarsSync(const Scope& scope, const uint64_t table_id,
+  void PullSparseVarsSync(const Scope& scope,
+                          const uint64_t table_id,
                           const std::vector<std::string>& var_names,
                           std::vector<uint64_t>* fea_keys,
                           std::vector<std::vector<float>>* fea_values,
@@ -122,34 +133,42 @@ class FleetWrapper {
   // Param<in>: scope, table_id, var_names, fea_keys, fea_dim
   // Param<out>: fea_values std::future
   std::future<int32_t> PullSparseVarsAsync(
-      const Scope& scope, const uint64_t table_id,
+      const Scope& scope,
+      const uint64_t table_id,
       const std::vector<std::string>& var_names,
       std::vector<uint64_t>* fea_keys,
-      std::vector<std::vector<float>>* fea_values, int fea_dim);
+      std::vector<std::vector<float>>* fea_values,
+      int fea_dim);
 
   // Pull sparse variables from server in sync mode
   // pull immediately to tensors
-  void PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
-                              uint64_t padding_id, platform::Place place,
+  void PullSparseToTensorSync(const uint64_t table_id,
+                              int fea_dim,
+                              uint64_t padding_id,
+                              platform::Place place,
                               std::vector<const LoDTensor*>* inputs,  // NOLINT
                               std::vector<LoDTensor*>* outputs);      // NOLINT
 
   // pull dense variables from server in sync mod
   // Param<in>: scope, table_id, var_names
   // Param<out>: void
-  void PullDenseVarsSync(const Scope& scope, const uint64_t table_id,
+  void PullDenseVarsSync(const Scope& scope,
+                         const uint64_t table_id,
                          const std::vector<std::string>& var_names);
 
   // pull dense variables from server in async mod
   // Param<in>: scope, table_id, var_names
   // Param<out>: pull_dense_status
   void PullDenseVarsAsync(
-      const Scope& scope, const uint64_t table_id,
+      const Scope& scope,
+      const uint64_t table_id,
       const std::vector<std::string>& var_names,
-      std::vector<::std::future<int32_t>>* pull_dense_status, bool in_cpu);
+      std::vector<::std::future<int32_t>>* pull_dense_status,
+      bool in_cpu);
 
   // push dense parameters(not gradients) to server in sync mode
-  void PushDenseParamSync(const Scope& scope, const uint64_t table_id,
+  void PushDenseParamSync(const Scope& scope,
+                          const uint64_t table_id,
                           const std::vector<std::string>& var_names);
 
 // Push dense variables to server in async mode
@@ -157,35 +176,44 @@ class FleetWrapper {
 // Param<out>: push_sparse_status
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void PushDenseVarsAsync(
-      const Scope& scope, const uint64_t table_id,
+      const Scope& scope,
+      const uint64_t table_id,
       const std::vector<std::string>& var_names,
       std::vector<::std::future<int32_t>>* push_sparse_status,
-      float scale_datanorm, int batch_size,
-      const paddle::platform::Place& place, gpuStream_t stream,
+      float scale_datanorm,
+      int batch_size,
+      const paddle::platform::Place& place,
+      gpuStream_t stream,
       gpuEvent_t event);
 #endif
 #ifdef PADDLE_WITH_XPU
   void PushDenseVarsAsync(
-      const Scope& scope, const uint64_t table_id,
+      const Scope& scope,
+      const uint64_t table_id,
       const std::vector<std::string>& var_names,
       std::vector<::std::future<int32_t>>* push_sparse_status,
-      float scale_datanorm, int batch_size,
+      float scale_datanorm,
+      int batch_size,
       const paddle::platform::Place& place);
 #endif
   void PushDenseVarsAsync(
-      const Scope& scope, const uint64_t table_id,
+      const Scope& scope,
+      const uint64_t table_id,
       const std::vector<std::string>& var_names,
       std::vector<::std::future<int32_t>>* push_sparse_status,
-      float scale_datanorm, int batch_size);
+      float scale_datanorm,
+      int batch_size);
 
   // push dense variables to server in sync mode
-  void PushDenseVarsSync(Scope* scope, const uint64_t table_id,
+  void PushDenseVarsSync(Scope* scope,
+                         const uint64_t table_id,
                          const std::vector<std::string>& var_names);
 
   // Push sparse variables with labels to server in async mode
   std::vector<std::unordered_map<uint64_t, std::vector<float>>> local_tables_;
   void PullSparseToLocal(const uint64_t table_id, int fea_value_dim);
-  void PullSparseVarsFromLocal(const Scope& scope, const uint64_t table_id,
+  void PullSparseVarsFromLocal(const Scope& scope,
+                               const uint64_t table_id,
                                const std::vector<std::string>& var_names,
                                std::vector<uint64_t>* fea_keys,
                                std::vector<std::vector<float>>* fea_values,
@@ -201,22 +229,32 @@ class FleetWrapper {
   //            sparse_grad_names, batch_size, use_cvm, dump_slot
   // Param<out>: push_values, push_sparse_status
   void PushSparseVarsWithLabelAsync(
-      const Scope& scope, const uint64_t table_id,
+      const Scope& scope,
+      const uint64_t table_id,
       const std::vector<uint64_t>& fea_keys,
       const std::vector<float>& fea_labels,
       const std::vector<std::string>& sparse_key_names,
-      const std::vector<std::string>& sparse_grad_names, const int emb_dim,
+      const std::vector<std::string>& sparse_grad_names,
+      const int emb_dim,
       std::vector<std::vector<float>>* push_values,
       std::vector<::std::future<int32_t>>* push_sparse_status,
-      const int batch_size, const bool use_cvm, const bool dump_slot,
-      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
+      const int batch_size,
+      const bool use_cvm,
+      const bool dump_slot,
+      std::vector<uint64_t>* sparse_push_keys,
+      const bool no_cvm,
       const bool scale_sparse_gradient_with_batch_size);
 
   // Push sparse variables to server in async mode
   void PushSparseFromTensorWithLabelAsync(
-      const Scope& scope, const uint64_t table_id, int fea_dim,
-      uint64_t padding_id, bool scale_sparse, const std::string& accesor,
-      const std::string& click_name, platform::Place place,
+      const Scope& scope,
+      const uint64_t table_id,
+      int fea_dim,
+      uint64_t padding_id,
+      bool scale_sparse,
+      const std::string& accesor,
+      const std::string& click_name,
+      platform::Place place,
       const std::vector<std::string>& input_names,
       std::vector<const LoDTensor*>* inputs,    // NOLINT
       std::vector<const LoDTensor*>* outputs);  // NOLINT
@@ -238,7 +276,8 @@ class FleetWrapper {
   void InitServer(const std::string& dist_desc, int index);
   // init trainer
   void InitWorker(const std::string& dist_desc,
-                  const std::vector<uint64_t>& host_sign_list, int node_num,
+                  const std::vector<uint64_t>& host_sign_list,
+                  int node_num,
                   int index);
   // stop server
   void StopServer();
@@ -259,9 +298,11 @@ class FleetWrapper {
   // flush all push requests
   void ClientFlush();
   // load from paddle model
-  void LoadFromPaddleModel(Scope& scope, const uint64_t table_id,  // NOLINT
+  void LoadFromPaddleModel(Scope& scope,
+                           const uint64_t table_id,  // NOLINT
                            std::vector<std::string> var_list,
-                           std::string model_path, std::string model_proto_file,
+                           std::string model_path,
+                           std::string model_proto_file,
                            std::vector<std::string> table_var_list,
                            bool load_combine);
 
@@ -272,32 +313,42 @@ class FleetWrapper {
   void LoadModel(const std::string& path, const int mode);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
-  void LoadModelOneTable(const uint64_t table_id, const std::string& path,
+  void LoadModelOneTable(const uint64_t table_id,
+                         const std::string& path,
                          const int mode);
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
   void SaveModel(const std::string& path, const int mode);
   void SaveMultiTableOnePath(const std::vector<int>& table_ids,
-                             const std::string& path, const int mode);
+                             const std::string& path,
+                             const int mode);
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
-  void SaveModelOneTable(const uint64_t table_id, const std::string& path,
+  void SaveModelOneTable(const uint64_t table_id,
+                         const std::string& path,
                          const int mode);
   // save model with prefix
-  void SaveModelOneTablePrefix(const uint64_t table_id, const std::string& path,
-                               const int mode, const std::string& prefix);
+  void SaveModelOneTablePrefix(const uint64_t table_id,
+                               const std::string& path,
+                               const int mode,
+                               const std::string& prefix);
   // get save cache threshold
   double GetCacheThreshold(int table_id);
   // shuffle cache model between servers
-  void CacheShuffle(int table_id, const std::string& path, const int mode,
+  void CacheShuffle(int table_id,
+                    const std::string& path,
+                    const int mode,
                     const double cache_threshold);
   // save cache model
   // cache model can speed up online predict
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
   // save sparse table filtered by user-defined whitelist
-  int32_t SaveWithWhitelist(int table_id, const std::string& path,
-                            const int mode, const std::string& whitelist_path);
-  void LoadWithWhitelist(const uint64_t table_id, const std::string& path,
+  int32_t SaveWithWhitelist(int table_id,
+                            const std::string& path,
+                            const int mode,
+                            const std::string& whitelist_path);
+  void LoadWithWhitelist(const uint64_t table_id,
+                         const std::string& path,
                          const int mode);
   // copy feasign key/value from src_table_id to dest_table_id
   int32_t CopyTable(const uint64_t src_table_id, const uint64_t dest_table_id);
@@ -312,15 +363,18 @@ class FleetWrapper {
   // shrink sparse table
   void ShrinkSparseTable(int table_id);
   // shrink dense table
-  void ShrinkDenseTable(int table_id, Scope* scope,
-                        std::vector<std::string> var_list, float decay,
+  void ShrinkDenseTable(int table_id,
+                        Scope* scope,
+                        std::vector<std::string> var_list,
+                        float decay,
                         int emb_dim);
 
   typedef std::function<int32_t(int, int, const std::string&)> MsgHandlerFunc;
   // register client to client communication
   int RegisterClientToClientMsgHandler(int msg_type, MsgHandlerFunc handler);
   // send client to client message
-  std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,
+  std::future<int32_t> SendClientToClientMsg(int msg_type,
+                                             int to_client_id,
                                              const std::string& msg);
   // confirm all the updated params in the current pass
   void Confirm();
@@ -328,8 +382,11 @@ class FleetWrapper {
   void Revert();
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
-    if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::framework::FleetWrapper());
+    {
+      std::lock_guard<std::mutex> lk(ins_mutex);
+      if (NULL == s_instance_) {
+        s_instance_.reset(new paddle::framework::FleetWrapper());
+      }
     }
     return s_instance_;
   }
@@ -344,11 +401,14 @@ class FleetWrapper {
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
+  static std::mutex ins_mutex;
 #ifdef PADDLE_WITH_PSLIB
   std::map<uint64_t, std::vector<paddle::ps::Region>> _regions;
 #endif
 
-  size_t GetAbsoluteSum(size_t start, size_t end, size_t level,
+  size_t GetAbsoluteSum(size_t start,
+                        size_t end,
+                        size_t level,
                         const framework::LoD& lod);
 
  protected:

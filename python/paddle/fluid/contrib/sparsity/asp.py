@@ -1,12 +1,12 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 # Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -118,8 +118,8 @@ def set_excluded_layers(param_names, main_program=None):
     """
     if main_program is None:
         main_program = paddle.static.default_main_program()
-    ASPHelper.set_excluded_layers(
-        param_names=param_names, main_program=main_program)
+    ASPHelper.set_excluded_layers(param_names=param_names,
+                                  main_program=main_program)
 
 
 def reset_excluded_layers(main_program=None):
@@ -454,16 +454,15 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
             place = paddle.CUDAPlace(gpu_id)
     else:
         raise TypeError(
-            "model should be paddle.nn.Layer or paddle.static.Program, but got {}".
-            format(type(model)))
+            "model should be paddle.nn.Layer or paddle.static.Program, but got {}"
+            .format(type(model)))
 
-    return prune_func(
-        place,
-        model,
-        n=n,
-        m=m,
-        mask_algo=MaskAlgo_mapping[mask_algo],
-        with_mask=with_mask)
+    return prune_func(place,
+                      model,
+                      n=n,
+                      m=m,
+                      mask_algo=MaskAlgo_mapping[mask_algo],
+                      with_mask=with_mask)
 
 
 class ProgramASPInfo(object):
@@ -624,8 +623,8 @@ class ASPHelper(object):
                     param.set_value(weight_pruned_nparray)
 
                     if with_mask:
-                        weight_mask_param = asp_info.mask_vars.get(param.name,
-                                                                   None)
+                        weight_mask_param = asp_info.mask_vars.get(
+                            param.name, None)
                         assert weight_mask_param is not None, \
                             'Cannot find {} variable, please call sparsity.decorate() to' \
                             ' decorate your optimizer first!'.format(ASPHelper._get_mask_name(param.name))
@@ -642,13 +641,12 @@ class ASPHelper(object):
                 target_program = param.block.program
             assert target_program is not None, \
                     'Cannot get paddle.static.Program from Paddle.nn.Layer.'
-            return ASPHelper.prune_model_by_program(
-                place,
-                target_program,
-                n=n,
-                m=m,
-                mask_algo=mask_algo,
-                with_mask=with_mask)
+            return ASPHelper.prune_model_by_program(place,
+                                                    target_program,
+                                                    n=n,
+                                                    m=m,
+                                                    mask_algo=mask_algo,
+                                                    with_mask=with_mask)
 
     @staticmethod
     def _get_mask_name(param_name):
@@ -724,6 +722,10 @@ class ASPHelper(object):
         if param_name in supported_layers_and_prune_func_map:
             return True
 
+        # The parameter's name is neither in *.* format nor added to supported_layers_and_prune_func_map, return False.
+        if len(param_name_list) == 1:
+            return False
+
         param_name_no_weight_suffix = param_name_list[0]
         param_type_suffix = param_name_list[1]
         layer_name = param_name_no_weight_suffix[:param_name_no_weight_suffix.
@@ -746,10 +748,10 @@ class ASPHelper(object):
                 param_name_no_weight_suffix, None)
         if func is None:
             layer_name = param_name_no_weight_suffix[:
-                                                     param_name_no_weight_suffix.
-                                                     rfind('_')]
-            func = supported_layers_and_prune_func_map.get(layer_name,
-                                                           _default_pruning)
+                                                     param_name_no_weight_suffix
+                                                     .rfind('_')]
+            func = supported_layers_and_prune_func_map.get(
+                layer_name, _default_pruning)
         return func
 
     @classmethod
@@ -859,16 +861,17 @@ class ASPHelper(object):
         asp_info = cls._get_program_asp_info(main_program)
         for param in params:
             if param.name in asp_info.mask_vars:
-                block.append_op(
-                    type='elementwise_mul',
-                    inputs={"X": param,
-                            'Y': asp_info.mask_vars[param.name]},
-                    outputs={'Out': param},
-                    attrs={
-                        'axis': -1,
-                        'use_mkldnn': False,
-                        OP_ROLE_KEY: int(OpRole.Optimize)
-                    })
+                block.append_op(type='elementwise_mul',
+                                inputs={
+                                    "X": param,
+                                    'Y': asp_info.mask_vars[param.name]
+                                },
+                                outputs={'Out': param},
+                                attrs={
+                                    'axis': -1,
+                                    'use_mkldnn': False,
+                                    OP_ROLE_KEY: int(OpRole.Optimize)
+                                })
 
 
 class OptimizerWithSparsityGuarantee(object):
@@ -903,12 +906,11 @@ class OptimizerWithSparsityGuarantee(object):
             list: operators from :attr:`optimizer`.minimize(:attr:`loss`).
             list: pairs of parameters and their gradients.
         """
-        return ASPHelper._minimize(
-            self._optimizer,
-            loss,
-            startup_program=startup_program,
-            parameter_list=parameter_list,
-            no_grad_set=no_grad_set)
+        return ASPHelper._minimize(self._optimizer,
+                                   loss,
+                                   startup_program=startup_program,
+                                   parameter_list=parameter_list,
+                                   no_grad_set=no_grad_set)
 
     @dygraph_only
     def step(self):

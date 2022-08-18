@@ -21,6 +21,7 @@ import paddle
 
 
 class TestLogspaceOpCommonCase(OpTest):
+
     def setUp(self):
         self.op_type = "logspace"
         dtype = 'float32'
@@ -39,6 +40,7 @@ class TestLogspaceOpCommonCase(OpTest):
 
 
 class TestLogspaceOpReverseCase(OpTest):
+
     def setUp(self):
         self.op_type = "logspace"
         dtype = 'float32'
@@ -57,6 +59,7 @@ class TestLogspaceOpReverseCase(OpTest):
 
 
 class TestLogspaceOpNumOneCase(OpTest):
+
     def setUp(self):
         self.op_type = "logspace"
         dtype = 'float32'
@@ -75,6 +78,7 @@ class TestLogspaceOpNumOneCase(OpTest):
 
 
 class TestLogspaceOpMinusBaseCase(OpTest):
+
     def setUp(self):
         self.op_type = "logspace"
         dtype = 'float32'
@@ -93,6 +97,7 @@ class TestLogspaceOpMinusBaseCase(OpTest):
 
 
 class TestLogspaceOpZeroBaseCase(OpTest):
+
     def setUp(self):
         self.op_type = "logspace"
         dtype = 'float32'
@@ -111,6 +116,7 @@ class TestLogspaceOpZeroBaseCase(OpTest):
 
 
 class TestLogspaceAPI(unittest.TestCase):
+
     def test_variable_input1(self):
         paddle.enable_static()
         prog = paddle.static.Program()
@@ -152,8 +158,12 @@ class TestLogspaceAPI(unittest.TestCase):
 
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            out = paddle.logspace(
-                0, 10, 5, 2, dtype='float32', name='logspace_res')
+            out = paddle.logspace(0,
+                                  10,
+                                  5,
+                                  2,
+                                  dtype='float32',
+                                  name='logspace_res')
             assert 'logspace_res' in out.name
 
     def test_imperative(self):
@@ -171,6 +181,7 @@ class TestLogspaceAPI(unittest.TestCase):
 
 
 class TestLogspaceOpError(unittest.TestCase):
+
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
 
@@ -200,8 +211,9 @@ class TestLogspaceOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_num_type)
 
             def test_start_dtype():
-                start = paddle.static.data(
-                    shape=[1], dtype="float64", name="start")
+                start = paddle.static.data(shape=[1],
+                                           dtype="float64",
+                                           name="start")
                 paddle.logspace(start, 10, 1, 2, dtype="float32")
 
             self.assertRaises(ValueError, test_start_dtype)
@@ -213,15 +225,17 @@ class TestLogspaceOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_end_dtype)
 
             def test_num_dtype():
-                num = paddle.static.data(
-                    shape=[1], dtype="float32", name="step")
+                num = paddle.static.data(shape=[1],
+                                         dtype="float32",
+                                         name="step")
                 paddle.logspace(0, 10, num, 2, dtype="float32")
 
             self.assertRaises(TypeError, test_num_dtype)
 
             def test_base_dtype():
-                base = paddle.static.data(
-                    shape=[1], dtype="float64", name="end")
+                base = paddle.static.data(shape=[1],
+                                          dtype="float64",
+                                          name="end")
                 paddle.logspace(0, 10, 1, base, dtype="float32")
 
             self.assertRaises(ValueError, test_base_dtype)

@@ -21,6 +21,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
@@ -67,37 +68,47 @@ class Tracer {
   ~Tracer() = default;
 
   template <typename VarType>
-  void TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
-               const NameVarMap<VarType>& outs, framework::AttributeMap attrs,
-               const platform::Place& place, bool trace_backward,
+  void TraceOp(const std::string& type,
+               const NameVarMap<VarType>& ins,
+               const NameVarMap<VarType>& outs,
+               framework::AttributeMap attrs,
+               const platform::Place& place,
+               bool trace_backward,
                const std::map<std::string, std::string>& inplace_map = {},
                paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
                bool use_default_attr_map = true);
 
   template <typename VarType>
   void TraceOpImpl(
-      const std::string& type, const NameVarMap<VarType>& ins,
+      const std::string& type,
+      const NameVarMap<VarType>& ins,
       const NameVarMap<VarType>& outs,
       framework::AttributeMap& attrs,  // NOLINT
-      const platform::Place& place, bool trace_backward,
+      const platform::Place& place,
+      bool trace_backward,
       const std::map<std::string, std::string>& inplace_map = {},
       paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
       bool use_default_attr_map = true);
 
-  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+  void TraceOp(const std::string& type,
+               const NameVarBaseMap& ins,
+               const NameVarBaseMap& outs,
+               framework::AttributeMap attrs,
                const std::map<std::string, std::string>& inplace_map = {});
 
-  void TraceOp(const std::string& type, const NameTensorMap& ins,
+  void TraceOp(const std::string& type,
+               const NameTensorMap& ins,
                const NameTensorMap& outs,
                paddle::framework::AttributeMap& attrs,  // NOLINT
                const std::map<std::string, std::string>& inplace_map = {});
 
-  void TraceOp(const std::string& type, const NameTensorMap& ins,
+  void TraceOp(const std::string& type,
+               const NameTensorMap& ins,
                const NameTensorMap& outs,
                paddle::framework::AttributeMap attrs);
 
-  void TraceOp(const std::string& type, const NameTensorMap& ins,
+  void TraceOp(const std::string& type,
+               const NameTensorMap& ins,
                const NameTensorMap& outs,
                paddle::framework::AttributeMap& attrs,  // NOLINT
                const paddle::platform::Place& place,
@@ -106,8 +117,10 @@ class Tracer {
                const std::map<std::string, std::string>& inplace_map = {});
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
-                           const NameVarBaseMap& outs, bool trace_backward);
-  bool ComputeRequiredGrad(const NameTensorMap& ins, const NameTensorMap& outs,
+                           const NameVarBaseMap& outs,
+                           bool trace_backward);
+  bool ComputeRequiredGrad(const NameTensorMap& ins,
+                           const NameTensorMap& outs,
                            bool trace_backward);
 
   void SetEnableProgramDescTracing(bool enabled) {
@@ -172,8 +185,10 @@ class Tracer {
   }
 
   phi::KernelSignature GetExpectedKernelSignature(
-      const std::string& type, const NameTensorMap& ins,
-      const NameTensorMap& outs, framework::AttributeMap attrs) const;
+      const std::string& type,
+      const NameTensorMap& ins,
+      const NameTensorMap& outs,
+      framework::AttributeMap attrs) const;
 
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);

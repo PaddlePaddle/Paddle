@@ -24,6 +24,7 @@ import paddle.fluid.core as core
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestShuffleChannelOneDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = "shuffle_channel"
         self.set_dtype()
@@ -48,11 +49,13 @@ class TestShuffleChannelOneDNNOp(OpTest):
 
 
 class TestShuffleChannelSingleGroupOneDNNOp(TestShuffleChannelOneDNNOp):
+
     def set_group(self):
         self.group = 1
 
 
 class TestShuffleChannelBF16OneDNNOp(TestShuffleChannelOneDNNOp):
+
     def set_dtype(self):
         self.dtype = np.uint16
 

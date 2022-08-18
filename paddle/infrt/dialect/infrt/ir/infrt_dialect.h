@@ -23,8 +23,8 @@
 #include <mlir/IR/OpDefinition.h>
 #include <mlir/Interfaces/InferTypeOpInterface.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
-#include "paddle/infrt/dialect/infrt/common/types.h"
 
+#include "paddle/infrt/dialect/infrt/common/types.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_opsDialect.h.inc"
 #define GET_TYPEDEF_CLASSES
 #include "paddle/infrt/dialect/infrt/ir/infrt_opsTypes.h.inc"

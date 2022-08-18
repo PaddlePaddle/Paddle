@@ -109,8 +109,8 @@ class DownpourServer(Server):
         if table_class == 'DownpourSparseTable' or table_class == 'DownpourSparseSSDTable':
             table.enable_sparse_table_cache = strategy.get(
                 'sparse_enable_cache', True)
-            table.sparse_table_cache_rate = strategy.get('sparse_cache_rate',
-                                                         0.00055)
+            table.sparse_table_cache_rate = strategy.get(
+                'sparse_cache_rate', 0.00055)
             table.sparse_table_cache_file_num = strategy.get(
                 'sparse_cache_file_num', 16)
             table.compress_in_save = strategy.get('sparse_compress_in_save',
@@ -313,8 +313,8 @@ class DownpourServer(Server):
         table.compress_in_save = strategy.get('dense_compress_in_save', True)
         table.accessor.accessor_class = strategy.get(
             'dense_accessor_class', "DownpourDenseValueAccessor")
-        table.accessor.dense_sgd_param.name = strategy.get('dense_optimizer',
-                                                           "adam")
+        table.accessor.dense_sgd_param.name = strategy.get(
+            'dense_optimizer', "adam")
         table.accessor.dense_sgd_param.adam.learning_rate = strategy.get(
             'dense_learning_rate', 5e-06)
         table.accessor.dense_sgd_param.adam.avg_decay_rate = strategy.get(
@@ -377,8 +377,8 @@ class DownpourServer(Server):
         table.compress_in_save = strategy.get('datanorm_compress_in_save', True)
         table.accessor.accessor_class = strategy.get(
             'datanorm_accessor_class', 'DownpourDenseValueAccessor')
-        table.accessor.dense_sgd_param.name = strategy.get('datanorm_operation',
-                                                           'summary')
+        table.accessor.dense_sgd_param.name = strategy.get(
+            'datanorm_operation', 'summary')
         table.accessor.dense_sgd_param.summary.summary_decay_rate = strategy.get(
             'datanorm_decay_rate', 0.999999)
         table.accessor.fea_dim = fea_dim

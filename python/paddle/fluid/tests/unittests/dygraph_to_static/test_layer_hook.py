@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,6 +29,7 @@ def forward_pre_hook1(layer, input):
 
 
 class SimpleNet(paddle.nn.Layer):
+
     def __init__(self, ):
         super(SimpleNet, self).__init__()
         self.fc1 = paddle.nn.Linear(10, 10)
@@ -52,6 +53,7 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestNestLayerHook(unittest.TestCase):
+
     def setUp(self):
         paddle.seed(2022)
         self.x = paddle.randn([4, 10])
@@ -83,12 +85,17 @@ class TestNestLayerHook(unittest.TestCase):
         st_out = self.train_net(to_static=True)
         load_out = self.load_train()
         print(st_out, dy_out, load_out)
-        self.assertTrue(
-            np.allclose(st_out, dy_out),
-            msg='dygraph_res is {}\nstatic_res is {}'.format(dy_out, st_out))
-        self.assertTrue(
-            np.allclose(st_out, load_out),
-            msg='load_out is {}\nstatic_res is {}'.format(load_out, st_out))
+        np.testing.assert_allclose(
+            st_out,
+            dy_out,
+            rtol=1e-05,
+            err_msg='dygraph_res is {}\nstatic_res is {}'.format(
+                dy_out, st_out))
+        np.testing.assert_allclose(
+            st_out,
+            load_out,
+            rtol=1e-05,
+            err_msg='load_out is {}\nstatic_res is {}'.format(load_out, st_out))
 
 
 if __name__ == "__main__":

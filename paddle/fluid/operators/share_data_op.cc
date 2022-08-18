@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/share_data_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -31,10 +32,12 @@ class ShareDataOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         in_type == framework::proto::VarType::LOD_TENSOR ||
             in_type == framework::proto::VarType::SELECTED_ROWS,
-        true, platform::errors::InvalidArgument(
-                  "Type of Variable[X] must be LoDTensor or SelectedRows!"));
+        true,
+        platform::errors::InvalidArgument(
+            "Type of Variable[X] must be LoDTensor or SelectedRows!"));
     PADDLE_ENFORCE_EQ(
-        in_type, out_type,
+        in_type,
+        out_type,
         platform::errors::InvalidArgument(
             "The type of input (X) and output (Out) are inconsistent."));
 
@@ -60,11 +63,15 @@ Return a tensor $Out$ that shares data with the input tensor $X$ and without ten
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    share_data, ops::ShareDataOp, ops::ShareDataOpMaker,
+    share_data,
+    ops::ShareDataOp,
+    ops::ShareDataOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(share_data, ops::ShareDataKernel<bool>,
-                       ops::ShareDataKernel<int>, ops::ShareDataKernel<int8_t>,
+REGISTER_OP_CPU_KERNEL(share_data,
+                       ops::ShareDataKernel<bool>,
+                       ops::ShareDataKernel<int>,
+                       ops::ShareDataKernel<int8_t>,
                        ops::ShareDataKernel<uint8_t>,
                        ops::ShareDataKernel<paddle::platform::float16>,
                        ops::ShareDataKernel<int64_t>,

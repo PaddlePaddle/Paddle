@@ -12,6 +12,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/phi/common/place.h"
 
 namespace phi {

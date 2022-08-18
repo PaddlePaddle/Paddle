@@ -22,19 +22,18 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/funcs/axis_utils.h"
-#include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
-
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace phi {
 
@@ -704,13 +703,11 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
   }
 }
 
-#define SOFTMAX_WARP_FORWARD_SOFT_CASE(Log2Elements, VecT, AccT)               \
-  case Log2Elements:                                                           \
-    WarpSoftmaxForwardSoftLabel<T,                                             \
-                                VecT,                                          \
-                                AccT,                                          \
-                                Log2Elements><<<blocks, threads, 0, stream>>>( \
-        loss, softmax, src, label, batch_size, stride, element_count);         \
+#define SOFTMAX_WARP_FORWARD_SOFT_CASE(Log2Elements, VecT, AccT)           \
+  case Log2Elements:                                                       \
+    WarpSoftmaxForwardSoftLabel<T, VecT, AccT, Log2Elements>               \
+        <<<blocks, threads, 0, stream>>>(                                  \
+            loss, softmax, src, label, batch_size, stride, element_count); \
     break;
 
 /*
@@ -1104,23 +1101,17 @@ __global__ void WarpSoftmaxForward(T* loss,
   }
 }
 
-#define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, LabelT, VecT, AccT)  \
-  case Log2Elements:                                                 \
-    WarpSoftmaxForward<T,                                            \
-                       LabelT,                                       \
-                       VecT,                                         \
-                       AccT,                                         \
-                       Log2Elements,                                 \
-                       mode,                                         \
-                       IgnoreIndex><<<blocks, threads, 0, stream>>>( \
-        loss,                                                        \
-        softmax,                                                     \
-        src,                                                         \
-        label,                                                       \
-        batch_size,                                                  \
-        stride,                                                      \
-        element_count,                                               \
-        ignore_index);                                               \
+#define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, LabelT, VecT, AccT)            \
+  case Log2Elements:                                                           \
+    WarpSoftmaxForward<T, LabelT, VecT, AccT, Log2Elements, mode, IgnoreIndex> \
+        <<<blocks, threads, 0, stream>>>(loss,                                 \
+                                         softmax,                              \
+                                         src,                                  \
+                                         label,                                \
+                                         batch_size,                           \
+                                         stride,                               \
+                                         element_count,                        \
+                                         ignore_index);                        \
     break;
 
 /*
@@ -1189,12 +1180,9 @@ void LaunchVectorizedSoftmaxForward(T* loss,
   block_size = std::max(block_size, kps::details::kWarpSize);
   dim3 grids(high_dim);
   dim3 blocks(block_size);
-  VectorizedSoftmaxForward<T,
-                           AccT,
-                           LabelT,
-                           vec_size,
-                           IgnoreIndex><<<grids, blocks, 0, stream>>>(
-      loss, softmax, logits, label, high_dim, mid_dim, ignore_index);
+  VectorizedSoftmaxForward<T, AccT, LabelT, vec_size, IgnoreIndex>
+      <<<grids, blocks, 0, stream>>>(
+          loss, softmax, logits, label, high_dim, mid_dim, ignore_index);
 }
 
 /*
@@ -1281,10 +1269,9 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
     int threads = 128;
     int blocks = (N * dim * D + threads - 1) / threads;
     // compute cross entropy, input is log softmax
-    CrossEntropyExpHardLabel<T,
-                             LabelT,
-                             IgnoreIndex><<<blocks, threads, 0, stream>>>(
-        loss_data, softmax_data, labels_data, N, dim, D, ignore_index);
+    CrossEntropyExpHardLabel<T, LabelT, IgnoreIndex>
+        <<<blocks, threads, 0, stream>>>(
+            loss_data, softmax_data, labels_data, N, dim, D, ignore_index);
   }
 }
 
@@ -1366,44 +1353,38 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
       int blocks = (n * d + kBatchPerBlock - 1) / kBatchPerBlock;
       dim3 threads(kThreadPerBlock / kBatchPerBlock, kBatchPerBlock, 1);
 
-      CrossEntropySoftLabel<T,
-                            T,
-                            false><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          loss_data,
-          NULL,
-          logits_data,
-          labels_data,
-          n,
-          axis_dim,
-          d / axis_dim,
-          kDimLog2);
+      CrossEntropySoftLabel<T, T, false>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_data,
+                                                     NULL,
+                                                     logits_data,
+                                                     labels_data,
+                                                     n,
+                                                     axis_dim,
+                                                     d / axis_dim,
+                                                     kDimLog2);
     } else {  // HardLabel
       auto* logits_data = softmax->data<T>();
       auto* labels_data = labels.data<LabelT>();
       int threads = 128;
       int blocks = (n * d / axis_dim + threads - 1) / threads;
       if (ignore_index >= 0 && ignore_index < axis_dim) {
-        CrossEntropyHardLabel<T,
-                              LabelT,
-                              true><<<blocks, threads, 0, dev_ctx.stream()>>>(
-            loss_data,
-            logits_data,
-            labels_data,
-            n,
-            axis_dim,
-            d / axis_dim,
-            ignore_index);
+        CrossEntropyHardLabel<T, LabelT, true>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_data,
+                                                       logits_data,
+                                                       labels_data,
+                                                       n,
+                                                       axis_dim,
+                                                       d / axis_dim,
+                                                       ignore_index);
       } else {
-        CrossEntropyHardLabel<T,
-                              LabelT,
-                              false><<<blocks, threads, 0, dev_ctx.stream()>>>(
-            loss_data,
-            logits_data,
-            labels_data,
-            n,
-            axis_dim,
-            d / axis_dim,
-            ignore_index);
+        CrossEntropyHardLabel<T, LabelT, false>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_data,
+                                                       logits_data,
+                                                       labels_data,
+                                                       n,
+                                                       axis_dim,
+                                                       d / axis_dim,
+                                                       ignore_index);
       }
     }
 

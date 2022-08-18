@@ -46,17 +46,28 @@ class ElementwiseAddGradMLUKernel : public framework::OpKernel<T> {
       if (dx->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec;
         std::vector<int> reduce_axes;
-        GetReduceAxesAndDstDims(axis, dout->dims(), dx->dims(), &reduce_axes,
-                                &dst_dims_vec);
+        GetReduceAxesAndDstDims(
+            axis, dout->dims(), dx->dims(), &reduce_axes, &dst_dims_vec);
 
-        MLUCnnlReduceDesc reduction_desc(
-            reduce_axes, CNNL_REDUCE_ADD, ToCnnlDataType<T>(),
-            CNNL_NOT_PROPAGATE_NAN, CNNL_REDUCE_NO_INDICES, CNNL_32BIT_INDICES);
-        MLUCnnlTensorDesc dx_desc(dst_dims_vec.size(), dst_dims_vec.data(),
-                                  ToCnnlDataType<T>());
-        MLUCnnl::Reduce(ctx, true /*need_workspace*/, reduction_desc.get(),
-                        nullptr, dout_desc.get(), GetBasePtr(dout), 0, nullptr,
-                        nullptr, dx_desc.get(), GetBasePtr(dx));
+        MLUCnnlReduceDesc reduction_desc(reduce_axes,
+                                         CNNL_REDUCE_ADD,
+                                         ToCnnlDataType<T>(),
+                                         CNNL_NOT_PROPAGATE_NAN,
+                                         CNNL_REDUCE_NO_INDICES,
+                                         CNNL_32BIT_INDICES);
+        MLUCnnlTensorDesc dx_desc(
+            dst_dims_vec.size(), dst_dims_vec.data(), ToCnnlDataType<T>());
+        MLUCnnl::Reduce(ctx,
+                        true /*need_workspace*/,
+                        reduction_desc.get(),
+                        nullptr,
+                        dout_desc.get(),
+                        GetBasePtr(dout),
+                        0,
+                        nullptr,
+                        nullptr,
+                        dx_desc.get(),
+                        GetBasePtr(dx));
       } else {
         framework::TensorCopy(*dout, ctx.GetPlace(), dev_ctx, dx);
       }
@@ -66,17 +77,28 @@ class ElementwiseAddGradMLUKernel : public framework::OpKernel<T> {
       if (dy->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec;
         std::vector<int> reduce_axes;
-        GetReduceAxesAndDstDims(axis, dout->dims(), dy->dims(), &reduce_axes,
-                                &dst_dims_vec);
+        GetReduceAxesAndDstDims(
+            axis, dout->dims(), dy->dims(), &reduce_axes, &dst_dims_vec);
 
-        MLUCnnlReduceDesc reduction_desc(
-            reduce_axes, CNNL_REDUCE_ADD, ToCnnlDataType<T>(),
-            CNNL_NOT_PROPAGATE_NAN, CNNL_REDUCE_NO_INDICES, CNNL_32BIT_INDICES);
-        MLUCnnlTensorDesc dy_desc(dst_dims_vec.size(), dst_dims_vec.data(),
-                                  ToCnnlDataType<T>());
-        MLUCnnl::Reduce(ctx, true /*need_workspace*/, reduction_desc.get(),
-                        nullptr, dout_desc.get(), GetBasePtr(dout), 0, nullptr,
-                        nullptr, dy_desc.get(), GetBasePtr(dy));
+        MLUCnnlReduceDesc reduction_desc(reduce_axes,
+                                         CNNL_REDUCE_ADD,
+                                         ToCnnlDataType<T>(),
+                                         CNNL_NOT_PROPAGATE_NAN,
+                                         CNNL_REDUCE_NO_INDICES,
+                                         CNNL_32BIT_INDICES);
+        MLUCnnlTensorDesc dy_desc(
+            dst_dims_vec.size(), dst_dims_vec.data(), ToCnnlDataType<T>());
+        MLUCnnl::Reduce(ctx,
+                        true /*need_workspace*/,
+                        reduction_desc.get(),
+                        nullptr,
+                        dout_desc.get(),
+                        GetBasePtr(dout),
+                        0,
+                        nullptr,
+                        nullptr,
+                        dy_desc.get(),
+                        GetBasePtr(dy));
       } else {
         framework::TensorCopy(*dout, ctx.GetPlace(), dev_ctx, dy);
       }
@@ -90,7 +112,8 @@ class ElementwiseAddGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(elementwise_add, ops::ElementwiseAddMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(elementwise_add,
+                       ops::ElementwiseAddMLUKernel<float>,
                        ops::ElementwiseAddMLUKernel<plat::float16>);
 REGISTER_OP_MLU_KERNEL(elementwise_add_grad,
                        ops::ElementwiseAddGradMLUKernel<float>,

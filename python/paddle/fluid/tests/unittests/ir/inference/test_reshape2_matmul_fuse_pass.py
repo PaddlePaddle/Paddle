@@ -50,9 +50,9 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of reshape2
         reshape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=10), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=10),
+                     min_size=2,
+                     max_size=2))
         x_shape = reshape + [1, 1]
 
         # 2. Generate attr:transpose_X/transpose_Y/alpha of matmul
@@ -62,9 +62,9 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
 
         # 3. Generate legal shape of input:Y of matmul
         y_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=8), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=2,
+                     max_size=2))
         y_shape[0] = x_shape[1]
 
         # 4. Generate legal attr:axis of elementwise_add
@@ -72,13 +72,19 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
         if axis == 0 or axis == -1:
             if draw(st.booleans()):
                 if axis == 0:
-                    bias_shape = [x_shape[0], ]
+                    bias_shape = [
+                        x_shape[0],
+                    ]
                 else:
-                    bias_shape = [y_shape[1], ]
+                    bias_shape = [
+                        y_shape[1],
+                    ]
             else:
                 bias_shape = [x_shape[0], y_shape[1]]
         elif axis == 1:
-            bias_shape = [y_shape[1], ]
+            bias_shape = [
+                y_shape[1],
+            ]
 
         if draw(st.integers(min_value=1, max_value=10)) <= 1:
             bias_shape[-1] = 1
@@ -87,14 +93,21 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
 
         reshape2_op = OpConfig(
             "reshape2",
-            inputs={"X": ["reshape2_x"], },
+            inputs={
+                "X": ["reshape2_x"],
+            },
             shape=reshape,
-            outputs={"Out": ["reshape2_out"],
-                     "XShape": ["xshape"]}, )
+            outputs={
+                "Out": ["reshape2_out"],
+                "XShape": ["xshape"]
+            },
+        )
         matmul_op = OpConfig(
             "matmul",
-            inputs={"X": ["reshape2_out"],
-                    "Y": ["matmul_y"]},
+            inputs={
+                "X": ["reshape2_out"],
+                "Y": ["matmul_y"]
+            },
             outputs={"Out": ["matmul_out"]},
             alpha=alpha,
             transpose_X=transpose_X,
@@ -104,14 +117,18 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
             fused_transpose_X=[],
             fused_transpose_Y=[],
             fused_reshape_Out=[],
-            fused_transpose_Out=[], )
+            fused_transpose_Out=[],
+        )
 
         add_op = OpConfig(
             "elementwise_add",
-            inputs={"X": ["matmul_out"],
-                    "Y": ["bias"]},
+            inputs={
+                "X": ["matmul_out"],
+                "Y": ["bias"]
+            },
             outputs={"Out": ["add_out"]},
-            axis=axis, )
+            axis=axis,
+        )
 
         ops = [reshape2_op, matmul_op, add_op]
 
@@ -122,8 +139,11 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
                     "matmul_y": TensorConfig(shape=y_shape),
                     "bias": TensorConfig(shape=bias_shape),
                 },
-                inputs={"reshape2_x": TensorConfig(shape=x_shape), },
-                outputs=ops[-1].outputs["Out"], )
+                inputs={
+                    "reshape2_x": TensorConfig(shape=x_shape),
+                },
+                outputs=ops[-1].outputs["Out"],
+            )
         else:
             program_config = ProgramConfig(
                 ops=ops,
@@ -133,15 +153,15 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
                     "matmul_y": TensorConfig(shape=y_shape),
                     "bias": TensorConfig(shape=bias_shape),
                 },
-                outputs=ops[-1].outputs["Out"], )
+                outputs=ops[-1].outputs["Out"],
+            )
         return program_config
 
     def test(self):
-        self.run_and_statis(
-            quant=False,
-            max_examples=50,
-            max_duration=1000,
-            passes=["gpu_cpu_reshape2_matmul_fuse_pass"])
+        self.run_and_statis(quant=False,
+                            max_examples=50,
+                            max_duration=1000,
+                            passes=["gpu_cpu_reshape2_matmul_fuse_pass"])
 
 
 if __name__ == "__main__":

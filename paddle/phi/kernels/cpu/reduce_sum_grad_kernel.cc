@@ -111,4 +111,3 @@ PD_REGISTER_KERNEL(sum_grad,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
-

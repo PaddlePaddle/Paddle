@@ -68,7 +68,8 @@ DECLARE_INFER_SHAPE_FUNCTOR(fill_constant_batch_size_like,
                             FillConstantBatchSizeLikeInferShapeFunctor,
                             PD_INFER_META(phi::FullBatchSizeLikeInferMeta));
 REGISTER_OPERATOR(
-    fill_constant_batch_size_like, ops::FillConstantBatchSizeLikeOp,
+    fill_constant_batch_size_like,
+    ops::FillConstantBatchSizeLikeOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::FillConstantBatchSizeLikeOpMaker,

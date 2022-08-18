@@ -17,7 +17,10 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/onednn/onednn_context.h"
+#ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#endif
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -85,7 +88,7 @@ namespace phi {
 
 #define PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(tensor_type)     \
   template <typename... Tail>                                              \
-  struct KernelCallHelper<paddle::optional<const tensor_type&>, Tail...> { \
+  struct KernelCallHelper<const paddle::optional<tensor_type>&, Tail...> { \
     template <int dev_ctx_idx,                                             \
               int in_idx,                                                  \
               int attr_idx,                                                \
@@ -129,7 +132,7 @@ namespace phi {
 #define PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_MULTI_INPUT(tensor_type)  \
   template <typename... Tail>                                                 \
   struct KernelCallHelper<                                                    \
-      paddle::optional<const std::vector<const tensor_type*>>,                \
+      const paddle::optional<std::vector<const tensor_type*>>&,               \
       Tail...> {                                                              \
     template <int dev_ctx_idx,                                                \
               int in_idx,                                                     \
@@ -142,7 +145,7 @@ namespace phi {
       static_assert(out_idx == 0,                                             \
                     "Kernel's Input should appear before Outputs.");          \
       const std::pair<int, int>& range = ctx->InputRangeAt(in_idx);           \
-      paddle::optional<const std::vector<const tensor_type*>> arg =           \
+      paddle::optional<std::vector<const tensor_type*>> arg =                 \
           ctx->OptionalInputsBetween<tensor_type>(range.first, range.second); \
       KernelCallHelper<Tail...>::                                             \
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(       \
@@ -233,9 +236,8 @@ template <typename Return,
           Return (*kernel_fn)(DevCtx, Args...)>
 struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   static void Compute(KernelContext* ctx) {
-    KernelCallHelper<DevCtx,
-                     Args...,
-                     TypeTag<int>>::template Compute<0, 0, 0, 0>(ctx);
+    KernelCallHelper<DevCtx, Args..., TypeTag<int>>::
+        template Compute<0, 0, 0, 0>(ctx);
   }
 
   static void VariadicCompute(const DeviceContext& dev_ctx, Args... args) {
@@ -258,7 +260,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CustomContext);
 #endif
-
+#ifdef PADDLE_WITH_MKLDNN
+  PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(OneDNNContext);
+#endif
   /* Input Helpers */
 
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);

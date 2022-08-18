@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,6 +19,7 @@ import os, shutil
 
 
 class PSController(Controller):
+
     @classmethod
     def enable(cls, ctx):
         if ctx.args.run_mode == ControleMode.PS or ctx.args.server_num or len(
@@ -83,8 +84,8 @@ class PSController(Controller):
                 "POD_IP": self.ctx.node.ip,
             }
             e.update(_gloo_envs)
-            log_tag = "ps.{}".format(i)
-            self.add_container(envs=e, log_tag=log_tag)
+            log_file = "serverlog.{}".format(i)
+            self.add_container(envs=e, log_file=log_file)
 
         trainer_rank_offset = 0
         for s in trainer_endpoints:
@@ -105,12 +106,12 @@ class PSController(Controller):
                 "POD_IP": self.ctx.node.ip,
             }
             e.update(_gloo_envs)
-            log_tag = "trainer.{}".format(i)
-            self.add_container(envs=e, log_tag=log_tag)
+            log_file = "workerlog.{}".format(i)
+            self.add_container(envs=e, log_file=log_file)
 
     def _build_pod_with_master(self):
 
-        self.pod.rank = self.ctx.args.rank
+        self.pod.rank = int(self.ctx.args.rank)
 
         server_num = self.ctx.args.server_num or 1
         servers = [
@@ -132,9 +133,10 @@ class PSController(Controller):
             'gloo_port': self.ctx.node.get_free_port(),
         })
 
-        peer_list, rank = self.master.sync_peers(
-            '/{}/info'.format(self.job.id), self.pod.name, data,
-            self.job.replicas, self.pod.rank)
+        peer_list, rank = self.master.sync_peers('/{}/info'.format(self.job.id),
+                                                 self.pod.name, data,
+                                                 self.job.replicas,
+                                                 self.pod.rank)
 
         self.ctx.logger.debug("sync peers done {}".format(peer_list))
 
@@ -171,36 +173,51 @@ class PSController(Controller):
 
         for i in range(server_num):
             e = {
-                "PADDLE_NNODES": "{}".format(self.job.replicas),
-                "PADDLE_PSERVERS_IP_PORT_LIST": ",".join(server_endpoints),
-                "PADDLE_TRAINER_ENDPOINTS": ",".join(trainer_endpoints),
+                "PADDLE_NNODES":
+                "{}".format(self.job.replicas),
+                "PADDLE_PSERVERS_IP_PORT_LIST":
+                ",".join(server_endpoints),
+                "PADDLE_TRAINER_ENDPOINTS":
+                ",".join(trainer_endpoints),
                 "PADDLE_PORT":
                 server_endpoints[i + server_rank_offset].split(":")[1],
-                "PADDLE_ROLE": "PSERVER",
-                "TRAINING_ROLE": "PSERVER",
-                "PADDLE_TRAINERS_NUM": "{}".format(len(trainer_endpoints)),
-                "POD_IP": self.ctx.node.ip,
+                "PADDLE_ROLE":
+                "PSERVER",
+                "TRAINING_ROLE":
+                "PSERVER",
+                "PADDLE_TRAINERS_NUM":
+                "{}".format(len(trainer_endpoints)),
+                "POD_IP":
+                self.ctx.node.ip,
             }
             e.update(_gloo_envs)
-            log_tag = "ps.{}".format(i)
-            self.add_container(envs=e, log_tag=log_tag)
+            log_file = "serverlog.{}".format(i)
+            self.add_container(envs=e, log_file=log_file)
 
         for i in range(trainer_num):
             e = {
-                "PADDLE_NNODES": "{}".format(self.job.replicas),
-                "PADDLE_PSERVERS_IP_PORT_LIST": ",".join(server_endpoints),
-                "PADDLE_TRAINER_ENDPOINTS": ",".join(trainer_endpoints),
+                "PADDLE_NNODES":
+                "{}".format(self.job.replicas),
+                "PADDLE_PSERVERS_IP_PORT_LIST":
+                ",".join(server_endpoints),
+                "PADDLE_TRAINER_ENDPOINTS":
+                ",".join(trainer_endpoints),
                 "PADDLE_PORT":
                 trainer_endpoints[i + trainer_rank_offset].split(":")[1],
-                "PADDLE_ROLE": "TRAINER",
-                "TRAINING_ROLE": "TRAINER",
-                "PADDLE_TRAINER_ID": "{}".format(i + trainer_rank_offset),
-                "PADDLE_TRAINERS_NUM": "{}".format(len(trainer_endpoints)),
-                "POD_IP": self.ctx.node.ip,
+                "PADDLE_ROLE":
+                "TRAINER",
+                "TRAINING_ROLE":
+                "TRAINER",
+                "PADDLE_TRAINER_ID":
+                "{}".format(i + trainer_rank_offset),
+                "PADDLE_TRAINERS_NUM":
+                "{}".format(len(trainer_endpoints)),
+                "POD_IP":
+                self.ctx.node.ip,
             }
             e.update(_gloo_envs)
-            log_tag = "trainer.{}".format(i)
-            self.add_container(envs=e, log_tag=log_tag)
+            log_file = "workerlog.{}".format(i)
+            self.add_container(envs=e, log_file=log_file)
         ''' NEW VERSION
         for i in range(server_num):
             e = {

@@ -32,7 +32,8 @@ class SizeOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -59,10 +60,14 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SizeOpNoNeedBufferVarInferer, "Input");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(size, SizeInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(size,
+                            SizeInferShapeFunctor,
                             PD_INFER_META(phi::SizeInferMeta));
 REGISTER_OPERATOR(
-    size, ops::SizeOp, ops::SizeOpMaker,
+    size,
+    ops::SizeOp,
+    ops::SizeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    SizeInferShapeFunctor, ops::SizeOpNoNeedBufferVarInferer);
+    SizeInferShapeFunctor,
+    ops::SizeOpNoNeedBufferVarInferer);

@@ -23,8 +23,10 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx, const Tensor* src,
-                  int axis, const framework::DDim& dst_dims,
+void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
+                  const Tensor* src,
+                  int axis,
+                  const framework::DDim& dst_dims,
                   Tensor* transformed_src) {
   auto stream = dev_ctx.stream();
 
@@ -40,7 +42,9 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx, const Tensor* src,
       tmp_tensor_dims[i] = dst_dims[i + axis];
       tmp_tensor.mutable_data<T>(tmp_tensor_dims, dev_ctx.GetPlace());
       const auto& runner =
-          NpuOpRunner("TileWithAxis", {tmp_src}, {tmp_tensor},
+          NpuOpRunner("TileWithAxis",
+                      {tmp_src},
+                      {tmp_tensor},
                       {{"axis", static_cast<int64_t>(i)},
                        {"tiles", static_cast<int64_t>(dst_dims[i + axis])}});
       runner.Run(stream);
@@ -56,7 +60,9 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx, const Tensor* src,
     auto tmp_tensor_dims = phi::slice_ddim(dst_dims, 0, axis + src_dims.size());
     tmp_tensor.mutable_data<T>(tmp_tensor_dims, dev_ctx.GetPlace());
     const auto& runner =
-        NpuOpRunner("ExpandD", {tmp_src}, {tmp_tensor},
+        NpuOpRunner("ExpandD",
+                    {tmp_src},
+                    {tmp_tensor},
                     {{"shape", phi::vectorize<int64_t>(tmp_tensor_dims)}});
     runner.Run(stream);
     tmp_src.ShareDataWith(tmp_tensor);
@@ -76,7 +82,9 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx, const Tensor* src,
     Tensor tmp_tensor;
     tmp_tensor.mutable_data<T>(dst_dims, dev_ctx.GetPlace());
     const auto& runner =
-        NpuOpRunner("TileWithAxis", {tmp_src}, {tmp_tensor},
+        NpuOpRunner("TileWithAxis",
+                    {tmp_src},
+                    {tmp_tensor},
                     {{"axis", static_cast<int64_t>(axis + src_dims.size())},
                      {"tiles", static_cast<int64_t>(post)}});
     runner.Run(stream);
@@ -88,8 +96,11 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx, const Tensor* src,
 
 template <typename T>
 void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
-                               const Tensor* x, const Tensor* y, int axis,
-                               Tensor* transformed_x, Tensor* transformed_y) {
+                               const Tensor* x,
+                               const Tensor* y,
+                               int axis,
+                               Tensor* transformed_x,
+                               Tensor* transformed_y) {
   auto x_dims = x->dims();
   auto y_dims = y->dims();
   bool is_xsize_larger = true;
@@ -107,14 +118,17 @@ void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
   int y_axis = is_xsize_larger ? axis : 0;
 
   PADDLE_ENFORCE_GE(
-      axis, 0,
+      axis,
+      0,
       platform::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis, max_dim,
+  PADDLE_ENFORCE_LT(axis,
+                    max_dim,
                     platform::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
-                        max_dim, axis));
+                        max_dim,
+                        axis));
 
   for (int i = 0; i < x_dims.size(); ++i) {
     dst_dims_vec[i + x_axis] =

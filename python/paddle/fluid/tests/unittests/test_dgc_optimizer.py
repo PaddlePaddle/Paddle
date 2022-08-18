@@ -23,11 +23,14 @@ import paddle.fluid.regularizer as regularizer
 import paddle.fluid.clip as clip
 import paddle.compat as cpt
 from paddle.fluid.backward import append_backward
+
 paddle.enable_static()
 
 
 class TestDGCMomentumOptimizer(unittest.TestCase):
+
     class MockDGCMomentum(optimizer.DGCMomentumOptimizer):
+
         def get_accumulators(self):
             return self._accumulators
 
@@ -50,22 +53,21 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             optimize_attr={'learning_rate': 1.1},
             regularizer=None if regularization is not None else
             regularizer.L2DecayRegularizer(2e-4))
-        mul_y = block.create_var(
-            dtype="float32",
-            shape=[dims[1], dims[2]],
-            lod_level=0,
-            name="mul.y")
-        mul_out = block.create_var(
-            dtype="float32",
-            shape=[dims[0], dims[2]],
-            lod_level=0,
-            name="mul.out")
-        block.append_op(
-            type="mul",
-            inputs={"X": mul_x,
-                    "Y": mul_y},
-            outputs={"Out": mul_out},
-            attrs={"x_num_col_dims": 1})
+        mul_y = block.create_var(dtype="float32",
+                                 shape=[dims[1], dims[2]],
+                                 lod_level=0,
+                                 name="mul.y")
+        mul_out = block.create_var(dtype="float32",
+                                   shape=[dims[0], dims[2]],
+                                   lod_level=0,
+                                   name="mul.out")
+        block.append_op(type="mul",
+                        inputs={
+                            "X": mul_x,
+                            "Y": mul_y
+                        },
+                        outputs={"Out": mul_out},
+                        attrs={"x_num_col_dims": 1})
         learning_rate = 0.01
 
         dgc_momentum_optimizer = self.MockDGCMomentum(
@@ -83,10 +85,13 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             dgc_momentum_optimizer.get_accumulators = dgc_momentum_optimizer._optimizer.get_accumulators
             dgc_momentum_optimizer.get_velocity_str = dgc_momentum_optimizer._optimizer.get_velocity_str
 
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out")
-        block.append_op(
-            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+        mean_out = block.create_var(dtype="float32",
+                                    shape=[1],
+                                    lod_level=0,
+                                    name="mean.out")
+        block.append_op(type="mean",
+                        inputs={"X": mul_out},
+                        outputs={"Out": mean_out})
         # params_grads = append_backward(mean_out)
         params_grads = dgc_momentum_optimizer.backward(
             mean_out, startup_program=init_program)
@@ -96,8 +101,8 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
 
         accumulator_count = 1 if name == "momentum" else 2
         self.assertEqual(len(params_grads), 1)
-        self.assertEqual(
-            len(dgc_momentum_optimizer.get_accumulators()), accumulator_count)
+        self.assertEqual(len(dgc_momentum_optimizer.get_accumulators()),
+                         accumulator_count)
 
         self.assertEqual(len(opts), 2)
         sgd_op = opts[-1]
@@ -152,8 +157,8 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             regularization=regularizer.L2Decay(1e-4))
 
         # check param.regularizer in dgc
-        self.check_dgc_momentum_optimizer(
-            dims=[16, 1024, 8], name="dgc_momentum")
+        self.check_dgc_momentum_optimizer(dims=[16, 1024, 8],
+                                          name="dgc_momentum")
 
     def test_momentum_with_dgc_recompute(self):
         # 16 * 1024 = 16384, use dgc momentum

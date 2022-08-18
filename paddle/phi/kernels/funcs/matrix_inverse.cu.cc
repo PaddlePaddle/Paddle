@@ -14,10 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
 namespace funcs {
@@ -131,11 +130,6 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
 
 template class MatrixInverseFunctor<GPUContext, float>;
 template class MatrixInverseFunctor<GPUContext, double>;
-
-// TODO(chenweihang): remove these instantiations later
-template class MatrixInverseFunctor<paddle::platform::CUDADeviceContext, float>;
-template class MatrixInverseFunctor<paddle::platform::CUDADeviceContext,
-                                    double>;
 
 }  // namespace funcs
 }  // namespace phi

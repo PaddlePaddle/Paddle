@@ -22,16 +22,22 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
-void LabelSmoothMuls(const platform::Place& place, const aclrtStream& stream,
-                     const Tensor* in, float val, Tensor* out) {
+void LabelSmoothMuls(const platform::Place& place,
+                     const aclrtStream& stream,
+                     const Tensor* in,
+                     float val,
+                     Tensor* out) {
   out->mutable_data<T>(in->dims(), place);
   const auto& runner = NpuOpRunner("Muls", {*in}, {*out}, {{"value", val}});
   runner.Run(stream);
 }
 
 template <typename T>
-void LabelSmoothAdds(const platform::Place& place, const aclrtStream& stream,
-                     const Tensor* in, float val, Tensor* out) {
+void LabelSmoothAdds(const platform::Place& place,
+                     const aclrtStream& stream,
+                     const Tensor* in,
+                     float val,
+                     Tensor* out) {
   out->mutable_data<T>(in->dims(), place);
   const auto& runner = NpuOpRunner("Adds", {*in}, {*out}, {{"value", val}});
   runner.Run(stream);
@@ -39,8 +45,10 @@ void LabelSmoothAdds(const platform::Place& place, const aclrtStream& stream,
 
 template <typename T>
 void LabelSmoothAddBroadCast(const platform::Place& place,
-                             const aclrtStream& stream, const Tensor* in1,
-                             const Tensor* in2, Tensor* out) {
+                             const aclrtStream& stream,
+                             const Tensor* in1,
+                             const Tensor* in2,
+                             Tensor* out) {
   out->mutable_data<T>(place);
   const auto& runner = NpuOpRunner("AddV2", {*in1, *in2}, {*out}, {});
   runner.Run(stream);
@@ -102,7 +110,9 @@ class LabelSmoothGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(label_smooth, ops::LabelSmoothNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(label_smooth,
+                       ops::LabelSmoothNPUKernel<float>,
                        ops::LabelSmoothNPUKernel<plat::float16>);
-REGISTER_OP_NPU_KERNEL(label_smooth_grad, ops::LabelSmoothGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(label_smooth_grad,
+                       ops::LabelSmoothGradNPUKernel<float>,
                        ops::LabelSmoothGradNPUKernel<plat::float16>);

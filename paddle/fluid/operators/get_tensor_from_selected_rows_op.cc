@@ -23,18 +23,18 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
-                   "GetTensorFromSelectedRows");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "GetTensorFromSelectedRows");
+    OP_INOUT_CHECK(
+        ctx->HasInput("X"), "Input", "X", "GetTensorFromSelectedRows");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "GetTensorFromSelectedRows");
 
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("X").front(),
-        framework::proto::VarType::SELECTED_ROWS,
-        platform::errors::InvalidArgument(
-            "The input X(%s)'s type should be SelectedRows, "
-            "but the received is %s",
-            ctx->Inputs("X").front(), ctx->GetInputsVarType("X").front()));
+    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X").front(),
+                      framework::proto::VarType::SELECTED_ROWS,
+                      platform::errors::InvalidArgument(
+                          "The input X(%s)'s type should be SelectedRows, "
+                          "but the received is %s",
+                          ctx->Inputs("X").front(),
+                          ctx->GetInputsVarType("X").front()));
     PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out").front(),
                       framework::proto::VarType::LOD_TENSOR,
                       platform::errors::InvalidArgument(
@@ -62,8 +62,8 @@ class GetTensorFromSelectedRowsKernel {
 
     out->Resize(x->value().dims());
     out->mutable_data(ctx.GetPlace(), x->value().type());
-    framework::TensorCopy(x->value(), ctx.GetPlace(), ctx.device_context(),
-                          out);
+    framework::TensorCopy(
+        x->value(), ctx.GetPlace(), ctx.device_context(), out);
   }
 };
 
@@ -101,16 +101,24 @@ REGISTER_OPERATOR(get_tensor_from_selected_rows,
                   ops::GetTensorFromSelectedRowsOpProtoMaker,
                   ops::GetTensorFromSelectedRowsOpVarTypeInference);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(get_tensor_from_selected_rows, float,
-                               ops::GetTensorFromSelectedRowsKernel, double,
-                               ops::GetTensorFromSelectedRowsKernel, int,
-                               ops::GetTensorFromSelectedRowsKernel, int64_t,
+REGISTER_OP_CPU_KERNEL_FUNCTOR(get_tensor_from_selected_rows,
+                               float,
+                               ops::GetTensorFromSelectedRowsKernel,
+                               double,
+                               ops::GetTensorFromSelectedRowsKernel,
+                               int,
+                               ops::GetTensorFromSelectedRowsKernel,
+                               int64_t,
                                ops::GetTensorFromSelectedRowsKernel);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(get_tensor_from_selected_rows, float,
-                                ops::GetTensorFromSelectedRowsKernel, double,
-                                ops::GetTensorFromSelectedRowsKernel, int,
-                                ops::GetTensorFromSelectedRowsKernel, int64_t,
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(get_tensor_from_selected_rows,
+                                float,
+                                ops::GetTensorFromSelectedRowsKernel,
+                                double,
+                                ops::GetTensorFromSelectedRowsKernel,
+                                int,
+                                ops::GetTensorFromSelectedRowsKernel,
+                                int64_t,
                                 ops::GetTensorFromSelectedRowsKernel);
 #endif

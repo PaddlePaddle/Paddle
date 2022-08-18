@@ -27,6 +27,7 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestParallelDygraphMnist(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -35,17 +36,17 @@ class TestParallelDygraphMnist(TestDistBase):
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "parallel_dygraph_mnist.py",
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name)
+            self.check_with_place("parallel_dygraph_mnist.py",
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  log_name=flag_name)
 
 
 #TODO(liuyuhui): Multi-Card Baidu Kunlun XPU training exist accuracy problems
-#it is difficult to find out immediately where the problem is, 
-#and we will work with frameworkers' help to fix it. 
+#it is difficult to find out immediately where the problem is,
+#and we will work with frameworkers' help to fix it.
 class TestParallelDygraphMnistXPU(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._bkcl_mode = True
@@ -54,20 +55,21 @@ class TestParallelDygraphMnistXPU(TestDistBase):
 
     def test_mnist_xpu(self):
         if fluid.core.is_compiled_with_xpu():
-            self.check_with_place(
-                "parallel_dygraph_mnist.py",
-                delta=1e-4,
-                check_error_log=True,
-                log_name=flag_name)
+            self.check_with_place("parallel_dygraph_mnist.py",
+                                  delta=1e-4,
+                                  check_error_log=True,
+                                  log_name=flag_name)
 
 
 class TestParallelDygraphMnistSpawn(TestDistSpawnRunner):
+
     def test_mnist_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
             self.check_dist_result_with_spawn(test_class=TestMnist, delta=1e-5)
 
 
 class TestParallelDygraphMnistAccGrad(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -78,14 +80,14 @@ class TestParallelDygraphMnistAccGrad(TestDistBase):
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "parallel_dygraph_mnist.py",
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name)
+            self.check_with_place("parallel_dygraph_mnist.py",
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  log_name=flag_name)
 
 
 class TestFleetDygraphMnistXPU(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._bkcl_mode = True
@@ -95,11 +97,10 @@ class TestFleetDygraphMnistXPU(TestDistBase):
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_xpu():
-            self.check_with_place(
-                "parallel_dygraph_mnist.py",
-                delta=1e-4,
-                check_error_log=True,
-                log_name=flag_name)
+            self.check_with_place("parallel_dygraph_mnist.py",
+                                  delta=1e-4,
+                                  check_error_log=True,
+                                  log_name=flag_name)
 
 
 if __name__ == "__main__":

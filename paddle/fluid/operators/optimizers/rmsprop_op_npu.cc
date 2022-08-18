@@ -67,8 +67,15 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
         mean_grad_out->mutable_data<T>(ctx.GetPlace());
         const auto &runner_applycenterrmsprop = NpuOpRunner(
             std::string("ApplyCenteredRMSPropD"),
-            {*p_tensor, *mg_tensor, *ms_tensor, *mom_tensor, *lr_tensor,
-             *rho_tensor, *momentum_tensor, *epsilon_tensor, *grad_tensor},
+            {*p_tensor,
+             *mg_tensor,
+             *ms_tensor,
+             *mom_tensor,
+             *lr_tensor,
+             *rho_tensor,
+             *momentum_tensor,
+             *epsilon_tensor,
+             *grad_tensor},
             {*param_out, *mean_grad_out, *mean_square_out, *moment_out},
             {attr_input});
         runner_applycenterrmsprop.Run(stream);
@@ -78,11 +85,13 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
         const auto &runner_applyrmsprop = NpuOpRunner(
             std::string("ApplyRMSPropD"),
             {*p_tensor, *ms_tensor, *mom_tensor, *lr_tensor, *grad_tensor},
-            {*param_out, *mean_square_out, *moment_out}, {attr_input});
+            {*param_out, *mean_square_out, *moment_out},
+            {attr_input});
         runner_applyrmsprop.Run(stream);
       }
     } else {
-      PADDLE_ENFORCE_EQ(false, true,
+      PADDLE_ENFORCE_EQ(false,
+                        true,
                         platform::errors::PermissionDenied(
                             "Unsupported Variable Type of Grad "
                             "in RmspropOp. Excepted LodTensor, "

@@ -34,6 +34,7 @@ class SerializationLogger : public BaseLogger {
   void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) override;
   void LogNodeTrees(const NodeTrees&) override;
   void LogMetaInfo(const std::unordered_map<std::string, std::string>);
+  void LogMemTraceEventNode(const MemTraceEventNode&) override;
 
  private:
   void OpenFile();
@@ -48,6 +49,8 @@ class SerializationLogger : public BaseLogger {
   HostTraceEventNodeProto* current_host_trace_event_node_proto_;
   CudaRuntimeTraceEventNodeProto* current_runtime_trace_event_node_proto_;
   DeviceTraceEventNodeProto* current_device_trace_event_node_proto_;
+  MemTraceEventNodeProto* current_mem_trace_event_node_proto_;
+  OperatorSupplementEventNodeProto* current_op_supplement_event_node_proto_;
 };
 
 }  // namespace platform

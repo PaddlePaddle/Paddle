@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,6 +25,7 @@ from paddle.fluid import core
 
 
 class LinearNet(nn.Layer):
+
     def __init__(self):
         super(LinearNet, self).__init__()
         self._linear1 = nn.Linear(10, 10)
@@ -62,6 +63,7 @@ def train(print_result=False):
 
 
 class TestSpawn(unittest.TestCase):
+
     def test_nprocs_greater_than_device_num_error(self):
         with self.assertRaises(RuntimeError):
             _get_subprocess_env_list(nprocs=100, options=dict())
@@ -100,12 +102,13 @@ class TestSpawn(unittest.TestCase):
         self.assertEqual(nprocs, core.get_mlu_device_count())
 
     def test_spawn(self):
-        context = dist.spawn(train, backend='cncl', nprocs=4)
+        num_devs = core.get_mlu_device_count()
+        context = dist.spawn(train, backend='cncl', nprocs=num_devs)
         rank_list = []
-        for i in range(4):
+        for i in range(num_devs):
             rank_list.append(context.return_queues[i].get())
         rank_list.sort()
-        self.assertEqual(rank_list, list(range(4)))
+        self.assertEqual(rank_list, list(range(num_devs)))
 
 
 if __name__ == '__main__':

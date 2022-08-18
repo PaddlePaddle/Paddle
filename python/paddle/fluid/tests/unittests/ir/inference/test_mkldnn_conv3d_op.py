@@ -26,36 +26,41 @@ import hypothesis.strategies as st
 
 
 class TestMkldnnConv3dOp(MkldnnAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self, *args, **kwargs):
+
         def generate_input(*args, **kwargs):
             if kwargs["data_format"] == "NCDHW":
-                return np.random.random(
-                    [kwargs["batch_size"], 48, 64, 32, 64]).astype(np.float32)
+                return np.random.random([kwargs["batch_size"], 48, 64, 32,
+                                         64]).astype(np.float32)
             else:
-                return np.random.random(
-                    [kwargs["batch_size"], 64, 32, 64, 48]).astype(np.float32)
+                return np.random.random([kwargs["batch_size"], 64, 32, 64,
+                                         48]).astype(np.float32)
 
         def generate_weight(*args, **kwargs):
-            return np.random.random(
-                [16, int(48 / kwargs["groups"]), 3, 3, 3]).astype(np.float32)
+            return np.random.random([16,
+                                     int(48 / kwargs["groups"]), 3, 3,
+                                     3]).astype(np.float32)
 
-        conv3d_op = OpConfig(
-            type="conv3d",
-            inputs={"Input": ["input_data"],
-                    "Filter": ["conv_weight"]},
-            outputs={"Output": ["conv_output"]},
-            attrs={
-                "data_format": kwargs["data_format"],
-                "dilations": kwargs["dilations"],
-                "padding_algorithm": kwargs["padding_algorithm"],
-                "groups": kwargs["groups"],
-                "paddings": kwargs["paddings"],
-                "strides": kwargs["strides"],
-                "is_test": True
-            })
+        conv3d_op = OpConfig(type="conv3d",
+                             inputs={
+                                 "Input": ["input_data"],
+                                 "Filter": ["conv_weight"]
+                             },
+                             outputs={"Output": ["conv_output"]},
+                             attrs={
+                                 "data_format": kwargs["data_format"],
+                                 "dilations": kwargs["dilations"],
+                                 "padding_algorithm":
+                                 kwargs["padding_algorithm"],
+                                 "groups": kwargs["groups"],
+                                 "paddings": kwargs["paddings"],
+                                 "strides": kwargs["strides"],
+                                 "is_test": True
+                             })
 
         program_config = ProgramConfig(
             ops=[conv3d_op],
@@ -82,8 +87,8 @@ class TestMkldnnConv3dOp(MkldnnAutoScanTest):
         groups=st.sampled_from([2]),
         paddings=st.sampled_from([[0, 3, 2]]),
         strides=st.sampled_from([[1, 2, 1]]),
-        batch_size=st.integers(
-            min_value=1, max_value=4), )
+        batch_size=st.integers(min_value=1, max_value=4),
+    )
     def test(self, *args, **kwargs):
         self.run_test(*args, **kwargs)
 

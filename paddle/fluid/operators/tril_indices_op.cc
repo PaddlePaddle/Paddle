@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -77,11 +78,14 @@ class TrilIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(tril_indices, TrilIndicesInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(tril_indices,
+                            TrilIndicesInferShapeFunctor,
                             PD_INFER_META(phi::TrilIndicesInferMeta));
 
 REGISTER_OPERATOR(
-    tril_indices, ops::TrilIndicesOp, ops::TrilIndicesOpMaker,
+    tril_indices,
+    ops::TrilIndicesOp,
+    ops::TrilIndicesOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     TrilIndicesInferShapeFunctor);

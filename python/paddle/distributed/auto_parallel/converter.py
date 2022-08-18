@@ -133,8 +133,9 @@ class Converter(object):
                 tensors_dict[tensor_name] = Converter.merge_and_slice(
                     tensor_list, pre_dist_attr, cur_dist_attr)
             except ValueError as err:
-                raise ValueError("Fail to convert tensor '{}'. "
-                                 .format(str(tensor_name)) + str(err))
+                raise ValueError(
+                    "Fail to convert tensor '{}'. ".format(str(tensor_name)) +
+                    str(err))
 
         for tensor_name in self._pre_strategy:
             if tensor_name not in self._cur_strategy:
@@ -150,17 +151,17 @@ class Converter(object):
         tensor_not_in_cur = set(tensor_not_in_cur) - set(tensor_match_with_cur)
         if tensor_not_in_pre:
             warnings.warn(
-                "tensors [{}] are not found in last training strategy."
-                .format(str(tensor_not_in_pre)))
+                "tensors [{}] are not found in last training strategy.".format(
+                    str(tensor_not_in_pre)))
         if tensor_not_in_cur:
             warnings.warn(
-                "tensors [{}] are not found in current training strategy."
-                .format(str(tensor_not_in_cur)))
+                "tensors [{}] are not found in current training strategy.".
+                format(str(tensor_not_in_cur)))
         if tensor_not_in_ckpt:
             warnings.warn(
                 "tensors [{}] are found in pre_strategy, but are not found"
-                "in checkpoint files, please check your checkpoint files."
-                .format(str(tensor_not_in_ckpt)))
+                "in checkpoint files, please check your checkpoint files.".
+                format(str(tensor_not_in_ckpt)))
 
         return tensors_dict
 
@@ -360,8 +361,9 @@ class Converter(object):
         """
         sliced_tensor_list = []
         axis = len(complete_tensor.shape) - length
-        sliced_tensor = np.split(
-            complete_tensor, partition_index_list[axis], axis=axis)
+        sliced_tensor = np.split(complete_tensor,
+                                 partition_index_list[axis],
+                                 axis=axis)
         if length == 1:
             return sliced_tensor
         for tensor in sliced_tensor:

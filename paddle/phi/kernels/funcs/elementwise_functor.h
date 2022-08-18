@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/hostdevice.h"
 #if defined(__xpu__)
 #include <xpu/runtime.h>
+
 #include "xpu/kernel/math_xpu2.h"  //pow()
 #endif
 

@@ -236,12 +236,12 @@ void MultinomialKernel(const Context& dev_ctx,
   int block_size = num_categories < 512 ? num_categories : 512;
   dim3 block_norm(block_size);
   dim3 grid_norm((num_distributions * num_categories - 1) / block_norm.x + 1);
-  NormalizeProbability<T><<<grid_norm, block_norm, 0, dev_ctx.stream()>>>(
-      norm_probs_data,
-      in_data,
-      sum_rows_data,
-      num_distributions,
-      num_categories);
+  NormalizeProbability<T>
+      <<<grid_norm, block_norm, 0, dev_ctx.stream()>>>(norm_probs_data,
+                                                       in_data,
+                                                       sum_rows_data,
+                                                       num_distributions,
+                                                       num_categories);
 
   // Get cumulative probability of each distribution. It's the same function
   // of ``cumsum`` op.
@@ -277,15 +277,15 @@ void MultinomialKernel(const Context& dev_ctx,
   uint64_t increment = curand4_loop_times * 4;
   auto seed_offset = gen_cuda->IncrementOffset(increment);
 
-  sampleMultinomialWithReplacement<T><<<grid, block, 0, dev_ctx.stream()>>>(
-      num_samples,
-      out_data,
-      num_distributions,
-      num_categories,
-      cumulative_probs_data,
-      norm_probs_data,
-      seed_offset.first,
-      seed_offset.second);
+  sampleMultinomialWithReplacement<T>
+      <<<grid, block, 0, dev_ctx.stream()>>>(num_samples,
+                                             out_data,
+                                             num_distributions,
+                                             num_categories,
+                                             cumulative_probs_data,
+                                             norm_probs_data,
+                                             seed_offset.first,
+                                             seed_offset.second);
 }
 
 }  // namespace phi

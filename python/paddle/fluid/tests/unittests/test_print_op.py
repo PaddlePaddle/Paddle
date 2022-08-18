@@ -30,6 +30,7 @@ paddle.enable_static()
 
 
 class TestPrintOpCPU(unittest.TestCase):
+
     def setUp(self):
         self.place = paddle.CPUPlace()
         self.x_tensor = fluid.core.LoDTensor()
@@ -74,7 +75,8 @@ class TestPrintOpCPU(unittest.TestCase):
                             print_tensor_name=print_tensor_name,
                             print_tensor_type=print_tensor_type,
                             print_tensor_shape=print_tensor_shape,
-                            print_tensor_lod=print_tensor_lod, )
+                            print_tensor_lod=print_tensor_lod,
+                        )
         loss = paddle.mean(x)
         paddle.static.append_backward(loss=loss)
         exe = paddle.static.Executor(self.place)
@@ -92,11 +94,12 @@ class TestPrintOpCPU(unittest.TestCase):
 
 
 class TestPrintOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of Print_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], paddle.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         paddle.CPUPlace())
             self.assertRaises(TypeError, paddle.static.Print, x1)
             # The input dtype of Print_op must be float32, float64, int32_t, int64_t or bool.
             x2 = paddle.static.data(name='x2', shape=[4], dtype="float16")
@@ -106,6 +109,7 @@ class TestPrintOpError(unittest.TestCase):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestPrintOpGPU(TestPrintOpCPU):
+
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.x_tensor = fluid.core.LoDTensor()
@@ -115,6 +119,7 @@ class TestPrintOpGPU(TestPrintOpCPU):
 
 
 class TestPrintOpBackward(unittest.TestCase):
+
     def check_backward(self, use_cuda):
         main = paddle.static.Program()
         startup = paddle.static.Program()

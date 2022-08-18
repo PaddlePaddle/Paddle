@@ -118,6 +118,18 @@ struct EigenSub {
                    const InType& right);
 };
 
+template <typename EigenDevice, typename T>
+struct EigenDiv {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev,
+                   OutType out,
+                   const InType& in,
+                   const T value);
+};
+
 template <typename EigenDevice, typename T, int Rank>
 struct EigenSlice {
   using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;

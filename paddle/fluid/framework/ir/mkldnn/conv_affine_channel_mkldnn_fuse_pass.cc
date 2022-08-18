@@ -49,7 +49,8 @@ class Node;
   /* Affine channel outputs */                                             \
   GET_IR_NODE_FROM_SUBGRAPH(ac_out, ac_out, pattern_name); /* Out */
 
-void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
+void recompute_bias_and_weights(const Scope* scope,
+                                ir::Node* conv_weight,
                                 const ir::Node& ac_scale,
                                 const LoDTensor& ac_bias_tensor,
                                 LoDTensor* eltwise_y_in_tensor) {
@@ -62,22 +63,25 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
 
   // Re-compute bias of conv2d from AffineChannel
   PADDLE_ENFORCE_EQ(
-      eltwise_y_in_tensor->dims(), ac_bias_tensor.dims(),
+      eltwise_y_in_tensor->dims(),
+      ac_bias_tensor.dims(),
       platform::errors::InvalidArgument(
           "Tensor elementwise y(%d) and activation bias(%d) must have same "
           "dimension.",
-          eltwise_y_in_tensor->dims().size(), ac_bias_tensor.dims().size()));
+          eltwise_y_in_tensor->dims().size(),
+          ac_bias_tensor.dims().size()));
 
   auto* scale_tensor = scope->FindVar(ac_scale.Name())->GetMutable<LoDTensor>();
 
-  ConstEigenVectorArrayMap scale_array(scale_tensor->data<float>(),
-                                       scale_tensor->numel(), 1);
-  ConstEigenVectorArrayMap ac_bias_array(ac_bias_tensor.data<float>(),
-                                         ac_bias_tensor.numel(), 1);
+  ConstEigenVectorArrayMap scale_array(
+      scale_tensor->data<float>(), scale_tensor->numel(), 1);
+  ConstEigenVectorArrayMap ac_bias_array(
+      ac_bias_tensor.data<float>(), ac_bias_tensor.numel(), 1);
 
   EigenVectorArrayMap eltwise_y_in_array(
       eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
-      eltwise_y_in_tensor->numel(), 1);
+      eltwise_y_in_tensor->numel(),
+      1);
 
   eltwise_y_in_array = (eltwise_y_in_array * scale_array) + ac_bias_array;
 
@@ -87,8 +91,8 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   auto weights_shape_2d = phi::flatten_to_2d(weights_shape, 1);
   auto* weights_data = weights->mutable_data<float>(platform::CPUPlace());
 
-  EigenMatrixArrayMap weights_array_2d(weights_data, weights_shape_2d[0],
-                                       weights_shape_2d[1]);
+  EigenMatrixArrayMap weights_array_2d(
+      weights_data, weights_shape_2d[0], weights_shape_2d[1]);
 
   weights_array_2d.colwise() *= scale_array;
 
@@ -228,11 +232,12 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
         scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
     eltwise_y_in_tensor->Resize(ac_bias_tensor->dims());
     std::fill_n(eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
-                eltwise_y_in_tensor->numel(), 0.0f);
+                eltwise_y_in_tensor->numel(),
+                0.0f);
 
     // update weights and biases
-    recompute_bias_and_weights(scope, conv_weight, *ac_scale, *ac_bias_tensor,
-                               eltwise_y_in_tensor);
+    recompute_bias_and_weights(
+        scope, conv_weight, *ac_scale, *ac_bias_tensor, eltwise_y_in_tensor);
 
     // create an elementwise add node.
     OpDesc desc;

@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -56,8 +57,11 @@ class AddMMOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library, customized_type_value);
+    return framework::OpKernelType(input_data_type,
+                                   ctx.GetPlace(),
+                                   layout,
+                                   library,
+                                   customized_type_value);
   }
 };
 
@@ -93,16 +97,20 @@ class AddMMGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Input"), true,
+        ctx->HasInput("Input"),
+        true,
         platform::errors::NotFound("Input(Input) should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound("Input(X) should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
+        ctx->HasInput("Y"),
+        true,
         platform::errors::NotFound("Input(Y) should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
         platform::errors::NotFound("Input(Out@GRAD) should not be null"));
     const auto& input_dims = ctx->GetInputDim("Input");
     const auto& x_dims = ctx->GetInputDim("X");
@@ -147,9 +155,12 @@ class AddMMOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(addmm, AddmmInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(addmm,
+                            AddmmInferShapeFunctor,
                             PD_INFER_META(phi::AddmmInferMeta));
-REGISTER_OPERATOR(addmm, ops::AddMMOp, ops::AddMMOpMaker,
+REGISTER_OPERATOR(addmm,
+                  ops::AddMMOp,
+                  ops::AddMMOpMaker,
                   ops::AddMMOpGradMaker<paddle::framework::OpDesc>,
                   ops::AddMMOpGradMaker<paddle::imperative::OpBase>,
                   AddmmInferShapeFunctor);

@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
 import paddle
@@ -43,11 +44,13 @@ def numpy_topk(x, k=1, axis=-1, largest=True):
 
 
 class XPUTestTopKV2Op(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'top_k_v2'
         self.use_dynamic_create_class = False
 
     class TestTopkOp(XPUOpTest):
+
         def init_args(self):
             self.k = 3
             self.axis = 1
@@ -64,8 +67,10 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
                 'axis': self.axis,
                 'largest': self.largest
             }
-            output, indices = numpy_topk(
-                self.input_data, axis=self.axis, k=self.k, largest=self.largest)
+            output, indices = numpy_topk(self.input_data,
+                                         axis=self.axis,
+                                         k=self.k,
+                                         largest=self.largest)
             self.outputs = {'Out': output, 'Indices': indices}
 
         def test_check_output(self):
@@ -79,6 +84,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
                 self.check_grad(set(['X']), 'Out')
 
     class TestTopkOp1(TestTopkOp):
+
         def init_args(self):
             self.k = 3
             self.axis = 1
@@ -86,6 +92,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.input_data = np.random.rand(100, 155).astype(self.dtype)
 
     class TestTopkOp2(TestTopkOp):
+
         def init_args(self):
             self.k = 3
             self.axis = 1
@@ -93,6 +100,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
 
     class TestTopkOp3(TestTopkOp):
+
         def init_args(self):
             self.k = 5
             self.axis = 1
@@ -100,6 +108,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
 
     class TestTopkOp4(TestTopkOp):
+
         def init_args(self):
             self.k = 1
             self.axis = 1
@@ -107,6 +116,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
 
     class TestTopkOp5(TestTopkOp):
+
         def init_args(self):
             self.k = 3
             self.axis = 2
@@ -114,6 +124,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
 
     class TestTopkOp6(TestTopkOp):
+
         def init_args(self):
             self.k = 5
             self.axis = 1
@@ -121,6 +132,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.input_data = np.random.rand(8, 32, 64).astype(self.dtype)
 
     class TestTopkOp7(TestTopkOp):
+
         def init_args(self):
             self.k = 10
             self.axis = 2
@@ -128,6 +140,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.input_data = np.random.rand(8, 5, 10, 16).astype(self.dtype)
 
     class TestTopkOp8(TestTopkOp):
+
         def init_args(self):
             self.k = 1
             self.axis = 1
@@ -135,6 +148,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.input_data = np.random.rand(8, 32, 64).astype(self.dtype)
 
     class TestTopkOp9(TestTopkOp):
+
         def init_args(self):
             self.k = 3
             self.axis = 1
@@ -142,6 +156,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
 
     class TestTopkOp10(TestTopkOp):
+
         def init_args(self):
             self.k = 3
             self.axis = 1
@@ -149,6 +164,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
 
     class TestTopkOp11(TestTopkOp):
+
         def init_args(self):
             self.k = 5
             self.axis = 1
@@ -156,6 +172,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
 
     class TestTopkOp12(TestTopkOp):
+
         def init_args(self):
             self.k = 1
             self.axis = 1

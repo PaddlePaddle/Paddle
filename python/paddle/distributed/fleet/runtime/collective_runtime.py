@@ -19,6 +19,7 @@ __all__ = []
 
 
 class CollectiveRuntime(RuntimeBase):
+
     def __init__(self):
         super(CollectiveRuntime, self).__init__()
 

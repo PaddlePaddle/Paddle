@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Notice that the following codes are modified from KerasTuner for a different purpose. 
+# Notice that the following codes are modified from KerasTuner for a different purpose.
 # Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/metrics_tracking.py.
 
 import json
 
 
 class Storable(object):
+
     def get_state(self):
         raise NotImplementedError
 

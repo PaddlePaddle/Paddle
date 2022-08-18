@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/eigh_grad_kernel.h"
-#include "paddle/phi/kernels/impl/eigh_grad_kernel_impl.h"
 
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/eigh_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(eigh_grad,
                    CPU,

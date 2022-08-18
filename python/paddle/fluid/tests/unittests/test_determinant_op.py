@@ -28,6 +28,7 @@ paddle.enable_static()
 
 
 class TestDeterminantOp(OpTest):
+
     def setUp(self):
         self.python_api = paddle.linalg.det
         self.init_data()
@@ -48,6 +49,7 @@ class TestDeterminantOp(OpTest):
 
 
 class TestDeterminantOpCase1(TestDeterminantOp):
+
     def init_data(self):
         np.random.seed(0)
         self.case = np.random.rand(10, 10).astype('float32')
@@ -56,6 +58,7 @@ class TestDeterminantOpCase1(TestDeterminantOp):
 
 
 class TestDeterminantOpCase2(TestDeterminantOp):
+
     def init_data(self):
         np.random.seed(0)
         # not invertible matrix
@@ -65,6 +68,7 @@ class TestDeterminantOpCase2(TestDeterminantOp):
 
 
 class TestDeterminantAPI(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(0)
         self.shape = [3, 3, 5, 5]
@@ -81,14 +85,14 @@ class TestDeterminantAPI(unittest.TestCase):
         out_ref = np.linalg.det(self.x)
 
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
         x_tensor = paddle.to_tensor(self.x)
         out = paddle.linalg.det(x_tensor)
         out_ref = np.linalg.det(self.x)
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
     def test_eager(self):
@@ -97,17 +101,21 @@ class TestDeterminantAPI(unittest.TestCase):
 
 
 class TestSlogDeterminantOp(OpTest):
+
     def setUp(self):
         self.op_type = "slogdeterminant"
+        self.python_api = paddle.linalg.slogdet
         self.init_data()
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
-        self.check_grad(['Input'], ['Out'], max_relative_error=0.1)
+        self.check_grad(['Input'], ['Out'],
+                        max_relative_error=0.1,
+                        check_eager=True)
 
     def init_data(self):
         np.random.seed(0)
@@ -117,6 +125,7 @@ class TestSlogDeterminantOp(OpTest):
 
 
 class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
+
     def init_data(self):
         np.random.seed(0)
         self.case = np.random.rand(2, 2, 5, 5).astype(np.float32)
@@ -125,6 +134,7 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
 
 
 class TestSlogDeterminantAPI(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(0)
         self.shape = [3, 3, 5, 5]
@@ -140,14 +150,14 @@ class TestSlogDeterminantAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
         out_ref = np.array(np.linalg.slogdet(self.x))
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
         x_tensor = paddle.to_tensor(self.x)
         out = paddle.linalg.slogdet(x_tensor)
         out_ref = np.array(np.linalg.slogdet(self.x))
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
 

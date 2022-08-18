@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -45,8 +45,8 @@ def get_compat_kernels_info(register):
                 registry = False
                 is_macro_defination = False
                 for line in txt:
-                    if line.strip().startswith("#define") and line.strip(
-                    ).endswith("\\"):
+                    if line.strip().startswith(
+                            "#define") and line.strip().endswith("\\"):
                         is_macro_defination = True
                         continue
                     if is_macro_defination:

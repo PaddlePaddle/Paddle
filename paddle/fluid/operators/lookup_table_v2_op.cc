@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/lookup_table_v2_op.h"
 
 #include <memory>
+
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
@@ -27,14 +28,17 @@ class LookupTableV2Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(W) of LookupTableV2Op should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Ids"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Ids"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Ids) of LookupTableV2Op should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::InvalidArgument(
             "Output(Out) of LookupTableV2Op should not be null."));
 
@@ -43,12 +47,14 @@ class LookupTableV2Op : public framework::OperatorWithKernel {
     int ids_rank = ids_dims.size();
     VLOG(5) << "ids rank is " << ids_rank << std::endl;
     PADDLE_ENFORCE_EQ(
-        table_dims.size(), 2,
+        table_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "ShapeError: The dimensions of the 'lookup table' must be 2. "
             "But received lookup table's dimensions = %d, "
             "lookup table's shape = [%s].",
-            table_dims.size(), table_dims));
+            table_dims.size(),
+            table_dims));
 
     auto output_dims = phi::vectorize(ids_dims);
     output_dims.push_back(table_dims[1]);
@@ -99,6 +105,7 @@ class LookupTableV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.")
         .SetDefault(0)
         .AsExtra();
+    AddAttr<int>("slot", "slot of id").SetDefault(0).AsExtra();
     AddAttr<std::vector<int64_t>>("height_sections",
                                   "Height for each output SelectedRows.")
         .SetDefault(std::vector<int64_t>({}))
@@ -175,7 +182,7 @@ class LookupTableV2OpGradVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto out_var_name = framework::GradVarName("W");
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = BOOST_GET(bool, attr);
+    bool is_sparse = PADDLE_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "lookup_table_v2_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
@@ -194,12 +201,14 @@ class LookupTableV2OpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lookup_table_v2, ops::LookupTableV2Op,
+REGISTER_OPERATOR(lookup_table_v2,
+                  ops::LookupTableV2Op,
                   ops::LookupTableV2OpMaker,
                   ops::LookupTableV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::LookupTableV2GradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(lookup_table_v2_grad, ops::LookupTableV2OpGrad,
+REGISTER_OPERATOR(lookup_table_v2_grad,
+                  ops::LookupTableV2OpGrad,
                   ops::LookupTableV2GradOpNoBufferVarsInferer,
                   ops::LookupTableV2OpGradVarTypeInference);
 

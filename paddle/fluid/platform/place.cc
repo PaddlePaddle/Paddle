@@ -15,7 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
-    benchmark, false,
+    benchmark,
+    false,
     "Doing memory benchmark. It will make deleting scope synchronized, "
     "and add some memory usage logs."
     "Default cuda is asynchronous device, set to True will"

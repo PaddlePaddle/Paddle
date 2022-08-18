@@ -17,6 +17,7 @@ limitations under the License. */
 #include <atomic>
 #include <map>
 #include <string>
+
 #include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -91,82 +92,117 @@ class Stat : public StatBase {
   std::atomic<int64_t> peak_value_{0};
 };
 
-// StatGetCurrentValue, StatGetPeakValue and StatUpdate support to operate STAT
-// values by a string, however, they has worse performance than the macro
-// function MEMORY_STAT_CURRENT_VALUE, MEMORY_STAT_PEAK_VALUE, and
-// MEMORY_STAT_UPDATE. Try to use the macro functions where ultra-low
-// performance overhead is required.
-int64_t StatGetCurrentValue(const std::string& stat_type, int dev_id);
-int64_t StatGetPeakValue(const std::string& stat_type, int dev_id);
-void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment);
+// xxxMemoryStatCurrentValue, xxxMemoryStatPeakValue and xxxMemoryStatUpdate
+// support to operate STAT values by a string, however, they has worse
+// performance than the macro function xxx_MEMORY_STAT_CURRENT_VALUE,
+// xxx_MEMORY_STAT_PEAK_VALUE, and xxx_MEMORY_STAT_UPDATE. Try to use the macro
+// functions where ultra-low performance overhead is required.
+int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
+int64_t DeviceMemoryStatPeakValue(const std::string& stat_type, int dev_id);
+void DeviceMemoryStatUpdate(const std::string& stat_type,
+                            int dev_id,
+                            int64_t increment);
 
-#define MEMORY_STAT_FUNC_SWITHCH_CASE(item, id)                          \
-  case id:                                                               \
-    stat = paddle::memory::Stat<                                         \
-        paddle::memory::ThreadLocalStatDevice##id##item>::GetInstance(); \
+int64_t HostMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
+int64_t HostMemoryStatPeakValue(const std::string& stat_type, int dev_id);
+void HostMemoryStatUpdate(const std::string& stat_type,
+                          int dev_id,
+                          int64_t increment);
+
+#define DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, id)              \
+  case id:                                                          \
+    stat = paddle::memory::Stat<                                    \
+        paddle::memory::DeviceMemoryStat##item##id>::GetInstance(); \
     break
 
-#define MEMORY_STAT_FUNC(item, id, func, ...)                         \
-  [&] {                                                               \
-    paddle::memory::StatBase* stat = nullptr;                         \
-    switch (id) {                                                     \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 0);                         \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 1);                         \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 2);                         \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 3);                         \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 4);                         \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 5);                         \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 6);                         \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 7);                         \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 8);                         \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 9);                         \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 10);                        \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 11);                        \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 12);                        \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 13);                        \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 14);                        \
-      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 15);                        \
-      default:                                                        \
-        PADDLE_THROW(paddle::platform::errors::OutOfRange(            \
-            "Only support device id between [0, 15] in memory stats," \
-            "not support device id: %d",                              \
-            id));                                                     \
-        break;                                                        \
-    }                                                                 \
-    return stat->func(__VA_ARGS__);                                   \
+#define DEVICE_MEMORY_STAT_FUNC(item, id, func, ...)                          \
+  [&] {                                                                       \
+    paddle::memory::StatBase* stat = nullptr;                                 \
+    switch (id) {                                                             \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 0);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 1);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 2);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 3);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 4);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 5);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 6);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 7);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 8);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 9);                          \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 10);                         \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 11);                         \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 12);                         \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 13);                         \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 14);                         \
+      DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, 15);                         \
+      default:                                                                \
+        PADDLE_THROW(paddle::platform::errors::OutOfRange(                    \
+            "Only support device id between [0, 15] for device memory stats," \
+            "not support device id: %d",                                      \
+            id));                                                             \
+        break;                                                                \
+    }                                                                         \
+    return stat->func(__VA_ARGS__);                                           \
   }()
 
-#define MEMORY_STAT_CURRENT_VALUE(item, id) \
-  MEMORY_STAT_FUNC(item, id, GetCurrentValue)
-#define MEMORY_STAT_PEAK_VALUE(item, id) \
-  MEMORY_STAT_FUNC(item, id, GetPeakValue)
-#define MEMORY_STAT_UPDATE(item, id, increment) \
-  MEMORY_STAT_FUNC(item, id, Update, increment)
+#define DEVICE_MEMORY_STAT_CURRENT_VALUE(item, id) \
+  DEVICE_MEMORY_STAT_FUNC(item, id, GetCurrentValue)
+#define DEVICE_MEMORY_STAT_PEAK_VALUE(item, id) \
+  DEVICE_MEMORY_STAT_FUNC(item, id, GetPeakValue)
+#define DEVICE_MEMORY_STAT_UPDATE(item, id, increment) \
+  DEVICE_MEMORY_STAT_FUNC(item, id, Update, increment)
 
-#define MEMORY_STAT_DECLARE_WITH_ID(item, id) \
-  struct ThreadLocalStatDevice##id##item : public ThreadLocalStatBase {};
+#define HOST_MEMORY_STAT_FUNC(item, id, func, ...)                     \
+  [&] {                                                                \
+    PADDLE_ENFORCE_EQ(id,                                              \
+                      0,                                               \
+                      paddle::platform::errors::OutOfRange(            \
+                          "Only support device id 0 for host memory "  \
+                          "stats, not support device id: %d",          \
+                          id));                                        \
+    return paddle::memory::Stat<                                       \
+               paddle::memory::HostMemoryStat##item##0>::GetInstance() \
+        ->func(__VA_ARGS__);                                           \
+  }()
 
-#define MEMORY_STAT_DECLARE(item)        \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 0);  \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 1);  \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 2);  \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 3);  \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 4);  \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 5);  \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 6);  \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 7);  \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 8);  \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 9);  \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 10); \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 11); \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 12); \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 13); \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 14); \
-  MEMORY_STAT_DECLARE_WITH_ID(item, 15)
+#define HOST_MEMORY_STAT_CURRENT_VALUE(item, id) \
+  HOST_MEMORY_STAT_FUNC(item, id, GetCurrentValue)
+#define HOST_MEMORY_STAT_PEAK_VALUE(item, id) \
+  HOST_MEMORY_STAT_FUNC(item, id, GetPeakValue)
+#define HOST_MEMORY_STAT_UPDATE(item, id, increment) \
+  HOST_MEMORY_STAT_FUNC(item, id, Update, increment)
+
+#define DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, id) \
+  struct DeviceMemoryStat##item##id : public ThreadLocalStatBase {}
+
+#define DEVICE_MEMORY_STAT_DECLARE(item)        \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 0);  \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 1);  \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 2);  \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 3);  \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 4);  \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 5);  \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 6);  \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 7);  \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 8);  \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 9);  \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 10); \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 11); \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 12); \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 13); \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 14); \
+  DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, 15)
+
+// Only support id 0 for host memory stat
+#define HOST_MEMORY_STAT_DECLARE(item) \
+  struct HostMemoryStat##item##0 : public ThreadLocalStatBase{};
 
 // To add a new STAT type, declare here and register in stats.cc
-MEMORY_STAT_DECLARE(Allocated);
-MEMORY_STAT_DECLARE(Reserved);
+DEVICE_MEMORY_STAT_DECLARE(Allocated);
+DEVICE_MEMORY_STAT_DECLARE(Reserved);
+
+HOST_MEMORY_STAT_DECLARE(Allocated);
+HOST_MEMORY_STAT_DECLARE(Reserved);
 
 }  // namespace memory
 }  // namespace paddle

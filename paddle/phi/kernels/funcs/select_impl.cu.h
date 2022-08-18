@@ -25,6 +25,7 @@ namespace cub = hipcub;
 #endif
 
 #include <algorithm>
+
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -39,12 +40,12 @@ namespace funcs {
 using Mode = kps::details::ReduceMode;
 
 /*
-* Count how many of the data being processed by the current block are true
-* 1. Load data from global memory and cast from bool to int64_t
-* 2. Get result of this thread according to thread reduce
-* 3. Get result of this block according to block reduce
-* 4. first block store 0 and current result
-*/
+ * Count how many of the data being processed by the current block are true
+ * 1. Load data from global memory and cast from bool to int64_t
+ * 2. Get result of this thread according to thread reduce
+ * 3. Get result of this block according to block reduce
+ * 4. first block store 0 and current result
+ */
 template <typename T>
 struct NonZeroFunctor {
   HOSTDEVICE NonZeroFunctor() {}
@@ -110,10 +111,10 @@ __global__ void GetBlockCountKernel(const InT *in,
 }
 
 /*
-* Get block num prefix us one block, VecSize must be 2
-* 1. Each thread load 2 data : threadIdx.x and threadIdx.x + blockDimx.x
-* 2. Cumsum limitation is blockDim.x must be less than 512
-*/
+ * Get block num prefix us one block, VecSize must be 2
+ * 1. Each thread load 2 data : threadIdx.x and threadIdx.x + blockDimx.x
+ * 2. Cumsum limitation is blockDim.x must be less than 512
+ */
 
 template <typename InT,
           typename OutT,
@@ -248,8 +249,8 @@ struct SelectCaller<OutT, MT, InT, Functor, VecSize, IsBoundary, 2> {
 };
 
 /**
-* Get mask's index if mask == true
-*/
+ * Get mask's index if mask == true
+ */
 template <typename InT,
           typename MT,
           typename OutT,
@@ -257,14 +258,13 @@ template <typename InT,
           int VecSize,
           int MaskData,
           int IsBoundary>  // SelectType = 1 Mask_select else where_index
-__device__ void
-SelectKernelImpl(OutT *out,
-                 const MT *mask,
-                 const InT *in,
-                 Functor func,
-                 int num,
-                 int data_offset,
-                 int store_rank) {
+__device__ void SelectKernelImpl(OutT *out,
+                                 const MT *mask,
+                                 const InT *in,
+                                 Functor func,
+                                 int num,
+                                 int data_offset,
+                                 int store_rank) {
   const int kCVecSize = 2;
   // each thread cumsum 2 data
   using IdT = int64_t;
@@ -395,7 +395,6 @@ void SelectKernel(const KPDevice &dev_ctx,
   paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
 
   // 1.1 get stored data num of per block
-  int total_true_num = 0;  // init
   const int kVecSize = 4;
 #ifdef PADDLE_WITH_XPU_KP
   int block = 64;
@@ -418,12 +417,13 @@ void SelectKernel(const KPDevice &dev_ctx,
   DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
   // 1.3 launch CountKernl
-  GetBlockCountKernel<MT, CT, kVecSize><<<grid, block, 0, stream>>>(
-      cond_data, count_data, numel, main_offset);
+  GetBlockCountKernel<MT, CT, kVecSize>
+      <<<grid, block, 0, stream>>>(cond_data, count_data, numel, main_offset);
   // 2.1 alloc cumsum data for CoutBlock prefix
   DenseTensor cumsum_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *cumsum_data = cumsum_mem.data<CT>();
   // 2.2 get prefix of count_data for real out_index
+  CT total_true_num = static_cast<CT>(0);  // init
   const int kCumVesize = 2;
   const int block_c = 256;
   const int main_offset_c = Floor(size_count_block, (kCumVesize * block_c));
@@ -448,26 +448,21 @@ void SelectKernel(const KPDevice &dev_ctx,
   if (SelectData == 1) {
     out->Resize(phi::make_ddim(out_dim));
   } else if (SelectData == 0) {  // == 0 where_index
-    out_dim.push_back(rank);
+    out_dim.push_back(static_cast<int64_t>(rank));
     out->Resize(phi::make_ddim(out_dim));
   }
   auto out_data = out->mutable_data<OutT>(cuda_place);
   // 3.2 get true data's index according to cond_data and cumsum_data
   if (total_true_num <= 0) return;
-  SelectKernel<MT,
-               InT,
-               CT,
-               OutT,
-               Functor,
-               kVecSize,
-               SelectData><<<grid, block, 0, stream>>>(out_data,
-                                                       cond_data,
-                                                       in_data_ptr,
-                                                       cumsum_data,
-                                                       func,
-                                                       numel,
-                                                       main_offset,
-                                                       rank);
+  SelectKernel<MT, InT, CT, OutT, Functor, kVecSize, SelectData>
+      <<<grid, block, 0, stream>>>(out_data,
+                                   cond_data,
+                                   in_data_ptr,
+                                   cumsum_data,
+                                   func,
+                                   numel,
+                                   main_offset,
+                                   rank);
 }
 
 }  // namespace funcs

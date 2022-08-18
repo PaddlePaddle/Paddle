@@ -27,8 +27,8 @@ using dnnl::primitive;
 using dnnl::reorder;
 using platform::to_void_cast;
 using Tensor = framework::Tensor;
-using framework::DataLayout;
 using dnnl::stream;
+using framework::DataLayout;
 using platform::GetMKLDNNFormat;
 
 template <typename T>
@@ -43,14 +43,15 @@ class QuantOpKernel : public framework::OpKernel<T> {
     const bool with_scale = quantization_scale != 1.0f;
     const bool with_shift = quantization_shift != 0.0f;
 
-    PADDLE_ENFORCE_NE(quantization_scale, 0.0f,
+    PADDLE_ENFORCE_NE(quantization_scale,
+                      0.0f,
                       platform::errors::InvalidArgument(
                           "Quantization scale must be different than 0.0f"));
-    PADDLE_ENFORCE(
-        quantization_shift <= 255 && quantization_shift >= 0,
-        platform::errors::InvalidArgument(
-            "Quantization shift must be lower or equal to ",
-            "255 and greater or equal to 0, but got %f", quantization_shift));
+    PADDLE_ENFORCE(quantization_shift <= 255 && quantization_shift >= 0,
+                   platform::errors::InvalidArgument(
+                       "Quantization shift must be lower or equal to ",
+                       "255 and greater or equal to 0, but got %f",
+                       quantization_shift));
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
@@ -68,8 +69,8 @@ class QuantOpKernel : public framework::OpKernel<T> {
     }
 
     if (with_shift) {
-      attrs.set_zero_points(DNNL_ARG_DST, mask,
-                            {static_cast<int32_t>(quantization_shift)});
+      attrs.set_zero_points(
+          DNNL_ARG_DST, mask, {static_cast<int32_t>(quantization_shift)});
     }
 
     framework::proto::VarType::Type x_paddle_dtype =
@@ -85,8 +86,11 @@ class QuantOpKernel : public framework::OpKernel<T> {
     }
 
     platform::ReorderMKLDNNHandler reorder_handler(
-        x_tz, x_paddle_dtype, framework::ToMKLDNNDataType(x_paddle_dtype),
-        out_paddle_dtype, framework::ToMKLDNNDataType(out_paddle_dtype),
+        x_tz,
+        x_paddle_dtype,
+        framework::ToMKLDNNDataType(x_paddle_dtype),
+        out_paddle_dtype,
+        framework::ToMKLDNNDataType(out_paddle_dtype),
         dev_ctx.GetEngine());
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
@@ -108,5 +112,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(quantize, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(quantize,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::QuantOpKernel<float>);

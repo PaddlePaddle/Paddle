@@ -1,15 +1,27 @@
 if(NOT WITH_ROCM)
-    return()
+  return()
 endif()
 
 if(NOT DEFINED ENV{ROCM_PATH})
-    set(ROCM_PATH "/opt/rocm" CACHE PATH "Path to which ROCm has been installed")
-    set(HIP_PATH ${ROCM_PATH}/hip CACHE PATH "Path to which HIP has been installed")
-    set(HIP_CLANG_PATH ${ROCM_PATH}/llvm/bin CACHE PATH "Path to which clang has been installed")
+  set(ROCM_PATH
+      "/opt/rocm"
+      CACHE PATH "Path to which ROCm has been installed")
+  set(HIP_PATH
+      ${ROCM_PATH}/hip
+      CACHE PATH "Path to which HIP has been installed")
+  set(HIP_CLANG_PATH
+      ${ROCM_PATH}/llvm/bin
+      CACHE PATH "Path to which clang has been installed")
 else()
-    set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Path to which ROCm has been installed")
-    set(HIP_PATH ${ROCM_PATH}/hip CACHE PATH "Path to which HIP has been installed")
-    set(HIP_CLANG_PATH ${ROCM_PATH}/llvm/bin CACHE PATH "Path to which clang has been installed")
+  set(ROCM_PATH
+      $ENV{ROCM_PATH}
+      CACHE PATH "Path to which ROCm has been installed")
+  set(HIP_PATH
+      ${ROCM_PATH}/hip
+      CACHE PATH "Path to which HIP has been installed")
+  set(HIP_CLANG_PATH
+      ${ROCM_PATH}/llvm/bin
+      CACHE PATH "Path to which clang has been installed")
 endif()
 set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
 
@@ -18,30 +30,39 @@ include_directories(${ROCM_PATH}/include)
 message(STATUS "HIP version: ${HIP_VERSION}")
 message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
 
-macro(find_hip_version hip_header_file) 
-    file(READ ${hip_header_file} HIP_VERSION_FILE_CONTENTS)
+macro(find_hip_version hip_header_file)
+  file(READ ${hip_header_file} HIP_VERSION_FILE_CONTENTS)
 
-    string(REGEX MATCH "define HIP_VERSION_MAJOR +([0-9]+)" HIP_MAJOR_VERSION
-        "${HIP_VERSION_FILE_CONTENTS}")
-    string(REGEX REPLACE "define HIP_VERSION_MAJOR +([0-9]+)" "\\1"
-        HIP_MAJOR_VERSION "${HIP_MAJOR_VERSION}")
-    string(REGEX MATCH "define HIP_VERSION_MINOR +([0-9]+)" HIP_MINOR_VERSION
-        "${HIP_VERSION_FILE_CONTENTS}")
-    string(REGEX REPLACE "define HIP_VERSION_MINOR +([0-9]+)" "\\1"
-        HIP_MINOR_VERSION "${HIP_MINOR_VERSION}")
-    string(REGEX MATCH "define HIP_VERSION_PATCH +([0-9]+)" HIP_PATCH_VERSION
-        "${HIP_VERSION_FILE_CONTENTS}")
-    string(REGEX REPLACE "define HIP_VERSION_PATCH +([0-9]+)" "\\1"
-        HIP_PATCH_VERSION "${HIP_PATCH_VERSION}")
+  string(REGEX MATCH "define HIP_VERSION_MAJOR +([0-9]+)" HIP_MAJOR_VERSION
+               "${HIP_VERSION_FILE_CONTENTS}")
+  string(REGEX REPLACE "define HIP_VERSION_MAJOR +([0-9]+)" "\\1"
+                       HIP_MAJOR_VERSION "${HIP_MAJOR_VERSION}")
+  string(REGEX MATCH "define HIP_VERSION_MINOR +([0-9]+)" HIP_MINOR_VERSION
+               "${HIP_VERSION_FILE_CONTENTS}")
+  string(REGEX REPLACE "define HIP_VERSION_MINOR +([0-9]+)" "\\1"
+                       HIP_MINOR_VERSION "${HIP_MINOR_VERSION}")
+  string(REGEX MATCH "define HIP_VERSION_PATCH +([0-9]+)" HIP_PATCH_VERSION
+               "${HIP_VERSION_FILE_CONTENTS}")
+  string(REGEX REPLACE "define HIP_VERSION_PATCH +([0-9]+)" "\\1"
+                       HIP_PATCH_VERSION "${HIP_PATCH_VERSION}")
 
-    if(NOT HIP_MAJOR_VERSION)
-        set(HIP_VERSION "???")
-        message(WARNING "Cannot find HIP version in ${HIP_PATH}/include/hip/hip_version.h")
-    else()
-        math(EXPR HIP_VERSION "${HIP_MAJOR_VERSION} * 10000000 + ${HIP_MINOR_VERSION} * 100000   + ${HIP_PATCH_VERSION}")
-        message(STATUS "Current HIP header is ${HIP_PATH}/include/hip/hip_version.h "
-          "Current HIP version is v${HIP_MAJOR_VERSION}.${HIP_MINOR_VERSION}.${HIP_PATCH_VERSION}. ")
-    endif()
+  if(NOT HIP_MAJOR_VERSION)
+    set(HIP_VERSION "???")
+    message(
+      WARNING "Cannot find HIP version in ${HIP_PATH}/include/hip/hip_version.h"
+    )
+  else()
+    math(
+      EXPR
+      HIP_VERSION
+      "${HIP_MAJOR_VERSION} * 10000000 + ${HIP_MINOR_VERSION} * 100000   + ${HIP_PATCH_VERSION}"
+    )
+    message(
+      STATUS
+        "Current HIP header is ${HIP_PATH}/include/hip/hip_version.h "
+        "Current HIP version is v${HIP_MAJOR_VERSION}.${HIP_MINOR_VERSION}.${HIP_PATCH_VERSION}. "
+    )
+  endif()
 endmacro()
 find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
 
@@ -66,7 +87,8 @@ find_package_and_include(rocfft)
 # set CXX flags for HIP
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP")
+set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP")
 set(THRUST_DEVICE_SYSTEM THRUST_DEVICE_SYSTEM_HIP)
 
 # define HIP_CXX_FLAGS
@@ -90,7 +112,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
   list(APPEND HIP_CXX_FLAGS -g2)
   list(APPEND HIP_CXX_FLAGS -O0)
   list(APPEND HIP_HIPCC_FLAGS -fdebug-info-for-profiling)
-endif(CMAKE_BUILD_TYPE MATCHES Debug)
+endif()
 
 set(HIP_HCC_FLAGS ${HIP_CXX_FLAGS})
 set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
@@ -102,7 +124,6 @@ list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx908)
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
 list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx906)
 list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx908)
-
 
 if(HIP_COMPILER STREQUAL clang)
   set(hip_library_name amdhip64)

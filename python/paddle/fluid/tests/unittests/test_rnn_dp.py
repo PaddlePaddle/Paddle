@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class RNNEncoder(nn.Layer):
+
     def __init__(self,
                  input_size,
                  hidden_size,
@@ -41,13 +42,12 @@ class RNNEncoder(nn.Layer):
         self._direction = direction
         self._pooling_type = pooling_type
 
-        self.rnn_layer = nn.SimpleRNN(
-            input_size=input_size,
-            hidden_size=hidden_size,
-            num_layers=num_layers,
-            direction=direction,
-            dropout=dropout,
-            **kwargs)
+        self.rnn_layer = nn.SimpleRNN(input_size=input_size,
+                                      hidden_size=hidden_size,
+                                      num_layers=num_layers,
+                                      direction=direction,
+                                      dropout=dropout,
+                                      **kwargs)
 
     def get_input_dim(self):
         return self._input_size
@@ -66,6 +66,7 @@ class RNNEncoder(nn.Layer):
 
 
 class RNNModel(nn.Layer):
+
     def __init__(self,
                  vocab_size,
                  num_classes,
@@ -78,17 +79,15 @@ class RNNModel(nn.Layer):
                  pooling_type=None,
                  fc_hidden_size=96):
         super().__init__()
-        self.embedder = nn.Embedding(
-            num_embeddings=vocab_size,
-            embedding_dim=emb_dim,
-            padding_idx=padding_idx)
-        self.rnn_encoder = RNNEncoder(
-            emb_dim,
-            rnn_hidden_size,
-            num_layers=rnn_layers,
-            direction=direction,
-            dropout=dropout_rate,
-            pooling_type=pooling_type)
+        self.embedder = nn.Embedding(num_embeddings=vocab_size,
+                                     embedding_dim=emb_dim,
+                                     padding_idx=padding_idx)
+        self.rnn_encoder = RNNEncoder(emb_dim,
+                                      rnn_hidden_size,
+                                      num_layers=rnn_layers,
+                                      direction=direction,
+                                      dropout=dropout_rate,
+                                      pooling_type=pooling_type)
         self.fc = nn.Linear(self.rnn_encoder.get_output_dim(), fc_hidden_size)
         self.output_layer = nn.Linear(fc_hidden_size, num_classes)
 
@@ -104,23 +103,23 @@ def rnn_pretrain_forward(train_program, start_program, topo=None):
     with static.program_guard(train_program,
                               start_program), paddle.utils.unique_name.guard():
         batch_size = 1
-        tokens = static.data(
-            name="tokens", shape=[batch_size, -1], dtype="int64")
+        tokens = static.data(name="tokens",
+                             shape=[batch_size, -1],
+                             dtype="int64")
         seq_len = static.data(name="ids", shape=[batch_size], dtype="int64")
         labels = static.data(name="labels", shape=[batch_size], dtype="int64")
         data_holders = [tokens, seq_len, labels]
         vocab_size = 10
         num_classes = 2
         pad_token_id = 0
-        model = RNNModel(
-            vocab_size,
-            num_classes,
-            direction='forward',
-            padding_idx=pad_token_id,
-            pooling_type='max')
+        model = RNNModel(vocab_size,
+                         num_classes,
+                         direction='forward',
+                         padding_idx=pad_token_id,
+                         pooling_type='max')
 
-        optimizer = paddle.optimizer.Adam(
-            parameters=model.parameters(), learning_rate=0.001)
+        optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
+                                          learning_rate=0.001)
         criterion = paddle.nn.CrossEntropyLoss()
         preds = model(tokens, seq_len)
         loss = criterion(preds, labels)
@@ -129,6 +128,7 @@ def rnn_pretrain_forward(train_program, start_program, topo=None):
 
 
 class TestFleetMetaOptimizer(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
         os.environ[

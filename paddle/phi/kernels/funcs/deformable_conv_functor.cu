@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
 
 namespace phi {
 namespace funcs {
@@ -70,14 +69,12 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
     const T* data_im_ptr =
         data_im + (b_col * num_channels + c_im) * height * width;
     const T* data_offset_ptr =
-        data_offset +
-        (b_col * deformable_group + deformable_group_index) * 2 * kernel_h *
-            kernel_w * height_col * width_col;
+        data_offset + (b_col * deformable_group + deformable_group_index) * 2 *
+                          kernel_h * kernel_w * height_col * width_col;
     const T* data_mask_ptr =
         data_mask
-            ? data_mask +
-                  (b_col * deformable_group + deformable_group_index) *
-                      kernel_h * kernel_w * height_col * width_col
+            ? data_mask + (b_col * deformable_group + deformable_group_index) *
+                              kernel_h * kernel_w * height_col * width_col
             : nullptr;
 
     for (int i = 0; i < kernel_h; ++i) {
@@ -129,28 +126,28 @@ void ModulatedDeformableIm2col(const Context& dev_ctx,
   int blocks = NumBlocks(num_kernels);
   int threads = kNumCUDAThreads;
 
-  ModulatedDeformableIm2colGpuKernel<
-      T><<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
-                                                   data_im,
-                                                   data_offset,
-                                                   data_mask,
-                                                   im_shape[1],
-                                                   im_shape[2],
-                                                   filter_shape[2],
-                                                   filter_shape[3],
-                                                   paddings[0],
-                                                   paddings[1],
-                                                   strides[0],
-                                                   strides[1],
-                                                   dilations[0],
-                                                   dilations[1],
-                                                   channel_per_deformable_group,
-                                                   col_shape[1],
-                                                   im_shape[0],
-                                                   deformable_groups,
-                                                   col_shape[2],
-                                                   col_shape[3],
-                                                   data_col);
+  ModulatedDeformableIm2colGpuKernel<T>
+      <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
+                                                 data_im,
+                                                 data_offset,
+                                                 data_mask,
+                                                 im_shape[1],
+                                                 im_shape[2],
+                                                 filter_shape[2],
+                                                 filter_shape[3],
+                                                 paddings[0],
+                                                 paddings[1],
+                                                 strides[0],
+                                                 strides[1],
+                                                 dilations[0],
+                                                 dilations[1],
+                                                 channel_per_deformable_group,
+                                                 col_shape[1],
+                                                 im_shape[0],
+                                                 deformable_groups,
+                                                 col_shape[2],
+                                                 col_shape[3],
+                                                 data_col);
 }
 
 template void ModulatedDeformableIm2col(

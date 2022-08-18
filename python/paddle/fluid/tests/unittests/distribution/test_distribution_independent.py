@@ -21,12 +21,16 @@ import scipy.stats
 import config
 import parameterize as param
 
+np.random.seed(2022)
+
 
 @param.place(config.DEVICES)
-@param.param_cls((param.TEST_CASE_NAME, 'base', 'reinterpreted_batch_rank'),
-                 [('base_beta', paddle.distribution.Beta(
-                     paddle.rand([1, 2]), paddle.rand([1, 2])), 1)])
+@param.param_cls(
+    (param.TEST_CASE_NAME, 'base', 'reinterpreted_batch_rank'),
+    [('base_beta',
+      paddle.distribution.Beta(paddle.rand([1, 2]), paddle.rand([1, 2])), 1)])
 class TestIndependent(unittest.TestCase):
+
     def setUp(self):
         self._t = paddle.distribution.Independent(self.base,
                                                   self.reinterpreted_batch_rank)
@@ -82,6 +86,7 @@ class TestIndependent(unittest.TestCase):
     [('base_not_transform', '', 1, TypeError),
      ('rank_less_than_zero', paddle.distribution.Transform(), -1, ValueError)])
 class TestIndependentException(unittest.TestCase):
+
     def test_init(self):
         with self.assertRaises(self.expected_exception):
             paddle.distribution.IndependentTransform(

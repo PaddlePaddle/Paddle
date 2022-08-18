@@ -75,6 +75,7 @@ def channel_wise_dequantize_max_abs(x,
 
 
 class TestFakeChannelWiseDequantizeMaxAbsOpTwoScales(OpTest):
+
     def set_args(self):
         self.quant_bits = [8, 8]
         self.activation_scale = 0.7861
@@ -92,10 +93,11 @@ class TestFakeChannelWiseDequantizeMaxAbsOpTwoScales(OpTest):
                                               self.activation_scale)
 
         self.inputs = {
-            'X': yq,
-            'Scales': [("scales0", np.array(scales).astype(self.dtype)),
-                       ("scales1",
-                        np.array([self.activation_scale]).astype(self.dtype))]
+            'X':
+            yq,
+            'Scales':
+            [("scales0", np.array(scales).astype(self.dtype)),
+             ("scales1", np.array([self.activation_scale]).astype(self.dtype))]
         }
         self.attrs = {'quant_bits': self.quant_bits}
         self.outputs = {'Out': ydq}
@@ -106,6 +108,7 @@ class TestFakeChannelWiseDequantizeMaxAbsOpTwoScales(OpTest):
 
 class TestFakeChannelWiseDequantizeMaxAbsOpTwoScalesFloat16(
         TestFakeChannelWiseDequantizeMaxAbsOpTwoScales):
+
     def set_dtype(self):
         self.dtype = np.float16
 
@@ -114,6 +117,7 @@ class TestFakeChannelWiseDequantizeMaxAbsOpTwoScalesFloat16(
 
 
 class TestFakeChannelWiseDequantizeMaxAbsOpOneScale(OpTest):
+
     def set_args(self):
         self.quant_bits = [8]
         self.quant_axis = 0
@@ -147,6 +151,7 @@ class TestFakeChannelWiseDequantizeMaxAbsOpOneScale(OpTest):
 
 class TestFakeChannelWiseDequantizeMaxAbsOpOneScale1(
         TestFakeChannelWiseDequantizeMaxAbsOpOneScale):
+
     def set_args(self):
         self.quant_bits = [8]
         self.quant_axis = 1
@@ -154,6 +159,7 @@ class TestFakeChannelWiseDequantizeMaxAbsOpOneScale1(
 
 class TestFakeChannelWiseDequantizeMaxAbsOpOneScaleFloat16(
         TestFakeChannelWiseDequantizeMaxAbsOpOneScale):
+
     def set_dtype(self):
         self.dtype = np.float16
 
@@ -163,6 +169,7 @@ class TestFakeChannelWiseDequantizeMaxAbsOpOneScaleFloat16(
 
 class TestFakeChannelWiseDequantizeMaxAbsOpOneScale1Float16(
         TestFakeChannelWiseDequantizeMaxAbsOpOneScale1):
+
     def set_dtype(self):
         self.dtype = np.float16
 
@@ -171,6 +178,7 @@ class TestFakeChannelWiseDequantizeMaxAbsOpOneScale1Float16(
 
 
 class TestFakeDequantizeMaxAbsOp(OpTest):
+
     def set_args(self):
         self.num_bits = 8
         self.max_range = math.pow(2, self.num_bits - 1) - 1
@@ -195,17 +203,20 @@ class TestFakeDequantizeMaxAbsOp(OpTest):
 
 
 class TestFakeDequantizeMaxAbsOpDouble(TestFakeDequantizeMaxAbsOp):
+
     def set_dtype(self):
         self.dtype = np.float64
 
 
 class TestFakeDequantizeMaxAbsOp5Bits(TestFakeDequantizeMaxAbsOp):
+
     def set_args(self):
         self.num_bits = 5
         self.max_range = math.pow(2, self.num_bits - 1) - 1
 
 
 class TestFakeDequantizeMaxAbsOpFloat16(TestFakeDequantizeMaxAbsOp):
+
     def set_dtype(self):
         self.dtype = np.float16
 
@@ -214,6 +225,7 @@ class TestFakeDequantizeMaxAbsOpFloat16(TestFakeDequantizeMaxAbsOp):
 
 
 class TestChannelWiseDequantizeOp(OpTest):
+
     def set_args(self):
         self.bit_length = 8
         self.data_type = "float32"
@@ -242,6 +254,7 @@ class TestChannelWiseDequantizeOp(OpTest):
 
 
 class TestChannelWiseDequantizeOp1(TestChannelWiseDequantizeOp):
+
     def set_args(self):
         self.bit_length = 8
         self.data_type = "float32"
@@ -249,6 +262,7 @@ class TestChannelWiseDequantizeOp1(TestChannelWiseDequantizeOp):
 
 
 class TestDequantizeOp(OpTest):
+
     def set_args(self):
         self.bit_length = 8
         self.quant_axis = -1
@@ -276,6 +290,7 @@ class TestDequantizeOp(OpTest):
 
 
 class TestDequantizeOpDouble(TestDequantizeOp):
+
     def set_args(self):
         self.bit_length = 8
         self.max_range = math.pow(2, self.bit_length - 1) - 1
@@ -284,6 +299,7 @@ class TestDequantizeOpDouble(TestDequantizeOp):
 
 
 class TestDequantizeOp5Bits(TestDequantizeOp):
+
     def set_args(self):
         self.bit_length = 5
         self.max_range = math.pow(2, self.bit_length - 1) - 1

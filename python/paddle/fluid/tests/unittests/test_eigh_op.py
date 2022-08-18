@@ -56,7 +56,7 @@ def valid_single_eigh_result(A, eigh_value, eigh_vector, uplo):
     T = np.diag(eigh_value)
 
     # A = Q*T*Q'
-    residual = A - (eigh_vector @T @np.linalg.inv(eigh_vector))
+    residual = A - (eigh_vector @ T @ np.linalg.inv(eigh_vector))
 
     # ||A - Q*T*Q'|| / (N*||A||) < rtol
     np.testing.assert_array_less(
@@ -64,11 +64,12 @@ def valid_single_eigh_result(A, eigh_value, eigh_vector, uplo):
         rtol)
 
     # ||I - Q*Q'|| / M < rtol
-    residual = np.eye(M) - eigh_vector @np.linalg.inv(eigh_vector)
+    residual = np.eye(M) - eigh_vector @ np.linalg.inv(eigh_vector)
     np.testing.assert_array_less(np.linalg.norm(residual, np.inf) / M, rtol)
 
 
 class TestEighOp(OpTest):
+
     def setUp(self):
         paddle.enable_static()
         self.op_type = "eigh"
@@ -96,11 +97,13 @@ class TestEighOp(OpTest):
 
 
 class TestEighUPLOCase(TestEighOp):
+
     def init_config(self):
         self.UPLO = 'U'
 
 
 class TestEighGPUCase(unittest.TestCase):
+
     def setUp(self):
         self.x_shape = [32, 32]
         self.dtype = "float32"
@@ -113,11 +116,12 @@ class TestEighGPUCase(unittest.TestCase):
             paddle.disable_static(place=paddle.CUDAPlace(0))
             input_real_data = paddle.to_tensor(self.x_np)
             actual_w, actual_v = paddle.linalg.eigh(input_real_data, self.UPLO)
-            valid_eigh_result(self.x_np,
-                              actual_w.numpy(), actual_v.numpy(), self.UPLO)
+            valid_eigh_result(self.x_np, actual_w.numpy(), actual_v.numpy(),
+                              self.UPLO)
 
 
 class TestEighAPI(unittest.TestCase):
+
     def setUp(self):
         self.init_input_data()
         self.UPLO = 'L'
@@ -147,8 +151,9 @@ class TestEighAPI(unittest.TestCase):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, startup_prog):
-            input_x = paddle.static.data(
-                'input_x', shape=self.x_shape, dtype=self.dtype)
+            input_x = paddle.static.data('input_x',
+                                         shape=self.x_shape,
+                                         dtype=self.dtype)
             output_w, output_v = paddle.linalg.eigh(input_x)
             exe = paddle.static.Executor(self.place)
             actual_w, actual_v = exe.run(main_prog,
@@ -161,8 +166,9 @@ class TestEighAPI(unittest.TestCase):
         startup_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, startup_prog):
             x_dtype = np.complex64 if self.dtype == "float32" else np.complex128
-            input_x = paddle.static.data(
-                'input_x', shape=self.x_shape, dtype=x_dtype)
+            input_x = paddle.static.data('input_x',
+                                         shape=self.x_shape,
+                                         dtype=x_dtype)
             output_w, output_v = paddle.linalg.eigh(input_x)
             exe = paddle.static.Executor(self.place)
             actual_w, actual_v = exe.run(main_prog,
@@ -179,55 +185,61 @@ class TestEighAPI(unittest.TestCase):
         paddle.disable_static()
         input_real_data = paddle.to_tensor(self.real_data)
         actual_w, actual_v = paddle.linalg.eigh(input_real_data)
-        valid_eigh_result(self.real_data,
-                          actual_w.numpy(), actual_v.numpy(), self.UPLO)
+        valid_eigh_result(self.real_data, actual_w.numpy(), actual_v.numpy(),
+                          self.UPLO)
 
         input_complex_data = paddle.to_tensor(self.complex_symm)
         actual_w, actual_v = paddle.linalg.eigh(input_complex_data)
-        valid_eigh_result(self.complex_symm,
-                          actual_w.numpy(), actual_v.numpy(), self.UPLO)
+        valid_eigh_result(self.complex_symm, actual_w.numpy(), actual_v.numpy(),
+                          self.UPLO)
 
     def test_eigh_grad(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.complex_symm, stop_gradient=False)
         w, v = paddle.linalg.eigh(x)
         (w.sum() + paddle.abs(v).sum()).backward()
-        np.testing.assert_allclose(
-            abs(x.grad.numpy()),
-            abs(x.grad.numpy().conj().transpose(self.trans_dims)),
-            rtol=self.rtol,
-            atol=self.atol)
+        np.testing.assert_allclose(abs(x.grad.numpy()),
+                                   abs(x.grad.numpy().conj().transpose(
+                                       self.trans_dims)),
+                                   rtol=self.rtol,
+                                   atol=self.atol)
 
 
 class TestEighBatchAPI(TestEighAPI):
+
     def init_input_shape(self):
         self.x_shape = [2, 5, 5]
 
 
 class TestEighAPIError(unittest.TestCase):
+
     def test_error(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, startup_prog):
             #input maxtrix must greater than 2 dimensions
-            input_x = paddle.static.data(
-                name='x_1', shape=[12], dtype='float32')
+            input_x = paddle.static.data(name='x_1',
+                                         shape=[12],
+                                         dtype='float32')
             self.assertRaises(ValueError, paddle.linalg.eigh, input_x)
 
             #input matrix must be square matrix
-            input_x = paddle.static.data(
-                name='x_2', shape=[12, 32], dtype='float32')
+            input_x = paddle.static.data(name='x_2',
+                                         shape=[12, 32],
+                                         dtype='float32')
             self.assertRaises(ValueError, paddle.linalg.eigh, input_x)
 
             #uplo must be in 'L' or 'U'
-            input_x = paddle.static.data(
-                name='x_3', shape=[4, 4], dtype="float32")
+            input_x = paddle.static.data(name='x_3',
+                                         shape=[4, 4],
+                                         dtype="float32")
             uplo = 'R'
             self.assertRaises(ValueError, paddle.linalg.eigh, input_x, uplo)
 
             #x_data cannot be integer
-            input_x = paddle.static.data(
-                name='x_4', shape=[4, 4], dtype="int32")
+            input_x = paddle.static.data(name='x_4',
+                                         shape=[4, 4],
+                                         dtype="int32")
             self.assertRaises(TypeError, paddle.linalg.eigh, input_x)
 
 

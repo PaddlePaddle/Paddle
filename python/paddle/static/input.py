@@ -251,8 +251,9 @@ class InputSpec(object):
                     format(batch_size, len(batch_size)))
             batch_size = batch_size[1]
         elif not isinstance(batch_size, six.integer_types):
-            raise TypeError("type(batch_size) shall be `int`, but received {}.".
-                            format(type(batch_size).__name__))
+            raise TypeError(
+                "type(batch_size) shall be `int`, but received {}.".format(
+                    type(batch_size).__name__))
 
         new_shape = [batch_size] + list(self.shape)
         self.shape = tuple(new_shape)
@@ -289,19 +290,20 @@ class InputSpec(object):
         """
         if not isinstance(shape, (list, tuple)):
             raise TypeError(
-                "Type of `shape` in InputSpec should be one of (tuple, list), but received {}.".
-                format(type(shape).__name__))
+                "Type of `shape` in InputSpec should be one of (tuple, list), but received {}."
+                .format(type(shape).__name__))
         if len(shape) == 0:
             raise ValueError(
-                "`shape` in InputSpec should contain at least 1 element, but received {}.".
-                format(shape))
+                "`shape` in InputSpec should contain at least 1 element, but received {}."
+                .format(shape))
 
         for i, ele in enumerate(shape):
             if ele is not None:
                 if not isinstance(ele, six.integer_types):
                     raise ValueError(
                         "shape[{}] should be an `int`, but received `{}`:{}.".
-                        format(i, type(ele).__name__, ele))
+                        format(i,
+                               type(ele).__name__, ele))
             if ele is None or ele < -1:
                 shape[i] = -1
 

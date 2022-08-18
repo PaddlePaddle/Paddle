@@ -26,6 +26,7 @@ from .dist_attribute import get_op_dist_attr_field_keys
 
 
 class DistributedOperator:
+
     def __init__(self, serial_op, dist_attr=None):
         self._serial_op = serial_op
         self._serial_inputs = {}
@@ -248,6 +249,7 @@ class DistributedOperator:
 
 
 class DistributedModule:
+
     def __init__(self, serial_module, dist_attr=None):
         self._serial_module = serial_module
         self._dist_attr = dist_attr
@@ -265,6 +267,4 @@ class DistributedModule:
             dist_op = DistributedOperator(op, self._dist_attr)
             dist_op.dist_attr.mark_annotated_as(self._dist_attr)
             default_dist_ctx.add_dist_op_for_program(dist_op)
-        if isinstance(output, Variable):
-            output = [output]
-        return list(output)
+        return output

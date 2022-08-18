@@ -26,6 +26,7 @@ non_auto_func_called = True
 
 
 def __non_auto_func_called__(func):
+
     def __impl__(*args, **kwargs):
         global non_auto_func_called
         non_auto_func_called = False
@@ -317,8 +318,8 @@ class DistributedStrategy(object):
             self.a_sync_configs = {"k_steps": 0}
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received {}".
-                format(type(flag)))
+                "The type of `flag` is invalid, expected type is bool, but received {}"
+                .format(type(flag)))
 
     @property
     def a_sync_configs(self):
@@ -429,8 +430,8 @@ class DistributedStrategy(object):
             self.strategy.adam_d2sum = flag
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received {}".
-                format(type(flag)))
+                "The type of `flag` is invalid, expected type is bool, but received {}"
+                .format(type(flag)))
 
     @trainer_desc_configs.setter
     @is_strict_auto
@@ -492,8 +493,8 @@ class DistributedStrategy(object):
                             data = getattr(msg, field.name).add()
                             set_table_config(data, name, configs, i)
                     else:
-                        set_table_config(
-                            getattr(msg, field.name), name, configs)
+                        set_table_config(getattr(msg, field.name), name,
+                                         configs)
                 else:
                     # print("not message:", name)
                     if name not in configs:
@@ -529,7 +530,7 @@ class DistributedStrategy(object):
                                    'embed_sparse_initial_range', 'embed_sparse_initial_g2sum', 'embed_sparse_beta1_decay_rate', \
                                    'embed_sparse_beta2_decay_rate', 'embedx_sparse_optimizer', 'embedx_sparse_learning_rate', \
                                    'embedx_sparse_weight_bounds', 'embedx_sparse_initial_range', 'embedx_sparse_initial_g2sum', \
-                                   'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate']
+                                   'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate', 'feature_learning_rate', 'nodeid_slot']
         support_sparse_table_class = ['DownpourSparseTable']
         support_sparse_accessor_class = [
             'DownpourSparseValueAccessor', 'DownpourCtrAccessor',
@@ -538,6 +539,11 @@ class DistributedStrategy(object):
         ]
         from google.protobuf.descriptor import FieldDescriptor
         table_param = self.strategy.downpour_table_param
+
+        def add_graph_config(graph, strategy):
+            graph.feature_learning_rate = strategy.get('feature_learning_rate',
+                                                       0.05)
+            graph.nodeid_slot = strategy.get('nodeid_slot', 9008)
 
         def sparse_optimizer_config(sgd, strategy, prefix):
             optimizer_name = strategy.get(prefix + "sparse_optimizer",
@@ -580,6 +586,21 @@ class DistributedStrategy(object):
                 sgd.adagrad.weight_bounds.extend(bounds)
             elif optimizer_name == "adam":
                 sgd.name = 'SparseAdamSGDRule'
+                sgd.adam.learning_rate = strategy.get(
+                    prefix + 'sparse_learning_rate', 0.001)
+                sgd.adam.initial_range = strategy.get(
+                    prefix + 'sparse_initial_range', 1e-4)
+                sgd.adam.beta1_decay_rate = strategy.get(
+                    prefix + 'sparse_beta1_decay_rate', 0.9)
+                sgd.adam.beta2_decay_rate = strategy.get(
+                    prefix + 'sparse_beta2_decay_rate', 0.999)
+                sgd.adam.ada_epsilon = strategy.get(
+                    prefix + 'sparse_ada_epsilon', 1e-8)
+                bounds = strategy.get(prefix + 'sparse_weight_bounds',
+                                      [-10, 10])
+                sgd.adam.weight_bounds.extend(bounds)
+            elif optimizer_name == "shared_adam":
+                sgd.name = 'SparseSharedAdamSGDRule'
                 sgd.adam.learning_rate = strategy.get(
                     prefix + 'sparse_learning_rate', 0.001)
                 sgd.adam.initial_range = strategy.get(
@@ -675,6 +696,7 @@ class DistributedStrategy(object):
                                         config, 'embed_')
                 sparse_optimizer_config(table_data.accessor.embedx_sgd_param,
                                         config, 'embedx_')
+            add_graph_config(table_data.accessor.graph_sgd_param, config)
 
         if not configs:
             print("fleet desc config is empty")
@@ -1022,7 +1044,8 @@ class DistributedStrategy(object):
             self.strategy.find_unused_parameters = flag
         else:
             print(
-                "WARNING: find_unused_parameters should have value of bool type")
+                "WARNING: find_unused_parameters should have value of bool type"
+            )
 
     @property
     def _fuse_grad_size_in_TFLOPS(self):
@@ -1297,7 +1320,8 @@ class DistributedStrategy(object):
             self.strategy.fuse_grad_size_in_num = num
         else:
             print(
-                "WARNING: fuse_grad_size_in_num should have value of int32 type")
+                "WARNING: fuse_grad_size_in_num should have value of int32 type"
+            )
 
     @property
     def pipeline(self):
@@ -1317,6 +1341,30 @@ class DistributedStrategy(object):
 
         """
         return self.strategy.pipeline
+
+    @property
+    def is_fl_ps_mode(self):
+        return self.strategy.is_fl_ps_mode
+
+    @is_fl_ps_mode.setter
+    @is_strict_auto
+    def is_fl_ps_mode(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.is_fl_ps_mode = flag
+        else:
+            print("WARNING: is_fl_ps_mode should have value of bool type")
+
+    @property
+    def is_with_coordinator(self):
+        return self.strategy.with_coordinator
+
+    @is_with_coordinator.setter
+    @is_strict_auto
+    def is_with_coordinator(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.with_coordinator = flag
+        else:
+            print("WARNING: with_coordinator should have value of bool type")
 
     @pipeline.setter
     @is_strict_auto
@@ -2113,8 +2161,8 @@ class DistributedStrategy(object):
         length = max_k + max_v + spacing
 
         h1_format = "    " + "|{{:^{}s}}|\n".format(length)
-        h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(max_k, " " *
-                                                               spacing, max_v)
+        h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
+            max_k, " " * spacing, max_v)
 
         border = "    +" + "".join(["="] * length) + "+"
         line = "    +" + "".join(["-"] * length) + "+"
@@ -2146,17 +2194,17 @@ class DistributedStrategy(object):
                             config_fields = my_configs.DESCRIPTOR.fields
                             for ff in config_fields:
                                 if isinstance(
-                                        getattr(my_configs, ff.name),
-                                        google.protobuf.pyext._message.
-                                        RepeatedScalarContainer):
+                                        getattr(my_configs,
+                                                ff.name), google.protobuf.pyext.
+                                        _message.RepeatedScalarContainer):
                                     values = getattr(my_configs, ff.name)
                                     for i, v in enumerate(values):
                                         if i == 0:
-                                            draws += h2_format.format(ff.name,
-                                                                      str(v))
+                                            draws += h2_format.format(
+                                                ff.name, str(v))
                                         else:
-                                            draws += h2_format.format("",
-                                                                      str(v))
+                                            draws += h2_format.format(
+                                                "", str(v))
                                 else:
                                     draws += h2_format.format(
                                         ff.name,

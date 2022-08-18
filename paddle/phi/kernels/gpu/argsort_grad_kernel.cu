@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/argsort_kernel.h"
-
 #include <thrust/copy.h>
 #include <thrust/execution_policy.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
+
+#include "paddle/phi/kernels/argsort_kernel.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif

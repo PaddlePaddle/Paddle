@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 from quant_dequant_test import QuantDequantTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
@@ -25,24 +26,25 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
+
     def setUp(self):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
-                name='data', shape=[1, 28, 28], dtype='float32')
+            self.data = fluid.data(name='data',
+                                   shape=[1, 28, 28],
+                                   dtype='float32')
             data_reshape = fluid.layers.reshape(self.data, shape=[1, 4, 14, 14])
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             label_shape = fluid.layers.reshape(self.label, shape=[1, 1, 1])
-            conv_out = fluid.layers.conv2d(
-                input=data_reshape,
-                num_filters=self.conv_num_filters,
-                filter_size=self.conv_filter_size,
-                groups=self.conv_groups,
-                padding=self.conv_padding,
-                bias_attr=False,
-                use_cudnn=self.use_cudnn,
-                act=None)
+            conv_out = fluid.layers.conv2d(input=data_reshape,
+                                           num_filters=self.conv_num_filters,
+                                           filter_size=self.conv_filter_size,
+                                           groups=self.conv_groups,
+                                           padding=self.conv_padding,
+                                           bias_attr=False,
+                                           use_cudnn=self.use_cudnn,
+                                           act=None)
             if self.conv_padding == [1, 1]:
                 cout = fluid.layers.reshape(conv_out, shape=[1, 1, 10816])
             elif self.conv_padding == 'VALID':
@@ -53,7 +55,7 @@ class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
                 cout = fluid.layers.reshape(conv_out, shape=[1, 1, 10816])
             result = fluid.layers.relu(cout)
             loss = fluid.layers.cross_entropy(input=result, label=label_shape)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2
@@ -87,14 +89,17 @@ class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(
-                use_gpu, atol=1e-1, flatten=False, rtol=1e-1)
+            self.check_output_with_option(use_gpu,
+                                          atol=1e-1,
+                                          flatten=False,
+                                          rtol=1e-1)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class QuantDequantTensorRTSubgraphPassConvValidPaddingTest(
         QuantDequantTensorRTSubgraphPassConvTest):
+
     def set_params(self):
         self.conv_num_filters = 64
         self.conv_filter_size = 4
@@ -105,6 +110,7 @@ class QuantDequantTensorRTSubgraphPassConvValidPaddingTest(
 
 class QuantDequantTensorRTSubgraphPassConvSamePaddingTest(
         QuantDequantTensorRTSubgraphPassConvTest):
+
     def set_params(self):
         self.conv_num_filters = 64
         self.conv_filter_size = 4
@@ -115,6 +121,7 @@ class QuantDequantTensorRTSubgraphPassConvSamePaddingTest(
 
 class QuantDequantTensorRTSubgraphPassDWConvTest(
         QuantDequantTensorRTSubgraphPassConvTest):
+
     def set_params(self):
         self.conv_num_filters = 64
         self.conv_filter_size = 4
@@ -124,28 +131,29 @@ class QuantDequantTensorRTSubgraphPassDWConvTest(
 
 
 class DynamicShapeQuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
+
     def setUp(self):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
-                name='data', shape=[1, 28, 28], dtype='float32')
+            self.data = fluid.data(name='data',
+                                   shape=[1, 28, 28],
+                                   dtype='float32')
             data_reshape = fluid.layers.reshape(self.data, shape=[1, 4, 14, 14])
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             label_shape = fluid.layers.reshape(self.label, shape=[1, 1, 1])
-            conv_out = fluid.layers.conv2d(
-                input=data_reshape,
-                num_filters=self.conv_num_filters,
-                filter_size=self.conv_filter_size,
-                groups=self.conv_groups,
-                padding=self.conv_padding,
-                bias_attr=False,
-                use_cudnn=self.use_cudnn,
-                act=None)
+            conv_out = fluid.layers.conv2d(input=data_reshape,
+                                           num_filters=self.conv_num_filters,
+                                           filter_size=self.conv_filter_size,
+                                           groups=self.conv_groups,
+                                           padding=self.conv_padding,
+                                           bias_attr=False,
+                                           use_cudnn=self.use_cudnn,
+                                           act=None)
             cout = fluid.layers.reshape(conv_out, shape=[1, 1, 10816])
             result = fluid.layers.relu(cout)
             loss = fluid.layers.cross_entropy(input=result, label=label_shape)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2
@@ -199,19 +207,23 @@ class DynamicShapeQuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(
-                use_gpu, atol=1e-1, flatten=False, rtol=1e-1)
+            self.check_output_with_option(use_gpu,
+                                          atol=1e-1,
+                                          flatten=False,
+                                          rtol=1e-1)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
+
     def setUp(self):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
-                name='data', shape=[1, 28, 28], dtype='float32')
+            self.data = fluid.data(name='data',
+                                   shape=[1, 28, 28],
+                                   dtype='float32')
             data_reshape = fluid.layers.reshape(self.data, shape=[1, 4, 14, 14])
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             label_shape = fluid.layers.reshape(self.label, shape=[1, 1, 1])
@@ -234,7 +246,7 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
                 cout = fluid.layers.reshape(conv_out, shape=[1, 1, 10816])
             result = fluid.layers.relu(cout)
             loss = fluid.layers.cross_entropy(input=result, label=label_shape)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2
@@ -268,14 +280,17 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(
-                use_gpu, atol=1e-1, flatten=False, rtol=1e-1)
+            self.check_output_with_option(use_gpu,
+                                          atol=1e-1,
+                                          flatten=False,
+                                          rtol=1e-1)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class QuantDequantTensorRTSubgraphPassConvTransValidPaddingTest(
         QuantDequantTensorRTSubgraphPassConvTransposeTest):
+
     def set_params(self):
         self.conv_num_filters = 64
         self.conv_filter_size = 4
@@ -286,6 +301,7 @@ class QuantDequantTensorRTSubgraphPassConvTransValidPaddingTest(
 
 class QuantDequantTensorRTSubgraphPassConvTransSamePaddingTest(
         QuantDequantTensorRTSubgraphPassConvTransposeTest):
+
     def set_params(self):
         self.conv_num_filters = 64
         self.conv_filter_size = 4
@@ -296,6 +312,7 @@ class QuantDequantTensorRTSubgraphPassConvTransSamePaddingTest(
 
 class QuantDequantTensorRTSubgraphPassTransDWConvTest(
         QuantDequantTensorRTSubgraphPassConvTransposeTest):
+
     def set_params(self):
         self.conv_num_filters = 64
         self.conv_filter_size = 4

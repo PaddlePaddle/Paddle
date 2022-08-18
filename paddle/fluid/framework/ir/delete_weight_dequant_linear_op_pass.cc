@@ -52,6 +52,10 @@ DeleteWeightQuantDequantLinearOpPass::DeleteWeightQuantDequantLinearOpPass() {
       .End()
       .AddAttr("quant_axis")
       .IsType<int>()
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
+      .IsType<int>()
       .End();
   AddOpCompat(OpCompat("dequantize_linear"))
       .AddInput("X")
@@ -71,6 +75,10 @@ DeleteWeightQuantDequantLinearOpPass::DeleteWeightQuantDequantLinearOpPass() {
       .IsType<int>()
       .End()
       .AddAttr("quant_axis")
+      .IsType<int>()
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
       .IsType<int>()
       .End();
   AddOpCompat(OpCompat("conv2d"))
@@ -289,7 +297,7 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     }
     */
     std::unordered_set<const Node*> nodes2rm = {};
-    int bit_length = BOOST_GET_CONST(
+    int bit_length = PADDLE_GET_CONST(
         int, weight_dequantize_linear_op->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
 
@@ -319,10 +327,11 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     std::vector<float> weight_data_tmp;
     weight_data_tmp.reserve(weight_tensor->numel());
 
-    int quant_axis = BOOST_GET_CONST(
+    int quant_axis = PADDLE_GET_CONST(
         int, weight_dequantize_linear_op->Op()->GetAttr("quant_axis"));
     if (quant_axis == -1) {  // per_layer quant_dequant: all OP
-      PADDLE_ENFORCE_EQ(weight_scale_nums, 1,
+      PADDLE_ENFORCE_EQ(weight_scale_nums,
+                        1,
                         platform::errors::InvalidArgument(
                             "When quant_axis == -1 means use per_layer "
                             "quant_dequant, weight_scale'number should be 1."));
@@ -335,11 +344,13 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     } else if (quant_axis == 0) {  // per_channel quant_dequant: conv2d,
                                    // depthwise_conv2d, conv2d_fusion
       PADDLE_ENFORCE_EQ(
-          weight_scale_nums, w_dims[quant_axis],
+          weight_scale_nums,
+          w_dims[quant_axis],
           platform::errors::InvalidArgument(
               "When quant_axis == 0 means use per_channel quant_dequant, "
               "weight_scale'numbers should be equal channels."));
-      PADDLE_ENFORCE_EQ(w_dims.size(), 4,
+      PADDLE_ENFORCE_EQ(w_dims.size(),
+                        4,
                         platform::errors::InvalidArgument(
                             "When quant_axis == 0 means use per_channel "
                             "quant_dequant, (conv2d, depthwise_conv2d, "
@@ -352,7 +363,8 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       }
     } else if (quant_axis == 1) {
       PADDLE_ENFORCE_EQ(
-          weight_scale_nums, w_dims[quant_axis],
+          weight_scale_nums,
+          w_dims[quant_axis],
           platform::errors::InvalidArgument(
               "When quant_axis == 1 means use per_channel quant_dequant, "
               "weight_scale'numbers should be equal channels."));
@@ -360,7 +372,8 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       if (w_dims.size() == 4) {  // conv2d_transpose
         std::string quantized_op_type = any_op2->Op()->Type();
         PADDLE_ENFORCE_EQ(
-            quantized_op_type, "conv2d_transpose",
+            quantized_op_type,
+            "conv2d_transpose",
             platform::errors::InvalidArgument(
                 "When quant_axis == 1 means use per_channel quant_dequant, "
                 "only conv2d_transpose weight dims equal 4."));
@@ -388,7 +401,8 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     weight_tensor->Resize(phi::make_ddim(phi::vectorize(w_dims)));
     float* new_quantized_weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_quantized_weight_data, weight_data_tmp.data(),
+    memcpy(new_quantized_weight_data,
+           weight_data_tmp.data(),
            weight_tensor->numel() * sizeof(float));
 
     nodes2rm.insert(weight_dequantize_linear_op_scale);

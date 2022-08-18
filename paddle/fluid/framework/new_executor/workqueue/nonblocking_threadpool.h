@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstdlib>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/new_executor/workqueue/event_count.h"
 #include "paddle/fluid/framework/new_executor/workqueue/run_queue.h"
@@ -28,8 +29,11 @@ class ThreadPoolTempl {
   typedef typename Environment::Task Task;
   typedef RunQueue<Task, 1024> Queue;
 
-  ThreadPoolTempl(const std::string& name, int num_threads, bool allow_spinning,
-                  bool always_spinning, Environment env = Environment())
+  ThreadPoolTempl(const std::string& name,
+                  int num_threads,
+                  bool allow_spinning,
+                  bool always_spinning,
+                  Environment env = Environment())
       : env_(env),
         allow_spinning_(allow_spinning),
         always_spinning_(always_spinning),
@@ -426,8 +430,8 @@ class ThreadPoolTempl {
     }
 
     // Wait for work
-    platform::RecordEvent record("WaitForWork",
-                                 platform::TracerEventType::UserDefined, 10);
+    platform::RecordEvent record(
+        "WaitForWork", platform::TracerEventType::UserDefined, 10);
     ec_.CommitWait(waiter);
     blocked_--;
     return true;

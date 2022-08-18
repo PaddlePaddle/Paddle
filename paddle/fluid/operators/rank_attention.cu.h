@@ -25,10 +25,17 @@ static inline int GET_BLOCKS(const int N) {
 }
 
 template <typename T>
-__global__ void expand_input_by_rank_kernel(
-    const T* input, int input_row, int input_col, T* output, int output_row,
-    int output_col, const int* rank_offset, int rank_offset_row,
-    int rank_offset_col, T* ins_rank, int max_rank) {
+__global__ void expand_input_by_rank_kernel(const T* input,
+                                            int input_row,
+                                            int input_col,
+                                            T* output,
+                                            int output_row,
+                                            int output_col,
+                                            const int* rank_offset,
+                                            int rank_offset_row,
+                                            int rank_offset_col,
+                                            T* ins_rank,
+                                            int max_rank) {
   CUDA_KERNEL_LOOP(idx, output_row * output_col) {
     int output_col_idx = idx % output_col;
     int output_row_idx = idx / output_col;
@@ -50,24 +57,48 @@ __global__ void expand_input_by_rank_kernel(
 }
 
 template <typename T>
-void expand_rank_attention_input(gpuStream_t stream, const T* input,
-                                 int input_row, int input_col, T* output,
-                                 int output_row, int output_col,
-                                 const int* rank_offset, int rank_offset_row,
-                                 int rank_offset_col, T* ins_rank,
+void expand_rank_attention_input(gpuStream_t stream,
+                                 const T* input,
+                                 int input_row,
+                                 int input_col,
+                                 T* output,
+                                 int output_row,
+                                 int output_col,
+                                 const int* rank_offset,
+                                 int rank_offset_row,
+                                 int rank_offset_col,
+                                 T* ins_rank,
                                  int max_rank) {
   expand_input_by_rank_kernel<<<GET_BLOCKS(output_row * output_col),
-                                CUDA_NUM_THREADS, 0, stream>>>(
-      input, input_row, input_col, output, output_row, output_col, rank_offset,
-      rank_offset_row, rank_offset_col, ins_rank, max_rank);
+                                CUDA_NUM_THREADS,
+                                0,
+                                stream>>>(input,
+                                          input_row,
+                                          input_col,
+                                          output,
+                                          output_row,
+                                          output_col,
+                                          rank_offset,
+                                          rank_offset_row,
+                                          rank_offset_col,
+                                          ins_rank,
+                                          max_rank);
 }
 
 template <typename T>
-__global__ void expand_rank_attention_param_kernel(
-    const T* input, int input_row, int input_col, const int* rank_offset,
-    int rank_offset_row, int rank_offset_col, const T* param, int param_row,
-    int param_col, T* output_param, int output_param_row, int output_param_col,
-    int max_rank) {
+__global__ void expand_rank_attention_param_kernel(const T* input,
+                                                   int input_row,
+                                                   int input_col,
+                                                   const int* rank_offset,
+                                                   int rank_offset_row,
+                                                   int rank_offset_col,
+                                                   const T* param,
+                                                   int param_row,
+                                                   int param_col,
+                                                   T* output_param,
+                                                   int output_param_row,
+                                                   int output_param_col,
+                                                   int max_rank) {
   CUDA_KERNEL_LOOP(idx, output_param_row * output_param_col) {
     int output_col_idx = idx % output_param_col;
     int output_row_idx = idx / output_param_col;
@@ -93,26 +124,50 @@ __global__ void expand_rank_attention_param_kernel(
 }
 
 template <typename T>
-void expand_rank_attention_param(gpuStream_t stream, const T* input,
-                                 int input_row, int input_col,
-                                 const int* rank_offset, int rank_offset_row,
-                                 int rank_offset_col, const T* param,
-                                 int param_row, int param_col, T* output_param,
-                                 int output_param_row, int output_param_col,
+void expand_rank_attention_param(gpuStream_t stream,
+                                 const T* input,
+                                 int input_row,
+                                 int input_col,
+                                 const int* rank_offset,
+                                 int rank_offset_row,
+                                 int rank_offset_col,
+                                 const T* param,
+                                 int param_row,
+                                 int param_col,
+                                 T* output_param,
+                                 int output_param_row,
+                                 int output_param_col,
                                  int max_rank) {
   expand_rank_attention_param_kernel<<<GET_BLOCKS(output_param_row *
                                                   output_param_col),
-                                       CUDA_NUM_THREADS, 0, stream>>>(
-      input, input_row, input_col, rank_offset, rank_offset_row,
-      rank_offset_col, param, param_row, param_col, output_param,
-      output_param_row, output_param_col, max_rank);
+                                       CUDA_NUM_THREADS,
+                                       0,
+                                       stream>>>(input,
+                                                 input_row,
+                                                 input_col,
+                                                 rank_offset,
+                                                 rank_offset_row,
+                                                 rank_offset_col,
+                                                 param,
+                                                 param_row,
+                                                 param_col,
+                                                 output_param,
+                                                 output_param_row,
+                                                 output_param_col,
+                                                 max_rank);
 }
 
 template <typename T>
-__global__ void merge_param_gradient_kernel(
-    T* expanded_grad, int expanded_grad_row, int expanded_grad_col,
-    T* param_grad, int param_grad_row, int param_grad_col, const T* ins_rank,
-    int ins_num, int max_rank, int input_col) {
+__global__ void merge_param_gradient_kernel(T* expanded_grad,
+                                            int expanded_grad_row,
+                                            int expanded_grad_col,
+                                            T* param_grad,
+                                            int param_grad_row,
+                                            int param_grad_col,
+                                            const T* ins_rank,
+                                            int ins_num,
+                                            int max_rank,
+                                            int input_col) {
   CUDA_KERNEL_LOOP(tid, param_grad_row * param_grad_col) {
     int param_col_idx = tid % param_grad_col;
     int param_row_idx = tid / param_grad_col;
@@ -133,16 +188,30 @@ __global__ void merge_param_gradient_kernel(
 }
 
 template <typename T>
-void merge_rank_attention_param_grad(gpuStream_t stream, T* expanded_grad,
+void merge_rank_attention_param_grad(gpuStream_t stream,
+                                     T* expanded_grad,
                                      int expanded_grad_row,
-                                     int expanded_grad_col, T* param_grad,
-                                     int param_grad_row, int param_grad_col,
-                                     const T* ins_rank, int ins_num,
-                                     int max_rank, int input_col) {
+                                     int expanded_grad_col,
+                                     T* param_grad,
+                                     int param_grad_row,
+                                     int param_grad_col,
+                                     const T* ins_rank,
+                                     int ins_num,
+                                     int max_rank,
+                                     int input_col) {
   merge_param_gradient_kernel<<<GET_BLOCKS(param_grad_row * param_grad_col),
-                                CUDA_NUM_THREADS, 0, stream>>>(
-      expanded_grad, expanded_grad_row, expanded_grad_col, param_grad,
-      param_grad_row, param_grad_col, ins_rank, ins_num, max_rank, input_col);
+                                CUDA_NUM_THREADS,
+                                0,
+                                stream>>>(expanded_grad,
+                                          expanded_grad_row,
+                                          expanded_grad_col,
+                                          param_grad,
+                                          param_grad_row,
+                                          param_grad_col,
+                                          ins_rank,
+                                          ins_num,
+                                          max_rank,
+                                          input_col);
 }
 
 }  // namespace operators

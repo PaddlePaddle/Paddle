@@ -67,8 +67,8 @@ class TestFleetUtils(unittest.TestCase):
     def test_parse_program_proto(self):
         data_dir = self.download_files()
         parse_program_file_path = os.path.join(
-            data_dir,
-            os.path.join(self.pruned_dir, "pruned_main_program.pbtxt"))
+            data_dir, os.path.join(self.pruned_dir,
+                                   "pruned_main_program.pbtxt"))
         is_text_parse_program = True
         parse_output_dir = os.path.join(data_dir, self.pruned_dir)
         fleet_util = FleetUtil()
@@ -119,8 +119,7 @@ class TestFleetUtils(unittest.TestCase):
         results = fleet_util.check_vars_and_dump(conf)
         self.assertTrue(len(results) == 1)
         np.testing.assert_array_almost_equal(
-            results[0], np.array(
-                [[3.0590223e-07]], dtype=np.float32))
+            results[0], np.array([[3.0590223e-07]], dtype=np.float32))
 
         # test feed_var's shape
         conf.dump_program_filename = "pruned_main_program.feed_var_shape_not_match"
@@ -131,8 +130,7 @@ class TestFleetUtils(unittest.TestCase):
         results = fleet_util.check_vars_and_dump(conf)
         self.assertTrue(len(results) == 1)
         np.testing.assert_array_almost_equal(
-            results[0], np.array(
-                [[3.0590223e-07]], dtype=np.float32))
+            results[0], np.array([[3.0590223e-07]], dtype=np.float32))
 
         # test correct case without feed_vars_filelist
         conf.feed_config.feeded_vars_filelist = None
@@ -168,8 +166,8 @@ class TestFleetUtils(unittest.TestCase):
 
         # test match
         conf.pruned_prog_path = os.path.join(
-            data_dir,
-            os.path.join(self.pruned_dir, "pruned_main_program.pbtxt"))
+            data_dir, os.path.join(self.pruned_dir,
+                                   "pruned_main_program.pbtxt"))
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             conf.draw = False
         else:
@@ -184,8 +182,8 @@ class TestFleetUtils(unittest.TestCase):
         else:
             data_dir = self.download_files()
             program_path = os.path.join(
-                data_dir,
-                os.path.join(self.train_dir, "join_main_program.pbtxt"))
+                data_dir, os.path.join(self.train_dir,
+                                       "join_main_program.pbtxt"))
             is_text = True
             program = utils.load_program(program_path, is_text)
             output_dir = os.path.join(data_dir, self.train_dir)

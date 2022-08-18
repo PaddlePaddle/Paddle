@@ -35,9 +35,12 @@ extern std::string LayerDebugString(const std::string& op_type,
                                     const NameVarMap<egr::EagerVariable>& outs);
 
 extern std::shared_ptr<GradOpNode> CreateGradOpNode(
-    const framework::OperatorBase& op, const NameTensorMap& ins,
-    const NameTensorMap& outs, const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const framework::OperatorBase& op,
+    const NameTensorMap& ins,
+    const NameTensorMap& outs,
+    const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs,
+    const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
 TEST(test_eager, eager_debug) {
@@ -56,8 +59,13 @@ TEST(test_create_node, eager_node) {
   imperative::NameVarMap<egr::EagerVariable> ins = {{"X", {nullptr}},
                                                     {"Y", {nullptr}}};
   imperative::NameVarMap<egr::EagerVariable> outs = {{"Out", {nullptr}}};
-  CreateGradOpNode((*op.get()), ins, outs, framework::AttributeMap{},
-                   framework::AttributeMap{}, platform::CPUPlace(), {});
+  CreateGradOpNode((*op.get()),
+                   ins,
+                   outs,
+                   framework::AttributeMap{},
+                   framework::AttributeMap{},
+                   platform::CPUPlace(),
+                   {});
 }
 TEST(test_var_helper, eager_var_helper) {
   framework::Variable var0, var1, var2, var3, var4, var5, var6, var7, var8;
@@ -85,11 +93,13 @@ TEST(test_var_helper, eager_var_helper) {
   ASSERT_TRUE(GetDataType<egr::EagerVariable>(egr_tensor) ==
               framework::proto::VarType::FP32);
   GetCachedValue<egr::EagerVariable>(
-      egr_tensor, framework::OpKernelType(framework::proto::VarType::FP32,
-                                          platform::CPUPlace()));
+      egr_tensor,
+      framework::OpKernelType(framework::proto::VarType::FP32,
+                              platform::CPUPlace()));
   SetCachedValue<egr::EagerVariable>(
-      egr_tensor, framework::OpKernelType(framework::proto::VarType::FP32,
-                                          platform::CPUPlace()),
+      egr_tensor,
+      framework::OpKernelType(framework::proto::VarType::FP32,
+                              platform::CPUPlace()),
       egr_tensor2);
   ASSERT_ANY_THROW(GetPlace<egr::EagerVariable>(egr_tensor2));
   ASSERT_ANY_THROW(SetType<egr::EagerVariable>(

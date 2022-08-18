@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 
 import paddle
@@ -31,11 +32,13 @@ from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types,
 
 
 class XPUTestScaleOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'scale'
         self.use_dynamic_create_class = False
 
     class TestScaleOp(XPUOpTest):
+
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -43,9 +46,7 @@ class XPUTestScaleOp(XPUOpTestWrapper):
             self.place = paddle.XPUPlace(0)
             self.set_inputs()
             self.set_attrs()
-            self.outputs = {
-                'Out': self.inputs['X'] * self.dtype(self.attrs['scale'])
-            }
+            self.set_output()
 
         def set_xpu(self):
             self.__class__.use_xpu = True
@@ -54,6 +55,16 @@ class XPUTestScaleOp(XPUOpTestWrapper):
 
         def set_inputs(self):
             self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
+
+        def set_output(self):
+            if "float16" == self.in_type:
+                output = self.inputs['X'] * np.float16(self.attrs['scale'])
+            elif "int64" == self.in_type:
+                output = self.inputs['X'] * np.int64(self.attrs['scale'])
+            else:
+                output = self.inputs['X'] * np.float32(self.attrs['scale'])
+
+            self.outputs = {'Out': output}
 
         def init_dtype(self):
             if "float16" == self.in_type:
@@ -72,27 +83,33 @@ class XPUTestScaleOp(XPUOpTestWrapper):
                 self.check_output_with_place(place)
 
     class TestScaleOp1(TestScaleOp):
+
         def set_attrs(self):
             self.attrs = {'scale': 3.5}
 
     class TestScaleOp2(TestScaleOp):
+
         def set_attrs(self):
             self.attrs = {'scale': 6.77}
 
     class TestScaleOp3(TestScaleOp):
+
         def set_attrs(self):
             self.attrs = {'scale': -9.19}
 
     class TestScaleOp4(TestScaleOp):
+
         def set_attrs(self):
             self.attrs = {'scale': 0.0}
 
     class TestScaleOp5(TestScaleOp):
+
         def set_attrs(self):
             self.attrs = {'scale': -0.003}
 
 
 class TestScaleApiStatic(unittest.TestCase):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -106,15 +123,17 @@ class TestScaleApiStatic(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
         out = exe.run(main_prog, feed={"x": input}, fetch_list=[out])
-        self.assertEqual(np.array_equal(out[0], input * 2.0 + 3.0), True)
+        np.testing.assert_array_equal(out[0], input * 2.0 + 3.0)
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 
 
 class TestScaleApiDygraph(unittest.TestCase):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -123,11 +142,12 @@ class TestScaleApiDygraph(unittest.TestCase):
         input = np.random.random([2, 25]).astype("float32")
         x = paddle.to_tensor(input)
         out = self._executed_api(x, scale=2.0, bias=3.0)
-        self.assertEqual(np.array_equal(out.numpy(), input * 2.0 + 3.0), True)
+        np.testing.assert_array_equal(out.numpy(), input * 2.0 + 3.0)
         paddle.enable_static()
 
 
 class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 

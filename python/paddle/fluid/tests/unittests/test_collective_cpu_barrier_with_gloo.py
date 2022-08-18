@@ -28,7 +28,9 @@ paddle.enable_static()
 
 
 class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
+
     def find_free_port(self):
+
         def _free_port():
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as s:
@@ -97,9 +99,9 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
         procs_out_dict = manager.dict()
         jobs = []
         for id in range(num_of_ranks):
-            p = multiprocessing.Process(
-                target=self.barrier_func,
-                args=(id, num_of_ranks, ep_str, procs_out_dict, sleep_time))
+            p = multiprocessing.Process(target=self.barrier_func,
+                                        args=(id, num_of_ranks, ep_str,
+                                              procs_out_dict, sleep_time))
             jobs.append(p)
             p.start()
         for proc in jobs:
@@ -117,9 +119,9 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
         procs_out_dict = manager.dict()
         jobs = []
         for id in range(num_of_ranks):
-            p = multiprocessing.Process(
-                target=self.barrier_op,
-                args=(id, num_of_ranks, ep_str, procs_out_dict, sleep_time))
+            p = multiprocessing.Process(target=self.barrier_op,
+                                        args=(id, num_of_ranks, ep_str,
+                                              procs_out_dict, sleep_time))
             jobs.append(p)
             p.start()
         for proc in jobs:

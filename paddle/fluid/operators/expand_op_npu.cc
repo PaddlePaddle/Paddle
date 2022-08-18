@@ -28,17 +28,20 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1,
+        rank,
+        1,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be greater than or equal to 1, but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
-        rank, MAX_RANK_SUPPORTED,
+        rank,
+        MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be less than or equal to %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, rank));
+            MAX_RANK_SUPPORTED,
+            rank));
     switch (rank) {
       case 1:
         Expand<1>(context);
@@ -67,13 +70,14 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
     auto* in0 = context.Input<framework::LoDTensor>("X");
     auto in_dims = in0->dims();
     auto expand_times = get_expand_times(context);
-    PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(in_dims.size()), expand_times.size(),
-        platform::errors::InvalidArgument(
-            "The number of elements (%d) of 'expand_times' for "
-            "Op(expand) must be equal to the number "
-            "of dimensions (%d) of the input.",
-            expand_times.size(), static_cast<size_t>(in_dims.size())));
+    PADDLE_ENFORCE_EQ(static_cast<size_t>(in_dims.size()),
+                      expand_times.size(),
+                      platform::errors::InvalidArgument(
+                          "The number of elements (%d) of 'expand_times' for "
+                          "Op(expand) must be equal to the number "
+                          "of dimensions (%d) of the input.",
+                          expand_times.size(),
+                          static_cast<size_t>(in_dims.size())));
     auto* out0 = context.Output<framework::LoDTensor>("Out");
     framework::DDim out_dims(in_dims);
 
@@ -93,8 +97,12 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
         (out0->numel() == in0->numel()) ? true : false;
 
     if (is_expand_times_all_one) {
-      memory::Copy(place, out0->mutable_data<T>(place), place, in0->data<T>(),
-                   in0->numel() * sizeof(T), stream);
+      memory::Copy(place,
+                   out0->mutable_data<T>(place),
+                   place,
+                   in0->data<T>(),
+                   in0->numel() * sizeof(T),
+                   stream);
       if (out_dims != in_dims) {
         out0->Resize(out_dims);
       }
@@ -110,7 +118,8 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
-    expand, ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    expand,
+    ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>);

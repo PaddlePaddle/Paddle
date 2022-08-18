@@ -21,6 +21,23 @@
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/utils.h"
 
+// Filter params without grads in global block. In this case, we will
+// tag its AutogradMeta with stop_gradient = True to avoid fault from
+// reducer while training on multi-cards.
+static void clear_no_grad_edges(
+    const std::vector<paddle::experimental::Tensor>& params,
+    const paddle::framework::BlockDesc* block_desc,
+    egr::GradNodeBase* grad_node,
+    size_t slot_id) {
+  for (size_t i = 0; i < params.size(); ++i) {
+    auto p_grad_name = paddle::framework::GradVarName(params[i].name());
+    if (!block_desc->HasVar(p_grad_name)) {
+      VLOG(1) << "clear edge of " << p_grad_name;
+      grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
+    }
+  }
+}
+
 inline void run_program_dygraph_function(
     const std::vector<paddle::experimental::Tensor>& x,
     const std::vector<paddle::experimental::Tensor>& params,
@@ -61,12 +78,16 @@ inline void run_program_dygraph_function(
     grad_node->SetAttrMap(attrs);
     // Set TensorWrappers
     grad_node->SetFwdX(x);
+
     grad_node->SetFwdParams(params);
     grad_node->SetStepScope(step_scope);
 
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
     grad_node->SetGradOutMeta(x, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
+    auto* global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc*,
+                                          attrs.at("global_block"));
+    clear_no_grad_edges(params, global_block, grad_node.get(), /*slot id*/ 1);
 
     grad_node->SetGradInMeta(deref_out, 0);
 

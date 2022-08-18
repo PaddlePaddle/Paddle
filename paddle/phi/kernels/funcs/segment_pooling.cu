@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/funcs/segment_pooling.h"
-
 #include <algorithm>
 
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -21,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/segment_pooling.h"
 
 namespace phi {
 namespace funcs {
@@ -281,18 +280,16 @@ void SegmentPoolCUDAGradFunctor(const phi::GPUContext& ctx,
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
   if (pooltype == "MAX" || pooltype == "MIN") {
-    SegmentIndexGradKernel<T,
-                           Index,
-                           ArrangeHelper<Index>><<<config.block_per_grid.x,
-                                                   config.thread_per_block.x,
-                                                   0,
-                                                   ctx.stream()>>>(
-        segment_ids.data<Index>(),
-        input.data<T>(),
-        output.data<T>(),
-        out_grad.data<T>(),
-        in_grad->data<T>(),
-        h);
+    SegmentIndexGradKernel<T, Index, ArrangeHelper<Index>>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           ctx.stream()>>>(segment_ids.data<Index>(),
+                           input.data<T>(),
+                           output.data<T>(),
+                           out_grad.data<T>(),
+                           in_grad->data<T>(),
+                           h);
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupported segment pooling grad operation, Only MAX, MIN "
@@ -333,14 +330,14 @@ class SegmentPoolFunctor<phi::GPUContext, T, IndexT> {
           (input_length_size + DimTileSize - 1) / DimTileSize;
       auto config =
           phi::backends::gpu::GetGpuLaunchConfig1D(ctx, total_stripe_count);
-      SegmentSumIdsKernel<T, IndexT, IndexT(8)><<<config.block_per_grid.x,
-                                                  config.thread_per_block.x,
-                                                  0,
-                                                  ctx.stream()>>>(
-          segment_ids.data<IndexT>(),
-          summed_ids->data<T>(),
-          input_length_size,
-          total_stripe_count);
+      SegmentSumIdsKernel<T, IndexT, IndexT(8)>
+          <<<config.block_per_grid.x,
+             config.thread_per_block.x,
+             0,
+             ctx.stream()>>>(segment_ids.data<IndexT>(),
+                             summed_ids->data<T>(),
+                             input_length_size,
+                             total_stripe_count);
     }
 
     auto h = ArrangeHelper<IndexT>(
@@ -348,57 +345,51 @@ class SegmentPoolFunctor<phi::GPUContext, T, IndexT> {
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
     if (pooltype == "MEAN") {
-      SegmentMeanKernel<T, IndexT, IndexT(8)><<<config.block_per_grid.x,
-                                                config.thread_per_block.x,
-                                                0,
-                                                ctx.stream()>>>(
-          segment_ids.data<IndexT>(),
-          input.data<T>(),
-          output->data<T>(),
-          summed_ids->data<T>(),
-          h.input_length_size,
-          h.inner_dim_size,
-          h.output_length_size,
-          h.total_stripe_count);
+      SegmentMeanKernel<T, IndexT, IndexT(8)>
+          <<<config.block_per_grid.x,
+             config.thread_per_block.x,
+             0,
+             ctx.stream()>>>(segment_ids.data<IndexT>(),
+                             input.data<T>(),
+                             output->data<T>(),
+                             summed_ids->data<T>(),
+                             h.input_length_size,
+                             h.inner_dim_size,
+                             h.output_length_size,
+                             h.total_stripe_count);
     } else if (pooltype == "SUM") {
       SumPool<T> pool;
-      SegmentOpsKernel<T,
-                       IndexT,
-                       ArrangeHelper<IndexT>,
-                       SumPool<T>><<<config.block_per_grid.x,
-                                     config.thread_per_block.x,
-                                     0,
-                                     ctx.stream()>>>(segment_ids.data<IndexT>(),
-                                                     input.data<T>(),
-                                                     output->data<T>(),
-                                                     h,
-                                                     pool);
+      SegmentOpsKernel<T, IndexT, ArrangeHelper<IndexT>, SumPool<T>>
+          <<<config.block_per_grid.x,
+             config.thread_per_block.x,
+             0,
+             ctx.stream()>>>(segment_ids.data<IndexT>(),
+                             input.data<T>(),
+                             output->data<T>(),
+                             h,
+                             pool);
     } else if (pooltype == "MAX") {
       MaxPool<T> pool;
-      SegmentOpsKernel<T,
-                       IndexT,
-                       ArrangeHelper<IndexT>,
-                       MaxPool<T>><<<config.block_per_grid.x,
-                                     config.thread_per_block.x,
-                                     0,
-                                     ctx.stream()>>>(segment_ids.data<IndexT>(),
-                                                     input.data<T>(),
-                                                     output->data<T>(),
-                                                     h,
-                                                     pool);
+      SegmentOpsKernel<T, IndexT, ArrangeHelper<IndexT>, MaxPool<T>>
+          <<<config.block_per_grid.x,
+             config.thread_per_block.x,
+             0,
+             ctx.stream()>>>(segment_ids.data<IndexT>(),
+                             input.data<T>(),
+                             output->data<T>(),
+                             h,
+                             pool);
     } else if (pooltype == "MIN") {
       MinPool<T> pool;
-      SegmentOpsKernel<T,
-                       IndexT,
-                       ArrangeHelper<IndexT>,
-                       MinPool<T>><<<config.block_per_grid.x,
-                                     config.thread_per_block.x,
-                                     0,
-                                     ctx.stream()>>>(segment_ids.data<IndexT>(),
-                                                     input.data<T>(),
-                                                     output->data<T>(),
-                                                     h,
-                                                     pool);
+      SegmentOpsKernel<T, IndexT, ArrangeHelper<IndexT>, MinPool<T>>
+          <<<config.block_per_grid.x,
+             config.thread_per_block.x,
+             0,
+             ctx.stream()>>>(segment_ids.data<IndexT>(),
+                             input.data<T>(),
+                             output->data<T>(),
+                             h,
+                             pool);
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "
@@ -417,7 +408,7 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
                   const DenseTensor& out_grad,
                   const DenseTensor& segments,
                   DenseTensor* in_grad,
-                  paddle::optional<const DenseTensor&> summed_ids,
+                  const paddle::optional<DenseTensor>& summed_ids,
                   const std::string pooltype = "SUM") {
     if (pooltype == "MAX" || pooltype == "MIN") {
       SegmentPoolCUDAGradFunctor<T, IndexT>(

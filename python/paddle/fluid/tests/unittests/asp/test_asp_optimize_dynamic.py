@@ -1,12 +1,12 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 # Copyright (c) 2022 NVIDIA Corporation.  All rights reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,10 +24,13 @@ import numpy as np
 
 
 class MyLayer(paddle.nn.Layer):
+
     def __init__(self):
         super(MyLayer, self).__init__()
-        self.conv1 = paddle.nn.Conv2D(
-            in_channels=3, out_channels=2, kernel_size=3, padding=2)
+        self.conv1 = paddle.nn.Conv2D(in_channels=3,
+                                      out_channels=2,
+                                      kernel_size=3,
+                                      padding=2)
         self.linear1 = paddle.nn.Linear(1352, 32)
         self.linear2 = paddle.nn.Linear(32, 32)
         self.linear3 = paddle.nn.Linear(32, 10)
@@ -42,6 +45,7 @@ class MyLayer(paddle.nn.Layer):
 
 
 class TestASPDynamicOptimize(unittest.TestCase):
+
     def setUp(self):
 
         self.layer = MyLayer()
@@ -106,17 +110,14 @@ class TestASPDynamicOptimize(unittest.TestCase):
 
         paddle.incubate.asp.prune_model(self.layer)
 
-        imgs = paddle.to_tensor(
-            np.random.randn(32, 3, 24, 24),
-            dtype='float32',
-            place=self.place,
-            stop_gradient=False)
-        labels = paddle.to_tensor(
-            np.random.randint(
-                10, size=(32, 1)),
-            dtype='float32',
-            place=self.place,
-            stop_gradient=False)
+        imgs = paddle.to_tensor(np.random.randn(32, 3, 24, 24),
+                                dtype='float32',
+                                place=self.place,
+                                stop_gradient=False)
+        labels = paddle.to_tensor(np.random.randint(10, size=(32, 1)),
+                                  dtype='float32',
+                                  place=self.place,
+                                  stop_gradient=False)
 
         loss_fn = paddle.nn.MSELoss(reduction='mean')
 
@@ -130,26 +131,32 @@ class TestASPDynamicOptimize(unittest.TestCase):
             if ASPHelper._is_supported_layer(
                     paddle.static.default_main_program(), param.name):
                 mat = param.numpy()
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, n=2, m=4))
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
 
     def test_asp_training_with_amp(self):
         self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
 
         paddle.incubate.asp.prune_model(self.layer)
 
-        imgs = paddle.to_tensor(
-            np.random.randn(32, 3, 24, 24),
-            dtype='float32',
-            place=self.place,
-            stop_gradient=False)
-        labels = paddle.to_tensor(
-            np.random.randint(
-                10, size=(32, 1)),
-            dtype='float32',
-            place=self.place,
-            stop_gradient=False)
+        imgs = paddle.to_tensor(np.random.randn(32, 3, 24, 24),
+                                dtype='float32',
+                                place=self.place,
+                                stop_gradient=False)
+        labels = paddle.to_tensor(np.random.randint(10, size=(32, 1)),
+                                  dtype='float32',
+                                  place=self.place,
+                                  stop_gradient=False)
 
         loss_fn = paddle.nn.MSELoss(reduction='mean')
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -166,9 +173,19 @@ class TestASPDynamicOptimize(unittest.TestCase):
             if ASPHelper._is_supported_layer(
                     paddle.static.default_main_program(), param.name):
                 mat = param.numpy()
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, n=2, m=4))
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
 
 
 if __name__ == '__main__':

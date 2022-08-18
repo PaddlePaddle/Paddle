@@ -11,6 +11,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include <memory>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {
@@ -29,8 +30,12 @@ class LogLossXPUKernel : public framework::OpKernel<T> {
     loss->mutable_data<T>(ctx.GetPlace());
     int n = predict->numel();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::log_loss(dev_ctx.x_context(), predict->data<T>(),
-                          labels->data<T>(), loss->data<T>(), n, epsilon);
+    int r = xpu::log_loss(dev_ctx.x_context(),
+                          predict->data<T>(),
+                          labels->data<T>(),
+                          loss->data<T>(),
+                          n,
+                          epsilon);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "log_loss");
   }
 };
@@ -49,9 +54,13 @@ class LogLossGradXPUKernel : public framework::OpKernel<T> {
     dpred->mutable_data<T>(ctx.GetPlace());
     int n = predict->numel();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::log_loss_grad(dev_ctx.x_context(), predict->data<T>(),
-                               labels->data<T>(), dloss->data<T>(),
-                               dpred->data<T>(), n, epsilon);
+    int r = xpu::log_loss_grad(dev_ctx.x_context(),
+                               predict->data<T>(),
+                               labels->data<T>(),
+                               dloss->data<T>(),
+                               dpred->data<T>(),
+                               n,
+                               epsilon);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "log_loss_grad");
   }
 };

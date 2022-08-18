@@ -58,9 +58,9 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
       auto *op = *(pair.second.ops().begin());
       const std::string &op_type = op->GetOp()->Type();
       const framework::OpDesc *op_desc = op->Node()->Op();
-      PADDLE_ENFORCE_NOT_NULL(
-          op_desc, platform::errors::NotFound("Op(%s) can not find opdesc.",
-                                              op->Name()));
+      PADDLE_ENFORCE_NOT_NULL(op_desc,
+                              platform::errors::NotFound(
+                                  "Op(%s) can not find opdesc.", op->Name()));
 
       auto &infer_inplace = OpInfoMap::Instance().Get(op_type).infer_inplace_;
       if (!infer_inplace) {
@@ -153,7 +153,8 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
   }
 }
 
-static std::string GetFirstVarName(const OpDesc &op, const std::string &slot,
+static std::string GetFirstVarName(const OpDesc &op,
+                                   const std::string &slot,
                                    bool is_input) {
   const auto &name_map = is_input ? op.Inputs() : op.Outputs();
   auto iter = name_map.find(slot);
@@ -164,15 +165,19 @@ static std::string GetFirstVarName(const OpDesc &op, const std::string &slot,
 }
 
 static std::vector<std::vector<std::pair<std::string, std::string>>>
-GetInplaceVars(const BlockDesc &block, bool use_cuda,
+GetInplaceVars(const BlockDesc &block,
+               bool use_cuda,
                const std::vector<std::string> &skip_vars) {
-  PADDLE_ENFORCE_EQ(block.ID(), 0, platform::errors::Unimplemented(
-                                       "Inplace can only perform in block 0."));
+  PADDLE_ENFORCE_EQ(
+      block.ID(),
+      0,
+      platform::errors::Unimplemented("Inplace can only perform in block 0."));
   // only take block 0 gc_vars
   const auto op_gc_vars =
       GetEagerDeletionCleanVars(*block.Program(), skip_vars)[0];
   const auto all_ops = block.AllOps();
-  PADDLE_ENFORCE_EQ(op_gc_vars.size(), all_ops.size(),
+  PADDLE_ENFORCE_EQ(op_gc_vars.size(),
+                    all_ops.size(),
                     platform::errors::PermissionDenied(
                         "GC analysis error: op number not match."));
   size_t n = all_ops.size();
@@ -265,7 +270,8 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
 
   auto *block = main_program->MutableBlock(0);
   auto inplace_vars = GetInplaceVars(*block, use_cuda, skip_vars);
-  PADDLE_ENFORCE_EQ(inplace_vars.size(), block->OpSize(),
+  PADDLE_ENFORCE_EQ(inplace_vars.size(),
+                    block->OpSize(),
                     platform::errors::PermissionDenied(
                         "Inplace analysis error: op number not match."));
   int64_t n = static_cast<int64_t>(inplace_vars.size());

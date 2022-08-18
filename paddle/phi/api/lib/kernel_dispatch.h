@@ -125,8 +125,8 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     key_set.dtype = tensor.dtype();
   }
 
-  void operator()(const paddle::optional<const Tensor&> x) {
-    if (x.get_ptr() != nullptr) {
+  void operator()(const paddle::optional<Tensor>& x) {
+    if (x) {
       const phi::TensorBase& tensor = *(x.get_ptr()->impl());
       AssignKernelKeySet(tensor);
     }

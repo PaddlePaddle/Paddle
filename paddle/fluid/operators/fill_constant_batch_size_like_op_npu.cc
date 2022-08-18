@@ -70,11 +70,12 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
     if (cpu_place) {
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+      phi::funcs::SetConstant<phi::CPUContext, T> functor;
       out->mutable_data(platform::CPUPlace(),
                         framework::TransToPhiDataType(data_type));
-      functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
-              out, static_cast<T>(value));
+      functor(reinterpret_cast<const phi::CPUContext &>(dev_ctx),
+              out,
+              static_cast<T>(value));
     } else {
       out->mutable_data(ctx.GetPlace(),
                         framework::TransToPhiDataType(data_type));
@@ -85,7 +86,9 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
       auto stream =
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
-      const auto &runner = NpuOpRunner("FillD", {tensor_tmp}, {*out},
+      const auto &runner = NpuOpRunner("FillD",
+                                       {tensor_tmp},
+                                       {*out},
                                        {{"dims", phi::vectorize(out->dims())}});
       runner.Run(stream);
     }
@@ -96,11 +99,13 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(
-    fill_constant_batch_size_like,
-    ops::FillConstantBatchSizeLikeOpNPUKernel<
-        paddle::platform::NPUDeviceContext, float>,
-    ops::FillConstantBatchSizeLikeOpNPUKernel<
-        paddle::platform::NPUDeviceContext, int>,
-    ops::FillConstantBatchSizeLikeOpNPUKernel<
-        paddle::platform::NPUDeviceContext, paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(fill_constant_batch_size_like,
+                       ops::FillConstantBatchSizeLikeOpNPUKernel<
+                           paddle::platform::NPUDeviceContext,
+                           float>,
+                       ops::FillConstantBatchSizeLikeOpNPUKernel<
+                           paddle::platform::NPUDeviceContext,
+                           int>,
+                       ops::FillConstantBatchSizeLikeOpNPUKernel<
+                           paddle::platform::NPUDeviceContext,
+                           paddle::platform::float16>);

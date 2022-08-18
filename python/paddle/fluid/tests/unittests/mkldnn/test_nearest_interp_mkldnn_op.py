@@ -60,6 +60,7 @@ def nearest_neighbor_interp_mkldnn_np(X,
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
 class TestNearestInterpMKLDNNOp(OpTest):
+
     def init_test_case(self):
         pass
 
@@ -105,9 +106,10 @@ class TestNearestInterpMKLDNNOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = nearest_neighbor_interp_mkldnn_np(
-            input_np, out_h, out_w, self.out_size, self.actual_shape,
-            self.data_layout)
+        output_np = nearest_neighbor_interp_mkldnn_np(input_np, out_h, out_w,
+                                                      self.out_size,
+                                                      self.actual_shape,
+                                                      self.data_layout)
 
         self.inputs = {'X': input_np}
         if self.out_size is not None:
@@ -129,6 +131,7 @@ class TestNearestInterpMKLDNNOp(OpTest):
 
 
 class TestNearestInterpOpMKLDNNNHWC(TestNearestInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 27
@@ -138,6 +141,7 @@ class TestNearestInterpOpMKLDNNNHWC(TestNearestInterpMKLDNNOp):
 
 
 class TestNearestNeighborInterpMKLDNNCase2(TestNearestInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
@@ -146,6 +150,7 @@ class TestNearestNeighborInterpMKLDNNCase2(TestNearestInterpMKLDNNOp):
 
 
 class TestNearestNeighborInterpCase3(TestNearestInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -154,6 +159,7 @@ class TestNearestNeighborInterpCase3(TestNearestInterpMKLDNNOp):
 
 
 class TestNearestNeighborInterpCase4(TestNearestInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -163,6 +169,7 @@ class TestNearestNeighborInterpCase4(TestNearestInterpMKLDNNOp):
 
 
 class TestNearestNeighborInterpSame(TestNearestInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32
@@ -171,15 +178,19 @@ class TestNearestNeighborInterpSame(TestNearestInterpMKLDNNOp):
 
 
 def create_test_class(parent):
+
     class TestFp32Case(parent):
+
         def init_data_type(self):
             self.dtype = np.float32
 
     class TestInt8Case(parent):
+
         def init_data_type(self):
             self.dtype = np.int8
 
     class TestUint8Case(parent):
+
         def init_data_type(self):
             self.dtype = np.uint8
 

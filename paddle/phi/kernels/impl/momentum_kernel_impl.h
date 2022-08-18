@@ -14,14 +14,13 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/momentum_kernel.h"
-
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/momentum_kernel.h"
 
 namespace phi {
 
@@ -408,7 +407,7 @@ void MomentumDenseImpl(const Context& ctx,
                        const DenseTensor& grad,
                        const DenseTensor& velocity,
                        const DenseTensor& learning_rate,
-                       paddle::optional<const DenseTensor&> master_param_opt,
+                       const paddle::optional<DenseTensor>& master_param_opt,
                        float mu_t,
                        bool use_nesterov,
                        const std::string& regularization_method,
@@ -500,7 +499,7 @@ void MomentumSparseImpl(const Context& ctx,
                         const SelectedRows& grad,
                         const DenseTensor& velocity,
                         const DenseTensor& learning_rate,
-                        paddle::optional<const DenseTensor&> master_param_opt,
+                        const paddle::optional<DenseTensor>& master_param_opt,
                         float mu_t,
                         bool use_nesterov,
                         const std::string& regularization_method,
@@ -602,7 +601,7 @@ void MomentumDenseKernel(const Context& dev_ctx,
                          const DenseTensor& grad,
                          const DenseTensor& velocity,
                          const DenseTensor& learning_rate,
-                         paddle::optional<const DenseTensor&> master_param,
+                         const paddle::optional<DenseTensor>& master_param,
                          float mu,
                          bool use_nesterov,
                          const std::string& regularization_method,
@@ -654,7 +653,7 @@ void MomentumSparseKernel(const Context& dev_ctx,
                           const SelectedRows& grad,
                           const DenseTensor& velocity,
                           const DenseTensor& learning_rate,
-                          paddle::optional<const DenseTensor&> master_param,
+                          const paddle::optional<DenseTensor>& master_param,
                           float mu,
                           bool use_nesterov,
                           const std::string& regularization_method,

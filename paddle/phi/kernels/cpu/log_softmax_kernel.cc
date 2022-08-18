@@ -72,34 +72,31 @@ struct LogSoftmaxFunctor {
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
       log_softmax.device(*context.eigen_device()) =
-          (logits -
-           logits.maximum(along_axis)
-               .eval()
-               .reshape(batch_by_one)
-               .broadcast(one_by_class))
+          (logits - logits.maximum(along_axis)
+                        .eval()
+                        .reshape(batch_by_one)
+                        .broadcast(one_by_class))
               .unaryExpr(ValueClip<T>());
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
       log_softmax.device(*context.eigen_device()) =
-          (logits.reshape(batch_axis_remain) -
-           logits.reshape(batch_axis_remain)
-               .maximum(along_axis)
-               .eval()
-               .reshape(batch_one_remain)
-               .broadcast(one_axis_one)
-               .reshape(batch_classes))
+          (logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
+                                                   .maximum(along_axis)
+                                                   .eval()
+                                                   .reshape(batch_one_remain)
+                                                   .broadcast(one_axis_one)
+                                                   .reshape(batch_classes))
               .unaryExpr(ValueClip<T>());
     }
 
     log_softmax.device(*context.eigen_device()) =
-        log_softmax -
-        log_softmax.exp()
-            .eval()
-            .reshape(batch_axis_remain)
-            .sum(along_axis)
-            .log()
-            .broadcast(one_axis);
+        log_softmax - log_softmax.exp()
+                          .eval()
+                          .reshape(batch_axis_remain)
+                          .sum(along_axis)
+                          .log()
+                          .broadcast(one_axis);
   }
 };
 
@@ -119,5 +116,7 @@ void LogSoftmaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+// TODO(YuanRisheng): The layout of mkldnn kernel should be MKLDNN, we should
+// support specifying the exact layout when the kernel is registered
 PD_REGISTER_KERNEL(
     log_softmax, CPU, ALL_LAYOUT, phi::LogSoftmaxKernel, float, double) {}

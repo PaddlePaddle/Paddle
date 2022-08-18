@@ -30,10 +30,12 @@ class ElementwiseActivationMkldnnFusePassTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data_A = fluid.data(
-                name="data_A", shape=[-1, 3, 100, 100], dtype="float32")
-            data_B = fluid.data(
-                name="data_B", shape=[-1, 3, 100, 100], dtype="float32")
+            data_A = fluid.data(name="data_A",
+                                shape=[-1, 3, 100, 100],
+                                dtype="float32")
+            data_B = fluid.data(name="data_B",
+                                shape=[-1, 3, 100, 100],
+                                dtype="float32")
             elt_out = self.operand(data_A, data_B)
             if self.act is not None:
                 if self.act_beta is not None:
@@ -64,6 +66,7 @@ class ElementwiseActivationMkldnnFusePassTest(InferencePassTest):
 
 class ElementwiseActivationMkldnnFusePassTest_Add_Relu(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act = fluid.layers.relu
@@ -71,6 +74,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Relu(
 
 class ElementwiseActivationMkldnnFusePassTest_Add_Tanh(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act = fluid.layers.tanh
@@ -78,6 +82,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Tanh(
 
 class ElementwiseActivationMkldnnFusePassTest_Add_LeakyRelu(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act_alpha = 0.2
@@ -86,6 +91,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_LeakyRelu(
 
 class ElementwiseActivationMkldnnFusePassTest_Add_Swish(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act_alpha = 4
@@ -94,6 +100,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Swish(
 
 class ElementwiseActivationMkldnnFusePassTest_Add_HardSwish(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act = fluid.layers.hard_swish
@@ -101,6 +108,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_HardSwish(
 
 class ElementwiseActivationMkldnnFusePassTest_Add_SQRT(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act = fluid.layers.sqrt
@@ -108,6 +116,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_SQRT(
 
 class ElementwiseActivationMkldnnFusePassTest_Add_ABS(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act = fluid.layers.abs
@@ -115,6 +124,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_ABS(
 
 class ElementwiseActivationMkldnnFusePassTest_Add_Clip(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act = fluid.layers.clip
@@ -124,6 +134,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Clip(
 
 class ElementwiseActivationMkldnnFusePassTest_Add_Gelu(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act = fluid.layers.gelu
@@ -131,6 +142,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Gelu(
 
 class ElementwiseActivationMkldnnFusePassTest_Add_Gelu_Tanh(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act = fluid.layers.gelu
@@ -139,6 +151,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Gelu_Tanh(
 
 class ElementwiseActivationMkldnnFusePassTest_Add_Relu6(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act = fluid.layers.relu6
@@ -147,6 +160,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Relu6(
 
 class ElementwiseActivationMkldnnFusePassTest_Add_Sigmoid(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act = fluid.layers.sigmoid
@@ -154,6 +168,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Sigmoid(
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_Relu(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act = fluid.layers.relu
@@ -161,6 +176,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Relu(
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_Tanh(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act = fluid.layers.tanh
@@ -168,6 +184,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Tanh(
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_LeakyRelu(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act_alpha = 0.2
@@ -176,6 +193,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_LeakyRelu(
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_Swish(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act = fluid.layers.swish
@@ -183,6 +201,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Swish(
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_HardSwish(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act = fluid.layers.hard_swish
@@ -190,6 +209,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_HardSwish(
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_ABS(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act = fluid.layers.abs
@@ -197,6 +217,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_ABS(
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_Clip(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act = fluid.layers.clip
@@ -206,6 +227,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Clip(
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_Gelu(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act = fluid.layers.gelu
@@ -213,6 +235,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Gelu(
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_Gelu_Tanh(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act = fluid.layers.gelu
@@ -221,6 +244,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Gelu_Tanh(
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_Relu6(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act = fluid.layers.relu6
@@ -229,6 +253,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Relu6(
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_Sigmoid(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act = fluid.layers.sigmoid
@@ -236,6 +261,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Sigmoid(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_Relu(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act = fluid.layers.relu
@@ -243,6 +269,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Relu(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_Tanh(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act = fluid.layers.tanh
@@ -250,6 +277,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Tanh(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_LeakyRelu(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act_alpha = 0.2
@@ -258,6 +286,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_LeakyRelu(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_Swish(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act = fluid.layers.swish
@@ -265,6 +294,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Swish(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_HardSwish(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act = fluid.layers.hard_swish
@@ -272,6 +302,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_HardSwish(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_SQRT(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act = fluid.layers.sqrt
@@ -279,6 +310,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_SQRT(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_ABS(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act = fluid.layers.abs
@@ -286,6 +318,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_ABS(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_Clip(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act = fluid.layers.clip
@@ -295,6 +328,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Clip(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_Gelu(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act = fluid.layers.gelu
@@ -302,6 +336,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Gelu(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_Gelu_Tanh(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act = fluid.layers.gelu
@@ -310,6 +345,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Gelu_Tanh(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_Relu6(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act = fluid.layers.relu6
@@ -318,6 +354,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Relu6(
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_Sigmoid(
         ElementwiseActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act = fluid.layers.sigmoid

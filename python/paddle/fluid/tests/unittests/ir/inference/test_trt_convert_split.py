@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,14 +22,14 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertSplitTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
         outputs = program_config.outputs
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         # the dimensions of input and axis match
         if len(inputs['split_input'].shape) <= attrs[0]['axis']:
@@ -60,8 +60,9 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
         #Test AxisTensor and SectionsTensorList
         if self.num_input == 0:
-            if self.dims == 2 and attrs[0]['sections'] == [10, 14] and len(
-                    outputs) == 2:
+            if self.dims == 2 and attrs[0]['sections'] == [
+                    10, 14
+            ] and len(outputs) == 2:
                 return True
             else:
                 return False
@@ -69,15 +70,16 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
-                return np.ones([batch, 3, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 3, 24]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+                return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.ones([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.float32)
 
         def generate_AxisTensor(attrs: List[Dict[str, Any]]):
             return np.ones([1]).astype(np.int32)
@@ -121,22 +123,25 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                                         "AxisTensor":
                                         TensorConfig(data_gen=partial(
                                             generate_AxisTensor, dics)),
-                                        "SectionsTensorList1": TensorConfig(
-                                            data_gen=partial(
-                                                generate_SectionsTensorList1,
-                                                dics)),
+                                        "SectionsTensorList1":
+                                        TensorConfig(data_gen=partial(
+                                            generate_SectionsTensorList1,
+                                            dics)),
                                         "SectionsTensorList2":
                                         TensorConfig(data_gen=partial(
                                             generate_SectionsTensorList2, dics))
                                     }, {}]
 
                                     ops_config = [{
-                                        "op_type": "split",
-                                        "op_inputs": dics_intput[num_input],
+                                        "op_type":
+                                        "split",
+                                        "op_inputs":
+                                        dics_intput[num_input],
                                         "op_outputs": {
                                             "Out": Out
                                         },
-                                        "op_attrs": dics[0]
+                                        "op_attrs":
+                                        dics[0]
                                     }]
                                     ops = self.generate_op_config(ops_config)
                                     program_config = ProgramConfig(
@@ -153,28 +158,37 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
-                    "split_input": [1, 3, 3, 24]
+                    "split_input": [1, 3 - 1, 3 - 1, 24 - 1]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "split_input": [9, 3, 3, 24]
+                    "split_input": [9, 3 + 1, 3 + 1, 24 + 1]
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "split_input": [1, 3, 3, 24]
                 }
             elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {"split_input": [1, 3, 24]}
-                self.dynamic_shape.max_input_shape = {"split_input": [9, 3, 24]}
+                self.dynamic_shape.min_input_shape = {
+                    "split_input": [1, 3 - 1, 24 - 1]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "split_input": [9, 3 + 1, 24 + 1]
+                }
                 self.dynamic_shape.opt_input_shape = {"split_input": [1, 3, 24]}
             elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {"split_input": [1, 24]}
-                self.dynamic_shape.max_input_shape = {"split_input": [9, 24]}
+                self.dynamic_shape.min_input_shape = {
+                    "split_input": [1, 24 - 1]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "split_input": [9, 24 + 1]
+                }
                 self.dynamic_shape.opt_input_shape = {"split_input": [1, 24]}
             elif self.dims == 1:
-                self.dynamic_shape.min_input_shape = {"split_input": [24]}
-                self.dynamic_shape.max_input_shape = {"split_input": [24]}
+                self.dynamic_shape.min_input_shape = {"split_input": [24 - 1]}
+                self.dynamic_shape.max_input_shape = {"split_input": [24 + 1]}
                 self.dynamic_shape.opt_input_shape = {"split_input": [24]}
 
         def clear_dynamic_shape():
@@ -195,8 +209,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     return 0, 5
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         self.trt_param.max_batch_size = 9
         # for static_shape
@@ -211,13 +224,14 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if len(program_config.weights) == 3:
                 return True

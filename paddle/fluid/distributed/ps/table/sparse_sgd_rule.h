@@ -14,12 +14,14 @@
 
 #pragma once
 #include <math.h>
+
 #include <thread>
 #include <vector>
+
 #include "glog/logging.h"                                  // for CHECK
 #include "paddle/fluid/distributed/common/local_random.h"  // for local_uniform_real_distribution
 #include "paddle/fluid/distributed/common/registerer.h"
-#include "paddle/fluid/distributed/ps.pb.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
@@ -33,7 +35,9 @@ class SparseValueSGDRule {
     _embedding_dim = emb_dim;
     _name = param.name();
   }
-  virtual void UpdateValueWork(float* w, float* sgd, const float* push_value,
+  virtual void UpdateValueWork(float* w,
+                               float* sgd,
+                               const float* push_value,
                                float scale) = 0;
   virtual void InitValueWork(float* value, float* sgd, bool zero_init) = 0;
   virtual size_t Dim() = 0;
@@ -41,7 +45,9 @@ class SparseValueSGDRule {
   void InitValue(float* value, float* sgd, bool zero_init = true) {
     InitValueWork(value, sgd, zero_init);
   }
-  void UpdateValue(float* w, float* sgd, const float* push_value,
+  void UpdateValue(float* w,
+                   float* sgd,
+                   const float* push_value,
                    float scale = 1) {
     UpdateValueWork(w, sgd, push_value, scale);
   }
@@ -72,7 +78,9 @@ class SparseNaiveSGDRule : public SparseValueSGDRule {
  public:
   virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
                           size_t emb_dim);
-  virtual void UpdateValueWork(float* w, float* sgd, const float* push_value,
+  virtual void UpdateValueWork(float* w,
+                               float* sgd,
+                               const float* push_value,
                                float scale);
   virtual void InitValueWork(float* value, float* sgd, bool zero_init);
   virtual size_t Dim() { return 0; }
@@ -85,7 +93,9 @@ class SparseAdaGradSGDRule : public SparseValueSGDRule {
  public:
   virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
                           size_t emb_dim);
-  virtual void UpdateValueWork(float* w, float* sgd, const float* push_value,
+  virtual void UpdateValueWork(float* w,
+                               float* sgd,
+                               const float* push_value,
                                float scale);
   virtual void InitValueWork(float* value, float* sgd, bool zero_init);
   virtual size_t Dim() { return 1; }
@@ -100,7 +110,9 @@ class StdAdaGradSGDRule : public SparseValueSGDRule {
  public:
   virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
                           size_t emb_dim);
-  virtual void UpdateValueWork(float* w, float* sgd, const float* push_value,
+  virtual void UpdateValueWork(float* w,
+                               float* sgd,
+                               const float* push_value,
                                float scale);
   virtual void InitValueWork(float* value, float* sgd, bool zero_init);
   virtual size_t Dim() { return _embedding_dim; }
@@ -115,7 +127,9 @@ class SparseAdamSGDRule : public SparseValueSGDRule {
  public:
   virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
                           size_t emb_dim);
-  virtual void UpdateValueWork(float* w, float* sgd, const float* push_value,
+  virtual void UpdateValueWork(float* w,
+                               float* sgd,
+                               const float* push_value,
                                float scale);
   virtual void InitValueWork(float* value, float* sgd, bool zero_init);
   virtual size_t Dim() { return _embedding_dim * 2 + 2; }
@@ -130,5 +144,28 @@ class SparseAdamSGDRule : public SparseValueSGDRule {
   float _beta2_decay_rate;
   float _ada_epsilon;
 };
+
+class SparseSharedAdamSGDRule : public SparseValueSGDRule {
+ public:
+  virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
+                          size_t emb_dim);
+  virtual void UpdateValueWork(float* w,
+                               float* sgd,
+                               const float* push_value,
+                               float scale);
+  virtual void InitValueWork(float* value, float* sgd, bool zero_init);
+  virtual size_t Dim() { return 4; }
+  size_t GSumIndex() { return 0; }
+  size_t G2SumIndex() { return GSumIndex() + 1; }
+  size_t Beta1PowIndex() { return G2SumIndex() + 1; }
+  size_t Beta2PowIndex() { return Beta1PowIndex() + 1; }
+
+ protected:
+  float learning_rate_;
+  float _beta1_decay_rate;
+  float _beta2_decay_rate;
+  float _ada_epsilon;
+};
+
 }  // namespace distributed
 }  // namespace paddle

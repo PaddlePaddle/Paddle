@@ -30,6 +30,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
 class TestProcessGroupFp32(unittest.TestCase):
+
     def setUp(self):
         paddle.seed(2022)
         random.seed(2022)
@@ -46,7 +47,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             rank = ParallelEnv().local_rank
             is_master = True if rank == 0 else False
             store = paddle.fluid.core.TCPStore("127.0.0.1", 6272, is_master,
-                                               nranks, datetime.timedelta(0))
+                                               nranks, 30)
             place = paddle.fluid.core.CPUPlace()
             pg = paddle.fluid.core.ProcessGroupGloo(store, rank, nranks, place)
 
@@ -63,11 +64,11 @@ class TestProcessGroupFp32(unittest.TestCase):
             if rank == 0:
                 task = pg.allreduce(tensor_x)
                 task.wait()
-                assert np.array_equal(tensor_x, sum_result)
+                np.testing.assert_equal(tensor_x, sum_result)
             else:
                 task = pg.allreduce(tensor_y)
                 task.wait()
-                assert np.array_equal(tensor_y, sum_result)
+                np.testing.assert_equal(tensor_y, sum_result)
 
             print("test allreduce sum api ok")
 

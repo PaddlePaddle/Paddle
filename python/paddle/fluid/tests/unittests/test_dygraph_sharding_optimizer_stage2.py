@@ -24,8 +24,8 @@ class TestDygraphShardingOptimizerStage2(TestMultipleGpus):
 
     # check sharding logic as well as the accuracy with single mode
     def test_dygraph_sharding_optimizer_stage2(self):
-        self.run_mnist_2gpu(
-            'dygraph_sharding_optimizer_stage2.py', eager_mode=False)
+        self.run_mnist_2gpu('dygraph_sharding_optimizer_stage2.py',
+                            eager_mode=False)
 
 
 if __name__ == "__main__":

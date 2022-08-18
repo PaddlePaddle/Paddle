@@ -17,7 +17,8 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    load, ops::LoadOpKernel<paddle::platform::NPUDeviceContext, float>,
+    load,
+    ops::LoadOpKernel<paddle::platform::NPUDeviceContext, float>,
     ops::LoadOpKernel<paddle::platform::NPUDeviceContext, double>,
     ops::LoadOpKernel<paddle::platform::NPUDeviceContext, int>,
     ops::LoadOpKernel<paddle::platform::NPUDeviceContext, int8_t>,

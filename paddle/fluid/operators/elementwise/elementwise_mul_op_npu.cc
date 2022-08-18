@@ -24,9 +24,11 @@ using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 static void ReduceDims(const framework::ExecutionContext& ctx,
-                       const aclrtStream& stream, const int axis,
+                       const aclrtStream& stream,
+                       const int axis,
                        const framework::DDim& ddims,
-                       const framework::DDim& brd_ddims, const Tensor& in,
+                       const framework::DDim& brd_ddims,
+                       const Tensor& in,
                        Tensor* out) {
   std::vector<int64_t> axes;
   int64_t brd_size = brd_ddims.size();
@@ -43,8 +45,8 @@ static void ReduceDims(const framework::ExecutionContext& ctx,
   }
   // LOG(INFO) << "axes = " << phi::make_ddim(axes).to_str();
   out->mutable_data<T>(ctx.GetPlace());
-  const auto& runner = NpuOpRunner("ReduceSumD", {in}, {*out},
-                                   {{"axes", axes}, {"keep_dims", false}});
+  const auto& runner = NpuOpRunner(
+      "ReduceSumD", {in}, {*out}, {{"axes", axes}, {"keep_dims", false}});
   runner.Run(stream);
 }
 
@@ -114,8 +116,8 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
         const auto& runner_dx =
             NpuOpRunner("Mul", {*dout, trans_y}, {dx_temp}, {});
         runner_dx.Run(stream);
-        ReduceDims<T>(ctx, stream, axis, dx->dims(), trans_x.dims(), dx_temp,
-                      dx);
+        ReduceDims<T>(
+            ctx, stream, axis, dx->dims(), trans_x.dims(), dx_temp, dx);
       }
     }
     if (dy) {
@@ -130,8 +132,8 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
         const auto& runner_dy =
             NpuOpRunner("Mul", {trans_x, *dout}, {dy_temp}, {});
         runner_dy.Run(stream);
-        ReduceDims<T>(ctx, stream, axis, dy->dims(), trans_y.dims(), dy_temp,
-                      dy);
+        ReduceDims<T>(
+            ctx, stream, axis, dy->dims(), trans_y.dims(), dy_temp, dy);
       }
     }
   }
@@ -142,7 +144,8 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(elementwise_mul, ops::ElementwiseMulNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(elementwise_mul,
+                       ops::ElementwiseMulNPUKernel<float>,
                        ops::ElementwiseMulNPUKernel<paddle::platform::float16>,
 #ifdef PADDLE_WITH_ASCEND_INT64
                        ops::ElementwiseMulNPUKernel<int64_t>,
@@ -150,7 +153,8 @@ REGISTER_OP_NPU_KERNEL(elementwise_mul, ops::ElementwiseMulNPUKernel<float>,
                        ops::ElementwiseMulNPUKernel<int>);
 
 REGISTER_OP_NPU_KERNEL(
-    elementwise_mul_grad, ops::ElementwiseMulGradNPUKernel<float>,
+    elementwise_mul_grad,
+    ops::ElementwiseMulGradNPUKernel<float>,
     ops::ElementwiseMulGradNPUKernel<paddle::platform::float16>,
 #ifdef PADDLE_WITH_ASCEND_INT64
     ops::ElementwiseMulGradNPUKernel<int64_t>,

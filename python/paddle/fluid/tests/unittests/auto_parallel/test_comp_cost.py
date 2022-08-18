@@ -35,7 +35,6 @@ from paddle.distributed.auto_parallel.cost.comp_op_cost import EmbeddingOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import EmbeddingGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantBatchSizeLikeOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantBatchSizeLikeGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GatherOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GeluOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GeluGradOpCost
@@ -54,11 +53,41 @@ from paddle.distributed.auto_parallel.cost.comp_op_cost import LookupTableV2Grad
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulV2OpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulV2GradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import MemcpyOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import MulOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import MulGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import OneHotOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import ReadFromArrayOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import ReduceSumOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import ReduceSumGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import Reshape2OpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import Reshape2GradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import ReduceMeanOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import ReduceMeanGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import SamplingIdOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import ScaleOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import SliceOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import SoftmaxOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import SoftmaxGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import SoftmaxWithCrossEntropyOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import SoftmaxWithCrossEntropyGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import SplitOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import Squeeze2OpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import SquareOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import SquareGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import SumOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import TopKOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import Transpose2OpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import Transpose2GradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import Unsqueeze2OpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import WriteToArrayOpCost
 
 from test_cluster import cluster_json
 
 
 class TestCompOpCost(unittest.TestCase):
+
     def test_comp_cost(self):
         # Build cluster
         file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -154,11 +183,6 @@ class TestCompOpCost(unittest.TestCase):
         self.assertTrue(op_cost.time >= 0)
         self.assertTrue(op_cost.memory >= 0)
 
-        op_cost = FillConstantBatchSizeLikeGradOpCost(cluster=cluster)
-        self.assertTrue(op_cost.flops >= 0)
-        self.assertTrue(op_cost.time >= 0)
-        self.assertTrue(op_cost.memory >= 0)
-
         op_cost = GatherOpCost(cluster=cluster)
         self.assertTrue(op_cost.flops >= 0)
         self.assertTrue(op_cost.time >= 0)
@@ -244,6 +268,155 @@ class TestCompOpCost(unittest.TestCase):
         self.assertTrue(op_cost.time >= 0)
         self.assertTrue(op_cost.memory >= 0)
 
+        op_cost = MatmulV2GradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = MemcpyOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = MulOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = MulGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = OneHotOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ReadFromArrayOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ReduceSumOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ReduceSumGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Reshape2OpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = MatmulV2OpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Reshape2GradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ReduceMeanOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ReduceMeanGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SamplingIdOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ScaleOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SliceOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SoftmaxOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SoftmaxGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SoftmaxWithCrossEntropyOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SoftmaxWithCrossEntropyGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SplitOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Squeeze2OpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SquareOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SquareGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SumOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = TopKOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Transpose2OpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Transpose2GradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Unsqueeze2OpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = WriteToArrayOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
         # Remove unnecessary files
         if os.path.exists(cluster_json_path):
             os.remove(cluster_json_path)

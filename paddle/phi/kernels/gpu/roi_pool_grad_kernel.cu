@@ -14,14 +14,13 @@
 
 #include "paddle/phi/kernels/roi_pool_grad_kernel.h"
 
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace phi {
 
@@ -75,7 +74,7 @@ template <typename T, typename Context>
 void RoiPoolGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& boxes,
-                       paddle::optional<const DenseTensor&> boxes_num,
+                       const paddle::optional<DenseTensor>& boxes_num,
                        const DenseTensor& arg_max,
                        const DenseTensor& out_grad,
                        int pooled_height,
@@ -139,20 +138,20 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     int threads = kNumCUDAThreads;
 
     if (output_grad_size > 0) {
-      GPURoiPoolBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          output_grad_size,
-          boxes.data<T>(),
-          out_grad.data<T>(),
-          arg_max.data<int64_t>(),
-          rois_num,
-          spatial_scale,
-          channels,
-          height,
-          width,
-          pooled_height,
-          pooled_width,
-          roi_id_data,
-          dx->data<T>());
+      GPURoiPoolBackward<T>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(output_grad_size,
+                                                     boxes.data<T>(),
+                                                     out_grad.data<T>(),
+                                                     arg_max.data<int64_t>(),
+                                                     rois_num,
+                                                     spatial_scale,
+                                                     channels,
+                                                     height,
+                                                     width,
+                                                     pooled_height,
+                                                     pooled_width,
+                                                     roi_id_data,
+                                                     dx->data<T>());
     }
   }
 }

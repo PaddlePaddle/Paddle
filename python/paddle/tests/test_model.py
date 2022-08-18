@@ -42,22 +42,19 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTra
 
 
 class LeNetDygraph(paddle.nn.Layer):
+
     def __init__(self, num_classes=10):
         super(LeNetDygraph, self).__init__()
         self.num_classes = num_classes
-        self.features = Sequential(
-            Conv2D(
-                1, 6, 3, stride=1, padding=1),
-            ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
-            Conv2D(
-                6, 16, 5, stride=1, padding=0),
-            ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2))
+        self.features = Sequential(Conv2D(1, 6, 3, stride=1, padding=1), ReLU(),
+                                   paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+                                   Conv2D(6, 16, 5, stride=1, padding=0),
+                                   ReLU(),
+                                   paddle.fluid.dygraph.Pool2D(2, 'max', 2))
 
         if num_classes > 0:
-            self.fc = Sequential(
-                Linear(400, 120), Linear(120, 84), Linear(84, 10))
+            self.fc = Sequential(Linear(400, 120), Linear(120, 84),
+                                 Linear(84, 10))
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -69,6 +66,7 @@ class LeNetDygraph(paddle.nn.Layer):
 
 
 class ModelInner(paddle.nn.Layer):
+
     def __init__(self):
         super(ModelInner, self).__init__()
         self.fc = paddle.nn.Linear(3, 4)
@@ -79,6 +77,7 @@ class ModelInner(paddle.nn.Layer):
 
 
 class ModelOutter(paddle.nn.Layer):
+
     def __init__(self):
         super(ModelOutter, self).__init__()
         self.module1 = ModelInner()
@@ -91,24 +90,22 @@ class ModelOutter(paddle.nn.Layer):
 
 
 class LeNetListInput(paddle.nn.Layer):
+
     def __init__(self, num_classes=10):
         super(LeNetListInput, self).__init__()
         self.num_classes = num_classes
         self.cov = Conv2D(1, 6, 3, stride=1, padding=1)
         for param in self.cov.parameters():
             param.trainable = False
-        self.features = Sequential(
-            self.cov,
-            ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
-            Conv2D(
-                6, 16, 5, stride=1, padding=0),
-            ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2))
+        self.features = Sequential(self.cov, ReLU(),
+                                   paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+                                   Conv2D(6, 16, 5, stride=1, padding=0),
+                                   ReLU(),
+                                   paddle.fluid.dygraph.Pool2D(2, 'max', 2))
 
         if num_classes > 0:
-            self.fc = Sequential(
-                Linear(400, 120), Linear(120, 84), Linear(84, 10))
+            self.fc = Sequential(Linear(400, 120), Linear(120, 84),
+                                 Linear(84, 10))
 
     def forward(self, inputs):
         x = inputs[0]
@@ -121,6 +118,7 @@ class LeNetListInput(paddle.nn.Layer):
 
 
 class LeNetDictInput(LeNetDygraph):
+
     def forward(self, inputs):
         x = self.features(inputs['x1'])
 
@@ -131,6 +129,7 @@ class LeNetDictInput(LeNetDygraph):
 
 
 class MnistDataset(MNIST):
+
     def __init__(self, mode, return_label=True, sample_num=None):
         super(MnistDataset, self).__init__(mode=mode)
         self.return_label = return_label
@@ -157,8 +156,8 @@ def compute_acc(pred, label):
 
 
 def dynamic_train(model, dataloader):
-    optim = fluid.optimizer.Adam(
-        learning_rate=0.001, parameter_list=model.parameters())
+    optim = fluid.optimizer.Adam(learning_rate=0.001,
+                                 parameter_list=model.parameters())
     model.train()
     for inputs, labels in dataloader:
         outputs = model(inputs)
@@ -176,8 +175,9 @@ def dynamic_evaluate(model, dataloader):
         for inputs, labels in dataloader:
             outputs = model(inputs)
 
-            cnt += (np.argmax(outputs.numpy(), -1)[:, np.newaxis] ==
-                    labels.numpy()).astype('int').sum()
+            cnt += (np.argmax(
+                outputs.numpy(),
+                -1)[:, np.newaxis] == labels.numpy()).astype('int').sum()
 
     return cnt / len(dataloader.dataset)
 
@@ -185,6 +185,7 @@ def dynamic_evaluate(model, dataloader):
 @unittest.skipIf(not fluid.is_compiled_with_cuda(),
                  'CPU testing is not supported')
 class TestModel(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         if not fluid.is_compiled_with_cuda():
@@ -195,15 +196,19 @@ class TestModel(unittest.TestCase):
         sp_num = 1280
         cls.train_dataset = MnistDataset(mode='train', sample_num=sp_num)
         cls.val_dataset = MnistDataset(mode='test', sample_num=sp_num)
-        cls.test_dataset = MnistDataset(
-            mode='test', return_label=False, sample_num=sp_num)
+        cls.test_dataset = MnistDataset(mode='test',
+                                        return_label=False,
+                                        sample_num=sp_num)
 
-        cls.train_loader = fluid.io.DataLoader(
-            cls.train_dataset, places=cls.device, batch_size=64)
-        cls.val_loader = fluid.io.DataLoader(
-            cls.val_dataset, places=cls.device, batch_size=64)
-        cls.test_loader = fluid.io.DataLoader(
-            cls.test_dataset, places=cls.device, batch_size=64)
+        cls.train_loader = fluid.io.DataLoader(cls.train_dataset,
+                                               places=cls.device,
+                                               batch_size=64)
+        cls.val_loader = fluid.io.DataLoader(cls.val_dataset,
+                                             places=cls.device,
+                                             batch_size=64)
+        cls.test_loader = fluid.io.DataLoader(cls.test_dataset,
+                                              places=cls.device,
+                                              batch_size=64)
 
         seed = 333
         paddle.seed(seed)
@@ -276,13 +281,12 @@ class TestModel(unittest.TestCase):
         paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet()
-        optim_new = fluid.optimizer.Adam(
-            learning_rate=0.001, parameter_list=net.parameters())
+        optim_new = fluid.optimizer.Adam(learning_rate=0.001,
+                                         parameter_list=net.parameters())
         model = Model(net, inputs=self.inputs, labels=self.labels)
-        model.prepare(
-            optim_new,
-            loss=CrossEntropyLoss(reduction="sum"),
-            metrics=Accuracy())
+        model.prepare(optim_new,
+                      loss=CrossEntropyLoss(reduction="sum"),
+                      metrics=Accuracy())
         model.fit(self.train_dataset, batch_size=64, shuffle=False)
 
         result = model.evaluate(self.val_dataset, batch_size=64)
@@ -293,33 +297,30 @@ class TestModel(unittest.TestCase):
                   shuffle=False,
                   num_iters=num_iters)
 
-        result = model.evaluate(
-            self.val_dataset, batch_size=64, num_iters=num_iters)
+        result = model.evaluate(self.val_dataset,
+                                batch_size=64,
+                                num_iters=num_iters)
 
-        train_sampler = DistributedBatchSampler(
-            self.train_dataset,
-            batch_size=64,
-            shuffle=False,
-            num_replicas=num_replicas,
-            rank=rank)
-        val_sampler = DistributedBatchSampler(
-            self.val_dataset,
-            batch_size=64,
-            shuffle=False,
-            num_replicas=num_replicas,
-            rank=rank)
+        train_sampler = DistributedBatchSampler(self.train_dataset,
+                                                batch_size=64,
+                                                shuffle=False,
+                                                num_replicas=num_replicas,
+                                                rank=rank)
+        val_sampler = DistributedBatchSampler(self.val_dataset,
+                                              batch_size=64,
+                                              shuffle=False,
+                                              num_replicas=num_replicas,
+                                              rank=rank)
 
-        train_loader = fluid.io.DataLoader(
-            self.train_dataset,
-            batch_sampler=train_sampler,
-            places=self.device,
-            return_list=True)
+        train_loader = fluid.io.DataLoader(self.train_dataset,
+                                           batch_sampler=train_sampler,
+                                           places=self.device,
+                                           return_list=True)
 
-        val_loader = fluid.io.DataLoader(
-            self.val_dataset,
-            batch_sampler=val_sampler,
-            places=self.device,
-            return_list=True)
+        val_loader = fluid.io.DataLoader(self.val_dataset,
+                                         batch_sampler=val_sampler,
+                                         places=self.device,
+                                         return_list=True)
 
         model.fit(train_loader, val_loader)
         fluid.disable_dygraph() if dynamic else None
@@ -331,42 +332,37 @@ class TestModel(unittest.TestCase):
         paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet()
-        optim_new = fluid.optimizer.Adam(
-            learning_rate=0.001, parameter_list=net.parameters())
+        optim_new = fluid.optimizer.Adam(learning_rate=0.001,
+                                         parameter_list=net.parameters())
         model = Model(net, inputs=tuple(self.inputs), labels=tuple(self.labels))
-        model.prepare(
-            optim_new,
-            loss=CrossEntropyLoss(reduction="sum"),
-            metrics=Accuracy())
+        model.prepare(optim_new,
+                      loss=CrossEntropyLoss(reduction="sum"),
+                      metrics=Accuracy())
         model.fit(self.train_dataset, batch_size=64, shuffle=False)
 
         result = model.evaluate(self.val_dataset, batch_size=64)
         np.testing.assert_allclose(result['acc'], self.acc1)
 
-        train_sampler = DistributedBatchSampler(
-            self.train_dataset,
-            batch_size=64,
-            shuffle=False,
-            num_replicas=num_replicas,
-            rank=rank)
-        val_sampler = DistributedBatchSampler(
-            self.val_dataset,
-            batch_size=64,
-            shuffle=False,
-            num_replicas=num_replicas,
-            rank=rank)
+        train_sampler = DistributedBatchSampler(self.train_dataset,
+                                                batch_size=64,
+                                                shuffle=False,
+                                                num_replicas=num_replicas,
+                                                rank=rank)
+        val_sampler = DistributedBatchSampler(self.val_dataset,
+                                              batch_size=64,
+                                              shuffle=False,
+                                              num_replicas=num_replicas,
+                                              rank=rank)
 
-        train_loader = fluid.io.DataLoader(
-            self.train_dataset,
-            batch_sampler=train_sampler,
-            places=self.device,
-            return_list=True)
+        train_loader = fluid.io.DataLoader(self.train_dataset,
+                                           batch_sampler=train_sampler,
+                                           places=self.device,
+                                           return_list=True)
 
-        val_loader = fluid.io.DataLoader(
-            self.val_dataset,
-            batch_sampler=val_sampler,
-            places=self.device,
-            return_list=True)
+        val_loader = fluid.io.DataLoader(self.val_dataset,
+                                         batch_sampler=val_sampler,
+                                         places=self.device,
+                                         return_list=True)
 
         model.fit(train_loader, val_loader)
         fluid.disable_dygraph() if dynamic else None
@@ -379,14 +375,14 @@ class TestModel(unittest.TestCase):
         result = model.evaluate(self.val_dataset, batch_size=64)
         np.testing.assert_allclose(result['acc'], self.acc1)
 
-        sampler = DistributedBatchSampler(
-            self.val_dataset, batch_size=64, shuffle=False)
+        sampler = DistributedBatchSampler(self.val_dataset,
+                                          batch_size=64,
+                                          shuffle=False)
 
-        val_loader = fluid.io.DataLoader(
-            self.val_dataset,
-            batch_sampler=sampler,
-            places=self.device,
-            return_list=True)
+        val_loader = fluid.io.DataLoader(self.val_dataset,
+                                         batch_sampler=sampler,
+                                         places=self.device,
+                                         return_list=True)
 
         model.evaluate(val_loader)
 
@@ -397,21 +393,22 @@ class TestModel(unittest.TestCase):
         model = Model(LeNet(), self.inputs)
         model.prepare()
         model.load(self.weight_path)
-        output = model.predict(
-            self.test_dataset, batch_size=64, stack_outputs=True)
+        output = model.predict(self.test_dataset,
+                               batch_size=64,
+                               stack_outputs=True)
         np.testing.assert_equal(output[0].shape[0], len(self.test_dataset))
 
         acc = compute_acc(output[0], self.val_dataset.labels)
         np.testing.assert_allclose(acc, self.acc1)
 
-        sampler = DistributedBatchSampler(
-            self.test_dataset, batch_size=64, shuffle=False)
+        sampler = DistributedBatchSampler(self.test_dataset,
+                                          batch_size=64,
+                                          shuffle=False)
 
-        test_loader = fluid.io.DataLoader(
-            self.test_dataset,
-            batch_sampler=sampler,
-            places=self.device,
-            return_list=True)
+        test_loader = fluid.io.DataLoader(self.test_dataset,
+                                          batch_sampler=sampler,
+                                          places=self.device,
+                                          return_list=True)
 
         model.evaluate(test_loader)
 
@@ -423,19 +420,21 @@ class TestModel(unittest.TestCase):
         model.prepare()
         model.load(self.weight_path)
         model._inputs = None
-        output = model.predict(
-            self.test_dataset, batch_size=64, stack_outputs=True)
+        output = model.predict(self.test_dataset,
+                               batch_size=64,
+                               stack_outputs=True)
         np.testing.assert_equal(output[0].shape[0], len(self.test_dataset))
         fluid.disable_dygraph()
 
     def test_summary_gpu(self):
         paddle.disable_static(self.device)
         rnn = paddle.nn.LSTM(16, 32, 2)
-        params_info = paddle.summary(
-            rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
+        params_info = paddle.summary(rnn, [(-1, 23, 16),
+                                           ((2, None, 32), (2, -1, 32))])
 
 
 class MyModel(paddle.nn.Layer):
+
     def __init__(self):
         super(MyModel, self).__init__()
         self._fc = Linear(20, 10)
@@ -446,6 +445,7 @@ class MyModel(paddle.nn.Layer):
 
 
 class MyDataset(Dataset):
+
     def __getitem__(self, idx):
         return np.random.random(size=(20,)).astype(np.float32), \
                np.random.randint(0, 10, size=(1,)).astype(np.int64)
@@ -455,6 +455,7 @@ class MyDataset(Dataset):
 
 
 class TestModelFunction(unittest.TestCase):
+
     def set_seed(self, seed=1024):
         paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
@@ -538,8 +539,8 @@ class TestModelFunction(unittest.TestCase):
             optim = fluid.optimizer.SGD(learning_rate=0.001,
                                         parameter_list=net.parameters())
             model = Model(net, inputs, labels)
-            model.prepare(
-                optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+            model.prepare(optimizer=optim,
+                          loss=CrossEntropyLoss(reduction="sum"))
             model.save(path)
             model.load(path)
             fluid.disable_dygraph() if dynamic else None
@@ -558,14 +559,14 @@ class TestModelFunction(unittest.TestCase):
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             labels = [InputSpec([None, 1], 'int64', 'label')]
             if new_optimizer:
-                optim = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=net.parameters())
+                optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                              parameters=net.parameters())
             else:
-                optim = fluid.optimizer.Adam(
-                    learning_rate=0.001, parameter_list=net.parameters())
+                optim = fluid.optimizer.Adam(learning_rate=0.001,
+                                             parameter_list=net.parameters())
             model = Model(net, inputs, labels)
-            model.prepare(
-                optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+            model.prepare(optimizer=optim,
+                          loss=CrossEntropyLoss(reduction="sum"))
             model.fit(mnist_data, batch_size=64, verbose=0)
             model.save(path)
             model.load(path)
@@ -638,6 +639,7 @@ class TestModelFunction(unittest.TestCase):
             fluid.disable_dygraph() if dynamic else None
 
     def test_summary(self):
+
         def _get_param_from_state_dict(state_dict):
             params = 0
             for k, v in state_dict.items():
@@ -665,6 +667,7 @@ class TestModelFunction(unittest.TestCase):
         paddle.summary(ModelOutter(), input_size=(-1, 3))
 
     def test_summary_nlp(self):
+
         def _get_param_from_state_dict(state_dict):
             params = 0
             for k, v in state_dict.items():
@@ -678,8 +681,8 @@ class TestModelFunction(unittest.TestCase):
         paddle.summary(nlp_net, (1, 1, 2))
 
         rnn = paddle.nn.LSTM(16, 32, 2)
-        params_info = paddle.summary(
-            rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
+        params_info = paddle.summary(rnn, [(-1, 23, 16),
+                                           ((2, None, 32), (2, -1, 32))])
         gt_params = _get_param_from_state_dict(rnn.state_dict())
         np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
 
@@ -748,22 +751,22 @@ class TestModelFunction(unittest.TestCase):
         def customize_dropout(m, x, y):
             m.total_ops += 0
 
-        paddle.flops(
-            net, [1, 3, 224, 224],
-            custom_ops={paddle.nn.Dropout: customize_dropout},
-            print_detail=True)
+        paddle.flops(net, [1, 3, 224, 224],
+                     custom_ops={paddle.nn.Dropout: customize_dropout},
+                     print_detail=True)
 
     def test_dynamic_flops_with_multiple_outputs(self):
-        net = paddle.nn.MaxPool2D(
-            kernel_size=2, stride=2, padding=0, return_mask=True)
+        net = paddle.nn.MaxPool2D(kernel_size=2,
+                                  stride=2,
+                                  padding=0,
+                                  return_mask=True)
 
         def customize_dropout(m, x, y):
             m.total_ops += 0
 
-        paddle.flops(
-            net, [1, 2, 32, 32],
-            custom_ops={paddle.nn.Dropout: customize_dropout},
-            print_detail=True)
+        paddle.flops(net, [1, 2, 32, 32],
+                     custom_ops={paddle.nn.Dropout: customize_dropout},
+                     print_detail=True)
 
     def test_export_deploy_model(self):
         self.set_seed()
@@ -783,26 +786,28 @@ class TestModelFunction(unittest.TestCase):
             model = Model(net, inputs)
             model.prepare()
 
-            tensor_img = np.array(
-                np.random.random((1, 1, 28, 28)), dtype=np.float32)
+            tensor_img = np.array(np.random.random((1, 1, 28, 28)),
+                                  dtype=np.float32)
 
             model.save(save_dir, training=False)
             ori_results = model.predict_batch(tensor_img)
             fluid.disable_dygraph() if dynamic else None
 
-            place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = fluid.CPUPlace(
+            ) if not fluid.is_compiled_with_cuda() else fluid.CUDAPlace(0)
             new_scope = fluid.Scope()
             with fluid.scope_guard(new_scope):
                 exe = fluid.Executor(place)
-                [inference_program, feed_target_names, fetch_targets] = (
-                    paddle.static.io.load_inference_model(
-                        path_prefix=save_dir, executor=exe))
+                [inference_program, feed_target_names,
+                 fetch_targets] = (paddle.static.io.load_inference_model(
+                     path_prefix=save_dir, executor=exe))
                 results = exe.run(inference_program,
                                   feed={feed_target_names[0]: tensor_img},
                                   fetch_list=fetch_targets)
-                np.testing.assert_allclose(
-                    results, ori_results, rtol=1e-5, atol=1e-6)
+                np.testing.assert_allclose(results,
+                                           ori_results,
+                                           rtol=1e-5,
+                                           atol=1e-6)
 
             paddle.enable_static()
 
@@ -821,15 +826,15 @@ class TestModelFunction(unittest.TestCase):
         for initial in ["fit", "train_batch", "eval_batch", "predict_batch"]:
             net = LeNet()
             model = Model(net)
-            optim = fluid.optimizer.Adam(
-                learning_rate=0.001, parameter_list=model.parameters())
-            model.prepare(
-                optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+            optim = fluid.optimizer.Adam(learning_rate=0.001,
+                                         parameter_list=model.parameters())
+            model.prepare(optimizer=optim,
+                          loss=CrossEntropyLoss(reduction="sum"))
             if initial == "fit":
                 model.fit(mnist_data, batch_size=64, verbose=0)
             else:
-                img = np.array(
-                    np.random.random((1, 1, 28, 28)), dtype=np.float32)
+                img = np.array(np.random.random((1, 1, 28, 28)),
+                               dtype=np.float32)
                 label = np.array(np.random.rand(1, 1), dtype=np.int64)
                 if initial == "train_batch":
                     model.train_batch([img], [label])
@@ -848,8 +853,8 @@ class TestModelFunction(unittest.TestCase):
         net = LeNet()
         inputs = InputSpec([None, 1, 28, 28], 'float32', 'x')
         model = Model(net, inputs)
-        optim = fluid.optimizer.Adam(
-            learning_rate=0.001, parameter_list=model.parameters())
+        optim = fluid.optimizer.Adam(learning_rate=0.001,
+                                     parameter_list=model.parameters())
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.save(save_dir, training=False)
         shutil.rmtree(save_dir)
@@ -866,10 +871,9 @@ class TestModelFunction(unittest.TestCase):
 
         for amp_cfg in [None, 'O1']:
             model = Model(net, inputs, labels)
-            model.prepare(
-                optim,
-                loss=CrossEntropyLoss(reduction="sum"),
-                amp_configs=amp_cfg)
+            model.prepare(optim,
+                          loss=CrossEntropyLoss(reduction="sum"),
+                          amp_configs=amp_cfg)
             losses, grads = [], []
             for stat in [False, False, True]:
                 loss, = model.train_batch([data], [label], update=stat)
@@ -878,14 +882,16 @@ class TestModelFunction(unittest.TestCase):
 
             for grad1, grad2, grad3 in zip(*grads):
                 np.testing.assert_almost_equal(grad1 * 2, grad2, decimal=4)
-                np.testing.assert_almost_equal(
-                    grad3, np.zeros_like(grad3), decimal=4)
+                np.testing.assert_almost_equal(grad3,
+                                               np.zeros_like(grad3),
+                                               decimal=4)
 
             np.testing.assert_almost_equal(losses[0], losses[1], decimal=4)
             np.testing.assert_almost_equal(losses[0], losses[2], decimal=4)
 
 
 class TestModelWithLRScheduler(unittest.TestCase):
+
     def test_fit_by_step(self):
         base_lr = 1e-3
         boundaries = [5, 8]
@@ -902,11 +908,10 @@ class TestModelWithLRScheduler(unittest.TestCase):
                 start_lr=base_lr / 5.,
                 end_lr=base_lr,
                 verbose=True)
-            optimizer = paddle.optimizer.Momentum(
-                learning_rate=learning_rate,
-                weight_decay=weight_decay,
-                momentum=momentum,
-                parameters=parameters)
+            optimizer = paddle.optimizer.Momentum(learning_rate=learning_rate,
+                                                  weight_decay=weight_decay,
+                                                  momentum=momentum,
+                                                  parameters=parameters)
             return optimizer
 
         # dynamic test
@@ -958,11 +963,10 @@ class TestModelWithLRScheduler(unittest.TestCase):
                 start_lr=base_lr / 5.,
                 end_lr=base_lr,
                 verbose=True)
-            optimizer = paddle.optimizer.Momentum(
-                learning_rate=learning_rate,
-                weight_decay=weight_decay,
-                momentum=momentum,
-                parameters=parameters)
+            optimizer = paddle.optimizer.Momentum(learning_rate=learning_rate,
+                                                  weight_decay=weight_decay,
+                                                  momentum=momentum,
+                                                  parameters=parameters)
             return optimizer
 
         # dynamic test
@@ -977,8 +981,8 @@ class TestModelWithLRScheduler(unittest.TestCase):
 
         dataset = MyDataset()
 
-        lr_scheduler_callback = paddle.callbacks.LRScheduler(
-            by_step=False, by_epoch=True)
+        lr_scheduler_callback = paddle.callbacks.LRScheduler(by_step=False,
+                                                             by_epoch=True)
 
         model.fit(dataset,
                   dataset,
@@ -1006,8 +1010,8 @@ class TestModelWithLRScheduler(unittest.TestCase):
 
         dataset = MyDataset()
 
-        lr_scheduler_callback = paddle.callbacks.LRScheduler(
-            by_step=False, by_epoch=True)
+        lr_scheduler_callback = paddle.callbacks.LRScheduler(by_step=False,
+                                                             by_epoch=True)
 
         model.fit(dataset,
                   dataset,
@@ -1026,6 +1030,7 @@ class TestModelWithLRScheduler(unittest.TestCase):
 
 
 class TestRaiseError(unittest.TestCase):
+
     def test_input_without_name(self):
         net = MyModel()
         inputs = [InputSpec([None, 10], 'float32')]
@@ -1058,8 +1063,8 @@ class TestRaiseError(unittest.TestCase):
         model = Model(net, inputs)
         model.prepare()
         path = ""
-        tensor_img = np.array(
-            np.random.random((1, 1, 28, 28)), dtype=np.float32)
+        tensor_img = np.array(np.random.random((1, 1, 28, 28)),
+                              dtype=np.float32)
         with self.assertRaises(ValueError):
             model.save(path, training=False)
 

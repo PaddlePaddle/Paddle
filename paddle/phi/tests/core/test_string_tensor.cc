@@ -15,8 +15,8 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <utility>
-#include "gtest/gtest.h"
 
+#include "gtest/gtest.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/pstring.h"

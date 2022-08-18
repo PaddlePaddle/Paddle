@@ -40,7 +40,9 @@ class NPUMultinomialKernel : public framework::OpKernel<T> {
     out->mutable_data<int64_t>(place);
 
     const auto& runner = NpuOpRunner(
-        "MultinomialWithReplacementD", {*x}, {*out},
+        "MultinomialWithReplacementD",
+        {*x},
+        {*out},
         {{"num_samples", num_samples}, {"replacement", replacement}});
     runner.Run(stream);
   }

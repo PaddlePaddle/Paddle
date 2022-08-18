@@ -34,7 +34,8 @@ namespace operators {
 
 class SendOp : public framework::OperatorBase {
  public:
-  SendOp(const std::string& type, const framework::VariableNameMap& inputs,
+  SendOp(const std::string& type,
+         const framework::VariableNameMap& inputs,
          const framework::VariableNameMap& outputs,
          const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -107,7 +108,9 @@ class SendOpShapeInference : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    send, ops::SendOp,
+    send,
+    ops::SendOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::SendOpMaker, ops::SendOpShapeInference);
+    ops::SendOpMaker,
+    ops::SendOpShapeInference);

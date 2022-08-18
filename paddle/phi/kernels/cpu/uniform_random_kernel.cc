@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/uniform_random_kernel.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

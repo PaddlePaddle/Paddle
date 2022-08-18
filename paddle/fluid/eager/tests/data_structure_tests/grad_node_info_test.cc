@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/eager/grad_node_info.h"
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -85,8 +85,8 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   CHECK_EQ(grad_test_node2->OutputMeta()[0].size(), size_t(1));
 
   VLOG(6) << "Test Gradient Hook";
-  auto gradient_hook = [](
-      const paddle::experimental::Tensor& et) -> paddle::experimental::Tensor {
+  auto gradient_hook = [](const paddle::experimental::Tensor& et)
+      -> paddle::experimental::Tensor {
     paddle::experimental::Tensor res;
     phi::DenseTensorMeta meta =
         phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));

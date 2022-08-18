@@ -52,20 +52,21 @@ class ProgramDesc;
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-
 DECLARE_double(eager_delete_tensor_gb);
+namespace paddle {
+namespace distributed {
+
 DECLARE_int32(pserver_timeout_ms);
 DECLARE_int32(heter_world_size);
 DECLARE_int32(switch_send_recv_timeout_s);
 
-namespace paddle {
-namespace distributed {
 using MultiVarMsg = MultiVariableMessage;
 using VarMsg = VariableMessage;
 
-using serviceHandler = std::function<int32_t(
-    const PsRequestMessage& request, PsResponseMessage& response,  // NOLINT
-    brpc::Controller* cntl)>;
+using serviceHandler =
+    std::function<int32_t(const PsRequestMessage& request,
+                          PsResponseMessage& response,  // NOLINT
+                          brpc::Controller* cntl)>;
 using HeterServiceHandler =
     std::function<int32_t(const MultiVarMsg*, MultiVarMsg*, brpc::Controller*)>;
 
@@ -80,7 +81,8 @@ class ServiceHandlerBase {
   void SetScope(const framework::Scope* scope) { scope_ = scope; }
   void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
 
-  virtual int Handle(const MultiVarMsg* request, MultiVarMsg* response,
+  virtual int Handle(const MultiVarMsg* request,
+                     MultiVarMsg* response,
                      brpc::Controller* cntl) = 0;
 
  protected:
@@ -90,11 +92,15 @@ class ServiceHandlerBase {
 
 using SharedMiniScope =
     std::shared_ptr<std::unordered_map<int, ::paddle::framework::Scope*>>;
+
 using SharedMicroScope = std::shared_ptr<std::unordered_map<
-    int, std::shared_ptr<std::vector<::paddle::framework::Scope*>>>>;
+    int,
+    std::shared_ptr<std::vector<::paddle::framework::Scope*>>>>;
+
 using SharedTaskQueue = std::shared_ptr<
-    std::unordered_map<int, std::shared_ptr<::paddle::framework::BlockingQueue<
-                                std::pair<std::string, int>>>>>;
+    std::unordered_map<int,
+                       std::shared_ptr<::paddle::framework::BlockingQueue<
+                           std::pair<std::string, int>>>>>;
 
 class ValueInSwitch {
  public:
@@ -187,15 +193,18 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
                             PsResponseMessage* response,
                             brpc::Controller* cntl);
 
-  int QueryInSwitchWithShard(const MultiVarMsg* request, MultiVarMsg* response,
+  int QueryInSwitchWithShard(const MultiVarMsg* request,
+                             MultiVarMsg* response,
                              brpc::Controller* cntl);
 
-  int QueryInSwitchWithScope(const MultiVarMsg* request, MultiVarMsg* response,
+  int QueryInSwitchWithScope(const MultiVarMsg* request,
+                             MultiVarMsg* response,
                              brpc::Controller* cntl);
 
   void SetTaskQueue(SharedTaskQueue task_queue) { task_queue_ = task_queue; }
 
-  int Handle(const MultiVarMsg* request, MultiVarMsg* response,
+  int Handle(const MultiVarMsg* request,
+             MultiVarMsg* response,
              brpc::Controller* cntl) override {
     LOG(INFO) << "entered Handle";
     platform::RecordEvent record_event("SendAndRecvVariableHandler->Handle",
@@ -220,12 +229,14 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
         *request, &request_io_buffer, cpu_dev_ctx, &local_scope);
 
     auto* var = local_scope.FindVar("microbatch_id");
-    PADDLE_ENFORCE_NE(var, nullptr,
+    PADDLE_ENFORCE_NE(var,
+                      nullptr,
                       platform::errors::InvalidArgument(
                           "Not find variable microbatch_id in scope."));
     auto* tensor = var->GetMutable<framework::LoDTensor>();
     auto data = reinterpret_cast<const float*>(tensor->data());
     auto micro_id = static_cast<int>(data[0]);
+    VLOG(4) << "micro_id in heter server: " << micro_id;
     int minibatch_index = micro_id / 10;
     int microbatch_index = micro_id % 10;
 
@@ -235,7 +246,8 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       lk.unlock();
 
       PADDLE_ENFORCE_EQ(
-          (*micro_scopes_).find(minibatch_index) != (*micro_scopes_).end(), 1,
+          (*micro_scopes_).find(minibatch_index) != (*micro_scopes_).end(),
+          1,
           platform::errors::InvalidArgument(
               "minibatch index should in current trainer"));
 
@@ -261,6 +273,9 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     distributed::DeserializeFromMultiVarMsgAndIOBuf(
         *request, &request_io_buffer, *dev_ctx_, micro_scope);
     // blocking queue handles multi thread
+    VLOG(4) << "Handle in HeterServer: " << message_name << ", "
+            << microbatch_index;
+    VLOG(4) << "task_queue_ size: " << task_queue_->size();
     (*task_queue_)[minibatch_index]->Push(
         std::make_pair(message_name, microbatch_index));
 
@@ -271,9 +286,14 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       response_var_names[var_idx] = request->recv_var_names(var_idx);
     }
     auto& response_io_buffer = cntl->response_attachment();
-    distributed::SerializeToMultiVarMsgAndIOBuf(
-        message_name, response_var_names, empty_var_names, *dev_ctx_,
-        &local_scope, response, &response_io_buffer);
+    distributed::SerializeToMultiVarMsgAndIOBuf(message_name,
+                                                response_var_names,
+                                                empty_var_names,
+                                                *dev_ctx_,
+                                                &local_scope,
+                                                response,
+                                                &response_io_buffer);
+    VLOG(4) << "Handle over";
     return 0;
   }
 
@@ -304,14 +324,23 @@ class HeterService : public PsService {
  public:
   HeterService() {
     _service_handler_map[PS_STOP_SERVER] =
-        std::bind(&HeterService::stop_heter_worker, this, std::placeholders::_1,
-                  std::placeholders::_2, std::placeholders::_3);
+        std::bind(&HeterService::stop_heter_worker,
+                  this,
+                  std::placeholders::_1,
+                  std::placeholders::_2,
+                  std::placeholders::_3);
     _service_handler_map[PS_START_PROFILER] =
-        std::bind(&HeterService::start_profiler, this, std::placeholders::_1,
-                  std::placeholders::_2, std::placeholders::_3);
+        std::bind(&HeterService::start_profiler,
+                  this,
+                  std::placeholders::_1,
+                  std::placeholders::_2,
+                  std::placeholders::_3);
     _service_handler_map[PS_STOP_PROFILER] =
-        std::bind(&HeterService::stop_profiler, this, std::placeholders::_1,
-                  std::placeholders::_2, std::placeholders::_3);
+        std::bind(&HeterService::stop_profiler,
+                  this,
+                  std::placeholders::_1,
+                  std::placeholders::_2,
+                  std::placeholders::_3);
 
     service_handler_.local_scope_ptr =
         std::make_shared<paddle::framework::Scope>();
@@ -345,8 +374,10 @@ class HeterService : public PsService {
   }
 
   virtual void SendAndRecvVariable(
-      ::google::protobuf::RpcController* controller, const MultiVarMsg* request,
-      MultiVarMsg* response, ::google::protobuf::Closure* done) {
+      ::google::protobuf::RpcController* controller,
+      const MultiVarMsg* request,
+      MultiVarMsg* response,
+      ::google::protobuf::Closure* done) {
     // This object helps you to call done->Run() in RAII style. If you need
     // to process the request asynchronously, pass done_guard.release().
     brpc::ClosureGuard done_guard(done);
@@ -356,7 +387,8 @@ class HeterService : public PsService {
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     LOG(INFO) << "SendAndRecvVariable(client addr) =" << cntl->remote_side();
     PADDLE_ENFORCE_NE(
-        itr, handler_map_.end(),
+        itr,
+        handler_map_.end(),
         platform::errors::InvalidArgument(
             "HeterService::SendAndRecvVariable Get illegal message_name: %s "
             "which is not in HeterService::handler_map_",
@@ -367,7 +399,8 @@ class HeterService : public PsService {
   }
 
   virtual void RecvFromSwitch(::google::protobuf::RpcController* controller,
-                              const MultiVarMsg* request, MultiVarMsg* response,
+                              const MultiVarMsg* request,
+                              MultiVarMsg* response,
                               ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
@@ -403,7 +436,8 @@ class HeterService : public PsService {
       closure->set_promise_value(ret);
       if (closure->cntl.Failed()) {
         PADDLE_ENFORCE_NE(
-            closure->cntl.Failed(), true,
+            closure->cntl.Failed(),
+            true,
             platform::errors::Unimplemented(
                 "HeterClient::SendS2S meets brpc error, error message is %s",
                 closure->cntl.ErrorText()));
@@ -428,7 +462,8 @@ class HeterService : public PsService {
   }
 
   void SendS2S(::google::protobuf::RpcController* controller,
-               const MultiVarMsg* request, PsResponseMessage* response,
+               const MultiVarMsg* request,
+               PsResponseMessage* response,
                ::google::protobuf::Closure* done) {
     VLOG(4) << "entering SendS2S";
     brpc::ClosureGuard done_guard(done);
@@ -452,7 +487,8 @@ class HeterService : public PsService {
   }
 
   void SendToWorker(::google::protobuf::RpcController* controller,
-                    const MultiVarMsg* request, PsResponseMessage* response,
+                    const MultiVarMsg* request,
+                    PsResponseMessage* response,
                     ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
@@ -612,11 +648,9 @@ class HeterServer {
 
   // HeterWrapper singleton
   static std::shared_ptr<HeterServer> GetInstance() {
+    std::unique_lock<std::mutex> lock(mtx_);
     if (s_instance_ == nullptr) {
-      std::unique_lock<std::mutex> lock(mtx_);
-      if (NULL == s_instance_) {
-        s_instance_.reset(new HeterServer());
-      }
+      s_instance_.reset(new HeterServer());
     }
     return s_instance_;
   }
