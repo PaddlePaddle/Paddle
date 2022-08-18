@@ -4053,10 +4053,56 @@ def _apply_pass(main_program,
     assert isinstance(pass_attr_types, dict), "pass_attr_types must be dict"
     tmp_main_program = core.ProgramDesc(main_program.desc)
     tmp_startup_program = core.ProgramDesc(startup_program.desc)
+    print("\n\n\n\nyoki1 main_program")
+    for op in main_program.global_block().ops:
+        print("yoki: program op: ", op.desc.type())
+        if op.desc.type() == 'run_program':
+            for i in range(op.desc.attr("global_block").op_size()):
+                print("    yoki: before program pass: ", op.desc.attr("global_block").op(i).type())
+    print("\n\n\n\nyoki1 tmp_main_program")
+    for j in range(tmp_main_program.block(0).op_size()):
+        print("yoki: tmp program op: ", tmp_main_program.block(0).op(j).type())
+        if tmp_main_program.block(0).op(j).type() == 'run_program':
+            op_desc = tmp_main_program.block(0).op(j)
+            for i in range(op_desc.attr("global_block").op_size()):
+                print("    yoki: before program pass: ", op_desc.attr("global_block").op(i).type())
     attrs = core.apply_pass(tmp_main_program, tmp_startup_program, pass_name,
                             pass_attrs, pass_attr_types)
+    print("\n\n\n\nyoki2 main_program")
+    for op in main_program.global_block().ops:
+        print("yoki: program op: ", op.desc.type())
+        if op.desc.type() == 'run_program':
+            for i in range(op.desc.attr("global_block").op_size()):
+                print("    yoki: after program pass: ", op.desc.attr("global_block").op(i).type())
+    print("\n\n\n\nyoki2 tmp_main_program")
+    for j in range(tmp_main_program.block(0).op_size()):
+        print("yoki: tmp program op: ", tmp_main_program.block(0).op(j).type())
+        if tmp_main_program.block(0).op(j).type() == 'run_program':
+            op_desc = tmp_main_program.block(0).op(j)
+            for i in range(op_desc.attr("global_block").op_size()):
+                print("    yoki: after program pass: ", op_desc.attr("global_block").op(i).type())
     main_program._rebuild_from_desc(tmp_main_program)
     startup_program._rebuild_from_desc(tmp_startup_program)
+    print("\n\n\n\nyoki3 tmp_main_program")
+    for j in range(tmp_main_program.block(0).op_size()):
+        print("yoki: tmp program op: ", tmp_main_program.block(0).op(j).type())
+        if tmp_main_program.block(0).op(j).type() == 'run_program':
+            op_desc = tmp_main_program.block(0).op(j)
+            for i in range(op_desc.attr("global_block").op_size()):
+                print("    yoki: after program rebuild: ", op_desc.attr("global_block").op(i).type())
+    print("\n\n\n\nyoki3 main_program")
+    for op in main_program.global_block().ops:
+        print("yoki: program op: ", op.desc.type())
+        if op.desc.type() == 'run_program':
+            for i in range(op.desc.attr("global_block").op_size()):
+                print("    yoki: after program rebuild: ", op.desc.attr("global_block").op(i).type())
+    print("\n\n\n\nyoki3 tmp_main_program")
+    for j in range(tmp_main_program.block(0).op_size()):
+        print("yoki: tmp program op: ", tmp_main_program.block(0).op(j).type())
+        if tmp_main_program.block(0).op(j).type() == 'run_program':
+            op_desc = tmp_main_program.block(0).op(j)
+            for i in range(op_desc.attr("global_block").op_size()):
+                print("    yoki: after program rebuild: ", op_desc.attr("global_block").op(i).type())
     return attrs
 
 
@@ -5094,14 +5140,34 @@ class Program(object):
 
         # clear old blocks and desc
         for idx in range(block_num):
+            print("before yoki: idx: ", idx)
             block = self.blocks[idx]
+            block_desc = self.desc.block(idx)
+            for op_idx in range(block_desc.op_size()):
+                op_desc = block_desc.op(op_idx)
+                print("    yoki: op_type: ", op_desc.type())
+                if op_desc.type() == 'run_program':
+                    for i in range(op_desc.attr("global_block").op_size()):
+                        print("        yoki: before program main: ", op_desc.attr("global_block").op(i).type())
             block.vars.clear()
             block.ops.clear()
 
         for idx in range(block_num):
             block_desc = self.blocks[idx].desc
             new_block_desc = desc.block(idx)
+            for op_idx in range(new_block_desc.op_size()):
+                op_desc = new_block_desc.op(op_idx)
+                print("    yoki: op_type: ", op_desc.type())
+                if op_desc.type() == 'run_program':
+                    for i in range(op_desc.attr("global_block").op_size()):
+                        print("        yoki: before program tmp: ", op_desc.attr("global_block").op(i).type())
             block_desc._move_from(new_block_desc)
+            for op_idx in range(block_desc.op_size()):
+                op_desc = block_desc.op(op_idx)
+                print("    yoki: op_type: ", op_desc.type())
+                if op_desc.type() == 'run_program':
+                    for i in range(op_desc.attr("global_block").op_size()):
+                        print("        yoki: after program move from: ", op_desc.attr("global_block").op(i).type())
 
         del desc
 
@@ -5116,10 +5182,15 @@ class Program(object):
 
         # then append op
         for idx in range(block_num):
+            print("\n\n\nafter yoki: idx: ", idx)
             block = self.blocks[idx]
             block_desc = self.desc.block(idx)
             for op_idx in range(block_desc.op_size()):
                 op_desc = block_desc.op(op_idx)
+                print("    yoki: op_type: ", op_desc.type())
+                if op_desc.type() == 'run_program':
+                    for i in range(op_desc.attr("global_block").op_size()):
+                        print("        yoki: after program pass: ", op_desc.attr("global_block").op(i).type())
                 op = Operator(block=block, desc=op_desc)
                 block.ops.append(op)
 
