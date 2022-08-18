@@ -1188,7 +1188,7 @@ function assert_api_spec_approvals() {
 }
 
 function assert_file_diff_approvals() {
-    /bin/bash -x ${PADDLE_ROOT}/tools/check_file_diff_approvals.sh;file_approval_error=$?
+    /bin/bash ${PADDLE_ROOT}/tools/check_file_diff_approvals.sh;file_approval_error=$?
     if [ "$file_approval_error" != 0 ];then
        exit 6
     fi
