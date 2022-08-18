@@ -149,12 +149,12 @@ class TestLogsumexpAPI(unittest.TestCase):
             out = paddle.logsumexp(x, axis, keepdim)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
-        self.assertTrue(np.allclose(res[0], out_ref))
+        np.testing.assert_allclose(res[0], out_ref, rtol=1e-05)
 
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x)
         out = paddle.logsumexp(x, axis, keepdim)
-        self.assertTrue(np.allclose(out.numpy(), out_ref))
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
 
     def test_api(self):
@@ -173,7 +173,7 @@ class TestLogsumexpAPI(unittest.TestCase):
         out3 = paddle.tensor.math.logsumexp(x)
         out_ref = ref_logsumexp(self.x)
         for out in [out1, out2, out3]:
-            self.assertTrue(np.allclose(out.numpy(), out_ref))
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
 
 

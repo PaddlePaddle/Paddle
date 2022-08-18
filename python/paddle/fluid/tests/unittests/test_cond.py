@@ -438,9 +438,10 @@ class TestCondBackward(unittest.TestCase):
                     numerical_grad[0][j] = (loss_delta[0] -
                                             loss_value[0]) / delta
                 feed_img_delta[0][j] = feed_img[0][j]
-            self.assertTrue(
-                np.isclose(img_grad, numerical_grad, atol=0.05,
-                           rtol=0.05).all())
+            np.testing.assert_allclose(img_grad,
+                                       numerical_grad,
+                                       rtol=0.05,
+                                       atol=0.05)
 
     def add_optimizer_helper(self, cond_func, use_cuda, use_parallel_exe):
         """

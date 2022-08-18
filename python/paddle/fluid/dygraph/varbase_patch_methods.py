@@ -120,6 +120,10 @@ def monkey_patch_varbase():
         for attr in attr_keys:
             attr_kwargs[attr] = getattr(self, attr, None)
 
+        # If specify block, use it instead of self.block
+        if 'block' in kwargs:
+            attr_kwargs['block'] = kwargs['block']
+
         attr_kwargs.update(kwargs)
 
         if to_parameter or isinstance(self, (ParamBase, EagerParamBase)):

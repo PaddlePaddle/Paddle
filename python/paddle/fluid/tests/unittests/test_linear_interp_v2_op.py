@@ -22,21 +22,20 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.nn.functional import interpolate
-from paddle._C_ops import final_state_linear_interp_v2
 
 
-def linear_interp_v2_test(x,
-                          OutSize=None,
-                          SizeTensor=None,
-                          Scale=None,
-                          data_layout='NCHW',
-                          out_d=-1,
-                          out_h=-1,
-                          out_w=-1,
-                          scale=0.0,
-                          interp_method='linear',
-                          align_corners=False,
-                          align_mode=1):
+def linear_interp_test(x,
+                       OutSize=None,
+                       SizeTensor=None,
+                       Scale=None,
+                       data_layout='NCHW',
+                       out_d=-1,
+                       out_h=-1,
+                       out_w=-1,
+                       scale=[],
+                       interp_method='linear',
+                       align_corners=False,
+                       align_mode=1):
     if isinstance(scale, float) or isinstance(scale, int):
         scale_list = []
         for _ in range(len(x.shape) - 2):
@@ -45,11 +44,14 @@ def linear_interp_v2_test(x,
     elif isinstance(scale, list) or isinstance(scale, tuple):
         scale = list(map(float, scale))
     if SizeTensor is not None:
-        SizeTensor = [SizeTensor]
-    return final_state_linear_interp_v2(x, OutSize, SizeTensor, Scale,
-                                        data_layout, out_d, out_h, out_w, scale,
-                                        interp_method, align_corners,
-                                        align_mode)
+        if not isinstance(SizeTensor, list) and not isinstance(
+                SizeTensor, tuple):
+            SizeTensor = [SizeTensor]
+    return paddle._C_ops.final_state_linear_interp(x, OutSize, SizeTensor,
+                                                   Scale, data_layout, out_d,
+                                                   out_h, out_w, scale,
+                                                   interp_method, align_corners,
+                                                   align_mode)
 
 
 def linear_interp_np(input,
@@ -107,7 +109,7 @@ def linear_interp_np(input,
 class TestLinearInterpOp(OpTest):
 
     def setUp(self):
-        self.python_api = linear_interp_v2_test
+        self.python_api = linear_interp_test
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
@@ -219,7 +221,7 @@ class TestLinearInterpOpScale(TestLinearInterpOp):
 class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
 
     def setUp(self):
-        self.python_api = linear_interp_v2_test
+        self.python_api = linear_interp_test
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
@@ -367,7 +369,7 @@ class TestResizeLinearAPI(unittest.TestCase):
                                       align_mode=1,
                                       align_corners=False)
         for res in results:
-            self.assertTrue(np.allclose(res, expect_res))
+            np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
 
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
@@ -392,7 +394,7 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
                                       align_mode=1,
                                       align_corners=False)
 
-            self.assertTrue(np.allclose(interp.numpy(), expect))
+            np.testing.assert_allclose(interp.numpy(), expect, rtol=1e-05)
 
 
 class TestResizeLinearOpUint8(OpTest):

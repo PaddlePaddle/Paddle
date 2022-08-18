@@ -508,7 +508,9 @@ class TestDy2StIfElseBackward(unittest.TestCase):
         net.train()
         out = net(a, b, c)
         out.backward()
-        self.assertTrue(np.allclose((b + net.param).numpy(), out.numpy()))
+        np.testing.assert_allclose((b + net.param).numpy(),
+                                   out.numpy(),
+                                   rtol=1e-05)
 
 
 if __name__ == '__main__':
