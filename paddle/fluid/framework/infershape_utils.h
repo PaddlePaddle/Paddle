@@ -67,12 +67,12 @@ class CompatMetaTensor : public phi::MetaTensor {
 
  private:
   const LoD& GetRuntimeLoD() const {
-    auto* var = BOOST_GET_CONST(Variable*, var_);
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
     return var->Get<LoDTensor>().lod();
   }
 
   int32_t GetCompileTimeLoD() const {
-    auto* var = BOOST_GET_CONST(VarDesc*, var_);
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
     return var->GetLoDLevel();
   }
 
@@ -81,7 +81,7 @@ class CompatMetaTensor : public phi::MetaTensor {
                       true,
                       platform::errors::Unavailable(
                           "Only can get Tensor from MetaTensor in rumtime."));
-    auto* var = BOOST_GET_CONST(Variable*, var_);
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
     PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(),
                       true,
                       platform::errors::Unavailable(

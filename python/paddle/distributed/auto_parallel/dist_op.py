@@ -267,6 +267,4 @@ class DistributedModule:
             dist_op = DistributedOperator(op, self._dist_attr)
             dist_op.dist_attr.mark_annotated_as(self._dist_attr)
             default_dist_ctx.add_dist_op_for_program(dist_op)
-        if isinstance(output, Variable):
-            output = [output]
-        return list(output)
+        return output

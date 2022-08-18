@@ -40,7 +40,7 @@ void SetFeedVariable(Scope* scope,
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
-  auto& val = BOOST_GET(LoDTensor, feed_inputs[index]);
+  auto& val = PADDLE_GET(LoDTensor, feed_inputs[index]);
   val.ShareDataWith(input);
   // set lod
   val.set_lod(input.lod());

@@ -84,8 +84,8 @@ class PSController(Controller):
                 "POD_IP": self.ctx.node.ip,
             }
             e.update(_gloo_envs)
-            log_tag = "ps.{}".format(i)
-            self.add_container(envs=e, log_tag=log_tag)
+            log_file = "serverlog.{}".format(i)
+            self.add_container(envs=e, log_file=log_file)
 
         trainer_rank_offset = 0
         for s in trainer_endpoints:
@@ -106,12 +106,12 @@ class PSController(Controller):
                 "POD_IP": self.ctx.node.ip,
             }
             e.update(_gloo_envs)
-            log_tag = "trainer.{}".format(i)
-            self.add_container(envs=e, log_tag=log_tag)
+            log_file = "workerlog.{}".format(i)
+            self.add_container(envs=e, log_file=log_file)
 
     def _build_pod_with_master(self):
 
-        self.pod.rank = self.ctx.args.rank
+        self.pod.rank = int(self.ctx.args.rank)
 
         server_num = self.ctx.args.server_num or 1
         servers = [
@@ -191,8 +191,8 @@ class PSController(Controller):
                 self.ctx.node.ip,
             }
             e.update(_gloo_envs)
-            log_tag = "ps.{}".format(i)
-            self.add_container(envs=e, log_tag=log_tag)
+            log_file = "serverlog.{}".format(i)
+            self.add_container(envs=e, log_file=log_file)
 
         for i in range(trainer_num):
             e = {
@@ -216,8 +216,8 @@ class PSController(Controller):
                 self.ctx.node.ip,
             }
             e.update(_gloo_envs)
-            log_tag = "trainer.{}".format(i)
-            self.add_container(envs=e, log_tag=log_tag)
+            log_file = "workerlog.{}".format(i)
+            self.add_container(envs=e, log_file=log_file)
         ''' NEW VERSION
         for i in range(server_num):
             e = {

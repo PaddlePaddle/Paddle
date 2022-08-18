@@ -76,8 +76,8 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         npu_, cpu_ = exe.run(main_program,
                              feed={},
                              fetch_list=[npu_var.name, cpu_var.name])
-        self.assertTrue(np.allclose(npu_, cpu_))
-        self.assertTrue(np.allclose(cpu_, np.ones((10, 10))))
+        np.testing.assert_allclose(npu_, cpu_)
+        np.testing.assert_allclose(cpu_, np.ones((10, 10)))
 
     def test_cpu_cpoy_npu(self):
         main_program, npu_var, cpu_var = self.get_prog()
@@ -90,8 +90,8 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         npu_, cpu_ = exe.run(main_program,
                              feed={},
                              fetch_list=[npu_var.name, cpu_var.name])
-        self.assertTrue(np.allclose(npu_, cpu_))
-        self.assertTrue(np.allclose(npu_, np.zeros((10, 10))))
+        np.testing.assert_allclose(npu_, cpu_)
+        np.testing.assert_allclose(npu_, np.zeros((10, 10)))
 
 
 if __name__ == '__main__':

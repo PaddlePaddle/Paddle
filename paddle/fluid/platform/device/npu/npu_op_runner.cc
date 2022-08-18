@@ -127,19 +127,19 @@ NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
   }
   if (attr.type() == typeid(bool)) {
     PADDLE_ENFORCE_NPU_SUCCESS(
-        aclopSetAttrBool(attr_, name.c_str(), BOOST_GET_CONST(bool, attr)));
+        aclopSetAttrBool(attr_, name.c_str(), PADDLE_GET_CONST(bool, attr)));
   } else if (attr.type() == typeid(int)) {
     PADDLE_ENFORCE_NPU_SUCCESS(
-        aclopSetAttrInt(attr_, name.c_str(), BOOST_GET_CONST(int, attr)));
+        aclopSetAttrInt(attr_, name.c_str(), PADDLE_GET_CONST(int, attr)));
 
   } else if (attr.type() == typeid(int64_t)) {
     PADDLE_ENFORCE_NPU_SUCCESS(
-        aclopSetAttrInt(attr_, name.c_str(), BOOST_GET_CONST(int64_t, attr)));
+        aclopSetAttrInt(attr_, name.c_str(), PADDLE_GET_CONST(int64_t, attr)));
   } else if (attr.type() == typeid(float)) {
     PADDLE_ENFORCE_NPU_SUCCESS(
-        aclopSetAttrFloat(attr_, name.c_str(), BOOST_GET_CONST(float, attr)));
+        aclopSetAttrFloat(attr_, name.c_str(), PADDLE_GET_CONST(float, attr)));
   } else if (attr.type() == typeid(std::vector<bool>)) {
-    auto a = BOOST_GET_CONST(std::vector<bool>, attr);
+    auto a = PADDLE_GET_CONST(std::vector<bool>, attr);
     std::vector<uint8_t> cast_a;
     for (auto it : a) {
       cast_a.push_back(static_cast<uint8_t>(it));
@@ -147,7 +147,7 @@ NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
     PADDLE_ENFORCE_NPU_SUCCESS(aclopSetAttrListBool(
         attr_, name.c_str(), cast_a.size(), cast_a.data()));
   } else if (attr.type() == typeid(std::vector<int>)) {
-    auto a = BOOST_GET_CONST(std::vector<int>, attr);
+    auto a = PADDLE_GET_CONST(std::vector<int>, attr);
     std::vector<int64_t> cast_a;
     for (auto it : a) {
       cast_a.push_back(static_cast<int64_t>(it));
@@ -155,19 +155,19 @@ NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
     PADDLE_ENFORCE_NPU_SUCCESS(
         aclopSetAttrListInt(attr_, name.c_str(), cast_a.size(), cast_a.data()));
   } else if (attr.type() == typeid(std::vector<int64_t>)) {
-    auto a = BOOST_GET_CONST(std::vector<int64_t>, attr);
+    auto a = PADDLE_GET_CONST(std::vector<int64_t>, attr);
     PADDLE_ENFORCE_NPU_SUCCESS(
         aclopSetAttrListInt(attr_, name.c_str(), a.size(), a.data()));
   } else if (attr.type() == typeid(std::vector<float>)) {
-    auto a = BOOST_GET_CONST(std::vector<float>, attr);
+    auto a = PADDLE_GET_CONST(std::vector<float>, attr);
     PADDLE_ENFORCE_NPU_SUCCESS(
         aclopSetAttrListFloat(attr_, name.c_str(), a.size(), a.data()));
   } else if (attr.type() == typeid(std::string)) {
-    auto a = BOOST_GET_CONST(std::string, attr);
+    auto a = PADDLE_GET_CONST(std::string, attr);
     PADDLE_ENFORCE_NPU_SUCCESS(
         aclopSetAttrString(attr_, name.c_str(), a.c_str()));
   } else if (attr.type() == typeid(std::vector<std::string>)) {
-    auto a = BOOST_GET_CONST(std::vector<std::string>, attr);
+    auto a = PADDLE_GET_CONST(std::vector<std::string>, attr);
     std::vector<const char *> s;
     for (auto &it : a) {
       s.push_back(it.data());
@@ -175,7 +175,7 @@ NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
     PADDLE_ENFORCE_NPU_SUCCESS(
         aclopSetAttrListString(attr_, name.c_str(), s.size(), s.data()));
   } else if (attr.type() == typeid(std::vector<std::vector<int64_t>>)) {
-    auto a = BOOST_GET_CONST(std::vector<std::vector<int64_t>>, attr);
+    auto a = PADDLE_GET_CONST(std::vector<std::vector<int64_t>>, attr);
     std::vector<int64_t *> data;
     std::vector<int> num;
     for (auto &&v : a) {
@@ -201,8 +201,8 @@ NpuOpRunner &NpuOpRunner::AddAttrDataType(const std::string &name,
   if (!attr_) {
     attr_ = aclopCreateAttr();
   }
-  auto dtype = ConvertToNpuDtype(
-      static_cast<framework::proto::VarType::Type>(BOOST_GET_CONST(int, attr)));
+  auto dtype = ConvertToNpuDtype(static_cast<framework::proto::VarType::Type>(
+      PADDLE_GET_CONST(int, attr)));
   PADDLE_ENFORCE_NPU_SUCCESS(aclopSetAttrDataType(attr_, name.c_str(), dtype));
   return *this;
 }

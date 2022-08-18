@@ -22,8 +22,8 @@ template <typename T, typename Context>
 void SolveGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
-                     const DenseTensor& dout,
                      const DenseTensor& out,
+                     const DenseTensor& dout,
                      DenseTensor* dx,
                      DenseTensor* dy);
 

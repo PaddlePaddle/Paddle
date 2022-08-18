@@ -25,8 +25,14 @@ template <typename T, typename Context>
 void UnsqueezeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
-                     DenseTensor* out,
-                     DenseTensor* xshape);
+                     DenseTensor* out);
+
+template <typename T, typename Context>
+void UnsqueezeWithXShapeKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const IntArray& axes,
+                               DenseTensor* out,
+                               DenseTensor* xshape);
 
 template <typename T, typename Context>
 void Unsqueeze(const Context& dev_ctx,
@@ -35,8 +41,8 @@ void Unsqueeze(const Context& dev_ctx,
                DenseTensor* out,
                DenseTensor* xshape) {
   MetaTensor meta_out(out);
-  UnsqueezeInferMeta(x, axes, &meta_out, nullptr, MetaConfig());
-  UnsqueezeKernel<T, Context>(dev_ctx, x, axes, out, nullptr);
+  UnsqueezeInferMeta(x, axes, &meta_out);
+  UnsqueezeKernel<T, Context>(dev_ctx, x, axes, out);
 }
 
 }  // namespace phi

@@ -35,7 +35,6 @@ from paddle.distributed.auto_parallel.cost.comp_op_cost import EmbeddingOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import EmbeddingGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantBatchSizeLikeOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantBatchSizeLikeGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GatherOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GeluOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GeluGradOpCost
@@ -180,11 +179,6 @@ class TestCompOpCost(unittest.TestCase):
         self.assertTrue(op_cost.memory >= 0)
 
         op_cost = FillConstantBatchSizeLikeOpCost(cluster=cluster)
-        self.assertTrue(op_cost.flops >= 0)
-        self.assertTrue(op_cost.time >= 0)
-        self.assertTrue(op_cost.memory >= 0)
-
-        op_cost = FillConstantBatchSizeLikeGradOpCost(cluster=cluster)
         self.assertTrue(op_cost.flops >= 0)
         self.assertTrue(op_cost.time >= 0)
         self.assertTrue(op_cost.memory >= 0)

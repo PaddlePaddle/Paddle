@@ -23,16 +23,17 @@ namespace {
 
 Node *conv2d_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto dilations_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dilations"));
+  auto dilations_ =
+      PADDLE_GET_CONST(std::vector<int>, op->GetAttr("dilations"));
   auto dilations = std::vector<int64_t>{dilations_.begin(), dilations_.end()};
-  auto group_ = BOOST_GET_CONST(int, op->GetAttr("groups"));
-  auto pads_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("paddings"));
+  auto group_ = PADDLE_GET_CONST(int, op->GetAttr("groups"));
+  auto pads_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("paddings"));
   if (pads_.size() == 2) {
     pads_.push_back(pads_[0]);
     pads_.push_back(pads_[1]);
   }
   auto pads = std::vector<int64_t>{pads_.begin(), pads_.end()};
-  auto stride_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("strides"));
+  auto stride_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("strides"));
   auto stride = std::vector<int64_t>{stride_.begin(), stride_.end()};
   if (!op->Input("Bias").empty()) {
     return CreateConv(graph,
@@ -78,10 +79,10 @@ Node *batch_norm_handler(Graph *graph, Node *node) {
   bool is_test;
   if (is_test_type == 0) {
     // int
-    is_test = BOOST_GET_CONST(int, op->GetAttr("is_test"));
+    is_test = PADDLE_GET_CONST(int, op->GetAttr("is_test"));
   } else {
     // bool
-    is_test = BOOST_GET_CONST(bool, op->GetAttr("is_test"));
+    is_test = PADDLE_GET_CONST(bool, op->GetAttr("is_test"));
   }
   outputs.push_back(GetOutputVarNode("Y", node));
   if (!is_test) {
@@ -92,8 +93,8 @@ Node *batch_norm_handler(Graph *graph, Node *node) {
     num_outputs = 5;
   }
   // outputs.push_back(GetOutputVarNode("ReserveSpace", node));
-  auto momentum = BOOST_GET_CONST(float, op->GetAttr("momentum"));
-  auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+  auto momentum = PADDLE_GET_CONST(float, op->GetAttr("momentum"));
+  auto epsilon = PADDLE_GET_CONST(float, op->GetAttr("epsilon"));
   // data_layout
   return CreateBaseOp(graph,
                       node,
@@ -109,12 +110,13 @@ Node *batch_norm_handler(Graph *graph, Node *node) {
 
 Node *pool2d_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto pooling_type = BOOST_GET_CONST(std::string, op->GetAttr("pooling_type"));
-  auto global_pooling = BOOST_GET_CONST(bool, op->GetAttr("global_pooling"));
+  auto pooling_type =
+      PADDLE_GET_CONST(std::string, op->GetAttr("pooling_type"));
+  auto global_pooling = PADDLE_GET_CONST(bool, op->GetAttr("global_pooling"));
   if (op->HasAttr("adaptive")) {
-    auto adaptive = BOOST_GET_CONST(bool, op->GetAttr("adaptive"));
+    auto adaptive = PADDLE_GET_CONST(bool, op->GetAttr("adaptive"));
     if (adaptive) {
-      auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
+      auto ksize = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
       if (ksize[0] != 1 || ksize[1] != 1) {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Only support pool_size=1 with adaptive mode."));
@@ -140,24 +142,24 @@ Node *pool2d_handler(Graph *graph, Node *node) {
   }
   if (op->HasAttr("padding_algorithm")) {
     auto padding_algorithm =
-        BOOST_GET_CONST(std::string, op->GetAttr("padding_algorithm"));
+        PADDLE_GET_CONST(std::string, op->GetAttr("padding_algorithm"));
     if (padding_algorithm != "EXPLICIT") {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "op pool2d with unkonwn padding_algorithm: %s", padding_algorithm));
     }
   }
 
-  auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
+  auto ksize = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
   auto kernel_shape = std::vector<int64_t>{ksize.begin(), ksize.end()};
-  auto ceil_mode_ = BOOST_GET_CONST(bool, op->GetAttr("ceil_mode"));
+  auto ceil_mode_ = PADDLE_GET_CONST(bool, op->GetAttr("ceil_mode"));
   auto ceil_mode = int64_t(ceil_mode_ ? 1 : 0);
-  auto paddings = BOOST_GET_CONST(std::vector<int>, op->GetAttr("paddings"));
+  auto paddings = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("paddings"));
   auto pads = std::vector<int64_t>{paddings.begin(), paddings.end()};
   if (pads.size() == 2) {
     pads.push_back(paddings[0]);
     pads.push_back(paddings[1]);
   }
-  auto strides_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("strides"));
+  auto strides_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("strides"));
   auto strides = std::vector<int64_t>{strides_.begin(), strides_.end()};
   if (pooling_type == "max") {
     int64_t num_outputs = 1;
@@ -199,7 +201,7 @@ Node *pool2d_handler(Graph *graph, Node *node) {
 
 Node *max_pool2d_with_index_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
+  auto ksize = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
   if (ksize[0] != 1 || ksize[1] != 1) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Only support pool_size=1 with adaptive mode."));
@@ -213,8 +215,8 @@ Node *max_pool2d_with_index_handler(Graph *graph, Node *node) {
 
 Node *group_norm_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
-  auto groups_ = BOOST_GET_CONST(int, op->GetAttr("groups"));
+  auto epsilon_ = PADDLE_GET_CONST(float, op->GetAttr("epsilon"));
+  auto groups_ = PADDLE_GET_CONST(int, op->GetAttr("groups"));
   auto groups = int64_t{groups_};
   auto attrs_ = AttributeMap{{"epsilon", epsilon_}, {"num_groups", groups}};
 
@@ -230,7 +232,7 @@ Node *group_norm_handler(Graph *graph, Node *node) {
 
 Node *instance_norm_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+  auto epsilon_ = PADDLE_GET_CONST(float, op->GetAttr("epsilon"));
   auto attrs_ = AttributeMap{{"epsilon", epsilon_}};
 
   std::vector<Node *> inputs_ = {GetInputVarNode("X", node),
@@ -243,9 +245,9 @@ Node *instance_norm_handler(Graph *graph, Node *node) {
 
 Node *layer_norm_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto begin_norm_axis_ = BOOST_GET_CONST(int, op->GetAttr("begin_norm_axis"));
+  auto begin_norm_axis_ = PADDLE_GET_CONST(int, op->GetAttr("begin_norm_axis"));
   auto input_shape_ = GetInputVarNode("X", node)->Var()->GetShape();
-  auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+  auto epsilon_ = PADDLE_GET_CONST(float, op->GetAttr("epsilon"));
   int64_t groups_ = 1;
 
   auto groupnorm_attrs_ =
@@ -316,17 +318,17 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
 
 Node *dropout_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto dropout_prob_ = BOOST_GET_CONST(float, op->GetAttr("dropout_prob"));
+  auto dropout_prob_ = PADDLE_GET_CONST(float, op->GetAttr("dropout_prob"));
   auto dropout_implementation_ =
-      BOOST_GET_CONST(std::string, op->GetAttr("dropout_implementation"));
+      PADDLE_GET_CONST(std::string, op->GetAttr("dropout_implementation"));
   auto is_test_type_ = op->GetAttrType("is_test");
   bool is_test_;
   if (is_test_type_ == 0) {
     // int
-    is_test_ = BOOST_GET_CONST(int, op->GetAttr("is_test"));
+    is_test_ = PADDLE_GET_CONST(int, op->GetAttr("is_test"));
   } else {
     // bool
-    is_test_ = BOOST_GET_CONST(bool, op->GetAttr("is_test"));
+    is_test_ = PADDLE_GET_CONST(bool, op->GetAttr("is_test"));
   }
 
   if (is_test_) {
@@ -379,7 +381,7 @@ Node *dropout_handler(Graph *graph, Node *node) {
 Node *conv2d_transpose_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
 
-  auto data_format = BOOST_GET_CONST(std::string, op->GetAttr("data_format"));
+  auto data_format = PADDLE_GET_CONST(std::string, op->GetAttr("data_format"));
   if (data_format != "NCHW") {
     PADDLE_THROW(
         platform::errors::InvalidArgument("Only support NCHW as data_format."));
@@ -388,21 +390,22 @@ Node *conv2d_transpose_handler(Graph *graph, Node *node) {
   auto *kernel_info = GetInputVarNode("Filter", node);
   auto kernel_shape = kernel_info->Var()->GetShape();
 
-  auto dilations_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dilations"));
+  auto dilations_ =
+      PADDLE_GET_CONST(std::vector<int>, op->GetAttr("dilations"));
   auto dilations = std::vector<int64_t>{dilations_.begin(), dilations_.end()};
-  auto strides_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("strides"));
+  auto strides_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("strides"));
   auto strides = std::vector<int64_t>{strides_.begin(), strides_.end()};
   auto output_padding_ =
-      BOOST_GET_CONST(std::vector<int>, op->GetAttr("output_padding"));
+      PADDLE_GET_CONST(std::vector<int>, op->GetAttr("output_padding"));
   auto output_padding =
       std::vector<int64_t>{output_padding_.begin(), output_padding_.end()};
-  auto group_ = BOOST_GET_CONST(int, op->GetAttr("groups"));
+  auto group_ = PADDLE_GET_CONST(int, op->GetAttr("groups"));
   auto group = int64_t(group_);
 
   auto padding_algorithm =
-      BOOST_GET_CONST(std::string, op->GetAttr("padding_algorithm"));
+      PADDLE_GET_CONST(std::string, op->GetAttr("padding_algorithm"));
 
-  auto paddings_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("paddings"));
+  auto paddings_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("paddings"));
   if (paddings_.size() == 2) {
     paddings_.push_back(paddings_[0]);
     paddings_.push_back(paddings_[1]);
@@ -466,7 +469,7 @@ Node *conv2d_transpose_handler(Graph *graph, Node *node) {
 Node *affine_channel_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
 
-  auto data_layout = BOOST_GET_CONST(std::string, op->GetAttr("data_layout"));
+  auto data_layout = PADDLE_GET_CONST(std::string, op->GetAttr("data_layout"));
   if (data_layout != "NCHW") {
     PADDLE_THROW(
         platform::errors::InvalidArgument("Only support NCHW as data_format."));
@@ -509,14 +512,14 @@ Node *affine_channel_handler(Graph *graph, Node *node) {
 Node *interp_handler(Graph *graph, Node *node, const std::string &mode) {
   auto *op = node->Op();
 
-  auto data_layout = BOOST_GET_CONST(std::string, op->GetAttr("data_layout"));
+  auto data_layout = PADDLE_GET_CONST(std::string, op->GetAttr("data_layout"));
   if (data_layout != "NCHW") {
     PADDLE_THROW(
         platform::errors::InvalidArgument("Only support NCHW as data_format."));
   }
 
-  auto align_corners = BOOST_GET_CONST(bool, op->GetAttr("align_corners"));
-  auto align_mode = BOOST_GET_CONST(int, op->GetAttr("align_mode"));
+  auto align_corners = PADDLE_GET_CONST(bool, op->GetAttr("align_corners"));
+  auto align_mode = PADDLE_GET_CONST(int, op->GetAttr("align_mode"));
 
   auto paddle_target_dtype = VarType::FP32;
   auto onnx_target_dtype = ONNXDataType::FLOAT;
@@ -594,9 +597,9 @@ Node *interp_handler(Graph *graph, Node *node, const std::string &mode) {
                 ->outputs[0];
   } else {
     // Get 'size' or 'scale' from attribute
-    auto out_d = BOOST_GET_CONST(int, op->GetAttr("out_d"));
-    auto out_h = BOOST_GET_CONST(int, op->GetAttr("out_h"));
-    auto out_w = BOOST_GET_CONST(int, op->GetAttr("out_w"));
+    auto out_d = PADDLE_GET_CONST(int, op->GetAttr("out_d"));
+    auto out_h = PADDLE_GET_CONST(int, op->GetAttr("out_h"));
+    auto out_w = PADDLE_GET_CONST(int, op->GetAttr("out_w"));
     if (out_d > 0 || out_w > 0 || out_h > 0) {
       std::vector<int64_t> out_size;
       if (GetInputVarNode("X", node)->Var()->GetShape().size() == 5) {
@@ -617,7 +620,7 @@ Node *interp_handler(Graph *graph, Node *node, const std::string &mode) {
               ->outputs[0];
     } else {
       auto scale_value =
-          BOOST_GET_CONST(std::vector<float>, op->GetAttr("scale"));
+          PADDLE_GET_CONST(std::vector<float>, op->GetAttr("scale"));
       float padding = 1.0;
       scale_value.insert(scale_value.begin(), padding);
       scale_value.insert(scale_value.begin(), padding);
@@ -653,30 +656,14 @@ Node *interp_handler(Graph *graph, Node *node, const std::string &mode) {
         CreateBaseOp(
             graph, node, "popart_shape", {GetInputVarNode("X", node)}, {})
             ->outputs[0];
-    Node *start = CreateConst(graph,
-                              node,
-                              std::vector<int>{0},
-                              std::vector<int64_t>{1},
-                              ONNXDataType::INT32)
-                      ->outputs[0];
-    Node *end = CreateConst(graph,
-                            node,
-                            std::vector<int>{2},
-                            std::vector<int64_t>{1},
-                            ONNXDataType::INT32)
-                    ->outputs[0];
-    Node *axes = CreateConst(graph,
-                             node,
-                             std::vector<int>{0},
-                             std::vector<int64_t>{1},
-                             ONNXDataType::INT32)
-                     ->outputs[0];
-    Node *nc = CreateBaseOp(graph,
-                            node,
-                            "popart_slice",
-                            {input_shape, start, end, axes},
-                            {},
-                            {})
+    Node *nc = CreateSlice(graph,
+                           node,
+                           {input_shape},
+                           {},
+                           std::vector<int>{0},
+                           std::vector<int>{2},
+                           std::vector<int>{0},
+                           std::vector<int>{1})
                    ->outputs[0];
     size = CreateBaseOp(graph,
                         node,
@@ -731,7 +718,7 @@ Node *data_norm_handler(Graph *graph, Node *node) {
 
   int slot_dim = -1;
   if (op->HasAttr("slot_dim")) {
-    slot_dim = BOOST_GET_CONST(int, op->GetAttr("slot_dim"));
+    slot_dim = PADDLE_GET_CONST(int, op->GetAttr("slot_dim"));
   }
 
   if (slot_dim > 0) {
@@ -742,7 +729,7 @@ Node *data_norm_handler(Graph *graph, Node *node) {
   bool enable_scale_and_shift = false;
   if (op->HasAttr("enable_scale_and_shift")) {
     enable_scale_and_shift =
-        BOOST_GET_CONST(bool, op->GetAttr("enable_scale_and_shift"));
+        PADDLE_GET_CONST(bool, op->GetAttr("enable_scale_and_shift"));
   }
 
   auto *mean_arr = CreateBaseOp(graph,
@@ -789,9 +776,9 @@ Node *data_norm_handler(Graph *graph, Node *node) {
 
 Node *pad_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto mode = BOOST_GET_CONST(std::string, op->GetAttr("mode"));
-  auto value = BOOST_GET_CONST(float, op->GetAttr("value"));
-  auto data_format = BOOST_GET_CONST(std::string, op->GetAttr("data_format"));
+  auto mode = PADDLE_GET_CONST(std::string, op->GetAttr("mode"));
+  auto value = PADDLE_GET_CONST(float, op->GetAttr("value"));
+  auto data_format = PADDLE_GET_CONST(std::string, op->GetAttr("data_format"));
 
   if (data_format == "NDHWC") {
     PADDLE_THROW(
@@ -808,7 +795,7 @@ Node *pad_handler(Graph *graph, Node *node) {
         "Do not support Paddings as a inputs tensor"));
   }
   // Paddings -> Attr
-  auto paddings = BOOST_GET_CONST(std::vector<int>, op->GetAttr("paddings"));
+  auto paddings = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("paddings"));
   std::vector<int64_t> new_paddings(10, 0);
   new_paddings[2] = paddings[4];
   new_paddings[3] = paddings[2];

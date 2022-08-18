@@ -41,21 +41,21 @@ class YoloBoxOpConverter : public OpConverter {
     auto* X_tensor = engine_->GetITensor(X);
     auto* img_size_tensor = engine_->GetITensor(img_size);
 
-    int class_num = BOOST_GET_CONST(int, op_desc.GetAttr("class_num"));
+    int class_num = PADDLE_GET_CONST(int, op_desc.GetAttr("class_num"));
     std::vector<int> anchors =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("anchors"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("anchors"));
 
     int downsample_ratio =
-        BOOST_GET_CONST(int, op_desc.GetAttr("downsample_ratio"));
-    float conf_thresh = BOOST_GET_CONST(float, op_desc.GetAttr("conf_thresh"));
-    bool clip_bbox = BOOST_GET_CONST(bool, op_desc.GetAttr("clip_bbox"));
-    float scale_x_y = BOOST_GET_CONST(float, op_desc.GetAttr("scale_x_y"));
+        PADDLE_GET_CONST(int, op_desc.GetAttr("downsample_ratio"));
+    float conf_thresh = PADDLE_GET_CONST(float, op_desc.GetAttr("conf_thresh"));
+    bool clip_bbox = PADDLE_GET_CONST(bool, op_desc.GetAttr("clip_bbox"));
+    float scale_x_y = PADDLE_GET_CONST(float, op_desc.GetAttr("scale_x_y"));
     bool iou_aware = op_desc.HasAttr("iou_aware")
-                         ? BOOST_GET_CONST(bool, op_desc.GetAttr("iou_aware"))
+                         ? PADDLE_GET_CONST(bool, op_desc.GetAttr("iou_aware"))
                          : false;
     float iou_aware_factor =
         op_desc.HasAttr("iou_aware_factor")
-            ? BOOST_GET_CONST(float, op_desc.GetAttr("iou_aware_factor"))
+            ? PADDLE_GET_CONST(float, op_desc.GetAttr("iou_aware_factor"))
             : 0.5;
 
     int type_id = static_cast<int>(engine_->WithFp16());

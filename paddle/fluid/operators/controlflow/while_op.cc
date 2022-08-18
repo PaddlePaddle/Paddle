@@ -560,8 +560,8 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
         continue;
       }
       framework::VarDesc *in_var =
-          BOOST_GET(framework::VarDesc *, in_var_ptrs[i]);
-      BOOST_GET(framework::VarDesc *, out_var_ptrs[i])
+          PADDLE_GET(framework::VarDesc *, in_var_ptrs[i]);
+      PADDLE_GET(framework::VarDesc *, out_var_ptrs[i])
           ->SetShape(in_var->GetShape());
     }
   }

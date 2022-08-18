@@ -29,8 +29,9 @@ import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.fluid import Program, program_guard
 
-from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
-from paddle.fluid.tests.unittests.test_dist_base import TestDistBase
+sys.path.append("..")
+from op_test import OpTest, _set_use_system_allocator
+from test_dist_base import TestDistBase
 
 paddle.enable_static()
 
@@ -154,10 +155,12 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
             x = paddle.to_tensor(data)
             bn_out = bn_model(x)
             sybn_out = sybn_model(x)
-            self.assertTrue(
-                np.allclose(bn_out.numpy(), sybn_out.numpy()),
-                "Output has diff. \n" + "\nBN     " + str(bn_out.numpy()) +
-                "\n" + "Sync BN " + str(sybn_out.numpy()))
+            np.testing.assert_allclose(
+                bn_out.numpy(),
+                sybn_out.numpy(),
+                rtol=1e-05,
+                err_msg='Output has diff. \n' + '\nBN     ' +
+                str(bn_out.numpy()) + '\n' + 'Sync BN ' + str(sybn_out.numpy()))
 
 
 class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):

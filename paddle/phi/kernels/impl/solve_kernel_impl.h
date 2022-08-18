@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/expand_as_kernel.h"
 #include "paddle/phi/kernels/funcs/matrix_solve.h"
@@ -77,7 +79,7 @@ static std::vector<int64_t> get_broadcast_batch_portion(
 static inline std::vector<int> convert_to_int_vec(std::vector<int64_t> a) {
   std::vector<int> ret;
   for (size_t i = 0; i < a.size(); i++) {
-    ret.emplace_back(int(a[i]));
+    ret.emplace_back(static_cast<int>(a[i]));
   }
 
   return ret;
@@ -167,7 +169,7 @@ static void linalg_solve(const Context& dev_ctx,
     out_tmp.Resize(out->dims());
     out_tmp = *out;
 
-    phi::SqueezeKernel<T, Context>(dev_ctx, out_tmp, {-1}, out, nullptr);
+    phi::SqueezeKernel<T, Context>(dev_ctx, out_tmp, {-1}, out);
   } else {
     PADDLE_ENFORCE_EQ(
         x_dim[x_dim_size - 1],

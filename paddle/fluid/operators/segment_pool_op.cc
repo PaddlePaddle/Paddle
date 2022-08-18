@@ -132,7 +132,7 @@ class SegmentPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
     op_desc_ptr->SetInput("X", this->Input("X"));
     op_desc_ptr->SetInput("SegmentIds", this->Input("SegmentIds"));
     op_desc_ptr->SetInput("Out", this->Output("Out"));
-    if (BOOST_GET_CONST(std::string, this->GetAttr("pooltype")) == "MEAN") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("pooltype")) == "MEAN") {
       op_desc_ptr->SetInput("SummedIds", this->Output("SummedIds"));
     }
     op_desc_ptr->SetInput(framework::GradVarName("Out"),

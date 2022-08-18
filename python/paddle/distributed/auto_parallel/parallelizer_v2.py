@@ -149,6 +149,7 @@ class Parallelizer:
             paddle.enable_static()
         else:
             optimizer = copy.deepcopy(optimizer)
+        self._dist_context._serial_optimizer = optimizer
         with program_guard(main_program, startup_program):
             optimizer_ops = optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
@@ -195,6 +196,14 @@ class Parallelizer:
                                  params_grads):
         if self._strategy is None:
             return
+
+        # data parallel optimization
+        config = {}
+        config["dist_context"] = self._dist_context
+        config["global_rank"] = rank
+        dp_pass = new_pass("auto_parallel_data_parallel_optimization", config)
+        dp_pass.apply([main_program], [startup_program], self._pass_context)
+
         if self._strategy.sharding:
             config = copy.deepcopy(self._strategy.sharding_configs)
             config["dist_context"] = self._dist_context

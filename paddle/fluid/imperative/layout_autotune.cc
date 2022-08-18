@@ -174,10 +174,10 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
         conv_in_type = framework::proto::VarType::FP16;
       }
       bool is_tune_fp32 =
-          (BOOST_GET_CONST(std::string, (*attrs)["data_format"]) == "NHWC") &&
+          (PADDLE_GET_CONST(std::string, (*attrs)["data_format"]) == "NHWC") &&
           (conv_in_type == framework::proto::VarType::FP32);
       bool is_tune_fp16 =
-          (BOOST_GET_CONST(std::string, (*attrs)["data_format"]) == "NCHW") &&
+          (PADDLE_GET_CONST(std::string, (*attrs)["data_format"]) == "NCHW") &&
           (conv_in_type == framework::proto::VarType::FP16);
       if (is_tune_fp32) {
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NCHW);
@@ -188,7 +188,8 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
         return ins;
       }
       VLOG(3) << "Tune the layout from "
-              << BOOST_GET_CONST(std::string, (*attrs)["data_format"]) << " to "
+              << PADDLE_GET_CONST(std::string, (*attrs)["data_format"])
+              << " to "
               << paddle::framework::DataLayoutToString(
                      LayoutAutoTune::Instance().GetDesiredLayout());
     }

@@ -72,7 +72,7 @@ class ArgMaxMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc input_desc(
         flatten_x, CNNL_LAYOUT_ARRAY, ToCnnlDataType(flatten_x.dtype()));
     MLUCnnlReduceDesc reduction_desc(reduce_dims,
-                                     CNNL_REDUCE_MAX_LAST_INDEX,
+                                     CNNL_REDUCE_MAX,
                                      ToCnnlDataType<T>(),
                                      CNNL_NOT_PROPAGATE_NAN,
                                      CNNL_REDUCE_ONLY_INDICES,

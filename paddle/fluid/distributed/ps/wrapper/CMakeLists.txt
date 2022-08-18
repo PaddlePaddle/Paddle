@@ -13,6 +13,7 @@ cc_library(
        op_registry
        fs
        shell
+       ps_gpu_wrapper
        ${RPC_DEPS})
 
 target_link_libraries(fleet z)

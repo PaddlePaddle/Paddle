@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/platform/device/custom/enforce_custom.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/common/data_type.h"
+
 #include "paddle/phi/backends/callback_manager.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_guard.h"
@@ -608,6 +610,27 @@ class CustomDevice : public DeviceInterface {
 #undef return_result
   }
 
+  C_DataType ToCDatatType(paddle::experimental::DataType data_type) {
+#define return_result(in, ret) \
+  case in:                     \
+    return C_DataType::ret
+    switch (data_type) {
+      return_result(paddle::experimental::DataType::FLOAT64, FLOAT64);
+      return_result(paddle::experimental::DataType::FLOAT32, FLOAT32);
+      return_result(paddle::experimental::DataType::FLOAT16, FLOAT16);
+      return_result(paddle::experimental::DataType::INT64, INT64);
+      return_result(paddle::experimental::DataType::INT32, INT32);
+      return_result(paddle::experimental::DataType::INT16, INT16);
+      return_result(paddle::experimental::DataType::INT8, INT8);
+      default: {
+        PADDLE_THROW(phi::errors::Unavailable(
+            "DataType is not supported on %s.", Type()));
+        return C_DataType::UNDEFINED;
+      }
+    }
+#undef return_result
+  }
+
   void CCLGetUniqueId(ccl::CCLRootId* unique_id) override {
     CHECK_PTR(pimpl_->xccl_get_unique_id_size);
     CHECK_PTR(pimpl_->xccl_get_unique_id);
@@ -771,6 +794,27 @@ class CustomDevice : public DeviceInterface {
                           reinterpret_cast<C_Stream>(stream.raw_stream())));
   }
 
+  void BlasAXPBY(size_t dev_id,
+                 const stream::Stream& stream,
+                 paddle::experimental::DataType dtype,
+                 size_t numel,
+                 float alpha,
+                 void* x,
+                 float beta,
+                 void* y) override {
+    CHECK_PTR(pimpl_->blas_axpby);
+    const auto device = &devices_pool[dev_id];
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->blas_axpby(device,
+                           reinterpret_cast<C_Stream>(stream.raw_stream()),
+                           ToCDatatType(dtype),
+                           numel,
+                           alpha,
+                           x,
+                           beta,
+                           y));
+  }
+
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
     int dev_id = place.GetDeviceId();
@@ -877,6 +921,8 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(xccl_group_end, false);
   CHECK_INTERFACE(xccl_send, false);
   CHECK_INTERFACE(xccl_recv, false);
+
+  CHECK_INTERFACE(blas_axpby, false);
   return true;
 #undef CHECK_INTERFACE
 }

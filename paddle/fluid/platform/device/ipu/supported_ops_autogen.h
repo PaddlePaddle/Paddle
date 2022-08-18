@@ -17,11 +17,13 @@
 #pragma once
 
 // Ops from AiGraphcoreOpset1
+OP_DECL(popart_copyvarupdate_v2, aiGraphcoreOpset.copyvarupdate, NONE) // NOLINT
 OP_DECL(popart_groupnormalization_v2, aiGraphcoreOpset.groupnormalization, ARG(INT,num_groups) ARG(FLOAT,epsilon) ) // NOLINT
 OP_DECL(popart_subsample_v2, aiGraphcoreOpset.subsample, ARG(INT_VEC,strides) ) // NOLINT
 OP_DECL(popart_nop_v2, aiGraphcoreOpset.nop, NONE) // NOLINT
 OP_DECL(popart_scale_v2, aiGraphcoreOpset.scale, ARG(FLOAT,scale) ) // NOLINT
 OP_DECL(popart_scaledadd_v2, aiGraphcoreOpset.scaledadd, ARG(FLOAT,scale0) ARG(FLOAT,scale1) ) // NOLINT
+OP_DECL(popart_lstm_v2, aiGraphcoreOpset.lstm, ARG(INT,outputFullSequence) ) // NOLINT
 OP_DECL(popart_gelu_v2, aiGraphcoreOpset.gelu, NONE) // NOLINT
 OP_DECL(popart_detach_v2, aiGraphcoreOpset.detach, NONE) // NOLINT
 OP_DECL(popart_depthtospace_v2, aiGraphcoreOpset.depthtospace, ARG(INT,blocksize) ARG(STRING,mode) ) // NOLINT
@@ -31,9 +33,13 @@ OP_DECL(popart_dynamicupdate_v2, aiGraphcoreOpset.dynamicupdate, ARG(INT_VEC,axe
 OP_DECL(popart_dynamiczero_v2, aiGraphcoreOpset.dynamiczero, ARG(INT_VEC,axes) ARG(INT_VEC,sizes) ) // NOLINT
 OP_DECL(popart_dynamicadd_v2, aiGraphcoreOpset.dynamicadd, ARG(INT_VEC,axes) ARG(INT_VEC,sizes) ) // NOLINT
 OP_DECL(popart_sequenceslice_v2, aiGraphcoreOpset.sequenceslice, ARG(INT,zeroUnused) ) // NOLINT
-OP_DECL(popart_replicatedallreduce_v2, aiGraphcoreOpset.replicatedallreduce, OPT_ARG(INT_VEC,commGroup) ) // NOLINT
+OP_DECL(popart_l1loss_v2, aiGraphcoreOpset.l1loss, ARG(FLOAT,lambda) SIG_ARG(INT32,popart::ReductionType,reduction) ) // NOLINT
+OP_DECL(popart_nllloss_v2, aiGraphcoreOpset.nllloss, SIG_ARG(INT32,popart::ReductionType,reduction) OPT_ARG(INT32,ignoreIndex) ARG(BOOL,inputIsLogProbability) ) // NOLINT
+OP_DECL(popart_identityloss_v2, aiGraphcoreOpset.identityloss, SIG_ARG(INT32,popart::ReductionType,reduction) ) // NOLINT
+OP_DECL(popart_tensorremap_v2, aiGraphcoreOpset.tensorremap, ARG(INT,remap_type) ) // NOLINT
+OP_DECL(popart_ctcloss_v2, aiGraphcoreOpset.ctcloss, SIG_ARG(INT32,popart::ReductionType,reduction) ARG(INT,blank) ARG(STRING,outDataType) ARG(BOOL,zeroInfinity) ) // NOLINT
+OP_DECL(popart__ctcloss_v2, aiGraphcoreOpset._ctcloss, SIG_ARG(INT32,popart::ReductionType,reduction) ARG(INT,blank) ARG(STRING,outDataType) ARG(BOOL,zeroInfinity) ) // NOLINT
 OP_DECL(popart_ctcbeamsearchdecoder_v2, aiGraphcoreOpset.ctcbeamsearchdecoder, ARG(INT,blank) ARG(INT,beamWidth) ARG(INT,topPaths) ) // NOLINT
-OP_DECL(popart_ctcloss, aiGraphcoreOpset.ctcloss, SIG_ARG(INT32,popart::ReductionType,reduction) ARG(INT32,blank) ARG(STRING,outDataType) ) // NOLINT
 OP_DECL(popart_shapeddropout_v2, aiGraphcoreOpset.shapeddropout, ARG(INT_VEC,shape) ARG(FLOAT,ratio) ) // NOLINT
 OP_DECL(popart_atan2_v2, aiGraphcoreOpset.atan2, NONE) // NOLINT
 OP_DECL(popart_expm1_v2, aiGraphcoreOpset.expm1, NONE) // NOLINT
@@ -41,12 +47,16 @@ OP_DECL(popart_log1p_v2, aiGraphcoreOpset.log1p, NONE) // NOLINT
 OP_DECL(popart_fmod_v2, aiGraphcoreOpset.fmod, NONE) // NOLINT
 OP_DECL(popart_remainder_v2, aiGraphcoreOpset.remainder, NONE) // NOLINT
 OP_DECL(popart_reverse_v2, aiGraphcoreOpset.reverse, ARG(INT_VEC,dimensions) ) // NOLINT
+OP_DECL(popart_slice_v2, aiGraphcoreOpset.slice, ARG(INT_VEC,ends) ARG(INT_VEC,starts) ARG(INT_VEC,axes) ) // NOLINT
 OP_DECL(popart_bitwisenot_v2, aiGraphcoreOpset.bitwisenot, NONE) // NOLINT
 OP_DECL(popart_bitwiseand_v2, aiGraphcoreOpset.bitwiseand, NONE) // NOLINT
 OP_DECL(popart_bitwiseor_v2, aiGraphcoreOpset.bitwiseor, NONE) // NOLINT
 OP_DECL(popart_bitwisexor_v2, aiGraphcoreOpset.bitwisexor, NONE) // NOLINT
 OP_DECL(popart_bitwisexnor_v2, aiGraphcoreOpset.bitwisexnor, NONE) // NOLINT
 OP_DECL(popart_reducemedian_v2, aiGraphcoreOpset.reducemedian, OPT_ARG(INT_VEC,axes) ARG(INT,keepdims) ) // NOLINT
+OP_DECL(popart_scatterreduce_v2, aiGraphcoreOpset.scatterreduce, ARG(INT,axis_size) ARG(INT,axis) SIG_ARG(INT32,popart::ScatterReduction,reduction) ) // NOLINT
+OP_DECL(popart_swish_v2, aiGraphcoreOpset.swish, NONE) // NOLINT
+OP_DECL(popart_incrementmod_v2, aiGraphcoreOpset.incrementmod, ARG(FLOAT,increment) ARG(FLOAT,modulus) ) // NOLINT
 // Ops from AiOnnxOpset11
 OP_DECL(popart_argmax, aiOnnxOpset.argmax, ARG(INT,axis) ARG(INT,keepdims) ) // NOLINT
 OP_DECL(popart_argmin, aiOnnxOpset.argmin, ARG(INT,axis) ARG(INT,keepdims) ) // NOLINT
@@ -117,6 +127,7 @@ OP_DECL(popart_qlinearmatmul, aiOnnxOpset.qlinearmatmul, NONE) // NOLINT
 OP_DECL(popart_quantizelinear, aiOnnxOpset.quantizelinear, NONE) // NOLINT
 OP_DECL(popart_reversesequence, aiOnnxOpset.reversesequence, ARG(INT,batch_axis) ARG(INT,time_axis) ) // NOLINT
 OP_DECL(popart_roialign, aiOnnxOpset.roialign, ARG(STRING,mode) ARG(INT,output_height) ARG(INT,output_width) ARG(INT,sampling_ratio) ARG(FLOAT,spatial_scale) ) // NOLINT
+OP_DECL(popart_stringnormalizer, aiOnnxOpset.stringnormalizer, ARG(STRING,case_change_action) ARG(INT,is_case_sensitive) OPT_ARG(STRING,locale) ARG(STRING_VEC,stopwords) ) // NOLINT
 OP_DECL(popart_thresholdedrelu, aiOnnxOpset.thresholdedrelu, ARG(FLOAT,alpha) ) // NOLINT
 OP_DECL(popart_upsample, aiOnnxOpset.upsample, ARG(STRING,mode) ) // NOLINT
 // Ops from AiOnnxOpset9
@@ -138,6 +149,7 @@ OP_DECL(popart_prelu, aiOnnxOpset.prelu, NONE) // NOLINT
 OP_DECL(popart_shrink, aiOnnxOpset.shrink, ARG(FLOAT,bias) ARG(FLOAT,lambd) ) // NOLINT
 OP_DECL(popart_sign, aiOnnxOpset.sign, NONE) // NOLINT
 OP_DECL(popart_sinh, aiOnnxOpset.sinh, NONE) // NOLINT
+OP_DECL(popart_tfidfvectorizer, aiOnnxOpset.tfidfvectorizer, ARG(INT,max_gram_length) ARG(INT,max_skip_count) ARG(INT,min_gram_length) ARG(STRING,mode) ARG(INT_VEC,ngram_counts) ARG(INT_VEC,ngram_indexes) ARG(INT_VEC,pool_int64s) ARG(STRING_VEC,pool_strings) ARG(FLOAT_VEC,weights) ) // NOLINT
 OP_DECL(popart_where, aiOnnxOpset.where, NONE) // NOLINT
 // Ops from AiOnnxOpset8
 OP_DECL(popart_expand, aiOnnxOpset.expand, NONE) // NOLINT
@@ -153,10 +165,13 @@ OP_DECL(popart_asin, aiOnnxOpset.asin, NONE) // NOLINT
 OP_DECL(popart_atan, aiOnnxOpset.atan, NONE) // NOLINT
 OP_DECL(popart_cos, aiOnnxOpset.cos, NONE) // NOLINT
 OP_DECL(popart_div, aiOnnxOpset.div, NONE) // NOLINT
+OP_DECL(popart_gru, aiOnnxOpset.gru, ARG(INT,num_outputs) ARG(FLOAT_VEC,activation_alpha) ARG(FLOAT_VEC,activation_beta) ARG(STRING_VEC,activations) OPT_ARG(FLOAT,clip) ARG(STRING,direction) OPT_ARG(INT,hidden_size) ARG(INT,linear_before_reset) ) // NOLINT
+OP_DECL(popart_lstm, aiOnnxOpset.lstm, ARG(INT,num_outputs) ARG(FLOAT_VEC,activation_alpha) ARG(FLOAT_VEC,activation_beta) ARG(STRING_VEC,activations) OPT_ARG(FLOAT,clip) ARG(STRING,direction) OPT_ARG(INT,hidden_size) ARG(INT,input_forget) ) // NOLINT
 OP_DECL(popart_mul, aiOnnxOpset.mul, NONE) // NOLINT
 OP_DECL(popart_multinomial, aiOnnxOpset.multinomial, ARG(INT,dtype) ARG(INT,sample_size) OPT_ARG(FLOAT,seed) ) // NOLINT
 OP_DECL(popart_logical_or, aiOnnxOpset.logical_or, NONE) // NOLINT
 OP_DECL(popart_pow, aiOnnxOpset.pow, NONE) // NOLINT
+OP_DECL(popart_rnn, aiOnnxOpset.rnn, ARG(INT,num_outputs) ARG(FLOAT_VEC,activation_alpha) ARG(FLOAT_VEC,activation_beta) ARG(STRING_VEC,activations) OPT_ARG(FLOAT,clip) ARG(STRING,direction) OPT_ARG(INT,hidden_size) ) // NOLINT
 OP_DECL(popart_sin, aiOnnxOpset.sin, NONE) // NOLINT
 OP_DECL(popart_sub, aiOnnxOpset.sub, NONE) // NOLINT
 OP_DECL(popart_tan, aiOnnxOpset.tan, NONE) // NOLINT

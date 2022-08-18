@@ -124,15 +124,14 @@ int UniqSampler(const Sampler& sampler,
 }
 
 template <typename T>
-void GPUSampleWithProb<T>::operator()(
-    const platform::CUDADeviceContext& context,
-    const int seed,
-    const int dict_size,
-    const bool uniq,
-    const std::size_t num_samples,
-    const Tensor* L,
-    Tensor* S,
-    Tensor* P) {
+void GPUSampleWithProb<T>::operator()(const phi::GPUContext& context,
+                                      const int seed,
+                                      const int dict_size,
+                                      const bool uniq,
+                                      const std::size_t num_samples,
+                                      const Tensor* L,
+                                      Tensor* S,
+                                      Tensor* P) {
   // UNDERSTAND: dimension issues
   const auto lbl_dim = L->dims();
   const int batch_size = lbl_dim[0];

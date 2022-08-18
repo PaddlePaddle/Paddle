@@ -23,6 +23,8 @@ using Tensor = framework::Tensor;
 
 template <typename T>
 class ResNetUnitXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
@@ -63,9 +65,12 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
     std::string act_type = ctx.Attr<std::string>("act_type");
     auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
 
-    std::vector<const T *> x_list = {input_x->data<T>()};
-    std::vector<const T *> w_list = {filter_x->data<T>()};
-    std::vector<T *> conv_y_list = {conv_out_x->mutable_data<T>(place)};
+    std::vector<const XPUType *> x_list = {
+        reinterpret_cast<const XPUType *>(input_x->data<T>())};
+    std::vector<const XPUType *> w_list = {
+        reinterpret_cast<const XPUType *>(filter_x->data<T>())};
+    std::vector<XPUType *> conv_y_list = {
+        reinterpret_cast<XPUType *>(conv_out_x->mutable_data<T>(place))};
 
     std::vector<std::vector<int>> x_shape_list = {
         phi::vectorize<int>(input_x->dims())};
@@ -107,9 +112,10 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
       Tensor *running_mean_z = ctx.Output<Tensor>("RunningMeanZ");
       Tensor *running_var_z = ctx.Output<Tensor>("RunningVarZ");
 
-      x_list.push_back(input_z->data<T>());
-      w_list.push_back(filter_z->data<T>());
-      conv_y_list.push_back(conv_out_z->mutable_data<T>(place));
+      x_list.push_back(reinterpret_cast<const XPUType *>(input_z->data<T>()));
+      w_list.push_back(reinterpret_cast<const XPUType *>(filter_z->data<T>()));
+      conv_y_list.push_back(
+          reinterpret_cast<XPUType *>(conv_out_z->mutable_data<T>(place)));
 
       x_shape_list.push_back(phi::vectorize<int>(input_z->dims()));
 
@@ -133,17 +139,17 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
       if (fuse_add) {
         const Tensor *input_z = ctx.Input<Tensor>("Z");
         auto input_z_shape = phi::vectorize<int>(input_z->dims());
-        x_list.push_back(input_z->data<T>());
+        x_list.push_back(reinterpret_cast<const XPUType *>(input_z->data<T>()));
         x_shape_list.push_back(input_z_shape);
         x_maxlist.push_back(nullptr);
       }
     }
-    int r = xpu::resnet_unit_fusion<T, T, T, int16_t>(
+    int r = xpu::resnet_unit_fusion<XPUType, XPUType, XPUType, int16_t>(
         dev_ctx.x_context(),
         x_list,
         w_list,
         conv_y_list,
-        output->mutable_data<T>(place),
+        reinterpret_cast<XPUType *>(output->mutable_data<T>(place)),
         x_shape_list,
         filter_x_shape[0],
         ksize_list,
@@ -172,6 +178,8 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
 
 template <typename T>
 class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
@@ -208,11 +216,16 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
 
     auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
 
-    std::vector<const T *> x_list = {x->data<T>()};
-    std::vector<const T *> w_list = {filter_x->data<T>()};
-    std::vector<const T *> conv_y_list = {conv_out_x->data<T>()};
-    std::vector<T *> dx_list = {x_grad->mutable_data<T>(place)};
-    std::vector<T *> dw_list = {filter_x_grad->mutable_data<T>(place)};
+    std::vector<const XPUType *> x_list = {
+        reinterpret_cast<const XPUType *>(x->data<T>())};
+    std::vector<const XPUType *> w_list = {
+        reinterpret_cast<const XPUType *>(filter_x->data<T>())};
+    std::vector<const XPUType *> conv_y_list = {
+        reinterpret_cast<const XPUType *>(conv_out_x->data<T>())};
+    std::vector<XPUType *> dx_list = {
+        reinterpret_cast<XPUType *>(x_grad->mutable_data<T>(place))};
+    std::vector<XPUType *> dw_list = {
+        reinterpret_cast<XPUType *>(filter_x_grad->mutable_data<T>(place))};
 
     std::vector<std::vector<int>> x_shape_list = {
         phi::vectorize<int>(x->dims())};
@@ -262,11 +275,14 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
       Tensor *scale_z_grad =
           ctx.Output<Tensor>(framework::GradVarName("ScaleZ"));
       Tensor *bias_z_grad = ctx.Output<Tensor>(framework::GradVarName("BiasZ"));
-      x_list.push_back(z->data<T>());
-      w_list.push_back(filter_z->data<T>());
-      conv_y_list.push_back(conv_out_z->data<T>());
-      dx_list.push_back(z_grad->mutable_data<T>(place));
-      dw_list.push_back(filter_z_grad->mutable_data<T>(place));
+      x_list.push_back(reinterpret_cast<const XPUType *>(z->data<T>()));
+      w_list.push_back(reinterpret_cast<const XPUType *>(filter_z->data<T>()));
+      conv_y_list.push_back(
+          reinterpret_cast<const XPUType *>(conv_out_z->data<T>()));
+      dx_list.push_back(
+          reinterpret_cast<XPUType *>(z_grad->mutable_data<T>(place)));
+      dw_list.push_back(
+          reinterpret_cast<XPUType *>(filter_z_grad->mutable_data<T>(place)));
       x_shape_list.push_back(phi::vectorize<int>(z->dims()));
 
       auto filter_z_shape = phi::vectorize<int>(filter_z->dims());
@@ -288,38 +304,39 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
     } else {
       if (fuse_add) {
         auto z_grad = ctx.Output<Tensor>(framework::GradVarName("Z"));
-        dx_list.push_back(z_grad->mutable_data<T>(place));
+        dx_list.push_back(
+            reinterpret_cast<XPUType *>(z_grad->mutable_data<T>(place)));
       }
     }
 
-    int r =
-        xpu::resnet_unit_grad_fusion<T, T, T, int16_t>(dev_ctx.x_context(),
-                                                       x_list,
-                                                       w_list,
-                                                       y_grad->data<T>(),
-                                                       output->data<T>(),
-                                                       conv_y_list,
-                                                       dx_list,
-                                                       dw_list,
-                                                       x_shape_list,
-                                                       filter_x_shape[0],
-                                                       ksize_list,
-                                                       stride_list,
-                                                       paddings,
-                                                       dilations,
-                                                       group,
-                                                       x_maxlist,
-                                                       w_maxlist,
-                                                       scale_list,
-                                                       batch_mean_list,
-                                                       batch_invstd_list,
-                                                       dscale_list,
-                                                       dbias_list,
-                                                       xpu::Activation_t::RELU,
-                                                       eps,
-                                                       is_nchw,
-                                                       has_shortcut,
-                                                       fuse_add);
+    int r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, int16_t>(
+        dev_ctx.x_context(),
+        x_list,
+        w_list,
+        reinterpret_cast<const XPUType *>(y_grad->data<T>()),
+        reinterpret_cast<const XPUType *>(output->data<T>()),
+        conv_y_list,
+        dx_list,
+        dw_list,
+        x_shape_list,
+        filter_x_shape[0],
+        ksize_list,
+        stride_list,
+        paddings,
+        dilations,
+        group,
+        x_maxlist,
+        w_maxlist,
+        scale_list,
+        batch_mean_list,
+        batch_invstd_list,
+        dscale_list,
+        dbias_list,
+        xpu::Activation_t::RELU,
+        eps,
+        is_nchw,
+        has_shortcut,
+        fuse_add);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit_grad_fusion");
   }
 };
@@ -329,5 +346,9 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_XPU_KERNEL(resnet_unit, ops::ResNetUnitXPUKernel<float>);
-REGISTER_OP_XPU_KERNEL(resnet_unit_grad, ops::ResNetUnitGradXPUKernel<float>);
+REGISTER_OP_XPU_KERNEL(resnet_unit,
+                       ops::ResNetUnitXPUKernel<plat::float16>,
+                       ops::ResNetUnitXPUKernel<float>);
+REGISTER_OP_XPU_KERNEL(resnet_unit_grad,
+                       ops::ResNetUnitGradXPUKernel<plat::float16>,
+                       ops::ResNetUnitGradXPUKernel<float>);

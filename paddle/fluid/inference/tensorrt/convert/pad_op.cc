@@ -43,7 +43,7 @@ class PadOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
     const std::vector<int> paddings =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
 
     int pad_size = static_cast<int>(paddings.size());
 

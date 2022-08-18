@@ -39,6 +39,8 @@ class TestCustomCPUPlugin(unittest.TestCase):
             self._test_custom_device_dataloader()
             self._test_custom_device_mnist()
             self._test_eager_backward_api()
+            self._test_eager_copy_to()
+            self._test_fallback_kernel()
         self._test_custom_device_dataloader()
         self._test_custom_device_mnist()
 
@@ -132,6 +134,41 @@ class TestCustomCPUPlugin(unittest.TestCase):
         paddle.autograd.backward([z1_tensor, z2_tensor], [grad_tensor, None])
 
         self.assertTrue(x_tensor.grad.place.is_custom_place())
+
+    def _test_eager_copy_to(self):
+        import paddle
+        x = np.random.random([2, 2]).astype("float32")
+        # cpu -> custom
+        cpu_tensor = paddle.to_tensor(x,
+                                      dtype='float32',
+                                      place=paddle.CPUPlace())
+        custom_cpu_tensor = cpu_tensor._copy_to(
+            paddle.CustomPlace('custom_cpu', 0), True)
+        np.testing.assert_array_equal(custom_cpu_tensor, x)
+        self.assertTrue(custom_cpu_tensor.place.is_custom_place())
+        # custom -> custom
+        another_custom_cpu_tensor = custom_cpu_tensor._copy_to(
+            paddle.CustomPlace('custom_cpu', 0), True)
+        np.testing.assert_array_equal(another_custom_cpu_tensor, x)
+        self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
+        # custom -> cpu
+        another_cpu_tensor = custom_cpu_tensor._copy_to(paddle.CPUPlace(), True)
+        np.testing.assert_array_equal(another_cpu_tensor, x)
+        self.assertTrue(another_cpu_tensor.place.is_cpu_place())
+        # custom -> custom self
+        another_custom_cpu_tensor = another_custom_cpu_tensor._copy_to(
+            paddle.CustomPlace('custom_cpu', 0), True)
+        np.testing.assert_array_equal(another_custom_cpu_tensor, x)
+        self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
+
+    def _test_fallback_kernel(self):
+        # using (custom_cpu, add, int16) which is not registered
+        import paddle
+        r = np.array([6, 6, 6], 'int16')
+        x = paddle.to_tensor([5, 4, 3], 'int16')
+        y = paddle.to_tensor([1, 2, 3], 'int16')
+        z = paddle.add(x, y)
+        np.testing.assert_array_equal(z, r)
 
     def tearDown(self):
         del os.environ['CUSTOM_DEVICE_ROOT']

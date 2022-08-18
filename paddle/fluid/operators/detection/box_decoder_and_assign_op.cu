@@ -152,7 +152,5 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     box_decoder_and_assign,
-    ops::BoxDecoderAndAssignCUDAKernel<paddle::platform::CUDADeviceContext,
-                                       float>,
-    ops::BoxDecoderAndAssignCUDAKernel<paddle::platform::CUDADeviceContext,
-                                       double>);
+    ops::BoxDecoderAndAssignCUDAKernel<phi::GPUContext, float>,
+    ops::BoxDecoderAndAssignCUDAKernel<phi::GPUContext, double>);

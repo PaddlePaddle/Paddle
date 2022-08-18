@@ -17,11 +17,11 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/profiler.h"
 
+namespace paddle {
+namespace distributed {
 DEFINE_int32(heter_world_size, 100, "group size");  // group max size
 DEFINE_int32(switch_send_recv_timeout_s, 600, "switch_send_recv_timeout_s");
 
-namespace paddle {
-namespace distributed {
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = nullptr;
 std::mutex HeterClient::mtx_;
 std::shared_ptr<HeterClient> HeterClient::switch_s_instance_ = nullptr;
@@ -43,8 +43,7 @@ int GetMicroId(const platform::DeviceContext& ctx,
     std::vector<char> temp;
     temp.resize(tensor->numel() * framework::DataTypeSize(tensor->dtype()));
     char* temp_ptr = temp.data();
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(platform::CPUPlace(),
                  temp_ptr,
                  tensor->place(),

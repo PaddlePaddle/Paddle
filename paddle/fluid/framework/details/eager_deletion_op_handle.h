@@ -24,12 +24,6 @@
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 
 namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 class GarbageCollector;
 class Scope;
@@ -87,7 +81,7 @@ class EagerDeletionOpHandle : public OpHandleBase {
   GarbageCollector *gc_;                        // not own
   std::vector<Variable *> vars_;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::CUDADeviceContext *dev_ctx_{nullptr};
+  phi::GPUContext *dev_ctx_{nullptr};
   gpuEvent_t event_{nullptr};
 #endif
 };

@@ -49,7 +49,7 @@ using Tensor = framework::Tensor;
 template <typename T>
 static void AllReduce(framework::Tensor &tensor,  // NOLINT
                       const int ring_id,
-                      const platform::CUDADeviceContext &ctx) {
+                      const phi::GPUContext &ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
@@ -996,7 +996,7 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
 }
 
 template <typename T>
-void fmha(const platform::CUDADeviceContext &dev_ctx,
+void fmha(const phi::GPUContext &dev_ctx,
           const Tensor &qkv_tensor,
           const Tensor &qkv_bias_tensor,
           const Tensor &src_mask_tensor,
@@ -1118,7 +1118,7 @@ __global__ void write_cache_v_kernel(T *cache_v,
 }
 
 template <typename T>
-void write_cache_kv(const platform::CUDADeviceContext &dev_ctx,
+void write_cache_kv(const phi::GPUContext &dev_ctx,
                     T *cache_k,
                     T *cache_v,
                     const T *k,
@@ -1279,9 +1279,12 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ffn_ln_scales = ctx.MultiInput<Tensor>("FFNLnScale");
     auto ffn_ln_biases = ctx.MultiInput<Tensor>("FFNLnBias");
     Tensor bias_dropout_residual_out, dropout_mask_out;
-    auto *bias_dropout_residual_out_data =
-        bias_dropout_residual_out.mutable_data<T>({bsz, seq_len, dim_embed},
-                                                  place);
+    T *bias_dropout_residual_out_data = nullptr;
+    if (pre_layer_norm) {
+      bias_dropout_residual_out_data =
+          bias_dropout_residual_out.mutable_data<T>({bsz, seq_len, dim_embed},
+                                                    place);
+    }
     auto *dropout_mask_out_data = dropout_mask_out.mutable_data<uint8_t>(
         {bsz, seq_len, dim_embed}, place);
 
@@ -1333,14 +1336,19 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // step1: buf1 --> buf0
     // step2: buf0 --> buf1
     int layers = qkv_weights.size();
-    if (layers & 1) {
-      // odd, set buf1 as out
+    if (pre_layer_norm) {
+      if (layers & 1) {
+        // odd, set buf1 as out
+        buf0 = &tmp_out;
+        buf1 = out;
+      } else {
+        // even, set buf0 as out
+        buf0 = out;
+        buf1 = &tmp_out;
+      }
+    } else {
       buf0 = &tmp_out;
       buf1 = out;
-    } else {
-      // even, set buf0 as out
-      buf0 = out;
-      buf1 = &tmp_out;
     }
 
     for (int i = 0; i < layers; ++i) {
@@ -1355,9 +1363,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                   buf1->data<T>(),
                                   ln_mean_data,
                                   ln_var_data);
-      } else if (!pre_layer_norm) {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unimplemented post_layer_norm for now."));
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step1";
@@ -1367,8 +1372,13 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       const Tensor *qkv_bias = qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
       // NOTE: in decoder stage, bias is fused in fmha
       const Tensor *bias = time_step ? nullptr : qkv_bias;
-      qkv_compute.ComputeForward(
-          qkv_weights[i], buf1, bias, &qkv_out, &qkv_out);
+      if (!pre_layer_norm && i == 0) {
+        qkv_compute.ComputeForward(
+            qkv_weights[i], input_x, bias, &qkv_out, &qkv_out);
+      } else {
+        qkv_compute.ComputeForward(
+            qkv_weights[i], buf1, bias, &qkv_out, &qkv_out);
+      }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
 #endif
@@ -1451,10 +1461,15 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       VLOG(0) << "step3";
 #endif
 
-      // step4. out_linear
-      out_linear_compute.ComputeForward(
-          out_linear_weights[i], &fmha_out, nullptr, buf1, nullptr);
-      AllReduce<T>(*buf1, ring_id, dev_ctx);
+      if (pre_layer_norm) {
+        out_linear_compute.ComputeForward(
+            out_linear_weights[i], &fmha_out, nullptr, buf1, nullptr);
+        AllReduce<T>(*buf1, ring_id, dev_ctx);
+      } else {
+        out_linear_compute.ComputeForward(
+            out_linear_weights[i], &fmha_out, nullptr, buf0, nullptr);
+        AllReduce<T>(*buf0, ring_id, dev_ctx);
+      }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step4";
 #endif
@@ -1479,6 +1494,22 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
             ln_mean_data,
             ln_var_data);
       } else {
+        auto *ln_scale_data = ln_scales[i]->data<U>();
+        auto *ln_bias_data = ln_biases[i]->data<U>();
+        auto *out_linear_bias_data = out_linear_biases[i]->data<T>();
+        auto *residual_data = (i == 0 ? x_data : buf1->data<T>());
+        fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
+            dev_ctx,
+            buf0->data<T>(),
+            residual_data,
+            out_linear_bias_data,
+            ln_scale_data,
+            ln_bias_data,
+            buf0->data<T>(),
+            dropout_mask_out_data,
+            buf1->data<T>(),
+            ln_mean_data,
+            ln_var_data);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step5";
@@ -1504,13 +1535,22 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       // step8. ffn matmul2
-      ffn2_linear_compute.ComputeForward(
-          ffn2_weights[i], &ffn1_dropout_out, nullptr, buf1, nullptr);
+      if (pre_layer_norm) {
+        ffn2_linear_compute.ComputeForward(
+            ffn2_weights[i], &ffn1_dropout_out, nullptr, buf1, nullptr);
+      } else {
+        ffn2_linear_compute.ComputeForward(
+            ffn2_weights[i], &ffn1_dropout_out, nullptr, buf0, nullptr);
+      }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.0";
 #endif
 
-      AllReduce<T>(*buf1, ring_id, dev_ctx);
+      if (pre_layer_norm) {
+        AllReduce<T>(*buf1, ring_id, dev_ctx);
+      } else {
+        AllReduce<T>(*buf0, ring_id, dev_ctx);
+      }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.1";
 #endif
@@ -1543,12 +1583,28 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
               dropout_mask_out_data);
         }
       } else {
+        auto *ln_scale_data = ffn_ln_scales[i]->data<U>();
+        auto *ln_bias_data = ffn_ln_biases[i]->data<U>();
+        ffn2_fused_dropout_helper.LayernormResidualDropoutBias(
+            dev_ctx,
+            buf0->data<T>(),
+            buf1->data<T>(),
+            ffn2_biases[i]->data<T>(),
+            ln_scale_data,
+            ln_bias_data,
+            buf0->data<T>(),
+            dropout_mask_out_data,
+            buf1->data<T>(),
+            ln_mean_data,
+            ln_var_data);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step9";
 #endif
-      x_data = buf1->data<T>();
-      std::swap(buf0, buf1);
+      if (pre_layer_norm) {
+        x_data = buf1->data<T>();
+        std::swap(buf0, buf1);
+      }
     }
   }
 };

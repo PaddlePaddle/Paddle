@@ -656,16 +656,7 @@ def to_safe_name(s):
     ])
 class TestFrame(unittest.TestCase):
     def test_frame(self):
-        self.assertTrue(
-            np.allclose(
-                frame_for_api_test(self.x, self.frame_length, self.hop_length, self.axis),
-                paddle.signal.frame(
-                    paddle.to_tensor(self.x),
-                    self.frame_length,
-                    self.hop_length,
-                    self.axis),
-                rtol=rtol.get(str(self.x.dtype)),
-                atol=atol.get(str(self.x.dtype))))
+        np.testing.assert_allclose(frame_for_api_test(self.x, self.frame_length, self.hop_length, self.axis), paddle.signal.frame(paddle.to_tensor(self.x), self.frame_length, self.hop_length, self.axis), rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -695,12 +686,7 @@ class TestFrameStatic(unittest.TestCase):
         [output] = exe.run(mp, feed={'input': self.x}, fetch_list=[output])
         paddle.disable_static()
 
-        self.assertTrue(
-            np.allclose(
-                frame_for_api_test(self.x, self.frame_length, self.hop_length, self.axis),
-                output,
-                rtol=rtol.get(str(self.x.dtype)),
-                atol=atol.get(str(self.x.dtype))))
+        np.testing.assert_allclose(frame_for_api_test(self.x, self.frame_length, self.hop_length, self.axis), output, rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -735,15 +721,7 @@ class TestFrameException(unittest.TestCase):
     ])
 class TestOverlapAdd(unittest.TestCase):
     def test_overlap_add(self):
-        self.assertTrue(
-            np.allclose(
-                overlap_add_for_api_test(self.x, self.hop_length, self.axis),
-                paddle.signal.overlap_add(
-                    paddle.to_tensor(self.x),
-                    self.hop_length,
-                    self.axis),
-                rtol=rtol.get(str(self.x.dtype)),
-                atol=atol.get(str(self.x.dtype))))
+        np.testing.assert_allclose(overlap_add_for_api_test(self.x, self.hop_length, self.axis), paddle.signal.overlap_add(paddle.to_tensor(self.x), self.hop_length, self.axis), rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -772,12 +750,7 @@ class TestOverlapAddStatic(unittest.TestCase):
         [output] = exe.run(mp, feed={'input': self.x}, fetch_list=[output])
         paddle.disable_static()
 
-        self.assertTrue(
-            np.allclose(
-                overlap_add_for_api_test(self.x, self.hop_length, self.axis),
-                output,
-                rtol=rtol.get(str(self.x.dtype)),
-                atol=atol.get(str(self.x.dtype))))
+        np.testing.assert_allclose(overlap_add_for_api_test(self.x, self.hop_length, self.axis), output, rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -852,21 +825,7 @@ class TestStft(unittest.TestCase):
             win_p = paddle.to_tensor(self.window)
             win_l = self.window
 
-        self.assertTrue(
-            np.allclose(
-                stft(self.x, self.n_fft, self.hop_length, self.win_length, win_l, self.center, self.pad_mode),
-                paddle.signal.stft(
-                    paddle.to_tensor(self.x),
-                    self.n_fft,
-                    self.hop_length,
-                    self.win_length,
-                    win_p,
-                    self.center,
-                    self.pad_mode,
-                    self.normalized,
-                    self.onesided),
-                rtol=rtol.get(str(self.x.dtype)),
-                atol=atol.get(str(self.x.dtype))))
+        np.testing.assert_allclose(stft(self.x, self.n_fft, self.hop_length, self.win_length, win_l, self.center, self.pad_mode), paddle.signal.stft(paddle.to_tensor(self.x), self.n_fft, self.hop_length, self.win_length, win_p, self.center, self.pad_mode, self.normalized, self.onesided), rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -938,22 +897,7 @@ class TestIstft(unittest.TestCase):
             win_p = paddle.to_tensor(self.window)
             win_l = self.window
 
-        self.assertTrue(
-            np.allclose(
-                istft(self.x, self.hop_length, self.win_length, win_l, self.center, self.length),
-                paddle.signal.istft(
-                    paddle.to_tensor(self.x),
-                    self.n_fft,
-                    self.hop_length,
-                    self.win_length,
-                    win_p,
-                    self.center,
-                    self.normalized,
-                    self.onesided,
-                    self.length,
-                    self.return_complex),
-                rtol=rtol.get(str(self.x.dtype)),
-                atol=atol.get(str(self.x.dtype))))
+        np.testing.assert_allclose(istft(self.x, self.hop_length, self.win_length, win_l, self.center, self.length), paddle.signal.istft(paddle.to_tensor(self.x), self.n_fft, self.hop_length, self.win_length, win_p, self.center, self.normalized, self.onesided, self.length, self.return_complex), rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)

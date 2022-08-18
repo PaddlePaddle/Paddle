@@ -318,7 +318,7 @@ fused_feedforward_dygraph_function(
 
       bool pre_layer_norm = false;
       if (attrs.count("pre_layer_norm")) {
-        pre_layer_norm = BOOST_GET_CONST(bool, attrs.at("pre_layer_norm"));
+        pre_layer_norm = PADDLE_GET_CONST(bool, attrs.at("pre_layer_norm"));
       }
 
       // Set Attributes

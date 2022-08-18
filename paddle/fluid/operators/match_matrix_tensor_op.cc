@@ -91,7 +91,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   int64_t tmp_dim_0 = -1;
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
-        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+        PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
     const auto& x_lod = x_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(x_lod.empty(),
                       false,
@@ -116,7 +116,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
                           x_dims[0]));
 
     framework::Variable* y_var =
-        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
+        PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
     const auto& y_lod = y_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(y_lod.empty(),
                       false,
@@ -162,7 +162,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   } else {
     // compile time
     framework::VarDesc* x_desc =
-        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("X")[0]);
+        PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("X")[0]);
     PADDLE_ENFORCE_GE(
         x_desc->GetLoDLevel(),
         1,
@@ -170,7 +170,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
                                           "greater than 1, but reviced %d.",
                                           x_desc->GetLoDLevel()));
     framework::VarDesc* y_desc =
-        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Y")[0]);
+        PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Y")[0]);
     PADDLE_ENFORCE_GE(
         y_desc->GetLoDLevel(),
         1,

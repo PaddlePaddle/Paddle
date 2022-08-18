@@ -57,7 +57,7 @@ class FillConstantPrimOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
     auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(shape);
+    PADDLE_GET(framework::VarDesc *, y_var_ptr)->SetShape(shape);
   }
 };
 
@@ -67,7 +67,7 @@ class FillConstantPrimOpVarTypeInference
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto y_name = Output(ctx, "Y")[0];
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
+        PADDLE_GET_CONST(int, ctx->GetAttr("dtype")));
     SetDataType(ctx, y_name, data_type);
   }
 };

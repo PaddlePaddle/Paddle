@@ -635,7 +635,19 @@ struct C_DeviceInterface {
   // other api //
   ///////////////
 
-  void* reserved_other_api[8];
+  /**
+   * @brief y = alpha * x + beta * y
+   *
+   */
+  C_Status (*blas_axpby)(const C_Device device,
+                         C_Stream stream,
+                         C_DataType dtype,
+                         size_t numel,
+                         float alpha,
+                         void* x,
+                         float beta,
+                         void* y);
+  void* reserved_other_api[7];
 };
 
 struct CustomRuntimeVersion {

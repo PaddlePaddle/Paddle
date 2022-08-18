@@ -212,7 +212,7 @@ class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
     auto block_desc =
-        BOOST_GET_CONST(BlockDesc*, this->GetAttr("global_block"));
+        PADDLE_GET_CONST(BlockDesc*, this->GetAttr("global_block"));
     auto params_grad = this->InputGrad("Params");
     FilterHelper<T>::filter(block_desc, &params_grad);  // filter the vector.
     grad_op->SetOutput(framework::GradVarName("Params"), params_grad);

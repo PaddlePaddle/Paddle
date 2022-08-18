@@ -24,13 +24,13 @@ namespace {
 Node *reduce_op_handler(Graph *graph, Node *node, const std::string &op_name) {
   auto *op = node->Op();
   auto attrs = AttributeMap{};
-  auto reduce_all = BOOST_GET_CONST(bool, op->GetAttr("reduce_all"));
+  auto reduce_all = PADDLE_GET_CONST(bool, op->GetAttr("reduce_all"));
   if (!reduce_all) {
-    auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
+    auto axes_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("dim"));
     auto axes = std::vector<int64_t>{axes_.begin(), axes_.end()};
     attrs.emplace("axes", axes);
   }
-  auto keepdims_ = BOOST_GET_CONST(bool, op->GetAttr("keep_dim"));
+  auto keepdims_ = PADDLE_GET_CONST(bool, op->GetAttr("keep_dim"));
   auto keepdims = int64_t{keepdims_};
   attrs.emplace("keepdims", keepdims);
   return CreateBaseOp(graph, node, op_name, node->inputs, node->outputs, attrs);
@@ -41,13 +41,13 @@ Node *reduce_all_op_handler(Graph *graph,
                             const std::string &op_name) {
   auto *op = node->Op();
   auto attrs = AttributeMap{};
-  auto reduce_all = BOOST_GET_CONST(bool, op->GetAttr("reduce_all"));
+  auto reduce_all = PADDLE_GET_CONST(bool, op->GetAttr("reduce_all"));
   if (!reduce_all) {
-    auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
+    auto axes_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("dim"));
     auto axes = std::vector<int64_t>{axes_.begin(), axes_.end()};
     attrs.emplace("axes", axes);
   }
-  auto keepdims_ = BOOST_GET_CONST(bool, op->GetAttr("keep_dim"));
+  auto keepdims_ = PADDLE_GET_CONST(bool, op->GetAttr("keep_dim"));
   auto keepdims = int64_t{keepdims_};
   attrs.emplace("keepdims", keepdims);
   auto int32_x =
@@ -80,13 +80,13 @@ Node *reduce_prod_handler(Graph *graph, Node *node) {
 Node *logsumexp_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto attrs = AttributeMap{};
-  auto reduce_all = BOOST_GET_CONST(bool, op->GetAttr("reduce_all"));
+  auto reduce_all = PADDLE_GET_CONST(bool, op->GetAttr("reduce_all"));
   if (!reduce_all) {
-    auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axis"));
+    auto axes_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("axis"));
     auto axes = std::vector<int64_t>{axes_.begin(), axes_.end()};
     attrs.emplace("axes", axes);
   }
-  auto keepdims_ = BOOST_GET_CONST(bool, op->GetAttr("keepdim"));
+  auto keepdims_ = PADDLE_GET_CONST(bool, op->GetAttr("keepdim"));
   auto keepdims = int64_t{keepdims_};
   attrs.emplace("keepdims", keepdims);
   return CreateBaseOp(graph,

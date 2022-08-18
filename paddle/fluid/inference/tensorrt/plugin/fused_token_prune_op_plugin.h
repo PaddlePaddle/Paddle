@@ -28,34 +28,45 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit FusedTokenPrunePluginDynamic(bool with_fp16,
                                         bool keep_first_token,
-                                        bool keep_order)
-      : keep_first_token_(keep_first_token), keep_order_(keep_order) {
+                                        bool keep_order,
+                                        bool flag_varseqlen)
+      : keep_first_token_(keep_first_token),
+        keep_order_(keep_order),
+        flag_varseqlen_(flag_varseqlen) {
     with_fp16_ = with_fp16;
   }
   FusedTokenPrunePluginDynamic(void const* serial_data, size_t serial_length) {
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
     DeserializeValue(&serial_data, &serial_length, &keep_first_token_);
     DeserializeValue(&serial_data, &serial_length, &keep_order_);
+    DeserializeValue(&serial_data, &serial_length, &flag_varseqlen_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     return new FusedTokenPrunePluginDynamic(
-        with_fp16_, keep_first_token_, keep_order_);
+        with_fp16_, keep_first_token_, keep_order_, flag_varseqlen_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "fused_token_prune_plugin_dynamic";
   }
-  int getNbOutputs() const TRT_NOEXCEPT override { return 2; }
+  int getNbOutputs() const TRT_NOEXCEPT override {
+    if (flag_varseqlen_) {
+      return 5;
+    } else {
+      return 2;
+    }
+  }
   int initialize() TRT_NOEXCEPT override { return 0; }
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(with_fp16_) + SerializedSize(keep_first_token_) +
-           SerializedSize(keep_order_);
+           SerializedSize(keep_order_) + SerializedSize(flag_varseqlen_);
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     SerializeValue(&buffer, with_fp16_);
     SerializeValue(&buffer, keep_first_token_);
     SerializeValue(&buffer, keep_order_);
+    SerializeValue(&buffer, flag_varseqlen_);
   }
 
   nvinfer1::DimsExprs getOutputDimensions(
@@ -95,17 +106,9 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
   void destroy() TRT_NOEXCEPT override { delete this; }
 
  private:
-  template <typename T>
-  int enqueueImpl(const nvinfer1::PluginTensorDesc* input_desc,
-                  const nvinfer1::PluginTensorDesc* output_desc,
-                  const void* const* inputs,
-                  void* const* outputs,
-                  void* workspace,
-                  cudaStream_t stream,
-                  int device_id,
-                  T max_value);
   bool keep_first_token_;
   bool keep_order_;
+  bool flag_varseqlen_;
 };
 
 class FusedTokenPrunePluginDynamicCreator : public nvinfer1::IPluginCreator {

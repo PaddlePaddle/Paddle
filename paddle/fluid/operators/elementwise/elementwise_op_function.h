@@ -1596,7 +1596,7 @@ static inline std::vector<int> GetReduceDim(const framework::DDim &in,
 #if defined(__NVCC__) || defined(__HIPCC__)
 
 template <ElementwiseType ET, typename T, typename Functor>
-void GetGradXAndYOut(const platform::CUDADeviceContext &dev_ctx,
+void GetGradXAndYOut(const phi::GPUContext &dev_ctx,
                      const platform::Place &place,
                      int axis,
                      std::vector<const framework::Tensor *> ins,
@@ -1609,7 +1609,7 @@ void GetGradXAndYOut(const platform::CUDADeviceContext &dev_ctx,
 }
 
 template <ElementwiseType ET, typename T, typename Functor>
-void GetGradXOrYOut(const platform::CUDADeviceContext &dev_ctx,
+void GetGradXOrYOut(const phi::GPUContext &dev_ctx,
                     const platform::Place &place,
                     int axis,
                     std::vector<const framework::Tensor *> ins,

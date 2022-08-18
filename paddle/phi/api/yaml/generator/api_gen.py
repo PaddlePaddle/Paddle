@@ -130,20 +130,20 @@ class ForwardAPI(BaseAPI):
                 selected_code = [
                     f"std::get<{i}>(api_output)" for i in return_out_list
                 ]
-            return 'return {' + ", ".join(selected_code) + '};'
+            return 'return std::make_tuple(' + ", ".join(selected_code) + ');'
 
     def gene_output(self,
                     out_dtype_list,
                     out_tensor_type_list=None,
                     code_indent='',
                     inplace_flag=False):
-        kernel_output = ""
+        kernel_output = []
         output_names = []
         output_create = ""
         return_type = self.get_return_type_with_intermediate(inplace_flag)
 
         if len(out_dtype_list) == 1:
-            kernel_output = 'kernel_out'
+            kernel_output.append('kernel_out')
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[
                 self.outputs['names'][0]] if inplace_flag and self.outputs[
@@ -186,7 +186,7 @@ class ForwardAPI(BaseAPI):
                 output_create = output_create[:-2] + '};'
 
             for i in range(len(out_dtype_list)):
-                kernel_output = kernel_output + f'kernel_out_{i}, '
+                kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
                 set_out_func = 'SetKernelOutput' if out_tensor_type_list is None or out_tensor_type_list[
                     i] == 'dense' else 'SetSelectedRowsKernelOutput'
@@ -214,7 +214,6 @@ class ForwardAPI(BaseAPI):
 {code_indent}  kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
 {code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
 
-            kernel_output = kernel_output[:-2]
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(
@@ -253,6 +252,7 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/ternary.h"
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 DECLARE_bool(conv2d_disable_cudnn);
 """
