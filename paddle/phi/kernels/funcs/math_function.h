@@ -154,5 +154,12 @@ inline void TransCompute(const int dim,
   }
 }
 
+template <typename Context>
+struct BothFalse {
+  void operator()(Context* ctx,
+                  const phi::DenseTensor& src,
+                  phi::DenseTensor* dst);
+};
+
 }  // namespace funcs
 }  // namespace phi

@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl_debug.h"  // NOLINT
@@ -930,112 +931,41 @@ bool TensorIsfinite(const framework::Tensor& tensor) {
   return !Any(tensor, pred_inf) && !Any(tensor, pred_nan);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <typename T>
-static inline void __global__ BothFalse(const T* cmp, T* out, int element_num) {
-  CUDA_KERNEL_LOOP(i, element_num) { out[i] = (!cmp[i]) && (!out[i]); }
-}
-#endif
-
-struct BothFalseVisitor : public std::unary_function<const Place&, void> {
-  const framework::Tensor& in_;
-  mutable framework::Tensor* out_;
-  BothFalseVisitor(const framework::Tensor& in, framework::Tensor* out)
-      : in_(in), out_(out) {}
-
-  template <typename Place>
-  void operator()(const Place& place) const {
-    VisitorImpl(place);
-  }
-
-  void VisitorImpl(const platform::XPUPlace& xpu) const {
-    PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
-  }
-  void VisitorImpl(const platform::IPUPlace& ipu) const {
-    PADDLE_THROW(platform::errors::Unimplemented("IPUPlace is not supported"));
-  }
-
-  void VisitorImpl(const platform::CUDAPlace& gpu) const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
-    constexpr int MAX_BLOCK_DIM = 512;
-    const int MAX_GRID_DIM = ctx->GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
-    int element_num = in_.numel();
-    int block_size = (element_num >= MAX_BLOCK_DIM)
-                         ? MAX_BLOCK_DIM
-                         : (1 << static_cast<int>(std::log2(element_num)));
-    int grid_size = element_num / block_size;
-    grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
-    BothFalse<bool><<<grid_size, block_size, 0, ctx->stream()>>>(
-        in_.data<bool>(), out_->mutable_data<bool>(gpu), element_num);
-#endif
-  }
-
-  void VisitorImpl(const platform::NPUPlace& npu) const {
-    // TODO(zhiqiu)
-  }
-
-  void VisitorImpl(const platform::MLUPlace& mlu) const {
-    PADDLE_THROW(platform::errors::Unimplemented("MLUPlace is not supported"));
-  }
-
-  void VisitorImpl(const platform::CPUPlace& cpu) const {
-    int num = in_.numel();
-    const bool* in_ptr = in_.data<bool>();
-    bool* out_ptr = out_->data<bool>();
-    for (int i = 0; i < num; ++i) {
-      bool lhs = !in_ptr[i];
-      bool rhs = !out_ptr[i];
-      out_ptr[i] = lhs && rhs;
-    }
-  }
-
-  void VisitorImpl(
-      const platform::CUDAPinnedPlace& cpu /* equals to cpu*/) const {
-    int num = in_.numel();
-    const bool* in_ptr = in_.data<bool>();
-    bool* out_ptr = out_->data<bool>();
-    for (int i = 0; i < num; ++i) {
-      bool lhs = !in_ptr[i];
-      bool rhs = !out_ptr[i];
-      out_ptr[i] = lhs && rhs;
-    }
-  }
-
-  void VisitorImpl(
-      const platform::NPUPinnedPlace& cpu /* equals to cpu*/) const {
-    int num = in_.numel();
-    const bool* in_ptr = in_.data<bool>();
-    bool* out_ptr = out_->data<bool>();
-    for (int i = 0; i < num; ++i) {
-      bool lhs = !in_ptr[i];
-      bool rhs = !out_ptr[i];
-      out_ptr[i] = lhs && rhs;
-    }
-  }
-
-  void VisitorImpl(const platform::CustomPlace& custom_dev) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("CustomPlace is not supported"));
-  }
-};
+#define BOTH_FALSE(CONTEXT)                                         \
+  phi::CONTEXT* ctx = static_cast<phi::CONTEXT*>(                   \
+      platform::DeviceContextPool::Instance().Get(tensor.place())); \
+  phi::funcs::BothFalse<phi::CONTEXT>()(ctx, tmp, out);
 
 void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
   framework::Tensor tmp;
   TensorContainsInf(tensor, &tmp);
   TensorContainsNAN(tensor, out);
-  BothFalseVisitor visitor(tmp, out);
   auto place = tensor.place();
-  platform::VisitPlace(place, visitor);
+  if (platform::is_cpu_place(place)) {
+    BOTH_FALSE(CPUContext);
+  } else if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    BOTH_FALSE(GPUContext);
+#endif
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s", place));
+  }
 }
 
 void TensorIsfiniteV2(const framework::Tensor& tensor, framework::Tensor* out) {
   framework::Tensor tmp;
   TensorContainsInfV2(tensor, &tmp);
   TensorContainsNANV2(tensor, out);
-  BothFalseVisitor visitor(tmp, out);
   auto place = tensor.place();
-  platform::VisitPlace(place, visitor);
+  if (platform::is_cpu_place(place)) {
+    BOTH_FALSE(CPUContext);
+  } else if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    BOTH_FALSE(GPUContext);
+#endif
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s", place));
+  }
 }
 
 void TensorToStream(std::ostream& os,

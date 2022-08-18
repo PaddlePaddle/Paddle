@@ -370,5 +370,29 @@ void RowwiseSum<phi::GPUContext, double>::operator()(
 template struct RowwiseMean<phi::GPUContext, float>;
 template struct RowwiseMean<phi::GPUContext, double>;
 
+static inline void __global__ BothFalseFunc(const bool* cmp,
+                                            bool* out,
+                                            int element_num) {
+  CUDA_KERNEL_LOOP(i, element_num) { out[i] = (!cmp[i]) && (!out[i]); }
+}
+template <>
+struct BothFalse<phi::GPUContext> {
+  void operator()(phi::GPUContext* ctx,
+                  const phi::DenseTensor& src,
+                  phi::DenseTensor* dst);
+};
+
+void BothFalse<phi::GPUContext>::operator()(phi::GPUContext* ctx,
+                                            const phi::DenseTensor& src,
+                                            phi::DenseTensor* dst) {
+  int num = src.numel();
+  const int block_size = 256;
+  const int grid_size = (num + block_size - 1) / block_size;
+  BothFalseFunc<<<grid_size, block_size, 0, ctx->stream()>>>(
+      src.data<bool>(), dst->data<bool>(), num);
+}
+
+template struct BothFalse<phi::GPUContext>;
+
 }  // namespace funcs
 }  // namespace phi

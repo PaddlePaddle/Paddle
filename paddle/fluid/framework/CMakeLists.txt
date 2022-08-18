@@ -78,32 +78,13 @@ cc_test(
   data_type_test
   SRCS data_type_test.cc
   DEPS data_type place tensor)
-if(WITH_GPU)
-  if(WIN32)
-    windows_symbolic(tensor_util SRCS tensor_util.cu)
-    nv_library(
-      tensor
-      SRCS .tensor_util.cu
-      DEPS place memory data_type device_context dense_tensor)
-    add_dependencies(tensor tensor_util)
-  else()
-    nv_library(
-      tensor
-      SRCS tensor_util.cu
-      DEPS place memory data_type device_context dense_tensor)
-  endif()
-elseif(WITH_ROCM)
-  hip_library(
-    tensor
-    SRCS tensor_util.cu
-    DEPS place memory data_type device_context dense_tensor)
-else()
-  cc_library(
-    tensor
-    SRCS tensor_util.cc
-    DEPS place memory data_type device_context dense_tensor)
-endif()
-# target_link(tensor profiler)
+
+cc_library(
+  tensor
+  SRCS tensor_util.cc
+  DEPS place memory data_type device_context dense_tensor)
+
+target_link_libraries(tensor math_function)
 
 cc_test(
   tensor_test
@@ -204,7 +185,7 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS lod_tensor selected_rows_utils framework_proto scope)
+  DEPS selected_rows_utils framework_proto scope)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
