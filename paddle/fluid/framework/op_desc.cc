@@ -1041,6 +1041,7 @@ void OpDesc::InferShape(const BlockDesc &block) {
       VLOG(10) << sout.str();
     }
     infer_shape(&ctx);
+    VLOG(1) << "###### infer_shape finish";
   } catch (platform::EnforceNotMet &exception) {
     framework::AppendErrorOpHint(Type(), &exception);
     throw std::move(exception);
@@ -1208,7 +1209,7 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name,
 }
 
 AttrReader CompileTimeInferShapeContext::Attrs() const {
-  return AttrReader(op_.GetAttrMap());
+  return AttrReader(op_.GetAttrMap(), op_.GetRuntimeAttrMap());
 }
 
 std::vector<std::string> CompileTimeInferShapeContext::Inputs(

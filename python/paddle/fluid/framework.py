@@ -5825,10 +5825,9 @@ class Program(object):
         ]
         res._sync_with_cpp()
 
-        attrs_cliped_black_list = [
-            core.op_proto_and_checker_maker.kOpRoleAttrName(),
-            core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-        ]
+        # Note: The op_role and op_role_var cann't be deleted currently,
+        # and we will try to remove them in the future.
+        common_clipped_attrs_list = ['op_namescope', 'op_callstack']
 
         for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
@@ -5882,7 +5881,6 @@ class Program(object):
                 # for name in remove_output_list:
                 #     op.remove_output(name)
 
-                remove_attr_list = []
                 op_quant_name = core.op_proto_and_checker_maker.kOpWithQuantAttrName(
                 )
                 quant = bool(op.attr(op_quant_name)
@@ -5892,21 +5890,21 @@ class Program(object):
                     "activation_bits", "bit_length", "quantize_weight_bits",
                     "weight_quant_scale"
                 ]
+                remove_attr_list = []
                 for name in op.attr_names():
-                    if name in attrs_cliped_black_list:
-                        continue
                     if quant:
                         if name in quant_attrs:
                             continue
                         if name.endswith("_threshold"):
                             continue
+                    if name in common_clipped_attrs_list:
+                        remove_attr_list.append(name)
+                        continue
 
                     find = False
                     for attr_proto in proto.attrs:
                         if attr_proto.name != name:
                             continue
-                        if attr_proto.extra:
-                            remove_attr_list.append(name)
                         find = True
                         break
                     if not find:
