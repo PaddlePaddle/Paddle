@@ -424,6 +424,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 4), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 4), (1e-5, 1e-5)
@@ -431,6 +432,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 3), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 3), (1e-5, 1e-5)
