@@ -206,7 +206,8 @@ bool DistModel::PreparePlace() {
     place_ = paddle::platform::XPUPlace(config_.device_id);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place must be choosen from GPU or CPU or XPU, but got %s.", config_.place));
+        "Place must be choosen from GPU or CPU or XPU, but got %s.",
+        config_.place));
   }
   return true;
 }
