@@ -315,7 +315,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
             non_differentiable.end()) {
           outputs_autograd_meta[i][j]->SetStopGradient(true);
         } else {
-          outputs_autograd_meta[i][j]->WeakSetStopGradient(false);
+          outputs_autograd_meta[i][j]->SetStopGradient(false);
         }
       }
     }

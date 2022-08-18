@@ -491,6 +491,50 @@ def _set_op_dist_attr_with_ranks(new_op, ranks, block, dist_context):
     dist_context.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
 
+def _get_memcopy_idx(block, found_inf_var):
+    # use reduce_any op for check_nan_inf as the anchor for now
+    for idx, op in enumerate(block.ops):
+        if op.type == 'reduce_any' and op.output_arg_names[
+                0] == found_inf_var.name:
+            return idx + 1
+
+    raise RuntimeError(
+        "not found the correct location for memcopy for found_inf_var.")
+
+
+def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
+    src_name = src_var.name
+    output_var = block.create_var(name=unique_name.generate_with_ignorable_key(
+        src_name.join(['memcopy_'])),
+                                  dtype=src_var.dtype,
+                                  shape=src_var.shape,
+                                  type=core.VarDesc.VarType.LOD_TENSOR,
+                                  persistable=False,
+                                  stop_gradient=src_var.stop_gradient)
+
+    set_var_dist_attr(dist_context, output_var, [-1], world_process_group.ranks)
+
+    # TODO to support CUDAPinned/NPU/XPU Places
+    if direction == "D2H":
+        dst_place_type = 0
+    elif direction == "D2H":
+        dst_place_type = 1
+    else:
+        raise NotImplementedError(
+            "direction [{}] is not supported yet.".format(direction))
+
+    attrs = {'dst_place_type': dst_place_type}
+    new_op = block._insert_op_without_sync(index=idx,
+                                           type='memcpy',
+                                           inputs={'X': [src_var]},
+                                           outputs={'Out': [output_var]},
+                                           attrs=attrs)
+    _set_op_dist_attr_with_ranks(new_op, world_process_group.ranks, block,
+                                 dist_context)
+    block._sync_with_cpp()
+    return output_var
+
+
 @register_pass("auto_parallel_fp16")
 class FP16Pass(AMPPass):
 
@@ -577,9 +621,12 @@ class FP16Pass(AMPPass):
             if isinstance(
                     base_opt,
                 (paddle.fluid.optimizer.Adam, paddle.optimizer.AdamW)):
-                # with main_program._optimized_guard([]):
-                #     found_inf = paddle.tensor.creation._memcpy(
-                #         found_inf, paddle.CPUPlace())
+                with main_program._optimized_guard([]):
+                    # found_inf = paddle.tensor.creation._memcpy(
+                    #     found_inf, paddle.CPUPlace())
+                    insert_idx = _get_memcopy_idx(block, found_inf)
+                    found_inf = _insert_memcopy(block, insert_idx, found_inf,
+                                                self.dist_context)
                 base_opt._set_auxiliary_var('found_inf', found_inf.name)
             elif hasattr(base_opt, "_set_auxiliary_var"):
                 base_opt._set_auxiliary_var('found_inf', found_inf.name)
