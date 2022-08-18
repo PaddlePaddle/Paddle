@@ -1950,7 +1950,7 @@ def triu_indices(row, col, offset=0, dtype='int64'):
             data1 = paddle.triu_indices(4,4,0)
             print(data1)
             # [[0, 0, 0, 0, 1, 1, 1, 2, 2, 3],
-            # [0, 1, 2, 3, 1, 2, 3, 2, 3, 3]]
+            #  [0, 1, 2, 3, 1, 2, 3, 2, 3, 3]]
             # example 2, positive offset value
             data2 = paddle.triu_indices(4,4,2)
             print(data2)
