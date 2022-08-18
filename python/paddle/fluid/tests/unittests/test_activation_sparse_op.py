@@ -88,7 +88,7 @@ class TestSparseSqrtOp(unittest.TestCase):
 
         # get and compare result
         result_array = np.array(out_selected_rows.get_tensor())
-        self.assertTrue(np.allclose(result_array, np.sqrt(np_array)))
+        np.testing.assert_allclose(result_array, np.sqrt(np_array), rtol=1e-05)
 
     def test_sparse_acti(self):
         places = [core.CPUPlace()]

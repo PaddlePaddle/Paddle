@@ -244,7 +244,7 @@ class TestUnpoolOpAPI_dy(unittest.TestCase):
             indices_np = indices.numpy()
             expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
                 [2,2], [0,0], [5,5]).astype("float64")
-            self.assertTrue(np.allclose(out_pp.numpy(), expect_res))
+            np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
 
 class TestUnpoolOpAPI_dy2(unittest.TestCase):
@@ -278,7 +278,7 @@ class TestUnpoolOpAPI_dy2(unittest.TestCase):
             indices_np = indices.numpy()
             expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
                 [2,2], [0,0], [5,5]).astype("float64")
-            self.assertTrue(np.allclose(out_pp.numpy(), expect_res))
+            np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
 
 class TestUnpoolOpAPI_dy3(unittest.TestCase):
@@ -310,7 +310,7 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
             indices_np = indices.numpy()
             expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
                 [2,2], [0,0], [4,4]).astype("float64")
-            self.assertTrue(np.allclose(out_pp.numpy(), expect_res))
+            np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
 
 class TestUnpoolOpAPI_st(unittest.TestCase):
@@ -351,7 +351,7 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
         indices_np = np.array([[[[5, 7], [13, 15]]]]).astype("int32")
         expect_res =unpool2dmax_forward_naive(pool_out_np, indices_np, [2,2], \
             [2,2], [0,0], [5,5]).astype("float64")
-        self.assertTrue(np.allclose(results[0], expect_res))
+        np.testing.assert_allclose(results[0], expect_res, rtol=1e-05)
 
 
 if __name__ == '__main__':

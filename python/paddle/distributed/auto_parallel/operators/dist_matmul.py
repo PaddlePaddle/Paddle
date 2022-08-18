@@ -39,8 +39,9 @@ from ..utils import _get_comm_group, _get_corresponding_rank
 from .dist_default import DistributedDefaultImpl0
 from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op, build_dp_costs
 from ..cost import build_comm_costs_from_descs, build_comp_costs_from_descs
-from ..cost import MatmulV2OpCost, MatmulOpCost, MulOpCost, IdentityOpCost, AllreduceSumOpCost
+from ..cost import MatmulV2OpCost, MatmulOpCost, MulOpCost
 from ..cost import MatmulV2GradOpCost, MatmulGradOpCost, MulGradOpCost
+from paddle.distributed.auto_parallel.cost.comm_op_cost import AllreduceSumOpCost, IdentityOpCost
 
 
 def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):

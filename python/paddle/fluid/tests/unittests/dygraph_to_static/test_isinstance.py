@@ -108,8 +108,11 @@ class TestIsinstance(unittest.TestCase):
     def _test_model(self, model):
         st_out = train(model, to_static=True)
         dy_out = train(model, to_static=False)
-        self.assertTrue(np.allclose(dy_out, st_out),
-                        msg="dy_out:\n {}\n st_out:\n{}".format(dy_out, st_out))
+        np.testing.assert_allclose(dy_out,
+                                   st_out,
+                                   rtol=1e-05,
+                                   err_msg='dy_out:\n {}\n st_out:\n{}'.format(
+                                       dy_out, st_out))
 
 
 if __name__ == "__main__":

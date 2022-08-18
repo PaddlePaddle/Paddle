@@ -6612,12 +6612,22 @@ def squeeze(input, axes, name=None):
         'float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64',
         'complex64', 'complex128'
     ], 'squeeze')
-    check_type(axes, 'axis/axes', (list, tuple), 'squeeze')
+    check_type(axes, 'axis/axes', (list, tuple, Variable), 'squeeze')
+
+    attrs = {}
+    if isinstance(axes, Variable):
+        axes.stop_gradient = True
+        attrs["axes"] = axes
+    elif isinstance(axes, (list, tuple)):
+        if utils._contain_var(axes):
+            attrs["axes"] = utils._convert_to_tensor_list(axes)
+        else:
+            attrs["axes"] = axes
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(type="squeeze2",
                      inputs={"X": input},
-                     attrs={"axes": axes},
+                     attrs=attrs,
                      outputs={
                          "Out": out,
                          "XShape": x_shape
@@ -13140,6 +13150,8 @@ def merge_selected_rows(x, name=None):
                 type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
             y = fluid.layers.merge_selected_rows(var)
     """
+    if _non_static_mode():
+        return _C_ops.merge_selected_rows(x)
 
     helper = LayerHelper("merge_selected_rows", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
