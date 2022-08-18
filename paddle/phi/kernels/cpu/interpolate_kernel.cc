@@ -1187,7 +1187,7 @@ void BicubicInterpKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(bilinear_interp_v2,
+PD_REGISTER_KERNEL(bilinear_interp,
                    CPU,
                    ALL_LAYOUT,
                    phi::BilinearInterpKernel,
