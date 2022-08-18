@@ -447,10 +447,10 @@ class FunctionGeneratorBase:
         for i in range(len(forward_returns_list)):
             forward_return = forward_returns_list[i]
             if len(forward_return[0]) == 0:
-                if(len(forward_returns_list) == 1):
+                if (len(forward_returns_list) == 1):
                     return_name = "out"
                 else:
-                    return_name = "out_{}".format(i+1)
+                    return_name = "out_{}".format(i + 1)
             else:
                 return_name = forward_return[0]
             return_type = forward_return[1]
