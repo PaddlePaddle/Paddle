@@ -728,10 +728,15 @@ static PyObject* tensor_method_get_tensor_from_selected_rows(TensorObject* self,
   EAGER_TRY
   PADDLE_ENFORCE(self->tensor.is_selected_rows(),
                  paddle::platform::errors::Fatal(
-                     "this method is only effective for SelectedRows"));
+                     "this method is only effective for SelectedRows."));
 
   auto* selected_rows =
       static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+
+  PADDLE_ENFORCE(
+      selected_rows->initialized(),
+      paddle::platform::errors::Fatal("SelectedRows must be initialized."));
+
   auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
       selected_rows->mutable_value());
   VLOG(1) << "dense_tensor: " << dense_tensor->IsInitialized();
