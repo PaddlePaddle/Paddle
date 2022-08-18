@@ -1900,7 +1900,7 @@ def triu_indices(row, col, offset=0, dtype='int64'):
             data3 = paddle.triu_indices(4,4,-1)
             print(data3)
             # [[0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3],
-            # [0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 2, 3]]
+            #  [0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 2, 3]]
     """
     if not isinstance(row, int) or row < 0:
         raise TypeError("row should be a non-negative int")
@@ -1912,7 +1912,7 @@ def triu_indices(row, col, offset=0, dtype='int64'):
         col = row
 
     if not isinstance(offset, int):
-        raise TypeError("offset should be a  int")
+        raise TypeError("offset should be a int")
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)

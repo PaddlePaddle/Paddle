@@ -62,31 +62,30 @@ class TestTriuIndicesOpCase2(TestTriuIndicesOp):
 class TestTriuIndicesAPICaseStatic(unittest.TestCase):
 
     def test_static(self):
-        places = [
-            paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)
-        ] if fluid.core.is_compiled_with_cuda() else [paddle.CPUPlace()]
-        paddle.enable_static()
-        for place in places:
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
-                data1 = paddle.triu_indices(4, 4, -1)
-                exe1 = paddle.static.Executor(place)
-                result1 = exe1.run(feed={}, fetch_list=[data1])
-            expected_result1 = np.triu_indices(4, -1, 4)
-            self.assertTrue(np.allclose(result1, expected_result1))
+        if fluid.core.is_compiled_with_cuda():
+            place = paddle.fluid.CUDAPlace(0)
+        else:
+            place = paddle.CPUPlace()
+        with paddle.static.program_guard(paddle.static.Program(),
+                                            paddle.static.Program()):
+            data = paddle.triu_indices(4, 4, -1)
+        exe = paddle.static.Executor(place)
+        result = exe.run(feed={}, fetch_list=[data])
+        expected_result = np.triu_indices(4, -1, 4)
+        np.testing.assert_array_equal(result[0], expected_result)
 
 
 class TestTriuIndicesAPICaseDygraph(unittest.TestCase):
 
     def test_dygraph(self):
-        places = [
-            paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)
-        ] if fluid.core.is_compiled_with_cuda() else [paddle.CPUPlace()]
-        for place in places:
-            with fluid.dygraph.base.guard(place=place):
-                out1 = paddle.triu_indices(4, 4, 2)
-            expected_result1 = np.triu_indices(4, 2, 4)
-            self.assertEqual((out1.numpy() == expected_result1).all(), True)
+        if fluid.core.is_compiled_with_cuda():
+            place = paddle.fluid.CUDAPlace(0)
+        else:
+            place = paddle.CPUPlace()
+        with fluid.dygraph.base.guard(place=place):
+            out = paddle.triu_indices(4, 4, 2)
+        expected_result = np.triu_indices(4, 2, 4)
+        np.testing.assert_array_equal(out, expected_result)
 
     def test_dygraph_eager(self):
         with _test_eager_guard():
@@ -123,12 +122,12 @@ class TestTriuIndicesAPICaseDefault(unittest.TestCase):
             exe = paddle.static.Executor(paddle.CPUPlace())
             result = exe.run(feed={}, fetch_list=[data])
         expected_result = np.triu_indices(4, 2)
-        self.assertTrue(np.allclose(result, expected_result))
+        np.testing.assert_array_equal(result[0], expected_result)
 
         with fluid.dygraph.base.guard(paddle.CPUPlace()):
             out = paddle.triu_indices(4, None, 2)
         expected_result = np.triu_indices(4, 2)
-        self.assertEqual((out.numpy() == expected_result).all(), True)
+        np.testing.assert_array_equal(out, expected_result)
 
 
 if __name__ == "__main__":
