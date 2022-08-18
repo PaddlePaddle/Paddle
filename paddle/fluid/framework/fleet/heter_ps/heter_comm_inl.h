@@ -956,6 +956,19 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 }
 
 #elif defined(PADDLE_WITH_XPU_KP)
+void cpu_merge_grad(const int* keys, const FeaturePushValue* vals, FeaturePushValue* dstvalue, int size) {
+    for (int j = 0; j < size; j++) {
+        int offset = keys[j];
+
+        dstvalue[offset].slot = vals[j].slot;
+        dstvalue[offset].show += vals[j].show;
+        dstvalue[offset].clk += vals[j].clk;
+        dstvalue[offset].lr_g += vals[j].lr_g;
+        for (int k = 0; k < MF_DIM; k++) {
+            dstvalue[offset].mf_g[k] += vals[j].mf_g[k];
+        }
+    }
+}
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
                                                         KeyType* d_keys,
@@ -1016,7 +1029,18 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   //total_time += timeline.ElapsedSec();
   //time_ss << ",get_merge_grad_params:" << timeline.ElapsedSec();
 
-  heter_comm_kernel_->merge_grad(d_bfids_ptr, d_grads, len, d_all_fidseq_bucket_grads_ptr, stream);
+  int* host_keys = (int*)malloc(sizeof(int) * len);
+  FeaturePushValue* host_grads = (FeaturePushValue*)malloc(sizeof(FeaturePushValue) * len);
+  FeaturePushValue* host_dest_ref = (FeaturePushValue*)malloc(sizeof(FeaturePushValue) * len);
+  xpu_memcpy(host_keys, (void*)d_bfids_ptr, sizeof(int) * len, XPU_DEVICE_TO_HOST);
+  xpu_memcpy(host_dest_ref, (void*)d_all_fidseq_bucket_grads_ptr, sizeof(FeaturePushValue) * len, XPU_DEVICE_TO_HOST);
+  xpu_memcpy(host_grads, (void*)d_grads, sizeof(FeaturePushValue)*len, XPU_DEVICE_TO_HOST);
+  cpu_merge_grad(host_keys, host_grads, host_dest_ref, len);
+  xpu_memcpy((void*)d_all_fidseq_bucket_grads_ptr, host_dest_ref, sizeof(FeaturePushValue) * len, XPU_HOST_TO_DEVICE);
+  free(host_keys);
+  free(host_grads);
+  free(host_dest_ref);
+  // heter_comm_kernel_->merge_grad(d_bfids_ptr, d_grads, len, d_all_fidseq_bucket_grads_ptr, stream);
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",merge_grad:" << timeline.ElapsedSec();
