@@ -169,7 +169,7 @@ class TestMinWithTensorAxis1(unittest.TestCase):
             output_handle = predictor.get_output_handle(output_names[0])
             infer_out = output_handle.copy_to_cpu()
 
-            np.assert_allclose(static_out[0], infer_out)
+            np.testing.assert_allclose(static_out[0], infer_out)
             paddle.disable_static()
 
 
