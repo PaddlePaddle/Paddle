@@ -18,4 +18,10 @@ set -e
 
 # use default values
 export PADDLE_DISTRI_BACKEND="mpi"
-/usr/bin/mpirun -np 2 --allow-run-as-root python3 process_group_mpi.py
+cmd=`which mpirun`
+if [ ${#cmd} -eq 0 ]
+then
+    echo "Warning! mpirun command not found!"
+else
+    `${cmd} -np 2 --allow-run-as-root python3 process_group_mpi.py`
+fi
