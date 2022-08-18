@@ -444,9 +444,14 @@ class FunctionGeneratorBase:
                 input_type, input_pos
             ]
 
+        no_output_name_idx = 1
         for i in range(len(forward_returns_list)):
             forward_return = forward_returns_list[i]
-            return_name = forward_return[0]
+            if forward_return[0] is '':
+                return_name = "out_{}".format(no_output_name_idx)
+                no_output_name_idx = no_output_name_idx + 1
+            else:
+                return_name = forward_return[0]
             return_type = forward_return[1]
             return_pos = forward_return[2]
 
