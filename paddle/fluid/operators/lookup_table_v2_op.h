@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <omp.h>
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -43,7 +42,6 @@ static std::vector<OutT> CopyIdsToVector(const Tensor &ids) {
   if (std::is_same<InT, OutT>::value) {
     std::memcpy(ret.data(), src, numel * sizeof(InT));
   } else {
-#pragma omp parallel for
     for (decltype(numel) i = 0; i < numel; ++i) {
       ret[i] = src[i];
     }
@@ -74,7 +72,7 @@ struct LookupTableV2CPUFunctor {
 
       auto *table = table_t.template data<T>();
       auto *output = output_t->template mutable_data<T>(context_.GetPlace());
-#pragma omp parallel for
+
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
           memset(output + i * row_width, 0, row_width * sizeof(T));
@@ -110,7 +108,6 @@ struct LookupTableV2CPUFunctor {
       auto input_data_type =
           framework::TransToProtoVarType(table_t.value().dtype());
 
-#pragma omp parallel for
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
           memset(output + i * row_width, 0, row_width * sizeof(T));
@@ -235,7 +232,6 @@ struct LookupTableV2GradCPUFunctor {
 
       memset(d_table_data, 0, d_table->numel() * sizeof(T));
 
-#pragma omp parallel for
       for (int64_t i = 0; i < ids_num; ++i) {
         if (padding_idx != kNoPadding && ids_data[i] == padding_idx) {
           // the gradient of padding_idx should be 0, already done by memset, so
@@ -259,8 +255,6 @@ struct LookupTableV2GradCPUFunctor {
                   "value.",
                   N,
                   ids_data[i]));
-
-#pragma omp parallel for
           for (int j = 0; j < D; ++j) {
             d_table_data[ids_data[i] * D + j] += d_output_data[i * D + j];
           }
