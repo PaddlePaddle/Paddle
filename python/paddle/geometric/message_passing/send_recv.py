@@ -82,7 +82,6 @@ def send_u_recv(x,
                       the 0th dimension.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
@@ -233,7 +232,6 @@ def send_ue_recv(x,
                       the 0th dimension.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
@@ -381,7 +379,7 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64. 
-        message_op (Tensor): Different message ops for x and y, including `add`, `sub`, `mul` and `div`.
+        message_op (str): Different message ops for x and y, including `add`, `sub`, `mul` and `div`.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -389,7 +387,6 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         out (Tensor): The output tensor.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
