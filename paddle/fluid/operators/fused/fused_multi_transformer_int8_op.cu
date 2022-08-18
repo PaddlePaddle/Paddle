@@ -16,15 +16,21 @@ limitations under the License. */
 // https://github.com/NVIDIA/FasterTransformer/blob/v4.0/fastertransformer/cuda/masked_multihead_attention.cu
 // We add License in the head.
 
+#include "paddle/fluid/operators/fused/attn_gemm_int8.h"
 #include "paddle/fluid/operators/fused/fused_multi_transformer_op.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
+class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    if (std::is_same<T, float>::value) {
+      VLOG(1) << "T is float";
+    } else if (std::is_same<T, platform::float16>::value) {
+      VLOG(1) << "T is half";
+    }
     using U = LayerNormParamType<T>;
     auto place = ctx.GetPlace();
     auto &dev_ctx = ctx.cuda_device_context();
@@ -37,6 +43,24 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
+
+    // input scales, vector, size = num_layers
+    auto qkv_in_scale = ctx.Attr<std::vector<float>>("qkv_in_scale");
+    auto out_linear_in_scale =
+        ctx.Attr<std::vector<float>>("out_linear_in_scale");
+    auto ffn1_in_scale = ctx.Attr<std::vector<float>>("ffn1_in_scale");
+    auto ffn2_in_scale = ctx.Attr<std::vector<float>>("ffn2_in_scale");
+
+    // output scales, tensor, size = [num_layers, n], n is gemm output size
+    auto *qkv_out_scale = ctx.Input<Tensor>("QKVOutScale");
+    auto *out_linear_out_scale = ctx.Input<Tensor>("OutLinearOutScale");
+    auto *ffn1_out_scale = ctx.Input<Tensor>("FFN1OutScale");
+    auto *ffn2_out_scale = ctx.Input<Tensor>("FFN2OutScale");
+
+    int qkv_out_scale_n = qkv_out_scale->dims()[1];
+    int out_linear_out_scale_n = out_linear_out_scale->dims()[1];
+    int ffn1_out_scale_n = ffn1_out_scale->dims()[1];
+    int ffn2_out_scale_n = ffn2_out_scale->dims()[1];
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -64,13 +88,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
-    auto qkv_compute = AttnMatMul<T>(dev_ctx,
-                                     false,
-                                     trans_qkvw,
-                                     bsz_seq,
-                                     output_size,
-                                     input_size,
-                                     compute_bias);
+    AttnMatmulINT8<T> qkv_compute(
+        dev_ctx, bsz_seq, output_size, input_size, compute_bias);
     Tensor qkv_out;
     auto *qkv_out_data =
         qkv_out.mutable_data<T>({bsz, seq_len, 3, num_head, dim_head}, place);
@@ -134,8 +153,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto out_linear_biases = ctx.MultiInput<Tensor>("OutLinearBias");
     int ring_id = ctx.Attr<int>("ring_id");
     // (transA, transB, compute_bias) = (false, false, false)
-    auto out_linear_compute = AttnMatMul<T>(
-        dev_ctx, false, false, bsz_seq, dim_embed, hidden_size, false);
+    AttnMatmulINT8<T> out_linear_compute(
+        dev_ctx, bsz_seq, dim_embed, hidden_size, false);
 
     // 5. ln(residual + bias)
     DropoutParam dropout_param2(true, 0, true, true, 0.0, nullptr, 0);
@@ -158,9 +177,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ffn1_biases = ctx.MultiInput<Tensor>("FFN1Bias");
     auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
-    int dim_ffn = ffn1_weight_dim[1];
-    auto ffn1_linear_compute = AttnMatMul<T>(
-        dev_ctx, false, false, bsz_seq, dim_ffn, dim_embed, false);
+    int dim_ffn = ffn1_weight_dim[0];
+    AttnMatmulINT8<T> ffn1_linear_compute(
+        dev_ctx, bsz_seq, dim_ffn, dim_embed, false);
     Tensor ffn1_out;
     auto *ffn1_out_data = ffn1_out.mutable_data<T>({bsz_seq, dim_ffn}, place);
 
@@ -177,13 +196,24 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // 8. ffn2 matmul
     auto ffn2_weights = ctx.MultiInput<Tensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<Tensor>("FFN2Bias");
-    auto ffn2_linear_compute = AttnMatMul<T>(
-        dev_ctx, false, false, bsz_seq, dim_embed, dim_ffn, false);
+    AttnMatmulINT8<T> ffn2_linear_compute(
+        dev_ctx, bsz_seq, dim_embed, dim_ffn, false);
 
     // 9. ffn2 residual bias
     DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> ffn2_fused_dropout_helper(
         dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
+
+    // []. init workspace for cublasLt transform
+    Tensor input_workspace, output_workspace;
+    // for input and output transform data is CUBLASLT_ORDER_COL32 format,
+    int m_max = bsz_seq, k_max = std::max(dim_embed, dim_ffn),
+        n_max = std::max({output_size, dim_embed, dim_ffn});
+
+    input_workspace.mutable_data<int8_t>(
+        {32 * ((m_max + 32 - 1) / 32), (k_max + 31) / 32 * 32}, place);
+    output_workspace.mutable_data<int32_t>(
+        {n_max * 4, (m_max + 31) / 32 * 32 * 4}, place);
 
     // calc
     auto *out = ctx.Output<Tensor>("Out");
@@ -238,11 +268,29 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       // NOTE: in decoder stage, bias is fused in fmha
       const Tensor *bias = time_step ? nullptr : qkv_bias;
       if (!pre_layer_norm && i == 0) {
-        qkv_compute.ComputeForward(
-            qkv_weights[i], input_x, bias, &qkv_out, &qkv_out);
+        qkv_compute.ComputeForward(qkv_weights[i],
+                                   input_x,
+                                   &input_workspace,
+                                   bias,
+                                   &qkv_out,
+                                   &output_workspace,
+                                   &qkv_out,
+                                   qkv_in_scale[i],
+                                   qkv_out_scale,
+                                   i * qkv_out_scale_n,
+                                   "qkv_" + std::to_string(i));
       } else {
-        qkv_compute.ComputeForward(
-            qkv_weights[i], buf1, bias, &qkv_out, &qkv_out);
+        qkv_compute.ComputeForward(qkv_weights[i],
+                                   buf1,
+                                   &input_workspace,
+                                   bias,
+                                   &qkv_out,
+                                   &output_workspace,
+                                   &qkv_out,
+                                   qkv_in_scale[i],
+                                   qkv_out_scale,
+                                   i * qkv_out_scale_n,
+                                   "qkv_" + std::to_string(i));
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
@@ -327,12 +375,30 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       if (pre_layer_norm) {
-        out_linear_compute.ComputeForward(
-            out_linear_weights[i], &fmha_out, nullptr, buf1, nullptr);
+        out_linear_compute.ComputeForward(out_linear_weights[i],
+                                          &fmha_out,
+                                          &input_workspace,
+                                          nullptr,
+                                          buf1,
+                                          &output_workspace,
+                                          nullptr,
+                                          out_linear_in_scale[i],
+                                          out_linear_out_scale,
+                                          i * out_linear_out_scale_n,
+                                          "out linear_" + std::to_string(i));
         AllReduce<T>(*buf1, ring_id, dev_ctx);
       } else {
-        out_linear_compute.ComputeForward(
-            out_linear_weights[i], &fmha_out, nullptr, buf0, nullptr);
+        out_linear_compute.ComputeForward(out_linear_weights[i],
+                                          &fmha_out,
+                                          &input_workspace,
+                                          nullptr,
+                                          buf0,
+                                          &output_workspace,
+                                          nullptr,
+                                          out_linear_in_scale[i],
+                                          out_linear_out_scale,
+                                          i * out_linear_out_scale_n,
+                                          "out linear_" + std::to_string(i));
         AllReduce<T>(*buf0, ring_id, dev_ctx);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
@@ -381,8 +447,17 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       // step6. ffn matmul1
-      ffn1_linear_compute.ComputeForward(
-          ffn1_weights[i], buf1, nullptr, &ffn1_out, nullptr);
+      ffn1_linear_compute.ComputeForward(ffn1_weights[i],
+                                         buf1,
+                                         &input_workspace,
+                                         nullptr,
+                                         &ffn1_out,
+                                         &output_workspace,
+                                         nullptr,
+                                         ffn1_in_scale[i],
+                                         ffn1_out_scale,
+                                         i * ffn1_out_scale_n,
+                                         "ffn1_" + std::to_string(i));
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step6";
 #endif
@@ -401,11 +476,29 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
       // step8. ffn matmul2
       if (pre_layer_norm) {
-        ffn2_linear_compute.ComputeForward(
-            ffn2_weights[i], &ffn1_dropout_out, nullptr, buf1, nullptr);
+        ffn2_linear_compute.ComputeForward(ffn2_weights[i],
+                                           &ffn1_dropout_out,
+                                           &input_workspace,
+                                           nullptr,
+                                           buf1,
+                                           &output_workspace,
+                                           nullptr,
+                                           ffn2_in_scale[i],
+                                           ffn2_out_scale,
+                                           i * ffn2_out_scale_n,
+                                           "ffn2_" + std::to_string(i));
       } else {
-        ffn2_linear_compute.ComputeForward(
-            ffn2_weights[i], &ffn1_dropout_out, nullptr, buf0, nullptr);
+        ffn2_linear_compute.ComputeForward(ffn2_weights[i],
+                                           &ffn1_dropout_out,
+                                           &input_workspace,
+                                           nullptr,
+                                           buf0,
+                                           &output_workspace,
+                                           nullptr,
+                                           ffn2_in_scale[i],
+                                           ffn2_out_scale,
+                                           i * ffn2_out_scale_n,
+                                           "ffn2_" + std::to_string(i));
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.0";
@@ -479,6 +572,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(fused_multi_transformer,
-                        ops::FusedMultiTransformerOpKernel<plat::float16>,
-                        ops::FusedMultiTransformerOpKernel<float>);
+REGISTER_OP_CUDA_KERNEL(fused_multi_transformer_int8,
+                        ops::FusedMultiTransformerINT8OpKernel<plat::float16>,
+                        ops::FusedMultiTransformerINT8OpKernel<float>);
