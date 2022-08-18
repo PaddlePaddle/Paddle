@@ -48,18 +48,14 @@ void CrossKernel(const Context& dev_ctx,
                  const DenseTensor& y,
                  int axis,
                  DenseTensor* out) {
-  auto& input_x = x;
-  auto& input_y = y;
-  auto* output = out;
   int dim = axis;
-
-  auto input_x_dims = input_x.dims();
+  auto input_x_dims = x.dims();
   if (dim != DDim::kMaxRank) {
     PADDLE_ENFORCE_EQ(
         dim < input_x_dims.size() && dim >= (0 - input_x_dims.size()),
         true,
         phi::errors::OutOfRange(
-            "Attr(dim) is out of range, It's expected "
+            "Attr(axis) is out of range, It's expected "
             "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
             input_x_dims.size(),
             input_x_dims.size() - 1,
@@ -92,19 +88,17 @@ void CrossKernel(const Context& dev_ctx,
   }
 
   std::vector<int> cal_dims;
-  std::vector<int> left_strides;
+  std::vector<int> cal_strides;
   std::vector<int> full_strides;
-  std::vector<int> merged_dims;
+  std::vector<int> merged_dims{static_cast<int>(input_x_dims[0])};
 
-  for (int i = 0; i < dim; i++) {
-    if (i == 0) {
-      merged_dims.push_back(input_x_dims[i]);
-    } else {
-      merged_dims[0] *= input_x_dims[i];
-    }
+  // Merge dims for input tensors.
+  for (int i = 1; i < dim; ++i) {
+    merged_dims[0] *= input_x_dims[i];
   }
   int merge_axis = merged_dims.size();
   merged_dims.push_back(input_x_dims[dim]);
+
   for (int i = dim + 1; i < input_x_dims.size(); i++) {
     if (i == dim + 1) {
       merged_dims.push_back(input_x_dims[i]);
@@ -113,29 +107,26 @@ void CrossKernel(const Context& dev_ctx,
     }
   }
 
+  // Prepare for fast index calculation in gpu.
   int full_dim = 1;
+  int left_dim = 1;
   for (int i = 0; i < merged_dims.size(); i++) {
+    auto idx = merged_dims.size() - i - 1;
     full_strides.insert(full_strides.begin(), full_dim);
-    full_dim *= merged_dims[merged_dims.size() - i - 1];
+    full_dim *= merged_dims[idx];
     if (i == merge_axis) {
       continue;
     }
+    cal_strides.insert(cal_strides.begin(), left_dim);
+    left_dim *= merged_dims[idx];
     cal_dims.push_back(i);
   }
-  int left_dim = 1;
-  for (int i = merged_dims.size() - 1; i >= 0; i--) {
-    if (i == merge_axis) {
-      continue;
-    }
-    left_strides.insert(left_strides.begin(), left_dim);
-    left_dim *= merged_dims[i];
-  }
 
-  const auto* input_x_data = input_x.data<T>();
-  const auto* input_y_data = input_y.data<T>();
+  const auto* input_x_data = x.data<T>();
+  const auto* input_y_data = y.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
   auto index_calculator = phi::funcs::IndexCalculator(
-      merged_dims.size() - 1, cal_dims, left_strides, full_strides);
+      merged_dims.size() - 1, cal_dims, cal_strides, full_strides);
 
   int64_t numel = x.numel();
   backends::gpu::GpuLaunchConfig config =

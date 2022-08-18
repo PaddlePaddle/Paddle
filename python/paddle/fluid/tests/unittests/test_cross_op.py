@@ -68,6 +68,20 @@ class TestCrossOpCase1(TestCrossOp):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
 
+# class TestCrossOpCase2(TestCrossOp):
+
+#     def initTestCase(self):
+#         self.shape = (2, 3, 16)
+#         self.dtype = np.float32
+#         self.attrs = {'dim': -2}
+
+#     def init_output(self):
+#         z_list = []
+#         for i in range(self.shape[0]):
+#             z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i], axisa=0, axisb=0))
+#         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
 class TestCrossAPI(unittest.TestCase):
 
     def input_data(self):
