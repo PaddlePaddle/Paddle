@@ -550,7 +550,8 @@ void ReplaceSubGraphWithCinnOpNode(
 // all of op node supported by CINN. We using OpMapperRegistry
 // to check whether the op node supported by CINN.
 void SearchAllSubgraphs(Graph* graph) {
-  FLAGS_allow_cinn_ops="add;add_p;batch_norm;batch_norm_grad;broadcast_p;concat_p;conv2d;conv2d_grad;depthwise_conv2d;div_p;dropout;elementwise_add;elementwise_add_grad;elementwise_mul;feed;fetch;fill_any_like;fill_constant_p;gather_p;index_assign_p;index_select_p;matmul_p;mul;mul_p;pool2d;reduce_p;relu;relu6;relu_grad;reshape;reshape2;reshape2_grad;reshape_grad;reshape_p;scale;scatter_add_p;sigmoid;slice;slice_assign_p;slice_select_p;softmax;split_p;sqrt_p;sub_p;sum;tanh_p;transpose;transpose2;transpose_p";
+  FLAGS_allow_cinn_ops=std::getenv("FLAGS_allow_cinn_ops");
+  LOG(INFO) << "FLAGS_allow_cinn_ops=" << FLAGS_allow_cinn_ops;
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
   auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
   LOG(INFO) << "allow_ops.size() = " << allow_ops.size();

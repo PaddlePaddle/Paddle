@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
   run(predictor.get(), &out_data);
 
   for (auto r : out_data) {
-//    LOG(INFO) << r;
+    LOG(INFO) << r;
   }
   return 0;
 }

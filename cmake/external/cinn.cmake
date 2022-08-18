@@ -26,7 +26,7 @@ add_definitions(-w)
 ######################################
 include(ExternalProject)
 set(CINN_PREFIX_DIR ${THIRD_PARTY_PATH}/CINN)
-set(CINN_GIT_TAG release/v0.2)
+set(CINN_GIT_TAG develop)
 set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION}
                        -DWITH_CUDA=${WITH_GPU}
                        -DWITH_CUDNN=${WITH_GPU}
@@ -39,7 +39,7 @@ set(CINN_BUILD_COMMAND $(MAKE) cinnapi -j)
 ExternalProject_Add(
   external_cinn
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  GIT_REPOSITORY   "${GIT_URL}/PaddlePaddle/CINN.git"
+  GIT_REPOSITORY   "https://github.com/Shixiaowei02/CINN.git"
   GIT_TAG          ${CINN_GIT_TAG}
   PREFIX           ${CINN_PREFIX_DIR}
   BUILD_COMMAND    ${CINN_BUILD_COMMAND}
