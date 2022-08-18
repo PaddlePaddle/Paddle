@@ -502,11 +502,18 @@ static void UpdateControlOpSkipEagerDeletionVars(const Node &node) {
   if (node.IsWrappedBy<details::OpHandleBase>()) {
     details::OpHandleBase &op_hander =
         const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
-    auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(&op_hander);
-    auto *op_base = compute_op->GetOp();
-    if (op_base->Attrs().count("skip_eager_deletion_vars")) {
-      node.Op()->SetAttr("skip_eager_deletion_vars",
-                         op_base->Attrs().at("skip_eager_deletion_vars"));
+    // auto *compute_op = dynamic_cast<details::ComputationOpHandle
+    // *>(&op_hander); auto *op_base = compute_op->GetOp();
+    if (dynamic_cast<details::ComputationOpHandle *>(&op_hander)
+            ->GetOp()
+            ->Attrs()
+            .count("skip_eager_deletion_vars")) {
+      node.Op()->SetAttr(
+          "skip_eager_deletion_vars",
+          dynamic_cast<details::ComputationOpHandle *>(&op_hander)
+              ->GetOp()
+              ->Attrs()
+              .at("skip_eager_deletion_vars"));
     }
   }
 }
