@@ -455,18 +455,20 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
             return output
 
-        if place is None or isinstance(place, str):
-            place_str = place
-        elif isinstance(place, core.CPUPlace):
-            place_str = 'cpu'
-        elif isinstance(place, core.CUDAPlace):
-            place_str = 'gpu:' + str(place._get_device_id())
-        elif isinstance(place, core.NPUPlace):
-            place_str = 'npu:' + str(place._get_device_id())
-        elif isinstance(place, core.XPUPlace):
-            place_str = 'xpu:' + str(place._get_device_id())
-        else:
-            place_str = None
+        place = _get_paddle_place(place)
+        if place is None:
+            place = _current_expected_place()
+        elif not isinstance(
+                place,
+            (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace,
+             core.NPUPlace, core.XPUPlace, core.MLUPlace, core.CustomPlace)):
+            raise ValueError(
+                "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.MLUPlace, paddle.CustomPlace"
+            )
+
+        import re
+        re_exp = re.compile(r'[(](.*?)[)]', re.S)
+        place_str = re.findall(re_exp, str(p))[0]
 
         with paddle.static.device_guard(place_str):
             return call_assign(data, dtype, stop_gradient)
