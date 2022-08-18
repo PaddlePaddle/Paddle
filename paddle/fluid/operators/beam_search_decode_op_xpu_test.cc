@@ -32,6 +32,7 @@ using SentenceVector = paddle::operators::SentenceVector<T>;
 namespace paddle {
 namespace test {
 
+template <typename T>
 void GenerateXPUExample(const std::vector<size_t>& level_0,
                         const std::vector<size_t>& level_1,
                         const std::vector<int>& data,
@@ -93,32 +94,49 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
   tensor_score_cpu.set_lod(lod);
   tensor_score_cpu.Resize({static_cast<int64_t>(data.size())});
   // malloc memory
-  float* score_cpu_ptr = tensor_score_cpu.mutable_data<float>(place);
+  T* score_cpu_ptr = tensor_score_cpu.mutable_data<T>(place);
   for (size_t i = 0; i < data.size(); ++i) {
-    score_cpu_ptr[i] = static_cast<float>(data.at(i));
+    score_cpu_ptr[i] = static_cast<T>(data.at(i));
   }
 
   LoDTensor tensor_score;
-  const phi::DenseTensorMeta meta_data_score(
-      paddle::experimental::DataType::FLOAT32, tensor_score_cpu.dims());
-  tensor_score.set_meta(meta_data_score);
+
+  if (std::is_same<float, T>::value) {
+    const phi::DenseTensorMeta meta_data_score(
+        paddle::experimental::DataType::FLOAT32, tensor_score_cpu.dims());
+    tensor_score.set_meta(meta_data_score);
+  } else if (std::is_same<double, T>::value) {
+    const phi::DenseTensorMeta meta_data_score(
+        paddle::experimental::DataType::FLOAT64, tensor_score_cpu.dims());
+    tensor_score.set_meta(meta_data_score);
+  } else if (std::is_same<paddle::platform::float16, T>::value) {
+    const phi::DenseTensorMeta meta_data_score(
+        paddle::experimental::DataType::FLOAT16, tensor_score_cpu.dims());
+    tensor_score.set_meta(meta_data_score);
+  } else if (std::is_same<int, T>::value) {
+    const phi::DenseTensorMeta meta_data_score(
+        paddle::experimental::DataType::INT32, tensor_score_cpu.dims());
+    tensor_score.set_meta(meta_data_score);
+  } else if (std::is_same<int64_t, T>::value) {
+    const phi::DenseTensorMeta meta_data_score(
+        paddle::experimental::DataType::INT64, tensor_score_cpu.dims());
+    tensor_score.set_meta(meta_data_score);
+  }
+
   tensor_score.set_lod(lod);
 
-  float* score_ptr = tensor_score.mutable_data<float>(xpu_place);
+  T* score_ptr = tensor_score.mutable_data<T>(xpu_place);
   paddle::memory::Copy(paddle::platform::XPUPlace(XPU_PlaceNo),
                        score_ptr,
                        paddle::platform::CPUPlace(),
                        score_cpu_ptr,
-                       tensor_score_cpu.numel() * sizeof(float));
+                       tensor_score_cpu.numel() * sizeof(T));
 
   ids->push_back(tensor_id);
   scores->push_back(tensor_score);
 }
 
-}  // namespace test
-}  // namespace paddle
-
-TEST(BeamSearchDecodeOpXPU, Backtrace) {
+TEST(BeamSearchDecodeOpXPU, Backtrace_Float) {
   CPUPlace place;
 
   // Construct sample data with 5 steps and 2 source sentences
@@ -126,27 +144,27 @@ TEST(BeamSearchDecodeOpXPU, Backtrace) {
   LoDTensorArray ids;
   LoDTensorArray scores;
 
-  paddle::test::GenerateXPUExample(std::vector<size_t>{0, 1, 2},
-                                   std::vector<size_t>{0, 1, 2},
-                                   std::vector<int>{0, 0},
-                                   &ids,
-                                   &scores);  // start with start_id
-  paddle::test::GenerateXPUExample(std::vector<size_t>{0, 1, 2},
-                                   std::vector<size_t>{0, 2, 4},
-                                   std::vector<int>{2, 3, 4, 5},
-                                   &ids,
-                                   &scores);
-  paddle::test::GenerateXPUExample(std::vector<size_t>{0, 2, 4},
-                                   std::vector<size_t>{0, 2, 2, 4, 4},
-                                   std::vector<int>{3, 1, 5, 4},
-                                   &ids,
-                                   &scores);
-  paddle::test::GenerateXPUExample(std::vector<size_t>{0, 2, 4},
-                                   std::vector<size_t>{0, 1, 2, 3, 4},
-                                   std::vector<int>{1, 1, 3, 5},
-                                   &ids,
-                                   &scores);
-  paddle::test::GenerateXPUExample(
+  paddle::test::GenerateXPUExample<float>(std::vector<size_t>{0, 1, 2},
+                                          std::vector<size_t>{0, 1, 2},
+                                          std::vector<int>{0, 0},
+                                          &ids,
+                                          &scores);  // start with start_id
+  paddle::test::GenerateXPUExample<float>(std::vector<size_t>{0, 1, 2},
+                                          std::vector<size_t>{0, 2, 4},
+                                          std::vector<int>{2, 3, 4, 5},
+                                          &ids,
+                                          &scores);
+  paddle::test::GenerateXPUExample<float>(std::vector<size_t>{0, 2, 4},
+                                          std::vector<size_t>{0, 2, 2, 4, 4},
+                                          std::vector<int>{3, 1, 5, 4},
+                                          &ids,
+                                          &scores);
+  paddle::test::GenerateXPUExample<float>(std::vector<size_t>{0, 2, 4},
+                                          std::vector<size_t>{0, 1, 2, 3, 4},
+                                          std::vector<int>{1, 1, 3, 5},
+                                          &ids,
+                                          &scores);
+  paddle::test::GenerateXPUExample<float>(
       std::vector<size_t>{0, 2, 4},
       std::vector<size_t>{0, 0, 0, 2, 2},  // the branchs of the first source
                                            // sentence are pruned since finished
@@ -185,3 +203,286 @@ TEST(BeamSearchDecodeOpXPU, Backtrace) {
               static_cast<float>(id_tensor_cpu.data<int64_t>()[i]));
   }
 }
+
+TEST(BeamSearchDecodeOpXPU, Backtrace_Float16) {
+  CPUPlace place;
+
+  // Construct sample data with 5 steps and 2 source sentences
+  // beam_size = 2, start_id = 0, end_id = 1
+  LoDTensorArray ids;
+  LoDTensorArray scores;
+
+  paddle::test::GenerateXPUExample<paddle::platform::float16>(
+      std::vector<size_t>{0, 1, 2},
+      std::vector<size_t>{0, 1, 2},
+      std::vector<int>{0, 0},
+      &ids,
+      &scores);  // start with start_id
+  paddle::test::GenerateXPUExample<paddle::platform::float16>(
+      std::vector<size_t>{0, 1, 2},
+      std::vector<size_t>{0, 2, 4},
+      std::vector<int>{2, 3, 4, 5},
+      &ids,
+      &scores);
+  paddle::test::GenerateXPUExample<paddle::platform::float16>(
+      std::vector<size_t>{0, 2, 4},
+      std::vector<size_t>{0, 2, 2, 4, 4},
+      std::vector<int>{3, 1, 5, 4},
+      &ids,
+      &scores);
+  paddle::test::GenerateXPUExample<paddle::platform::float16>(
+      std::vector<size_t>{0, 2, 4},
+      std::vector<size_t>{0, 1, 2, 3, 4},
+      std::vector<int>{1, 1, 3, 5},
+      &ids,
+      &scores);
+  paddle::test::GenerateXPUExample<paddle::platform::float16>(
+      std::vector<size_t>{0, 2, 4},
+      std::vector<size_t>{0, 0, 0, 2, 2},  // the branchs of the first source
+                                           // sentence are pruned since finished
+      std::vector<int>{5, 1},
+      &ids,
+      &scores);
+
+  ASSERT_EQ(ids.size(), 5UL);
+  ASSERT_EQ(scores.size(), 5UL);
+
+  LoDTensor id_tensor_cpu;
+  LoDTensor score_tensor_cpu;
+
+  paddle::operators::BeamSearchDecodeXPUFunctor bs_xpu(
+      ids, scores, &id_tensor_cpu, &score_tensor_cpu, 2, 1);
+  bs_xpu.apply_xpu<paddle::platform::float16>();
+
+  LoD lod = id_tensor_cpu.lod();
+  std::vector<size_t> expect_source_lod = {0, 2, 4};
+  ASSERT_EQ(lod[0], expect_source_lod);
+
+  std::vector<size_t> expect_sentence_lod = {0, 4, 7, 12, 17};
+  ASSERT_EQ(lod[1], expect_sentence_lod);
+
+  std::vector<int> expect_data = {
+      0, 2, 3, 1, 0, 2, 1, 0, 4, 5, 3, 5, 0, 4, 5, 3, 1};
+  ASSERT_EQ(id_tensor_cpu.dims()[0], static_cast<int64_t>(expect_data.size()));
+
+  for (size_t i = 0; i < expect_data.size(); ++i) {
+    ASSERT_EQ(id_tensor_cpu.data<int64_t>()[i],
+              static_cast<int64_t>(expect_data[i]));
+  }
+
+  for (int64_t i = 0; i < id_tensor_cpu.dims()[0]; ++i) {
+    ASSERT_EQ(score_tensor_cpu.data<paddle::platform::float16>()[i],
+              static_cast<paddle::platform::float16>(
+                  id_tensor_cpu.data<int64_t>()[i]));
+  }
+}
+
+TEST(BeamSearchDecodeOpXPU, Backtrace_Int) {
+  CPUPlace place;
+
+  // Construct sample data with 5 steps and 2 source sentences
+  // beam_size = 2, start_id = 0, end_id = 1
+  LoDTensorArray ids;
+  LoDTensorArray scores;
+
+  paddle::test::GenerateXPUExample<int>(std::vector<size_t>{0, 1, 2},
+                                        std::vector<size_t>{0, 1, 2},
+                                        std::vector<int>{0, 0},
+                                        &ids,
+                                        &scores);  // start with start_id
+  paddle::test::GenerateXPUExample<int>(std::vector<size_t>{0, 1, 2},
+                                        std::vector<size_t>{0, 2, 4},
+                                        std::vector<int>{2, 3, 4, 5},
+                                        &ids,
+                                        &scores);
+  paddle::test::GenerateXPUExample<int>(std::vector<size_t>{0, 2, 4},
+                                        std::vector<size_t>{0, 2, 2, 4, 4},
+                                        std::vector<int>{3, 1, 5, 4},
+                                        &ids,
+                                        &scores);
+  paddle::test::GenerateXPUExample<int>(std::vector<size_t>{0, 2, 4},
+                                        std::vector<size_t>{0, 1, 2, 3, 4},
+                                        std::vector<int>{1, 1, 3, 5},
+                                        &ids,
+                                        &scores);
+  paddle::test::GenerateXPUExample<int>(
+      std::vector<size_t>{0, 2, 4},
+      std::vector<size_t>{0, 0, 0, 2, 2},  // the branchs of the first source
+                                           // sentence are pruned since finished
+      std::vector<int>{5, 1},
+      &ids,
+      &scores);
+
+  ASSERT_EQ(ids.size(), 5UL);
+  ASSERT_EQ(scores.size(), 5UL);
+
+  ASSERT_EQ(ids.size(), 5UL);
+  ASSERT_EQ(scores.size(), 5UL);
+
+  LoDTensor id_tensor_cpu;
+  LoDTensor score_tensor_cpu;
+
+  paddle::operators::BeamSearchDecodeXPUFunctor bs_xpu(
+      ids, scores, &id_tensor_cpu, &score_tensor_cpu, 2, 1);
+  bs_xpu.apply_xpu<int>();
+
+  LoD lod = id_tensor_cpu.lod();
+  std::vector<size_t> expect_source_lod = {0, 2, 4};
+  ASSERT_EQ(lod[0], expect_source_lod);
+
+  std::vector<size_t> expect_sentence_lod = {0, 4, 7, 12, 17};
+  ASSERT_EQ(lod[1], expect_sentence_lod);
+
+  std::vector<int> expect_data = {
+      0, 2, 3, 1, 0, 2, 1, 0, 4, 5, 3, 5, 0, 4, 5, 3, 1};
+  ASSERT_EQ(id_tensor_cpu.dims()[0], static_cast<int64_t>(expect_data.size()));
+
+  for (size_t i = 0; i < expect_data.size(); ++i) {
+    ASSERT_EQ(id_tensor_cpu.data<int64_t>()[i],
+              static_cast<int64_t>(expect_data[i]));
+  }
+
+  for (int64_t i = 0; i < id_tensor_cpu.dims()[0]; ++i) {
+    ASSERT_EQ(score_tensor_cpu.data<int>()[i],
+              static_cast<int>(id_tensor_cpu.data<int64_t>()[i]));
+  }
+}
+
+TEST(BeamSearchDecodeOpXPU, Backtrace_Int64) {
+  CPUPlace place;
+
+  // Construct sample data with 5 steps and 2 source sentences
+  // beam_size = 2, start_id = 0, end_id = 1
+  LoDTensorArray ids;
+  LoDTensorArray scores;
+
+  paddle::test::GenerateXPUExample<int64_t>(std::vector<size_t>{0, 1, 2},
+                                            std::vector<size_t>{0, 1, 2},
+                                            std::vector<int>{0, 0},
+                                            &ids,
+                                            &scores);  // start with start_id
+  paddle::test::GenerateXPUExample<int64_t>(std::vector<size_t>{0, 1, 2},
+                                            std::vector<size_t>{0, 2, 4},
+                                            std::vector<int>{2, 3, 4, 5},
+                                            &ids,
+                                            &scores);
+  paddle::test::GenerateXPUExample<int64_t>(std::vector<size_t>{0, 2, 4},
+                                            std::vector<size_t>{0, 2, 2, 4, 4},
+                                            std::vector<int>{3, 1, 5, 4},
+                                            &ids,
+                                            &scores);
+  paddle::test::GenerateXPUExample<int64_t>(std::vector<size_t>{0, 2, 4},
+                                            std::vector<size_t>{0, 1, 2, 3, 4},
+                                            std::vector<int>{1, 1, 3, 5},
+                                            &ids,
+                                            &scores);
+  paddle::test::GenerateXPUExample<int64_t>(
+      std::vector<size_t>{0, 2, 4},
+      std::vector<size_t>{0, 0, 0, 2, 2},  // the branchs of the first source
+                                           // sentence are pruned since finished
+      std::vector<int>{5, 1},
+      &ids,
+      &scores);
+
+  ASSERT_EQ(ids.size(), 5UL);
+  ASSERT_EQ(scores.size(), 5UL);
+
+  LoDTensor id_tensor_cpu;
+  LoDTensor score_tensor_cpu;
+
+  paddle::operators::BeamSearchDecodeXPUFunctor bs_xpu(
+      ids, scores, &id_tensor_cpu, &score_tensor_cpu, 2, 1);
+  bs_xpu.apply_xpu<int64_t>();
+
+  LoD lod = id_tensor_cpu.lod();
+  std::vector<size_t> expect_source_lod = {0, 2, 4};
+  ASSERT_EQ(lod[0], expect_source_lod);
+
+  std::vector<size_t> expect_sentence_lod = {0, 4, 7, 12, 17};
+  ASSERT_EQ(lod[1], expect_sentence_lod);
+
+  std::vector<int> expect_data = {
+      0, 2, 3, 1, 0, 2, 1, 0, 4, 5, 3, 5, 0, 4, 5, 3, 1};
+  ASSERT_EQ(id_tensor_cpu.dims()[0], static_cast<int64_t>(expect_data.size()));
+
+  for (size_t i = 0; i < expect_data.size(); ++i) {
+    ASSERT_EQ(id_tensor_cpu.data<int64_t>()[i],
+              static_cast<int64_t>(expect_data[i]));
+  }
+
+  for (int64_t i = 0; i < id_tensor_cpu.dims()[0]; ++i) {
+    ASSERT_EQ(score_tensor_cpu.data<int64_t>()[i],
+              id_tensor_cpu.data<int64_t>()[i]);
+  }
+}
+
+TEST(BeamSearchDecodeOpXPU, Backtrace_Double) {
+  CPUPlace place;
+
+  // Construct sample data with 5 steps and 2 source sentences
+  // beam_size = 2, start_id = 0, end_id = 1
+  LoDTensorArray ids;
+  LoDTensorArray scores;
+
+  paddle::test::GenerateXPUExample<double>(std::vector<size_t>{0, 1, 2},
+                                           std::vector<size_t>{0, 1, 2},
+                                           std::vector<int>{0, 0},
+                                           &ids,
+                                           &scores);  // start with start_id
+  paddle::test::GenerateXPUExample<double>(std::vector<size_t>{0, 1, 2},
+                                           std::vector<size_t>{0, 2, 4},
+                                           std::vector<int>{2, 3, 4, 5},
+                                           &ids,
+                                           &scores);
+  paddle::test::GenerateXPUExample<double>(std::vector<size_t>{0, 2, 4},
+                                           std::vector<size_t>{0, 2, 2, 4, 4},
+                                           std::vector<int>{3, 1, 5, 4},
+                                           &ids,
+                                           &scores);
+  paddle::test::GenerateXPUExample<double>(std::vector<size_t>{0, 2, 4},
+                                           std::vector<size_t>{0, 1, 2, 3, 4},
+                                           std::vector<int>{1, 1, 3, 5},
+                                           &ids,
+                                           &scores);
+  paddle::test::GenerateXPUExample<double>(
+      std::vector<size_t>{0, 2, 4},
+      std::vector<size_t>{0, 0, 0, 2, 2},  // the branchs of the first source
+                                           // sentence are pruned since finished
+      std::vector<int>{5, 1},
+      &ids,
+      &scores);
+
+  ASSERT_EQ(ids.size(), 5UL);
+  ASSERT_EQ(scores.size(), 5UL);
+
+  LoDTensor id_tensor_cpu;
+  LoDTensor score_tensor_cpu;
+
+  paddle::operators::BeamSearchDecodeXPUFunctor bs_xpu(
+      ids, scores, &id_tensor_cpu, &score_tensor_cpu, 2, 1);
+  bs_xpu.apply_xpu<double>();
+
+  LoD lod = id_tensor_cpu.lod();
+  std::vector<size_t> expect_source_lod = {0, 2, 4};
+  ASSERT_EQ(lod[0], expect_source_lod);
+
+  std::vector<size_t> expect_sentence_lod = {0, 4, 7, 12, 17};
+  ASSERT_EQ(lod[1], expect_sentence_lod);
+
+  std::vector<int> expect_data = {
+      0, 2, 3, 1, 0, 2, 1, 0, 4, 5, 3, 5, 0, 4, 5, 3, 1};
+  ASSERT_EQ(id_tensor_cpu.dims()[0], static_cast<int64_t>(expect_data.size()));
+
+  for (size_t i = 0; i < expect_data.size(); ++i) {
+    ASSERT_EQ(id_tensor_cpu.data<int64_t>()[i],
+              static_cast<int64_t>(expect_data[i]));
+  }
+
+  for (int64_t i = 0; i < id_tensor_cpu.dims()[0]; ++i) {
+    ASSERT_EQ(score_tensor_cpu.data<double>()[i],
+              static_cast<double>(id_tensor_cpu.data<int64_t>()[i]));
+  }
+}
+
+}  // namespace test
+}  // namespace paddle

@@ -56,8 +56,7 @@ int CopyTensorByXPU(const LoDTensor& srcTensor,
                          srcData,
                          srcTensor.numel() * sizeof(T));
   } else {
-    T* dstData =
-        dstTensor->template mutable_data<T>(paddle::platform::XPUPlace());
+    T* dstData = dstTensor->template mutable_data<T>(place);
     paddle::memory::Copy(place,
                          dstData,
                          paddle::platform::CPUPlace(),
