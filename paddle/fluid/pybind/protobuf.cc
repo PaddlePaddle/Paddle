@@ -286,6 +286,8 @@ void BindOpDesc(pybind11::module *m) {
       .value("LONGS", pd::proto::AttrType::LONGS)
       .value("FLOAT", pd::proto::AttrType::FLOAT)
       .value("FLOATS", pd::proto::AttrType::FLOATS)
+      //  .value("FLOAT64", pd::proto::AttrType::FLOAT64)
+      .value("FLOAT64S", pd::proto::AttrType::FLOAT64S)
       .value("STRING", pd::proto::AttrType::STRING)
       .value("STRINGS", pd::proto::AttrType::STRINGS)
       .value("BOOL", pd::proto::AttrType::BOOLEAN)
@@ -361,6 +363,21 @@ void BindOpDesc(pybind11::module *m) {
           py::arg("with_attr_var") = false)
       .def("_set_attr", &pd::OpDesc::SetAttr)
       .def("remove_attr", &pd::OpDesc::RemoveAttr)
+      .def("_set_bool_attr", &pd::OpDesc::SetPlainAttr<bool>)
+      .def("_set_int32_attr", &pd::OpDesc::SetPlainAttr<int>)
+      .def("_set_int64_attr", &pd::OpDesc::SetPlainAttr<int64_t>)
+      .def("_set_float32_attr", &pd::OpDesc::SetPlainAttr<float>)
+      //  .def("_set_float64_attr", &pd::OpDesc::SetPlainAttr<double>)
+      .def("_set_str_attr", &pd::OpDesc::SetPlainAttr<std::string>)
+
+      .def("_set_bools_attr", &pd::OpDesc::SetPlainAttr<std::vector<bool>>)
+      .def("_set_int32s_attr", &pd::OpDesc::SetPlainAttr<std::vector<int>>)
+      .def("_set_int64s_attr", &pd::OpDesc::SetPlainAttr<std::vector<int64_t>>)
+      .def("_set_float32s_attr", &pd::OpDesc::SetPlainAttr<std::vector<float>>)
+      .def("_set_float64s_attr", &pd::OpDesc::SetPlainAttr<std::vector<double>>)
+      .def("_set_strs_attr",
+           &pd::OpDesc::SetPlainAttr<std::vector<std::string>>)
+
       .def(
           "attr",
           [](pd::OpDesc &self, const std::string &name, bool with_attr_var) {
@@ -411,10 +428,6 @@ void BindJitProperty(pybind11::module *m) {
           pybind11::return_value_policy::reference)
       .def("size", &jit::Property::Size)
       .def("set_float",
-           py::overload_cast<const float &>(&jit::Property::SetFloat),
-           "set float",
-           py::arg("val"))
-      .def("set_float",
            py::overload_cast<const std::string &, const float &>(
                &jit::Property::SetFloat),
            "set float",
@@ -426,19 +439,10 @@ void BindJitProperty(pybind11::module *m) {
            py::overload_cast<const std::string &>(&jit::Property::GetFloat,
                                                   py::const_))
       .def("set_floats",
-           py::overload_cast<const std::vector<float> &>(
-               &jit::Property::SetFloats),
-           "set list of float",
-           py::arg("vals"))
-      .def("set_floats",
            py::overload_cast<const std::string &, const std::vector<float> &>(
                &jit::Property::SetFloats),
            "set list of float",
            py::arg("name"),
-           py::arg("val"))
-      .def("set_int",
-           py::overload_cast<const int64_t &>(&jit::Property::SetInt64),
-           "set int",
            py::arg("val"))
       .def("set_int",
            py::overload_cast<const std::string &, const int64_t &>(
@@ -447,19 +451,10 @@ void BindJitProperty(pybind11::module *m) {
            py::arg("name"),
            py::arg("val"))
       .def("set_ints",
-           py::overload_cast<const std::vector<int64_t> &>(
-               &jit::Property::SetInt64s),
-           "set list of int",
-           py::arg("vals"))
-      .def("set_ints",
            py::overload_cast<const std::string &, const std::vector<int64_t> &>(
                &jit::Property::SetInt64s),
            "set list of int",
            py::arg("name"),
-           py::arg("val"))
-      .def("set_string",
-           py::overload_cast<const std::string &>(&jit::Property::SetString),
-           "set string",
            py::arg("val"))
       .def("set_string",
            py::overload_cast<const std::string &, const std::string &>(
@@ -467,11 +462,6 @@ void BindJitProperty(pybind11::module *m) {
            "set string",
            py::arg("name"),
            py::arg("val"))
-      .def("set_strings",
-           py::overload_cast<const std::vector<std::string> &>(
-               &jit::Property::SetStrings),
-           "set list of string",
-           py::arg("vals"))
       .def("set_strings",
            py::overload_cast<const std::string &,
                              const std::vector<std::string> &>(

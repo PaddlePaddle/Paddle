@@ -9,7 +9,7 @@
 
 - api : bernoulli
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
@@ -134,6 +134,16 @@
   kernel :
     func : fft_r2c
   backward : fft_r2c_grad
+
+- api : graph_send_uv
+  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
+  output : Tensor(out)
+  infer_meta :
+    func : GraphSendUVInferMeta
+  kernel :
+    func : graph_send_uv
+    data_type : x
+  backward : graph_send_uv_grad
 
 - api : lgamma
   args : (Tensor x)

@@ -6,16 +6,6 @@ set(LOCAL_ALL_ARCH ON)
 set(LOCAL_ALL_PLAT ON)
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_allgather
-    MODULES
-    test_allgather
-    ENVS
-    "PADDLE_DIST_UT_PORT=20069;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_allgather PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
-endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
-  py_test_modules(
     test_allreduce
     MODULES
     test_allreduce
@@ -63,6 +53,29 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "PADDLE_DIST_UT_PORT=20079;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_c_split PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  bash_test_modules(
+    test_collective_split_embedding
+    START_BASH
+    ../dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20123;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_collective_split_embedding PROPERTIES TIMEOUT "300"
+                                                                  RUN_SERIAL 1)
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
+    test_allgather
+    MODULES
+    test_allgather
+    ENVS
+    "PADDLE_DIST_UT_PORT=20069;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_allgather PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -302,19 +315,6 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   )
   set_tests_properties(test_collective_split_col_linear
                        PROPERTIES TIMEOUT "300" RUN_SERIAL 1)
-endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
-  bash_test_modules(
-    test_collective_split_embedding
-    START_BASH
-    ../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=20123;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_collective_split_embedding PROPERTIES TIMEOUT "300"
-                                                                  RUN_SERIAL 1)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
