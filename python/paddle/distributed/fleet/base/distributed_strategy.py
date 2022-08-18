@@ -531,7 +531,9 @@ class DistributedStrategy(object):
                                    'embed_sparse_beta2_decay_rate', 'embedx_sparse_optimizer', 'embedx_sparse_learning_rate', \
                                    'embedx_sparse_weight_bounds', 'embedx_sparse_initial_range', 'embedx_sparse_initial_g2sum', \
                                    'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate', 'feature_learning_rate', 'nodeid_slot']
-        support_sparse_table_class = ['DownpourSparseTable']
+        support_sparse_table_class = [
+            'DownpourSparseTable', 'DownpourSparseSSDTable'
+        ]
         support_sparse_accessor_class = [
             'DownpourSparseValueAccessor', 'DownpourCtrAccessor',
             'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor',
@@ -623,9 +625,12 @@ class DistributedStrategy(object):
                                      "DownpourSparseTable")
             if table_class not in support_sparse_table_class:
                 raise ValueError(
-                    "support sparse_table_class: ['DownpourSparseTable'], but actual %s"
+                    "support sparse_table_class: ['DownpourSparseTable, DownpourSparseSSDTable'], but actual %s"
                     % (table_class))
-            table_data.table_class = 'MemorySparseTable'
+            if table_class == "DownpourSparseSSDTable":
+                table_data.table_class = 'SSDSparseTable'
+            else:
+                table_data.table_class = 'MemorySparseTable'
             table_data.shard_num = config.get('sparse_shard_num', 1000)
 
             accessor_class = config.get("sparse_accessor_class",
