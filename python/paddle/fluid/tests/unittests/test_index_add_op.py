@@ -23,7 +23,72 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
-class TestIndexAddOp(unittest.TestCase):
+def compute_index_add_ref(axis, x_shape, x_np, add_value_shape, add_value_np,
+                          index_size, index_np):
+    if axis < 0:
+        axis = axis + len(x_shape)
+    if axis != 0:
+        outer_loop = np.prod(x_shape[:axis]).astype(int)
+        x_reshape = [outer_loop] + list(x_shape[axis:])
+        x_np_reshape = np.reshape(x_np, tuple(x_reshape))
+
+        add_value_reshape = [np.prod(add_value_shape[:axis]).astype(int)
+                             ] + list(add_value_shape[axis:])
+
+        add_value_np_reshape = np.reshape(add_value_np,
+                                          tuple(add_value_reshape))
+    else:
+        x_np_reshape = x_np
+        add_value_np_reshape = add_value_np
+    out_np = x_np_reshape.copy()
+
+    if axis != 0:
+        for i in range(outer_loop):
+            for j in range(index_size):
+                out_np[i, index_np[j]] += add_value_np_reshape[i, j]
+    else:
+        for j in range(index_size):
+            out_np[index_np[j]] += add_value_np_reshape[j]
+    ref_out = np.reshape(out_np, x_shape)
+    return ref_out
+
+
+class TestIndexAddOp(OpTest):
+
+    def setUp(self):
+        self.python_api = paddle.index_add
+        self.op_type = "index_add"
+        self.init_dtype_type()
+        index_np = np.random.randint(low=0,
+                                     high=self.x_shape[self.axis],
+                                     size=self.index_size)
+        x_np = np.random.random(self.x_shape).astype(self.x_type)
+        add_value_np = np.random.random(self.add_value_shape).astype(
+            self.x_type)
+
+        self.inputs = {'X': x_np, 'Index': index_np, 'AddValue': add_value_np}
+        self.attrs = {'axis': self.axis}
+        out = compute_index_add_ref(self.axis, self.x_shape, x_np,
+                                    self.add_value_shape, add_value_np,
+                                    self.index_size, index_np)
+        self.outputs = {'Out': out}
+
+    def init_dtype_type(self):
+        self.axis = 0
+        self.x_type = np.float64
+        self.index_type = np.int64
+        self.x_shape = (101, 3)
+        self.index_size = 3
+        self.add_value_shape = (3, 3)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, atol=1e-2)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'AddValue'], 'Out', check_eager=True)
+
+
+class TestIndexAddAPI(unittest.TestCase):
 
     def setUp(self):
         self.setType()
@@ -69,36 +134,6 @@ class TestIndexAddOp(unittest.TestCase):
         if self.check_backward:
             self.dout_np = np.random.random(self.x_shape).astype(self.x_type)
 
-    def compute_index_add_ref(self):
-        axis = self.axis
-        if self.axis < 0:
-            axis = self.axis + len(self.x_shape)
-        if axis != 0:
-            outer_loop = np.prod(self.x_shape[:axis]).astype(int)
-            x_reshape = [outer_loop] + list(self.x_shape[axis:])
-            x_np_reshape = np.reshape(self.x_np, tuple(x_reshape))
-
-            add_value_reshape = [
-                np.prod(self.add_value_shape[:axis]).astype(int)
-            ] + list(self.add_value_shape[axis:])
-
-            add_value_np_reshape = np.reshape(self.add_value_np,
-                                              tuple(add_value_reshape))
-        else:
-            x_np_reshape = self.x_np
-            add_value_np_reshape = self.add_value_np
-        out_np = x_np_reshape
-
-        if axis != 0:
-            for i in range(outer_loop):
-                for j in range(self.index_size):
-                    out_np[i, self.index_np[j]] += add_value_np_reshape[i, j]
-        else:
-            for j in range(self.index_size):
-                out_np[self.index_np[j]] += add_value_np_reshape[j]
-        ref_out = np.reshape(out_np, self.x_shape)
-        return ref_out
-
     def compute_index_add_backward_ref(self):
         axis = self.axis
         if self.axis < 0:
@@ -119,7 +154,9 @@ class TestIndexAddOp(unittest.TestCase):
         add_value = paddle.to_tensor(self.add_value_np, stop_gradient=False)
 
         out = paddle.index_add(input_tensor, index, add_value, axis=self.axis)
-        ref_out = self.compute_index_add_ref()
+        ref_out = compute_index_add_ref(self.axis, self.x_shape, self.x_np,
+                                        self.add_value_shape, self.add_value_np,
+                                        self.index_size, self.index_np)
         np.testing.assert_allclose(ref_out,
                                    out.numpy(),
                                    rtol=self.rtol,
@@ -176,7 +213,10 @@ class TestIndexAddOp(unittest.TestCase):
         for device in self.place:
             with paddle.static.program_guard(Program()):
                 out = self.run_static(device)
-            ref_out = self.compute_index_add_ref()
+            ref_out = compute_index_add_ref(self.axis, self.x_shape, self.x_np,
+                                            self.add_value_shape,
+                                            self.add_value_np, self.index_size,
+                                            self.index_np)
             np.testing.assert_allclose(ref_out,
                                        np.array(out[0]),
                                        rtol=self.rtol,
@@ -188,14 +228,14 @@ class TestIndexAddOp(unittest.TestCase):
             self.run_imperative(device)
 
 
-class TestIndexAddOpMoreType(TestIndexAddOp):
+class TestIndexAddAPIMoreType(TestIndexAddAPI):
 
     def setType(self):
         self.x_type = np.float64
         self.index_type = np.int64
 
 
-class TestIndexAdOpCase2(TestIndexAddOp):
+class TestIndexAdAPICase2(TestIndexAddAPI):
 
     def config(self):
         self.axis = 1
@@ -204,7 +244,7 @@ class TestIndexAdOpCase2(TestIndexAddOp):
         self.add_value_shape = (100, 20, 5)
 
 
-class TestIndexAdOpCase3(TestIndexAddOp):
+class TestIndexAdAPICase3(TestIndexAddAPI):
 
     def config(self):
         self.axis = 2
@@ -213,7 +253,7 @@ class TestIndexAdOpCase3(TestIndexAddOp):
         self.add_value_shape = (100, 100, 20)
 
 
-class TestIndexAdOpCase4(TestIndexAddOp):
+class TestIndexAdAPICase4(TestIndexAddAPI):
 
     def config(self):
         self.axis = 0
@@ -222,7 +262,7 @@ class TestIndexAdOpCase4(TestIndexAddOp):
         self.add_value_shape = (4, )
 
 
-class TestIndexAdOpCase5(TestIndexAddOp):
+class TestIndexAdAPICase5(TestIndexAddAPI):
 
     def config(self):
         self.axis = -1

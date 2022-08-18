@@ -89,7 +89,6 @@ void IndexAddInner(const Context& ctx,
     auto output_t = output_tensor.chip(index_value, 1);
     output_t.device(place) = output_t + add_value_tensor.chip(j, 1);
   }
-  // input->Resize(input_dim);
   output->Resize(output_dim);
   add_value->Resize(add_value_dim);
 }
