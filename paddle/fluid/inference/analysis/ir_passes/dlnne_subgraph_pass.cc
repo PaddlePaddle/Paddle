@@ -430,9 +430,9 @@ auto fix_batch_as_one(
           LOG(INFO)
               << "Warning: fix var:" << name << " batch,shape is ["
               << sp_str.str()
-              << "],we assume subgraph all inputs/outputs first dim is batch,"
-                 "so sometime is error,but ok on some network,wo suggest you "
-                 "use fix shape's main graph....";
+              << "],we assume subgraph's inputs/outputs first dim is batch,"
+              << "but when the first dim is not mean batch "
+              << "we suggest you use fix shape model....";
         }
       }
     }
