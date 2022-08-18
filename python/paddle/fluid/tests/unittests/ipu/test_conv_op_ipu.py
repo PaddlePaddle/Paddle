@@ -134,7 +134,7 @@ class TestCase8(TestBase):
 
 
 # depthwise_conv2d Op
-class TestCase8(TestBase):
+class TestCase9(TestBase):
 
     def set_feed(self):
         data = np.random.uniform(size=[1, 3, 10, 10])
