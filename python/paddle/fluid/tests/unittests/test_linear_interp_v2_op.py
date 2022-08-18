@@ -16,7 +16,7 @@ from __future__ import print_function
 import platform
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -104,6 +104,83 @@ def linear_interp_np(input,
         out = np.transpose(out, (0, 2, 1))  # NCHW => NHWC
 
     return out.astype(input.dtype)
+
+
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+@skip_check_grad_ci(reason="@liuyuanle \
+For the interpolation algorithm with input data of float16 type, \
+the gradient calculated by the numerical gradient method has a large error compared \
+with the theoretical gradient. Compared with the gradient results when the input \
+data type is float32, the correctness of the implementation is verified!")
+class TestLinearInterpOpFlaot16(OpTest):
+
+    def setUp(self):
+        self.python_api = linear_interp_test
+        self.out_size = None
+        self.actual_shape = None
+        self.data_layout = 'NCHW'
+        self.init_test_case()
+        self.op_type = "linear_interp_v2"
+        self.dtype = np.float16
+        input_np = np.random.random(self.input_shape).astype("float16")
+
+        scale_w = 0
+        if self.data_layout == "NCHW":
+            in_w = self.input_shape[2]
+        else:
+            in_w = self.input_shape[1]
+
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = float(self.scale)
+            if isinstance(self.scale, list):
+                self.scale = float(self.scale[0])
+            out_w = int(in_w * self.scale)
+        else:
+            out_w = self.out_w
+
+        output_np = linear_interp_np(input_np, out_w, self.scale, self.out_size,
+                                     self.actual_shape, self.align_corners,
+                                     self.align_mode, self.data_layout)
+        self.inputs = {'X': input_np}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
+        if self.actual_shape is not None:
+            self.inputs['OutSize'] = self.actual_shape
+
+        self.attrs = {
+            'out_w': self.out_w,
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners,
+            'align_mode': self.align_mode,
+            'data_layout': self.data_layout
+        }
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = [float(self.scale)]
+            self.attrs['scale'] = self.scale
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        if platform.system() == "Linux":
+            self.check_output(atol=1e-7, check_eager=True)
+        else:
+            self.check_output(atol=1e-5, check_eager=True)
+
+    def test_check_grad(self):
+        pass
+
+    def init_test_case(self):
+        self.interp_method = 'linear'
+        self.input_shape = [1, 3, 100]
+        self.out_w = 50
+        self.scale = 0.5
+        self.out_size = np.array([
+            50,
+        ]).astype("int32")
+        self.align_corners = False
+        self.align_mode = 1
 
 
 class TestLinearInterpOp(OpTest):
@@ -372,15 +449,39 @@ class TestResizeLinearAPI(unittest.TestCase):
             np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
 
+class TestLinearInterpAPI(unittest.TestCase):
+
+    def test_case(self):
+        import paddle
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((1, 3, 64)).astype("float16")
+            scale_np = np.array([2]).astype("int64")
+            input_x = paddle.to_tensor(input_data)
+            scale = paddle.to_tensor(scale_np)
+            expect_res = linear_interp_np(input_data,
+                                          out_w=128,
+                                          align_mode=1,
+                                          align_corners=False)
+            out = interpolate(x=input_x,
+                              scale_factor=scale,
+                              mode="linear",
+                              align_mode=1,
+                              align_corners=False,
+                              data_format='NCW')
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+
+
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
 
     def test_case(self):
 
         # dygraph
         x_data = np.random.random((1, 3, 128)).astype("float32")
-        us_1 = paddle.nn.Upsample(size=[
-            64,
-        ],
+        us_1 = paddle.nn.Upsample(size=[64],
                                   mode='linear',
                                   align_mode=1,
                                   align_corners=False,
@@ -495,28 +596,21 @@ class TestLinearInterpOpError(unittest.TestCase):
 
             def input_shape_error():
                 x1 = fluid.data(name="x1", shape=[1], dtype="float32")
-                out1 = paddle.nn.Upsample(size=[
-                    256,
-                ],
+                out1 = paddle.nn.Upsample(size=[256],
                                           data_format='NCW',
                                           mode='linear')
                 out1_res = out1(x1)
 
             def data_format_error():
                 x2 = fluid.data(name="x2", shape=[1, 3, 128], dtype="float32")
-                out2 = paddle.nn.Upsample(size=[
-                    256,
-                ],
+                out2 = paddle.nn.Upsample(size=[256],
                                           data_format='NHWCD',
                                           mode='linear')
                 out2_res = out2(x2)
 
             def out_shape_error():
                 x3 = fluid.data(name="x3", shape=[1, 3, 128], dtype="float32")
-                out3 = paddle.nn.Upsample(size=[
-                    256,
-                    256,
-                ],
+                out3 = paddle.nn.Upsample(size=[256, 256],
                                           data_format='NHWC',
                                           mode='linear')
                 out3_res = out3(x3)

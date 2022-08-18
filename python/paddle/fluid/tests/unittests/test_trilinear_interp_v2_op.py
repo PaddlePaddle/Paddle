@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
@@ -155,19 +155,145 @@ def trilinear_interp_np(input,
 
                 out[:, :, i, j, k] = \
                     d2lambda * \
-                    (h2lambda * (w2lambda * input[:, :, d, h, w] + \
-                              w1lambda * input[:, :, d, h, w+wid]) + \
-                    h1lambda * (w2lambda * input[:, :, d, h+hid, w] + \
-                              w1lambda * input[:, :, d, h+hid, w+wid])) + \
+                    (h2lambda * (w2lambda * input[:, :, d, h, w] +
+                                 w1lambda * input[:, :, d, h, w+wid]) +
+                     h1lambda * (w2lambda * input[:, :, d, h+hid, w] +
+                                 w1lambda * input[:, :, d, h+hid, w+wid])) + \
                     d1lambda * \
-                    (h2lambda * (w2lambda * input[:, :, d+did, h, w] + \
-                              w1lambda * input[:, :, d+did, h, w+wid]) + \
-                    h1lambda * (w2lambda * input[:, :, d+did, h+hid, w] + \
-                              w1lambda * input[:, :, d+did, h+hid, w+wid]))
+                    (h2lambda * (w2lambda * input[:, :, d+did, h, w] +
+                                 w1lambda * input[:, :, d+did, h, w+wid]) +
+                     h1lambda * (w2lambda * input[:, :, d+did, h+hid, w] +
+                                 w1lambda * input[:, :, d+did, h+hid, w+wid]))
     if data_layout == "NDHWC":
         out = np.transpose(out, (0, 2, 3, 4, 1))  # NCDHW => NDHWC
 
     return out.astype(input.dtype)
+
+
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+@skip_check_grad_ci(reason="@liuyuanle \
+For the interpolation algorithm with input data of float16 type, \
+the gradient calculated by the numerical gradient method has a large error compared \
+with the theoretical gradient. Compared with the gradient results when the input \
+data type is float32, the correctness of the implementation is verified!")
+class TestTrilinearInterpOpFloat16(OpTest):
+
+    def setUp(self):
+        self.python_api = trilinear_interp_test
+        self.out_size = None
+        self.actual_shape = None
+        self.data_layout = 'NCDHW'
+        self.init_test_case()
+        self.op_type = "trilinear_interp_v2"
+        self.dtype = np.float16
+        # NOTE(dev): some AsDispensible input is not used under imperative mode.
+        # Skip check_eager while found them in Inputs.
+        self.check_eager = True
+        input_np = np.random.random(self.input_shape).astype("float16")
+
+        scale_w = 0
+        scale_h = 0
+        scale_d = 0
+        if self.data_layout == "NCDHW":
+            in_d = self.input_shape[2]
+            in_h = self.input_shape[3]
+            in_w = self.input_shape[4]
+        else:
+            in_d = self.input_shape[1]
+            in_h = self.input_shape[2]
+            in_w = self.input_shape[3]
+
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if self.scale > 0:
+                    scale_d = scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_d = scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                scale_w = self.scale[2]
+                scale_h = self.scale[1]
+                scale_d = self.scale[0]
+            out_d = int(in_d * scale_d)
+            out_h = int(in_h * scale_h)
+            out_w = int(in_w * scale_w)
+        else:
+            out_d = self.out_d
+            out_h = self.out_h
+            out_w = self.out_w
+
+        output_np = trilinear_interp_np(input_np, out_d, out_h, out_w, scale_d,
+                                        scale_h, scale_w, self.out_size,
+                                        self.actual_shape, self.align_corners,
+                                        self.align_mode, self.data_layout)
+        self.inputs = {'X': input_np}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
+            self.check_eager = False
+        if self.actual_shape is not None:
+            self.inputs['OutSize'] = self.actual_shape
+            self.check_eager = False
+        # c++ end treat NCDHW the same way as NCHW
+        if self.data_layout == 'NCDHW':
+            data_layout = 'NCHW'
+        else:
+            data_layout = 'NHWC'
+        self.attrs = {
+            'out_d': self.out_d,
+            'out_h': self.out_h,
+            'out_w': self.out_w,
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners,
+            'align_mode': self.align_mode,
+            'data_layout': data_layout
+        }
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if self.scale > 0:
+                    self.scale = [self.scale]
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                self.scale = [self.scale[0], self.scale[0], self.scale[0]]
+            self.attrs['scale'] = self.scale
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        self.check_output(check_eager=self.check_eager)
+
+    def test_check_grad(self):
+        pass
+
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 3, 4, 4, 4]
+        self.out_d = 2
+        self.out_h = 2
+        self.out_w = 2
+        self.scale = []
+        self.out_size = np.array([3, 3, 3]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+
+
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+@skip_check_grad_ci(reason="@liuyuanle \
+For the interpolation algorithm with input data of float16 type, \
+the gradient calculated by the numerical gradient method has a large error compared \
+with the theoretical gradient. Compared with the gradient results when the input \
+data type is float32, the correctness of the implementation is verified!")
+class TestTrilinearInterpDatalayoutFloat16(TestTrilinearInterpOpFloat16):
+
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 4, 4, 4, 3]
+        self.out_d = 2
+        self.out_h = 2
+        self.out_w = 2
+        self.scale = []
+        self.out_size = np.array([3, 3, 3]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+        self.data_layout = "NDHWC"
 
 
 class TestTrilinearInterpOp(OpTest):
