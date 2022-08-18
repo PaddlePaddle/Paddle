@@ -1348,33 +1348,6 @@ class Completer:
                             op_dist_attr.set_output_dist_attr(
                                 out_name, out_dist_attr)
                         remove_no_need_in_op(op, self._dist_context)
-                    elif op.type == "cast" and ops[idx +
-                                                   1].type == "elementwise_mul":
-                        ref_var = vars[ops[idx + 1].input("X")[0]]
-                        ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-                            ref_var)
-                        assert ref_dist_attr is not None
-                        ref_process_mesh = ref_dist_attr.process_mesh
-
-                        in_var = vars[op.input("X")[0]]
-                        in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-                            in_var)
-                        assert in_dist_attr is not None
-                        ref_dims_mapping = in_dist_attr.dims_mapping
-
-                        out_var = vars[op.output("Out")[0]]
-                        out_dist_attr = TensorDistributedAttribute()
-                        out_dist_attr.process_mesh = ref_process_mesh
-                        out_dist_attr.dims_mapping = ref_dims_mapping
-                        self._dist_context.set_tensor_dist_attr_for_program(
-                            out_var, out_dist_attr)
-
-                        op_dist_attr = OperatorDistributedAttribute()
-                        op_dist_attr.process_mesh = ref_process_mesh
-                        op_dist_attr.set_input_dist_attr(
-                            in_var.name, in_dist_attr)
-                        op_dist_attr.set_output_dist_attr(
-                            out_var.name, out_dist_attr)
                     else:
                         in_var = vars[op.input("X")[0]]
                         in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
@@ -1382,6 +1355,14 @@ class Completer:
                         assert in_dist_attr is not None
                         ref_process_mesh = in_dist_attr.process_mesh
                         ref_dims_mapping = in_dist_attr.dims_mapping
+
+                        if op.type == "cast" and ops[
+                                idx + 1].type == "elementwise_mul":
+                            ref_var = vars[ops[idx + 1].input("X")[0]]
+                            ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                                ref_var)
+                            assert ref_dist_attr is not None
+                            ref_process_mesh = ref_dist_attr.process_mesh
 
                         out_var = vars[op.output("Out")[0]]
                         out_dist_attr = TensorDistributedAttribute()
