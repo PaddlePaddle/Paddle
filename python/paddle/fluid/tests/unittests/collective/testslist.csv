@@ -34,4 +34,3 @@ test_reducescatter,linux,gpu;rocm,120,DIST,test_runner.py,20131,1,http_proxy=;ht
 test_reducescatter_api,linux,gpu;rocm,120,DIST,test_runner.py,20133,1,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_eager_dist_api,linux,gpu;rocm,120,DIST,test_runner.py,20135,1,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_new_group_api,linux,gpu;rocm,120,DIST,test_runner.py,20137,1,http_proxy=;https_proxy=;PYTHONPATH=..,
-test_broadcast_tensors_op,,,350,DIST,test_runner.py,20139,1,http_proxy=;https_proxy=;PYTHONPATH=..,
