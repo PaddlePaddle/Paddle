@@ -53,6 +53,10 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
       if (node->Var()->GetDataType() == proto::VarType::INT64) {
         node->Var()->SetDataType(proto::VarType::INT32);
       }
+      // float64->float32
+      if (node->Var()->GetDataType() == proto::VarType::FP64) {
+        node->Var()->SetDataType(proto::VarType::FP32);
+      }
     }
   }
 
