@@ -142,7 +142,7 @@ class TestBase(IPUOpTest):
         cpu_res = self._test_load(False)
         ipu_res = self._test_load(True)
 
-        self.assertTrue(np.allclose(cpu_res, ipu_res, atol=self.atol))
+        np.testing.assert_allclose(cpu_res, ipu_res, rtol=1e-05, atol=self.atol)
         self.attrs['path'].cleanup()
 
 

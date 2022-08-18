@@ -13,8 +13,10 @@ limitations under the License. */
 
 #include <glog/logging.h>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detection/nms_util.h"
+#include "paddle/phi/infermeta/ternary.h"
+#include "paddle/phi/kernels/funcs/detection/nms_util.h"
 
 namespace paddle {
 namespace operators {
@@ -164,7 +166,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     std::vector<T> scores_data(num_boxes);
     std::copy_n(scores.data<T>(), num_boxes, scores_data.begin());
     std::vector<std::pair<T, int>> sorted_indices;
-    GetMaxScoreIndex(scores_data, score_threshold, top_k, &sorted_indices);
+    phi::funcs::GetMaxScoreIndex(
+        scores_data, score_threshold, top_k, &sorted_indices);
 
     selected_indices->clear();
     T adaptive_threshold = nms_threshold;
@@ -179,17 +182,18 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
           T overlap = T(0.);
           // 4: [xmin ymin xmax ymax]
           if (box_size == 4) {
-            overlap = JaccardOverlap<T>(bbox_data + idx * box_size,
-                                        bbox_data + kept_idx * box_size,
-                                        normalized);
+            overlap =
+                phi::funcs::JaccardOverlap<T>(bbox_data + idx * box_size,
+                                              bbox_data + kept_idx * box_size,
+                                              normalized);
           }
           // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 16, 24, 32
           if (box_size == 8 || box_size == 16 || box_size == 24 ||
               box_size == 32) {
-            overlap = PolyIoU<T>(bbox_data + idx * box_size,
-                                 bbox_data + kept_idx * box_size,
-                                 box_size,
-                                 normalized);
+            overlap = phi::funcs::PolyIoU<T>(bbox_data + idx * box_size,
+                                             bbox_data + kept_idx * box_size,
+                                             box_size,
+                                             normalized);
           }
           keep = overlap <= adaptive_threshold;
         } else {
@@ -274,7 +278,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       // Keep top k results per image.
       std::stable_sort(score_index_pairs.begin(),
                        score_index_pairs.end(),
-                       SortScorePairDescend<std::pair<int, int>>);
+                       phi::funcs::SortScorePairDescend<std::pair<int, int>>);
       score_index_pairs.resize(keep_top_k);
 
       // Store the new indices.
@@ -609,12 +613,6 @@ class MultiClassNMS3Op : public MultiClassNMS2Op {
                    const framework::VariableNameMap& outputs,
                    const framework::AttributeMap& attrs)
       : MultiClassNMS2Op(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    MultiClassNMS2Op::InferShape(ctx);
-
-    ctx->SetOutputDim("NmsRoisNum", {-1});
-  }
 };
 
 class MultiClassNMS3OpMaker : public MultiClassNMS2OpMaker {
@@ -632,6 +630,10 @@ class MultiClassNMS3OpMaker : public MultiClassNMS2OpMaker {
 
 }  // namespace operators
 }  // namespace paddle
+
+DECLARE_INFER_SHAPE_FUNCTOR(multiclass_nms3,
+                            MultiClassNMSShapeFunctor,
+                            PD_INFER_META(phi::MultiClassNMSInferMeta));
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
@@ -658,7 +660,5 @@ REGISTER_OPERATOR(
     ops::MultiClassNMS3Op,
     ops::MultiClassNMS3OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(multiclass_nms3,
-                       ops::MultiClassNMSKernel<float>,
-                       ops::MultiClassNMSKernel<double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    MultiClassNMSShapeFunctor);

@@ -132,6 +132,7 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      CudaHardSigmoidFunctor,
                                      slope,
                                      offset)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Selu, CudaSeluFunctor, scale, alpha)
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
@@ -265,3 +266,4 @@ PD_REGISTER_KERNEL(pow,
                    int,
                    int64_t,
                    phi::dtype::float16) {}
+PD_REGISTER_KERNEL(selu, GPU, ALL_LAYOUT, phi::SeluKernel, float, double) {}

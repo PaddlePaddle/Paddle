@@ -19,7 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace operators {

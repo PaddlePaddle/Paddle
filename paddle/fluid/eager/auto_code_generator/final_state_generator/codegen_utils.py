@@ -32,7 +32,7 @@ ops_to_fill_zero_for_empty_grads = set([
     "square_double_grad", "celu_double_grad", "pad_double_grad",
     "pad3d_double_grad", "squeeze_double_grad", "unsqueeze_double_grad",
     "instance_norm_double_grad", "conv3d_double_grad",
-    "depthwise_conv2d_grad_grad", "concat_double_grad"
+    "depthwise_conv2d_grad_grad", "concat_double_grad", "expand_grad"
 ])
 
 # For API dispatch used at python-level
@@ -352,6 +352,9 @@ class FunctionGeneratorBase:
     def __init__(self, forward_api_contents, namespace):
         self.forward_api_contents = forward_api_contents
         self.namespace = namespace
+
+        self.is_forward_only = False if 'backward' in forward_api_contents.keys(
+        ) else True
 
         self.forward_api_name = ""
 

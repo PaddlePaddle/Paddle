@@ -52,8 +52,8 @@ def write_file(name, ct):
 
 def get_files(pth, prefix):
     return [
-        f for f in listdir(pth) if isfile(join(pth, f)) and f.startswith(prefix)
-        and f != f"{prefix}.gpu.log"
+        f for f in listdir(pth)
+        if isfile(join(pth, f)) and not f.endswith('gpu.log')
     ]
 
 
@@ -101,17 +101,19 @@ class Collective_Test(unittest.TestCase):
     def test_collective_3(self):
         log_dir = tempfile.TemporaryDirectory()
         port = random.randrange(6000, 8000)
-        args = "--job_id test3 --devices 0,1 --log_dir {} --master 127.0.0.1:{} --nnodes 2".format(
-            log_dir.name, port)
-        p1 = self.pdrun(args)
-        p2 = self.pdrun(args)
+        args = "--job_id test3 --devices 0,1 --log_dir {} --master 127.0.0.1:{} --nnodes 2"
+        p1 = self.pdrun(args.format(log_dir.name + "/1", port))
+        p2 = self.pdrun(args.format(log_dir.name + "/2", port))
         p1.wait()
         p2.wait()
         self.assertTrue(p1.poll() == 0)
         self.assertTrue(p2.poll() == 0)
 
-        c = get_files(log_dir.name, 'test3')
-        self.assertTrue(len(c) == 6)
+        c1 = get_files(log_dir.name + "/1", 'test3')
+        c2 = get_files(log_dir.name + "/2", 'test3')
+        print(c1)
+        self.assertTrue(len(c1) == 3)
+        self.assertTrue(len(c2) == 3)
         log_dir.cleanup()
 
 
@@ -156,17 +158,19 @@ class PS_Test(unittest.TestCase):
     def test_ps_3(self):
         log_dir = tempfile.TemporaryDirectory()
         port = random.randrange(6000, 8000)
-        args = "--job_id ps3 --log_dir {} --master 127.0.0.1:{} --nnodes 2 --server_num=1 --trainer_num=1".format(
-            log_dir.name, port)
-        p1 = self.pdrun(args)
-        p2 = self.pdrun(args)
+        args = "--job_id ps3 --log_dir {} --master 127.0.0.1:{} --nnodes 2 --server_num=1 --trainer_num=1"
+        p1 = self.pdrun(args.format(log_dir.name + "/1", port))
+        p2 = self.pdrun(args.format(log_dir.name + "/2", port))
         p1.wait()
         p2.wait()
         self.assertTrue(p1.poll() == 0)
         self.assertTrue(p2.poll() == 0)
 
-        c = get_files(log_dir.name, 'ps3')
-        self.assertTrue(len(c) == 6)
+        c1 = get_files(log_dir.name + "/1", 'ps3')
+        c2 = get_files(log_dir.name + "/2", 'ps3')
+        print(c1)
+        self.assertTrue(len(c1) == 3)
+        self.assertTrue(len(c2) == 3)
         log_dir.cleanup()
 
     def test_ps_4(self):
@@ -178,6 +182,7 @@ class PS_Test(unittest.TestCase):
         self.assertTrue(p1.poll() == 0)
 
         c = get_files(log_dir.name, 'ps4')
+        print(c)
         self.assertTrue(len(c) == 5)
         log_dir.cleanup()
 

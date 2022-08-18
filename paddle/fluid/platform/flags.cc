@@ -1006,8 +1006,8 @@ PADDLE_DEFINE_EXPORTED_bool(
  * default=PE
  * Example:
  * Note:
- * FLAGS_jit_engine_type == Executor, using ExecutorFunction by default
- * FLAGS_jit_engine_type == PE, using PEFunction by default
+ * FLAGS_jit_engine_type == Executor, using ExecutorEngine by default
+ * FLAGS_jit_engine_type == PE, using PEEngine by default
  */
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "PE",

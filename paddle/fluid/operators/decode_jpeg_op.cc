@@ -17,47 +17,19 @@
 #include <vector>
 
 #include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-class CPUDecodeJpegKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    // TODO(LieLinJiang): add cpu implement.
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "DecodeJpeg op only supports GPU now."));
-  }
-};
-
 class DecodeJpegOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DecodeJpeg");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "DecodeJpeg");
-
-    auto mode = ctx->Attrs().Get<std::string>("mode");
-    std::vector<int> out_dims;
-
-    if (mode == "unchanged") {
-      out_dims = {-1, -1, -1};
-    } else if (mode == "gray") {
-      out_dims = {1, -1, -1};
-    } else if (mode == "rgb") {
-      out_dims = {3, -1, -1};
-    } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "The provided mode is not supported for JPEG files on GPU: ", mode));
-    }
-
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -107,12 +79,14 @@ and 255.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(decode_jpeg,
+                            DecodeJpegInferShapeFunctor,
+                            PD_INFER_META(phi::DecodeJpegInferMeta));
 
 REGISTER_OPERATOR(
     decode_jpeg,
     ops::DecodeJpegOp,
     ops::DecodeJpegOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
-
-REGISTER_OP_CPU_KERNEL(decode_jpeg, ops::CPUDecodeJpegKernel<uint8_t>)
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    DecodeJpegInferShapeFunctor)

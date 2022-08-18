@@ -47,7 +47,7 @@ class TestMseLoss(unittest.TestCase):
                              },
                              fetch_list=[output])
 
-            self.assertTrue(np.isclose(np_result, result).all())
+            np.testing.assert_allclose(np_result, result, rtol=1e-05)
 
 
 class TestMseInvalidInput(unittest.TestCase):
@@ -316,4 +316,5 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
