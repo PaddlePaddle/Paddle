@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
 
-#include <string_view>
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
