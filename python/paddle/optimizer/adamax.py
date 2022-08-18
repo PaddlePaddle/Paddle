@@ -192,10 +192,10 @@ class Adamax(Optimizer):
                                               param_and_grad[0])
 
         if framework.in_dygraph_mode():
-            _C_ops.final_state_adamax(param_and_grad[0], param_and_grad[1],
-                                      self._create_param_lr(param_and_grad),
-                                      moment, inf_norm, beta1_pow_acc,
-                                      self._beta1, self._beta2, self._epsilon)
+            _C_ops.final_state_adamax_(param_and_grad[0], param_and_grad[1],
+                                       self._create_param_lr(param_and_grad),
+                                       moment, inf_norm, beta1_pow_acc,
+                                       self._beta1, self._beta2, self._epsilon)
         elif framework._in_legacy_dygraph():
             _C_ops.adamax(param_and_grad[0], param_and_grad[1],
                           self._create_param_lr(param_and_grad), moment,
