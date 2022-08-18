@@ -154,7 +154,7 @@ def vector_to_parameters(vec, parameters, name=None):
 
     if in_dygraph_mode():
         with paddle.fluid.dygraph.no_grad():
-            res = _C_ops.final_state_split(input, sections, 0)
+            res = _C_ops.final_state_split(vec, sections, 0)
             for i in range(0, len(res)):
                 res[i]._share_underline_tensor_to(parameters[i])
     else:

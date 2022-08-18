@@ -263,7 +263,7 @@ class Adamax(Optimizer):
                         self._beta1_pow_acc_str, param)
                     self._beta1 = parameters_and_grads.get(
                         'beta1', self._default_dict['beta1'])
-                    with paddle.no_grad():
+                    with no_grad():
                         tmp = _C_ops.final_state_scale(beta1_pow_acc,
                                                        self._beta1, 0.0, True)
                         beta1_pow_acc.copy_(tmp, False)
