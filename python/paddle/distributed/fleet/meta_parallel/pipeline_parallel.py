@@ -14,14 +14,14 @@
 import paddle
 import paddle.fluid as fluid
 from .meta_parallel_base import MetaParallelBase
-from .pp_utils.utils import is_float_tensor, _initialize_recompute_hcg
+from .pp_utils.utils import _initialize_recompute_hcg
 from .parallel_layers.pp_layers import PipelineLayer
 
 from ..utils.hybrid_parallel_util import broadcast_mp_parameters
 from ..utils.hybrid_parallel_util import broadcast_dp_parameters
 from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
 from ..utils.log_util import logger
-from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer, HybridParallelGradScaler
+from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 from .pp_utils import p2p_communication as p2p
 import paddle.fluid.core as core
 

@@ -19,7 +19,6 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
 from functools import reduce
 from operator import mul
 import paddle

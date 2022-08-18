@@ -14,15 +14,12 @@
 
 from __future__ import print_function
 
-from full_pascalvoc_test_preprocess import main_pascalvoc_preprocess
-import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 import unittest
 import os
 
 
 class Test_Preprocess(unittest.TestCase):
+
     def test_local_convert(self):
         os.system("python full_pascalvoc_test_preprocess.py --choice=local")
 

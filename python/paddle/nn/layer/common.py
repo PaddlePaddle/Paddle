@@ -16,7 +16,6 @@
 import paddle
 from ...fluid.dygraph import Flatten  # noqa: F401
 from .. import functional as F
-from ...fluid.framework import _dygraph_tracer
 from paddle.nn import Layer
 from paddle import in_dynamic_mode
 

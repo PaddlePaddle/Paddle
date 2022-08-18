@@ -13,9 +13,7 @@
 # limitations under the License.
 """To get a list of prec ut """
 
-import sys
 import os
-import platform
 
 
 def get_prec_ut_list(all_test_cases, prec_test_cases):

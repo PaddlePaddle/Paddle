@@ -16,7 +16,6 @@ import unittest
 import os
 import json
 
-import paddle
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cost.comp_op_cost import AssignOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import AssignValueOpCost
@@ -51,7 +50,6 @@ from paddle.distributed.auto_parallel.cost.comp_op_cost import LogOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import LookupTableV2OpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import LookupTableV2GradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulV2OpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulV2GradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MemcpyOpCost

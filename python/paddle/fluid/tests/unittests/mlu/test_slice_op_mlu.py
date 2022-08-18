@@ -16,13 +16,11 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle.fluid.core as core
 import sys
 
 sys.path.append('..')
 from op_test import OpTest
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle
 
 paddle.enable_static()

@@ -15,11 +15,7 @@
 import commands
 from xml.etree import ElementTree
 import re
-import time
-import queue
-import threading
 import os
-import json
 import sys
 
 

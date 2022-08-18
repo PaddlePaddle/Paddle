@@ -18,8 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 from op_test import OpTest
 
 

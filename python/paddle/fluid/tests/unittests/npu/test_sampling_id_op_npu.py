@@ -18,10 +18,8 @@ import sys
 
 sys.path.append("..")
 
-from op_test import OpTest, _set_use_system_allocator
-import paddle.fluid.core as core
+from op_test import _set_use_system_allocator
 import paddle.fluid as fluid
-from paddle.fluid.op import Operator
 import paddle
 
 _set_use_system_allocator(False)

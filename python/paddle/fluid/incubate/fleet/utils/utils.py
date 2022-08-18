@@ -14,14 +14,12 @@
 
 from __future__ import print_function, absolute_import
 import os
-import sys
 import logging
 import subprocess
 import numpy as np
 from collections import OrderedDict
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.log_helper import get_logger
 
 from google.protobuf import text_format
 from paddle.fluid import debugger

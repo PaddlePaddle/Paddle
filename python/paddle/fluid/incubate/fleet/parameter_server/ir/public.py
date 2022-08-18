@@ -17,18 +17,15 @@ from functools import reduce
 
 import collections
 import math
-import os
 import warnings
 import logging
 import six
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.core import CommContext
-import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
-from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
-from paddle.fluid.transpiler.details.program_utils import delete_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "gradient_clip"
@@ -1215,8 +1212,8 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
         'NoamDecay', 'NaturalExpDecay', 'InverseTimeDecay', 'ExponentialDecay'
     ]
 
-    from paddle.optimizer.lr import ExponentialDecay, NoamDecay, PiecewiseDecay, NaturalExpDecay, InverseTimeDecay
-    from paddle.fluid.layers.learning_rate_scheduler import exponential_decay, noam_decay, piecewise_decay, natural_exp_decay, inverse_time_decay
+    from paddle.optimizer.lr import ExponentialDecay, InverseTimeDecay, NaturalExpDecay, NoamDecay
+    from paddle.fluid.layers.learning_rate_scheduler import exponential_decay, inverse_time_decay, natural_exp_decay, noam_decay
 
     decay_main_program = fluid.framework.Program()
     decay_startup_program = fluid.framework.Program()

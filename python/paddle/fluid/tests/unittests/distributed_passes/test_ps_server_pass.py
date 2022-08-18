@@ -15,12 +15,8 @@
 from __future__ import division
 from __future__ import print_function
 
-import os
 import unittest
-import numpy as np
-import paddle
 from ps_pass_test_base import *
-from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 
 
 class TestPsServerPass(PsPassTestBase):

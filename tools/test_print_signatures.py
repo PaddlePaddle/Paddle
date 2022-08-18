@@ -32,14 +32,12 @@ def func_example(param_a, param_b):
     """
     example function
     """
-    pass
 
 
 def func_example_2(func=functools.partial(func_example, 1)):
     """
     example function 2
     """
-    pass
 
 
 class ClassExample():
@@ -51,7 +49,6 @@ class ClassExample():
         """
         class method
         """
-        pass
 
 
 class Test_all_in_print_signatures(unittest.TestCase):

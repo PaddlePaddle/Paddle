@@ -29,7 +29,6 @@ paddle.enable_static()
 
 def parallelizer(program_func, rank):
     from paddle.distributed.auto_parallel.completion import Completer
-    from paddle.distributed.auto_parallel.partitioner import Partitioner
     from paddle.distributed.auto_parallel.dist_context import DistributedContext
 
     main_program, startup_program, loss = program_func()

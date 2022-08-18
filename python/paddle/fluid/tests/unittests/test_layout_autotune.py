@@ -17,7 +17,6 @@ import json
 import tempfile
 import unittest
 import warnings
-import numpy
 
 import paddle
 import paddle.nn.functional as F

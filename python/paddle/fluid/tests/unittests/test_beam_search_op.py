@@ -14,8 +14,7 @@
 
 from __future__ import print_function
 
-import logging
-from paddle.fluid.op import Operator, DynamicRecurrentOp
+from paddle.fluid.op import Operator
 import paddle.fluid.core as core
 import unittest
 import numpy as np

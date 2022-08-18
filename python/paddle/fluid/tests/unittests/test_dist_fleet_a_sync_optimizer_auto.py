@@ -16,7 +16,6 @@ import unittest
 import paddle
 import os
 import paddle.distributed.fleet.base.role_maker as role_maker
-import time
 
 paddle.enable_static()
 

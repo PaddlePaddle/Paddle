@@ -276,14 +276,7 @@ def is_api_in_module(node, module_prefix):
         #  source_file = inspect.getfile(dyfunc)
         #  import_statements = ImportVisitor(source_file).transform()
         #  import_str = "".join(import_statements)
-        import paddle
-        import paddle.fluid as fluid
-        import paddle.fluid.dygraph as dygraph
-        import paddle.fluid.layers as layers
-        import paddle.jit.dy2static as _jst
-
-        from paddle.fluid.dygraph import to_variable
-        from paddle import to_tensor
+        pass
 
         return eval("_is_api_in_module_helper({}, '{}')".format(
             func_str, module_prefix))
@@ -316,7 +309,6 @@ def is_numpy_api(node):
     assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
     func_str = astor.to_source(gast.gast_to_ast(node.func))
     try:
-        import numpy as np
         module_result = eval("_is_api_in_module_helper({}, '{}')".format(
             func_str, "numpy"))
         # BUG: np.random.uniform doesn't have module and cannot be analyzed
@@ -346,7 +338,6 @@ def is_control_flow_to_transform(node,
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
-    import paddle.fluid as fluid
     full_args = eval("inspect.getargspec({})".format(func_src))
     full_args_name = full_args[0]
 
@@ -421,7 +412,6 @@ def update_args_of_func(node, dygraph_node, method_name):
         )
 
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
-    import paddle.fluid as fluid
     if method_name == "__init__" or eval(
             "issubclass({}, fluid.dygraph.Layer)".format(class_src)):
         full_args = eval("inspect.getargspec({}.{})".format(
@@ -1106,12 +1096,10 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             In this case, `i` will not created in FunctionScope. 
             We don't collect `i` by not calling generic_visit.
         """
-        pass
 
     def visit_DictComp(self, node):
         """ the same as ListComp.
         """
-        pass
 
     def visit_Name(self, node):
         self.generic_visit(node)
@@ -1129,7 +1117,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             """ NOTE: why we need merge w_vars here ? 
                 because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
             """
-            from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import WHILE_CONDITION_PREFIX, WHILE_BODY_PREFIX, FOR_CONDITION_PREFIX, FOR_BODY_PREFIX
+            from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import FOR_BODY_PREFIX, FOR_CONDITION_PREFIX, WHILE_BODY_PREFIX
             from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import TRUE_FUNC_PREFIX, FALSE_FUNC_PREFIX
             control_flow_function_def = [
                 WHILE_BODY_PREFIX, WHILE_BODY_PREFIX, FOR_CONDITION_PREFIX,

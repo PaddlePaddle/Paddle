@@ -287,7 +287,6 @@ class TrainerDesc(object):
             config_dict.get("sparse_copy_by_feasign", True)
 
     def _desc(self):
-        from google.protobuf import text_format
         return self.proto_desc.SerializeToString()
 
     def __str__(self):
@@ -303,7 +302,6 @@ class MultiTrainer(TrainerDesc):
 
     def __init__(self):
         super(MultiTrainer, self).__init__()
-        pass
 
     def _set_program(self, program):
         super(MultiTrainer, self)._set_program(program)
@@ -325,7 +323,6 @@ class DistMultiTrainer(TrainerDesc):
 
     def __init__(self):
         super(DistMultiTrainer, self).__init__()
-        pass
 
     def _set_program(self, program):
         super(DistMultiTrainer, self)._set_program(program)
@@ -349,7 +346,6 @@ class HeterXpuTrainer(TrainerDesc):
 
     def __init__(self):
         super(HeterXpuTrainer, self).__init__()
-        pass
 
     def _set_program(self, program):
         super(HeterXpuTrainer, self)._set_program(program)
@@ -373,7 +369,6 @@ class PSGPUTrainer(TrainerDesc):
 
     def __init__(self):
         super(PSGPUTrainer, self).__init__()
-        pass
 
     def _set_program(self, program):
         super(PSGPUTrainer, self)._set_program(program)
@@ -397,7 +392,6 @@ class HeterPipelineTrainer(TrainerDesc):
 
     def __init__(self):
         super(HeterPipelineTrainer, self).__init__()
-        pass
 
     def _set_program(self, program):
         super(HeterPipelineTrainer, self)._set_program(program)
@@ -421,7 +415,6 @@ class PipelineTrainer(TrainerDesc):
 
     def __init__(self):
         super(PipelineTrainer, self).__init__()
-        pass
 
     def _set_program(self, program):
         super(PipelineTrainer, self)._set_program(program)

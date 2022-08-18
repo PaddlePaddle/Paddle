@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .base_cost import Cost, register_op_cost, CompOpCost, _g_op_cost_factory
+from .base_cost import CompOpCost, register_op_cost
 
 
 @register_op_cost

@@ -18,7 +18,6 @@ import sys
 import argparse
 import logging
 import struct
-import six
 import numpy as np
 import time
 import paddle

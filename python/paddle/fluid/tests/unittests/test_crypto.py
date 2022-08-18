@@ -14,7 +14,6 @@
 
 from paddle.fluid.core import CipherUtils
 from paddle.fluid.core import CipherFactory
-from paddle.fluid.core import Cipher
 
 import unittest
 

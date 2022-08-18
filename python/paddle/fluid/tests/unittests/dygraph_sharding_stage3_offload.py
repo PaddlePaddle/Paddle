@@ -15,14 +15,10 @@
 # limitations under the License.
 
 import numpy as np
-import argparse
-import ast
-import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
-from paddle.fluid.dygraph import nn
 from paddle.fluid.framework import _test_eager_guard
 
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import ShardingStage3

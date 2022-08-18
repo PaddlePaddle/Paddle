@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-import paddle
-from ...fluid.framework import default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle import _C_ops
 from paddle import in_dynamic_mode

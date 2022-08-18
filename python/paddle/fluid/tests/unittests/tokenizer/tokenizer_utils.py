@@ -20,7 +20,7 @@ import json
 import os
 import unicodedata
 from shutil import copyfile
-from typing import Iterable, Iterator, Optional, List, Any, Callable, Union
+from typing import Optional
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils.download import get_path_from_url

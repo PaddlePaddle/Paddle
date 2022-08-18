@@ -15,7 +15,6 @@
 import os
 import site
 from paddle.fluid import core
-from distutils.sysconfig import get_python_lib
 from distutils.core import setup, Extension
 from setuptools.command.build_ext import build_ext
 

@@ -15,7 +15,6 @@
 import paddle
 import unittest
 import numpy as np
-import paddle.fluid.core as core
 import sys
 
 sys.path.append('..')

@@ -22,11 +22,7 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-import os
-import contextlib
 import logging
-import time
-import functools
 import numpy as np
 from itertools import chain
 from functools import reduce

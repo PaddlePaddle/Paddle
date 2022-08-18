@@ -14,7 +14,6 @@
 
 import six
 import abc
-import copy
 import math
 import numpy as np
 

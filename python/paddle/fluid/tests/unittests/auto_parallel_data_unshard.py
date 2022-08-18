@@ -16,13 +16,11 @@ from __future__ import print_function
 
 import unittest
 
-import copy
 import numpy as np
 import random
 
 import paddle
 import paddle.nn as nn
-import paddle.fluid.core as core
 import paddle.distributed.auto_parallel as auto
 import paddle.nn.functional as F
 from paddle.distributed import fleet

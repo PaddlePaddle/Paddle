@@ -34,7 +34,6 @@ import sys
 import json
 import socket
 from argparse import ArgumentParser
-from typing import Dict, Any
 
 
 def parse_args():

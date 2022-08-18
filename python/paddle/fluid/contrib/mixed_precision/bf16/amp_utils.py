@@ -22,7 +22,7 @@ from ....log_helper import get_logger
 from ....wrapped_decorator import signature_safe_contextmanager
 from .amp_lists import AutoMixedPrecisionListsBF16
 from ..fp16_utils import find_true_prev_op, find_true_post_op, _rename_arg, \
-    find_op_index, _rename_op_input
+    _rename_op_input
 
 import collections
 import struct

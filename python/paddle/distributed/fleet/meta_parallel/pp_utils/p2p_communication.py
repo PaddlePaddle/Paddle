@@ -18,7 +18,7 @@ from ...utils.log_util import logger
 import numpy as np
 from paddle import _C_ops
 import paddle.fluid.core as core
-from paddle.fluid.framework import _in_legacy_dygraph, _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 _hcg = None
 _use_cache = False

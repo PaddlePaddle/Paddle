@@ -10,18 +10,11 @@
 # without warranties or conditions of any kind, either express or implied.
 # see the license for the specific language governing permissions and
 # limitations under the license.
-import hashlib
-import unittest
 import os
 import io
 import numpy as np
-import time
 import sys
-import random
-import functools
-import contextlib
 from PIL import Image
-import math
 from paddle.dataset.common import download
 import tarfile
 import argparse
@@ -163,12 +156,12 @@ def run_convert():
     retry = 0
     try_limit = 3
 
-    while not (os.path.exists(output_file) and
-               os.path.getsize(output_file) == FULL_SIZE_BYTES):
+    while not (os.path.exists(output_file)
+               and os.path.getsize(output_file) == FULL_SIZE_BYTES):
         if os.path.exists(output_file):
             sys.stderr.write(
-                "\n\nThe existing binary file[{}] is broken. Start to generate new one...\n\n".
-                format(output_file))
+                "\n\nThe existing binary file[{}] is broken. Start to generate new one...\n\n"
+                .format(output_file))
             os.remove(output_file)
         if retry < try_limit:
             retry = retry + 1
@@ -204,15 +197,16 @@ def convert_Imagenet_local2bin(args):
                 img = Image.open(img_path)
                 img = process_image(img)
                 np_img = np.array(img)
-                of.seek(SIZE_INT64 + SIZE_FLOAT32 * DATA_DIM * DATA_DIM * 3 *
-                        idx)
+                of.seek(SIZE_INT64 +
+                        SIZE_FLOAT32 * DATA_DIM * DATA_DIM * 3 * idx)
                 of.write(np_img.astype('float32').tobytes())
 
                 #save label(int64_t) to file
                 label_int = (int)(label)
                 np_label = np.array(label_int)
-                of.seek(SIZE_INT64 + SIZE_FLOAT32 * DATA_DIM * DATA_DIM * 3 *
-                        num_images + idx * SIZE_INT64)
+                of.seek(SIZE_INT64 +
+                        SIZE_FLOAT32 * DATA_DIM * DATA_DIM * 3 * num_images +
+                        idx * SIZE_INT64)
                 of.write(np_label.astype('int64').tobytes())
 
         # The bin file should contain
@@ -221,39 +215,41 @@ def convert_Imagenet_local2bin(args):
         target_size = SIZE_INT64 + num_images * 3 * args.data_dim * args.data_dim * SIZE_FLOAT32 + num_images * SIZE_INT64
         if (os.path.getsize(bin_file_path) == target_size):
             print(
-                "Success! The user data output binary file can be found at: {0}".
-                format(bin_file_path))
+                "Success! The user data output binary file can be found at: {0}"
+                .format(bin_file_path))
         else:
             print("Conversion failed!")
 
 
 def main_preprocess_Imagenet(args):
     parser = argparse.ArgumentParser(
-        description="Convert the full Imagenet val set or local data to binary file.",
+        description=
+        "Convert the full Imagenet val set or local data to binary file.",
         usage=None,
         add_help=True)
     parser.add_argument(
         '--local',
         action="store_true",
         help="If used, user need to set --data_dir and then convert file")
-    parser.add_argument(
-        "--data_dir", default="", type=str, help="Dataset root directory")
+    parser.add_argument("--data_dir",
+                        default="",
+                        type=str,
+                        help="Dataset root directory")
     parser.add_argument(
         "--label_list",
         type=str,
         default="val_list.txt",
-        help="List of object labels with same sequence as denoted in the annotation file"
+        help=
+        "List of object labels with same sequence as denoted in the annotation file"
     )
-    parser.add_argument(
-        "--output_file",
-        type=str,
-        default="imagenet_small.bin",
-        help="File path of the output binary file")
-    parser.add_argument(
-        "--data_dim",
-        type=int,
-        default=DATA_DIM,
-        help="Image preprocess with data_dim width and height")
+    parser.add_argument("--output_file",
+                        type=str,
+                        default="imagenet_small.bin",
+                        help="File path of the output binary file")
+    parser.add_argument("--data_dim",
+                        type=int,
+                        default=DATA_DIM,
+                        help="Image preprocess with data_dim width and height")
 
     args = parser.parse_args()
     if args.local:

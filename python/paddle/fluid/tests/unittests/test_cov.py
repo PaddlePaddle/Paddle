@@ -15,9 +15,8 @@
 import paddle.fluid as fluid
 import unittest
 import numpy as np
-import six
 import paddle
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard
 
 
 def numpy_cov(np_arr, rowvar=True, ddof=1, fweights=None, aweights=None):

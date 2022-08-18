@@ -20,7 +20,6 @@ from paddle.fluid import compiler
 import paddle.fluid.core as core
 import unittest
 import paddle
-import numpy as np
 import os
 
 word_dict, verb_dict, label_dict = conll05.get_dict()

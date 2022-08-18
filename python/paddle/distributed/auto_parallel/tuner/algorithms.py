@@ -57,7 +57,6 @@ class AlgorithmBase(ABC):
         model info like number of model parameters and activation memory could be 
         used to prune candidated trial and decide the next trial.
         """
-        pass
 
     @abstractmethod
     def _init_spaces(self):
@@ -73,7 +72,6 @@ class AlgorithmBase(ABC):
         Update the algorthim with the results of last trial. Using this information is used to 
         pruning the search space of the future trial.
         """
-        pass
 
     def get_config_from_trial(self, trial):
         """

@@ -100,7 +100,6 @@ class ReduceMeanLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, input):
         """
@@ -119,7 +118,6 @@ class CosSimLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, x, y):
         """
@@ -138,7 +136,6 @@ class ElementwiseMaxLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, x, y):
         """
@@ -157,7 +154,6 @@ class ElementwiseAddLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, x, y):
         """
@@ -176,7 +172,6 @@ class ElementwiseSubLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, x, y):
         """
@@ -195,7 +190,6 @@ class ConstantLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, input, shape, dtype, value):
         """
@@ -217,7 +211,6 @@ class SoftsignLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, input):
         """

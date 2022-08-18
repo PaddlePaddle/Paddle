@@ -20,29 +20,19 @@ import warnings
 import six
 import logging
 import pickle
-import contextlib
-from functools import reduce
 import sys
 from io import BytesIO
 
 import numpy as np
 import math
 import paddle
-from paddle.fluid import layers
 from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.evaluator import Evaluator
-from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, \
-    program_guard, dygraph_not_support, static_only
-from paddle.reader import cache, map_readers, buffered, compose, chain, shuffle, \
-    ComposeNotAligned, firstn, xmap_readers, multiprocess_reader
+from paddle.fluid.framework import Program, Parameter, default_main_program, Variable, program_guard, \
+    dygraph_not_support, static_only
 from .wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
 from . import reader
-from . import unique_name
-from .reader import *
-from . import dataloader
-from .dataloader import *
 from . import core
 from .. import compat as cpt
 from paddle.utils import deprecated

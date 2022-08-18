@@ -14,10 +14,6 @@
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import numpy as np
-import os
-import shutil
 import paddle.fluid.core as core
 import unittest
 from paddle.fluid.layers.nn import _pull_box_sparse

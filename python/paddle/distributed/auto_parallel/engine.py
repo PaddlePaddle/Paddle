@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
-import copy
 import logging
 from collections import defaultdict
 
@@ -21,32 +19,24 @@ import paddle
 import paddle.utils as utils
 
 from paddle import fluid, static
-from paddle.io import Dataset
-from paddle.jit import to_static
 from paddle.metric import Metric
 from paddle.static import InputSpec
-from paddle.fluid import core
-from paddle.fluid import program_guard
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.executor import global_scope, _to_name_str
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Operator, Parameter, _non_static_mode
+from paddle.fluid.framework import Operator, _non_static_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
-from paddle.distributed.passes import new_pass, PassContext
 
 from .hepler import ProgramHelper
-from ..collective import _get_global_env
-from .cluster import Cluster, get_default_cluster
+from .cluster import get_default_cluster
 from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .dist_loader import NonIterableGeneratorLoader
-from .utils import make_data_unshard, set_grad_var_shape
-from .utils import print_program_with_dist_attr, to_list
-from .process_group import new_process_group, get_all_process_groups, get_world_process_group
+from .utils import to_list
+from .process_group import get_all_process_groups, new_process_group
 from .dist_context import DistributedContext, get_default_distributed_context
 
 

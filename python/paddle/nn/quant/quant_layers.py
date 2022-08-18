@@ -14,7 +14,6 @@
 
 import paddle
 from paddle.framework import core
-from paddle.fluid import dygraph_utils
 from paddle.utils import unique_name
 from paddle.framework import ParamAttr
 from paddle.fluid.framework import _varbase_creator

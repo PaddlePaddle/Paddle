@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import six
-import warnings
 import sys
 
 from .initializer import Initializer, Xavier, Constant

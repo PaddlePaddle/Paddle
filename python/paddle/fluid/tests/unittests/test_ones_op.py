@@ -16,11 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import numpy as np
 

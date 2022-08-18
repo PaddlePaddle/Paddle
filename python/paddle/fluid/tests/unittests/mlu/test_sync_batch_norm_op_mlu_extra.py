@@ -20,9 +20,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import os
 import sys
-import six
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -30,8 +28,6 @@ import paddle.nn as nn
 from paddle.fluid import Program, program_guard
 
 sys.path.append("..")
-from op_test import OpTest, _set_use_system_allocator
-from test_dist_base import TestDistBase
 
 paddle.enable_static()
 

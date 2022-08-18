@@ -16,8 +16,6 @@
 import unittest
 import paddle
 import os
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 import paddle.distributed.fleet.meta_optimizers.sharding as sharding

@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_fusion_gru_op import fusion_gru, ACTIVATION
-from paddle.fluid.dygraph.base import disable_dygraph
 
 
 def multi_gru(

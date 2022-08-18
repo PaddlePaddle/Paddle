@@ -15,12 +15,8 @@
 from __future__ import print_function
 
 import os
-import collections
-import functools
-from ..framework import Variable, default_main_program, _non_static_mode, dygraph_only, Parameter, ParamBase, _varbase_creator, _dygraph_tracer, EagerParamBase
+from ..framework import EagerParamBase, ParamBase, Variable, _dygraph_tracer, _varbase_creator, dygraph_only
 import pickle
-from . import learning_rate_scheduler
-import warnings
 from .. import core
 from .base import guard
 from paddle.fluid.dygraph.jit import _SaveLoadConfig

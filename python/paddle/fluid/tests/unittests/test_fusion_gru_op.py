@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import math
 from op_test import OpTest
 from paddle.fluid.tests.unittests.test_gru_op import gru
 from paddle.fluid.tests.unittests.test_fusion_lstm_op import fc, ACTIVATION

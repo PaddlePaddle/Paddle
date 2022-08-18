@@ -13,10 +13,8 @@
 # limitations under the License.
 
 import os
-import unittest
 
 import numpy as np
-import paddle
 import paddle.fluid as fluid
 
 from paddle.fluid.core import AnalysisConfig

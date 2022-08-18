@@ -15,8 +15,7 @@ from __future__ import print_function
 import numpy as np
 import paddle
 from ..framework import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
-from ..fluid import layers
+from ..fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ..framework import core, in_dygraph_mode, _non_static_mode
 from ..fluid.framework import _in_legacy_dygraph
 from paddle.common_ops_import import convert_np_dtype_to_dtype_

@@ -19,7 +19,7 @@ import numpy as np
 import math
 
 from .sampler import Sampler, SequenceSampler, RandomSampler
-from .dataset import Dataset, IterableDataset
+from .dataset import IterableDataset
 
 __all__ = ["BatchSampler", "DistributedBatchSampler"]
 

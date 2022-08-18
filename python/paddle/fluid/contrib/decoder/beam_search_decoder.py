@@ -23,13 +23,12 @@ This API is still under active development and may change drastically.
 from __future__ import print_function
 
 from ...wrapped_decorator import signature_safe_contextmanager
-import numpy as np
 import six
 
 from ... import layers
 from ...framework import Variable
 from ... import core
-from ... import framework, unique_name
+from ... import unique_name
 from ...layer_helper import LayerHelper
 
 __all__ = ['InitState', 'StateCell', 'TrainingDecoder', 'BeamSearchDecoder']

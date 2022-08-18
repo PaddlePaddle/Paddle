@@ -22,7 +22,6 @@ import pickle
 from contextlib import closing
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
 
 
 def DataTypeCast(date_type):
@@ -90,7 +89,6 @@ def runtime_main(test_class, col_type):
     model.run_trainer(args)
 
 
-import paddle.compat as cpt
 import socket
 from contextlib import closing
 

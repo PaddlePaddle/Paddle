@@ -15,9 +15,7 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
-import signal, os
-import paddle
+import signal
 import subprocess
 
 SignalsToTest = {

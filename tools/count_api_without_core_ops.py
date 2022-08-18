@@ -18,11 +18,7 @@ import importlib
 import inspect
 import collections
 import sys
-import pydoc
 import hashlib
-import functools
-import platform
-from paddle import _C_ops
 
 __all__ = [
     'get_apis_with_and_without_core_ops',

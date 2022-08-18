@@ -16,25 +16,16 @@ import numpy as np
 import os
 import pickle
 import io
-from datetime import timedelta
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable
 from ..fluid.framework import in_dygraph_mode
-from ..fluid.framework import OpProtoHolder
 from ..fluid.framework import _non_static_mode
 from ..fluid.framework import _in_legacy_dygraph
-from ..fluid.framework import convert_np_dtype_to_dtype_
 from ..fluid.framework import _varbase_creator
-from ..fluid.data_feeder import convert_dtype
 from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.data_feeder import check_type
 from ..fluid.data_feeder import check_dtype
 from ..fluid.layers.tensor import fill_constant
-from ..fluid.layers import utils
 from ..fluid.dygraph import layers
-from ..fluid.dygraph.parallel import prepare_context
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle import _C_ops
 import paddle.fluid.dygraph_utils as dygraph_utils

@@ -23,7 +23,7 @@ import inspect
 import numpy as np
 from collections import OrderedDict
 from paddle.distributed.fleet.launch_utils import run_with_coverage
-from paddle.distributed.passes.pass_base import new_pass, PassBase, PassManager
+from paddle.distributed.passes.pass_base import PassBase, PassManager
 
 
 def prepare_python_path_and_return_module(path):

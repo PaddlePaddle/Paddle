@@ -17,10 +17,9 @@ import paddle
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from op_test import OpTest
 from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import avg_pool2d, max_pool2d
-from test_pool2d_op import adaptive_start_index, adaptive_end_index, pool2D_forward_naive, avg_pool2D_forward_naive, max_pool2D_forward_naive
+from test_pool2d_op import avg_pool2D_forward_naive, max_pool2D_forward_naive, pool2D_forward_naive
 
 
 class TestPool2D_API(unittest.TestCase):

@@ -17,11 +17,8 @@ Contrib layers just related to metric.
 
 from __future__ import print_function
 
-import warnings
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.initializer import Normal, Constant
-from paddle.fluid.framework import Variable
-from paddle.fluid.param_attr import ParamAttr
+from paddle.fluid.initializer import Constant
 from paddle.fluid.layers import tensor
 
 __all__ = ['ctr_metric_bundle']

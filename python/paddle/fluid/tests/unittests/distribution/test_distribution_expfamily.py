@@ -16,7 +16,6 @@ import unittest
 
 import numpy as np
 import paddle
-import scipy.stats
 
 import config
 import mock_data as mock

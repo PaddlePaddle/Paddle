@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import os
-import io
 import tarfile
 import numpy as np
 from PIL import Image

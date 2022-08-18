@@ -14,9 +14,6 @@
 
 from __future__ import print_function
 
-import sys
-import os
-import subprocess
 import unittest
 import numpy as np
 from op_test import OpTest

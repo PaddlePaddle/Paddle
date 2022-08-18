@@ -18,9 +18,7 @@ import os
 import sys
 import subprocess
 import unittest
-import paddle
 import tempfile
-import paddle.fluid as fluid
 from paddle.fluid import core
 
 

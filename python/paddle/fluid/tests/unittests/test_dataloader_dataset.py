@@ -16,13 +16,11 @@ from __future__ import division
 
 import sys
 import unittest
-import numpy as np
 
 import paddle
 import paddle.vision.transforms as transforms
-import paddle.fluid as fluid
 from paddle.io import *
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDatasetAbstract(unittest.TestCase):

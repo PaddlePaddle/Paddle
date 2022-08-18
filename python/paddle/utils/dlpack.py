@@ -15,7 +15,7 @@
 import paddle
 from ..fluid.core import LoDTensor
 from ..fluid.framework import _non_static_mode
-from ..fluid.data_feeder import check_type, check_dtype, convert_dtype
+from ..fluid.data_feeder import check_type
 
 __all__ = [
     'to_dlpack',

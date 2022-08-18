@@ -16,11 +16,8 @@ from __future__ import print_function
 
 import numpy as np
 import os
-import sys
 import paddle
 import paddle.fluid as fluid
-import unittest
-import paddle.fluid.layers as layers
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 

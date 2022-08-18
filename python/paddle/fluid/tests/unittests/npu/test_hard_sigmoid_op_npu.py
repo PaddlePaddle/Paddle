@@ -16,12 +16,10 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
-import sys
 from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 SEED = 2021

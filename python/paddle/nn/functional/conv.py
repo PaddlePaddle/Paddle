@@ -13,16 +13,11 @@
 # limitations under the License.
 from __future__ import print_function
 
-import numpy as np
 from ...device import get_cudnn_version
-from ...static import Variable
-from ...fluid import dygraph_utils
 from ...fluid.layers.utils import convert_to_list, _is_symmetric_padding
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...framework import ParamAttr
 from ...fluid.layer_helper import LayerHelper
 from ...tensor.manipulation import unsqueeze, squeeze
-from ...tensor.math import add
 from ...fluid.layers import nn
 from paddle import _C_ops
 from paddle import get_flags

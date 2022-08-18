@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import os
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 

@@ -16,9 +16,7 @@ from __future__ import print_function
 
 import six
 import paddle
-import textwrap
 from paddle.utils import gast
-from paddle.fluid import unique_name
 from paddle.fluid.framework import Variable
 from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_variable
 

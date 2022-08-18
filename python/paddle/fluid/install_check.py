@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import paddle
-from .framework import Program, program_guard, unique_name, cuda_places, cpu_places
+from .framework import Program, cuda_places, program_guard, unique_name
 from .param_attr import ParamAttr
 from .initializer import Constant
 from . import layers

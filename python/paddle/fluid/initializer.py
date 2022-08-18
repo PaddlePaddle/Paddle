@@ -18,15 +18,13 @@ import math
 import functools
 from . import framework
 from . import core
-from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, default_main_program, _current_expected_place
+from .framework import _current_expected_place, _in_legacy_dygraph, default_main_program, in_dygraph_mode
 from .lazy_init import lazy_guard
-from .framework import program_guard
 import numpy as np
 from .core import VarDesc
 from . import unique_name
-from .data_feeder import check_variable_and_dtype, check_type, check_dtype
+from .data_feeder import check_type, check_variable_and_dtype
 from paddle import _C_ops
-import paddle
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',

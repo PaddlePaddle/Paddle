@@ -14,11 +14,9 @@
 
 import os
 import argparse
-import logging
 from codegen_utils import FunctionGeneratorBase, GeneratorBase
-from codegen_utils import yaml_types_mapping
-from codegen_utils import ReadFwdFile, IsVectorTensorType, GetForwardFunctionName
-from codegen_utils import ParseYamlForward, GetInplacedFunctionName
+from codegen_utils import GetForwardFunctionName, IsVectorTensorType
+from codegen_utils import GetInplacedFunctionName
 
 ###########################
 ## Global Configurations ##

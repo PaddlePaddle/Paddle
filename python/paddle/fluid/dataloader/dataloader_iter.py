@@ -12,19 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import six
 import sys
 import time
-import signal
-import numbers
 import logging
 import itertools
 import threading
 import numpy as np
 import multiprocessing
-from collections import namedtuple
-from paddle.fluid.framework import _set_expected_place, _current_expected_place, set_flags
+from paddle.fluid.framework import _current_expected_place, _set_expected_place
 
 # NOTE: queue has a different name in python2 and python3
 import queue
@@ -32,15 +28,13 @@ import queue
 import paddle
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
-from .. import core, layers
-from ..framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from .. import core
+from ..framework import _in_legacy_dygraph, in_dygraph_mode
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL, CleanupFuncRegistrar
-from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .batch_sampler import _InfiniteIterableSampler
 from .collate import default_collate_fn, default_convert_fn
-from .worker import ParentWatchDog, get_worker_info, _worker_loop, \
-        _DatasetKind, _IterableDatasetStopIteration, _WorkerException, \
-        _ResumeIteration
+from .worker import get_worker_info, _worker_loop, _DatasetKind, \
+        _IterableDatasetStopIteration, _WorkerException, _ResumeIteration
 from .flat import _flatten_batch, _restore_batch
 from paddle.profiler.timer import benchmark
 

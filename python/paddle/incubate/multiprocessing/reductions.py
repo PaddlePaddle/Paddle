@@ -17,13 +17,10 @@ import paddle
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
 # TODO: check influence on autograd
-import os
 import sys
 import warnings
-import math
 import copy
 import threading
-import multiprocessing
 from multiprocessing.util import register_after_fork
 from multiprocessing.reduction import ForkingPickler
 

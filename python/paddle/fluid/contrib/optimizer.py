@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from paddle.fluid.optimizer import Optimizer
-from paddle.fluid.regularizer import L1DecayRegularizer
 from paddle.fluid.regularizer import L2DecayRegularizer
 from paddle.fluid import core
 from paddle.fluid import framework
-from paddle.fluid.framework import program_guard
 from paddle.fluid import unique_name
 from paddle.fluid import layers
 from paddle.fluid.layer_helper import LayerHelper

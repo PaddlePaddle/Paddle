@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import numpy as np
 from ..framework import core
-from paddle.fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from paddle.fluid.data_feeder import check_type, convert_dtype
 
 __all__ = []
 

@@ -17,11 +17,10 @@ from __future__ import print_function
 import copy
 import six
 
-from .framework import Parameter, dtype_is_floating, _non_static_mode, OpProtoHolder, _global_flags
+from .framework import Parameter, _global_flags, _non_static_mode, dtype_is_floating
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
-from . import core
 from six.moves import zip
 from .layer_helper_base import LayerHelperBase
 from .dygraph_utils import _append_activation_in_dygraph

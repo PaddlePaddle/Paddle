@@ -14,15 +14,11 @@
 
 from __future__ import division
 
-import sys
 import math
 import numbers
-import warnings
-import collections
 
 import numpy as np
 from PIL import Image
-from numpy import sin, cos, tan
 import paddle
 
 from . import functional_pil as F_pil

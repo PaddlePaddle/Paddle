@@ -28,9 +28,6 @@ import paddle.utils as utils
 import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.process_group import new_process_group
 
 paddle.enable_static()
 _global_parallel_strategy = None

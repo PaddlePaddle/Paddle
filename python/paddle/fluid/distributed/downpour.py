@@ -18,7 +18,6 @@ import ps_pb2 as pslib
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
-from google.protobuf import text_format
 
 
 class DownpourSGD(object):

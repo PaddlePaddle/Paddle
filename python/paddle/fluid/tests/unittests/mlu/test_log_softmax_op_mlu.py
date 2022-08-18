@@ -14,9 +14,8 @@
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
-import paddle.fluid.core as core
 import paddle.nn.functional as F
 
 np.random.seed(10)

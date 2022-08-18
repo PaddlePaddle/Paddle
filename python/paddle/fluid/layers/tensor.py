@@ -21,7 +21,7 @@ import warnings
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
-from ..framework import _current_expected_place, convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph, in_dygraph_mode, _get_paddle_place
+from ..framework import _current_expected_place, _in_legacy_dygraph, _non_static_mode, _varbase_creator, convert_np_dtype_to_dtype_, device_guard, in_dygraph_mode
 from ..framework import Variable
 from ..initializer import Constant
 from ..core import VarDesc

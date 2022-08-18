@@ -19,7 +19,6 @@ import numpy as np
 import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
 
-from paddle.fluid import core
 from paddle.fluid.framework import program_guard, Program
 
 

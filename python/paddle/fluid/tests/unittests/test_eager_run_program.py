@@ -18,7 +18,6 @@ from paddle import _C_ops
 from paddle.fluid.framework import _test_eager_guard, Variable, _in_legacy_dygraph
 from paddle.fluid import core
 from paddle.fluid.layers.utils import _hash_with_id
-import paddle.compat as cpt
 
 import unittest
 

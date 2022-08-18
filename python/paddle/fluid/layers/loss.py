@@ -15,19 +15,17 @@
 from __future__ import print_function
 
 import numpy as np
-from functools import partial, reduce
 import paddle
 from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, _non_static_mode, static_only, _in_legacy_dygraph, in_dygraph_mode
+from ..framework import Variable, _non_static_mode, in_dygraph_mode, static_only
 from .. import core
 from ..data_feeder import check_variable_and_dtype, check_type
 from ..param_attr import ParamAttr
 from ..initializer import NumpyArrayInitializer, Constant
 from .. import core
-import warnings
 from paddle import _C_ops
 
 __all__ = [
@@ -1667,10 +1665,6 @@ def kldiv_loss(x, target, reduction='mean', name=None):
                      outputs={'Loss': loss},
                      attrs={'reduction': reduction})
     return loss
-
-
-from .ops import square
-from .control_flow import equal
 
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):

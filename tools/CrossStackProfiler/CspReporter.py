@@ -14,21 +14,16 @@
 
 import os
 import glob
-import logging
 import argparse
-import multiprocessing
 
-import pandas as pd
 from multiprocessing import Process
 
-from NetFileReader import netFileReader
 from DCGMFileReader import dcgmFileReader
 from ProfileFileReader import profileFileReader
 
 from CspFileReader import getLogger
 from CspFileReader import TIME_PATH, DCGM_PATH, NET_PATH, PROFILE_PATH
-from CspFileReader import NETINFO_TRACE_NUM, DCGMINFO_TRACE_NUM, PIPELINEINFO_TRACE_NUM
-from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER, FILEORGANIZEFORM_BYOTHER, FILEORGANIZEFORM
+from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER
 
 
 def get_argparse():

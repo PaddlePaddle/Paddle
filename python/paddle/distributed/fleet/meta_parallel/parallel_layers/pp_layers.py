@@ -42,8 +42,6 @@ import math
 import re
 import glob
 import os
-import numpy as np
-import random
 from functools import partial
 
 import paddle

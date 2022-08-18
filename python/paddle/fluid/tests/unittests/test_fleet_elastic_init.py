@@ -14,11 +14,7 @@
 
 from __future__ import print_function
 
-import os
-import time
 import unittest
-import argparse
-from warnings import catch_warnings
 
 from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 from paddle.distributed.fleet.launch_utils import DistributeMode

@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import numpy as np
-import paddle.distributed as dist
 
 import paddle
 import paddle.fluid as fluid

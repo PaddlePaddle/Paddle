@@ -15,7 +15,6 @@
 from __future__ import print_function
 import unittest
 import paddle
-from paddle import fluid
 import numpy as np
 
 

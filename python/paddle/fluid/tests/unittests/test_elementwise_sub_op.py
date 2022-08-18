@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 
 

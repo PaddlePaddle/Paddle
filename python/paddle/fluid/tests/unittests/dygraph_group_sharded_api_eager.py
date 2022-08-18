@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
-import shutil
 import tempfile
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
-from paddle.distributed import fleet
-from paddle.fluid.dygraph import nn
 from paddle.fluid.framework import _test_eager_guard
 from paddle.distributed.sharding import group_sharded_parallel, save_group_sharded_model
 

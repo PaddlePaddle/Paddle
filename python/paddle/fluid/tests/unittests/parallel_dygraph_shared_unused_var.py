@@ -14,12 +14,10 @@
 
 from __future__ import print_function
 
-import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 

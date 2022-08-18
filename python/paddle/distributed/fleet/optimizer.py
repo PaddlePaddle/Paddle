@@ -15,12 +15,7 @@
 import copy
 import warnings
 import paddle
-import os
-import numpy as np
-from paddle.fluid.framework import dygraph_only, _global_flags
-from .base.distributed_strategy import DistributedStrategy
 from .meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
-from paddle.fluid import core
 from paddle.distributed import fleet
 
 

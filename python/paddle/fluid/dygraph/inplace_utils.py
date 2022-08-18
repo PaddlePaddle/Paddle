@@ -15,8 +15,6 @@
 from ..wrapped_decorator import wrap_decorator
 from ..framework import _non_static_mode
 import warnings
-import paddle
-from paddle import _C_ops
 
 
 # NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `_C_ops`

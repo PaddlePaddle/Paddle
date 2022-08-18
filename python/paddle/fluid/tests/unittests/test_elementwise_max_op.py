@@ -17,8 +17,6 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
-import os
-import re
 import paddle.fluid.core as core
 import paddle
 

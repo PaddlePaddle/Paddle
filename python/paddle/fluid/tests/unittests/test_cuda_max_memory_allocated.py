@@ -16,7 +16,7 @@ import paddle
 import unittest
 from paddle.fluid import core
 from paddle.device.cuda import device_count, memory_allocated, max_memory_allocated
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMaxMemoryAllocated(unittest.TestCase):

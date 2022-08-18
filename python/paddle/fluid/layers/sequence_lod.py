@@ -16,11 +16,10 @@ from __future__ import print_function
 
 import paddle
 from .layer_function_generator import templatedoc
-from ..framework import core, Variable, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, convert_np_dtype_to_dtype_
+from ..framework import Variable, _non_static_mode
 from ..layer_helper import LayerHelper
-from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..data_feeder import check_type, check_variable_and_dtype
 from ..core import VarDesc
-from paddle import _C_ops
 
 __all__ = [
     'sequence_conv',

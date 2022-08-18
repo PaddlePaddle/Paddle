@@ -21,13 +21,7 @@ from op_test import OpTest, skip_check_grad_ci
 paddle.enable_static()
 
 from white_list import (
-    op_accuracy_white_list,
-    check_shape_white_list,
-    compile_vs_runtime_white_list,
-    no_check_set_white_list,
-    op_threshold_white_list,
-    no_grad_set_white_list,
-)
+    compile_vs_runtime_white_list, )
 
 
 def AffineGrid(theta, grid_shape):

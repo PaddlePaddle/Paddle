@@ -16,7 +16,7 @@ import sys
 import numpy as np
 
 sys.path.append("..")
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 import unittest
 import paddle.fluid as fluid
 import paddle

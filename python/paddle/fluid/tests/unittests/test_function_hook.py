@@ -18,7 +18,6 @@ import unittest
 import paddle
 import numpy as np
 
-import paddle.fluid.core as core
 from paddle import _C_ops
 from paddle.fluid.framework import _test_eager_guard
 

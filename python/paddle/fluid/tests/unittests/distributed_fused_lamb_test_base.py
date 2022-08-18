@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import argparse
 import os
 import paddle
 import paddle.fluid.core as core
@@ -21,11 +20,9 @@ from paddle.incubate import DistributedFusedLamb
 from paddle.vision.models import resnet18 as resnet
 from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
 from paddle.fluid.clip import ClipGradBase
-import paddle.nn as nn
 import numpy as np
 import os
 import unittest
-from paddle.distributed.fleet.meta_optimizers.common import is_optimizer_op, is_backward_op
 from paddle.fluid.clip import _clip_by_global_norm_using_mp_type
 import distutils
 

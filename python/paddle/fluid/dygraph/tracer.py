@@ -14,9 +14,6 @@
 
 from __future__ import print_function
 
-import six
-
-from collections import defaultdict
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle import _C_ops

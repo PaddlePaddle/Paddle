@@ -16,14 +16,12 @@ from __future__ import print_function
 
 import unittest
 import time
-import paddle
 import paddle.fluid as fluid
 import copy
 import os
 import subprocess
 
 from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
-from paddle.fluid.framework import _test_eager_guard
 
 
 def get_cluster_from_args(selected_gpus):

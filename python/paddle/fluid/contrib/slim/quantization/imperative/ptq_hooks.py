@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import math
-import numpy as np
-from . import ptq_config
-from .ptq_registry import PTQRegistry
-
 
 def quant_forward_post_hook(layer, inputs, outputs):
     """

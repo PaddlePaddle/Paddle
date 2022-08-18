@@ -13,10 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-import sys
 import paddle
 import collections
-import numpy as np
 from itertools import product
 from functools import reduce
 from ..utils.log_util import logger

@@ -14,9 +14,7 @@
 
 import os
 import copy
-import pathlib
 
-import paddle
 from paddle.distributed import fleet
 
 _tuning_supported_passes = ["sharding", "recompute"]

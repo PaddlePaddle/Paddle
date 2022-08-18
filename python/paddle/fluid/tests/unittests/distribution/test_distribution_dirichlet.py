@@ -18,7 +18,6 @@ import numpy as np
 import paddle
 import scipy.stats
 
-import config
 from config import ATOL, DEVICES, RTOL
 import parameterize as param
 

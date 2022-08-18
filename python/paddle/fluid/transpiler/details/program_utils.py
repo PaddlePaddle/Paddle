@@ -14,11 +14,6 @@
 
 from __future__ import print_function
 
-import six
-
-from paddle.fluid import core
-import paddle
-
 
 def delete_ops(block, ops):
     for op in ops:

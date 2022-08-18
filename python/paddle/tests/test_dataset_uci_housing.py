@@ -13,11 +13,7 @@
 # limitations under the License.
 
 import unittest
-import os
 import numpy as np
-import tempfile
-import shutil
-import cv2
 
 from paddle.text.datasets import UCIHousing, WMT14
 

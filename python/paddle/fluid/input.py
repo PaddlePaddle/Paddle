@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-import warnings
 from .framework import Variable, _non_static_mode, static_only
 from .layer_helper import LayerHelper
 from .data_feeder import check_variable_and_dtype, check_dtype

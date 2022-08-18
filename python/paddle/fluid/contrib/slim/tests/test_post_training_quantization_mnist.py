@@ -16,10 +16,7 @@ import os
 import time
 import sys
 import random
-import math
-import functools
 import tempfile
-import contextlib
 import numpy as np
 import paddle
 import paddle.fluid as fluid

@@ -15,7 +15,6 @@
 import unittest
 import paddle
 import paddle.fluid as fluid
-import os
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 from paddle.distributed.fleet.meta_optimizers import RecomputeOptimizer
 

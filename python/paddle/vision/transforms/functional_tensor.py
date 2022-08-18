@@ -20,9 +20,6 @@ import numbers
 import paddle
 import paddle.nn.functional as F
 
-import sys
-import collections
-
 __all__ = []
 
 

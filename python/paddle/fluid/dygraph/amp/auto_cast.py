@@ -13,16 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid import core
-import contextlib
-from paddle.fluid.framework import Variable, _non_static_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only, set_flags, get_flags
+from paddle.fluid.framework import _dygraph_tracer, dygraph_only
 import warnings
 import copy
-import functools
 import paddle
-import operator
-import types
 
 AMP_LEVEL = core.AmpLevel
 

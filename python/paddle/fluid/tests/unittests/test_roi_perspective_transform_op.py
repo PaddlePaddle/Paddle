@@ -16,9 +16,6 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import math
-import sys
-import paddle.compat as cpt
 from op_test import OpTest
 from math import sqrt
 from math import floor

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.framework import dygraph_only
 from .base.topology import ParallelMode
 from paddle.distributed import fleet
 from types import MethodType

@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, _in_legacy_dygraph, in_dygraph_mode
+from ..framework import _in_legacy_dygraph, _varbase_creator, convert_np_dtype_to_dtype_
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 from .. import framework

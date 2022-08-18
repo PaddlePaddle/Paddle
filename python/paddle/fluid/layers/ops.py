@@ -13,11 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
-import os
 from .layer_function_generator import generate_layer_fn, generate_activation_fn, generate_inplace_fn, add_sample_code
-from .. import core
-from ..framework import convert_np_dtype_to_dtype_, Variable, in_dygraph_mode
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..framework import Variable, in_dygraph_mode
+from ..data_feeder import check_type, check_variable_and_dtype
 from paddle.utils import deprecated
 from paddle import _C_ops
 import paddle

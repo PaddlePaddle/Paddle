@@ -13,9 +13,8 @@
 # limitations under the License.
 
 import unittest
-import paddle
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard, _non_static_mode
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestLayerPrint(unittest.TestCase):

@@ -14,12 +14,8 @@
 
 import paddle
 import os
-import random
 import sys
 import pickle
-import shlex
-import shutil
-import inspect
 import numpy as np
 from collections import OrderedDict
 from dist_pass_test_base import DistPassTestBase

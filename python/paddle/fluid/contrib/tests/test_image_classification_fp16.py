@@ -23,7 +23,6 @@ import numpy
 import unittest
 import os
 import copy
-import numpy as np
 import tempfile
 from paddle.static.amp import decorate
 

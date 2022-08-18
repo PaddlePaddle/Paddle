@@ -17,7 +17,6 @@ from __future__ import print_function
 import collections
 from .wrapped_decorator import signature_safe_contextmanager
 import six
-import sys
 
 __all__ = ['generate', 'switch', 'guard']
 

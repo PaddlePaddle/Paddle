@@ -16,10 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import sys
-import math
 from op_test import OpTest
-import copy
 
 
 def box_clip(input_box, im_info, output_box):

@@ -17,9 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import numpy as np
-import six
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 

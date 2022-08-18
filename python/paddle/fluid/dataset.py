@@ -37,7 +37,6 @@ class DatasetFactory(object):
 
     def __init__(self):
         """ Init. """
-        pass
 
     def create_dataset(self, datafeed_class="QueueDataset"):
         """

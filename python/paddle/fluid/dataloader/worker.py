@@ -18,11 +18,10 @@ import sys
 import paddle
 import numpy as np
 import traceback
-from collections import namedtuple
 from .. import core
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from ..multiprocess_utils import _cleanup_mmap, CleanupFuncRegistrar, MP_STATUS_CHECK_INTERVAL
-from ..framework import _non_static_mode, _in_eager_without_dygraph_check
+from ..framework import _in_eager_without_dygraph_check
 from .flat import _flatten_batch
 
 # NOTE: queue has a different name in python2 and python3
@@ -271,7 +270,6 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
         # set different numpy seed for each worker
         try:
             import numpy as np
-            import time
             import random
         except ImportError:
             pass

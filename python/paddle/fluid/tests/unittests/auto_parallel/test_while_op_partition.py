@@ -16,7 +16,6 @@ import unittest
 import paddle
 import numpy as np
 import paddle.nn as nn
-import paddle.utils as utils
 import paddle.fluid as fluid
 import paddle.static as static
 import paddle.nn.functional as F
@@ -26,10 +25,7 @@ from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import make_data_unshard
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
-from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
-from paddle.distributed.auto_parallel.operators import find_compatible_distributed_operator_impls
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
 
 paddle.enable_static()
 

@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import logging
 import os
-import multiprocessing
 import sys
 import warnings
 import numpy as np
@@ -35,7 +34,6 @@ from .trainer_factory import FetchHandlerMonitor
 import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
-from .compiler import _prune_feed_ops
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -1814,7 +1812,6 @@ class Executor(object):
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
         if is_heter:
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
             from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
             fu = FleetUtil()
             ret = fu.split_program_by_device(program)

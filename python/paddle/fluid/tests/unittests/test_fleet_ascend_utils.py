@@ -13,14 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-import sys
-import os
-import time
-import six
-import copy
 import json
 import unittest
-import paddle.fluid as fluid
 
 import paddle.distributed.fleet.ascend_utils as ascend_utils
 

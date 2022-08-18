@@ -15,18 +15,17 @@
 from __future__ import print_function
 from ..wrapped_decorator import signature_safe_contextmanager
 
-from .layer_function_generator import autodoc, templatedoc
+from .layer_function_generator import templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator, _non_static_mode, static_only, _in_legacy_dygraph, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
-from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, padding_to_same_structure, is_sequence, pack_sequence_as, flatten, to_sequence
-import numpy
+from .nn import logical_and, logical_not
+from .utils import assert_same_structure, copy_mutable_vars, flatten, hold_mutable_vars, is_sequence, map_structure, pack_sequence_as, to_sequence
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..data_feeder import check_type, check_variable_and_dtype, convert_dtype
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 from paddle import _C_ops

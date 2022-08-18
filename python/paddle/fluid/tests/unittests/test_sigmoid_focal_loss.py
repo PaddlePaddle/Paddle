@@ -16,8 +16,6 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import unittest
-from op_test import OpTest
-from test_sigmoid_focal_loss_op import sigmoid_focal_loss_forward
 from paddle.fluid.framework import _test_eager_guard
 
 

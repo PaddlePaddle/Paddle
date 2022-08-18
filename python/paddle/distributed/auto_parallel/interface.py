@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
-import copy
-import paddle
-import paddle.fluid.core as core
-from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _non_static_mode
 from .dist_context import get_default_distributed_context
 from .dist_tensor import DistributedTensor

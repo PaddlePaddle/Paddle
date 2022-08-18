@@ -64,7 +64,6 @@ class PaddlePSInstance(object):
             self._comm = self.dh.comm.Split(self._node_type)
         elif self.is_worker():
             self._comm = self.dh.comm.Split(self._node_type)
-        pass
 
     def get_worker_id(self):
         """
@@ -145,14 +144,12 @@ class PaddlePSInstance(object):
         """
         if self.is_worker():
             self._comm.barrier()
-        pass
 
     def finalize(self):
         """
         MPI finalize
         """
         self.dh.finalize()
-        pass
 
 
 if __name__ == "__main__":

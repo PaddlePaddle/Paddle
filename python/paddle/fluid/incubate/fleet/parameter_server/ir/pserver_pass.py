@@ -18,7 +18,6 @@ import collections
 import six
 
 from paddle.fluid import core
-from paddle.fluid.framework import Block
 
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _orig_varname

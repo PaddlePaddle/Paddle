@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
 from paddle.fluid.contrib.mixed_precision.fp16_lists import AutoMixedPrecisionLists
 

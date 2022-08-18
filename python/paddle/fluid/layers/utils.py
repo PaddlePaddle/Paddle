@@ -13,14 +13,10 @@
 # limitations under the License.
 
 from __future__ import print_function
-import collections
 import copy
 import six
-import numpy as np
 from ..framework import Block, Variable, _non_static_mode
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ..layer_helper import LayerHelper
-from sys import version_info
+from ..data_feeder import check_dtype, convert_dtype
 try:
     from collections.abc import Sequence
 except:

@@ -16,11 +16,9 @@ import copy
 import warnings
 import paddle
 import os
-from types import MethodType
-import numpy as np
 from paddle.fluid.framework import _global_flags
 from paddle.fluid import compiler
-from .base.role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
+from .base.role_maker import PaddleCloudRoleMaker, RoleMakerBase
 from .base.strategy_compiler import StrategyCompiler
 from .base.distributed_strategy import DistributedStrategy
 from .base.meta_optimizer_factory import MetaOptimizerFactory
@@ -30,8 +28,6 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.ir import apply_build_strategy
 from .base import topology as tp
 from .meta_parallel import model_parallel_random_seed
-from paddle import _C_ops
-from paddle.fluid import core
 
 __all__ = []
 

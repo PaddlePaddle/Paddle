@@ -15,17 +15,13 @@
 from __future__ import print_function
 import warnings
 
-import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 
-from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_heter_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import union_forward_gradient_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import create_heter_program
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import create_trainer_program
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_block_joints
-from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_op_input_output
-from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import get_vars_name_in_block
 
 
 def split_heter_worker_ops_pass(program, config, stage_id, device):

@@ -15,9 +15,7 @@
 from __future__ import print_function
 
 import collections
-from collections import defaultdict
 from collections.abc import Iterable
-import contextlib
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import os
 import re
@@ -30,7 +28,6 @@ import numpy as np
 import subprocess
 import multiprocessing
 import sys
-import logging
 from .. import compat as cpt
 from .proto import framework_pb2
 
@@ -1520,7 +1517,6 @@ class Variable(object):
                     print(x.numpy())
 
         """
-        pass
 
     @fake_interface_only
     def backward(self, retain_graph=False):
@@ -1559,7 +1555,6 @@ class Variable(object):
                 loss.backward()
 
         """
-        pass
 
     @fake_interface_only
     def gradient(self):
@@ -1605,7 +1600,6 @@ class Variable(object):
                     print(embedding.weight.gradient())
 
         """
-        pass
 
     @fake_interface_only
     def clear_gradient(self):
@@ -1640,7 +1634,6 @@ class Variable(object):
                     print("After clear {}".format(loss2.gradient()))
 
         """
-        pass
 
     @fake_interface_only
     def register_hook(self, hook):

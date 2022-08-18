@@ -18,11 +18,10 @@ import paddle.fluid as fluid
 import six
 
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.framework import IrNode
 from paddle.fluid.tests.unittests.op_test import OpTestTool
 from paddle.fluid import core
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard, default_startup_program
+from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 
 paddle.enable_static()

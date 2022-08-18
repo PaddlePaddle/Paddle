@@ -14,23 +14,14 @@
 """HDFS Utils."""
 
 import os
-import sys
-import subprocess
-import multiprocessing
-from datetime import datetime
 
 import re
-import copy
-import errno
 import time
-import logging
 import six
 #from . import fs
 from paddle.distributed.fleet.utils.fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut, FSShellCmdAborted
 from paddle.fluid import core
 import functools
-
-import shutil
 
 __all__ = ["HDFSClient"]
 

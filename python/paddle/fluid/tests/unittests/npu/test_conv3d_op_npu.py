@@ -21,7 +21,6 @@ import sys
 
 sys.path.append("..")
 import paddle
-import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
 

@@ -16,8 +16,6 @@ from __future__ import print_function
 
 import os
 import unittest
-import tempfile
-import shutil
 
 import paddle
 import paddle.fluid as fluid

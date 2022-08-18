@@ -21,8 +21,6 @@ import sys
 
 sys.path.append("..")
 
-from op_test import OpTest
-from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import record_op_test
 
 

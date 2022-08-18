@@ -14,10 +14,8 @@
 
 import unittest
 import os
-import copy
 from launch_function_helper import wait, _find_free_port
-from multiprocessing import Pool, Process
-from threading import Thread
+from multiprocessing import Process
 
 os.environ['GLOG_vmodule'] = str("gen_nccl_id_op*=10,gen_comm_id*=10")
 

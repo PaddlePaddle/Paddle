@@ -14,9 +14,6 @@
 
 import unittest
 import paddle
-import os
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 

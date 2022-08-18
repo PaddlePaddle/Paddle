@@ -17,7 +17,6 @@ from math import log
 from math import exp
 from op_test import OpTest
 from scipy.special import logit
-from scipy.special import expit
 import unittest
 import paddle.fluid as fluid
 

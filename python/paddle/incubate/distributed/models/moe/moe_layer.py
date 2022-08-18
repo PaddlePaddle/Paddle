@@ -19,23 +19,15 @@
 #     Copyright 2021, Jiaao He. All rights reserved.
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
-import collections
-import math
-
 import numpy as np
 import paddle
 import paddle.nn as nn
-import paddle.nn.functional as F
 from paddle.distributed.utils import global_scatter, global_gather
-from paddle.distributed import alltoall, all_gather
 
-from paddle.distributed.fleet.meta_parallel import get_rng_state_tracker
-from paddle.distributed import fleet
 from paddle.autograd import PyLayer
 from .gate import NaiveGate, GShardGate, SwitchGate, BaseGate
 from .utils import count_by_gate
 from paddle.distributed.fleet.meta_parallel.pp_utils.utils import _hp_recompute
-from paddle import fluid
 from paddle.fluid.framework import in_dygraph_mode
 
 

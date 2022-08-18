@@ -21,7 +21,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 from paddle.static import program_guard, Program
-import os
 
 paddle.enable_static()
 

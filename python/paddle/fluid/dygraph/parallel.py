@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import numpy as np
 import warnings
 from collections import OrderedDict
@@ -27,9 +26,8 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
-from paddle.fluid.dygraph import to_variable, no_grad
+from paddle.fluid.dygraph import to_variable
 from paddle.utils import deprecated
-from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import ParamBase, _in_legacy_dygraph, _non_static_mode, in_dygraph_mode
 

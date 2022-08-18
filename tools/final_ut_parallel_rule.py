@@ -15,10 +15,7 @@
 # limitations under the License.
 
 import os
-import time
 import json
-import datetime
-import codecs
 import sys
 
 

@@ -18,7 +18,6 @@ import unittest
 
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.compat as cpt
 import paddle.fluid.core as core
 
 

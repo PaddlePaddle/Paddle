@@ -17,11 +17,6 @@ import sys
 
 sys.path.append("..")
 import unittest
-import numpy as np
-from op_test_xpu import XPUOpTest
-from paddle.fluid import core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
 import paddle
 """
 class TestLambOp1(XPUOpTest):

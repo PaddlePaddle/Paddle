@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import paddle
 import unittest
 import numpy as np
 from time import time
-from test_mnist import MNIST, TestMNIST, SEED, SimpleImgConvPool
-from paddle.jit import ProgramTranslator
-from paddle.fluid.optimizer import AdamOptimizer
+from test_mnist import MNIST, SEED, TestMNIST
 
 if paddle.fluid.is_compiled_with_cuda():
     paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})

@@ -14,11 +14,9 @@
 
 from __future__ import print_function
 import unittest
-import numpy as np
 import paddle
 
 from test_collective_api_base import TestDistBase
-import os
 
 
 class TestCollectiveSelectScatterAPI(TestDistBase):

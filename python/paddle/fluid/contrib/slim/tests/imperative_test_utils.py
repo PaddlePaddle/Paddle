@@ -16,7 +16,6 @@ import logging
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
 from paddle.fluid.dygraph.container import Sequential
 from paddle.nn import ReLU, ReLU6, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D

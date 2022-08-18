@@ -555,7 +555,6 @@ class Section(DeviceWorker):
         Args:
             trainer_desc(TrainerDesc): a TrainerDesc object
         """
-        from google.protobuf import text_format
         from . import core
         trainer_desc.device_worker_name = "SectionWorker"
         pipeline_opt = self._program._pipeline_opt
@@ -604,8 +603,6 @@ class HeterSection(DeviceWorker):
         Args:
             trainer_desc(TrainerDesc): a TrainerDesc object
         """
-        from google.protobuf import text_format
-        from . import core
         trainer_desc.device_worker_name = "HeterSectionWorker"
         heter_pipeline_opt = self._program._heter_pipeline_opt
         heter_section_param = trainer_desc.heter_section_param

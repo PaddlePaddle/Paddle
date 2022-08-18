@@ -16,7 +16,6 @@ from __future__ import print_function
 
 from ... import core
 from ... import framework
-from ... import layers
 from ... import global_scope
 from ...log_helper import get_logger
 from ...wrapped_decorator import signature_safe_contextmanager

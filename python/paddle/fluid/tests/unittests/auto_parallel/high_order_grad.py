@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
 import paddle
-import unittest
 import numpy as np
-import paddle.distributed.auto_parallel as auto
 
 from paddle.static import InputSpec
 from paddle.distributed import fleet

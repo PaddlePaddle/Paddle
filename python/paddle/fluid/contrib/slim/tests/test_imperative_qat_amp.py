@@ -16,8 +16,6 @@ from __future__ import print_function
 
 import os
 import numpy as np
-import random
-import shutil
 import time
 import unittest
 import logging
@@ -29,7 +27,7 @@ from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
 from paddle.fluid.framework import _test_eager_guard
-from imperative_test_utils import fix_model_dict, ImperativeLenet
+from imperative_test_utils import ImperativeLenet
 
 os.environ["CPU_NUM"] = "1"
 if paddle.is_compiled_with_cuda():

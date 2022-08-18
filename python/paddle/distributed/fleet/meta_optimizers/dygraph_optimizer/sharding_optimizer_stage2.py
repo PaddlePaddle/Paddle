@@ -22,15 +22,11 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-import copy
 import logging
 import numpy as np
-from itertools import chain
-from functools import reduce
 from collections import OrderedDict
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm

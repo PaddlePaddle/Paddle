@@ -24,7 +24,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -68,6 +68,7 @@ class TestCastOpFp16ToFp32(OpTest):
 
 
 class TestCastOpFp32ToFp64(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}

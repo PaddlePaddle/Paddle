@@ -17,7 +17,6 @@ from __future__ import print_function
 
 import unittest
 import os
-import numpy as np
 import shutil
 import tempfile
 

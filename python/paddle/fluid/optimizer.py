@@ -27,7 +27,7 @@ from paddle.fluid.framework import Program, Variable, Parameter, name_scope, def
 from . import framework
 from . import layers
 from . import unique_name
-from .backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
+from .backward import _get_no_grad_set_name, append_backward
 from .clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops, ClipGradByGlobalNorm
 from .framework import program_guard
 from .initializer import Constant
@@ -41,7 +41,6 @@ from paddle.fluid.layers import tensor
 from functools import reduce
 from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
-from .. import compat as cpt
 import warnings
 from paddle import _C_ops
 from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _current_expected_place
@@ -569,7 +568,6 @@ class Optimizer(object):
             block: the block in which the loss variable is present
             parameters: list of parameter variables for the optimizer
         """
-        pass
 
     def _finish_update(self, block, parameters_and_grads):
         """Finish any custom updates needed
@@ -582,7 +580,6 @@ class Optimizer(object):
         Returns:
             None
         """
-        pass
 
     def _add_accumulator(self,
                          name,

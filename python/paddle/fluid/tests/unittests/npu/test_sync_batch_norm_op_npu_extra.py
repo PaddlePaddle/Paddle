@@ -16,18 +16,14 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
-import os
 import sys
 
 sys.path.append("..")
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.fluid import Program, program_guard
-
-from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
 
 # _set_use_system_allocator(False)
 paddle.enable_static()

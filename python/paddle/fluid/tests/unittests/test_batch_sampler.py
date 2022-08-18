@@ -17,10 +17,8 @@ from __future__ import division
 import unittest
 
 import numpy as np
-import paddle.fluid as fluid
 from paddle.io import BatchSampler, Dataset, Sampler, SequenceSampler, \
                         RandomSampler, WeightedRandomSampler
-from paddle.io import DistributedBatchSampler
 
 IMAGE_SIZE = 32
 

@@ -14,11 +14,7 @@
 
 from __future__ import print_function
 
-from paddle.utils import gast
 import unittest
-
-import numpy as np
-import paddle.fluid as fluid
 
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node

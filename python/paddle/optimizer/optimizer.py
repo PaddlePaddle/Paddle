@@ -15,32 +15,23 @@
 from __future__ import print_function
 
 import numpy as np
-import six
 import logging
 from collections import defaultdict
 
 import paddle
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+from paddle.fluid.framework import Variable, default_main_program, device_guard, name_scope
 
 from ..fluid import framework
 from ..fluid import layers
 from ..fluid import unique_name
-from ..fluid.backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
-from ..fluid.clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops
+from ..fluid.backward import _get_no_grad_set_name, append_backward
+from ..fluid.clip import GradientClipBase, append_gradient_clip_ops, error_clip_callback
 from ..fluid.framework import program_guard, Parameter
 from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.layers import ops
 from ..fluid.dygraph import base as imperative_base
-from ..fluid.dygraph import no_grad
 from paddle.fluid import core
-from paddle.fluid.layers import tensor
-from functools import reduce
-from ..fluid.wrapped_decorator import signature_safe_contextmanager
-from .. import compat as cpt
 from .lr import LRScheduler
-import copy
 from paddle import _C_ops
 from paddle.fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check, _current_expected_place, in_dygraph_mode
 
@@ -596,7 +587,6 @@ class Optimizer(object):
             block: the block in which the loss tensor is present
             parameters: list of parameter tensors for the optimizer
         """
-        pass
 
     def _finish_update(self, block, parameters_and_grads):
         """Finish any custom updates needed
@@ -609,7 +599,6 @@ class Optimizer(object):
         Returns:
             None
         """
-        pass
 
     def _add_accumulator(self,
                          name,
@@ -1342,7 +1331,6 @@ class Optimizer(object):
             parameters (dict): The extra group of Tensors to be optimzed with
             different optimization options. Only used in child class.
         """
-        pass
 
     @framework.dygraph_only
     def _multi_tensor_init(self, target_block, parameters):
@@ -1354,7 +1342,6 @@ class Optimizer(object):
             target_block: the block in which the loss tensor is present
             parameters: list of parameter tensors for the optimizer
         """
-        pass
 
     @framework.dygraph_only
     def _append_optimize_multi_tensor_op(self, target_block,
@@ -1362,4 +1349,3 @@ class Optimizer(object):
         """ 
         For Multi Tensor, append optimize merged_operator to block.
         """
-        pass

@@ -17,7 +17,6 @@ import paddle
 from ...fluid.data_feeder import check_variable_and_dtype
 
 # TODO: define loss functions of neural network
-import numpy as np
 import paddle
 import paddle.fluid as fluid
 from ...fluid.layers.nn import _elementwise_op_in_dygraph

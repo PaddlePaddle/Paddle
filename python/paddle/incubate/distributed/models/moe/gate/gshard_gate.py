@@ -22,7 +22,6 @@
 import math
 import paddle
 import paddle.nn.functional as F
-import numpy as np
 from .naive_gate import NaiveGate
 from ..utils import limit_by_capacity
 

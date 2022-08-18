@@ -24,7 +24,7 @@ from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
                       op_position_inputs, op_position_output)
-from .utils import INT_DTYPE_2_STRING, get_input_var_list, get_output_var_list
+from .utils import INT_DTYPE_2_STRING, get_output_var_list
 
 
 def _orig2prim(op, *args):

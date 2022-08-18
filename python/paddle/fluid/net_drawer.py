@@ -14,12 +14,8 @@
 
 from __future__ import print_function
 
-import argparse
-import json
 import logging
-from collections import defaultdict
 
-import paddle.fluid.core as core
 import paddle.fluid.proto.framework_pb2 as framework_pb2
 from paddle.fluid.log_helper import get_logger
 

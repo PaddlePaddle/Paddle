@@ -25,7 +25,7 @@ import time
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.log_helper import get_logger
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient, AFSClient
+from paddle.distributed.fleet.utils.fs import HDFSClient
 from . import utils
 
 OpRole = core.op_proto_and_checker_maker.OpRole

@@ -15,8 +15,6 @@
 import numpy as np
 
 import paddle
-import paddle.nn as nn
-import paddle.fluid.core as core
 import paddle.nn.functional as F
 import paddle.incubate.nn.functional as incubate_f
 from paddle.nn.layer.norm import LayerNorm

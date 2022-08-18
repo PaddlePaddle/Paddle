@@ -12,26 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import logging
-import numpy as np
-import sys
 import os
-import warnings
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.quant.quant_layers as quant_layers
-from paddle.fluid import dygraph, core, framework, unique_name
+from paddle.fluid import core, dygraph
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.initializer import Constant
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.io import load_inference_model, save_inference_model
 from ..quantization_pass import ReplaceFakeQuantDequantPass, QuantWeightPass
 from paddle.fluid.log_helper import get_logger
-from .. import quantization_pass
 from . import utils
 from . import fuse_utils
 

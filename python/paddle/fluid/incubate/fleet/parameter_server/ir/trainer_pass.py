@@ -18,7 +18,6 @@ import os
 import six
 import collections
 import warnings
-import math
 
 from functools import reduce
 import paddle.fluid as fluid

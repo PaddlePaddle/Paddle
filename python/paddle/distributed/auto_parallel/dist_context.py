@@ -14,13 +14,10 @@
 
 import copy
 from collections import defaultdict
-import paddle.fluid
 from paddle.fluid import framework
-from paddle.fluid.framework import get_flags, set_flags
+from paddle.fluid.framework import set_flags
 from paddle.fluid import core
 from paddle.distributed.passes import PassContext
-from .dist_attribute import TensorDistributedAttribute
-from .dist_attribute import OperatorDistributedAttribute
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperator
 from .process_mesh import ProcessMesh

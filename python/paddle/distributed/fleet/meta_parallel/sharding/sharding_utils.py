@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import contextlib
-from collections import abc
 from enum import Enum
-from math import inf
 import numpy as np
 from types import MethodType
 
@@ -27,7 +24,6 @@ from paddle.fluid import layers
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.distributed.collective import _get_global_group
 
 
 class Taskflow:

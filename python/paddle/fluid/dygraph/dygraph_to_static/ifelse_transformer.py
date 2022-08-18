@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import six
 import copy
-import textwrap
 from collections import defaultdict
 
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
@@ -27,10 +26,8 @@ from paddle.utils import gast
 from paddle.fluid import unique_name
 
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node, FunctionNameLivenessAnalysis
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.utils import FunctionNameLivenessAnalysis
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_nodes
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_get_args_node, create_set_args_node
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer

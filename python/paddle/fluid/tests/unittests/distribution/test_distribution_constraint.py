@@ -18,7 +18,6 @@ import numpy as np
 import paddle
 from paddle.distribution import constraint
 
-import config
 import parameterize as param
 
 np.random.seed(2022)

@@ -14,7 +14,6 @@
 
 # TODO: define activation functions of neural network
 
-from ...framework import ParamAttr
 from ..initializer import Constant
 from paddle.framework import get_default_dtype
 from .. import functional as F

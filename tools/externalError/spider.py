@@ -15,8 +15,6 @@
 import ssl
 import re
 import urllib.request
-import json
-import collections
 import sys
 import getopt
 import external_error_pb2

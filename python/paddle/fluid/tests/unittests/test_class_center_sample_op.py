@@ -16,8 +16,6 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import math
-import random
 import paddle
 import paddle.fluid.core as core
 from op_test import OpTest

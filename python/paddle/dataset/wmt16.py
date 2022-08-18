@@ -33,7 +33,6 @@ from __future__ import print_function
 import os
 import six
 import tarfile
-import gzip
 from collections import defaultdict
 
 import paddle

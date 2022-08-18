@@ -15,14 +15,11 @@
 
 import logging
 
-import six
 # NOTE: HTTPServer has a different name in python2 and python3
 from http.server import HTTPServer
 import http.server as SimpleHTTPServer
 
-import time
 import threading
-import socket
 
 __all__ = []
 
@@ -120,7 +117,6 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         """
         ignore all logging messages in kv handler.
         """
-        pass
 
     def send_status_code(self, code):
         """

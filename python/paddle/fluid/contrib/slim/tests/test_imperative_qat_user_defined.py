@@ -16,19 +16,16 @@ from __future__ import print_function
 
 import os
 import numpy as np
-import random
 import unittest
 import logging
 import paddle
 import paddle.nn as nn
 from paddle.optimizer import Adam
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.nn import Sequential
 from paddle.fluid.dygraph import Conv2D
 from paddle.fluid.dygraph import Pool2D
 from paddle.fluid.dygraph import Linear
-from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.framework import _test_eager_guard
 

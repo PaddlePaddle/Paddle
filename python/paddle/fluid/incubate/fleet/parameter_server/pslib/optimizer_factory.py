@@ -16,9 +16,6 @@
 __all__ = ["DistributedAdam", "FLEET_GLOBAL_DICT"]
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
 from google.protobuf import text_format
 from collections import OrderedDict
 import copy
@@ -74,7 +71,6 @@ class DistributedOptimizerImplBase(object):
             no_grad_set(set): a set of variables that is defined by users
                 so that these variables do not need gradient computation
         """
-        pass
 
 
 class DistributedAdam(DistributedOptimizerImplBase):

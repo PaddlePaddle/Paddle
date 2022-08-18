@@ -16,25 +16,20 @@ from __future__ import print_function
 
 import os
 import numpy as np
-import random
 import unittest
 import logging
-import warnings
 import tempfile
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.framework import IrGraph, _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.dygraph.container import Sequential
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.dygraph import nn
 
 from imperative_test_utils import fix_model_dict, train_lenet
 

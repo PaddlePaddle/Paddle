@@ -21,7 +21,6 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
 from paddle.optimizer import SGD as SGD_v2
 
-from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
 from . import mode
@@ -316,7 +315,6 @@ class DistributedOptimizer(object):
         Examples:
             See examples in `apply_gradients`.
         """
-        pass
 
     @abc.abstractmethod
     def apply_gradients(self, params_grads):
@@ -340,7 +338,6 @@ class DistributedOptimizer(object):
                 # ...
                 optimizer.apply_gradients(params_grads)
         """
-        pass
 
     @abc.abstractmethod
     def minimize(self,
@@ -367,4 +364,3 @@ class DistributedOptimizer(object):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         """
-        pass

@@ -16,7 +16,7 @@ import enum
 import numpy as np
 from functools import partial
 from numpy import asarray
-from numpy.fft._pocketfft import _raw_fft, _raw_fftnd, _get_forward_norm, _get_backward_norm, _cook_nd_args
+from numpy.fft._pocketfft import _cook_nd_args, _raw_fft, _raw_fftnd
 
 
 class NormMode(enum.Enum):

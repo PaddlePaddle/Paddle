@@ -18,16 +18,12 @@ import numpy as np
 
 import unittest
 import paddle
-import paddle.nn as nn
 import paddle.distributed.fleet as fleet
-import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
-from paddle.distributed.passes import new_pass, PassManager, PassContext
+from paddle.distributed.passes import PassContext, new_pass
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 sys.path.append("..")
-import auto_parallel_gpt_model as modeling
-from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion
 
 
 class TestDataParallelPassWithScale1(AutoPallelPassTestBase):

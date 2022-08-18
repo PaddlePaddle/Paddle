@@ -18,7 +18,6 @@ from operator import __add__, __sub__, __mul__, __truediv__
 
 import numpy as np
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 op_list = [__add__, __sub__, __mul__, __truediv__]
 

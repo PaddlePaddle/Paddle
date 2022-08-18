@@ -18,11 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.autograd import PyLayer
 from paddle.distributed.fleet.utils import recompute
 import random
-
-import paddle.fluid.layers as layers
 
 
 def get_fc_block(block_idx, input_size, is_last=False):

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from threading import Thread
-import subprocess
 import multiprocessing
 import six
 import sys
@@ -26,9 +25,7 @@ from six.moves import map
 from six.moves import zip
 import itertools
 import random
-import zlib
 
-import paddle.compat as cpt
 from paddle.fluid.reader import QUEUE_GET_TIMEOUT
 
 __all__ = []

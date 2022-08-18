@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
-import numpy as np
-from ... import fluid
-from ...fluid import dygraph
 from ...fluid import layers as F
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype

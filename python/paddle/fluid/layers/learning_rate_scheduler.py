@@ -23,17 +23,16 @@ strategy according to this module.
 from __future__ import print_function
 
 import math
-import numbers
 
 from . import control_flow
 from . import nn
 from . import ops
 from . import tensor
-from ..framework import default_main_program, Parameter, unique_name, name_scope
+from ..framework import default_main_program
 from ..framework import Variable
 from ..framework import _non_static_mode
 from ..dygraph import learning_rate_scheduler as imperate_lr
-from ..data_feeder import check_variable_and_dtype, check_type
+from ..data_feeder import check_type
 
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',

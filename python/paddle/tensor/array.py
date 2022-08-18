@@ -14,7 +14,6 @@
 
 # Define functions about array.
 
-import paddle
 from ..static import Variable
 from ..framework import LayerHelper, core, _non_static_mode
 from ..fluid.data_feeder import check_type

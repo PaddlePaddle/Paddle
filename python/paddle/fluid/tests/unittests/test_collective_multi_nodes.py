@@ -13,23 +13,11 @@
 # limitations under the License.
 
 from __future__ import print_function
-import numpy as np
 import unittest
-import time
-import argparse
 import os
 import sys
 import subprocess
-import traceback
-import functools
-import pickle
 import tempfile
-from contextlib import closing
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.unique_name as nameGen
-from paddle.fluid import core
-import socket
 
 
 class TestCollectiveAPIRunnerBase(object):

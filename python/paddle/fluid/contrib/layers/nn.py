@@ -17,18 +17,15 @@ Contrib layers just related to the neural network.
 
 from __future__ import print_function
 
-import os
-import six
 import warnings
-import inspect
 
 import numpy as np
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
-from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.fluid.initializer import Constant
+from paddle.fluid.data_feeder import check_dtype, check_type, check_variable_and_dtype
 
 from paddle.fluid import core
 from paddle.fluid.param_attr import ParamAttr

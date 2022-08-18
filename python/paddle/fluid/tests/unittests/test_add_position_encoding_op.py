@@ -14,7 +14,6 @@
 import unittest
 import numpy as np
 import math
-import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
 import paddle

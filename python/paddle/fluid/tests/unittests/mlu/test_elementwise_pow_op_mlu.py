@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle.fluid as fluid
 import paddle
 
 import numpy as np

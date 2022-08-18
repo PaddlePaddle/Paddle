@@ -25,7 +25,7 @@ from paddle.distributed.auto_parallel.cost.base_cost import build_comp_desc_str_
 from paddle.distributed.auto_parallel.cost.base_cost import calc_time_by_modeling
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cost import CommContext
-from test_cluster import cluster_json, multi_cluster_json
+from test_cluster import cluster_json
 
 paddle.enable_static()
 

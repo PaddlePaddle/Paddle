@@ -13,11 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-import logging
 
 from . import framework
-from .framework import _non_static_mode, _varbase_creator
-from . import core
 from paddle import _C_ops
 
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']

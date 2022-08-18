@@ -16,13 +16,11 @@ from __future__ import print_function
 
 from . import core
 import numpy as np
-import os
 import six
-from six.moves import zip, range, xrange
-import multiprocessing
+from six.moves import zip
 import warnings
 
-from .framework import Variable, default_main_program, _current_expected_place, _non_static_mode, _in_eager_without_dygraph_check
+from .framework import Variable, _in_eager_without_dygraph_check, _non_static_mode, default_main_program
 from .framework import _cpu_num, _cuda_ids
 
 __all__ = ['DataFeeder']

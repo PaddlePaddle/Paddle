@@ -257,40 +257,10 @@ if avx_supported():
         from . import core_avx
         core_avx.LoDTensor = core_avx.Tensor
 
-        from .core_avx import *
-        from .core_avx import __doc__, __file__, __name__, __package__
-        from .core_avx import __unittest_throw_exception__
-        from .core_avx import _append_python_callable_object_and_return_id
-        from .core_avx import _cleanup, _Scope
-        from .core_avx import _get_use_default_grad_op_desc_maker_ops
-        from .core_avx import _get_all_register_op_kernels
-        from .core_avx import _is_program_version_supported
-        from .core_avx import _set_eager_deletion_mode
-        from .core_avx import _get_eager_deletion_vars
-        from .core_avx import _set_fuse_parameter_group_size
-        from .core_avx import _set_fuse_parameter_memory_size
-        from .core_avx import _is_dygraph_debug_enabled
-        from .core_avx import _dygraph_debug_level
-        from .core_avx import _switch_tracer
+        from .core_avx import __file__
         from .core_avx import _set_paddle_lib_path
-        from .core_avx import _create_loaded_parameter
-        from .core_avx import _cuda_synchronize
-        from .core_avx import _is_compiled_with_heterps
-        from .core_avx import _promote_types_if_complex_exists
-        from .core_avx import _set_cached_executor_build_strategy
-        from .core_avx import _device_synchronize
-        from .core_avx import _get_current_stream
-        from .core_avx import _Profiler, _ProfilerResult, _RecordEvent
-        from .core_avx import _set_current_stream
         if sys.platform != 'win32':
-            from .core_avx import _set_process_pids
-            from .core_avx import _erase_process_pids
-            from .core_avx import _set_process_signal_handler
-            from .core_avx import _throw_error_if_process_failed
-            from .core_avx import _convert_to_tensor_list
-            from .core_avx import _array_to_share_memory_tensor
-            from .core_avx import _cleanup_mmap_fds
-            from .core_avx import _remove_tensor_list_mmap_fds
+            pass
     except Exception as e:
         if has_avx_core:
             sys.stderr.write(
@@ -314,40 +284,10 @@ if load_noavx:
         from . import core_noavx
         core_noavx.LoDTensor = core_noavx.Tensor
 
-        from .core_noavx import *
-        from .core_noavx import __doc__, __file__, __name__, __package__
-        from .core_noavx import __unittest_throw_exception__
-        from .core_noavx import _append_python_callable_object_and_return_id
-        from .core_noavx import _cleanup, _Scope
-        from .core_noavx import _get_use_default_grad_op_desc_maker_ops
-        from .core_noavx import _get_all_register_op_kernels
-        from .core_noavx import _is_program_version_supported
-        from .core_noavx import _set_eager_deletion_mode
-        from .core_noavx import _get_eager_deletion_vars
-        from .core_noavx import _set_fuse_parameter_group_size
-        from .core_noavx import _set_fuse_parameter_memory_size
-        from .core_noavx import _is_dygraph_debug_enabled
-        from .core_noavx import _dygraph_debug_level
-        from .core_noavx import _switch_tracer
+        from .core_noavx import __file__
         from .core_noavx import _set_paddle_lib_path
-        from .core_noavx import _create_loaded_parameter
-        from .core_noavx import _cuda_synchronize
-        from .core_noavx import _is_compiled_with_heterps
-        from .core_noavx import _promote_types_if_complex_exists
-        from .core_noavx import _set_cached_executor_build_strategy
-        from .core_noavx import _device_synchronize
-        from .core_noavx import _get_current_stream
-        from .core_noavx import _set_current_stream
-        from .core_noavx import _Profiler, _ProfilerResult, _RecordEvent
         if sys.platform != 'win32':
-            from .core_noavx import _set_process_pids
-            from .core_noavx import _erase_process_pids
-            from .core_noavx import _set_process_signal_handler
-            from .core_noavx import _throw_error_if_process_failed
-            from .core_noavx import _convert_to_tensor_list
-            from .core_noavx import _array_to_share_memory_tensor
-            from .core_noavx import _cleanup_mmap_fds
-            from .core_noavx import _remove_tensor_list_mmap_fds
+            pass
     except Exception as e:
         if has_noavx_core:
             sys.stderr.write(

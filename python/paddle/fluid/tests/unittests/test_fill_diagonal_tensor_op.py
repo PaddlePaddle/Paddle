@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle.nn.functional as F
 import unittest
 import numpy as np
-import six
 import paddle
 from op_test import OpTest
-from paddle.fluid.layers import core
 
 
 def fill_diagonal_ndarray(x, value, offset=0, dim1=0, dim2=1):

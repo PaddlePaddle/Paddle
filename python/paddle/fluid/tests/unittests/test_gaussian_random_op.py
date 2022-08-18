@@ -14,14 +14,11 @@
 
 from __future__ import print_function
 
-import os
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from paddle.fluid.executor import Executor
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
 from paddle.fluid.framework import _test_eager_guard
 import paddle

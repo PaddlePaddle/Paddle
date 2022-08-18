@@ -14,9 +14,7 @@
 
 from __future__ import print_function
 
-import traceback
 import math
-import collections
 
 import six
 import unittest

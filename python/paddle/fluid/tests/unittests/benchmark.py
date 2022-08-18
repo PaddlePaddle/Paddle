@@ -15,13 +15,9 @@
 from __future__ import print_function
 
 import numpy as np
-import unittest
 import time
-import itertools
 import six
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from op_test import OpTest
 

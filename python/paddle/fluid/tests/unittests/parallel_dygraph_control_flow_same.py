@@ -14,15 +14,10 @@
 
 from __future__ import print_function
 
-import contextlib
-import unittest
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph as dygraph
-from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 

@@ -41,13 +41,11 @@ class MockBarrier(object):
         """
         dummy barrier, do nothing
         """
-        pass
 
     def barrier_all(self):
         """
         dummy all barrier, do nothing
         """
-        pass
 
     def all_reduce(self, obj):
         """
@@ -899,7 +897,6 @@ class GeneralRoleMaker(RoleMakerBase):
 
     def _finalize(self):
         """Default do nothing."""
-        pass
 
     def _all_reduce(self, input, output, mode="sum"):
         """

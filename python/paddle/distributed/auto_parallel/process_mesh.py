@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy
-import copy
 
 
 def _get_nested_list_shape(nested_list):

@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import collections
 import inspect
 
 from paddle.utils import gast

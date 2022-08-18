@@ -15,23 +15,19 @@
 from __future__ import print_function
 
 import paddle
-from six.moves import reduce
 from .. import core
 from ..layers import utils
 from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
-from ..framework import Variable, _non_static_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program, _global_flags, in_dygraph_mode, _in_legacy_dygraph
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..framework import Variable, _global_flags, _in_legacy_dygraph, _non_static_mode, _varbase_creator, default_main_program, in_dygraph_mode
+from ..data_feeder import check_type, check_variable_and_dtype
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from .. import unique_name
-from .layer_object_helper import LayerObjectHelper
 from ..data_feeder import check_variable_and_dtype, check_type
 import numpy as np
 import numbers
 import logging
-import os
 import paddle.utils.deprecated as deprecated
 from paddle import _C_ops
 

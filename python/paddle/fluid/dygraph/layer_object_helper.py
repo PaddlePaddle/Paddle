@@ -18,7 +18,6 @@ import copy
 import six
 from ..framework import Parameter, _non_static_mode, _global_flags
 from ..param_attr import ParamAttr
-from .. import core
 from six.moves import zip
 from ..layer_helper_base import LayerHelperBase
 from ..dygraph_utils import _append_activation_in_dygraph

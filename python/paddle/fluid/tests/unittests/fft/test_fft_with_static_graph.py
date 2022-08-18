@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import contextlib
-import re
-import sys
 import unittest
 
 import numpy as np

@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F

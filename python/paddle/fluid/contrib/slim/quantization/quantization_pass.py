@@ -22,10 +22,9 @@ from ..... import compat as cpt
 from .... import core
 from ....framework import IrGraph
 from ....framework import IrNode
-from ....framework import Operator
 from .... import unique_name
 
-from ....framework import Program, program_guard, default_startup_program
+from ....framework import Program, program_guard
 from ....data import data
 from ....layers import mean
 from ....executor import scope_guard

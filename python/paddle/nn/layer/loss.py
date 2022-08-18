@@ -14,11 +14,10 @@
 # limitations under the License.
 
 # TODO: define loss functions of neural network
-import numpy as np
 import paddle.fluid as fluid
 import paddle
 from .. import functional as F
-from paddle.fluid.framework import _varbase_creator, in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import in_dygraph_mode
 from .. import Layer
 from paddle import in_dynamic_mode
 

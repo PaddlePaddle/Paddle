@@ -18,15 +18,13 @@ import copy
 import six
 import warnings
 
-import functools
 import paddle
 from . import layers
 from . import framework
 from . import core
-from . import name_scope
 from .dygraph import base as imperative_base
 from .data_feeder import check_variable_and_dtype
-from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from .framework import _in_legacy_dygraph, in_dygraph_mode
 from .layer_helper import LayerHelper
 from .framework import default_main_program
 from paddle import _C_ops

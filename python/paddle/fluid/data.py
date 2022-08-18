@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import six
 
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.data_feeder import check_dtype, check_type
+from paddle.fluid.data_feeder import check_type
 from ..utils import deprecated
 from paddle.fluid.framework import static_only
 

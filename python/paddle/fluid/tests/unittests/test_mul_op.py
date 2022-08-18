@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle
 import paddle.fluid.core as core
 import sys
 

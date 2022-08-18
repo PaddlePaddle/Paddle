@@ -13,19 +13,16 @@
 # limitations under the License.
 
 import os
-import sys
 import argparse
 import traceback
 import pickle
 import json
 import time
-import numpy as np
-from functools import partial
 
 import paddle
 from paddle.fluid.framework import Program, _current_expected_place
-from paddle.fluid.framework import Operator, Parameter
-from paddle.distributed.auto_parallel.process_group import clear_all_process_groups, get_all_process_groups, new_process_group
+from paddle.fluid.framework import Operator
+from paddle.distributed.auto_parallel.process_group import get_all_process_groups, new_process_group
 from paddle.distributed.auto_parallel.dist_loader import NonIterableGeneratorLoader
 from paddle.distributed.collective import _get_global_env
 

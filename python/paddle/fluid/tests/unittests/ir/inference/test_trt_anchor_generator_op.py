@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import unittest
-import itertools
 import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid

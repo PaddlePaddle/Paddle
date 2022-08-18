@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import os
 import gzip
 import struct
 import numpy as np

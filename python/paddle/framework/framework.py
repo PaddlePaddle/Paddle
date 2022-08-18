@@ -14,7 +14,6 @@
 
 # TODO: define framework api
 from paddle.fluid.layer_helper_base import LayerHelperBase
-from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.framework import _dygraph_tracer
 import numpy as np
 from contextlib import contextmanager

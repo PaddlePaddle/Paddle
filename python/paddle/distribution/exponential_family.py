@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.distribution import distribution
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 
 
 class ExponentialFamily(distribution.Distribution):

@@ -16,9 +16,8 @@ import collections
 import logging
 import numpy as np
 from .... import core
-from ....framework import Program, Operator, Variable, program_guard
+from ....framework import Program, program_guard
 from ....executor import global_scope
-from .... import unique_name
 from ....layer_helper import LayerHelper
 from ....param_attr import ParamAttr
 from ....initializer import Constant

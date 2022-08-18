@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import math
 import time
 import unittest
 
@@ -22,8 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
+from paddle.fluid.dygraph import ProgramTranslator
 from test_resnet import ResNet, optimizer_setting, SEED
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.

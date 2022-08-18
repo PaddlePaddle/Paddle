@@ -15,8 +15,6 @@
 import docstring_checker
 import pylint.testutils
 import astroid
-import pytest
-import sys
 
 
 class TestDocstring(pylint.testutils.CheckerTestCase):

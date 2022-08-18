@@ -18,7 +18,6 @@ import os
 import sys
 import shutil
 import subprocess
-from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 class TestOptimizationTunerAPI(unittest.TestCase):

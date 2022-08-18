@@ -15,12 +15,9 @@
 from __future__ import print_function
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 import unittest
 import numpy as np
 from op_test import OpTest
-from paddle.tensor.manipulation import fill_
 
 
 class TestFillAnyOp(OpTest):

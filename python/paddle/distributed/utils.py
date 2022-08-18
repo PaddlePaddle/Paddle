@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import logging
 import socket
 import time
@@ -24,7 +23,6 @@ import six
 import subprocess
 from contextlib import closing
 import socket
-from paddle.fluid import core
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 from distutils.util import strtobool
 

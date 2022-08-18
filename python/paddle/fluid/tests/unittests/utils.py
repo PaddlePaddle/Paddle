@@ -14,12 +14,7 @@
 
 from paddle.fluid.framework import _dygraph_guard
 import paddle.fluid as fluid
-from paddle.fluid.framework import Variable
-import paddle.fluid.dygraph.jit as jit
-from paddle.fluid.dygraph.jit import extract_vars
 import numpy as np
-import os
-import time
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
 

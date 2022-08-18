@@ -17,7 +17,6 @@ import unittest
 import os
 import json
 
-import paddle
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cluster import get_default_cluster
 

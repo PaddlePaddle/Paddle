@@ -16,7 +16,7 @@ import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
 
 from functools import reduce
-from paddle.fluid.dygraph import declarative, to_variable
+from paddle.fluid.dygraph import declarative
 from paddle.fluid.dygraph import Embedding, Layer, Linear
 from paddle.static import Variable
 
@@ -103,7 +103,6 @@ class ReduceMeanLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, input):
         """
@@ -122,7 +121,6 @@ class CosSimLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, x, y):
         """
@@ -141,7 +139,6 @@ class ElementwiseMaxLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, x, y):
         """
@@ -160,7 +157,6 @@ class ElementwiseAddLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, x, y):
         """
@@ -179,7 +175,6 @@ class ElementwiseSubLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, x, y):
         """
@@ -198,7 +193,6 @@ class ConstantLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, input, shape, dtype, value):
         """
@@ -220,7 +214,6 @@ class SoftsignLayer(object):
         """
         initialize
         """
-        pass
 
     def ops(self, input):
         """

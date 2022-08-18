@@ -15,8 +15,6 @@
 import unittest
 import subprocess
 import sys, os
-import json
-import shutil
 import tempfile
 
 import random

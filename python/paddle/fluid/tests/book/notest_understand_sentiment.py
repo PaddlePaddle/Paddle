@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-from paddle.fluid.layers.device import get_places
 import unittest
 import paddle.fluid as fluid
 import paddle

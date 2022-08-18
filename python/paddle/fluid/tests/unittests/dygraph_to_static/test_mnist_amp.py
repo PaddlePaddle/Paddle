@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 from time import time
 from test_mnist import MNIST, TestMNIST, SEED
-from paddle.jit import ProgramTranslator
 from paddle.fluid.optimizer import AdamOptimizer
 
 if paddle.fluid.is_compiled_with_cuda():

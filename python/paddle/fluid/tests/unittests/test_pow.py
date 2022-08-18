@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.tensor as tensor
 from paddle.static import Program, program_guard
 
 DYNAMIC = 1

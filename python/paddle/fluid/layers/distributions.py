@@ -22,7 +22,7 @@ import math
 import numpy as np
 import warnings
 
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..data_feeder import check_type, check_variable_and_dtype
 
 __all__ = ['Uniform', 'Normal', 'Categorical', 'MultivariateNormalDiag']
 

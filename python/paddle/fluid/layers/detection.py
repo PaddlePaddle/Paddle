@@ -19,22 +19,16 @@ from __future__ import print_function
 
 import paddle
 
-from .layer_function_generator import generate_layer_fn
-from .layer_function_generator import autodoc, templatedoc
+from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
-from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
 from . import nn
-from . import ops
-from ... import compat as cpt
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 import math
 import six
-import numpy as np
-from functools import reduce
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..data_feeder import check_dtype, check_type, check_variable_and_dtype
 from paddle.utils import deprecated
 from paddle import _C_ops
 from ..framework import in_dygraph_mode

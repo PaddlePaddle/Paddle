@@ -16,11 +16,8 @@ from __future__ import print_function
 
 import os
 import numpy as np
-import random
-import shutil
 import time
 import unittest
-import copy
 import logging
 import tempfile
 
@@ -32,7 +29,7 @@ from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
 from paddle.fluid.framework import _test_eager_guard
 
-from imperative_test_utils import fix_model_dict, ImperativeLenet, ImperativeLinearBn
+from imperative_test_utils import ImperativeLenet, ImperativeLinearBn
 from imperative_test_utils import ImperativeLinearBn_hook
 
 _logger = get_logger(__name__,

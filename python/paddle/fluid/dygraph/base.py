@@ -13,8 +13,6 @@
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import decorator
-import contextlib
-import functools
 import inspect
 import sys
 import numpy as np
@@ -22,11 +20,9 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
-import logging
 from ..data_feeder import convert_dtype
 import warnings
-from ..framework import _get_paddle_place, _in_legacy_dygraph, _in_eager_without_dygraph_check
-import paddle
+from ..framework import _get_paddle_place, _in_eager_without_dygraph_check
 
 __all__ = [
     'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',

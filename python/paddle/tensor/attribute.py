@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from ..framework import core, _non_static_mode
+from ..framework import core
 from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.data_feeder import check_type

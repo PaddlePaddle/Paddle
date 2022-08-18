@@ -16,9 +16,6 @@ import os
 import time
 import sys
 import random
-import math
-import functools
-import contextlib
 import struct
 import tempfile
 import numpy as np

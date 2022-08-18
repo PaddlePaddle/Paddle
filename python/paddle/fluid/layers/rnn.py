@@ -1099,7 +1099,6 @@ class BeamSearchDecoder(Decoder):
         The structure for the returned value `outputs` of `decoder.step`.
         A namedtuple includes scores, predicted_ids, parent_ids as fields.
         """
-        pass
 
     class StateWrapper(
             collections.namedtuple(
@@ -1109,7 +1108,6 @@ class BeamSearchDecoder(Decoder):
         The structure for the argument `states` of `decoder.step`.
         A namedtuple includes cell_states, log_probs, finished, lengths as fields.
         """
-        pass
 
     def initialize(self, initial_cell_states):
         r"""
@@ -1706,7 +1704,6 @@ class DecodeHelper(object):
                 variable[s], and the tensor's shape is `[batch_size, ...]`. \
                 `initial_finished` is a bool tensor with shape `[batch_size]`.
         """
-        pass
 
     def sample(self, time, outputs, states):
         """
@@ -1726,7 +1723,6 @@ class DecodeHelper(object):
         Returns:
             Variable: An `int64` tensor representing the sampled ids.
         """
-        pass
 
     def next_inputs(self, time, outputs, states, sample_ids):
         r"""
@@ -1753,7 +1749,6 @@ class DecodeHelper(object):
                 data type of `next_states` must be same as the input argument \
                 `states`. `finished` is a bool tensor with shape `[batch_size]`.
         """
-        pass
 
 
 class TrainingHelper(DecodeHelper):
@@ -2226,7 +2221,6 @@ class BasicDecoder(Decoder):
         The structure for the returned value `outputs` of `decoder.step`.
         A namedtuple includes cell_outputs, sample_ids as fields.
         """
-        pass
 
     def step(self, time, inputs, states, **kwargs):
         r"""

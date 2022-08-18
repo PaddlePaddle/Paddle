@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import paddle
 import test_collective_api_base as test_base
 
 

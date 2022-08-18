@@ -13,9 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-from .... import core
 from ....framework import IrGraph
-from ....framework import IrNode
 from ....framework import _get_paddle_place
 
 __all__ = ['QuantInt8MkldnnPass']

@@ -13,15 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
-import multiprocessing
-import os
 import six
 import sys
 import threading
 
 from ..data_feeder import DataFeeder
 from .control_flow import BlockGuard
-from .layer_function_generator import templatedoc
 from .. import core
 from ..executor import global_scope
 from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
@@ -30,7 +27,7 @@ from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
 import logging
-from ..data_feeder import check_dtype, check_type
+from ..data_feeder import check_type
 from paddle.fluid.framework import static_only
 from ..framework import _get_paddle_place, _current_expected_place, _set_expected_place
 

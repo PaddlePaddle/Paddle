@@ -16,7 +16,7 @@ import tempfile
 import paddle
 import unittest
 import numpy as np
-from typing import Tuple, List, Dict, TypeVar
+from typing import Dict, List, Tuple
 
 
 class BaseLayer(paddle.nn.Layer):

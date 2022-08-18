@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import timeit
-import logging
 from collections import OrderedDict
 
 

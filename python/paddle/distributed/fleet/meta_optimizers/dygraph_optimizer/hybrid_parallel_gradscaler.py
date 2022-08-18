@@ -13,14 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-import sys
-from paddle.optimizer import Optimizer
 from ...base.topology import ParallelMode
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid import framework
-from paddle.fluid.framework import Variable
-import types
-from paddle.fluid import core
 import paddle
 from paddle import _C_ops
 

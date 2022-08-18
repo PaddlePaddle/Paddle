@@ -22,7 +22,6 @@ import paddle.optimizer
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
                                                           np_dtype_to_fluid_str)
-from paddle.utils.cpp_extension import load
 
 paddle.enable_static()
 

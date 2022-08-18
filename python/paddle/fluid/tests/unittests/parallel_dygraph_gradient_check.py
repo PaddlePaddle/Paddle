@@ -16,7 +16,6 @@ from __future__ import division
 from __future__ import print_function
 
 import unittest
-import os
 
 import paddle
 import numpy as np

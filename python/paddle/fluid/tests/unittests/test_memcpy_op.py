@@ -14,15 +14,12 @@
 
 from __future__ import print_function
 
-import op_test
 import numpy as np
 import unittest
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.backward import append_backward
+from paddle.fluid import Program, program_guard
 
 
 class TestMemcpy_FillConstant(unittest.TestCase):

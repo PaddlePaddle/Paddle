@@ -45,7 +45,6 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
 from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec, _hash_spec_names
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import get_buffers, get_parameters
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
 

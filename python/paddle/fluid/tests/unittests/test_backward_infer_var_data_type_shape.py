@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-from decorator_helper import prog_scope
 import unittest
 import paddle.fluid as fluid
 import numpy as np

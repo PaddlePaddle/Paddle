@@ -18,7 +18,6 @@ from __future__ import print_function
 import os
 import pickle
 import warnings
-import functools
 from collections import OrderedDict
 import inspect
 import threading

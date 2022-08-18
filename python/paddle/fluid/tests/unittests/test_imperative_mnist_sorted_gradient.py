@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import contextlib
 import unittest
 import numpy as np
 import six

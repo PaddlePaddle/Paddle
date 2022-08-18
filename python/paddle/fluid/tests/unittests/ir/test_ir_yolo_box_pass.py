@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 import paddle
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper

@@ -183,7 +183,7 @@ def _verify_dependent_package():
     Verify whether `prettytable` is installed.
     """
     try:
-        from prettytable import PrettyTable
+        pass
     except ImportError:
         raise ImportError(
             "paddle.summary() requires package `prettytable`, place install it firstly using `pip install prettytable`. "

@@ -14,19 +14,10 @@
 
 from __future__ import print_function
 
-import sys
-import math
-from functools import reduce
 import os
 
-import collections
-import six
-import logging
-
-import numpy as np
-
 from .. import core, unique_name
-from ..framework import Program, default_main_program, default_startup_program
+from ..framework import default_main_program, default_startup_program
 from .details import wait_server_ready
 
 __all__ = ['GradAllReduce', 'LocalSGD', 'MultiThread']
