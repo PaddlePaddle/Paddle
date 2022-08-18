@@ -75,8 +75,6 @@ class AllToAllOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(AllToAllInplaceInferer, {"X", "Out"});
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -87,8 +85,7 @@ REGISTER_OPERATOR(alltoall,
                   ops::AllToAllOp,
                   ops::AllToAllOpMaker,
                   ops::AllToAllOpGradMaker<paddle::framework::OpDesc>,
-                  ops::AllToAllOpGradMaker<paddle::imperative::OpBase>,
-                  ops::AllToAllInplaceInferer)
+                  ops::AllToAllOpGradMaker<paddle::imperative::OpBase>)
 
 REGISTER_OP_CPU_KERNEL(alltoall,
                        ops::AllToAllOpCPUKernel<float>,
