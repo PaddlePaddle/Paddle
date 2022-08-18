@@ -69,7 +69,7 @@ class TestLgammaOpApi(unittest.TestCase):
         data_ = paddle.to_tensor(data)
         out = paddle.fluid.layers.lgamma(data_)
         result = special.gammaln(data)
-        self.assertTrue(np.allclose(result, out.numpy()))
+        np.testing.assert_allclose(result, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
 

@@ -122,7 +122,7 @@ class TestDropoutNdAPI(unittest.TestCase):
                 input = paddle.to_tensor(in_np)
                 res1 = dropout_nd(x=input, p=0., axis=[0, 1])
                 res2 = dropout_nd(x=input, p=0.5, axis=[0, 1])
-            self.assertTrue(np.allclose(res1.numpy(), in_np))
+            np.testing.assert_allclose(res1.numpy(), in_np, rtol=1e-05)
         paddle.enable_static()
 
 

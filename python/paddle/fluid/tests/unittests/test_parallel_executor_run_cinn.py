@@ -117,7 +117,10 @@ class TestParallelExecutorRunCinn(unittest.TestCase):
         cinn_losses = train(self.tmpdir, "paddle")
         set_cinn_flag(False)
         pd_losses = train(self.tmpdir, "cinn")
-        self.assertTrue(np.allclose(cinn_losses, pd_losses, atol=1e-5))
+        np.testing.assert_allclose(cinn_losses,
+                                   pd_losses,
+                                   rtol=1e-05,
+                                   atol=1e-05)
 
 
 if __name__ == '__main__':

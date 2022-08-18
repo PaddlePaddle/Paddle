@@ -15,9 +15,12 @@
 from __future__ import print_function
 
 import math
+import functools
 from . import framework
 from . import core
 from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, default_main_program, _current_expected_place
+from .lazy_init import lazy_guard
+from .framework import program_guard
 import numpy as np
 from .core import VarDesc
 from . import unique_name
@@ -49,9 +52,31 @@ class Initializer(object):
         pass
 
     def __call__(self, param, block=None):
+        if not lazy_guard().state:
+            return self.forward(param, block)
+
+        return self._lazy_init(param, block)
+
+    def forward(self, param, block=None):
         """Add corresponding initialization operations to the network
         """
         raise NotImplementedError()
+
+    def _lazy_init(self, param, block=None):
+        # Apply lazy initialization
+        assert in_dygraph_mode()
+        new_block = lazy_guard().startup_program.global_block()
+        new_var = param._to_static_var(True, block=new_block)
+
+        # Record initializer operator
+        with lazy_guard():
+            self.forward(new_var, new_block)
+        lazy_guard().enable(clear_cache=False)
+        # Add hook function for initializing param in dygraph mode
+        func = functools.partial(self.forward, param, block)
+        param.set_init_func(func)
+
+        return param
 
     def _check_block(self, block):
         if block is None:
@@ -121,7 +146,7 @@ class ConstantInitializer(Initializer):
         self._value = value
         self._force_cpu = force_cpu
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with constant.
 
         Args:
@@ -214,7 +239,7 @@ class UniformInitializer(Initializer):
         self._diag_step = diag_step
         self._diag_val = diag_val
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with Uniform distribution.
 
         Args:
@@ -316,7 +341,7 @@ class NormalInitializer(Initializer):
         self._std_dev = scale
         self._seed = seed
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with Normal distribution.
 
         Args:
@@ -428,7 +453,7 @@ class TruncatedNormalInitializer(Initializer):
         self._std_dev = scale
         self._seed = seed
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with TruncatedNormal distribution.
 
         Args:
@@ -562,7 +587,7 @@ class XavierInitializer(Initializer):
         self._fan_out = fan_out
         self._seed = seed
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with Xavier initialization.
 
         Args:
@@ -740,7 +765,7 @@ class MSRAInitializer(Initializer):
         self._negative_slope = negative_slope
         self._nonlinearity = nonlinearity
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with MSRA initialization.
 
         Args:
@@ -901,7 +926,7 @@ class BilinearInitializer(Initializer):
         """
         super(BilinearInitializer, self).__init__()
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with Bilinear initialization.
 
         Args:
@@ -1026,7 +1051,7 @@ class NumpyArrayInitializer(Initializer):
         super(NumpyArrayInitializer, self).__init__()
         self._value = value
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with Numpy array.
 
         Args:

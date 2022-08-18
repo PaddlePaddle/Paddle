@@ -75,12 +75,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
             hist2, _ = np.histogram(data, range=(-3, 5))
             hist2 = hist2.astype("float32")
             hist2 /= float(outs[0].size)
-            np.testing.assert_allclose(hist,
-                                       hist2,
-                                       rtol=0,
-                                       atol=0.01,
-                                       err_msg="hist: " + str(hist) +
-                                       " hist2: " + str(hist2))
+            np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
 
     class TestMeanStdAreInt(TestGaussianRandomOp):
 

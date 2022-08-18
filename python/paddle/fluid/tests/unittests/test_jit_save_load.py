@@ -457,7 +457,9 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
 
         self.assertTrue(len(dy_outs) == 4)
         for dy_out, load_out in zip(dy_outs, load_outs):
-            self.assertTrue(np.allclose(dy_out.numpy(), load_out.numpy()))
+            np.testing.assert_allclose(dy_out.numpy(),
+                                       load_out.numpy(),
+                                       rtol=1e-05)
 
 
 class TestSaveLoadWithDictInput(unittest.TestCase):
@@ -595,7 +597,7 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         pred_xx = infer_layer2(x)
 
         # 4. assert pred_x == pred_xx
-        self.assertTrue(np.allclose(pred_x.numpy(), pred_xx.numpy()))
+        np.testing.assert_allclose(pred_x.numpy(), pred_xx.numpy(), rtol=1e-05)
 
     def test_multi_in_out1(self):
         net = LinearNetMultiInput1(8, 8)
@@ -633,7 +635,7 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         pred_xx = infer_layer2(x)
 
         # 4. assert pred_x == pred_xx
-        self.assertTrue(np.allclose(pred_x.numpy(), pred_xx.numpy()))
+        np.testing.assert_allclose(pred_x.numpy(), pred_xx.numpy(), rtol=1e-05)
 
 
 class TestJitSaveLoadConfig(unittest.TestCase):
