@@ -1,10 +1,10 @@
-name,os,arch,timeout,run_type,launcher,dist_ut_port,run_serial,envs,conditions
-test_allreduce,linux,gpu;rocm,120,DIST,test_runner.py,20071,1,http_proxy=;https_proxy=;PYTHONPATH=..,
-test_broadcast,linux,gpu;rocm,120,DIST,test_runner.py,20073,1,http_proxy=;https_proxy=;PYTHONPATH=..,
-test_c_concat,linux,gpu;rocm,120,DIST,test_runner.py,20075,1,http_proxy=;https_proxy=;PYTHONPATH=..,
-test_c_identity,linux,gpu;rocm,120,DIST,test_runner.py,20077,1,http_proxy=;https_proxy=;PYTHONPATH=..,
-test_c_split,linux,gpu;rocm,120,DIST,test_runner.py,20079,1,http_proxy=;https_proxy=;PYTHONPATH=..,
-test_collective_split_embedding,linux,gpu;rocm,300,DIST,../dist_test.sh,20123,1,http_proxy=;https_proxy=;PYTHONPATH=..,
+name,os,arch,timeout,run_type,launcher,dist_ut_port,run_serial,ENVS,conditions
+test_allreduce,linux,gpu;rocm,120,DIST,test_runner.py,20071,1,PYTHONPATH=..;http_proxy=;https_proxy=,
+test_broadcast,linux,gpu;rocm,120,DIST,test_runner.py,20073,1,PYTHONPATH=..;http_proxy=;https_proxy=,
+test_c_concat,linux,gpu;rocm,120,DIST,test_runner.py,20075,1,PYTHONPATH=..;http_proxy=;https_proxy=,
+test_c_identity,linux,gpu;rocm,120,DIST,test_runner.py,20077,1,PYTHONPATH=..;http_proxy=;https_proxy=,
+test_c_split,linux,gpu;rocm,120,DIST,test_runner.py,20079,1,PYTHONPATH=..;http_proxy=;https_proxy=,
+test_collective_split_embedding,linux,rocm;gpu,300,DIST,../dist_test.sh,20081,1,PYTHONPATH=..;http_proxy=;https_proxy=,
 test_allgather,linux,gpu;rocm,120,DIST,test_runner.py,20069,1,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_allgather_api,linux,gpu;rocm,300,DIST,test_runner.py,20081,1,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_allgather_object_api,linux,gpu;rocm,120,DIST,test_runner.py,20083,1,http_proxy=;https_proxy=;PYTHONPATH=..,
