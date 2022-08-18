@@ -14,10 +14,9 @@
 
 import warnings
 import paddle
-from ...fluid.framework import default_main_program
+from ...fluid.framework import default_main_program, _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle import _C_ops
-from paddle import _non_static_mode
 
 
 def sparse_attention(query,

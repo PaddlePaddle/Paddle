@@ -14,11 +14,12 @@
 
 __all__ = []
 
-from paddle import _C_ops, _non_static_mode
+from paddle import _C_ops
 from paddle.fluid.layers.utils import convert_to_list
 from paddle.fluid.layers.nn import elementwise_add
 from ...creation import sparse_coo_tensor
 from paddle.nn.functional.conv import _update_padding_nd
+from paddle.fluid.framework import _non_static_mode
 
 
 def _conv3d(x,

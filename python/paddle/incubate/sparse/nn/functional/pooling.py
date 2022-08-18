@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from paddle.fluid.layers import utils
-from paddle import _C_ops, _non_static_mode
+from paddle import _C_ops
 from paddle.nn.functional.pooling import _update_padding_nd
+from paddle.fluid.framework import _non_static_mode
 
 __all__ = []
 

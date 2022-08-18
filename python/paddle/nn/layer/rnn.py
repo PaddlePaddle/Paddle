@@ -33,8 +33,7 @@ from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
 from paddle import _C_ops
-from paddle import _non_static_mode
-from paddle.framework import core
+from paddle.framework import core, _non_static_mode
 from paddle.static import default_startup_program
 from paddle.static import program_guard
 try:

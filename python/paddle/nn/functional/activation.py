@@ -26,7 +26,7 @@ from ...fluid.framework import convert_np_dtype_to_dtype_
 from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
-from paddle import _C_ops, _non_static_mode
+from paddle import _C_ops
 from paddle.framework import core
 
 __all__ = []
