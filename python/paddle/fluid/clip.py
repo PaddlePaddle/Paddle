@@ -494,7 +494,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
             if in_dygraph_mode() and g.is_selected_rows():
                 merge_grad = layers.merge_selected_rows(g)
-                merge_grad = merge_grad.get_tensor_from_selected_rows()
+                merge_grad = merge_grad._get_tensor_from_selected_rows()
 
             elif g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = layers.merge_selected_rows(g)

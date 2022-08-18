@@ -722,9 +722,8 @@ static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method_get_tensor_from_selected_rows(TensorObject* self,
-                                                             PyObject* args,
-                                                             PyObject* kwargs) {
+static PyObject* tensor_method__get_tensor_from_selected_rows(
+    TensorObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
   PADDLE_ENFORCE(self->tensor.is_selected_rows(),
                  paddle::platform::errors::Fatal(
@@ -1880,8 +1879,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_get_underline_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
-    {"get_tensor_from_selected_rows",
-     (PyCFunction)(void (*)(void))tensor_method_get_tensor_from_selected_rows,
+    {"_get_tensor_from_selected_rows",
+     (PyCFunction)(void (*)(void))tensor_method__get_tensor_from_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_getitem_index_not_tensor",
