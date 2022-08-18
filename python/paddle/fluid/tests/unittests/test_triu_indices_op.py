@@ -69,8 +69,8 @@ class TestTriuIndicesAPICaseStatic(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
             data = paddle.triu_indices(4, 4, -1)
-        exe = paddle.static.Executor(place)
-        result = exe.run(feed={}, fetch_list=[data])
+            exe = paddle.static.Executor(place)
+            result = exe.run(feed={}, fetch_list=[data])
         expected_result = np.triu_indices(4, -1, 4)
         np.testing.assert_array_equal(result[0], expected_result)
 
