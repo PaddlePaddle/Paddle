@@ -561,54 +561,22 @@ class DistributedStrategy:
 
     @sparse_table_configs.setter
     def fleet_desc_configs(self, configs):
-        support_sparse_key_list = [
-            'sparse_table_class',
-            'sparse_compress_in_save',
-            'sparse_shard_num',
-            'sparse_accessor_class',
-            'sparse_learning_rate',
-            'sparse_initial_g2sum',
-            'sparse_initial_range',
-            'sparse_weight_bounds',
-            'sparse_fea_dim',
-            'sparse_embedx_dim',
-            'sparse_embedx_threshold',
-            'sparse_nonclk_coeff',
-            'sparse_click_coeff',
-            'sparse_base_threshold',
-            'sparse_delta_threshold',
-            'sparse_delta_keep_days',
-            'sparse_delete_after_unseen_days',
-            'sparse_show_click_decay_rate',
-            'sparse_delete_threshold',
-            'sparse_converter',
-            'sparse_deconverter',
-            'sparse_enable_cache',
-            'sparse_cache_rate',
-            'sparse_cache_file_num',
-            'sparse_beta1_decay_rate',
-            'sparse_beta2_decay_rate',
-            'sparse_ada_epsilon',
-            'sparse_optimizer',
-            'sparse_ssd_unseenday_threshold',
-            'embed_sparse_optimizer',
-            'embed_sparse_learning_rate',
-            'embed_sparse_weight_bounds',
-            'embed_sparse_initial_range',
-            'embed_sparse_initial_g2sum',
-            'embed_sparse_beta1_decay_rate',
-            'embed_sparse_beta2_decay_rate',
-            'embedx_sparse_optimizer',
-            'embedx_sparse_learning_rate',
-            'embedx_sparse_weight_bounds',
-            'embedx_sparse_initial_range',
-            'embedx_sparse_initial_g2sum',
-            'embedx_sparse_beta1_decay_rate',
-            'embedx_sparse_beta2_decay_rate',
-            'feature_learning_rate',
-            'nodeid_slot',
+        support_sparse_key_list = ['sparse_table_class', 'sparse_compress_in_save', 'sparse_shard_num', \
+                                   'sparse_accessor_class', 'sparse_learning_rate', 'sparse_initial_g2sum', 'sparse_initial_range', \
+                                   'sparse_weight_bounds', 'sparse_fea_dim', 'sparse_embedx_dim', 'sparse_embedx_threshold', 'sparse_nonclk_coeff', \
+                                   'sparse_click_coeff', 'sparse_base_threshold', 'sparse_delta_threshold', 'sparse_delta_keep_days', \
+                                   'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold', \
+                                   'sparse_converter', 'sparse_deconverter', 'sparse_enable_cache', 'sparse_cache_rate', \
+                                   'sparse_cache_file_num', 'sparse_beta1_decay_rate', 'sparse_beta2_decay_rate', \
+                                   'sparse_ada_epsilon', 'sparse_optimizer', 'sparse_ssd_unseenday_threshold',
+                                   'embed_sparse_optimizer', 'embed_sparse_learning_rate', 'embed_sparse_weight_bounds', \
+                                   'embed_sparse_initial_range', 'embed_sparse_initial_g2sum', 'embed_sparse_beta1_decay_rate', \
+                                   'embed_sparse_beta2_decay_rate', 'embedx_sparse_optimizer', 'embedx_sparse_learning_rate', \
+                                   'embedx_sparse_weight_bounds', 'embedx_sparse_initial_range', 'embedx_sparse_initial_g2sum', \
+                                   'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate', 'feature_learning_rate', 'nodeid_slot']
+        support_sparse_table_class = [
+            'DownpourSparseTable', 'DownpourSparseSSDTable'
         ]
-        support_sparse_table_class = ['DownpourSparseTable']
         support_sparse_accessor_class = [
             'DownpourSparseValueAccessor',
             'DownpourCtrAccessor',
@@ -728,10 +696,12 @@ class DistributedStrategy:
             )
             if table_class not in support_sparse_table_class:
                 raise ValueError(
-                    "support sparse_table_class: ['DownpourSparseTable'], but actual %s"
-                    % (table_class)
-                )
-            table_data.table_class = 'MemorySparseTable'
+                    "support sparse_table_class: ['DownpourSparseTable, DownpourSparseSSDTable'], but actual %s"
+                    % (table_class))
+            if table_class == "DownpourSparseSSDTable":
+                table_data.table_class = 'SSDSparseTable'
+            else:
+                table_data.table_class = 'MemorySparseTable'
             table_data.shard_num = config.get('sparse_shard_num', 1000)
             table_data.enable_sparse_table_cache = config.get(
                 'sparse_enable_cache', True

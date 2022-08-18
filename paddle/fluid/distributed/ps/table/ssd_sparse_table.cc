@@ -34,6 +34,7 @@ int32_t SSDSparseTable::Initialize() {
   MemorySparseTable::Initialize();
   _db = paddle::distributed::RocksDBHandler::GetInstance();
   _db->initialize(FLAGS_rocksdb_path, _real_local_shard_num);
+  VLOG(0) << "initalize SSDSparseTable succ";
   return 0;
 }
 
@@ -549,7 +550,11 @@ int32_t SSDSparseTable::Save(const std::string& path,
   std::string table_path = TableDir(path);
   _afs_client.remove(paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
+#ifdef PADDLE_WITH_GPU_GRAPH
+  int thread_num = _real_local_shard_num;
+#else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
+#endif
 
   // std::atomic<uint32_t> feasign_size;
   std::atomic<uint32_t> feasign_size_all{0};
