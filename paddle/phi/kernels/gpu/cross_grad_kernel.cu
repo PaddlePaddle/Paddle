@@ -100,11 +100,12 @@ void CrossGradKernel(const Context& dev_ctx,
   std::vector<int> cal_dims;
   std::vector<int> cal_strides;
   std::vector<int> full_strides;
-  std::vector<int> merged_dims{static_cast<int>(input_x_dims[i])};
+  std::vector<int> merged_dims{static_cast<int>(input_x_dims[0])};
 
   for (int i = 1; i < dim; i++) {
     merged_dims[0] *= input_x_dims[i];
   }
+
   int merge_axis = merged_dims.size();
   merged_dims.push_back(input_x_dims[dim]);
   for (int i = dim + 1; i < input_x_dims.size(); i++) {
@@ -117,7 +118,6 @@ void CrossGradKernel(const Context& dev_ctx,
 
   int full_dim = 1;
   int left_dim = 1;
-
   for (int i = 0; i < merged_dims.size(); i++) {
     auto idx = merged_dims.size() - i - 1;
     full_strides.insert(full_strides.begin(), full_dim);
