@@ -468,7 +468,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
         import re
         re_exp = re.compile(r'[(](.*?)[)]', re.S)
-        place_str = re.findall(re_exp, str(p))[0]
+        place_str = re.findall(re_exp, str(place))[0]
 
         with paddle.static.device_guard(place_str):
             return call_assign(data, dtype, stop_gradient)
