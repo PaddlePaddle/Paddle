@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
@@ -589,7 +590,7 @@ struct ElementwisePowFunctor {
 #ifdef PADDLE_WITH_XPU_KP
     return static_cast<T>(pow(a, b));
 #endif
-    using MPType = typename ::paddle::operators::details::MPTypeTrait<T>::Type;
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     return static_cast<T>(std::pow(static_cast<MPType>(a), static_cast<MPType>(b)));
   }
 };
