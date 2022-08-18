@@ -968,7 +968,10 @@ PADDLE_DEFINE_EXPORTED_int32(
 PADDLE_DEFINE_EXPORTED_bool(gpugraph_load_node_list_into_hbm,
                             true,
                             "enable load_node_list_into_hbm, default true");
-
+PADDLE_DEFINE_EXPORTED_int32(
+    gpugraph_sparse_table_storage_mode,
+    0,
+    "parse_table_storage_mode, default 0");
 /**
  * ProcessGroupNCCL related FLAG
  * Name: nccl_blocking_wait
