@@ -75,14 +75,18 @@ void analysis::DlnneSubgraphPass::InferShapeForDlnneMainGraph() const {
     if (var != nullptr) {
       var->SetShape(kv.second);
     } else {
-      LOG(INFO) << "input_name:" << kv.first << " not find in all input vars";
+      VLOG(4) << "input_name:" << kv.first << " not find in all input vars";
     }
   }
 
   std::vector<framework::OpDesc *> all_ops = block->AllOps();
 
   for (size_t i = 0; i < block->OpSize(); i++) {
-    // infer shape for bilinear_interp_v2
+    // the output_shape of bilinear_interp_v2 cannot be inferd by input shape,
+    // it also need the value of input tensor, so when call OpDesc->InferShape,
+    // the output_shape of bilinear_interp_v2 is still dynamic, here we try to
+    // infer the output_shape of bilinear_interp_v2 infer shape for
+    // bilinear_interp_v2
     if (block->Op(i)->Type() == bilinear_interp_v2_type) {
       framework::VariableNameMap input_name_map = block->Op(i)->Inputs();
       std::vector<std::string> input_name_vec = input_name_map["OutSize"];
@@ -179,8 +183,8 @@ void analysis::DlnneSubgraphPass::InferShapeForDlnneMainGraph() const {
           ori_shape[i_dim] = OutSize_dims[i_dim - start_dim];
         }
 
-        LOG(INFO) << "Set bilinear_interp_v2 shape: " << ori_shape[2] << ", "
-                  << ori_shape[3];
+        VLOG(4) << "Set bilinear_interp_v2 shape: " << ori_shape[2] << ", "
+                << ori_shape[3];
         out_var->SetShape(ori_shape);
       }
 
@@ -275,6 +279,7 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
       // "yolo_box"
   };
 
+  // the op which output is special, need special process
   static std::unordered_set<std::string> special_output_op_set{
       "transpose2",
       "fill_constant_batch_size_like",
@@ -283,6 +288,8 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
       "unsqueeze2",
   };
 
+  // the op when it's shape is dynamic still can be fused by
+  // dlnne_engine_op
   static std::unordered_set<std::string> dynamic_pass_op_set{
       "reshape2",
   };
@@ -295,7 +302,7 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
       return false;
     }
     if (teller_set.find(node->Op()->Type()) == teller_set.end()) {
-      LOG(INFO) << "don't support op:" << node->Op()->Type() << std::endl;
+      VLOG(4) << "don't support op:" << node->Op()->Type();
       return false;
     } else {
       bool flag = true;
@@ -323,8 +330,7 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
         }
       }
       if (!flag) {
-        LOG(INFO) << "don't support dynamic shape:" << node->Op()->Type()
-                  << std::endl;
+        VLOG(4) << "don't support dynamic shape:" << node->Op()->Type();
       }
       bool flag2 = true;
       for (auto *x : node->outputs) {
@@ -334,7 +340,7 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
         }
       }
       if (!flag2) {
-        LOG(INFO) << "user don't use " << node->Name() << "..." << std::endl;
+        VLOG(4) << "user don't use " << node->Name() << "...";
       }
       return flag && flag2;
     }
@@ -422,12 +428,11 @@ auto fix_batch_as_one(
                std::ostream_iterator<int64_t>(sp_str, ","));
 
           LOG(INFO)
-              << "warning: fix var:" << name << " batch,shape is ["
+              << "Warning: fix var:" << name << " batch,shape is ["
               << sp_str.str()
               << "],we assume subgraph all inputs/outputs first dim is batch,"
                  "so sometime is error,but ok on some network,wo suggest you "
-                 "use fix shape's main graph...."
-              << std::endl;
+                 "use fix shape's main graph....";
         }
       }
     }
@@ -558,7 +563,7 @@ void DlnneSubgraphPass::CreateDlnneOp(
       fix_batch_as_one(*name_var_desc, *valid_input_names, use_static_batch);
 
   for (const auto &name_shape : name_shape_table) {
-    LOG(INFO) << "Fix batch shape as one var name: " << name_shape.first;
+    VLOG(4) << "Fix batch shape as one var name: " << name_shape.first;
   }
 
   // Then, we will use the input_names_with_id and output_names_with_id to
@@ -581,14 +586,14 @@ void DlnneSubgraphPass::CreateDlnneOp(
     MKDIR("./calibration");
     MKDIR(calibration_data_path.c_str());
   }
-  LOG(INFO) << "calibration_mode: " << calibration_mode;
+  VLOG(4) << "calibration_mode: " << calibration_mode;
   std::stringstream ss;
   ss << "engine_key:" << engine_key << " outputs:[";
   for (auto name : valid_output_names) {
     ss << name << ",";
   }
   ss << "]";
-  LOG(INFO) << ss.str();
+  VLOG(4) << ss.str();
 
   // Set attrs
   op_desc->SetType("dlnne_engine");

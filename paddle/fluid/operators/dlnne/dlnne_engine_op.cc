@@ -82,11 +82,8 @@ std::string GenerateRandomKey() {
   return str.substr(0, 32);
 }
 
-void ConvertPaddle2Onnx(std::string subgraph_root_path,
-                        std::string engine_key) {
-  std::string onnx_file_name = subgraph_root_path + "/" + engine_key + ".onnx";
-  // std::fstream onnx_file;
-  // onnx_file.open(onnx_file_name.c_str(), std::ios::in);
+void ConvertPaddle2Onnx(std::string onnx_file_name,
+                        std::string subgraph_root_path) {
   if (!FileExists(onnx_file_name.c_str())) {
     std::stringstream convert_cmd;
     convert_cmd << "paddle2onnx --model_dir " << subgraph_root_path
@@ -145,7 +142,15 @@ class DlnneEngineOpMaker : public framework::OpProtoAndCheckerMaker {
         "The engine_key here is used to distinguish different DLNNE Engines");
     AddAttr<int32_t>("max_batch_size", "engine max_batch_size");
     AddAttr<bool>("use_static_batch", "static batch fix for [?,H,W,C]");
-    AddAttr<std::string>("weight_share_mode", "dlnne weight_share_mode");
+    AddAttr<std::string>("weight_share_mode",
+                         "dlnne weight_share_mode, can be '0', '1', '2', '3', "
+                         "'01', '23', '0123' ");
+    // when use_calib_mode is true and enable_int8 is true,
+    // the calibration_runtime start,
+    // when calibration_mode is true, the calibration_runtiime
+    // go to the first stage of calibration, and when finish
+    // fisrt stage, the calibration_mode is set false, the
+    // calibration_runtime go to the second stage
     AddAttr<bool>("use_calib_mode", "dlnne use calib mode");
     AddAttr<bool>("enable_int8", "dlnne enable int8");
     AddAttr<bool>("calibration_mode", "dlnne calibration_mode");

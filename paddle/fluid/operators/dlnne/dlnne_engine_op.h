@@ -105,7 +105,8 @@ int GetDataByte(paddle::experimental::DataType type);
 
 std::string GenerateRandomKey();
 
-void ConvertPaddle2Onnx(std::string subgraph_root_path, std::string engine_key);
+void ConvertPaddle2Onnx(std::string onnx_file_name,
+                        std::string subgraph_root_path);
 
 void QuantizeOnnx(std::string onnx_file_name,
                   std::string rlym_file_name,
@@ -270,9 +271,10 @@ class DlnneEngineOp : public framework::OperatorBase {
                   << " cluster_config: " << cluster_config;
       }
 
-      inference::ConvertPaddle2Onnx(subgraph_root_path_, engine_key_);
       std::string onnx_file_name =
           subgraph_root_path_ + "/" + engine_key_ + ".onnx";
+      inference::ConvertPaddle2Onnx(onnx_file_name, subgraph_root_path_);
+
       std::string rlym_file_name =
           subgraph_root_path_ + "/" + engine_key_ + ".rlym";
       // quantize don't support set quantized ouput model path now,
@@ -656,7 +658,7 @@ class DlnneEngineOp : public framework::OperatorBase {
 
   void RunNativeImpl(const framework::Scope &scope,
                      const platform::Place &dev_place) const {
-    LOG(INFO) << "RunNativeImpl";
+    VLOG(4) << "RunNativeImpl";
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>("sub_block");
     auto *program = block->Program();
@@ -687,14 +689,14 @@ class DlnneEngineOp : public framework::OperatorBase {
       calib_data_type_map.emplace(x, data_type);
 
       int data_bytes = inference::GetDataByte(t.type());
-      LOG(INFO) << "input name: " << x << ", data_type: " << data_type;
-      LOG(INFO) << "data shape: ";
+      VLOG(4) << "input name: " << x << ", data_type: " << data_type;
+      VLOG(4) << "data shape: ";
       int64_t buffer_size = data_bytes;
       for (auto dim : input_shape) {
         buffer_size *= dim;
-        LOG(INFO) << dim;
+        VLOG(4) << dim;
       }
-      LOG(INFO) << "buffer_size: " << buffer_size;
+      VLOG(4) << "buffer_size: " << buffer_size;
       calib_buffer_size_map.emplace(x, buffer_size);
     }
 
@@ -741,9 +743,9 @@ class DlnneEngineOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    LOG(INFO) << "calibration_mode_: " << calibration_mode_;
+    VLOG(4) << "calibration_mode_: " << calibration_mode_;
     if (calibration_mode_ == true) {
-      LOG(INFO) << "RunCalibration";
+      VLOG(4) << "RunCalibration";
       RunCalibration(scope, dev_place);
       return;
     }
