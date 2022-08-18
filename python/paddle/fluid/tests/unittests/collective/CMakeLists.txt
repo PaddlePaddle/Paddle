@@ -391,7 +391,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   )
   set_tests_properties(test_new_group_api PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_broadcast_tensors_op
     MODULES
@@ -399,6 +399,6 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     ENVS
     "PADDLE_DIST_UT_PORT=20139;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
-  set_tests_properties(test_broadcast_tensors_op PROPERTIES TIMEOUT "120"
+  set_tests_properties(test_broadcast_tensors_op PROPERTIES TIMEOUT "350"
                                                             RUN_SERIAL 1)
 endif()
