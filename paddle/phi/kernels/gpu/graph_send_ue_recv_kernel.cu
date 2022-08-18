@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/graph_send_ue_recv_kernel.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
-#include "paddle/phi/kernels/impl/graph_messaage_passing_impl.h"
+#include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>

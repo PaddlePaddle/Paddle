@@ -60,15 +60,18 @@ class TestMatmul(unittest.TestCase):
         sp_y.stop_gradient = False
         sp_out = paddle.incubate.sparse.matmul(sp_x, sp_y)
 
-        self.assertTrue(np.allclose(sp_out.numpy(), dense_out.numpy()))
+        np.testing.assert_allclose(sp_out.numpy(),
+                                   dense_out.numpy(),
+                                   rtol=1e-05)
         if get_cuda_version() >= 11030:
             dense_out.backward()
             sp_out.backward()
-            self.assertTrue(
-                np.allclose(sp_x.grad.to_dense().numpy(),
-                            (dense_x.grad * mask).numpy()))
-            self.assertTrue(np.allclose(sp_y.grad.numpy(),
-                                        dense_y.grad.numpy()))
+            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                       (dense_x.grad * mask).numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(sp_y.grad.numpy(),
+                                       dense_y.grad.numpy(),
+                                       rtol=1e-05)
 
     @unittest.skipIf(not paddle.is_compiled_with_cuda()
                      or get_cuda_version() < 11000, "only support cuda>=11.0")
@@ -106,14 +109,20 @@ class TestMaskedMatmul(unittest.TestCase):
         mask = paddle.to_tensor(np.ones([10, 6]) * np_mask).to_sparse_csr()
         out = paddle.incubate.sparse.masked_matmul(x, y, mask)
 
-        self.assertTrue(np.allclose(np_out.indptr, out.crows().numpy()))
-        self.assertTrue(np.allclose(np_out.indices, out.cols().numpy()))
-        self.assertTrue(np.allclose(np_out.data, out.values().numpy()))
+        np.testing.assert_allclose(np_out.indptr,
+                                   out.crows().numpy(),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(np_out.indices,
+                                   out.cols().numpy(),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(np_out.data,
+                                   out.values().numpy(),
+                                   rtol=1e-05)
 
         out.backward()
-        self.assertTrue(np.allclose(out.is_sparse_csr(), True))
-        self.assertTrue(np.allclose(np_x_grad, x.grad.numpy()))
-        self.assertTrue(np.allclose(np_y_grad, y.grad.numpy()))
+        np.testing.assert_allclose(out.is_sparse_csr(), True, rtol=1e-05)
+        np.testing.assert_allclose(np_x_grad, x.grad.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(np_y_grad, y.grad.numpy(), rtol=1e-05)
 
     @unittest.skipIf(not paddle.is_compiled_with_cuda()
                      or get_cuda_version() < 11070,
@@ -139,11 +148,15 @@ class TestMaskedMatmul(unittest.TestCase):
         sp_out = paddle.incubate.sparse.matmul(sp_x, sp_y)
         sp_out.backward()
 
-        self.assertTrue(np.allclose(sp_out.numpy(), dense_out.numpy()))
-        self.assertTrue(
-            np.allclose(sp_x.grad.to_dense().numpy(),
-                        (dense_x.grad * mask).numpy()))
-        self.assertTrue(np.allclose(sp_y.grad.numpy(), dense_y.grad.numpy()))
+        np.testing.assert_allclose(sp_out.numpy(),
+                                   dense_out.numpy(),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                   (dense_x.grad * mask).numpy(),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(sp_y.grad.numpy(),
+                                   dense_y.grad.numpy(),
+                                   rtol=1e-05)
 
 
 if __name__ == "__main__":

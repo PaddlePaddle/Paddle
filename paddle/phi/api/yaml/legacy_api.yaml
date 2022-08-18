@@ -184,7 +184,7 @@
 
 - api : arange
   args : (Tensor start, Tensor end, Tensor step, DataType dtype, Place place={})
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ArangeInferMeta
     param : [start, end, step]
@@ -199,7 +199,7 @@
 # arg_max
 - api : argmax
   args : (Tensor x, int64_t axis, bool keepdims, bool flatten, int dtype)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
   kernel :
@@ -208,7 +208,7 @@
 # arg_min
 - api : argmin
   args : (Tensor x, int64_t axis, bool keepdims, bool flatten, int dtype)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
   kernel :
@@ -353,6 +353,17 @@
     func : bce_loss
   backward : bce_loss_grad
 
+- api : bicubic_interp
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : bicubic_interp
+    data_type : x
+  backward : bicubic_interp_grad
+
 - api : bilinear_tensor_product
   args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
   output : Tensor
@@ -366,7 +377,7 @@
 # bitwise_and
 - api : bitwise_and
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
@@ -375,7 +386,7 @@
 # bitwise_not
 - api : bitwise_not
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
@@ -384,7 +395,7 @@
 # bitwise_or
 - api : bitwise_or
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
@@ -393,7 +404,7 @@
 # bitwise_xor
 - api : bitwise_xor
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
@@ -464,9 +475,9 @@
   args : (Tensor label, int num_classes, int num_samples, int ring_id, int rank, int nranks, bool fix_seed, int seed)
   output : Tensor(remapped_label), Tensor(sampled_local_class_center)
   infer_meta :
-    func : ClassCenterSampleInferMeta 
+    func : ClassCenterSampleInferMeta
   kernel :
-    func : class_center_sample 
+    func : class_center_sample
 
 - api : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
@@ -557,7 +568,7 @@
 
 - api : copy_to
   args : (Tensor x, Place place, bool blocking)
-  output : Tensor
+  output : Tensor(out)
   invoke : copy_to_impl(x, place, blocking)
 
 # cos
@@ -672,7 +683,7 @@
 
 - api : diag_embed
   args : (Tensor x, int offset, int dim1, int dim2)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : DiagEmbedInferMeta
   kernel :
@@ -720,7 +731,7 @@
 
 - api : eigvals
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : EigvalsInferMeta
   kernel :
@@ -773,7 +784,7 @@
 
 - api : empty
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
-  output: Tensor
+  output: Tensor(out)
   infer_meta :
     func : CreateInferMeta
     param : [shape, dtype]
@@ -785,7 +796,7 @@
 
 - api : empty_like
   args : (Tensor x, DataType dtype = DataType::UNDEFINED, Place place = {})
-  output: Tensor
+  output: Tensor(out)
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
@@ -797,7 +808,7 @@
 
 - api : equal
   args : (Tensor x, Tensor y, int axis = -1)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
   kernel :
@@ -805,7 +816,7 @@
 
 - api : equal_all
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CompareAllInferMeta
   kernel :
@@ -986,7 +997,7 @@
 
 - api : full
   args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
-  output: Tensor
+  output: Tensor(out)
   infer_meta :
     func : CreateInferMeta
     param : [shape, dtype]
@@ -1012,7 +1023,7 @@
 
 - api : full_batch_size_like
   args : (Tensor input, int[] shape, DataType dtype, Scalar value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
-  output: Tensor
+  output: Tensor(out)
   infer_meta :
     func : FullBatchSizeLikeInferMeta
     param : [input, shape, value, dtype, input_dim_idx, output_dim_idx]
@@ -1024,7 +1035,7 @@
 
 - api : full_like
   args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
-  output: Tensor
+  output: Tensor(out)
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
@@ -1058,7 +1069,7 @@
 
 - api : gather_tree
   args : (Tensor ids, Tensor parents)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : GatherTreeMeta
   kernel :
@@ -1066,7 +1077,7 @@
 
 - api : gaussian_random
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
-  output: Tensor
+  output: Tensor(out)
   infer_meta :
     func : GaussianRandomInferMeta
     param : [shape, mean, std, seed, dtype]
@@ -1118,7 +1129,7 @@
 
 - api : greater_equal
   args : (Tensor x, Tensor y, int axis = -1)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
   kernel :
@@ -1126,7 +1137,7 @@
 
 - api : greater_than
   args : (Tensor x, Tensor y, int axis = -1)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
   kernel :
@@ -1211,7 +1222,7 @@
 # histogram
 - api : histogram
   args : (Tensor x, int64_t bins, int min, int max)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : HistogramInferMeta
   kernel :
@@ -1238,7 +1249,7 @@
 # increment
 - api : increment
   args : (Tensor x, float value)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : IncrementInferMeta
   kernel :
@@ -1288,7 +1299,7 @@
 # is_empty
 - api : is_empty
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : IsEmptyInferMeta
   kernel :
@@ -1306,7 +1317,7 @@
 # isfinite
 - api : isfinite
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
   kernel :
@@ -1316,7 +1327,7 @@
 # isinf
 - api : isinf
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
   kernel :
@@ -1326,7 +1337,7 @@
 # isnan
 - api : isnan
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
   kernel :
@@ -1419,7 +1430,7 @@
 
 - api : less_equal
   args : (Tensor x, Tensor y, int axis = -1)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
   kernel :
@@ -1427,7 +1438,7 @@
 
 - api : less_than
   args : (Tensor x, Tensor y, int axis = -1)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
   kernel :
@@ -1446,7 +1457,7 @@
 
 - api : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : LinspaceInferMeta
   kernel :
@@ -1520,7 +1531,7 @@
 # logical_and
 - api : logical_and
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
@@ -1529,7 +1540,7 @@
 # logical_not
 - api : logical_not
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
@@ -1538,7 +1549,7 @@
 # logical_or
 - api : logical_or
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
@@ -1547,7 +1558,7 @@
 # logical_xor
 - api : logical_xor
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
@@ -1827,7 +1838,7 @@
 # multinomial
 - api : multinomial
   args : (Tensor x, int num_samples, bool replacement)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : MultinomialInferMeta
   kernel :
@@ -1849,8 +1860,20 @@
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
-    func : multiply
+    func : multiply {dense, dense -> dense},
+           multiply_sr {selected_rows, dense -> selected_rows}
   backward : multiply_grad
+
+- api : nearest_interp
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(output)
+  infer_meta :
+    func : InterpolateInferMeta
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : nearest_interp
+    data_type : x
+  backward : nearest_interp_grad
 
 - api : nll_loss
   args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, str reduction)
@@ -1884,7 +1907,7 @@
 
 - api : not_equal
   args : (Tensor x, Tensor y, int axis = -1)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
   kernel :
@@ -1892,7 +1915,7 @@
 
 - api : one_hot
   args : (Tensor x, Scalar(int) num_classes)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : OneHotInferMeta
   kernel :
@@ -1900,12 +1923,12 @@
 
 - api : ones
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
-  output : Tensor
+  output : Tensor(out)
   invoke : full(shape, 1, dtype, place)
 
 - api : ones_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place={})
-  output : Tensor
+  output : Tensor(out)
   invoke : full_like(x, 1, dtype, place)
 
 - api : p_norm
@@ -2050,7 +2073,7 @@
 
 - api : randperm
   args : (int n, DataType dtype, Place place={})
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : RandpermInferMeta
     param : [n, dtype]
@@ -2311,7 +2334,7 @@
 
 - api : shape
   args : (Tensor input)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ShapeInferMeta
   kernel :
@@ -2323,7 +2346,7 @@
 # shard_index
 - api : shard_index
   args : (Tensor in, int index_num, int nshards, int shard_id, int ignore_value)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ShardIndexInferMeta
   kernel :
@@ -2351,7 +2374,7 @@
 
 - api : sign
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
@@ -2390,7 +2413,7 @@
 # size
 - api : size
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(size)
   infer_meta :
     func : SizeInferMeta
   kernel :
@@ -2705,7 +2728,7 @@
 # python API: paddle.nn.initializer.TruncatedNormal
 - api : truncated_gaussian_random
   args : (int[] shape, float mean, float std, int seed, DataType dtype=DataType::FLOAT32, Place place={})
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : TruncatedGaussianRandomInferMeta
     param : [shape, mean, std, seed, dtype]
@@ -2820,7 +2843,7 @@
 # where_index
 - api : where_index
   args : (Tensor condition)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : WhereIndexInferMeta
   kernel :
@@ -2850,12 +2873,12 @@
 
 - api : zeros
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
-  output : Tensor
+  output : Tensor(out)
   invoke : full(shape, 0, dtype, place)
 
 - api : zeros_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
-  output : Tensor
+  output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
 
 - api: broadcast_tensors
@@ -2870,7 +2893,7 @@
 # dirichlet
 - api: dirichlet
   args: (Tensor alpha)
-  output: Tensor
+  output: Tensor(out)
   infer_meta:
     func: DirichletInferMeta
   kernel:

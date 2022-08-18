@@ -123,7 +123,7 @@ class TestDygraphGroupNormv2(unittest.TestCase):
                 x = np.random.randn(*shape).astype("float32")
                 y1 = compute_v1(x)
                 y2 = compute_v2(x)
-                self.assertTrue(np.allclose(y1, y2, atol=1e-5))
+                np.testing.assert_allclose(y1, y2, rtol=1e-05, atol=1e-05)
 
     def test_eager_api(self):
         with _test_eager_guard():
