@@ -146,13 +146,13 @@ class Adadelta(Optimizer):
             self._add_accumulator(self._avg_squared_update_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
+        if isinstance(param_and_grad, dict):
+            param_and_grad = self._update_param_group(param_and_grad)
+
         avg_squared_grad_acc = self._get_accumulator(
             self._avg_squared_grad_acc_str, param_and_grad[0])
         avg_squared_update_acc = self._get_accumulator(
             self._avg_squared_update_acc_str, param_and_grad[0])
-
-        if isinstance(param_and_grad, dict):
-            param_and_grad = self._update_param_group(param_and_grad)
 
         if in_dygraph_mode():
             tmp, avg_squared_grad_acc, avg_squared_update_acc = _C_ops.final_state_adadelta(
