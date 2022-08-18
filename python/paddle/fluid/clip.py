@@ -73,8 +73,8 @@ def _squared_l2_norm(x):
     if in_dygraph_mode():
         if x.is_selected_rows():
             new_x = paddle.to_tensor(x.numpy())
-            return _C_ops.squared_l2_norm(new_x)
-        return _C_ops.squared_l2_norm(x)
+            return _C_ops.final_state_squared_l2_norm(new_x)
+        return _C_ops.final_state_squared_l2_norm(x)
     else:
         if _in_legacy_dygraph():
             return _C_ops.squared_l2_norm(x)
@@ -555,7 +555,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             if need_clip:
                 clip_input = (clip_var.astype('float16') if g.dtype
                               == core.VarDesc.VarType.FP16 else clip_var)
-                new_grad = _C_ops.elementwise_mul(g, clip_input)
+                new_grad = layers.elementwise_mul(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
                 params_and_grads.append((p, g))

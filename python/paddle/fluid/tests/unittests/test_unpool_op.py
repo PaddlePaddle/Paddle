@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 
 
 def _unpool_output_size(x, kernel_size, stride, padding, output_size):
@@ -53,10 +54,30 @@ def unpool2dmax_forward_naive(input, indices, ksize, strides, paddings,
     return out
 
 
+def max_unpool2d_wrapper(x,
+                         indices,
+                         kernel_size,
+                         stride=None,
+                         padding=0,
+                         output_size=None,
+                         data_format="NCHW",
+                         name=None):
+    out = paddle.nn.functional.max_unpool2d(x,
+                                            indices,
+                                            kernel_size,
+                                            stride=stride,
+                                            padding=padding,
+                                            data_format=data_format,
+                                            output_size=output_size,
+                                            name=name)
+    return out
+
+
 class TestUnpoolOp(OpTest):
 
     def setUp(self):
         self.op_type = "unpool"
+        self.python_api = max_unpool2d_wrapper
         self.init_test_case()
         input = np.random.randint(0, 100, self.shape)
         nsize, csize, hsize, wsize = input.shape
@@ -91,10 +112,10 @@ class TestUnpoolOp(OpTest):
         self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
@@ -127,7 +148,7 @@ class TestUnpoolOpOutputsize(TestUnpoolOp):
         self.ksize = [4, 4]
         self.strides = [2, 2]
         self.paddings = [0, 0]
-        self.output_size = [9, 9]
+        self.output_size = [12, 12]
 
 
 class TestUnpoolOpOutput(TestUnpoolOp):
@@ -139,7 +160,7 @@ class TestUnpoolOpOutput(TestUnpoolOp):
         self.ksize = [4, 4]
         self.strides = [2, 2]
         self.paddings = [0, 0]
-        self.output_size = [9, 9]
+        self.output_size = [12, 12]
 
 
 class TestUnpoolOpException(unittest.TestCase):
@@ -223,7 +244,7 @@ class TestUnpoolOpAPI_dy(unittest.TestCase):
             indices_np = indices.numpy()
             expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
                 [2,2], [0,0], [5,5]).astype("float64")
-            self.assertTrue(np.allclose(out_pp.numpy(), expect_res))
+            np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
 
 class TestUnpoolOpAPI_dy2(unittest.TestCase):
@@ -257,7 +278,7 @@ class TestUnpoolOpAPI_dy2(unittest.TestCase):
             indices_np = indices.numpy()
             expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
                 [2,2], [0,0], [5,5]).astype("float64")
-            self.assertTrue(np.allclose(out_pp.numpy(), expect_res))
+            np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
 
 class TestUnpoolOpAPI_dy3(unittest.TestCase):
@@ -289,7 +310,7 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
             indices_np = indices.numpy()
             expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
                 [2,2], [0,0], [4,4]).astype("float64")
-            self.assertTrue(np.allclose(out_pp.numpy(), expect_res))
+            np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
 
 class TestUnpoolOpAPI_st(unittest.TestCase):
@@ -330,7 +351,7 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
         indices_np = np.array([[[[5, 7], [13, 15]]]]).astype("int32")
         expect_res =unpool2dmax_forward_naive(pool_out_np, indices_np, [2,2], \
             [2,2], [0,0], [5,5]).astype("float64")
-        self.assertTrue(np.allclose(results[0], expect_res))
+        np.testing.assert_allclose(results[0], expect_res, rtol=1e-05)
 
 
 if __name__ == '__main__':

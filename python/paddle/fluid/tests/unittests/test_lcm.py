@@ -58,8 +58,9 @@ class TestLcmAPI(unittest.TestCase):
         x1 = paddle.to_tensor(self.x_np)
         x2 = paddle.to_tensor(self.y_np)
         result = paddle.lcm(x1, x2)
-        self.assertEqual(
-            np.allclose(np.lcm(self.x_np, self.y_np), result.numpy()), True)
+        np.testing.assert_allclose(np.lcm(self.x_np, self.y_np),
+                                   result.numpy(),
+                                   rtol=1e-05)
 
         paddle.enable_static()
 

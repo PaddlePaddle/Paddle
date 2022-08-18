@@ -15,13 +15,13 @@
 from __future__ import print_function
 import paddle.fluid as fluid
 import paddle
+import sys
+
+sys.path.append("..")
 from op_test import OpTest
 
 import numpy as np
 import unittest
-import sys
-
-sys.path.append("..")
 
 paddle.enable_static()
 SEED = 2021
@@ -163,8 +163,8 @@ class TestRelu6Net(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         mlu_pred, mlu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(mlu_pred, cpu_pred))
-        self.assertTrue(np.allclose(mlu_loss, cpu_loss))
+        np.testing.assert_allclose(mlu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(mlu_loss, cpu_loss, rtol=1e-6)
 
 
 if __name__ == '__main__':

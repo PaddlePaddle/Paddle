@@ -103,7 +103,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"x": x_in_np},
                                   fetch_list=[rst])
-                self.assertTrue(np.allclose(fetches[0], rst_np))
+                np.testing.assert_allclose(fetches[0], rst_np, rtol=1e-05)
 
     def test_dygraph(self):
         for dtype in self.dtypes:
@@ -113,7 +113,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
                 input_x = fluid.dygraph.to_variable(x_in_np)
 
                 rst = incubate.softmax_mask_fuse_upper_triangle(input_x)
-                self.assertTrue(np.allclose(rst, rst_np))
+                np.testing.assert_allclose(rst, rst_np, rtol=1e-05)
 
 
 if __name__ == '__main__':

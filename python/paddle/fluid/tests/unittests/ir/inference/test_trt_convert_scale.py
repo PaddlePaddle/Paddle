@@ -137,7 +137,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -146,7 +146,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True), (1e-3, 1e-3)
 
     def add_skip_trt_case(self):
 

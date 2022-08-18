@@ -16,15 +16,13 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(
-    lod_reset,
-    ops::LoDResetKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LoDResetKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::LoDResetKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::LoDResetKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    lod_reset_grad,
-    ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(lod_reset,
+                        ops::LoDResetKernel<phi::GPUContext, float>,
+                        ops::LoDResetKernel<phi::GPUContext, double>,
+                        ops::LoDResetKernel<phi::GPUContext, int>,
+                        ops::LoDResetKernel<phi::GPUContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(lod_reset_grad,
+                        ops::LoDResetGradKernel<phi::GPUContext, float>,
+                        ops::LoDResetGradKernel<phi::GPUContext, double>,
+                        ops::LoDResetGradKernel<phi::GPUContext, int>,
+                        ops::LoDResetGradKernel<phi::GPUContext, int64_t>);

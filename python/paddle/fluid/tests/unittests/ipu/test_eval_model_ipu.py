@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -122,7 +120,10 @@ class TestBase(IPUOpTest):
         ipu_loss = self._test_optimizer(True).flatten()
         cpu_loss = self._test_optimizer(False).flatten()
         self.assertTrue(ipu_loss[0] == ipu_loss[99])
-        self.assertTrue(np.allclose(ipu_loss[100:], cpu_loss, atol=self.atol))
+        np.testing.assert_allclose(ipu_loss[100:],
+                                   cpu_loss,
+                                   rtol=1e-05,
+                                   atol=self.atol)
 
 
 if __name__ == "__main__":

@@ -101,11 +101,11 @@ TEST(FuseBatchNormActOneDNNPass, FuseIsTest) {
     if (node->IsOp() && node->Op()->Type() == "batch_norm") {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("fuse_with_relu"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
       ASSERT_TRUE(op->HasAttr("trainable_statistics"));
-      EXPECT_FALSE(BOOST_GET_CONST(bool, op->GetAttr("trainable_statistics")));
+      EXPECT_FALSE(PADDLE_GET_CONST(bool, op->GetAttr("trainable_statistics")));
     }
   }
 }

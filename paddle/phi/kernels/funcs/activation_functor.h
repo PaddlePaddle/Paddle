@@ -1364,6 +1364,32 @@ struct SiluGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+template <typename T>
+struct SoftsignFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x / (static_cast<T>(1) + x.abs());
+  }
+};
+
+// d(softsign(x))/dx = 1 / (1 + |x|)^2
+// Taken from https://en.wikipedia.org/wiki/Activation_function
+
+template <typename T>
+struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * (static_cast<T>(1) / (static_cast<T>(1) + x.abs()).square());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
 // sigmoid(x) = 1 / (1 + exp(-x))
 template <typename T>
 struct SigmoidFunctor : public BaseActivationFunctor<T> {
@@ -1578,7 +1604,11 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
+#ifdef PADDLE_WITH_MLU
+    return ActBwdOpFwdDeps::kDepX;
+#else
     return ActBwdOpFwdDeps::kDepOut;
+#endif
   }
 };
 
@@ -2130,6 +2160,50 @@ struct CudaExpFunctor<double> : public BaseActivationFunctor<double> {
   __device__ __forceinline__ double operator()(const double x) const {
     return exp(x);
   }
+};
+
+template <typename T>
+struct CudaSeluFunctor : public BaseActivationFunctor<T> {
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"scale", &scale}, {"alpha", &alpha}};
+  }
+
+  __device__ __forceinline__ T operator()(const T x) const {
+    T res = x;
+    if (res <= zero) {
+      res = alpha * expf(res) - alpha;
+    }
+    res *= scale;
+    return res;
+  }
+
+ private:
+  float scale;
+  float alpha;
+  T zero = static_cast<T>(0.0f);
+};
+
+template <>
+struct CudaSeluFunctor<double> : public BaseActivationFunctor<double> {
+  typename BaseActivationFunctor<double>::AttrPair GetAttrs() {
+    return {{"scale", &scale}, {"alpha", &alpha}};
+  }
+
+  __device__ __forceinline__ double operator()(const double x) const {
+    double res = x;
+    double alpha_cast = static_cast<double>(alpha);
+    double scale_cast = static_cast<double>(scale);
+    if (res <= zero) {
+      res = alpha_cast * exp(res) - alpha_cast;
+    }
+    res *= scale_cast;
+    return res;
+  }
+
+ private:
+  float scale;
+  float alpha;
+  double zero = static_cast<double>(0.0f);
 };
 
 template <typename T>
@@ -3014,6 +3088,31 @@ struct CudaSiluGradFunctor : public BaseActivationFunctor<T> {
     MPType x = static_cast<MPType>(arg_x);
     MPType temp = one / (one + exp(-x));
     return static_cast<T>(dout * (temp * (one + x * (one - temp))));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaSoftsignFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // softsign(x) = x / (1 + abs(x))
+  __device__ __forceinline__ T operator()(const T x) const {
+    // Using abs directly will cause namespace conflict
+    return x / (one + (x > -x ? x : -x));
+  }
+};
+
+template <typename T>
+struct CudaSoftsignGradFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // dx = dout / (1 + abs(x))^2
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    // Using abs directly will cause namespace conflict
+    T temp = one + (x > -x ? x : -x);
+    return dout / (temp * temp);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

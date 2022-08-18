@@ -12,6 +12,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
 namespace framework {
@@ -37,37 +38,27 @@ class GroupNormOpConverter : public OpConverter {
 
     auto* input_itensor = engine_->GetITensor(op_desc.Input("X").front());
 
-    int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
-    float epsilon = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+    int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
+    float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
 
     std::string scale_name = op_desc.Input("Scale").front();
     std::string bias_name = op_desc.Input("Bias").front();
 
     // get the presistable var's data
-    auto get_persistable_data = [&](const std::string& var_name,
-                                    framework::DDim* dims) -> float* {
+    auto GetWeight = [&](const std::string& var_name,
+                         framework::DDim* dims) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
 
-      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor);
-      return temp_data;
+      auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
+      return weight;
     };
 
     framework::DDim scale_dims;
     framework::DDim bias_dims;
-    float* scale_data = get_persistable_data(scale_name, &scale_dims);
-    float* bias_data = get_persistable_data(bias_name, &bias_dims);
-
-    int64_t scale_numel = phi::product(scale_dims);
-    int64_t bias_numel = phi::product(bias_dims);
-
-    TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
-                                         static_cast<void*>(scale_data),
-                                         static_cast<size_t>(scale_numel)};
-    TensorRTEngine::Weight bias_weights{nvinfer1::DataType::kFLOAT,
-                                        static_cast<void*>(bias_data),
-                                        static_cast<size_t>(bias_numel)};
+    auto scale_weights = GetWeight(scale_name, &scale_dims);
+    auto bias_weights = GetWeight(bias_name, &bias_dims);
 
     nvinfer1::Dims scale_nv_dims;
     nvinfer1::Dims bias_nv_dims;

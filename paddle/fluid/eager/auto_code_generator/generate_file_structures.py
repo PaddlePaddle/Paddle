@@ -53,7 +53,7 @@ def GenerateFileStructureForFinalDygraph(eager_dir):
             open(path, 'a').close()
 
 
-def GenerateFileStructureForIntermediateDygraph(eager_dir):
+def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
     """
     paddle/fluid/eager
     |- generated
@@ -86,11 +86,21 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir):
     dygraph_forward_api_h_path = os.path.join(generated_dir,
                                               "dygraph_forward_api.h")
     empty_files = [dygraph_forward_api_h_path]
-    empty_files.append(
-        os.path.join(forwards_dir, "dygraph_forward_functions.cc"))
-    empty_files.append(os.path.join(nodes_dir, "nodes.cc"))
     empty_files.append(os.path.join(nodes_dir, "nodes.h"))
 
+    for i in range(split_count):
+        empty_files.append(
+            os.path.join(forwards_dir,
+                         "dygraph_forward_functions" + str(i + 1) + ".cc"))
+        empty_files.append(os.path.join(nodes_dir,
+                                        "nodes" + str(i + 1) + ".cc"))
+    empty_files.append(
+        os.path.join(forwards_dir, "dygraph_forward_functions_args_info.cc"))
+    empty_files.append(
+        os.path.join(forwards_dir,
+                     "dygraph_forward_functions_args_type_info.cc"))
+    empty_files.append(
+        os.path.join(forwards_dir, "dygraph_forward_functions_returns_info.cc"))
     for path in empty_files:
         if not os.path.exists(path):
             open(path, 'a').close()
@@ -102,23 +112,70 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir):
     forwards_level_cmakelist_path = os.path.join(forwards_dir, "CMakeLists.txt")
 
     with open(nodes_level_cmakelist_path, "w") as f:
+        f.write("add_custom_target(\n")
+        f.write("  copy_dygraph_node\n")
         f.write(
-            "cc_library(dygraph_node SRCS nodes.cc DEPS ${eager_deps} ${fluid_deps} ${fluid_manual_nodes})\n"
+            "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.tmp.h\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n"
         )
-        f.write("add_dependencies(dygraph_node eager_codegen)")
+        for i in range(split_count):
+            f.write(
+                "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes"
+                + str(i + 1) +
+                ".tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes"
+                + str(i + 1) + ".cc\"\n")
+
+        f.write("  DEPENDS eager_codegen\n")
+        f.write("  VERBATIM)\n")
+
+        f.write("cc_library(dygraph_node SRCS ")
+        for i in range(split_count):
+            f.write("nodes" + str(i + 1) + ".cc ")
+        f.write("${fluid_manual_nodes} DEPS ${eager_deps} ${fluid_deps})\n")
+        f.write("add_dependencies(dygraph_node copy_dygraph_node)")
 
     with open(forwards_level_cmakelist_path, "w") as f:
+        f.write("add_custom_target(\n")
+        f.write("  copy_dygraph_forward_functions\n")
         f.write(
-            "cc_library(dygraph_function SRCS dygraph_forward_functions.cc DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${fluid_manual_functions})\n"
+            "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.tmp.h\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h\"\n"
         )
-        f.write("add_dependencies(dygraph_function eager_codegen)")
+        for i in range(split_count):
+            f.write(
+                "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions"
+                + str(i + 1) +
+                ".tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions"
+                + str(i + 1) + ".cc\"\n")
+        f.write(
+            "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_info.tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_info.cc\"\n"
+        )
+        f.write(
+            "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_type_info.tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_type_info.cc\"\n"
+        )
+        f.write(
+            "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_returns_info.tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_returns_info.cc\"\n"
+        )
+        f.write("  DEPENDS eager_codegen\n")
+        f.write("  VERBATIM)\n")
+
+        f.write("cc_library(dygraph_function SRCS ")
+        for i in range(split_count):
+            f.write("dygraph_forward_functions" + str(i + 1) + ".cc ")
+        f.write("dygraph_forward_functions_args_info.cc ")
+        f.write("dygraph_forward_functions_args_type_info.cc ")
+        f.write("dygraph_forward_functions_returns_info.cc ")
+        f.write(
+            "${fluid_manual_functions} DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})\n"
+        )
+        f.write(
+            "add_dependencies(dygraph_function copy_dygraph_forward_functions)")
 
     with open(generated_level_cmakelist_path, "w") as f:
         f.write("add_subdirectory(forwards)\nadd_subdirectory(nodes)")
 
 
 if __name__ == "__main__":
-    assert len(sys.argv) == 2
+    assert len(sys.argv) == 3
     eager_dir = sys.argv[1]
-    GenerateFileStructureForIntermediateDygraph(eager_dir)
+    split_count = int(sys.argv[2])
+    GenerateFileStructureForIntermediateDygraph(eager_dir, split_count)
     GenerateFileStructureForFinalDygraph(eager_dir)

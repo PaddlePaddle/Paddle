@@ -94,7 +94,7 @@ class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     constexpr size_t theory_sm_threads = 1024;
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto stream = dev_ctx.stream();
     auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     auto sm_count = max_threads / theory_sm_threads;
@@ -163,8 +163,8 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     // initialize
-    auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto &place =
+        *ctx.template device_context<phi::GPUContext>().eigen_device();
     for (size_t i = 0; i < outs.size(); ++i) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
       auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);
@@ -180,7 +180,7 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
     auto out_num = outs.size();
 
     constexpr size_t theory_sm_threads = 1024;
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto stream = dev_ctx.stream();
     auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     auto sm_count = max_threads / theory_sm_threads;

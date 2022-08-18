@@ -80,4 +80,35 @@ inline void VisitDataTypeTiny(phi::DataType type, Visitor visitor) {
       "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
 }
 
+inline bool IsComplexType(const DataType& type) {
+  return (type == DataType::COMPLEX64 || type == DataType::COMPLEX128);
+}
+
+inline DataType ToComplexType(const DataType& type) {
+  switch (type) {
+    case DataType::FLOAT32:
+      return DataType::COMPLEX64;
+    case DataType::FLOAT64:
+      return DataType::COMPLEX128;
+    default:
+      PADDLE_THROW(errors::Unimplemented(
+          "Can not transform data type (%s) to complex type, now only support "
+          "float32 and float64 real value.",
+          type));
+  }
+}
+
+inline DataType ToRealType(const DataType& type) {
+  switch (type) {
+    case DataType::COMPLEX64:
+      return DataType::FLOAT32;
+    case DataType::COMPLEX128:
+      return DataType::FLOAT64;
+    default:
+      PADDLE_THROW(errors::Unimplemented(
+          "Can not transform data type (%s) to real type, now only support "
+          "complex64 and complex128 value.",
+          type));
+  }
+}
 }  // namespace phi

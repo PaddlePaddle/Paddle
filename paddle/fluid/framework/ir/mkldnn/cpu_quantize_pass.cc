@@ -449,9 +449,9 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     if (conv_op->Op()->GetAttrIfExists<std::string>("fuse_activation") ==
         "relu6") {
       float scale_out =
-          BOOST_GET_CONST(float, conv_op->Op()->GetAttr("Scale_out"));
+          PADDLE_GET_CONST(float, conv_op->Op()->GetAttr("Scale_out"));
       float threshold =
-          BOOST_GET_CONST(float, conv_op->Op()->GetAttr("fuse_alpha"));
+          PADDLE_GET_CONST(float, conv_op->Op()->GetAttr("fuse_alpha"));
       conv_op->Op()->SetAttr("fuse_alpha", scale_out * threshold);
     }
 
@@ -1136,6 +1136,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeImmutable(graph, "reshape2", "X");
   QuantizeImmutable(graph, "transpose2", "X");
   QuantizeImmutable(graph, "slice", "Input");
+  QuantizeImmutable(graph, "shape", "Input");
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
   QuantizeElementwise(graph, "elementwise_add");

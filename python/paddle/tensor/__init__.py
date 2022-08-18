@@ -168,6 +168,7 @@ from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
 from .math import nansum  # noqa: F401
 from .math import nanmean  # noqa: F401
+from .math import count_nonzero  # noqa: F401
 from .math import tanh  # noqa: F401
 from .math import tanh_  # noqa: F401
 from .math import add_n  # noqa: F401
@@ -232,6 +233,7 @@ from .math import inner  # noqa: F401
 from .math import outer  # noqa: F401
 from .math import heaviside  # noqa: F401
 from .math import frac  # noqa: F401
+from .math import sgn  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -249,6 +251,7 @@ from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
 from .search import searchsorted  # noqa: F401
+from .search import bucketize  # noqa: F401
 from .search import topk  # noqa: F401
 from .search import where  # noqa: F401
 from .search import index_select  # noqa: F401
@@ -343,6 +346,7 @@ tensor_method_func = [  #noqa
     'sum',
     'nansum',
     'nanmean',
+    'count_nonzero',
     'tanh',
     'tanh_',
     'add_n',
@@ -501,6 +505,8 @@ tensor_method_func = [  #noqa
     'put_along_axis_',
     'exponential_',
     'heaviside',
+    'bucketize',
+    'sgn',
 ]
 
 #this list used in math_op_patch.py for magic_method bind

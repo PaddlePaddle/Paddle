@@ -220,4 +220,89 @@ PD_DataLayout PD_KernelContextDataLayoutAttrAt(PD_KernelContext* ctx,
       kernel_context->AttrAt<phi::DataLayout>(index));
 }
 
+// eager
+const char* PD_StringAttr(void* attr) {
+  auto* str = reinterpret_cast<std::string*>(attr);
+  return str->c_str();
+}
+
+PD_DataType PD_DatatTypeAttr(void* attr) {
+  auto* dtype = reinterpret_cast<phi::DataType*>(attr);
+  return phi::capi::ToPDDataType(*dtype);
+}
+
+PD_DataLayout PD_DatatLayoutAttr(void* attr) {
+  auto* layout = reinterpret_cast<phi::DataLayout*>(attr);
+  return phi::capi::ToPDDataLayout(*layout);
+}
+
+PD_List PD_ListInt32Attr(void* attr) {
+  PD_List list;
+  const auto& cc_list = *reinterpret_cast<std::vector<int32_t>*>(attr);
+  list.size = cc_list.size();
+  list.data = const_cast<int32_t*>(cc_list.data());
+  return list;
+}
+
+PD_List PD_ListInt64Attr(void* attr) {
+  PD_List list;
+  const auto& cc_list = *reinterpret_cast<std::vector<int64_t>*>(attr);
+  list.size = cc_list.size();
+  list.data = const_cast<int64_t*>(cc_list.data());
+  return list;
+}
+
+PD_List PD_ListFloatAttr(void* attr) {
+  PD_List list;
+  const auto& cc_list = *reinterpret_cast<std::vector<float>*>(attr);
+  list.size = cc_list.size();
+  list.data = const_cast<float*>(cc_list.data());
+  return list;
+}
+
+PD_List PD_ListDoubleAttr(void* attr) {
+  PD_List list;
+  const auto& cc_list = *reinterpret_cast<std::vector<double>*>(attr);
+  list.size = cc_list.size();
+  list.data = const_cast<double*>(cc_list.data());
+  return list;
+}
+
+PD_List PD_ListScalarAttr(void* attr) {
+  PD_List list;
+  const auto& cc_list = *reinterpret_cast<std::vector<phi::Scalar>*>(attr);
+  list.size = cc_list.size();
+  auto data = new PD_Scalar*[list.size];
+  for (size_t i = 0; i < list.size; ++i) {
+    data[i] =
+        const_cast<PD_Scalar*>(reinterpret_cast<const PD_Scalar*>(&cc_list[i]));
+  }
+  list.data = data;
+  return list;
+}
+
+PD_List PD_ListStringAttr(void* attr) {
+  PD_List list;
+  const auto& cc_list = *reinterpret_cast<std::vector<std::string>*>(attr);
+  list.size = cc_list.size();
+  auto data = new char*[list.size];
+  for (size_t i = 0; i < list.size; ++i) {
+    data[i] = const_cast<char*>(cc_list[i].data());
+  }
+  list.data = reinterpret_cast<void*>(data);
+  return list;
+}
+
+PD_List PD_ListBoolAttr(void* attr) {
+  PD_List list;
+  const auto& cc_list = *reinterpret_cast<std::vector<bool>*>(attr);
+  list.size = cc_list.size();
+  auto data = reinterpret_cast<uint8_t*>(new uint8_t[cc_list.size()]);
+  for (size_t i = 0; i < cc_list.size(); ++i) {
+    data[i] = static_cast<uint8_t>(cc_list[i]);
+  }
+  list.data = data;
+  return list;
+}
+
 PD_REGISTER_CAPI(kernel_context);

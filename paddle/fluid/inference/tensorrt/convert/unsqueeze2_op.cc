@@ -33,7 +33,7 @@ class Unsqueeze2OpConverter : public OpConverter {
 
     // Get Attrs
     std::vector<int> axes =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
     PADDLE_ENFORCE_GT(
         axes.size(),
         0,

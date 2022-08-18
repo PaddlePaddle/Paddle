@@ -66,7 +66,7 @@ OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
   platform::Place place = phi::TransToPhiPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
-  if (kernel_key.backend() == phi::Backend::MKLDNN) {
+  if (kernel_key.backend() == phi::Backend::ONEDNN) {
     library_type = LibraryType::kMKLDNN;
   } else if (kernel_key.backend() == phi::Backend::GPUDNN) {
     library_type = LibraryType::kCUDNN;
@@ -87,7 +87,7 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
       backend = phi::Backend::GPUDNN;
       break;
     case LibraryType::kMKLDNN:
-      backend = phi::Backend::MKLDNN;
+      backend = phi::Backend::ONEDNN;
       break;
     case LibraryType::kKP:
       backend = phi::Backend::KPS;

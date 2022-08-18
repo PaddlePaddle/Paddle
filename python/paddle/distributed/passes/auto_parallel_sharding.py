@@ -27,7 +27,10 @@ from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_di
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-_skip_ops = ['create_py_reader', 'create_double_buffer_reader', 'read', 'slice']
+_skip_ops = [
+    'create_py_reader', 'create_double_buffer_reader', 'read', 'slice', 'split',
+    'assign'
+]
 # update here to support new optimizers
 _supported_optimizer_type = [
     "adam", "adamax", "adamw", "decayed_adagrad", "momentum", "dgc_momentum",
@@ -245,10 +248,10 @@ class ShardingPass(PassBase):
                         })
                     dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
                         main_block.var(sum_op_output))
-                    assert dist_attr is not None
-                    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                        new_op, dist_attr.process_mesh, dist_attr.dims_mapping,
-                        self._dist_context)
+                    # assert dist_attr is not None
+                    # naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    #     new_op, dist_attr.process_mesh, dist_attr.dims_mapping,
+                    #     self._dist_context)
                 break
 
         main_block._sync_with_cpp()

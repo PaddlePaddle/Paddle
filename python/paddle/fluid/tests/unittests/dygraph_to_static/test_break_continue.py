@@ -19,9 +19,27 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
 
 SEED = 2020
 np.random.seed(SEED)
+
+
+class TestDy2staticException(unittest.TestCase):
+
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = None
+        self.error = "Your if/else have different number of return value."
+
+    def test_error(self):
+        if self.dyfunc:
+            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
+                ProgramTranslator().enable(True)
+                self.assertTrue(declarative(self.dyfunc)(self.x))
+        paddle.fluid.dygraph.base._in_declarative_mode_ = False
+        ProgramTranslator().enable(False)
 
 
 def test_continue_in_for(x):
@@ -212,9 +230,12 @@ class TestContinueInFor(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph res is {}\nstatic_res is {}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph res is {}\nstatic_res is {}'.format(
+                dygraph_res, static_res))
 
 
 class TestContinueInForAtEnd(TestContinueInFor):
@@ -265,10 +286,12 @@ class TestWhileLoopClassVar(TestContinueInWhile):
         self.dygraph_func = while_loop_class_var
 
 
-class TestOptimBreakInFor(TestContinueInWhile):
+class TestOptimBreakInFor(TestDy2staticException):
 
-    def init_dygraph_func(self):
-        self.dygraph_func = test_optim_break_in_for
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = test_optim_break_in_for
+        self.error = "python while pred change from bool to variable."
 
 
 class TestOptimBreakInWhile(TestContinueInWhile):

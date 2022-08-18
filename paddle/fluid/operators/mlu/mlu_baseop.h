@@ -495,6 +495,20 @@ class MLUCnnlDCNDesc {
   cnnlDCNDescriptor_t dcn_desc_ = nullptr;
 };
 
+class MLUCnnlGridSampleDesc {
+ public:
+  MLUCnnlGridSampleDesc(const std::string& interp_mode_str,
+                        const std::string& padding_mode_str,
+                        bool align_corners);
+
+  const cnnlGridSampleDescriptor_t get() const;
+
+  ~MLUCnnlGridSampleDesc();
+
+ private:
+  cnnlGridSampleDescriptor_t grid_sample_desc_ = nullptr;
+};
+
 class MLUSeqDataDesc {
  public:
   MLUSeqDataDesc(const MLUSeqDataDesc& desc) = delete;
@@ -1276,6 +1290,15 @@ class MLUCnnl {
                       const cnnlTensorDescriptor_t output_desc,
                       void* output);
 
+  static void Pow(const ExecutionContext& ctx,
+                  cnnlComputationPreference_t prefer,
+                  const cnnlTensorDescriptor_t input1_desc,
+                  const void* input1,
+                  const cnnlTensorDescriptor_t input2_desc,
+                  const void* input2,
+                  const cnnlTensorDescriptor_t output_desc,
+                  void* output);
+
   static void PowR(const ExecutionContext& ctx,
                    cnnlComputationPreference_t prefer,
                    const cnnlTensorDescriptor_t input1_desc,
@@ -1694,8 +1717,8 @@ class MLUCnnl {
   static void NumTrue(const ExecutionContext& ctx,
                       const cnnlTensorDescriptor_t x_desc,
                       const void* x,
-                      Tensor index,
-                      uint32_t* num_true);
+                      const cnnlTensorDescriptor_t num_true_desc,
+                      void* num_true);
 
   static void Where(const ExecutionContext& ctx,
                     const cnnlTensorDescriptor_t x_desc,
@@ -2030,7 +2053,160 @@ class MLUCnnl {
                                const void* boxes,
                                const cnnlTensorDescriptor_t grads_image_desc,
                                void* grads_image);
+
+  static void GridSample(const ExecutionContext& ctx,
+                         const cnnlGridSampleDescriptor_t grid_sample_desc,
+                         const cnnlTensorDescriptor_t input_desc,
+                         const void* input,
+                         const cnnlTensorDescriptor_t grid_desc,
+                         const void* grid,
+                         const cnnlTensorDescriptor_t output_desc,
+                         void* output);
+
+  static void SyncBatchNormStats(const ExecutionContext& ctx,
+                                 const cnnlTensorDescriptor_t x_desc,
+                                 const void* x,
+                                 const float eps,
+                                 const cnnlTensorDescriptor_t mean_desc,
+                                 void* mean,
+                                 const cnnlTensorDescriptor_t invstd_desc,
+                                 void* invstd);
+
+  static void SyncBatchNormGatherStatsWithCounts(
+      const ExecutionContext& ctx,
+      float momentum,
+      float eps,
+      const cnnlTensorDescriptor_t mean_all_desc,
+      const void* mean_all,
+      const cnnlTensorDescriptor_t invstd_all_desc,
+      const void* invstd_all,
+      const cnnlTensorDescriptor_t moving_mean_desc,
+      void* moving_mean,
+      const cnnlTensorDescriptor_t moving_var_desc,
+      void* moving_var,
+      const cnnlTensorDescriptor_t count_all_desc,
+      const void* count_all,
+      const cnnlTensorDescriptor_t mean_desc,
+      void* mean,
+      const cnnlTensorDescriptor_t invstd_desc,
+      void* invstd);
+
+  static void SyncBatchNormElemt(const ExecutionContext& ctx,
+                                 const cnnlTensorDescriptor_t x_desc,
+                                 const void* x,
+                                 const cnnlTensorDescriptor_t mean_desc,
+                                 const void* mean,
+                                 const cnnlTensorDescriptor_t invstd_desc,
+                                 const void* invstd,
+                                 const cnnlTensorDescriptor_t weight_desc,
+                                 const void* weight,
+                                 const cnnlTensorDescriptor_t bias_desc,
+                                 const void* bias,
+                                 const cnnlTensorDescriptor_t y_desc,
+                                 void* y);
+
+  static void SyncBatchnormBackwardReduce(
+      const ExecutionContext& ctx,
+      const cnnlTensorDescriptor_t desc_dz,
+      const void* dz,
+      const cnnlTensorDescriptor_t desc_x,
+      const void* x,
+      const cnnlTensorDescriptor_t desc_mean,
+      const void* mean,
+      const cnnlTensorDescriptor_t desc_invstd,
+      const void* invstd,
+      const cnnlTensorDescriptor_t desc_dweight,
+      void* dweight,
+      const cnnlTensorDescriptor_t desc_dbias,
+      void* dbias,
+      const cnnlTensorDescriptor_t desc_sum_dy,
+      void* sum_dy,
+      const cnnlTensorDescriptor_t desc_sum_dy_xmu,
+      void* sum_dy_xmu,
+      const bool needs_input_grad0,
+      const bool needs_input_grad1,
+      const bool needs_input_grad2);
+
+  static void SyncBatchNormBackwardElemt(
+      const ExecutionContext& ctx,
+      const cnnlTensorDescriptor_t diff_y_desc,
+      const void* diff_y,
+      const cnnlTensorDescriptor_t x_desc,
+      const void* x,
+      const cnnlTensorDescriptor_t mean_desc,
+      const void* mean,
+      const cnnlTensorDescriptor_t invstd_desc,
+      const void* invstd,
+      const cnnlTensorDescriptor_t weight_desc,
+      const void* weight,
+      const cnnlTensorDescriptor_t sum_dy_desc,
+      const void* sum_dy,
+      const cnnlTensorDescriptor_t sum_dy_xmu_desc,
+      const void* sum_dy_xmu,
+      const cnnlTensorDescriptor_t count_desc,
+      const void* count,
+      const cnnlTensorDescriptor_t diff_x_desc,
+      void* diff_x);
 };
+
+const std::map<const std::string, std::pair<std::vector<int>, std::vector<int>>>
+    TransPermMap = {
+        // trans_mode, (forward_perm, backward_perm)
+        {"3D_NCHW2NHWC", {{0, 2, 1}, {0, 2, 1}}},
+        {"4D_NCHW2NHWC", {{0, 2, 3, 1}, {0, 3, 1, 2}}},
+        {"5D_NCHWD2NDHWC", {{0, 4, 2, 3, 1}, {0, 4, 2, 3, 1}}},
+        {"5D_NHWDC2NDHWC", {{0, 3, 1, 2, 4}, {0, 2, 3, 4, 1}}}};
+
+inline void SetMLUTransposePerm(const framework::DDim& dims,
+                                const DataLayout& data_layout,
+                                std::vector<int>* forward_perm,
+                                std::vector<int>* backward_perm,
+                                std::vector<int>* out_shape) {
+  const int dim_size = dims.size();
+  PADDLE_ENFORCE_EQ((dim_size >= 3) && (dim_size <= 5),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "MLUTransposePerm func only support (dim_size >= 3) && "
+                        "(dim_size <= 5), but now dim_size is %d.",
+                        dim_size));
+
+  PADDLE_ENFORCE_EQ(
+      (data_layout == DataLayout::kNCHW) || (data_layout == DataLayout::kNHWC),
+      true,
+      platform::errors::InvalidArgument(
+          "MLUTransposePerm func only support DataLayout: kNCHW or kNHWC, but "
+          "now data_layout is %s.",
+          data_layout));
+
+  // case 1: NCHW of Paddle != NHWC of MLU when dims==3,4
+  // case 2： NHWDC and NCHWD of Paddle != NDHWC of MLU when dims==5
+  std::string map_key = "";
+  if (data_layout == DataLayout::kNCHW) {
+    switch (dim_size) {
+      case 3:
+        map_key = "3D_NCHW2NHWC";
+        break;
+      case 4:
+        map_key = "4D_NCHW2NHWC";
+        break;
+      case 5:
+        map_key = "5D_NCHWD2NDHWC";
+        break;
+    }
+  } else if (data_layout == DataLayout::kNHWC && dim_size == 5) {
+    map_key = "5D_NHWDC2NDHWC";
+  }
+  assert(map_key != "");
+  forward_perm->assign(TransPermMap.at(map_key).first.begin(),
+                       TransPermMap.at(map_key).first.end());
+  backward_perm->assign(TransPermMap.at(map_key).second.begin(),
+                        TransPermMap.at(map_key).second.end());
+
+  auto in_dims = phi::vectorize(dims);
+  for (size_t i = 0; i < in_dims.size(); i++) {
+    out_shape->push_back(in_dims[forward_perm->at(i)]);
+  }
+}
 
 template <typename T>
 inline void TransposeFromMLUTensor(const ExecutionContext& ctx,

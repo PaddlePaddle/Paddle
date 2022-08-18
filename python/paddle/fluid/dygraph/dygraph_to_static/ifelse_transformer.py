@@ -27,13 +27,14 @@ from paddle.utils import gast
 from paddle.fluid import unique_name
 
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node, FunctionNameLivenessAnalysis
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_nodes
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_get_args_node, create_set_args_node
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_INDEX_PREFIX, FOR_ITER_TUPLE_PREFIX, FOR_ITER_TUPLE_INDEX_PREFIX, FOR_ITER_VAR_LEN_PREFIX, FOR_ITER_VAR_NAME_PREFIX, FOR_ITER_ZIP_TO_LIST_PREFIX, FOR_ITER_TARGET_PREFIX, FOR_ITER_ITERATOR_PREFIX
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
@@ -53,7 +54,8 @@ class IfElseTransformer(BaseTransformer):
         ), "Type of input node should be AstNodeWrapper, but received %s ." % type(
             wrapper_root)
         self.root = wrapper_root.node
-        self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
+        FunctionNameLivenessAnalysis(
+            self.root)  # name analysis of current ast tree.
 
     def transform(self):
         """
@@ -273,193 +275,6 @@ class NameVisitor(gast.NodeVisitor):
             self.name_ids[name_id] = ctxs + self.name_ids[name_id]
 
 
-def get_name_ids(nodes, after_node=None, end_node=None):
-    """
-    Return all ast.Name.id of python variable in nodes range from
-    (after_node, end_node) exclusively. If after_node or end_node is None, the
-    range is unlimited.
-    """
-    name_visitor = NameVisitor(after_node, end_node)
-    for node in nodes:
-        name_visitor.visit(node)
-    return name_visitor.name_ids
-
-
-def parse_cond_args(parent_ids,
-                    var_ids_dict,
-                    modified_ids_dict=None,
-                    ctx=gast.Load):
-    """
-    Find out the ast.Name.id list of input by analyzing node's AST information.
-    """
-
-    # 1. filter the var fit the ctx
-    arg_name_ids = [
-        var_id for var_id, var_ctx in six.iteritems(var_ids_dict)
-        if isinstance(var_ctx[0], ctx)
-    ]
-
-    # 2. args should contain modified var ids in if-body or else-body
-    #  case:
-    #
-    #   ```
-    #   if b < 1:
-    #     z = y
-    #   else:
-    #     z = x
-    #   ```
-    #
-    #   In the above case, `z` should be in the args of cond()
-    if modified_ids_dict:
-        arg_name_ids = set(arg_name_ids) | set(modified_ids_dict)
-
-    # 3. args should not contain the vars not in parent ids
-    #  case :
-    #
-    #   ```
-    #   x = 1
-    #   if x > y:
-    #     z = [v for v in range(i)]
-    #   ```
-    #
-    #   In the above case, `v` should not be in the args of cond()
-    arg_name_ids = set(arg_name_ids) & set(parent_ids)
-
-    return arg_name_ids
-
-
-def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
-                      after_ifelse_vars_dict):
-    """
-    Find out the ast.Name list of output by analyzing node's AST information.
-    One of the following conditions should be satisfied while determining whether a variable is a return value:
-    1. the var in parent scope is modified in If.body or If.orelse node.
-    2. new var is both created in If.body and If.orelse node.
-    3. new var is created only in one of If.body or If.orelse node, and it used as gast.Load firstly after gast.If node.
-
-    For example:
-        x, y = 5, 10
-        if x > 4:
-            x = x+1
-            z = x*x
-            q = 10
-        else:
-            y = y - 1
-            z = y*y
-            m = 20
-            n = 20
-
-        print(q)
-        n = 30
-        print(n)
-
-
-    The return_ids are (x, y, z, q) for `If.body` and `If.orelse`node, because
-    1. x is modified in If.body node,
-    2. y is modified in If.body node,
-    3. z is both created in If.body and If.orelse node,
-    4. q is created only in If.body, and it is used by `print(q)` as gast.Load.
-    Note:
-        After transformed, q and z are created in parent scope. For example,
-
-        x, y = 5, 10
-        q = paddle.jit.dy2static.UndefindVar('q')
-        z = paddle.jit.dy2static.UndefindVar('z')
-
-        def true_func(x, y, q):
-            x = x+1
-            z = x*x
-            q = 10
-            return x,y,z,q
-
-        def false_func(x, y, q):
-            y = y - 1
-            z = y*y
-            m = 20
-            n = 20
-            return x,y,z,q
-
-        x,y,z,q = fluid.layers.cond(x>4, lambda: true_func(x, y), lambda: false_func(x, y, q))
-
-    m and n are not in return_ids, because
-    5. m is created only in If.orelse, but it is not used after gast.If node.
-    6. n is created only in If.orelse, and it is used by `n = 30` and `print(n)`, but it is not used as gast.Load firstly but gast.Store .
-
-    """
-
-    def _is_return_var(ctxs):
-        for ctx in ctxs:
-            if isinstance(ctx, (gast.Store, gast.Param)):
-                return True
-        return False
-
-    def _vars_with_store(ids_dict):
-        vars = []
-        for k, ctxs in six.iteritems(ids_dict):
-            if _is_return_var(ctxs):
-                vars.append(k)
-        return vars
-
-    def _modified_vars(child_dict, parent_dict):
-        return set(
-            [var for var in _vars_with_store(child_dict) if var in parent_dict])
-
-    def _vars_loaded(ids_dict):
-        """
-        gast.Param is also a kind of `load` semantic.
-        """
-        new_dict = defaultdict(list)
-        for k, ctxs in six.iteritems(ids_dict):
-            for ctx in ctxs:
-                if isinstance(ctx, (gast.Load, gast.Param)):
-                    new_dict[k].append(ctx)
-        return new_dict
-
-    # modified vars
-    body_modified_vars = _modified_vars(if_vars_dict, parent_vars_dict)
-    body_modified_vars = set(
-        filter(lambda x: x != ARGS_NAME, body_modified_vars))
-    orelse_modified_vars = _modified_vars(else_vars_dict, parent_vars_dict)
-    orelse_modified_vars = set(
-        filter(lambda x: x != ARGS_NAME, orelse_modified_vars))
-    modified_vars = body_modified_vars | orelse_modified_vars
-
-    # new vars
-    # TODO(remove __args when new FunctionScopeAnalysis has been used.)
-    body_new_vars = set([
-        var for var in _vars_with_store(if_vars_dict)
-        if var not in parent_vars_dict and var != ARGS_NAME
-    ])
-    orelse_new_vars = set([
-        var for var in _vars_with_store(else_vars_dict)
-        if var not in parent_vars_dict and var != ARGS_NAME
-    ])
-    new_vars_in_body_or_orelse = body_new_vars | orelse_new_vars
-    new_vars_in_one_of_body_or_orelse = body_new_vars ^ orelse_new_vars
-
-    # 1. the var in parent scope is modified in If.body or If.orelse node.
-    modified_vars_from_parent = modified_vars - new_vars_in_body_or_orelse
-
-    # 2. new var is both created in If.body and If.orelse node.
-    new_vars_in_body_and_orelse = body_new_vars & orelse_new_vars
-
-    # 3. new var is created only in one of If.body or If.orelse node, and it used as gast.Load firstly after gast.If node.
-    # TODO(zhhsplendid): the _vars_loaded can be optimized as _vars_loaded_before_store. Because if a variable is stored before load,
-    # the value would change by the store statement, we don't have to return to change the value. However, analysis is
-    # complex because if the IfElse is nested and outer IfElse store statement may not run at all. We will put this optimization
-    # as the future TODO
-    used_vars_after_ifelse = set(
-        [var for var in _vars_loaded(after_ifelse_vars_dict)])
-    new_vars_to_create = new_vars_in_one_of_body_or_orelse & used_vars_after_ifelse | new_vars_in_body_and_orelse
-
-    # 4. generate return_ids of if/else node.
-    return_ids = list(modified_vars_from_parent | new_vars_in_body_and_orelse
-                      | new_vars_to_create)
-    return_ids.sort()
-
-    return return_ids, modified_vars_from_parent, new_vars_to_create
-
-
 def _valid_nonlocal_names(return_name_ids, nonlocal_names):
     """
     All var in return_name_ids should be in nonlocal_names.
@@ -490,15 +305,7 @@ def transform_if_else(node, root):
     """
 
     # TODO(liym27): Consider variable like `self.a` modified in if/else node.
-    parent_name_ids = get_name_ids([root], end_node=node)
-    body_name_ids = get_name_ids(node.body)
-    orelse_name_ids = get_name_ids(node.orelse)
-    # Get after_ifelse_name_ids, which means used var names after If.body and If.orelse node.
-    after_ifelse_name_ids = get_name_ids([root], after_node=node)
-
-    return_name_ids, modified_name_ids_from_parent, new_vars_to_create = parse_cond_return(
-        parent_name_ids, body_name_ids, orelse_name_ids, after_ifelse_name_ids)
-
+    return_name_ids = sorted(list(node.pd_scope.modified_vars()))
     # NOTE: Python can create variable only in if body or only in else body, and use it out of if/else.
     # E.g.
     #
@@ -508,31 +315,30 @@ def transform_if_else(node, root):
     #
     # Create static variable for those variables
     create_new_vars_in_parent_stmts = []
-    for name in new_vars_to_create:
-        # NOTE: Consider variable like `self.a` modified in if/else node.
-        if "." not in name:
-            create_new_vars_in_parent_stmts.append(create_undefined_var(name))
 
-    parent_ids_set = set()
-    for k, ctxs in parent_name_ids.items():
-        if any([not isinstance(ctx, gast.Load) for ctx in ctxs]):
-            parent_ids_set.add(k)
-
-    true_args = parse_cond_args(parent_ids_set, body_name_ids,
-                                modified_name_ids_from_parent)
-    false_args = parse_cond_args(parent_ids_set, orelse_name_ids,
-                                 modified_name_ids_from_parent)
-    nonlocal_names = list(true_args | false_args | new_vars_to_create)
+    nonlocal_names = list(return_name_ids)
     nonlocal_names.sort()
     # NOTE: All var in return_name_ids should be in nonlocal_names.
     nonlocal_names = _valid_nonlocal_names(return_name_ids, nonlocal_names)
 
     # TODO(dev): Need a better way to deal this.
-    if ARGS_NAME in nonlocal_names:
-        nonlocal_names.remove(ARGS_NAME)
+    # LoopTransformer will create some special vars, which is not visiable by users. so we can sure it's safe to remove them.
+    filter_names = [
+        ARGS_NAME, FOR_ITER_INDEX_PREFIX, FOR_ITER_TUPLE_PREFIX,
+        FOR_ITER_TARGET_PREFIX, FOR_ITER_ITERATOR_PREFIX,
+        FOR_ITER_TUPLE_INDEX_PREFIX, FOR_ITER_VAR_LEN_PREFIX,
+        FOR_ITER_VAR_NAME_PREFIX, FOR_ITER_ZIP_TO_LIST_PREFIX
+    ]
 
-    nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)
-                          ] if nonlocal_names else []
+    def remove_if(x):
+        for name in filter_names:
+            if x.startswith(name): return False
+        return True
+
+    nonlocal_names = list(filter(remove_if, nonlocal_names))
+    return_name_ids = nonlocal_names
+
+    nonlocal_stmt_node = create_nonlocal_stmt_nodes(nonlocal_names)
 
     empty_arg_node = gast.arguments(args=[],
                                     posonlyargs=[],
@@ -546,12 +352,12 @@ def transform_if_else(node, root):
         nonlocal_stmt_node + node.body,
         name=unique_name.generate(TRUE_FUNC_PREFIX),
         input_args=empty_arg_node,
-        return_name_ids=return_name_ids)
+        return_name_ids=[])
     false_func_node = create_funcDef_node(
         nonlocal_stmt_node + node.orelse,
         name=unique_name.generate(FALSE_FUNC_PREFIX),
         input_args=empty_arg_node,
-        return_name_ids=return_name_ids)
+        return_name_ids=[])
 
     get_args_node = create_get_args_node(nonlocal_names)
     set_args_node = create_set_args_node(nonlocal_names)

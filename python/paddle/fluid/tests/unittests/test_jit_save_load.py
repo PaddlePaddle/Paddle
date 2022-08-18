@@ -1,4 +1,5 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -387,9 +388,9 @@ class TestJitSaveLoad(unittest.TestCase):
         # inference & compare
         x = fluid.dygraph.to_variable(
             np.random.random((1, 784)).astype('float32'))
-        self.assertTrue(
-            np.array_equal(train_layer(x).numpy(),
-                           infer_layer(x).numpy()))
+        np.testing.assert_array_equal(
+            train_layer(x).numpy(),
+            infer_layer(x).numpy())
 
     def load_and_finetune(self, train_layer, load_train_layer):
         train_layer.train()
@@ -397,8 +398,8 @@ class TestJitSaveLoad(unittest.TestCase):
         # train & compare
         img0, _, train_loss = train(train_layer)
         img1, _, load_train_loss = train(load_train_layer)
-        self.assertTrue(
-            np.array_equal(train_loss.numpy(), load_train_loss.numpy()))
+        np.testing.assert_array_equal(train_loss.numpy(),
+                                      load_train_loss.numpy())
 
     def load_dygraph_state_dict(self, train_layer):
         train_layer.eval()
@@ -413,9 +414,9 @@ class TestJitSaveLoad(unittest.TestCase):
         # inference & compare
         x = fluid.dygraph.to_variable(
             np.random.random((1, 784)).astype('float32'))
-        self.assertTrue(
-            np.array_equal(train_layer(x).numpy(),
-                           new_layer(x).numpy()))
+        np.testing.assert_array_equal(
+            train_layer(x).numpy(),
+            new_layer(x).numpy())
 
     def test_load_dygraph_no_path(self):
         model_path = os.path.join(self.temp_dir.name,
@@ -456,7 +457,9 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
 
         self.assertTrue(len(dy_outs) == 4)
         for dy_out, load_out in zip(dy_outs, load_outs):
-            self.assertTrue(np.allclose(dy_out.numpy(), load_out.numpy()))
+            np.testing.assert_allclose(dy_out.numpy(),
+                                       load_out.numpy(),
+                                       rtol=1e-05)
 
 
 class TestSaveLoadWithDictInput(unittest.TestCase):
@@ -594,7 +597,7 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         pred_xx = infer_layer2(x)
 
         # 4. assert pred_x == pred_xx
-        self.assertTrue(np.allclose(pred_x.numpy(), pred_xx.numpy()))
+        np.testing.assert_allclose(pred_x.numpy(), pred_xx.numpy(), rtol=1e-05)
 
     def test_multi_in_out1(self):
         net = LinearNetMultiInput1(8, 8)
@@ -632,7 +635,7 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         pred_xx = infer_layer2(x)
 
         # 4. assert pred_x == pred_xx
-        self.assertTrue(np.allclose(pred_x.numpy(), pred_xx.numpy()))
+        np.testing.assert_allclose(pred_x.numpy(), pred_xx.numpy(), rtol=1e-05)
 
 
 class TestJitSaveLoadConfig(unittest.TestCase):
@@ -672,9 +675,9 @@ class TestJitSaveLoadConfig(unittest.TestCase):
         infer_layer = paddle.jit.load(model_path)
         x = fluid.dygraph.to_variable(
             np.random.random((4, 8)).astype('float32'))
-        self.assertTrue(
-            np.array_equal(train_layer(x)[0].numpy(),
-                           infer_layer(x).numpy()))
+        np.testing.assert_array_equal(
+            train_layer(x)[0].numpy(),
+            infer_layer(x).numpy())
 
     def test_save_no_support_config_error(self):
         layer = LinearNet(784, 1)
@@ -777,9 +780,9 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
 
         x = fluid.dygraph.to_variable(
             np.random.random((4, 8)).astype('float32'))
-        self.assertTrue(
-            np.array_equal(train_layer(x)[0].numpy(),
-                           infer_layer(x).numpy()))
+        np.testing.assert_array_equal(
+            train_layer(x)[0].numpy(),
+            infer_layer(x).numpy())
 
     def test_load_var_not_in_extra_var_info(self):
         self.train_and_save()
@@ -830,10 +833,12 @@ class TestJitSaveMultiCases(unittest.TestCase):
         else:
             pred = layer(x).numpy()
         loaded_pred = loaded_layer(x).numpy()
-        self.assertTrue(
-            np.array_equal(pred, loaded_pred),
-            msg="Result diff when load and inference:\nlayer result:\n{}\n" \
-                "loaded layer result:\n{}".format(pred, loaded_pred))
+        np.testing.assert_array_equal(
+            pred,
+            loaded_pred,
+            err_msg=
+            'Result diff when load and inference:\nlayer result:\n{}\nloaded layer result:\n{}'
+            .format(pred, loaded_pred))
 
     def test_no_prune_to_static_after_train(self):
         layer = LinearNet(784, 1)
@@ -1055,7 +1060,7 @@ class TestJitSaveLoadEmptyLayer(unittest.TestCase):
         paddle.jit.save(layer, self.model_path)
         load_layer = paddle.jit.load(self.model_path)
         load_out = load_layer(x)
-        self.assertTrue(np.array_equal(out, load_out))
+        np.testing.assert_array_equal(out, load_out)
 
 
 class TestJitSaveLoadNoParamLayer(unittest.TestCase):
@@ -1078,7 +1083,7 @@ class TestJitSaveLoadNoParamLayer(unittest.TestCase):
         paddle.jit.save(layer, self.model_path)
         load_layer = paddle.jit.load(self.model_path)
         load_out = load_layer(x, y)
-        self.assertTrue(np.array_equal(out, load_out))
+        np.testing.assert_array_equal(out, load_out)
 
 
 class TestJitSaveLoadMultiMethods(unittest.TestCase):
@@ -1156,7 +1161,7 @@ class LayerSaved(paddle.nn.Layer):
 class Net(paddle.nn.Layer):
 
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.fc1 = paddle.nn.Linear(4, 4)
         self.fc2 = paddle.nn.Linear(4, 4)
         self.bias = 0.4
@@ -1185,13 +1190,49 @@ class Net(paddle.nn.Layer):
     def fbias(self):
         return self.bias + 1
 
-    # For extra Tensor
+    @paddle.jit.to_static(property=True)
+    def down_sampling(self):
+        return 4
+
+    @paddle.jit.to_static(property=True)
+    def fstr(self):
+        return "save str property"
+
+    @paddle.jit.to_static(property=True)
+    def ints(self):
+        return [10, 20]
+
+    @paddle.jit.to_static(property=True)
+    def floats(self):
+        return [1.1, 2.2]
+
+    @paddle.jit.to_static(property=True)
+    def strs(self):
+        return ["hello", "world"]
+
+
+class NetTensor(paddle.nn.Layer):
+
+    def __init__(self):
+        super().__init__()
+        self.fc1 = paddle.nn.Linear(4, 4)
+        self.fc2 = paddle.nn.Linear(4, 4)
+        self.bias = 0.4
+        self.flag = paddle.ones([2], dtype="int32")
+
+    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
+    def forward(self, x):
+        out = self.fc1(x)
+        out = paddle.nn.functional.relu(out)
+        out = paddle.mean(out)
+        return out
+
     @paddle.jit.to_static(property=True)
     def fflag(self):
-        return self.flag
+        return True
 
 
-class TestJitSaveCombine(unittest.TestCase):
+class TestJitSaveCombineProperty(unittest.TestCase):
 
     def setUp(self):
         # enable dygraph mode
@@ -1201,14 +1242,22 @@ class TestJitSaveCombine(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_save_load_finetune_load(self):
+    def test_jit_save_combine_property(self):
         model_path = os.path.join(self.temp_dir.name,
                                   "test_jit_save_combine/model")
-
         # Use new namespace
         with unique_name.guard():
             net = Net()
         #save
+        paddle.jit.save(net, model_path, combine_params=True)
+
+    def test_jit_save_tensor_property(self):
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_jit_save_combine/model")
+        # Use new namespace
+        with unique_name.guard():
+            net = NetTensor()
+
         paddle.jit.save(net, model_path, combine_params=True)
 
 
@@ -1461,7 +1510,7 @@ class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
         load_func = paddle.jit.load(path)
 
         load_result = load_func(inps)
-        self.assertTrue(np.array_equal(load_result.numpy(), origin.numpy()))
+        np.testing.assert_array_equal(load_result.numpy(), origin.numpy())
 
 
 class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
@@ -1501,8 +1550,8 @@ class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
 
         load_result = load_func(inps)
 
-        self.assertTrue(
-            np.array_equal(origin_result.numpy(), load_result.numpy()))
+        np.testing.assert_array_equal(origin_result.numpy(),
+                                      load_result.numpy())
 
 
 class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
@@ -1541,7 +1590,7 @@ class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
         load_func = paddle.jit.load(path)
 
         load_result = load_func(inps)
-        self.assertTrue(np.array_equal(load_result.numpy(), origin.numpy()))
+        np.testing.assert_array_equal(load_result.numpy(), origin.numpy())
 
 
 class TestJitSaveLoadDataParallel(unittest.TestCase):
@@ -1560,10 +1609,12 @@ class TestJitSaveLoadDataParallel(unittest.TestCase):
         x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
         pred = layer(x).numpy()
         loaded_pred = loaded_layer(x).numpy()
-        self.assertTrue(
-            np.array_equal(pred, loaded_pred),
-            msg="Result diff when load and inference:\nlayer result:\n{}\n" \
-                "loaded layer result:\n{}".format(pred, loaded_pred))
+        np.testing.assert_array_equal(
+            pred,
+            loaded_pred,
+            err_msg=
+            'Result diff when load and inference:\nlayer result:\n{}\nloaded layer result:\n{}'
+            .format(pred, loaded_pred))
 
     def test_jit_save_data_parallel_with_inputspec(self):
         layer = LinearNetNotDeclarative(784, 1)

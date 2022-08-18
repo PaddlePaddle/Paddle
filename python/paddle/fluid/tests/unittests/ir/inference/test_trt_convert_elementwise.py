@@ -105,7 +105,7 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -114,7 +114,102 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-3, 1e-3)
+
+    def add_skip_trt_case(self):
+        pass
+
+    def test(self):
+        self.add_skip_trt_case()
+        self.run_test()
+
+
+# This is the special test case
+class TrtConvertElementwiseTest_one_input_special_case1(TrtLayerAutoScanTest):
+
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
+    def sample_program_configs(self):
+
+        def generate_input(shape):
+            return np.random.random(shape).astype(np.float32)
+
+        def generate_weight():
+            return np.random.randn(1).astype(np.float32)
+
+        for shape in [[32]]:
+            for op_type in ["elementwise_add", "elementwise_mul"]:
+                for axis in [-1]:
+                    self.dims = len(shape)
+                    dics = [{"axis": axis}]
+                    ops_config = [{
+                        "op_type": op_type,
+                        "op_inputs": {
+                            "X": ["input_data"],
+                            "Y": ["weight"]
+                        },
+                        "op_outputs": {
+                            "Out": ["output_data"]
+                        },
+                        "op_attrs": dics[0]
+                    }]
+                    ops = self.generate_op_config(ops_config)
+
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={
+                            "weight":
+                            TensorConfig(data_gen=partial(generate_weight))
+                        },
+                        inputs={
+                            "input_data":
+                            TensorConfig(
+                                data_gen=partial(generate_input, shape)),
+                        },
+                        outputs=["output_data"])
+
+                    yield program_config
+
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+        def generate_dynamic_shape(attrs):
+            self.dynamic_shape.min_input_shape = {"input_data": [32]}
+            self.dynamic_shape.max_input_shape = {"input_data": [64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [32]}
+
+        def clear_dynamic_shape():
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
+
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            if not dynamic_shape:
+                return 0, 3
+            return 1, 2
+
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+
+        # for static_shape
+        clear_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), (1e-3, 1e-3)
+
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-3, 1e-3)
 
     def add_skip_trt_case(self):
         pass
@@ -206,7 +301,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.dims == 1:
+            if self.dims == 1 and not dynamic_shape:
                 return 0, 3
             return 1, 2
 
@@ -221,7 +316,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -230,7 +325,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True), (1e-3, 1e-3)
 
     def add_skip_trt_case(self):
         pass
@@ -244,10 +339,6 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
         TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        inputs = program_config.inputs
-        if len(inputs['input_data1'].shape) == 1:
-            return False
-
         return True
 
     def sample_program_configs(self):
@@ -353,6 +444,11 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            if self.dims == 1 and not dynamic_shape:
+                return 0, 4
+            return 1, 3
+
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
@@ -360,16 +456,18 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 3), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), (1, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), 1e-5
+        yield self.create_inference_config(), (1, 3), (1e-3, 1e-3)
 
     def add_skip_trt_case(self):
         pass
@@ -492,14 +590,14 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
             self.trt_param.precision = paddle_infer.PrecisionType.Float32
             yield self.create_inference_config(), (1, 3), 1e-5
             self.trt_param.precision = paddle_infer.PrecisionType.Half
-            yield self.create_inference_config(), (1, 3), 1e-5
+            yield self.create_inference_config(), (1, 3), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), (1, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), 1e-5
+        yield self.create_inference_config(), (1, 3), (1e-3, 1e-3)
 
     def add_skip_trt_case(self):
         pass
@@ -519,15 +617,19 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
+        # use rand not randn to avoiding pow producing `NAN`
         def generate_weight():
-            return np.random.randn(32).astype(np.float32)
+            return np.random.rand(32).astype(np.float32)
 
         for batch in [1, 2, 4]:
             for shape in [[32], [batch, 32], [batch, 32, 32],
                           [batch, 32, 16, 32]]:
                 for op_type in [
-                        "elementwise_add", "elementwise_mul", "elementwise_sub",
-                        "elementwise_div", "elementwise_pow"
+                        "elementwise_add",
+                        "elementwise_mul",
+                        "elementwise_sub",
+                        "elementwise_div",
+                        "elementwise_pow",
                 ]:
                     for axis in [-1 if len(shape) == 1 else 1]:
                         self.dims = len(shape)
@@ -595,11 +697,6 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
-        def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.dims == 1:
-                return 0, 3
-            return 1, 2
-
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
@@ -607,33 +704,19 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+        yield self.create_inference_config(), (0, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+        yield self.create_inference_config(), (0, 3), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+        yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+        yield self.create_inference_config(), (1, 2), (1e-3, 1e-3)
 
     def add_skip_trt_case(self):
-
-        def teller1(program_config, predictor_config):
-            input_x_names = program_config.ops[0].inputs["X"]
-            for weight_name in program_config.weights:
-                if weight_name in input_x_names:
-                    return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_SUPPORT,
-            "Input X should not be parameters in elementwise op.")
+        pass
 
     def test(self):
         self.add_skip_trt_case()

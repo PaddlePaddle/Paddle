@@ -83,7 +83,7 @@ class CSplitOpCUDAKernel : public framework::OpKernel<T> {
                           rank,
                           nranks));
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto dims = x->dims();
     auto dims_size = dims.size();
     // final dim

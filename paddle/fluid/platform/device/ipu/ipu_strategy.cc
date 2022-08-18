@@ -101,6 +101,10 @@ IpuStrategy::IpuStrategy() {
   ADD_STRING_OPTION(onnx_dump_path);
   ADD_STRING_OPTION(weight_decay_mode);
 
+  // dy2static support
+  ADD_DOUBLE_OPTION(lr);
+  ADD_BOOL_OPTION(is_dynamic);
+
 #undef ADD_STRING_OPTION
 #undef ADD_DOUBLE_OPTION
 #undef ADD_UINT64_OPTION
@@ -298,8 +302,6 @@ IpuStrategy::IpuStrategy() {
   ADD_POPART_BOOL_OPTION_ALIAS(
       schedule_non_weight_update_gradient_consumers_early,
       scheduleNonWeightUpdateGradientConsumersEarly);
-  ADD_POPART_BOOL_OPTION_ALIAS(create_implicit_pipelining_fwd_only_program,
-                               createImplicitPipeliningFwdOnlyProgram);
 
   ADD_POPART_DOUBLE_OPTION_ALIAS(outline_sequence_break_cost,
                                  outlineSequenceBreakCost);

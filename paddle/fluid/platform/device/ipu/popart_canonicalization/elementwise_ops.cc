@@ -30,7 +30,7 @@ Node *elementwise_op_handler(Graph *graph,
   auto y_shape = GetInputVarNode("Y", node)->Var()->GetShape();
   int64_t y_rank = y_shape.size();
 
-  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  auto axis = PADDLE_GET_CONST(int, op->GetAttr("axis"));
   if (axis == -1 || axis == x_rank - 1 || x_rank == y_rank) {
     auto new_node =
         CreateBaseOp(graph,

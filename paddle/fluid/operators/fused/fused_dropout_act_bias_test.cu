@@ -57,7 +57,7 @@ struct TestFusedDropoutActBias {
   std::vector<uint8_t> correct_mask;
 
   platform::CUDAPlace place;
-  platform::CUDADeviceContext *ctx;
+  phi::GPUContext *ctx;
 
   TestFusedDropoutActBias() {
     rows = 32;
@@ -69,7 +69,7 @@ struct TestFusedDropoutActBias {
     has_bias = true;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
   TestFusedDropoutActBias(int rows_,
@@ -87,7 +87,7 @@ struct TestFusedDropoutActBias {
     has_bias = true;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
   ~TestFusedDropoutActBias() {}

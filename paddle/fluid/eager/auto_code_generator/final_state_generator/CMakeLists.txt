@@ -38,7 +38,7 @@ add_custom_target(
   COMMAND
     "${PYTHON_EXECUTABLE}"
     "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/final_state_generator/eager_gen.py"
-    "--api_yaml_path=${api_yaml_path}"
+    "--api_yaml_path=${api_yaml_path},${fwd_api_yaml_path}"
     "--backward_yaml_path=${backward_yaml_path}"
     "--forwards_cc_path=${tmp_forwards_cc_path}"
     "--forwards_h_path=${tmp_forwards_h_path}"
@@ -54,11 +54,10 @@ add_custom_target(
   VERBATIM)
 
 set(tmp_python_c_output_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/tmp_eager_final_state_op_function_impl.h"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function.cc.tmp"
 )
 set(python_c_output_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function_impl.h"
-)
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function.cc")
 
 add_custom_target(
   eager_final_state_python_c_codegen

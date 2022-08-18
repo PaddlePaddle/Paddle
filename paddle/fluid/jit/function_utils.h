@@ -18,38 +18,48 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/fluid/jit/function_schema.h"
 
 namespace paddle {
+
+namespace framework {
+class Variable;
+class ProgramDesc;
+class Scope;
+}  // namespace framework
+
 namespace jit {
 using Variable = paddle::framework::Variable;
-using Name2VariableMap = std::unordered_map<std::string, Variable>;
+using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
 using DenseTensor = phi::DenseTensor;
+using Tensor = paddle::experimental::Tensor;
+
 namespace utils {
 
-void FetchVarsByNames(const std::vector<std::string> &names,
-                      const framework::Scope &scope,
-                      std::vector<Variable> *outs);
+std::vector<DenseTensor> ToDenseTensors(const std::vector<Tensor> &tensors);
+std::vector<Tensor> ToTensors(const std::vector<DenseTensor> &tensors);
 
-void ShareInputsIntoScope(const std::vector<std::string> &ordered_input_names,
-                          const std::vector<Variable> &vars,
-                          framework::Scope *scope);
+void FetchOuts(const std::vector<std::string> &names,
+               const framework::Scope &scope,
+               std::vector<DenseTensor> *outs);
+
+void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
+                    const std::vector<DenseTensor> &vars,
+                    framework::Scope *scope);
 
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
-                          const Name2VariableMap &params_dict,
+                          const VariableMap &params_dict,
                           framework::Scope *scope);
 
 void RemoveFeedFetch(framework::ProgramDesc *program_desc);
 
 template <typename T>
-std::shared_ptr<T> MakeFunction(const std::shared_ptr<FunctionInfo> &info,
-                                const Name2VariableMap &params_dict,
-                                const phi::Place &place) {
+std::shared_ptr<T> MakeEngine(const std::shared_ptr<FunctionInfo> &info,
+                              const VariableMap &params_dict,
+                              const phi::Place &place) {
   return std::make_shared<T>(info, params_dict, place);
 }
 

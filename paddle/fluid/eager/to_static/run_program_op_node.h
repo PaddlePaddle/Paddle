@@ -58,13 +58,14 @@ static void CheckInputVarStatus(const Tensor &tensor) {
                         "wrong type. Expect type is DenseTensor.",
                         tensor.name()));
 
-  PADDLE_ENFORCE_EQ(tensor.initialized(),
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "The tensor in input tensor %s of "
-                        "RunProgram(Grad)Op "
-                        "is not initialized.",
-                        tensor.name()));
+  PADDLE_ENFORCE_EQ(
+      static_cast<phi::DenseTensor *>(tensor.impl().get())->IsInitialized(),
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "The tensor in input tensor %s of "
+          "RunProgram(Grad)Op "
+          "is not initialized.",
+          tensor.name()));
 }
 
 static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
@@ -84,7 +85,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is DenseTensor",
                           name));
-    PADDLE_ENFORCE_EQ(src_tensor.initialized(),
+    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
                       true,
                       paddle::platform::errors::InvalidArgument(
                           "The tensor in output tensor %s get from "
@@ -120,7 +121,7 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto name = tensors[i].name();
-    if (name == "Fake_var" || !tensors[i].initialized()) {
+    if (name == "Fake_var") {
       continue;
     }
     auto *var = scope->Var(name);
@@ -190,16 +191,16 @@ inline void RunProgramAPI(
     std::vector<paddle::experimental::Tensor *> &dout,    // NOLINT
     const paddle::framework::AttributeMap &attrs) {
   VLOG(2) << "RunProgramOpKernel Compute";
-  auto start_op_index = BOOST_GET_CONST(int64_t, attrs.at("start_op_index"));
-  auto end_op_index = BOOST_GET_CONST(int64_t, attrs.at("end_op_index"));
+  auto start_op_index = PADDLE_GET_CONST(int64_t, attrs.at("start_op_index"));
+  auto end_op_index = PADDLE_GET_CONST(int64_t, attrs.at("end_op_index"));
   // In the original run_program OP, the default value of the is_test
   // attribute is false, we should check if there is is_test parameter
   // in attrs
   auto is_test = false;
   if (attrs.count("is_test")) {
-    is_test = BOOST_GET_CONST(bool, attrs.at("is_test"));
+    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
-  auto program_id = BOOST_GET_CONST(int64_t, attrs.at("program_id"));
+  auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
 
   // NOTE(chenweihang): In order not to add new variable type, use vector
   // here. Originally, here can use scope directly.
@@ -225,8 +226,8 @@ inline void RunProgramAPI(
   details::ShareTensorsIntoScope(x, &scope);
   details::ShareTensorsIntoScope(params, &scope);
 
-  auto *global_block =
-      BOOST_GET_CONST(paddle::framework::BlockDesc *, attrs.at("global_block"));
+  auto *global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc *,
+                                        attrs.at("global_block"));
   const auto &place = egr::Controller::Instance().GetExpectedPlace();
 
   if (end_op_index > start_op_index) {
@@ -291,11 +292,11 @@ inline void RunProgramGradAPI(
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
 
-  auto *global_block =
-      BOOST_GET_CONST(paddle::framework::BlockDesc *, attrs.at("global_block"));
-  auto orig_end_op_index = BOOST_GET_CONST(int64_t, attrs.at("end_op_index"));
+  auto *global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc *,
+                                        attrs.at("global_block"));
+  auto orig_end_op_index = PADDLE_GET_CONST(int64_t, attrs.at("end_op_index"));
 
-  auto program_id = BOOST_GET_CONST(int64_t, attrs.at("program_id"));
+  auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
   // NOTE: skip `shape` and `fill_constant` op created by
   // fluid.backward.gradients, one forward output will generate one `shape`
   // and `fill_constant`

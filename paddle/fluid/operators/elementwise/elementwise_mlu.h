@@ -122,6 +122,7 @@ enum BINARY_FUNCTOR {
   DIVNONAN,
   MAXIMUM,
   MINIMUM,
+  POW,
 };
 
 template <BINARY_FUNCTOR func>
@@ -169,6 +170,18 @@ inline void MLUBinary<MINIMUM>(const framework::ExecutionContext& ctx,
                                const cnnlTensorDescriptor_t out_desc,
                                void* out) {
   MLUCnnl::Minimum(ctx, in1_desc, in1, in2_desc, in2, out_desc, out);
+}
+
+template <>
+inline void MLUBinary<POW>(const framework::ExecutionContext& ctx,
+                           cnnlComputationPreference_t prefer,
+                           const cnnlTensorDescriptor_t x_desc,
+                           const void* x,
+                           const cnnlTensorDescriptor_t y_desc,
+                           const void* y,
+                           const cnnlTensorDescriptor_t out_desc,
+                           void* out) {
+  MLUCnnl::Pow(ctx, prefer, x_desc, x, y_desc, y, out_desc, out);
 }
 
 template <BINARY_FUNCTOR Functor, typename T>

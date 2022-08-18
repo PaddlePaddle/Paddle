@@ -138,6 +138,9 @@ void NPUEventQuery(aclrtEvent event, aclrtEventStatus *status);
 //! Record NPU event in the stream.
 void NPUEventRecord(aclrtEvent event, aclrtStream stream);
 
+//! Synchronize NPU event.
+void NPUEventSynchronize(aclrtEvent event);
+
 //! Makes a stream wait on an event.
 void NPUStreamWaitEvent(aclrtStream stream, aclrtEvent event);
 

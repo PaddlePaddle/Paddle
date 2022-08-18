@@ -48,14 +48,12 @@ void ConvertConv3d(TensorRTEngine* engine,
       platform::errors::NotFound("Can not find %s presistale var in scope.",
                                  filter_var_name));
   auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
-  float* weight_data = nullptr;
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
   if (enable_int8) {
-    float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+    float in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
     engine->SetTensorDynamicRange(X, in_scale);
   }
-  weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t);
 
   PADDLE_ENFORCE_EQ(Y_t->dims().size(),
                     5UL,
@@ -68,31 +66,29 @@ void ConvertConv3d(TensorRTEngine* engine,
   const int filter_d = Y_t->dims()[2];
   const int filter_h = Y_t->dims()[3];
   const int filter_w = Y_t->dims()[4];
-  const int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
+  const int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
   const std::vector<int> dilations =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
   const std::vector<int> strides =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
   const std::vector<int> paddings =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
   std::string padding_algorithm = "EXPLICIT";
   if (op_desc.HasAttr("padding_algorithm"))
     padding_algorithm =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
 
   nvinfer1::Dims3 nv_ksize(filter_d, filter_h, filter_w);
   nvinfer1::Dims3 nv_dilations(dilations[0], dilations[1], dilations[2]);
   nvinfer1::Dims3 nv_strides(strides[0], strides[1], strides[2]);
   nvinfer1::Dims3 nv_paddings(paddings[0], paddings[1], paddings[2]);
 
-  TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
-                                static_cast<void*>(weight_data),
-                                static_cast<size_t>(Y_t->numel())};
+  auto weight = engine->GetTrtWeight(op_desc.Input("Filter").front(), *Y_t);
   float* bias_data = nullptr;
   size_t bias_size = 0;
 
   TensorRTEngine::Weight bias{
-      nvinfer1::DataType::kFLOAT, static_cast<void*>(bias_data), bias_size};
+      weight.get().type, static_cast<void*>(bias_data), bias_size};
   // In conv3d_transpose output channels = filter_dims[1] * groups
   auto* layer = (op_desc.Type() == "conv3d_transpose")
                     ? fadd_layer(X, n_input * groups, nv_ksize, weight, bias)

@@ -91,6 +91,9 @@ void ReduceGradKernel(const Context& dev_ctx,
                       bool keep_dim,
                       bool reduce_all,
                       DenseTensor* x_grad) {
+  if (dims.size() == 0) {
+    reduce_all = true;
+  }
   if (x.dtype() != out_grad.dtype()) {
     DenseTensorMeta x_grad_meta(
         out_grad.dtype(), x_grad->dims(), x_grad->layout());

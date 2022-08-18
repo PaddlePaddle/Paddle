@@ -490,18 +490,31 @@ def _getitem_impl_(var, item):
 
     out = var
     if len(axes) > 0:
-        target_block = default_main_program().current_block()
         op_type = "strided_slice" if use_strided_slice else "slice"
+        if paddle.fluid.framework.in_dygraph_mode() and op_type == "slice":
+            if "StartsTensorList" in inputs.keys():
+                st = inputs['StartsTensorList']
+            else:
+                st = attrs['starts']
+            if "EndsTensorList" in inputs.keys():
+                end = inputs['EndsTensorList']
+            else:
+                end = attrs['ends']
+            out = paddle._C_ops.final_state_slice(var, axes, st, end,
+                                                  attrs['infer_flags'],
+                                                  attrs['decrease_axis'])
+        else:
+            target_block = default_main_program().current_block()
 
-        slice_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name + "_" +
-                                                         op_type),
-            dtype=var.dtype)
-        target_block.append_op(type=op_type,
-                               inputs=inputs,
-                               outputs={'Out': [slice_out_var]},
-                               attrs=attrs)
-        out = slice_out_var
+            slice_out_var = target_block.create_var(
+                name=unique_name.generate_with_ignorable_key(var.name + "_" +
+                                                             op_type),
+                dtype=var.dtype)
+            target_block.append_op(type=op_type,
+                                   inputs=inputs,
+                                   outputs={'Out': [slice_out_var]},
+                                   attrs=attrs)
+            out = slice_out_var
 
     if len(reverse_axes) > 0:
         from .layers.tensor import reverse

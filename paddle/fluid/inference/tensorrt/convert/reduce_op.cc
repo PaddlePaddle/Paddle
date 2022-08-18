@@ -53,10 +53,10 @@ class ReduceOpConverter : public OpConverter {
     nvinfer1::Dims input_shape = x->getDimensions();
     int input_dims = input_shape.nbDims;
 
-    bool keep_dim = BOOST_GET_CONST(bool, op_desc.GetAttr("keep_dim"));
+    bool keep_dim = PADDLE_GET_CONST(bool, op_desc.GetAttr("keep_dim"));
     std::vector<int32_t> dim =
-        BOOST_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("dim"));
-    bool reduce_all = BOOST_GET_CONST(bool, op_desc.GetAttr("reduce_all"));
+        PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("dim"));
+    bool reduce_all = PADDLE_GET_CONST(bool, op_desc.GetAttr("reduce_all"));
 
     nvinfer1::IReduceLayer* layer = nullptr;
     if (reduce_all) {

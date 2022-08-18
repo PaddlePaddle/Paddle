@@ -465,7 +465,7 @@ class StaticGraphAdapter(object):
                     idx] == core.VarDesc.VarType.FP16:
                 if isinstance(feed[n], core.LoDTensor):
                     feed[n] = feed[n]._as_type(core.VarDesc.VarType.FP16)
-                elif isinstance(feed[n], numpy.array):
+                elif isinstance(feed[n], np.array):
                     feed[n] = feed[n].astype('float16')
 
         if labels is not None:

@@ -233,8 +233,8 @@ void WarpctcKernel(const Context& dev_ctx,
                    const paddle::optional<DenseTensor>& labels_length,
                    int blank,
                    bool norm_by_times,
-                   DenseTensor* warpctc_grad,
-                   DenseTensor* loss) {
+                   DenseTensor* loss,
+                   DenseTensor* warpctcgrad) {
   size_t num_sequences, sequence_width, max_sequence_length;
   paddle::framework::Vector<size_t> logits_lod;
   paddle::framework::Vector<size_t> label_lod;
@@ -383,11 +383,11 @@ void WarpctcKernel(const Context& dev_ctx,
 
   // warpctc computes loss and gradient in one call, gradient data also stored
   // in batch format
-  warpctc_grad->Resize(warpctc_logits.dims());
-  T* warpctc_grad_data = dev_ctx.template Alloc<T>(warpctc_grad);
+  warpctcgrad->Resize(warpctc_logits.dims());
+  T* warpctcgrad_data = dev_ctx.template Alloc<T>(warpctcgrad);
 
   phi::funcs::SetConstant<Context, T>()(
-      dev_ctx, warpctc_grad, static_cast<T>(0));
+      dev_ctx, warpctcgrad, static_cast<T>(0));
 
   // warpctc accesses labels in CPU memory
   DenseTensor warpctc_label;
@@ -439,7 +439,7 @@ void WarpctcKernel(const Context& dev_ctx,
   T* warpctc_loss_data = dev_ctx.template HostAlloc<T>(&warpctc_loss);
   WarpCTCFunctor<Context, T>()(dev_ctx,
                                warpctc_logits_data,
-                               warpctc_grad_data,
+                               warpctcgrad_data,
                                warpctc_label_data,
                                warpctc_label_lengths.data(),
                                warpctc_logits_lengths.data(),

@@ -290,6 +290,7 @@ USE_PHI_FUNCTOR(TanhShrink)
 USE_PHI_FUNCTOR(Silu)
 USE_PHI_FUNCTOR(ELU)
 USE_PHI_DOUBLE_GRAD_FUNCTOR(ELU)
+USE_PHI_FUNCTOR(Softsign)
 USE_PHI_FUNCTOR(Sigmoid)
 USE_PHI_DOUBLE_GRAD_FUNCTOR(Sigmoid)
 USE_PHI_TRIPLE_GRAD_FUNCTOR(Sigmoid)
@@ -493,35 +494,8 @@ inline void ExtractDoubleGradTensorWithInputDOut(
   }
 }
 
-template <typename T>
-struct SoftsignFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x / (static_cast<T>(1) + x.abs());
-  }
-};
-
-// d(softsign(x))/dx = 1 / (1 + |x|)^2
-// Taken from https://en.wikipedia.org/wiki/Activation_function
-
-template <typename T>
-struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device,
-            typename X,
-            typename Out,
-            typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) =
-        dout * (static_cast<T>(1) / (static_cast<T>(1) + x.abs()).square());
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
-#define FOR_EACH_ACTIVATION_OP(__macro)                               \
-  __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor); \
-  __macro(softsign, Softsign, SoftsignFunctor, SoftsignGradFunctor);
+#define FOR_EACH_ACTIVATION_OP(__macro) \
+  __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);

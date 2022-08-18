@@ -29,7 +29,6 @@ class TestAdagradOp1(OpTest):
 
     def setUp(self):
         self.op_type = "adagrad"
-
         param = np.random.random((123, 321)).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")
         moment = np.zeros((123, 321)).astype("float32")

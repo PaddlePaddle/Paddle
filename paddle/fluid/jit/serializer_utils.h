@@ -17,12 +17,16 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/var_desc.h"
-
 namespace paddle {
+
+namespace framework {
+class VarDesc;
+}  // namespace framework
+
 namespace jit {
 static const char PDMODEL_SUFFIX[] = ".pdmodel";
 static const char PDPARAMS_SUFFIX[] = ".pdiparams";
+static const char PROPERTY_SUFFIX[] = ".meta";
 
 namespace utils {
 bool IsPersistable(framework::VarDesc* desc_ptr);
@@ -39,6 +43,8 @@ bool FileExists(const std::string& file_path);
 
 const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
     const std::string& path);
+
+void InitKernelSignatureMap();
 
 }  // namespace utils
 }  // namespace jit

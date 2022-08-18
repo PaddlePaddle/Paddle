@@ -25,14 +25,14 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysi
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import ForLoopTuplePreTransformer
-from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_node, create_get_args_node, create_set_args_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_nodes, create_get_args_node, create_set_args_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import FunctionNameLivenessAnalysis
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import ARGS_NAME
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import RenameTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import ForLoopTuplePreTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import ForNodeVisitor
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 
@@ -91,101 +91,6 @@ def create_while_nodes(condition_name, body_name, loop_var_names, getter_name,
 
     ret = [while_node]
     return ret
-
-
-class NameScope:
-
-    def __init__(self):
-        """ we don't analyze the read only variable
-            because they keep the same in control flow.
-        """
-        self.globals = set()
-        self.nonlocals = set()
-        self.args = set()
-        # all vars been stored,
-        # may be globals or non-locals
-        self.w_vars = set()
-
-    def created_vars(self):
-        return self.w_vars - self.globals - self.nonlocals - self.args
-
-    def write_vars(self):
-        return self.w_vars
-
-    def global_vars(self):
-        return self.globals
-
-
-class FunctionNameLivenessAnalysis(gast.NodeVisitor):
-    """ analyze the liveness of a function.
-
-        every variables stored in this scope will be collected,
-        in addition with global/nonlocal information.
-
-        1. global variable is stored in node.var_globals.
-        2. nonlocal variable is stored in node.var_nonlocals.
-        3. arguments is stored in node.var_args.
-
-        For example:
-
-        def func(*args, **kargs):
-            a = 12
-            global i,j
-            nonlocal x,y
-            print(a)
-            i = k
-            for m in range(10):
-                q = 12
-        
-        After this visitor we have: 
-        # node is the FunctionDef node with name: "func"
-        node.pd_scope = NameScope(
-            globals = ['i', 'j'],
-            nonlocals = ['x', 'y'],
-            args = ['args', 'kargs'], 
-            wr_vars = ['a', 'i', 'q', 'm']
-        )
-    """
-
-    def __init__(self, root_node):
-        self.funcdef_stack = []
-        self.visit(root_node)
-
-    def _current_funcdef_scope(self):
-        return self.funcdef_stack[-1].pd_scope
-
-    def visit_Name(self, node):
-        self.generic_visit(node)
-        write_context = (gast.Store, gast.AugStore, gast.Del)
-        if isinstance(node.ctx, write_context):
-            self._current_funcdef_scope().w_vars.add(node.id)
-
-    def visit_FunctionDef(self, node):
-        setattr(node, 'pd_scope', NameScope())
-        self.funcdef_stack.append(node)
-        self._current_funcdef_scope().args |= set(
-            self._get_argument_names(node))
-        self.generic_visit(node)
-        self.funcdef_stack.pop()
-
-    def visit_Global(self, node):
-        self._current_funcdef_scope().globals |= set(node.names)
-
-    def visit_Nonlocal(self, node):
-        self._current_funcdef_scope().nonlocals |= set(node.names)
-
-    def _get_argument_names(self, node):
-        """ get all arguments name in the functiondef node.
-            this node is local to the function and shouldn't 
-            be created.
-        """
-        assert isinstance(
-            node, gast.FunctionDef), "Input node is not function define node"
-        names = [a for a in node.args.args]
-        names.append(node.args.vararg)
-        names.append(node.args.kwarg)
-        names = [i.id for i in names if i is not None]
-        return names
 
 
 class NameVisitor(gast.NodeVisitor):
@@ -578,20 +483,21 @@ class LoopTransformer(BaseTransformer):
         ), "Input non-AstNodeWrapper node for the initialization of LoopTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
+        FunctionNameLivenessAnalysis(self.root)
 
     def transform(self):
         ForLoopTuplePreTransformer(self.wrapper_root).transform()
-        self.name_visitor = NameVisitor(self.root)
         self.visit(self.root)
 
-    def visit(self, node):
+    def visit_While(self, node):
         self.generic_visit(node)
-        # All parent nodes that may contain gast.While/gast.For
-        if hasattr(node, 'body'):
-            self.replace_stmt_list(node.body)
-        if hasattr(node, 'orelse'):
-            self.replace_stmt_list(node.orelse)
-        return node
+        new_stmts = self.get_while_stmt_nodes(node)
+        return new_stmts
+
+    def visit_For(self, node):
+        self.generic_visit(node)
+        new_stmts = self.get_for_stmt_nodes(node)
+        return new_stmts
 
     def replace_stmt_list(self, body_list):
         if not isinstance(body_list, list):
@@ -631,19 +537,19 @@ class LoopTransformer(BaseTransformer):
             return [node]
         init_stmts, cond_stmt, body_stmts = stmts_tuple
         # 2. get original loop vars
-        loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
-            node)
+        loop_var_names, create_var_names = node.pd_scope.modified_vars(
+        ), node.pd_scope.created_vars()
+        # TODO: Remove the bunch of code?  We have the unique format `for A in B:`
         # NOTE: in 'for x in var' or 'for i, x in enumerate(var)' cases,
         # we need append new loop var & remove useless loop var
         #   1. for x in var -> x is no need
         #   2. for i, x in enumerate(var) -> x is no need
-        if current_for_node_parser.is_for_iter(
-        ) or current_for_node_parser.is_for_enumerate_iter():
+        if current_for_node_parser.is_for_iter():
             iter_var_name = current_for_node_parser.iter_var_name
             iter_idx_name = current_for_node_parser.iter_idx_name
             loop_var_names.add(iter_idx_name)
-            if iter_var_name not in create_var_names:
-                loop_var_names.remove(iter_var_name)
+            if current_for_node_parser.enum_idx_name is not None:
+                loop_var_names.add(current_for_node_parser.enum_idx_name)
 
         # 3. prepare result statement list
         new_stmts = []
@@ -653,10 +559,8 @@ class LoopTransformer(BaseTransformer):
         #     y += x
         # print(x) # x = 10
         #
-        # We need to create static variable for those variables
-        for name in create_var_names:
-            if "." not in name:
-                new_stmts.append(create_undefined_var(name))
+        # We don't need to create static variable for them, because
+        # we do this in CreateUndefinedVarTransformer
 
         # create non-local statement for body and cond.
         nonlocal_names = list(loop_var_names | create_var_names)
@@ -665,7 +569,7 @@ class LoopTransformer(BaseTransformer):
         if ARGS_NAME in nonlocal_names:
             nonlocal_names.remove(ARGS_NAME)
 
-        nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)]
+        nonlocal_stmt_node = create_nonlocal_stmt_nodes(nonlocal_names)
 
         # 4. append init statements
         new_stmts.extend(init_stmts)
@@ -675,10 +579,7 @@ class LoopTransformer(BaseTransformer):
             name=unique_name.generate(FOR_CONDITION_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id=ARGS_NAME,
-                                                 ctx=gast.Param(),
-                                                 annotation=None,
-                                                 type_comment=None),
+                                vararg=None,
                                 kwonlyargs=[],
                                 kw_defaults=None,
                                 kwarg=None,
@@ -691,17 +592,11 @@ class LoopTransformer(BaseTransformer):
 
         # 6. create & append loop body function node
         # append return values for loop body
-        body_stmts.append(
-            gast.Return(value=generate_name_node(
-                nonlocal_names, ctx=gast.Load(), gen_tuple_if_single=True)))
         body_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_BODY_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id=ARGS_NAME,
-                                                 ctx=gast.Param(),
-                                                 annotation=None,
-                                                 type_comment=None),
+                                vararg=None,
                                 kwonlyargs=[],
                                 kw_defaults=None,
                                 kwarg=None,
@@ -726,8 +621,8 @@ class LoopTransformer(BaseTransformer):
         return new_stmts
 
     def get_while_stmt_nodes(self, node):
-        loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
-            node)
+        loop_var_names, create_var_names = node.pd_scope.modified_vars(
+        ), node.pd_scope.created_vars()
         new_stmts = []
 
         # create non-local statement for body and cond.
@@ -737,7 +632,7 @@ class LoopTransformer(BaseTransformer):
         if ARGS_NAME in nonlocal_names:
             nonlocal_names.remove(ARGS_NAME)
 
-        nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)]
+        nonlocal_stmt_node = create_nonlocal_stmt_nodes(nonlocal_names)
 
         # Python can create variable in loop and use it out of loop, E.g.
         #
@@ -746,19 +641,14 @@ class LoopTransformer(BaseTransformer):
         #     y = x
         # z = y
         #
-        # We need to create static variable for those variables
-        for name in create_var_names:
-            if "." not in name:
-                new_stmts.append(create_fill_constant_node(name))
+        # We don't need to create static variable for those variables, because
+        # we do this in CreateUndefinedVarTransformer
 
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_CONDITION_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id=ARGS_NAME,
-                                                 ctx=gast.Param(),
-                                                 annotation=None,
-                                                 type_comment=None),
+                                vararg=None,
                                 kwonlyargs=[],
                                 kw_defaults=None,
                                 kwarg=None,
@@ -771,17 +661,11 @@ class LoopTransformer(BaseTransformer):
         new_stmts.append(condition_func_node)
 
         new_body = node.body
-        new_body.append(
-            gast.Return(value=generate_name_node(
-                nonlocal_names, ctx=gast.Load(), gen_tuple_if_single=True)))
         body_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_BODY_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id=ARGS_NAME,
-                                                 ctx=gast.Param(),
-                                                 annotation=None,
-                                                 type_comment=None),
+                                vararg=None,
                                 kwonlyargs=[],
                                 kw_defaults=None,
                                 kwarg=None,

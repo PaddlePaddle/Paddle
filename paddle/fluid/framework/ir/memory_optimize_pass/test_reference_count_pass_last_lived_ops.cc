@@ -208,14 +208,14 @@ TEST(test_reference_count_pass, test_no_need_buffer_var_shrink) {
   for (auto use_cuda : use_cuda_list) {
     ReferenceCountPassTestHelper helper(program, use_cuda);
     ASSERT_TRUE(helper.IsLastLivedOps(x0, {"scale"}));
-    ASSERT_EQ(
-        BOOST_GET_CONST(float, helper.LastLivedOps(x0)[0]->Attrs().at("scale")),
-        1.0f);
+    ASSERT_EQ(PADDLE_GET_CONST(float,
+                               helper.LastLivedOps(x0)[0]->Attrs().at("scale")),
+              1.0f);
 
     ASSERT_TRUE(helper.IsLastLivedOps(x1, {"scale"}));
-    ASSERT_EQ(
-        BOOST_GET_CONST(float, helper.LastLivedOps(x1)[0]->Attrs().at("scale")),
-        3.0f);
+    ASSERT_EQ(PADDLE_GET_CONST(float,
+                               helper.LastLivedOps(x1)[0]->Attrs().at("scale")),
+              3.0f);
 
     ASSERT_TRUE(helper.IsLastLivedOps(x2, {"elementwise_mul"}));
     ASSERT_TRUE(helper.IsLastLivedOps(x3, {"elementwise_add_grad"}));

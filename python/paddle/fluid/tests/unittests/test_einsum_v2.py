@@ -17,6 +17,7 @@ import contextlib
 import unittest
 import paddle
 from paddle.fluid import core
+from paddle.fluid.dygraph.amp.auto_cast import _is_gpu_bfloat16_supported
 
 import os
 
@@ -149,10 +150,13 @@ class TestEinsum(unittest.TestCase):
 
     def check_output_equal(self, actual, expect, rtol=1.e-5, atol=1.e-8):
         error_msg = 'Output has diff at place:{}. \nExpect: {} \nBut Got: {} in class {}'
-        self.assertTrue(
-            np.allclose(actual, expect, rtol=rtol, atol=atol),
-            error_msg.format(paddle.get_device(), expect, actual,
-                             self.__class__.__name__))
+        np.testing.assert_allclose(actual,
+                                   expect,
+                                   rtol=rtol,
+                                   atol=atol,
+                                   err_msg=error_msg.format(
+                                       paddle.get_device(), expect, actual,
+                                       self.__class__.__name__))
 
     def setUp(self):
         self.sample = {"paradigm": "i->", "data": ["x"]}
@@ -529,16 +533,29 @@ class TestBF16(unittest.TestCase):
     """
 
     def test_shape(self):
-        cuda_major = paddle.version.cuda().split('.')[0].strip()
-        if paddle.is_compiled_with_cuda() and int(cuda_major) >= 11:
-            """ MatmulKernel support bfloat16 only if cuda_major > 11.0.
+        if paddle.is_compiled_with_cuda() and _is_gpu_bfloat16_supported():
+            """ MatmulKernel support bfloat16 only if cuda_major >= 11.0 and Compute Capability >= 8.0
             """
             A = paddle.to_tensor(np.array([1.0, 2.0])).astype(paddle.bfloat16)
             A = A.cuda()
             B = paddle.to_tensor(np.array([2.0, 3.0])).astype(paddle.bfloat16)
             B = B.cuda()
             C = paddle.einsum('i,i->', A, B)
-            self.assertEqual(C.item(), 8.0)
+            self.assertEqual(C.astype(paddle.float32).item(), 8.0)
+
+
+class TestComplex(unittest.TestCase):
+    """
+    EinsumOp support Complex type
+    """
+
+    def test_shape(self):
+        a = paddle.rand([4, 4])
+        b = paddle.rand([4, 4])
+        c = paddle.einsum('xy,yz->xz', a, b)
+        a = paddle.cast(a, 'complex64')
+        b = paddle.cast(b, 'complex64')
+        c = paddle.einsum('xy,yz->xz', a, b)
 
 
 if __name__ == "__main__":
