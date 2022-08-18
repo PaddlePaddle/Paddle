@@ -486,6 +486,7 @@ class HDFSClient(FS):
             time.sleep(retry_sleep_second)
         if ret == 134:
             raise FSShellCmdAborted(cmd)
+
         return ret, output.splitlines()
 
     @_handle_errors()
@@ -615,10 +616,12 @@ class HDFSClient(FS):
 
     def _is_dir(self, fs_path):
         cmd = "test -d {}".format(fs_path, redirect_stderr=True)
-        ret, lines = self._run_cmd(cmd)
+        ret, lines = self._run_cmd(cmd, retry_times=1)
         if ret:
             # other error
             if self._test_match(lines):
+                print('raise exception: ')
+                print('\n'.join(lines))
                 raise ExecuteError(cmd)
 
             return False
@@ -682,13 +685,10 @@ class HDFSClient(FS):
                 client = HDFSClient(hadoop_home, configs)
                 ret = client.is_exist("hdfs:/test_hdfs_client")
         """
-        cmd = "ls {} ".format(fs_path)
-        ret, out = self._run_cmd(cmd, redirect_stderr=True)
+        cmd = "test -e {} ".format(fs_path)
+        ret, out = self._run_cmd(cmd, redirect_stderr=True, retry_times=1)
         if ret != 0:
-            for l in out:
-                if "No such file or directory" in l:
-                    return False
-            raise ExecuteError(cmd)
+            return False
 
         return True
 
@@ -712,7 +712,7 @@ class HDFSClient(FS):
         self._try_upload(local_dir, dest_dir)
 
     # can't retry
-    def upload(self, local_path, fs_path, multi_processes=1, overwrite=False):
+    def upload(self, local_path, fs_path, multi_processes=5, overwrite=False):
         """
         Upload the local path to remote HDFS.
 
@@ -766,11 +766,7 @@ class HDFSClient(FS):
         local = LocalFS()
         if not local.is_exist(local_path):
             raise FSFileNotExistsError("{} not exists".format(local_path))
-        # upload_dir
-        if local.is_dir(local_path):
-            self.upload_dir(local_path, fs_path, overwrite=overwrite)
-            return
-        # upload files
+
         all_files = get_local_files(local_path)
         if not all_files:
             print("there are nothing need to upload, function exit")
@@ -805,7 +801,7 @@ class HDFSClient(FS):
             raise e
 
     # can't retry
-    def download(self, fs_path, local_path, multi_processes=1, overwrite=False):
+    def download(self, fs_path, local_path, multi_processes=5, overwrite=False):
         """
         Download remote HDFS path to the local.
 
@@ -962,7 +958,7 @@ class HDFSClient(FS):
         cmd = "mv {} {}".format(fs_src_path, fs_dst_path)
         ret = 0
         try:
-            ret, _ = self._run_cmd(cmd)
+            ret, _ = self._run_cmd(cmd, retry_times=1)
             if ret != 0:
                 raise ExecuteError(cmd)
         except Exception as e:
@@ -1090,7 +1086,7 @@ class HDFSClient(FS):
     @_handle_errors()
     def _try_cat(self, fs_path):
         cmd = "cat {}".format(fs_path)
-        ret, output = self._run_cmd(cmd)
+        ret, output = self._run_cmd(cmd, retry_times=1)
         if ret != 0:
             raise ExecuteError(cmd)
         return output

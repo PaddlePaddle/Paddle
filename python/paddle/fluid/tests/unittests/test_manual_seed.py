@@ -41,8 +41,8 @@ class TestManualSeed(unittest.TestCase):
         x3_np = x3.numpy()
 
         if not fluid.core.is_compiled_with_cuda():
-            self.assertTrue(np.allclose(x1_np, x2_np))
-            self.assertTrue(np.allclose(x_np, x3_np))
+            np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
+            np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
 
 if __name__ == '__main__':

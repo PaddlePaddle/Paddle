@@ -601,7 +601,6 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
 
     Examples:
         .. code-block:: python
-            :name: rrelu-example
 
             import paddle
             import paddle.nn.functional as F

@@ -24,7 +24,7 @@ from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator
-from .framework import convert_np_dtype_to_dtype_
+from .framework import convert_np_dtype_to_dtype_, _apply_pass
 
 from . import core
 from . import unique_name
@@ -394,19 +394,9 @@ def _to_name_str(var):
 
 
 def _is_enable_standalone_executor():
-    """
-    Whether to use experimental executor `StandaloneExecutor`.
-    """
-    flag = False
-    from ..distributed.fleet import fleet
-    # use standalone_executor by default if not distributed
-    if fleet._role_maker is None and framework._enable_standalone_executor_ is None:
-        framework._enable_standalone_executor_ = 1
-
-    if framework._enable_standalone_executor_ in [1, '1', True, 'True', 'true']:
-        flag = True
-
-    return flag
+    return framework._enable_standalone_executor_ is None or framework._enable_standalone_executor_ in [
+        1, '1', True, 'True', 'true'
+    ]
 
 
 def _prepare_fleet_executor():
@@ -426,8 +416,13 @@ def _prepare_fleet_executor():
     return fleet_exe
 
 
+def _get_strong_program_cache_key_for_new_exe(program, feed, fetch_list):
+    return program.desc.cached_hash_str() + _get_program_cache_key(
+        feed, fetch_list)
+
+
 def _get_strong_program_cache_key(program, feed, fetch_list):
-    # NOTE(xiongkun) id(proram) may be duplicate. So add addition var_name as cache key.
+    # TODO(zhiqiu): use hash_str to generate cache key as above
     def _get_varname_from_block(block):
         block_str = []
         for var_name in list(block.vars.keys()):
@@ -1187,8 +1182,9 @@ class Executor(object):
                results are spliced together in dimension 0 for the same Tensor values
                (Tensors in fetch_list) on different devices.
 
-        Examples 1:
+        Examples:
             .. code-block:: python
+                :name: code-example-1
 
                 import paddle
                 import numpy
@@ -1215,9 +1211,10 @@ class Executor(object):
                 print(array_val)
                 # [array([0.02153828], dtype=float32)]
 
-        Examples 2:
             .. code-block:: python
+                :name: code-example-2
 
+                # required: gpu
                 import paddle
                 import numpy as np
 
@@ -1265,7 +1262,7 @@ class Executor(object):
                 print("The merged prediction shape: {}".format(
                     np.array(merged_prediction).shape))
                 print(merged_prediction)
- 
+
                 # Out:
                 # The unmerged prediction shape: (2, 3, 2)
                 # [array([[-0.37620035, -0.19752218],
@@ -1282,6 +1279,17 @@ class Executor(object):
                 #  [-0.44514108 -0.2345845 ]]
 
         """
+        # Temporary FLAGS, just for testing the performance of program cache
+        force_use_program_cache = os.environ.get(
+            'FLAGS_FORCE_USE_PROGRAM_CACHE', None)
+        if force_use_program_cache is not None:
+            use_program_cache = force_use_program_cache in [
+                1, '1', True, 'True', 'true'
+            ]
+            warnings.warn(
+                f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE",
+                UserWarning)
+
         try:
             res = self._run_impl(program=program,
                                  feed=feed,
@@ -1392,42 +1400,90 @@ class Executor(object):
                     place, core.CustomPlace):
                 return False
 
+            use_standalone_executor_for_compiled_program = os.environ.get(
+                'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
+                None) in [1, '1', True, 'True', 'true']
+
+            # Only support fleet when 'FLAGS_CONVERT_GRAPH_TO_PROGRAM' is set to true
+            from paddle.distributed.fleet import fleet
+            if fleet._role_maker is not None and not use_standalone_executor_for_compiled_program:
+                warnings.warn("Standalone executor is not used for fleet",
+                              UserWarning)
+                return False
+
             compiled = isinstance(program, compiler.CompiledProgram)
             if compiled:
                 # Unsupported case 1 : the CompiledProgram is constructed by Graph
                 if program._program is None:
+                    warnings.warn("Standalone executor is not used for Graph",
+                                  UserWarning)
                     return False
 
                 # Unsupported case 2: data parallel
                 if program._is_data_parallel and len(
                         program._get_places(place, program._places)) != 1:
+                    warnings.warn(
+                        "Standalone executor is not used for data parallel",
+                        UserWarning)
                     return False
 
                 # Unsupported case 3 : parallel graph
                 if core.globals()['FLAGS_enable_parallel_graph'] in [
                         1, '1', True, 'True', 'true'
                 ]:
+                    warnings.warn(
+                        "Standalone executor is not used for parallel graph",
+                        UserWarning)
                     return False
 
                 # Unsupported case 4: inference
                 if program._is_inference:
+                    warnings.warn(
+                        "Standalone executor is not used for inference",
+                        UserWarning)
                     return False
 
                 # Unsupported case 5: CUDA Graph
                 if program._build_strategy is not None and program._build_strategy.allow_cuda_graph_capture:
+                    warnings.warn(
+                        "Standalone executor is not used for CUDA Graph",
+                        UserWarning)
                     return False
 
-                # Unsupported case 6 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM
-                if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
-                                  None) not in [1, '1', True, 'True', 'true']:
+                # Unsupported case 6: distributed
+                if program._build_strategy is not None and (
+                        program._build_strategy.is_distribution
+                        or program._build_strategy.num_trainers > 1):
+                    warnings.warn(
+                        "Standalone executor is not used for distribution",
+                        UserWarning)
                     return False
 
-                return True
+                return use_standalone_executor_for_compiled_program
             else:
                 if isinstance(program._graph, compiler.CompiledProgram):
+                    warnings.warn("Standalone executor is not used for Graph",
+                                  UserWarning)
                     return False
                 assert isinstance(program, Program)
                 return True
+
+        def _apply_inplace_addto_pass(program, enable_inplace, enable_addto,
+                                      skip_var_names):
+            use_cuda = True if core.is_compiled_with_cuda() else False
+
+            attrs = {"use_cuda": use_cuda, "mem_opt_skip_vars": skip_var_names}
+            attr_types = {"use_cuda": "bool", "mem_opt_skip_vars": "list[str]"}
+
+            empty_startup_program = Program()
+            if enable_inplace:
+                pass_name = "buffer_shared_inplace_pass"
+                _apply_pass(program, empty_startup_program, pass_name, attrs,
+                            attr_types)
+            if enable_addto and use_cuda:
+                pass_name = "inplace_addto_op_pass"
+                _apply_pass(program, empty_startup_program, pass_name, attrs,
+                            attr_types)
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
@@ -1447,14 +1503,15 @@ class Executor(object):
                         % (type(feed)))
                 feed = self._update_feed(program, feed)
 
-                key = _get_strong_program_cache_key(inner_program, feed,
-                                                    fetch_list)
+                key = _get_strong_program_cache_key_for_new_exe(
+                    inner_program, feed, fetch_list)
 
                 # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
                 # while use program to geet _StandaloneExecutor
                 if key not in self._executor_cache._cached_executors:
                     # To apply IR pass, compile the Program to IrGraph and convert it back to Program
                     if isinstance(program, compiler.CompiledProgram):
+                        build_strategy = program._build_strategy
                         # print(f"Program before convert:\n {inner_program}", flush=True)
                         program._compile(scope, self.place)
                         ir_graph = framework.IrGraph(program._graph)
@@ -1464,6 +1521,7 @@ class Executor(object):
                             "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
                         )
                     else:
+                        build_strategy = None
                         from paddle.incubate.autograd import prim_enabled, prim2orig
                         if prim_enabled() and program == default_main_program():
                             prim2orig()
@@ -1475,6 +1533,17 @@ class Executor(object):
                         feed_var_name=feed_var_name,
                         fetch_var_name=fetch_var_name,
                         use_fetch_v2=True)
+
+                    # standalone executor will apply buffer_shared_inplace_pass and
+                    # inplace_addto_op_pass to program according to build_strategy
+                    enable_inplace = True if build_strategy is None or build_strategy.enable_inplace else False
+                    enable_addto = True if build_strategy is not None and build_strategy.enable_addto else False
+                    if enable_inplace or enable_addto:
+                        # inplace should skip feed and fetch var
+                        skip_var_names = eval(
+                            _get_program_cache_key(feed, fetch_list))
+                        _apply_inplace_addto_pass(program, enable_inplace,
+                                                  enable_addto, skip_var_names)
 
                     new_program = program.clone()
                     new_exe = _StandaloneExecutor(self.place, new_program,

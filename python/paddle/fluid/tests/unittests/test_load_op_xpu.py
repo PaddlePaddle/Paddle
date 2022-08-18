@@ -64,7 +64,7 @@ class TestLoadOpXpu(unittest.TestCase):
         exe = fluid.Executor(fluid.XPUPlace(0))
         exe.run(start_prog)
         ret = exe.run(main_prog, fetch_list=[var.name])
-        self.assertTrue(np.array_equal(self.ones, ret[0]))
+        np.testing.assert_array_equal(self.ones, ret[0])
 
 
 if __name__ == "__main__":

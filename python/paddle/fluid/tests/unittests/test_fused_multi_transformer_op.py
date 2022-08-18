@@ -548,5 +548,60 @@ class TestFusedMultiTransformerOpGenCacheKVFp16(TestFusedMultiTransformerOp):
         self.layers = 3  # odd layers
 
 
+class TestFusedMultiTransformerOpPostLayerNormFp16(TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpCacheKVPostLayerNorm(
+        TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpCacheKVPostLayerNormFp16(
+        TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.x_type = np.float16
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpGenCacheKVPostLayerNorm(
+        TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpGenCacheKVPostLayerNormFp16(
+        TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+
+
 if __name__ == "__main__":
     unittest.main()
