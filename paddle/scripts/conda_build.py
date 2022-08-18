@@ -89,6 +89,7 @@ about:
 """
 
         self.build_const = r"""
+pip install paddle_bfloat==0.1.7
 """
 
         self.blt_const = r""" 
