@@ -569,7 +569,7 @@ class QuantizationTransformPass(object):
         except:
             scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_in_node = graph.create_persistable_node(
-            name=self._quantized_scale_name(name),
+            name=scale_name,
             var_type=core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
             var_dtype=var_node.dtype())

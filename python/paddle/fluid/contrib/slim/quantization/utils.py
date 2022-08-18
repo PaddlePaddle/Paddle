@@ -38,7 +38,6 @@ _act_supported_quantizable_op_type = [
     "mean",
     "not_equal",
     "reshape",
-    "reshape2",
     "dropout",
     "bilinear_interp",
     "nearest_interp",
