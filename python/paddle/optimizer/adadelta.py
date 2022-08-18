@@ -18,6 +18,7 @@ from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
 from ..framework import in_dygraph_mode
 from paddle import _C_ops
+from ..fluid.dygraph import no_grad
 
 __all__ = []
 
@@ -155,10 +156,12 @@ class Adadelta(Optimizer):
             self._avg_squared_update_acc_str, param_and_grad[0])
 
         if in_dygraph_mode():
-            tmp, avg_squared_grad_acc, avg_squared_update_acc = _C_ops.final_state_adadelta(
-                param_and_grad[0], param_and_grad[1], avg_squared_grad_acc,
-                avg_squared_update_acc, self._rho, self._epsilon)
-            param_and_grad[0].copy_(tmp, False)
+            with no_grad():
+                _C_ops.final_state_adadelta_(param_and_grad[0],
+                                             param_and_grad[1],
+                                             avg_squared_grad_acc,
+                                             avg_squared_update_acc, self._rho,
+                                             self._epsilon)
             return None
 
         if not isinstance(block, framework.Block):

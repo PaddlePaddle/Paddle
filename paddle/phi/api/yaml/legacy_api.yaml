@@ -40,13 +40,14 @@
     func : acosh
   backward : acosh_grad
 
-- api : adadelta
+- api : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, float rho, float epsilon)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out)
   infer_meta :
     func : AdadeltaInferMeta
   kernel :
     func : adadelta
+  inplace : (param -> param_out), (avg_squared_grad -> moment_out), (avg_squared_update -> inf_norm_out)
 
 - api : adagrad_
   args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float epsilon)
