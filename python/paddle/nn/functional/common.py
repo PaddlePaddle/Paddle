@@ -603,7 +603,17 @@ def interpolate(x,
             else:
                 out = _C_ops.linear_interp_v2(x, *dy_attr)
         elif resample_type == "bilinear":
-            out = _C_ops.bilinear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_bilinear_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.bilinear_interp_v2(x, *dy_attr)
         elif resample_type == "trilinear":
             if in_dygraph_mode():
                 out = _C_ops.final_state_trilinear_interp(

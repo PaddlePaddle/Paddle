@@ -1569,7 +1569,7 @@ void BicubicInterpGradKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(bilinear_interp_v2_grad,
+PD_REGISTER_KERNEL(bilinear_interp_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BilinearInterpGradKernel,
