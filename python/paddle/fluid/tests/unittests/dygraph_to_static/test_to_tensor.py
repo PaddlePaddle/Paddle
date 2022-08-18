@@ -37,6 +37,7 @@ def case1(x):
 
     return a
 
+
 def case2(x):
     if core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
@@ -48,6 +49,7 @@ def case2(x):
                          stop_gradient=False)
 
     return a
+
 
 def case3(x):
     paddle.set_default_dtype("float64")
@@ -116,6 +118,7 @@ class TestStatic(unittest.TestCase):
             exe = paddle.static.Executor()
             exe.run(starup_prog)
             res = exe.run(fetch_list=[x, out])
+
 
 if __name__ == '__main__':
     unittest.main()

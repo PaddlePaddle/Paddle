@@ -432,13 +432,19 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                 elif hasattr(data, 'dtype'):
                     target_dtype = convert_dtype(data.dtype)
                 else:
-                    target_dtype = None
+                    target_dtype = convert_dtype(paddle.get_default_dtype())
+
 
                 if not isinstance(data, np.ndarray):
                     if np.isscalar(data) and not isinstance(data, str):
                         data = np.array([data])
                     elif isinstance(data, (list, tuple)):
-                        data = np.array(data)
+                        if any(isinstance(x, Variable) for x in data):
+                            to_stack_list = [None] * len(data)
+                            for idx, d in enumerate(data):
+                                to_stack_list[idx] = call_assign(d, dtype, stop_gradient)
+                            data = paddle.stack(to_stack_list)
+                            data = paddle.squeeze(data, -1)
 
                 output = assign(data)
                 if target_dtype is not None and convert_dtype(
