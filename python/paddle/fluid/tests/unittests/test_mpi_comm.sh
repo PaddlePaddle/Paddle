@@ -23,5 +23,5 @@ if [ ${#cmd} -eq 0 ]
 then
     echo "Warning! mpirun command not found!"
 else
-    `${cmd} -np 2 --allow-run-as-root python3 process_group_mpi.py`
+    ${cmd} -np 2 --allow-run-as-root python3 process_group_mpi.py
 fi
