@@ -12,25 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include <vector>
-
-#include "paddle/phi/core/dense_tensor.h"
+#include "glog/logging.h"
 
 namespace phi {
 
-// used in new executor, for memory copy from host to device
-template <typename T, typename Context>
-void MemcpyD2HKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     int dst_place_type,
-                     DenseTensor* out);
+KernelSignature MemcpyD2HOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  VLOG(10) << "choosing MemcpyD2H Kernel";
+  if (ctx.IsDenseTensorVectorInput("X")) {
+    VLOG(10) << "choosing MemcpyD2HMultiIOKernel";
+    return KernelSignature(
+        "memcpy_d2h_multi_io", {"X"}, {"dst_place_type"}, {"Out"});
+  }
 
-template <typename T, typename Context>
-void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
-                            const std::vector<const DenseTensor*>& array,
-                            int dst_place_type,
-                            const std::vector<DenseTensor*> out_array);
+  return KernelSignature("memcpy_d2h", {"X"}, {"dst_place_type"}, {"Out"});
+}
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(memcpy_d2h, phi::MemcpyD2HOpArgumentMapping);

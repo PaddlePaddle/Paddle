@@ -14,11 +14,17 @@
 
 #include "paddle/phi/kernels/memcpy_d2h_kernel.h"
 
+#include <vector>
+
+#include "glog/logging.h"
+
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-// #include "paddle/phi/common/place.h"
 
 namespace phi {
+
+static constexpr size_t WAIT_THRESHOLD = 64 * 1024;
 
 template <typename T, typename Context>
 void MemcpyD2HKernel(const Context& dev_ctx,
@@ -26,8 +32,8 @@ void MemcpyD2HKernel(const Context& dev_ctx,
                      int dst_place_type,
                      DenseTensor* out) {
   // Copy will set the stream of the tensor while setting blocking to false
-  // it also handles asynchronous small data(<64kb) copy bewteen host and device
-  // so no need to do anything special
+  // it also handles asynchronous small data(<64kb) copy bewteen CpuPlace and
+  // CudaPlace so no need to do anything special
   switch (dst_place_type) {
     case 0:
       Copy(dev_ctx, x, CPUPlace(), false, out);
@@ -43,12 +49,45 @@ void MemcpyD2HKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
+                            const std::vector<const DenseTensor*>& array,
+                            int dst_place_type,
+                            std::vector<DenseTensor*> out_array) {
+  VLOG(10) << "using MemcpyD2HMultiIOKernel";
+  out_array.clear();
+  out_array.resize(array.size());
+
+  for (size_t i = 0; i < array.size(); i++) {
+    const auto& x = *(out_array[i]);
+    VLOG(10) << i << " " << out_array[i] << " " << x.initialized();
+    MemcpyD2HKernel<T, Context>(dev_ctx, x, dst_place_type, out_array[i]);
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(memcpy_d2h,
                    CPU,
                    ALL_LAYOUT,
                    phi::MemcpyD2HKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   phi::dtype::float16,
+                   int16_t) {}
+
+PD_REGISTER_KERNEL(memcpy_d2h_multi_io,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MemcpyD2HMultiIOKernel,
                    float,
                    double,
                    int8_t,
@@ -79,6 +118,23 @@ PD_REGISTER_KERNEL(memcpy_d2h,
                    phi::dtype::complex<double>,
                    phi::dtype::float16,
                    int16_t) {}
+
+PD_REGISTER_KERNEL(memcpy_d2h_multi_io,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MemcpyD2HMultiIOKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   phi::dtype::float16,
+                   int16_t) {}
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -86,6 +142,23 @@ PD_REGISTER_KERNEL(memcpy_d2h,
                    XPU,
                    ALL_LAYOUT,
                    phi::MemcpyD2HKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   phi::dtype::float16,
+                   int16_t) {}
+
+PD_REGISTER_KERNEL(memcpy_d2h_multi_io,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MemcpyD2HMultiIOKernel,
                    float,
                    double,
                    int8_t,
