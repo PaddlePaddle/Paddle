@@ -983,14 +983,16 @@ void DistributeFpnProposalsInferMeta(
       continue;
     }
     multi_fpn_rois[i]->set_dims(out_dim);
+    multi_fpn_rois[i]->set_dtype(fpn_rois.dtype());
   }
   restore_index->set_dims({-1, 1});
-
+  restore_index->set_dtype(DataType::INT32);
   for (size_t i = 0; i < multi_level_rois_num.size(); ++i) {
     if (multi_level_rois_num[i] == nullptr) {
       continue;
     }
     multi_level_rois_num[i]->set_dims({-1});
+    multi_level_rois_num[i]->set_dtype(DataType::INT32);
   }
 
   if (!config.is_runtime) {
