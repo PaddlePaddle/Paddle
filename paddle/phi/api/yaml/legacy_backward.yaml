@@ -2347,14 +2347,14 @@
     func : squared_l2_norm_grad
 
 - backward_api : squeeze_double_grad
-  forward : squeeze_grad(Tensor xshape, Tensor grad_out, int[] axes) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, int[] axes)
+  forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axes) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray axes)
   output : Tensor(grad_out_grad)
   invoke: squeeze(grad_x_grad, axes)
 
 - backward_api : squeeze_grad
-  forward : squeeze(Tensor x, int[] axes) -> Tensor(out), Tensor(xshape)
-  args : (Tensor xshape, Tensor out_grad, int[] axes)
+  forward : squeeze(Tensor x, IntArray axes) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad, IntArray axes)
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
