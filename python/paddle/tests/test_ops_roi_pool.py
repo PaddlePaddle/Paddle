@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.fluid.framework import _non_static_mode
 from paddle.vision.ops import roi_pool, RoIPool
 
 
@@ -36,7 +37,7 @@ class TestRoIPool(unittest.TestCase):
         else:
             output_shape = (3, 256, output_size[0], output_size[1])
 
-        if paddle._non_static_mode():
+        if _non_static_mode():
             data = paddle.to_tensor(self.data)
             boxes = paddle.to_tensor(self.boxes)
             boxes_num = paddle.to_tensor(self.boxes_num)

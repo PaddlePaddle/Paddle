@@ -769,7 +769,7 @@ def is_tensor(x):
 
 
 def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
-    if paddle._non_static_mode():
+    if _non_static_mode():
         op = getattr(_C_ops, op_name)
         if binary_op:
             return op(x, y)

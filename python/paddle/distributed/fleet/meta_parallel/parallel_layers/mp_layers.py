@@ -18,6 +18,7 @@ from paddle.fluid.dygraph.layers import Layer
 from .random import get_rng_state_tracker
 from paddle.nn import functional as F
 from paddle import framework
+from framework import _non_static_mode
 from ...base import topology as tp
 from paddle.autograd import PyLayer
 
@@ -67,7 +68,7 @@ class VocabParallelEmbedding(Layer):
         self._weight_attr = weight_attr
         self._name = name
 
-        if self.is_mp and paddle._non_static_mode():
+        if self.is_mp and _non_static_mode():
             with get_rng_state_tracker().rng_state():
                 self.weight = self.create_parameter(attr=self._weight_attr,
                                                     shape=self._size,
@@ -132,7 +133,7 @@ class ColumnParallelLinear(Layer):
         self._weight_attr = weight_attr
         self._dtype = self._helper.get_default_dtype()
 
-        if self.is_mp and paddle._non_static_mode():
+        if self.is_mp and _non_static_mode():
             with get_rng_state_tracker().rng_state():
                 self.weight = self.create_parameter(
                     shape=[in_features, self.output_size_per_partition],
@@ -227,7 +228,7 @@ class RowParallelLinear(Layer):
 
         self.input_size_per_partition = in_features // self.world_size
 
-        if self.is_mp and paddle._non_static_mode():
+        if self.is_mp and _non_static_mode():
             with get_rng_state_tracker().rng_state():
                 self.weight = self.create_parameter(
                     shape=[self.input_size_per_partition, self.out_features],

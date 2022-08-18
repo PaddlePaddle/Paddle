@@ -20,7 +20,7 @@ import os
 import copy
 import numpy as np
 import paddle
-from paddle.fluid.framework import dygraph_only
+from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid import global_scope, program_guard, layers
 from paddle.fluid.initializer import ConstantInitializer
 from paddle.fluid.contrib import sparsity
@@ -540,7 +540,7 @@ class ASPHelper(object):
         r"""
         This is the implementation of `sparsity.decorate`, for details please see explanation in `sparsity.decorate`.
         """
-        if paddle._non_static_mode():
+        if _non_static_mode():
             # main_prog and startup_prog would be used with paddle.static.program_guard
             # to create ASP masks. Moreover, main_prog is a key to map paddle.static.Program
             # to its own ASP informantion, like ASP mask variables. For dynamic graph, we use
@@ -605,7 +605,7 @@ class ASPHelper(object):
         r"""
         This is the implementation of `sparsity.prune_model`, for details please see explanation in `sparsity.prune_model`.
         """
-        if paddle._non_static_mode():
+        if _non_static_mode():
             main_program = paddle.static.default_main_program()
             asp_info = cls._get_program_asp_info(main_program)
 

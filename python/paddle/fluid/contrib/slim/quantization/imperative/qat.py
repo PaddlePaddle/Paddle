@@ -23,7 +23,7 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid import dygraph, core, framework, unique_name
-from paddle.fluid.framework import IrGraph
+from paddle.fluid.framework import IrGraph, _non_static_mode
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.initializer import Constant
@@ -486,7 +486,7 @@ class ImperativeQuantizeOutputs(object):
         paddle.jit.save(layer=model, path=path, input_spec=input_spec, **config)
 
         is_dynamic_mode = False
-        if paddle._non_static_mode():
+        if _non_static_mode():
             is_dynamic_mode = True
             paddle.enable_static()
 

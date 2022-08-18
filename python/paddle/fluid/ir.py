@@ -17,7 +17,7 @@ import inspect
 from os import path
 import paddle
 from . import core, unique_name
-from .framework import _apply_pass, OpProtoHolder
+from .framework import _apply_pass, OpProtoHolder, _non_static_mode
 
 from .proto import framework_pb2
 try:
@@ -246,7 +246,7 @@ class RegisterPassHelper(object):
                         attr_map.operation.CopyFrom(mapped._operation)
 
     def SerializeMultiPassDesc(self):
-        switch_static_mode = paddle._non_static_mode()
+        switch_static_mode = _non_static_mode()
         if switch_static_mode:
             paddle.enable_static()
         multi_pass_desc = pass_desc_pb2.MultiPassDesc()

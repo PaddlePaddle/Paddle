@@ -35,7 +35,6 @@ from .framework import set_flags  # noqa: F401
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
-from .framework import _non_static_mode  # noqa: F401
 from .fluid.dataset import *  # noqa: F401
 
 from .framework.dtype import dtype as dtype  # noqa: F401
@@ -432,7 +431,6 @@ __all__ = [  # noqa
     'mode',
     'mv',
     'in_dynamic_mode',
-    '_non_static_mode',
     'min',
     'amin',
     'any',

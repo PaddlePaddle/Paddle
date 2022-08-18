@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
+from paddle.fluid.framework import _non_static_mode
 import scipy
 import scipy.linalg
 import copy
@@ -124,7 +125,7 @@ class TestLU_UnpackOp(OpTest):
         self.python_out_sig = ["Pmat", "L", "U"]
         self.config()
         x = np.random.random(self.x_shape).astype(self.dtype)
-        if paddle._non_static_mode():
+        if _non_static_mode():
             xt = paddle.to_tensor(x)
             lu, pivots = paddle.linalg.lu(xt)
             lu = lu.numpy()

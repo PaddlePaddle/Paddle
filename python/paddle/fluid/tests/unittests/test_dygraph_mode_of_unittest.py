@@ -15,14 +15,14 @@
 from __future__ import print_function
 
 import unittest
-import paddle
+from paddle.fluid.framework import _non_static_mode
 
 
 class TestDygraphModeOfUnittest(unittest.TestCase):
 
     def test_dygraph_mode(self):
         self.assertTrue(
-            paddle._non_static_mode(),
+            _non_static_mode(),
             'Default Mode of Unittest should be dygraph mode, but get static mode.'
         )
 

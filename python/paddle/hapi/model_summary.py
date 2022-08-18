@@ -19,6 +19,7 @@ import numbers
 import paddle
 import paddle.nn as nn
 from paddle.static import InputSpec
+from paddle.fluid.framework import _non_static_mode
 
 from collections import OrderedDict
 
@@ -175,7 +176,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
     else:
         _input_size = input_size
 
-    if not paddle._non_static_mode():
+    if not _non_static_mode():
         warnings.warn(
             "Your model was created in static mode, this may not get correct summary information!"
         )
@@ -298,7 +299,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
             params = 0
 
-            if paddle._non_static_mode():
+            if _non_static_mode():
                 layer_state_dict = layer._parameters
             else:
                 layer_state_dict = layer.state_dict()

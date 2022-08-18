@@ -732,7 +732,7 @@ def floor_divide(x, y, name=None):
     """
     op_type = 'elementwise_floordiv'
     axis = -1
-    if paddle._non_static_mode():
+    if _non_static_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -772,7 +772,7 @@ def remainder(x, y, name=None):
     """
     op_type = 'elementwise_mod'
     axis = -1
-    if paddle._non_static_mode():
+    if _non_static_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -890,7 +890,7 @@ def maximum(x, y, name=None):
     op_type = 'elementwise_max'
     axis = -1
     act = None
-    if paddle._non_static_mode():
+    if _non_static_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -949,7 +949,7 @@ def minimum(x, y, name=None):
     op_type = 'elementwise_min'
     axis = -1
     act = None
-    if paddle._non_static_mode():
+    if _non_static_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -4315,7 +4315,7 @@ def gcd(x, y, name=None):
                   paddle.where(y_not_equal_0, paddle.mod(x, y_safe),paddle.zeros(y.shape, y.dtype)))
         return (paddle.where(x < y, y, x), paddle.where(x < y, x, y))
 
-    if paddle._non_static_mode():
+    if _non_static_mode():
         while _gcd_cond_fn(x, y):
             x, y = _gcd_body_fn(x, y)
 
@@ -4448,7 +4448,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     dtype = x.dtype
     axes = [axis]
     infer_flags = list(1 for i in range(len(axes)))
-    if paddle._non_static_mode():
+    if _non_static_mode():
         has_pend = False
         input_list = []
         if prepend is not None and append is not None:

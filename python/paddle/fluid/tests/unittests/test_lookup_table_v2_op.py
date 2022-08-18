@@ -24,13 +24,14 @@ from paddle.fluid.op import Operator
 import paddle.compat as cpt
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _non_static_mode
 
 
 class TestStaticGraphSupportMultipleInt(unittest.TestCase):
 
     def test_main(self):
         dtypes = ['uint8', 'int8', 'int16', 'int32', 'int64']
-        if paddle._non_static_mode():
+        if _non_static_mode():
             paddle.enable_static()
             disable_static = True
         else:

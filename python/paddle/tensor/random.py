@@ -22,7 +22,7 @@ from ..fluid.layers import utils
 import paddle
 from paddle import _C_ops
 from paddle.static import Variable
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph, _current_expected_place
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph, _current_expected_place, _non_static_mode
 
 __all__ = []
 
@@ -441,7 +441,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             # [1.00780561 3.78457445 5.81058198]  # random
 
     """
-    if not paddle._non_static_mode():
+    if not _non_static_mode():
         check_type(mean, 'mean', (int, float, Variable), 'normal')
         check_type(std, 'std', (int, float, Variable), 'normal')
         if isinstance(mean, Variable):
@@ -473,7 +473,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         return gaussian(shape=shape, mean=mean, std=std, name=name)
 
     out = out * std + mean
-    if not paddle._non_static_mode():
+    if not _non_static_mode():
         out.stop_grediant = True
     return out
 
@@ -881,7 +881,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             "randint_like's low must less then high, but received low = {0}, "
             "high = {1}".format(low, high))
 
-    if paddle._non_static_mode():
+    if _non_static_mode():
         shape = utils.convert_shape_to_list(shape)
         out = _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
                              0, 'dtype', core.VarDesc.VarType.INT64)

@@ -1453,7 +1453,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
 
-    if not paddle._non_static_mode():
+    if not _non_static_mode():
         check_variable_and_dtype(
             x, 'x',
             ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
@@ -3797,7 +3797,7 @@ def tensordot(x, y, axes=2, name=None):
     check_type(axes, 'axes', (int, tuple, list, Variable), op_type)
 
     def _var_to_list(var):
-        if paddle._non_static_mode():
+        if _non_static_mode():
             return tolist(var)
         raise TypeError(
             "The 'axes' with type 'Tensor' in " + op_type +

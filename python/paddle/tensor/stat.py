@@ -144,7 +144,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.var(x, axis=1)
             # [1.         4.33333333]
     """
-    if not paddle._non_static_mode():
+    if not _non_static_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
 
     u = mean(x, axis, True, name)
@@ -203,7 +203,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.std(x, axis=1)
             # [1.       2.081666]
     """
-    if not paddle._non_static_mode():
+    if not _non_static_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
 
     out = var(**locals())
@@ -520,7 +520,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     for q_num in q:
         if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")
-        if paddle._non_static_mode():
+        if _non_static_mode():
             q_num = paddle.to_tensor(q_num, dtype='float64')
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))

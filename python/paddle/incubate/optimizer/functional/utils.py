@@ -19,7 +19,7 @@ from paddle.fluid.data_feeder import check_type, check_dtype
 
 def check_input_type(input, name, op_name):
     r"""Check whether the input is tensor or variable."""
-    if paddle._non_static_mode():
+    if _non_static_mode():
         if not isinstance(input, paddle.Tensor):
             raise ValueError("The input: {} must be tensor.".format(input))
     else:
@@ -43,7 +43,7 @@ def check_initial_inverse_hessian_estimate(H0):
             "The initial_inverse_hessian_estimate should be symmetric and positive definite, but the specified is not."
         )
 
-    if paddle._non_static_mode():
+    if _non_static_mode():
         if not is_symmetric:
             raise_func()
         try:
@@ -90,7 +90,7 @@ def _value_and_gradient(f, x, v=None):
     x = x.detach()
     x.stop_gradient = False
     value = f(x)
-    if paddle._non_static_mode():
+    if _non_static_mode():
         # only need to compute first order derivative, and some op dont support high order derivative.
         gradient = paddle.grad([value], [x], create_graph=False)[0]
     else:

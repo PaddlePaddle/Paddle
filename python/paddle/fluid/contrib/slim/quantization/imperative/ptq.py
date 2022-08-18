@@ -21,6 +21,7 @@ import paddle
 import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.framework import _non_static_mode
 
 from . import fuse_utils
 from . import utils
@@ -143,7 +144,7 @@ class ImperativePTQ(object):
 
         # Load inference program
         is_dynamic_mode = False
-        if paddle._non_static_mode():
+        if _non_static_mode():
             is_dynamic_mode = True
             paddle.enable_static()
 

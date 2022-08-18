@@ -18,14 +18,14 @@ import unittest
 from unittest import TestCase
 import numpy as np
 import paddle
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _non_static_mode
 import paddle.fluid.core as core
 
 
 def _dygraph_guard_(func):
 
     def __impl__(*args, **kwargs):
-        if paddle._non_static_mode():
+        if _non_static_mode():
             return func(*args, **kwargs)
         else:
             with fluid.dygraph.guard():

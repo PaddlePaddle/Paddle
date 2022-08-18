@@ -20,7 +20,7 @@ import warnings
 from .. import compat as cpt
 from . import framework
 from .framework import _get_paddle_place, _get_paddle_place_list
-from .framework import cuda_places, cpu_places, xpu_places
+from .framework import cuda_places, cpu_places, xpu_places, _non_static_mode
 from . import core
 
 __all__ = [
@@ -733,7 +733,6 @@ class IpuStrategy(object):
             raise RuntimeError(
                 "Can not use IpuStrategy in non IPU compiled environment, please re-compile with WITH_IPU=ON."
             )
-        from paddle import _non_static_mode
         if _non_static_mode():
             self.register_patch()
 
@@ -798,7 +797,6 @@ class IpuStrategy(object):
                   ipu_strategy = static.IpuStrategy()
                   ipu_strategy.set_optimizer(optimizer)
         """
-        from paddle import _non_static_mode
         if _non_static_mode():
             self._optimizer = optimizer
             optimizer_attrs = self.parse_optimizer(optimizer)

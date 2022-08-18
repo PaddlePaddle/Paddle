@@ -20,6 +20,7 @@ import tempfile
 import numpy as np
 
 import paddle
+from paddle.fluid.framework import _non_static_mode
 from paddle.vision.ops import read_file, decode_jpeg
 
 
@@ -46,7 +47,7 @@ class TestReadFile(unittest.TestCase):
         img = decode_jpeg(img_bytes)
 
         img_cv2 = cv2.imread(self.img_path)
-        if paddle._non_static_mode():
+        if _non_static_mode():
             np.testing.assert_equal(img.shape, img_cv2.transpose(2, 0, 1).shape)
         else:
             place = paddle.CUDAPlace(0)
