@@ -78,6 +78,7 @@ class Node(object):
 
         return self._port_cur
 
+    '''
     def get_free_port2(self):
         # for loop to avoid port conflict
         for _ in range(100):
@@ -88,6 +89,7 @@ class Node(object):
                 self._allocated_ports.append(port)
                 return port
         return port
+    '''
 
     @classmethod
     def is_server_ready(self, ip, port):
