@@ -435,7 +435,7 @@ fi
 
 SKIP_CI=`git log -1 |grep -w "test=document_fix" || true`
 if [[ ${SKIP_CI} ]];then
-    echo_line="You must have one RD (tianshuo78520a (Recommend), ) approval for test=document_fix skip CI"
+    echo_line="You must have one RD (tianshuo78520a (Recommend),zhiqiu ,phlrain ) approval you add test=document_fix method in commit skips CI"
     check_approval 1 tianshuo78520a zhiqiu phlrain
 fi
 
