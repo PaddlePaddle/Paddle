@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 import paddle.nn as nn
 import paddle
 from paddle.nn.functional import interpolate
-from paddle._C_ops import final_state_nearest_interp
 
 paddle.enable_static()
 
@@ -50,9 +49,11 @@ def nearest_interp_test(x,
         if not isinstance(SizeTensor, list) and not isinstance(
                 SizeTensor, tuple):
             SizeTensor = [SizeTensor]
-    return final_state_nearest_interp(x, OutSize, SizeTensor, Scale,
-                                      data_layout, out_d, out_h, out_w, scale,
-                                      interp_method, align_corners, align_mode)
+    return paddle._C_ops.final_state_nearest_interp(x, OutSize, SizeTensor,
+                                                    Scale, data_layout, out_d,
+                                                    out_h, out_w, scale,
+                                                    interp_method,
+                                                    align_corners, align_mode)
 
 
 def nearest_neighbor_interp_np(X,
@@ -710,10 +711,11 @@ class TestNearestAPI(unittest.TestCase):
                                                 out_h=12,
                                                 out_w=12,
                                                 align_corners=True)
-        self.assertTrue(
-            np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 1))))
+        np.testing.assert_allclose(results[0],
+                                   np.transpose(expect_res, (0, 2, 3, 1)),
+                                   rtol=1e-05)
         for i in range(len(results) - 1):
-            self.assertTrue(np.allclose(results[i + 1], expect_res))
+            np.testing.assert_allclose(results[i + 1], expect_res, rtol=1e-05)
 
 
 class TestNearestInterpOpAPI_dy(unittest.TestCase):
@@ -737,7 +739,7 @@ class TestNearestInterpOpAPI_dy(unittest.TestCase):
                               scale_factor=scale,
                               mode="nearest",
                               align_corners=False)
-            self.assertTrue(np.allclose(out.numpy(), expect_res))
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 
 class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
@@ -763,7 +765,7 @@ class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
                               mode="nearest",
                               align_corners=False,
                               data_format="NCDHW")
-            self.assertTrue(np.allclose(out.numpy(), expect_res))
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 
 class TestNearestInterpException(unittest.TestCase):

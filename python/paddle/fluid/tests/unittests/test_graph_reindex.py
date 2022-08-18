@@ -51,17 +51,17 @@ class TestGraphReindex(unittest.TestCase):
 
         reindex_src, reindex_dst, out_nodes = \
             paddle.incubate.graph_reindex(x, neighbors, count)
-        self.assertTrue(np.allclose(self.reindex_src, reindex_src))
-        self.assertTrue(np.allclose(self.reindex_dst, reindex_dst))
-        self.assertTrue(np.allclose(self.out_nodes, out_nodes))
+        np.testing.assert_allclose(self.reindex_src, reindex_src, rtol=1e-05)
+        np.testing.assert_allclose(self.reindex_dst, reindex_dst, rtol=1e-05)
+        np.testing.assert_allclose(self.out_nodes, out_nodes, rtol=1e-05)
 
         reindex_src, reindex_dst, out_nodes = \
             paddle.incubate.graph_reindex(x, neighbors, count,
                                           value_buffer, index_buffer,
                                           flag_buffer_hashtable=True)
-        np.testing.assert_allclose(self.reindex_src, reindex_src)
-        np.testing.assert_allclose(self.reindex_dst, reindex_dst)
-        np.testing.assert_allclose(self.out_nodes, out_nodes)
+        np.testing.assert_allclose(self.reindex_src, reindex_src, rtol=1e-05)
+        np.testing.assert_allclose(self.reindex_dst, reindex_dst, rtol=1e-05)
+        np.testing.assert_allclose(self.out_nodes, out_nodes, rtol=1e-05)
 
     def test_heter_reindex_result(self):
         paddle.disable_static()
@@ -74,14 +74,18 @@ class TestGraphReindex(unittest.TestCase):
         reindex_src, reindex_dst, out_nodes = \
             paddle.incubate.graph_reindex(x, neighbors, count)
         np.testing.assert_allclose(self.reindex_src,
-                                   reindex_src[:self.neighbors.shape[0]])
+                                   reindex_src[:self.neighbors.shape[0]],
+                                   rtol=1e-05)
         np.testing.assert_allclose(self.reindex_src,
-                                   reindex_src[self.neighbors.shape[0]:])
+                                   reindex_src[self.neighbors.shape[0]:],
+                                   rtol=1e-05)
         np.testing.assert_allclose(self.reindex_dst,
-                                   reindex_dst[:self.neighbors.shape[0]])
+                                   reindex_dst[:self.neighbors.shape[0]],
+                                   rtol=1e-05)
         np.testing.assert_allclose(self.reindex_dst,
-                                   reindex_dst[self.neighbors.shape[0]:])
-        np.testing.assert_allclose(self.out_nodes, out_nodes)
+                                   reindex_dst[self.neighbors.shape[0]:],
+                                   rtol=1e-05)
+        np.testing.assert_allclose(self.out_nodes, out_nodes, rtol=1e-05)
 
     def test_heter_reindex_result_v2(self):
         paddle.disable_static()
@@ -112,9 +116,9 @@ class TestGraphReindex(unittest.TestCase):
             paddle.incubate.graph_reindex(paddle.to_tensor(x),
                                           paddle.to_tensor(neighbors),
                                           paddle.to_tensor(counts))
-        np.testing.assert_allclose(reindex_src, reindex_src_)
-        np.testing.assert_allclose(reindex_dst, reindex_dst_)
-        np.testing.assert_allclose(out_nodes, out_nodes_)
+        np.testing.assert_allclose(reindex_src, reindex_src_, rtol=1e-05)
+        np.testing.assert_allclose(reindex_dst, reindex_dst_, rtol=1e-05)
+        np.testing.assert_allclose(out_nodes, out_nodes_, rtol=1e-05)
 
     def test_reindex_result_static(self):
         paddle.enable_static()
@@ -161,12 +165,12 @@ class TestGraphReindex(unittest.TestCase):
                           ])
             reindex_src_1, reindex_dst_1, out_nodes_1, reindex_src_2, \
                 reindex_dst_2, out_nodes_2 = ret
-            np.testing.assert_allclose(self.reindex_src, reindex_src_1)
-            np.testing.assert_allclose(self.reindex_dst, reindex_dst_1)
-            np.testing.assert_allclose(self.out_nodes, out_nodes_1)
-            np.testing.assert_allclose(self.reindex_src, reindex_src_2)
-            np.testing.assert_allclose(self.reindex_dst, reindex_dst_2)
-            np.testing.assert_allclose(self.out_nodes, out_nodes_2)
+            np.testing.assert_allclose(self.reindex_src, reindex_src_1, rtol=1e-05)
+            np.testing.assert_allclose(self.reindex_dst, reindex_dst_1, rtol=1e-05)
+            np.testing.assert_allclose(self.out_nodes, out_nodes_1, rtol=1e-05)
+            np.testing.assert_allclose(self.reindex_src, reindex_src_2, rtol=1e-05)
+            np.testing.assert_allclose(self.reindex_dst, reindex_dst_2, rtol=1e-05)
+            np.testing.assert_allclose(self.out_nodes, out_nodes_2, rtol=1e-05)
 
 
 class TestGeometricGraphReindex(unittest.TestCase):
@@ -210,9 +214,9 @@ class TestGeometricGraphReindex(unittest.TestCase):
             paddle.geometric.graph_reindex(x, neighbors, count,
                                           value_buffer, index_buffer,
                                           has_buffer_hashtable=True)
-        np.testing.assert_allclose(self.reindex_src, reindex_src)
-        np.testing.assert_allclose(self.reindex_dst, reindex_dst)
-        np.testing.assert_allclose(self.out_nodes, out_nodes)
+        np.testing.assert_allclose(self.reindex_src, reindex_src, rtol=1e-05)
+        np.testing.assert_allclose(self.reindex_dst, reindex_dst, rtol=1e-05)
+        np.testing.assert_allclose(self.out_nodes, out_nodes, rtol=1e-05)
 
     def test_heter_reindex_result(self):
         paddle.disable_static()
@@ -225,14 +229,18 @@ class TestGeometricGraphReindex(unittest.TestCase):
         reindex_src, reindex_dst, out_nodes = \
             paddle.geometric.graph_reindex(x, neighbors, count)
         np.testing.assert_allclose(self.reindex_src,
-                                   reindex_src[:self.neighbors.shape[0]])
+                                   reindex_src[:self.neighbors.shape[0]],
+                                   rtol=1e-05)
         np.testing.assert_allclose(self.reindex_src,
-                                   reindex_src[self.neighbors.shape[0]:])
+                                   reindex_src[self.neighbors.shape[0]:],
+                                   rtol=1e-05)
         np.testing.assert_allclose(self.reindex_dst,
-                                   reindex_dst[:self.neighbors.shape[0]])
+                                   reindex_dst[:self.neighbors.shape[0]],
+                                   rtol=1e-05)
         np.testing.assert_allclose(self.reindex_dst,
-                                   reindex_dst[self.neighbors.shape[0]:])
-        np.testing.assert_allclose(self.out_nodes, out_nodes)
+                                   reindex_dst[self.neighbors.shape[0]:],
+                                   rtol=1e-05)
+        np.testing.assert_allclose(self.out_nodes, out_nodes, rtol=1e-05)
 
     def test_heter_reindex_result_v2(self):
         paddle.disable_static()
@@ -263,9 +271,9 @@ class TestGeometricGraphReindex(unittest.TestCase):
             paddle.geometric.graph_reindex(paddle.to_tensor(x),
                                           paddle.to_tensor(neighbors),
                                           paddle.to_tensor(counts))
-        np.testing.assert_allclose(reindex_src, reindex_src_)
-        np.testing.assert_allclose(reindex_dst, reindex_dst_)
-        np.testing.assert_allclose(out_nodes, out_nodes_)
+        np.testing.assert_allclose(reindex_src, reindex_src_, rtol=1e-05)
+        np.testing.assert_allclose(reindex_dst, reindex_dst_, rtol=1e-05)
+        np.testing.assert_allclose(out_nodes, out_nodes_, rtol=1e-05)
 
     def test_heter_reindex_result_v3(self):
         paddle.disable_static()
@@ -297,9 +305,9 @@ class TestGeometricGraphReindex(unittest.TestCase):
         reindex_src_, reindex_dst_, out_nodes_ = \
             paddle.geometric.heter_graph_reindex(paddle.to_tensor(x),
                                                  neighbors, count)
-        np.testing.assert_allclose(reindex_src, reindex_src_)
-        np.testing.assert_allclose(reindex_dst, reindex_dst_)
-        np.testing.assert_allclose(out_nodes, out_nodes_)
+        np.testing.assert_allclose(reindex_src, reindex_src_, rtol=1e-05)
+        np.testing.assert_allclose(reindex_dst, reindex_dst_, rtol=1e-05)
+        np.testing.assert_allclose(out_nodes, out_nodes_, rtol=1e-05)
 
     def test_reindex_result_static(self):
         paddle.enable_static()
@@ -346,12 +354,12 @@ class TestGeometricGraphReindex(unittest.TestCase):
                           ])
             reindex_src_1, reindex_dst_1, out_nodes_1, reindex_src_2, \
                 reindex_dst_2, out_nodes_2 = ret
-            np.testing.assert_allclose(self.reindex_src, reindex_src_1)
-            np.testing.assert_allclose(self.reindex_dst, reindex_dst_1)
-            np.testing.assert_allclose(self.out_nodes, out_nodes_1)
-            np.testing.assert_allclose(self.reindex_src, reindex_src_2)
-            np.testing.assert_allclose(self.reindex_dst, reindex_dst_2)
-            np.testing.assert_allclose(self.out_nodes, out_nodes_2)
+            np.testing.assert_allclose(self.reindex_src, reindex_src_1, rtol=1e-05)
+            np.testing.assert_allclose(self.reindex_dst, reindex_dst_1, rtol=1e-05)
+            np.testing.assert_allclose(self.out_nodes, out_nodes_1, rtol=1e-05)
+            np.testing.assert_allclose(self.reindex_src, reindex_src_2, rtol=1e-05)
+            np.testing.assert_allclose(self.reindex_dst, reindex_dst_2, rtol=1e-05)
+            np.testing.assert_allclose(self.out_nodes, out_nodes_2, rtol=1e-05)
 
     def test_heter_reindex_result_static(self):
         paddle.enable_static()
@@ -423,12 +431,12 @@ class TestGeometricGraphReindex(unittest.TestCase):
 
             reindex_src_1, reindex_dst_1, out_nodes_1, reindex_src_2, \
                 reindex_dst_2, out_nodes_2 = ret
-            np.testing.assert_allclose(reindex_src, reindex_src_1)
-            np.testing.assert_allclose(reindex_dst, reindex_dst_1)
-            np.testing.assert_allclose(out_nodes, out_nodes_1)
-            np.testing.assert_allclose(reindex_src, reindex_src_2)
-            np.testing.assert_allclose(reindex_dst, reindex_dst_2)
-            np.testing.assert_allclose(out_nodes, out_nodes_2)
+            np.testing.assert_allclose(reindex_src, reindex_src_1, rtol=1e-05)
+            np.testing.assert_allclose(reindex_dst, reindex_dst_1, rtol=1e-05)
+            np.testing.assert_allclose(out_nodes, out_nodes_1, rtol=1e-05)
+            np.testing.assert_allclose(reindex_src, reindex_src_2, rtol=1e-05)
+            np.testing.assert_allclose(reindex_dst, reindex_dst_2, rtol=1e-05)
+            np.testing.assert_allclose(out_nodes, out_nodes_2, rtol=1e-05)
 
 
 if __name__ == "__main__":

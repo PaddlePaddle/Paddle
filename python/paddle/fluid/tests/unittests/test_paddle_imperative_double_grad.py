@@ -190,7 +190,9 @@ class TestDygraphDoubleGrad(TestCase):
                     )
 
                     dx_expected = dy_expected * grad_y_np + dz_expected * grad_z_np
-                    self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
+                    np.testing.assert_allclose(dx_actual.numpy(),
+                                               dx_expected,
+                                               rtol=1e-05)
 
                     if grad_y is not None:
                         self.assertTrue(grad_y.stop_gradient)
@@ -229,7 +231,7 @@ class TestDygraphDoubleGrad(TestCase):
         # Theoritical result based on math calculation
         dx_expected = (1.0 / float(numel) * (np.maximum(x_np, 0) + 1) *
                        (x_np > 0) * 2).astype('float32')
-        self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
+        np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
         if not _in_legacy_dygraph():
             pass
@@ -242,7 +244,9 @@ class TestDygraphDoubleGrad(TestCase):
                 2.0 / float(numel) *
                 (x_np + dx_expected *
                  (x_np > 0) * 2 / float(numel))).astype('float32')
-            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+            np.testing.assert_allclose(x_grad_actual,
+                                       x_grad_expected,
+                                       rtol=1e-05)
 
     def test_example_with_gradient_accumulation_and_create_graph(self):
         with _test_eager_guard():
@@ -273,7 +277,7 @@ class TestDygraphDoubleGrad(TestCase):
 
         dx_expected = (1.0 / float(numel) * (np.maximum(x_np, 0) + y2.numpy()) *
                        (x_np > 0) * 2).astype('float32')
-        self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
+        np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
         if not _in_legacy_dygraph():
             pass
@@ -286,7 +290,9 @@ class TestDygraphDoubleGrad(TestCase):
                 2.0 / float(numel) *
                 (x_np + dx_expected *
                  (x_np > 0) * 4 / float(numel))).astype('float32')
-            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+            np.testing.assert_allclose(x_grad_actual,
+                                       x_grad_expected,
+                                       rtol=1e-05)
 
     def test_example_with_gradient_accumulation_and_no_grad_vars(self):
         with _test_eager_guard():
@@ -315,7 +321,7 @@ class TestDygraphDoubleGrad(TestCase):
         dx_expected = (1.0 / float(numel) * (np.maximum(x_np, 0) + 1) *
                        (x_np > 0) * 2).astype('float32')
 
-        self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
+        np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
         if not _in_legacy_dygraph():
             pass
@@ -325,7 +331,9 @@ class TestDygraphDoubleGrad(TestCase):
 
             x_grad_actual = x.gradient()
             x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
-            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+            np.testing.assert_allclose(x_grad_actual,
+                                       x_grad_expected,
+                                       rtol=1e-05)
 
     def test_example_with_gradient_accumulation_and_not_create_graph(self):
         with _test_eager_guard():
