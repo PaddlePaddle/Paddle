@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launcher.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
 

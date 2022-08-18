@@ -59,6 +59,16 @@ API_FILES=("CMakeLists.txt"
            "paddle/scripts/paddle_build.bat"
            "tools/windows/run_unittests.sh"
            "tools/parallel_UT_rule.py"
+           "python/paddle/fluid/dygraph/layers.py"
+           "paddle/fluid/eager/grad_node_info.h"
+           "paddle/fluid/eager/grad_node_info.cc"
+           "paddle/fluid/eager/grad_tensor_holder.h"
+           "paddle/fluid/eager/grad_tensor_holder.cc"
+           "paddle/fluid/eager/tensor_wrapper.h"
+           "paddle/fluid/eager/autograd_meta.cc"
+           "paddle/fluid/eager/autograd_meta.h"
+           "paddle/fluid/eager/backward.cc"
+           "paddle/fluid/eager/backward.h"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -178,6 +188,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/fluid/parallel_executor.py" ]; then
           echo_line="You must have one RD (Xreki,luotao1,zhhsplendid) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
           check_approval 1 12538138 6836917 7913861
+      elif [ "${API_FILE}" == "python/paddle/fluid/dygraph/layers.py" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_node_info.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_node_info.cc" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_tensor_holder.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_tensor_holder.cc" ] || [ "${API_FILE}" == "paddle/fluid/eager/tensor_wrapper.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/autograd_meta.cc"] || [ "${API_FILE}" == "paddle/fluid/eager/autograd_meta.h"] || [ "${API_FILE}" == "paddle/fluid/eager/backward.cc"] || [ "${API_FILE}" == "paddle/fluid/eager/backward.h"]; then
+          echo_line="You must have one RD (JiabinYang,chenwhql,phlrain) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
+          check_approval JiabinYang chenwhql phlrain
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 46782768 12538138 6836917 22561442 6888866 16605440
@@ -190,12 +203,6 @@ HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -o -m 
 if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93) approval for the usage of const_cast.\n"
     check_approval 1 46782768 12538138 6836917 22561442 6888866 16605440
-fi
-
-HAS_BOOST_GET=`git diff -U0 upstream/$BRANCH $FILTER |grep "^+" |grep -o -m 1 "boost::get" || true`
-if [ ${HAS_BOOST_GET} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="boost::get is not recommended, because it may throw an bad_get exception without any stack information, so please use BOOST_GET(_**)(dtype, value) series macros here. If these macros cannot meet your needs, please use try-catch to handle boost::get and request chenwhql (Recommend), luotao1 or lanxianghit review and approve.\n"
-    check_approval 1 6836917 47554610 22561442
 fi
 
 # infrt needs to temporarily use LOG(FATAL) during the debugging period, and will replace it with standard error format in the future.
@@ -225,12 +232,6 @@ if [ "${HAS_MODIFIED_DEMO_CMAKE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 328693 6836917 39303645
   fi
 
-HAS_MODIFIED_ALLOCATION=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/memory/allocation" || true`
-if [ "${HAS_MODIFIED_ALLOCATION}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by zhiqiu and Shixiaowei02 for paddle/fluid/memory/allocation.\nIt is being modularized and refactored. Thanks!\n"
-    check_approval 1 6888866 39303645
-  fi
-
 HAS_MODIFIED_DECLARATIONS=`git diff -U0 upstream/$BRANCH |grep "^+" |grep "paddle/phi/kernels/declarations.h" || true`
 if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by chenwhql or zyfncg for paddle/phi/kernels/declarations.h using. Thanks!\n"
@@ -256,6 +257,12 @@ EMPTY_GRAD_OP_REGISTERED=`echo $ALL_ADDED_LINES |grep -zoE "REGISTER_OP_WITHOUT_
 if [ "${EMPTY_GRAD_OP_REGISTERED}" != "" ] && [ "${GIT_PT_ID}" != "" ]; then
     echo_line="You must have one RD (phlrain, XiaoguangHu01, kolinwei or JiabinYang) approval for the usage of REGISTER_OP_WITHOUT_GRADIENT or EmptyGradOpMaker.\nThe code that do not meet the specification are as follows:\n${EMPTY_GRAD_OP_REGISTERED}\n"
     check_approval 1 43953930 46782768 22165420 22361972
+fi
+
+INVALID_UNITTEST_ASSERT_CHECK=`echo "$ALL_ADDED_LINES" | grep -zoE '\+\s+self\.assert(True|Equal)\((\s*\+\s*)?(np|numpy)\.(allclose|array_equal)[^+]*' || true`
+if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="It is recommended to use 'np.testing.assert_allclose' and 'np.testing.array_equal' instead of 'self.assertTrue(np.allclose(...))' and 'self.assertTrue(np.array_equal(...))'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background ]. If it is a mismatch, please request qili93 (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_UNITTEST_ASSERT_CHECK}\n"
+    check_approval 1 16605440 6836917
 fi
 
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
@@ -347,6 +354,23 @@ if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
+CMAKE_FILE_CHANGED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -E "\.cmake|CMakeLists\.txt"  || true`
+if [ "${CMAKE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    ERROR_LINES=""
+    for CMAKE_FILE in ${CMAKE_FILE_CHANGED};
+    do
+        CHECK_OBJECT_FLAGS=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKE_FILE} |grep "+" |grep -E "\-Wno\-error" || true`
+        if [ "${CHECK_OBJECT_FLAGS}" != "" ]; then
+            ERROR_LINES="${ERROR_LINES}\n${CMAKE_FILE}${CHECK_OBJECT_FLAGS}\n"
+        fi
+    done
+    if [ "${ERROR_LINES}" != "" ]; then
+        ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
+        echo_line="Change compilation flag of warnings is not recommended. You must have one RD's (zhiqiu (Recommend), luotao1 or phlrain) approval to use these methods. "
+        check_approval 1 zhiqiu luotao1 phlrain
+    fi
+fi
+
 NEW_OP_TEST_ADDED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE "test_.*.\.py" || true`
 if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_OUTPUT=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep "self\.check_output(a*t*o*l*=*[0-9]"|grep "+" || true`
@@ -378,17 +402,33 @@ if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
+if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    ERROR_LINES=""
+    for TEST_FILE in ${UNITTEST_FILE_CHANGED};
+    do
+        ENABLE_LEGACY_DYGRAPH_CI=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${TEST_FILE} |grep "_enable_legacy_dygraph" || true`
+        if [ "${ENABLE_LEGACY_DYGRAPH_CI}" != "" ]; then
+            ERROR_LINES="${ERROR_LINES}\n${TEST_FILE}\n${ENABLE_LEGACY_DYGRAPH_CI}\n"
+        fi
+    done
+    if [ "${ERROR_LINES}" != "" ]; then
+        ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
+        echo_line="_enable_legacy_dygraph forces the mode to old dynamic graph. You must have one RD (pangyoki (Recommend), Aurelius84 or JiabinYang) approval for the usage (either add or delete) of _enable_legacy_dygraph. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Enable-Eager-Mode-in-Paddle-CI. The corresponding lines are as follows:\n${ERROR_LINES}\n"
+        check_approval 1 26408901 9301846 22361972
+    fi
+fi
+
 RUNTYPE_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH|grep -E "CMakeLists.txt"||true`
 if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     for CMAKELISTS_FILE in ${RUNTYPE_FILE_CHANGED};
     do
-        RUNTYPE_ADD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKELISTS_FILE} |grep "^+" |grep -E "RUN_TYPE=EXCLUSIVE|RUN_TYPE=DIST|RUN_TYPE=NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY|RUN_TYPE=DIST:NIGHTLY|PROPERTIES[[:space:]]+TIMEOUT" || true`
+        RUNTYPE_ADD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKELISTS_FILE} |grep "^+" |grep -E "SERIAL|RUN_TYPE=EXCLUSIVE|RUN_TYPE=DIST|RUN_TYPE=NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY|RUN_TYPE=DIST:NIGHTLY|PROPERTIES[[:space:]]+TIMEOUT" || true`
 	if [[ ${RUNTYPE_ADD} != "" ]];then
 	    RUNTYPE_ADD_LINES="${RUNTYPE_ADD_LINES}\n${CMAKELISTS_FILE}\n${RUNTYPE_ADD}\n"
 	fi
     done
     if [[ ${RUNTYPE_ADD_LINES} != "" ]];then
-        echo_line="You must have one QA (XieYunshen(Recommend) or chalsliu) approval for setting parameter RUN_TYPE as EXCLUSIVE, DIST, NIGHTLY, EXCLUSIVE:NIGHTLY or DISTNIGHTLY, or setting TIMEOUT properties.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\nFor more information, please refer to:https://github.com/PaddlePaddle/Paddle/wiki/PaddlePaddle-Unit-test-specification"
+        echo_line="You must have one QA (XieYunshen(Recommend) or chalsliu) approval for setting parameter RUN_TYPE as EXCLUSIVE, DIST, NIGHTLY, EXCLUSIVE:NIGHTLY or DISTNIGHTLY, or setting parameter SERIAL, or setting TIMEOUT properties.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\nFor more information, please refer to:https://github.com/PaddlePaddle/Paddle/wiki/PaddlePaddle-Unit-test-specification"
 	check_approval 1 32428676 45041955
     fi
 fi

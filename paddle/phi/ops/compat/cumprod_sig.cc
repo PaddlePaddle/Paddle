@@ -18,10 +18,8 @@ namespace phi {
 
 KernelSignature CumprodGradGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("cumprod_grad",
-                         {"X", "Out", GradVarName("Out")},
-                         {"dim"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "cumprod_grad", {"X", "Out", "Out@GRAD"}, {"dim"}, {"X@GRAD"});
 }
 
 }  // namespace phi

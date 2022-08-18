@@ -12,9 +12,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/split_op.h"
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/operators/split_op.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
@@ -46,12 +47,18 @@ class SplitXPUKernel : public framework::OpKernel<T> {
       split_lists.push_back(output[i]->dims()[axis]);
     }
 
-    int r = xpu::split<T>(dev_ctx.x_context(), input->data<T>(), out_ptrs,
-                          input_shape, split_lists, axis);
+    int r = xpu::split<T>(dev_ctx.x_context(),
+                          input->data<T>(),
+                          out_ptrs,
+                          input_shape,
+                          split_lists,
+                          axis);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External("XPU split kernel return wrong value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+                                   r,
+                                   XPUAPIErrorMsg[r]));
   }
 };
 
@@ -60,6 +67,7 @@ class SplitXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    split, ops::SplitXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    split,
+    ops::SplitXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::SplitXPUKernel<paddle::platform::XPUDeviceContext, int>);
 #endif

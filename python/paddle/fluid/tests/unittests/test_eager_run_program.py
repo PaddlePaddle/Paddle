@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -59,17 +59,16 @@ def _create_out(var):
     var_desc = var.desc
     varbase = None
     if _in_legacy_dygraph():
-        var_base = core.VarBase(var_desc.dtype(),
-                                var_desc.shape(),
+        var_base = core.VarBase(var_desc.dtype(), var_desc.shape(),
                                 var_desc.name(), var_desc.type(), False)
     else:
-        var_base = core.eager.Tensor(var_desc.dtype(),
-                                     var_desc.shape(),
+        var_base = core.eager.Tensor(var_desc.dtype(), var_desc.shape(),
                                      var_desc.name(), var_desc.type(), False)
     return var_base
 
 
 class TestRunProgram(unittest.TestCase):
+
     def test_eager(self):
         paddle.set_device('cpu')
         paddle.enable_static()
@@ -104,16 +103,16 @@ class TestRunProgram(unittest.TestCase):
                      'is_test', False, 'program_id', _hash_with_id(program))
 
             _C_ops.run_program([x_t, y_t], [fake_var], [out_t], [scope],
-                               [fake_var], *attrs)
+                               [fake_var], None, *attrs)
 
             loss = paddle.mean(out_t)
             loss.backward()
 
-            self.assertTrue(np.array_equal(np.ones([2, 2]) * 4, out_t.numpy()))
-            self.assertTrue(
-                np.array_equal(np.ones([2, 4]) * 0.5, x_t.grad.numpy()))
-            self.assertTrue(
-                np.array_equal(np.ones([4, 2]) * 0.5, y_t.grad.numpy()))
+            np.testing.assert_array_equal(np.ones([2, 2]) * 4, out_t.numpy())
+            np.testing.assert_array_equal(
+                np.ones([2, 4]) * 0.5, x_t.grad.numpy())
+            np.testing.assert_array_equal(
+                np.ones([4, 2]) * 0.5, y_t.grad.numpy())
 
 
 if __name__ == '__main__':

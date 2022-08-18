@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -28,6 +29,7 @@ SEED = 2021
 
 
 class TestElementwiseDiv(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_div"
@@ -60,7 +62,8 @@ class TestElementwiseDiv(OpTest):
             self.place,
             ['X', 'Y'],
             'Out',
-            max_relative_error=0.007, )
+            max_relative_error=0.007,
+        )
 
     def test_check_grad_ingore_x(self):
         self.check_grad_with_place(
@@ -68,14 +71,17 @@ class TestElementwiseDiv(OpTest):
             ['Y'],
             'Out',
             max_relative_error=0.007,
-            no_grad_set=set("X"), )
+            no_grad_set=set("X"),
+        )
 
     def test_check_grad_ingore_y(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', no_grad_set=set("Y"))
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   no_grad_set=set("Y"))
 
 
 class TestElementwiseDivFp16(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_div"
@@ -106,6 +112,7 @@ class TestElementwiseDivFp16(OpTest):
 
 
 class TestElementwiseDivNet(unittest.TestCase):
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -124,8 +131,9 @@ class TestElementwiseDivNet(unittest.TestCase):
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             c = paddle.static.data(name="c", shape=[32, 32], dtype='float32')
             d = paddle.static.data(name="d", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
 
             e = paddle.multiply(a, b)
             f = paddle.multiply(c, d)
@@ -170,11 +178,12 @@ class TestElementwiseDivNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
 
 
 class TestFloatStatus(unittest.TestCase):
+
     def test_overflow(self):
         paddle.disable_static()
         paddle.set_device('npu')

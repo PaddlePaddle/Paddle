@@ -13,18 +13,17 @@ the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <memory>
 
 #include "paddle/phi/api/include/api.h"
-
 #include "paddle/phi/api/include/sparse_api.h"
-
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 
-PD_DECLARE_KERNEL(sparse_conv3d, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(conv3d_coo, CPU, ALL_LAYOUT);
 
 template <typename T>
 void TestConv3dBase(const std::vector<int>& indices,
@@ -77,11 +76,11 @@ void TestConv3dBase(const std::vector<int>& indices,
          kernel.size() * sizeof(T));
 
   if (!std::is_same<T, phi::dtype::float16>::value) {
-    auto outs = paddle::experimental::sparse::conv3d(
-        x, weight, paddings, dilations, strides, 1, false);
+    auto tensor_out = paddle::experimental::sparse::conv3d(
+        x, weight, paddings, dilations, strides, 1, false, "Conv3d");
 
-    auto out = std::dynamic_pointer_cast<phi::SparseCooTensor>(
-        std::get<0>(outs).impl());
+    auto out =
+        std::dynamic_pointer_cast<phi::SparseCooTensor>(tensor_out.impl());
     ASSERT_EQ(correct_out_dims.size(), out->dims().size());
     for (int i = 0; i < correct_out_dims.size(); i++) {
       ASSERT_EQ(correct_out_dims[i], out->dims()[i]);

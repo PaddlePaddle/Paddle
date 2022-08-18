@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_sample_grad_kernel.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"

@@ -22,6 +22,7 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 import sys
+
 sys.path.append('..')
 from op_test import OpTest
 import paddle
@@ -30,6 +31,7 @@ paddle.enable_static()
 
 
 class TestGaussianRandomOp(OpTest):
+
     def setUp(self):
         self.op_type = "gaussian_random"
         self.place = paddle.device.MLUPlace(0)
@@ -63,13 +65,11 @@ class TestGaussianRandomOp(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
-        self.assertTrue(
-            np.allclose(
-                hist, hist2, rtol=0, atol=0.01),
-            "hist: " + str(hist) + " hist2: " + str(hist2))
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
 
 
 class TestMeanStdAreInt(TestGaussianRandomOp):
+
     def set_attrs(self):
         self.mean = 1
         self.std = 2

@@ -29,8 +29,10 @@ PD_DECLARE_KERNEL(dropout_grad, GPU, ALL_LAYOUT);
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 
+bool CheckEqual(float value, float ref) { return std::abs(value - ref) < 1e-5; }
+
 /**
- * @brief the unittest of fusedresidualdropoutbias
+ * @brief the unittest of FusedResidualDropoutBias
  * 1. random input data
  * 2. add bias, call paddle dropout op, add residual, and get the base result
  * 3. call FusedResidualDropoutBias function get fused result
@@ -38,7 +40,7 @@ namespace platform = paddle::platform;
  */
 
 template <typename T>
-struct TestFusedResidualDropoutBias {
+struct FusedResidualDropoutBiasTester {
   uint32_t rows;
   uint32_t cols;
   uint64_t seed;
@@ -46,6 +48,8 @@ struct TestFusedResidualDropoutBias {
   bool is_upscale_in_train;
   bool is_test;  // default false,  Set to true for inference only
   bool has_bias = true;
+  bool add_residual = true;
+
   framework::Tensor src, residual, bias, out, mask;
   framework::Tensor dsrc, dbias;
 
@@ -54,38 +58,36 @@ struct TestFusedResidualDropoutBias {
   std::vector<uint8_t> correct_mask;
 
   platform::CUDAPlace place;
-  platform::CUDADeviceContext *ctx;
+  phi::GPUContext *ctx;
 
-  TestFusedResidualDropoutBias() {
+  FusedResidualDropoutBiasTester() {
     rows = 32;
     cols = 32;
     seed = 0;
     dropout_prob = 0.0;
     is_upscale_in_train = false;
     is_test = false;
-    has_bias = true;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto device_ctx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(device_ctx);
+    ctx = reinterpret_cast<phi::GPUContext *>(device_ctx);
   }
 
-  TestFusedResidualDropoutBias(int rows_, int cols_, uint64_t seed_ = 0,
-                               float dropout_prob_ = 0.0,
-                               bool is_upscale_in_train_ = false,
-                               bool is_test_ = false) {
-    rows = rows_;
-    cols = cols_;
-    seed = seed_;
-    dropout_prob = dropout_prob_;
-    is_upscale_in_train = is_upscale_in_train_;
-    is_test = is_test_;
-    has_bias = true;
+  FusedResidualDropoutBiasTester(int rows,
+                                 int cols,
+                                 uint64_t seed = 0,
+                                 float dropout_prob = 0.0,
+                                 bool is_upscale_in_train = false,
+                                 bool is_test = false)
+      : rows(rows),
+        cols(cols),
+        seed(seed),
+        dropout_prob(dropout_prob),
+        is_upscale_in_train(is_upscale_in_train),
+        is_test(is_test) {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto device_ctx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(device_ctx);
+    ctx = reinterpret_cast<phi::GPUContext *>(device_ctx);
   }
-
-  ~TestFusedResidualDropoutBias() {}
 
   void SetUp() {
     const int n = rows * cols;
@@ -95,7 +97,9 @@ struct TestFusedResidualDropoutBias {
     correct_dbias.resize(cols);
 
     src_vec.resize(n);
-    residual_vec.resize(n);
+    if (add_residual) {
+      residual_vec.resize(n);
+    }
     bias_vec.resize(cols);
     std::default_random_engine random(time(NULL));
     std::uniform_real_distribution<float> dis(0.0, 1.0);
@@ -103,7 +107,9 @@ struct TestFusedResidualDropoutBias {
     for (int i = 0; i < rows; i++) {
       for (int j = 0; j < cols; j++) {
         src_vec[i * cols + j] = static_cast<T>(dis(random));
-        residual_vec[i * cols + j] = static_cast<T>(dis(random));
+        if (add_residual) {
+          residual_vec[i * cols + j] = static_cast<T>(dis(random));
+        }
         if (i == 0) {
           bias_vec[j] = dis(random);
         }
@@ -112,53 +118,75 @@ struct TestFusedResidualDropoutBias {
 
     framework::TensorFromVector<T>(src_vec, *ctx, &src);
     src.Resize({rows, cols});
-    framework::TensorFromVector<T>(residual_vec, *ctx, &residual);
-    residual.Resize({rows, cols});
+    if (add_residual) {
+      framework::TensorFromVector<T>(residual_vec, *ctx, &residual);
+      residual.Resize({rows, cols});
+    }
     if (has_bias) {
       framework::TensorFromVector<T>(bias_vec, *ctx, &bias);
       bias.Resize({cols});
     }
 
-    {
-      out.mutable_data<T>({rows, cols}, place);
-      mask.mutable_data<uint8_t>({rows, cols}, place);
-      dsrc.mutable_data<T>({rows, cols}, place);
+    out.mutable_data<T>({rows, cols}, place);
+    mask.mutable_data<uint8_t>({rows, cols}, place);
+    dsrc.mutable_data<T>({rows, cols}, place);
 
-      if (has_bias) {
-        dbias.mutable_data<T>({cols}, place);
-      }
+    if (has_bias) {
+      dbias.mutable_data<T>({cols}, place);
     }
   }
 
   void BaseForward() {
-    std::vector<T> out1(rows * cols), out2(rows * cols);
     if (has_bias) {
       // add bias
+      std::vector<T> bias_out(rows * cols);
       for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-          out1[i * cols + j] = src_vec[i * cols + j] + bias_vec[j];
+          bias_out[i * cols + j] = src_vec[i * cols + j] + bias_vec[j];
         }
       }
       // call dropout
-      Dropout<T>(out1, src.dims(), &out2, &correct_mask, *ctx, seed,
-                 dropout_prob, is_upscale_in_train, is_test);
+      Dropout<T>(bias_out,
+                 src.dims(),
+                 &correct_out,
+                 &correct_mask,
+                 *ctx,
+                 seed,
+                 dropout_prob,
+                 is_upscale_in_train,
+                 is_test);
     } else {
-      Dropout<T>(src_vec, src.dims(), &out2, &correct_mask, *ctx, seed,
-                 dropout_prob, is_upscale_in_train, is_test);
+      Dropout<T>(src_vec,
+                 src.dims(),
+                 &correct_out,
+                 &correct_mask,
+                 *ctx,
+                 seed,
+                 dropout_prob,
+                 is_upscale_in_train,
+                 is_test);
     }
     ctx->Wait();
-    // add residual
-    for (int i = 0; i < rows; i++) {
-      for (int j = 0; j < cols; j++) {
-        correct_out[i * cols + j] =
-            residual_vec[i * cols + j] + out2[i * cols + j];
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+    if (add_residual) {
+      // add residual
+      for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+          int idx = i * cols + j;
+          correct_out[idx] = residual_vec[idx] + correct_out[idx];
+        }
       }
     }
   }
 
   void BaseBackward() {
-    DropoutGrad<T>(&correct_dsrc, src.dims(), correct_out, correct_mask, *ctx,
-                   dropout_prob, is_upscale_in_train);
+    DropoutGrad<T>(&correct_dsrc,
+                   src.dims(),
+                   correct_out,
+                   correct_mask,
+                   *ctx,
+                   dropout_prob,
+                   is_upscale_in_train);
     // calc dbias
     memset(&correct_dbias[0], 0, cols * sizeof(T));
     if (has_bias) {
@@ -168,24 +196,35 @@ struct TestFusedResidualDropoutBias {
 
   void FusedForward() {
     const int VecSize = MAX_CACHE_BYTES / sizeof(T);
-    auto config = paddle::operators::Get1DBlocksAnd2DGrids(
-        *ctx, static_cast<uint64_t>(rows), static_cast<uint64_t>(cols),
-        VecSize);
+    auto config =
+        paddle::operators::Get1DBlocksAnd2DGrids(*ctx,
+                                                 static_cast<uint64_t>(rows),
+                                                 static_cast<uint64_t>(cols),
+                                                 VecSize);
 
     const int increment = ((cols - 1) / (config.thread_per_block.x *
                                          config.block_per_grid.x * VecSize) +
                            1) *
                           VecSize;
 
-    T *bias_ptr = nullptr;
-    if (has_bias) {
-      bias_ptr = bias.data<T>();
-    }
+    T *bias_ptr = has_bias ? bias.data<T>() : nullptr;
+    T *residual_ptr = add_residual ? residual.data<T>() : nullptr;
     paddle::operators::LaunchResidualDropoutBias<T, uint8_t>(
-        rows, cols, increment, seed, dropout_prob, is_test, is_upscale_in_train,
-        src.data<T>(), residual.data<T>(), bias_ptr, mask.data<uint8_t>(),
-        out.data<T>(), *ctx);
+        rows,
+        cols,
+        increment,
+        seed,
+        dropout_prob,
+        is_test,
+        is_upscale_in_train,
+        src.data<T>(),
+        residual_ptr,
+        bias_ptr,
+        mask.data<uint8_t>(),
+        out.data<T>(),
+        *ctx);
     ctx->Wait();
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
   }
 
   void FusedBackward() {
@@ -193,13 +232,17 @@ struct TestFusedResidualDropoutBias {
       return;
     }
 
-    T *bias_ptr = nullptr;
-    if (has_bias) {
-      bias_ptr = dbias.data<T>();
-    }
+    T *bias_ptr = has_bias ? dbias.data<T>() : nullptr;
     paddle::operators::LaunchResidualDropoutBiasGrad<T, uint8_t>(
-        out.data<T>(), mask.data<uint8_t>(), dropout_prob, is_upscale_in_train,
-        rows, cols, dsrc.data<T>(), bias_ptr, *ctx);
+        out.data<T>(),
+        mask.data<uint8_t>(),
+        dropout_prob,
+        is_upscale_in_train,
+        rows,
+        cols,
+        dsrc.data<T>(),
+        bias_ptr,
+        *ctx);
   }
 
   void Run() {
@@ -212,17 +255,19 @@ struct TestFusedResidualDropoutBias {
 
   void CheckOut(const T diff) {
     const int n = rows * cols;
-    std::vector<T> _out(n);
-    std::vector<uint8_t> _mask(n);
-    framework::TensorToVector(out, *ctx, &_out);
+    std::vector<T> fused_out(n);
+    std::vector<uint8_t> fused_mask(n);
+    framework::TensorToVector(out, *ctx, &fused_out);
     if (!is_test) {
-      framework::TensorToVector<uint8_t>(mask, *ctx, &_mask);
+      framework::TensorToVector<uint8_t>(mask, *ctx, &fused_mask);
     }
     ctx->Wait();
 
     for (int i = 0; i < n; i++) {
-      EXPECT_LT(std::abs(_out[i] - correct_out[i]), diff);
-      if (!is_test) EXPECT_EQ(_mask[i], correct_mask[i]);
+      EXPECT_LT(std::abs(fused_out[i] - correct_out[i]), diff);
+      if (!is_test) {
+        EXPECT_EQ(fused_mask[i], correct_mask[i]);
+      }
     }
   }
 
@@ -253,16 +298,21 @@ struct TestFusedResidualDropoutBias {
 
 // test the shape and bias
 template <typename T>
-static void BaseTest(const bool is_fp16 = false) {
+static void BaseTest() {
   const int rows = 16;
-  T default_diff = !is_fp16 ? static_cast<T>(1e-5) : static_cast<T>(1e-1);
+  T max_diff = static_cast<T>(0);
+  if (std::is_same<T, paddle::platform::float16>::value) {
+    max_diff = static_cast<T>(1e-1);
+  } else {
+    max_diff = static_cast<T>(1e-5);
+  }
   for (auto cols : {16, 17}) {
     for (auto has_bias : {true, false}) {
-      TestFusedResidualDropoutBias<T> test(rows, cols);
+      FusedResidualDropoutBiasTester<T> test(rows, cols);
       test.has_bias = has_bias;
       test.Run();
-      test.CheckOut(default_diff);
-      test.CheckGrad(default_diff);
+      test.CheckOut(max_diff);
+      test.CheckGrad(max_diff);
     }
   }
 }
@@ -272,15 +322,15 @@ TEST(FusedDropout, GPUFusedResidualDropoutBias) { BaseTest<float>(); }
 TEST(FusedDropout, GPUFusedResidualDropoutBiasDouble) { BaseTest<double>(); }
 
 TEST(FusedDropout, GPUFusedResidualDropoutBiasFp16) {
-  BaseTest<platform::float16>(true);
+  BaseTest<platform::float16>();
 }
 
 TEST(FusedDropout, GPUFusedResidualDropoutBiasIsUpscaleInTrain) {
   const int rows = 16;
   const int cols = 16;
   for (auto is_upscale_in_train : {true, false}) {
-    TestFusedResidualDropoutBias<float> test(rows, cols, 0, 1.0,
-                                             is_upscale_in_train, false);
+    FusedResidualDropoutBiasTester<float> test(
+        rows, cols, 0, 1.0, is_upscale_in_train, false);
     test.Run();
     test.CheckOut(static_cast<float>(1e-5));
     test.CheckGrad(static_cast<float>(1e-5));
@@ -290,7 +340,7 @@ TEST(FusedDropout, GPUFusedResidualDropoutBiasIsUpscaleInTrain) {
 TEST(FusedDropout, GPUFusedResidualDropoutBiasIsTest) {
   const int rows = 16;
   const int cols = 16;
-  TestFusedResidualDropoutBias<float> test(rows, cols, 0, 0.35, true, true);
+  FusedResidualDropoutBiasTester<float> test(rows, cols, 0, 0.35, true, true);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-5));
@@ -299,17 +349,50 @@ TEST(FusedDropout, GPUFusedResidualDropoutBiasIsTest) {
 TEST(FusedDropout, GPUFusedResidualDropoutBiasSeed) {
   const int rows = 16;
   const int cols = 16;
-  TestFusedResidualDropoutBias<float> test(rows, cols, 125, 0.0, false, false);
+  FusedResidualDropoutBiasTester<float> test(
+      rows, cols, 125, 0.0, false, false);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-5));
 }
 
+TEST(FusedDropout, NoResidual) {
+  const int rows = 16;
+  const int cols = 16;
+  for (float p : {0.0f, 0.5f, 1.0f}) {
+    FusedResidualDropoutBiasTester<float> test(rows, cols, 0, p, false, false);
+    test.add_residual = false;
+    test.Run();
+    // For a non 0 or 1 dropout_prob, just test whether it can run successly.
+    if (CheckEqual(p, 0.0f) || CheckEqual(p, 1.0f)) {
+      test.CheckOut(static_cast<float>(1e-5));
+      test.CheckGrad(static_cast<float>(1e-5));
+    }
+  }
+}
+
 TEST(FusedDropout, GPUFusedResidualDropoutBiasLargeShape) {
   const int rows = 256;
   const int cols = 4096;
-  TestFusedResidualDropoutBias<float> test(rows, cols);
+  FusedResidualDropoutBiasTester<float> test(rows, cols);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-3));
+}
+
+TEST(FusedDropout, GPUFusedResidualDropoutBiasLargeShapeFp16) {
+  // Used to test that `cudaErrorLaunchOutOfResources` will not occur
+  int rows = 1;
+  int cols = 12288;
+  if (std::getenv("_rows") != nullptr) {
+    rows = atoi(std::getenv("_rows"));
+  }
+  if (std::getenv("_cols") != nullptr) {
+    cols = atoi(std::getenv("_cols"));
+  }
+  FusedResidualDropoutBiasTester<platform::float16> test(
+      rows, cols, 0, 0.0, true, true);
+  test.Run();
+  test.CheckOut(static_cast<platform::float16>(1e-1));
+  test.CheckGrad(static_cast<platform::float16>(1e-1));
 }

@@ -28,22 +28,25 @@ using platform::to_void_cast;
 namespace {
 template <typename T>
 class PReluMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, dnnl::prelu_forward,
-                                      dnnl::prelu_backward> {
+    : public platform::
+          MKLDNNHandlerT<T, dnnl::prelu_forward, dnnl::prelu_backward> {
  public:
   PReluMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
-                     const dnnl::engine engine, platform::Place cpu_place,
-                     const Tensor* x, const Tensor* weights,
-                     const std::string& uniq_name, const std::string& mode,
-                     const std::string& data_format, bool is_test = false)
+                     const dnnl::engine engine,
+                     platform::Place cpu_place,
+                     const Tensor* x,
+                     const Tensor* weights,
+                     const std::string& uniq_name,
+                     const std::string& mode,
+                     const std::string& data_format,
+                     bool is_test = false)
       : platform::MKLDNNHandlerT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
-            dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, phi::vectorize(x->dims()),
-                                uniq_name)) {
+            dev_ctx,
+            engine,
+            cpu_place,
+            platform::CreateKey(
+                dev_ctx, phi::vectorize(x->dims()), uniq_name)) {
     if (unlikely(!this->isCached())) {
-      auto x_md = memory::desc(phi::vectorize(x->dims()),
-                               MKLDNNGetDataType<T>(), x->format());
-
       auto weights_dims = phi::vectorize(weights->dims());
 
       // weights must have same size as X only for "element" case
@@ -55,41 +58,41 @@ class PReluMKLDNNHandler
         }
         weights_dims = std::move(new_weights_dims);
       }
-      auto weights_md = memory::desc(weights_dims, MKLDNNGetDataType<T>(),
-                                     memory::format_tag::any);
+      auto weights_md = memory::desc(
+          weights_dims, MKLDNNGetDataType<T>(), memory::format_tag::any);
 
-      this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                              x_md, weights_md);
+      this->AcquireForwardPrimitiveDescriptor(
+          dnnl::prop_kind::forward_training, x->mem_desc(), weights_md);
       if (!is_test)
-        this->AcquireBackwardPrimitiveDescriptor(x_md, weights_md, x_md,
-                                                 weights_md);
+        this->AcquireBackwardPrimitiveDescriptor(
+            x->mem_desc(), weights_md, x->mem_desc(), weights_md);
     }
   }
 
   std::shared_ptr<memory> AcquireWeightsMemoryPossiblyWithReorder(
-      const Tensor* input, const bool is_test) {
-    const T* input_data = input->data<T>();
+      const Tensor* weights, const bool is_test) {
+    const T* weights_data = weights->data<T>();
 
     // if weights are 1D, every format tag is correct, so we accept
     // format_tag::any's output and no reorder is needed
-    if (input->dims().size() == 1) {
+    if (weights->dims().size() == 1) {
       return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                              to_void_cast<T>(input_data),
+                                              to_void_cast<T>(weights_data),
                                               "@alpha_mem_p");
     }
 
-    auto user_weights_md = memory::desc(
-        phi::vectorize(input->dims()), MKLDNNGetDataType<T>(), input->format());
-    return this->AcquireMemoryWithReorder(
-        user_weights_md, this->fwd_pd_->weights_desc(),
-        to_void_cast<T>(input_data), "@alpha_mem_p", is_test);
+    return this->AcquireMemoryWithReorder(weights->mem_desc(),
+                                          this->fwd_pd_->weights_desc(),
+                                          to_void_cast<T>(weights_data),
+                                          "@alpha_mem_p",
+                                          is_test);
   }
 
   std::shared_ptr<memory> AcquireDiffWeightsMemory(Tensor* output) {
     T* output_data = output->mutable_data<T>(
         this->place_, this->bwd_pd_->diff_weights_desc().get_size());
-    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->diff_weights_desc(),
-                                            output_data, "@diff_weights_mem_p");
+    return this->AcquireMemoryFromPrimitive(
+        this->bwd_pd_->diff_weights_desc(), output_data, "@diff_weights_mem_p");
   }
 };
 }  // anonymous namespace
@@ -112,8 +115,14 @@ class PReluMKLDNNKernel : public framework::OpKernel<T> {
     const auto mode = ctx.Attr<std::string>("mode");
     const auto data_format = ctx.Attr<std::string>("data_format");
 
-    PReluMKLDNNHandler<T> handler(dev_ctx, onednn_engine, ctx.GetPlace(), x,
-                                  alpha, ctx.InputName("X"), mode, data_format,
+    PReluMKLDNNHandler<T> handler(dev_ctx,
+                                  onednn_engine,
+                                  ctx.GetPlace(),
+                                  x,
+                                  alpha,
+                                  ctx.InputName("X"),
+                                  mode,
+                                  data_format,
                                   is_test);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
@@ -123,13 +132,13 @@ class PReluMKLDNNKernel : public framework::OpKernel<T> {
     auto prelu_p = handler.AcquireForwardPrimitive();
 
     auto& astream = MKLDNNDeviceContext::tls().get_stream();
-    prelu_p->execute(astream, {{DNNL_ARG_SRC, *src_memory_p},
-                               {DNNL_ARG_WEIGHTS, *weights_memory_p},
-                               {DNNL_ARG_DST, *dst_memory_p}});
+    prelu_p->execute(astream,
+                     {{DNNL_ARG_SRC, *src_memory_p},
+                      {DNNL_ARG_WEIGHTS, *weights_memory_p},
+                      {DNNL_ARG_DST, *dst_memory_p}});
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(GetMKLDNNFormat(*dst_memory_p));
+    out->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 
@@ -153,8 +162,13 @@ class PReluGradMKLDNNKernel : public framework::OpKernel<T> {
     const auto mode = ctx.Attr<std::string>("mode");
     const auto data_format = ctx.Attr<std::string>("data_format");
 
-    PReluMKLDNNHandler<T> handler(dev_ctx, onednn_engine, ctx.GetPlace(), x,
-                                  alpha, framework::GradVarName("X"), mode,
+    PReluMKLDNNHandler<T> handler(dev_ctx,
+                                  onednn_engine,
+                                  ctx.GetPlace(),
+                                  x,
+                                  alpha,
+                                  framework::GradVarName("X"),
+                                  mode,
                                   data_format);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
@@ -174,18 +188,21 @@ class PReluGradMKLDNNKernel : public framework::OpKernel<T> {
                       {DNNL_ARG_DIFF_WEIGHTS, *diff_weights_memory_p}});
     astream.wait();
 
-    dx->set_layout(framework::DataLayout::kMKLDNN);
-    dx->set_format(GetMKLDNNFormat(*diff_src_memory_p));
+    dx->set_mem_desc(diff_src_memory_p->get_desc());
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(prelu, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(prelu,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::PReluMKLDNNKernel<float>,
                    ops::PReluMKLDNNKernel<paddle::platform::bfloat16>);
 
-REGISTER_OP_KERNEL(prelu_grad, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(prelu_grad,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::PReluGradMKLDNNKernel<float>,
                    ops::PReluGradMKLDNNKernel<paddle::platform::bfloat16>);

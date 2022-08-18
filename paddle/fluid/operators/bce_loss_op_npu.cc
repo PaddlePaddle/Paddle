@@ -35,7 +35,9 @@ class BCELossNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     const auto& runner =
-        NpuOpRunner("BinaryCrossEntropy", {*x, *labels}, {*out},
+        NpuOpRunner("BinaryCrossEntropy",
+                    {*x, *labels},
+                    {*out},
                     {{"reduction", static_cast<std::string>("none")}});
     runner.Run(stream);
   }
@@ -57,7 +59,9 @@ class BCELossGradNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     const auto& runner =
-        NpuOpRunner("BinaryCrossEntropyGrad", {*x, *labels, *dout}, {*dx},
+        NpuOpRunner("BinaryCrossEntropyGrad",
+                    {*x, *labels, *dout},
+                    {*dx},
                     {{"reduction", static_cast<std::string>("none")}});
     runner.Run(stream);
   }
@@ -70,9 +74,11 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    bce_loss, ops::BCELossNPUKernel<plat::NPUDeviceContext, float>,
+    bce_loss,
+    ops::BCELossNPUKernel<plat::NPUDeviceContext, float>,
     ops::BCELossNPUKernel<plat::NPUDeviceContext, plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    bce_loss_grad, ops::BCELossGradNPUKernel<plat::NPUDeviceContext, float>,
+    bce_loss_grad,
+    ops::BCELossGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::BCELossGradNPUKernel<plat::NPUDeviceContext, plat::float16>);

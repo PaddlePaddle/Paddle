@@ -37,9 +37,12 @@ class GradNodeAccumulation : public GradNodeBase {
   }
 
   // Functor: perform backward computations
-  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-      bool create_graph = false) override;
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
@@ -48,7 +51,7 @@ class GradNodeAccumulation : public GradNodeBase {
   /**
    * Register ReduceHook
    * **/
-  void RegisterReduceHook(std::shared_ptr<TensorVoidHook>&& hook);
+  void RegisterReduceHook(std::shared_ptr<VoidHook>&& hook);
 
   /**
    * Apply ReduceHook here
@@ -61,14 +64,16 @@ class GradNodeAccumulation : public GradNodeBase {
         new GradNodeAccumulation(nullptr));
   }
 
- private:
-  std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
+  void SetFakeEmpty(bool is_fake_empty) { is_fake_empty_ = is_fake_empty; }
 
+ private:
+  // TODO(Jiabin): remove this when we make our clear gradient really cleared;
+  bool is_fake_empty_ = {false};
+  std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
+  std::vector<std::shared_ptr<VoidHook>> reduce_hooks_;
   std::function<paddle::experimental::Tensor(
       const paddle::experimental::Tensor&)>
       retain_grad_hook_;
-
-  std::vector<std::shared_ptr<TensorVoidHook>> reduce_hooks_;
 };
 
 }  // namespace egr

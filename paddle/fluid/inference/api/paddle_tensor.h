@@ -39,6 +39,10 @@ namespace contrib {
 class TensorUtils;
 }
 
+namespace experimental {
+class InternalUtils;
+};
+
 /// \brief Paddle data type.
 enum DataType {
   FLOAT32,
@@ -50,7 +54,7 @@ enum DataType {
   // TODO(Superjomn) support more data types if needed.
 };
 
-enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU, kIPU };
+enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU, kIPU, kCUSTOM };
 
 enum class DataLayout { kUNK = -1, kAny, kNHWC, kNCHW };
 
@@ -106,7 +110,8 @@ class PD_INFER_DECL Tensor {
   /// \param place The place of data.
   /// \param layout The layout of data. Only NCHW is supported now.
   template <typename T>
-  void ShareExternalData(const T* data, const std::vector<int>& shape,
+  void ShareExternalData(const T* data,
+                         const std::vector<int>& shape,
                          PlaceType place,
                          DataLayout layout = DataLayout::kNCHW);
 
@@ -158,7 +163,7 @@ class PD_INFER_DECL Tensor {
   PlaceType place() const;
 
  protected:
-  explicit Tensor(void* scope);
+  explicit Tensor(void* scope, const void* device_contexs);
 
   template <typename T>
   void* FindTensor() const;
@@ -167,7 +172,9 @@ class PD_INFER_DECL Tensor {
   void SetName(const std::string& name);
 
   template <typename T>
-  void CopyToCpuImpl(T* data, void* stream = nullptr, CallbackFunc cb = nullptr,
+  void CopyToCpuImpl(T* data,
+                     void* stream = nullptr,
+                     CallbackFunc cb = nullptr,
                      void* cb_params = nullptr) const;
 
   std::string name_;
@@ -177,6 +184,7 @@ class PD_INFER_DECL Tensor {
   DataType dtype_;
   bool input_or_output_;
   void* scope_{nullptr};
+  const void* device_contexs_{nullptr};
   PlaceType place_;
   int device_;
 
@@ -191,6 +199,9 @@ class PD_INFER_DECL Tensor {
   void SetOrtBinding(const std::shared_ptr<Ort::IoBinding> binding);
 
   template <typename T>
+  T* ORTGetMutableData();
+
+  template <typename T>
   void ORTCopyFromCpu(const T* data);
 
   template <typename T>
@@ -198,6 +209,7 @@ class PD_INFER_DECL Tensor {
 #endif
 
   friend class paddle_infer::contrib::TensorUtils;
+  friend class paddle_infer::experimental::InternalUtils;
 #if defined(PADDLE_WITH_TESTING) && defined(PADDLE_WITH_INFERENCE_API_TEST)
   friend class paddle_infer::InferApiTesterUtils;
 #endif

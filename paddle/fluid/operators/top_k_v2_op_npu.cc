@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
@@ -80,7 +81,9 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
     auto dst_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(indices->type()));
     const auto& npu_op_runner_cast =
-        NpuOpRunner("Cast", {indices_int32}, {*indices},
+        NpuOpRunner("Cast",
+                    {indices_int32},
+                    {*indices},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     npu_op_runner_cast.Run(npu_stream);
   }
@@ -89,7 +92,10 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(top_k_v2, ops::TopkV2NPUKernel<float>,
+namespace plat = paddle::platform;
+REGISTER_OP_NPU_KERNEL(top_k_v2,
+                       ops::TopkV2NPUKernel<float>,
+                       ops::TopkV2NPUKernel<plat::float16>,
                        ops::TopkV2NPUKernel<double>,
                        ops::TopkV2NPUKernel<int32_t>,
                        ops::TopkV2NPUKernel<int64_t>);

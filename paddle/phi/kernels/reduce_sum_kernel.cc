@@ -27,6 +27,9 @@ void SumKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out) {
   bool reduce_all = false;
+  if (dims.size() == 0) {
+    reduce_all = true;
+  }
   SumRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out);
 }
 
@@ -66,6 +69,12 @@ PD_REGISTER_KERNEL(sum,
                    int64_t,
                    complex64,
                    complex128) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}
+#endif
+
+#if defined(PADDLE_WITH_XPU_KP)
+PD_REGISTER_KERNEL(sum, KPS, ALL_LAYOUT, phi::SumKernel, float) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
 #endif

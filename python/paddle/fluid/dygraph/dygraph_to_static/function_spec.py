@@ -73,8 +73,8 @@ class FunctionSpec(object):
         """
         if len(self._arg_names) < len(args):
             error_msg = "The decorated function `{}` requires {} arguments: {}, but received {} with {}.".format(
-                self._dygraph_function.__name__,
-                len(self._arg_names), self._arg_names, len(args), args)
+                self._dygraph_function.__name__, len(self._arg_names),
+                self._arg_names, len(args), args)
             if args and inspect.isclass(args[0]):
                 error_msg += "\n\tMaybe the function has more than one decorator, we don't support this for now."
                 raise NotImplementedError(error_msg)
@@ -91,9 +91,9 @@ class FunctionSpec(object):
             else:
                 if arg_name not in self._default_kwargs:
                     raise ValueError(
-                        "`{}()` requires `{}` arguments, but not found in input `args`: {} and `kwargs`: {}.".
-                        format(self._dygraph_function.__name__, arg_name, args,
-                               kwargs))
+                        "`{}()` requires `{}` arguments, but not found in input `args`: {} and `kwargs`: {}."
+                        .format(self._dygraph_function.__name__, arg_name, args,
+                                kwargs))
                 args.append(self._default_kwargs[arg_name])
 
         return tuple(args), kwargs
@@ -136,16 +136,16 @@ class FunctionSpec(object):
             # So we don't support to deal this case while specificing `input_spec` currently.
             if kwargs:
                 raise ValueError(
-                    "{} got unexpected keyword arguments: {}. Cannot trace the function when `input_spec` is specificed.".
-                    format(self._dygraph_function.__name__, kwargs))
+                    "{} got unexpected keyword arguments: {}. Cannot trace the function when `input_spec` is specificed."
+                    .format(self._dygraph_function.__name__, kwargs))
 
             # Note: The length of `input_spec` can be greater than `args`,
             # because `args` may contains non-tensor value merged form `kwargs`
             # after `unified_args_and_kwargs`.
             if len(args) < len(self._input_spec):
                 raise ValueError(
-                    "Requires len(arguments) >= len(input_spec), but received len(args):{} < len(InputSpec): {}".
-                    format(len(args), len(self._input_spec)))
+                    "Requires len(arguments) >= len(input_spec), but received len(args):{} < len(InputSpec): {}"
+                    .format(len(args), len(self._input_spec)))
 
             # replace argument with corresponding InputSpec.
             args_with_spec = convert_to_input_spec(args, self._input_spec)
@@ -196,8 +196,8 @@ class FunctionSpec(object):
         """
         if not isinstance(input_spec, (tuple, list)):
             raise TypeError(
-                "The type(input_spec) should be one of (tuple, list), but received {}.".
-                format(type_name(input_spec)))
+                "The type(input_spec) should be one of (tuple, list), but received {}."
+                .format(type_name(input_spec)))
 
         return tuple(input_spec)
 
@@ -289,8 +289,8 @@ def convert_to_input_spec(inputs, input_spec):
                 type(spec), type(input)))
         if check_length and len(input) < len(spec):
             raise ValueError(
-                'Requires len(inputs) >= len(input_spec), but received len(inputs):{} < len(input_spec):{}'.
-                format(len(inputs), len(input_spec)))
+                'Requires len(inputs) >= len(input_spec), but received len(inputs):{} < len(input_spec):{}'
+                .format(len(inputs), len(input_spec)))
 
     if isinstance(input_spec, (tuple, list)):
         input_with_spec = []
@@ -307,8 +307,8 @@ def convert_to_input_spec(inputs, input_spec):
                 if isinstance(rest_input, (core.VarBase, np.ndarray)):
                     logging_utils.warn(
                         "The inputs constain `{}` without specificing InputSpec, its shape and dtype will be treated immutable. "
-                        "Please specific InputSpec information in `@to_static` if you expect them as mutable inputs.".
-                        format(type_name(rest_input)))
+                        "Please specific InputSpec information in `@to_static` if you expect them as mutable inputs."
+                        .format(type_name(rest_input)))
         input_with_spec.extend(inputs[len(input_spec):])
 
         return input_with_spec
@@ -317,8 +317,8 @@ def convert_to_input_spec(inputs, input_spec):
         check_type_and_len(inputs, input_spec, True)
         for name, input in six.iteritems(inputs):
             if name in input_spec:
-                input_with_spec[name] = convert_to_input_spec(input,
-                                                              input_spec[name])
+                input_with_spec[name] = convert_to_input_spec(
+                    input, input_spec[name])
             else:
                 input_with_spec[name] = input
         return input_with_spec

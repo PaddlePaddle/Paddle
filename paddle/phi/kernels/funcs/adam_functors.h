@@ -14,6 +14,7 @@
 
 #pragma once
 #include <math.h>  // for sqrt in CPU and CUDA
+
 #include <Eigen/Dense>
 
 #include "paddle/phi/kernels/funcs/algorithm.h"
@@ -169,9 +170,8 @@ class AdamFunctor<T, CPUAdam> {
 
     moment1_out = beta1_ * mom1 + (1 - beta1_) * g;
     moment2_out = beta2_ * mom2 + (1 - beta2_) * g * g;
-    param_out = param -
-                lr * (moment1_out /
-                      (moment2_out.sqrt() + epsilon_ * sqrt(1 - beta2_pow)));
+    param_out = param - lr * (moment1_out / (moment2_out.sqrt() +
+                                             epsilon_ * sqrt(1 - beta2_pow)));
   }
 };
 

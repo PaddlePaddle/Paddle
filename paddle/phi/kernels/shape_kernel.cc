@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/shape_kernel.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -47,7 +48,9 @@ PD_REGISTER_KERNEL(shape,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(shape,
@@ -63,5 +66,7 @@ PD_REGISTER_KERNEL(shape,
                    double,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 #endif

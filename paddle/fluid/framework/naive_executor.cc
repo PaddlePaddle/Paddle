@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/naive_executor.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
@@ -26,8 +28,10 @@
 
 namespace paddle {
 namespace framework {
-void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
-                            int block_id, bool with_feed_fetch_ops) {
+void NaiveExecutor::Prepare(Scope *scope,
+                            const ProgramDesc &program_desc,
+                            int block_id,
+                            bool with_feed_fetch_ops) {
   if (!scope) {
     scope_ = new framework::Scope;
   } else {
@@ -52,8 +56,10 @@ void NaiveExecutor::Run() {
   }
 }
 
-void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
-                                    bool persistable, Scope *scope) {
+void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
+                                    int block_id,
+                                    bool persistable,
+                                    Scope *scope) {
   PADDLE_ENFORCE_NOT_NULL(scope,
                           platform::errors::InvalidArgument(
                               "The Scope to hold variables is nullptr."));
@@ -62,7 +68,8 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
 
   const auto *anc = scope;
   PADDLE_ENFORCE_NE(
-      anc->parent(), anc,
+      anc->parent(),
+      anc,
       platform::errors::InvalidArgument("Input scope should be child scope."));
   while (anc->parent()) {
     anc = anc->parent();
@@ -94,7 +101,8 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
   VLOG(4) << "naive executor create " << num_vars << " vars";
 }
 
-void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
+void NaiveExecutor::CreateOps(const ProgramDesc &desc,
+                              int block_id,
                               bool with_feed_fetch_ops) {
   for (const auto &op_desc : desc.Block(block_id).AllOps()) {
     if (!with_feed_fetch_ops &&
@@ -112,8 +120,9 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
                           platform::errors::PreconditionNotMet(
                               "Need to init scope in NaiveExecutor firstly."));
   auto *var = scope_->FindVar(name);
-  PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
-                                   "No variable [%s] in current scope.", name));
+  PADDLE_ENFORCE_NOT_NULL(
+      var,
+      platform::errors::NotFound("No variable [%s] in current scope.", name));
   auto *tensor = const_cast<LoDTensor *>(&var->Get<LoDTensor>());
   return tensor;
 }
@@ -147,11 +156,16 @@ void NaiveExecutor::ResetTrtOps(int num) {
       int engine_predictor_id = trtop->Attr<int>("predictor_id");
       std::string engine_name =
           engine_key + std::to_string(engine_predictor_id);
-      operators::TensorRTEngine *trt_engine =
-          paddle::inference::Singleton<
+      operators::TensorRTEngine *trt_engine = nullptr;
+      // can't get trt engine if int8 calibration table data process.
+      if (paddle::inference::Singleton<
               inference::tensorrt::TRTEngineManager>::Global()
-              .Get(engine_name);
-      if (trt_engine->with_dynamic_shape()) {
+              .Has(engine_name)) {
+        trt_engine = paddle::inference::Singleton<
+                         inference::tensorrt::TRTEngineManager>::Global()
+                         .Get(engine_name);
+      }
+      if (trt_engine && trt_engine->with_dynamic_shape()) {
         LOG(INFO) << "rebuild trt engine, this may cost a lot of time!";
         trt_engine->ResetContext();
         trt_engine->ClearTensorMap();

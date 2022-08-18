@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestRowParallelLinearAPI(TestDistBase):
+
     def _setup_config(self):
         pass
 

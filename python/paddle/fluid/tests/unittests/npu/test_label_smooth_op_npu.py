@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -29,6 +30,7 @@ SEED = 2021
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestLabelSmoothOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "label_smooth"
@@ -78,13 +80,15 @@ class TestLabelSmoothOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
-            self.check_grad_with_place(
-                self.place, ['X'], 'Out', max_relative_error=0.5)
+            self.check_grad_with_place(self.place, ['X'],
+                                       'Out',
+                                       max_relative_error=0.5)
         else:
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
+
     def set_inputs(self):
         super(TestLabelSmoothOpWithPriorDist, self).set_inputs()
         label_dim = self.inputs['X'].shape[-1]
@@ -93,33 +97,39 @@ class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
 
 
 class TestLabelSmoothOp3D(TestLabelSmoothOp):
+
     def set_inputs(self):
         super(TestLabelSmoothOp3D, self).set_inputs()
         self.inputs['X'].reshape([2, -1, self.inputs['X'].shape[-1]])
 
 
 class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
+
     def set_inputs(self):
         super(TestLabelSmoothOpWithPriorDist3D, self).set_inputs()
         self.inputs['X'].reshape([2, -1, self.inputs['X'].shape[-1]])
 
 
 class TestLabelSmoothOpFP16(TestLabelSmoothOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestLabelSmoothOpWithPriorDistFP16(TestLabelSmoothOpWithPriorDist):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestLabelSmoothOp3DFP16(TestLabelSmoothOp3D):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestLabelSmoothOpWithPriorDist3DFP16(TestLabelSmoothOpWithPriorDist3D):
+
     def init_dtype(self):
         self.dtype = np.float16
 

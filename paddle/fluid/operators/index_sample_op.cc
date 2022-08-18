@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
-#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
-#include "paddle/fluid/platform/enforce.h"
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/binary.h"
 namespace paddle {
@@ -59,12 +59,15 @@ class IndexSampleGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Index"), true,
+        ctx->HasInput("Index"),
+        true,
         platform::errors::InvalidArgument("Input(Index) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(X@GRAD) should be not null."));
 
@@ -100,11 +103,15 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexSampleGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(index_sample, IndexSampleInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(index_sample,
+                            IndexSampleInferShapeFunctor,
                             PD_INFER_META(phi::IndexSampleInferMeta));
-REGISTER_OPERATOR(index_sample, ops::IndexSampleOp, ops::IndexSampleOpMaker,
+REGISTER_OPERATOR(index_sample,
+                  ops::IndexSampleOp,
+                  ops::IndexSampleOpMaker,
                   ops::IndexSampleGradMaker<paddle::framework::OpDesc>,
                   ops::IndexSampleGradMaker<paddle::imperative::OpBase>,
                   IndexSampleInferShapeFunctor);
-REGISTER_OPERATOR(index_sample_grad, ops::IndexSampleGradOp,
+REGISTER_OPERATOR(index_sample_grad,
+                  ops::IndexSampleGradOp,
                   ops::IndexSampleGradNoNeedBufferVarInferer);

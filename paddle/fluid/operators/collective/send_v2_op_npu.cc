@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -34,6 +36,15 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
         platform::ToHCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(ring_id)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(ring_id);
+      std::vector<phi::DenseTensor> in_tensor;
+      in_tensor.push_back(*x);
+      auto task = pg->Send(in_tensor, 1);
+      return;
+    }
     auto place = ctx.GetPlace();
     auto comm =
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
@@ -49,8 +60,10 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
     int rank = comm->rank();
 
-    PADDLE_ENFORCE_EQ(nranks, 2, platform::errors::InvalidArgument(
-                                     "The nranks must be 2, but (%d)", nranks));
+    PADDLE_ENFORCE_EQ(nranks,
+                      2,
+                      platform::errors::InvalidArgument(
+                          "The nranks must be 2, but (%d)", nranks));
 
     int root = rank;
 
@@ -74,7 +87,8 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(send_v2, ops::CSendOpASCENDKernel<int>,
+REGISTER_OP_NPU_KERNEL(send_v2,
+                       ops::CSendOpASCENDKernel<int>,
                        ops::CSendOpASCENDKernel<int8_t>,
                        ops::CSendOpASCENDKernel<float>,
                        ops::CSendOpASCENDKernel<plat::float16>);

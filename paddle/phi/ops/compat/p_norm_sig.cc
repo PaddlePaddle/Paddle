@@ -17,9 +17,9 @@
 namespace phi {
 KernelSignature PNormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("p_norm_grad",
-                         {"X", "Out", GradVarName("Out")},
+                         {"X", "Out", "Out@GRAD"},
                          {"porder", "axis", "epsilon", "keepdim", "asvector"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 }  // namespace phi
 

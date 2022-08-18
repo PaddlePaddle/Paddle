@@ -25,6 +25,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #endif
 
@@ -47,9 +48,9 @@ __global__ void add_kernel(int *x, int *y, int n) {
 void CheckMemLeak(const platform::CUDAPlace &place) {
   uint64_t cuda_malloc_size =
       platform::RecordedGpuMallocSize(place.GetDeviceId());
-  ASSERT_EQ(cuda_malloc_size, 0) << "Found " << cuda_malloc_size
-                                 << " bytes memory that not released yet,"
-                                 << " there may be a memory leak problem";
+  ASSERT_EQ(cuda_malloc_size, 0)
+      << "Found " << cuda_malloc_size << " bytes memory that not released yet,"
+      << " there may be a memory leak problem";
 }
 
 TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
@@ -64,11 +65,12 @@ TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
   allocation_implicit_stream.reset();
 
   gpuStream_t default_stream =
-      dynamic_cast<platform::CUDADeviceContext *>(
+      dynamic_cast<phi::GPUContext *>(
           paddle::platform::DeviceContextPool::Instance().Get(place))
           ->stream();
   allocation::AllocationPtr allocation_unique =
-      Alloc(place, alloc_size,
+      Alloc(place,
+            alloc_size,
             phi::Stream(reinterpret_cast<phi::StreamId>(default_stream)));
   EXPECT_GE(allocation_unique->size(), alloc_size);
   EXPECT_EQ(allocation_unique->ptr(), address);
@@ -108,9 +110,10 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorWithDefaultStreamTest) {
       instance.GetAllocator(place);
   const std::shared_ptr<Allocator> allocator_default_stream =
       instance.GetAllocator(
-          place, static_cast<phi::GPUContext *>(
-                     platform::DeviceContextPool::Instance().Get(place))
-                     ->stream());
+          place,
+          static_cast<phi::GPUContext *>(
+              platform::DeviceContextPool::Instance().Get(place))
+              ->stream());
   EXPECT_EQ(allocator_implicit_stream.get(), allocator_default_stream.get());
 }
 
@@ -140,7 +143,7 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
   size_t alloc_size = 256;
 
   gpuStream_t default_stream =
-      dynamic_cast<platform::CUDADeviceContext *>(
+      dynamic_cast<phi::GPUContext *>(
           paddle::platform::DeviceContextPool::Instance().Get(place))
           ->stream();
   std::shared_ptr<Allocation> allocation_implicit_stream =
@@ -155,7 +158,8 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
 #endif
 
   std::shared_ptr<Allocation> allocation_new_stream =
-      AllocShared(place, alloc_size,
+      AllocShared(place,
+                  alloc_size,
                   phi::Stream(reinterpret_cast<phi::StreamId>(new_stream)));
   EXPECT_EQ(GetStream(allocation_new_stream), new_stream);
 
@@ -192,7 +196,8 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
 
   std::thread th([&allocation2, &place, &stream2, alloc_size]() {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    allocation2 = Alloc(place, alloc_size,
+    allocation2 = Alloc(place,
+                        alloc_size,
                         phi::Stream(reinterpret_cast<phi::StreamId>(stream2)));
   });
   allocation1.reset();  // free but not release
@@ -230,22 +235,24 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 #endif
 
       std::shared_ptr<phi::Allocation> workspace_allocation =
-          AllocShared(place_, workspace_size_,
+          AllocShared(place_,
+                      workspace_size_,
                       phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
       std::shared_ptr<phi::Allocation> result_allocation =
-          AllocShared(place_, workspace_size_,
+          AllocShared(place_,
+                      workspace_size_,
                       phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
       std::shared_ptr<phi::Allocation> host_result_allocation =
           AllocShared(platform::CPUPlace(), workspace_size_);
 
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(workspace_allocation->ptr(), 0,
-                                            workspace_allocation->size()));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
+          workspace_allocation->ptr(), 0, workspace_allocation->size()));
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemset(result_allocation->ptr(), 0, result_allocation->size()));
 #else
-      PADDLE_ENFORCE_GPU_SUCCESS(hipMemset(workspace_allocation->ptr(), 0,
-                                           workspace_allocation->size()));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipMemset(
+          workspace_allocation->ptr(), 0, workspace_allocation->size()));
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemset(result_allocation->ptr(), 0, result_allocation->size()));
 #endif
@@ -264,7 +271,8 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     add_kernel<<<grid_num_, block_num_, 0, streams_[idx]>>>(
         reinterpret_cast<int *>(workspaces_[idx]->ptr()), y, data_num_);
     add_kernel<<<grid_num_, block_num_, 0, streams_[idx]>>>(
-        reinterpret_cast<int *>(workspaces_[neighbouring_idx]->ptr()), y,
+        reinterpret_cast<int *>(workspaces_[neighbouring_idx]->ptr()),
+        y,
         data_num_);
     RecordStream(workspaces_[neighbouring_idx], streams_[idx]);
   }
@@ -307,8 +315,8 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     gpuStream_t other_stream;
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&other_stream));
 
-    add_kernel<<<grid_num_, block_num_, 0, main_stream>>>(data, result,
-                                                          data_num_);
+    add_kernel<<<grid_num_, block_num_, 0, main_stream>>>(
+        data, result, data_num_);
     RecordStream(data_allocation, other_stream);
 
     std::unique_ptr<platform::CUDAGraph> cuda_graph =
@@ -321,8 +329,11 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 
     std::shared_ptr<Allocation> host_result_allocation =
         AllocShared(platform::CPUPlace(), workspace_size_);
-    Copy(host_result_allocation->place(), host_result_allocation->ptr(),
-         result_allocation->place(), result_allocation->ptr(), workspace_size_,
+    Copy(host_result_allocation->place(),
+         host_result_allocation->ptr(),
+         result_allocation->place(),
+         result_allocation->ptr(),
+         workspace_size_,
          main_stream);
     cudaStreamSynchronize(main_stream);
 
@@ -339,8 +350,11 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 
   void CheckResult() {
     for (size_t i = 0; i < stream_num_; ++i) {
-      Copy(host_results_[i]->place(), host_results_[i]->ptr(),
-           results_[i]->place(), results_[i]->ptr(), workspace_size_,
+      Copy(host_results_[i]->place(),
+           host_results_[i]->ptr(),
+           results_[i]->place(),
+           results_[i]->ptr(),
+           workspace_size_,
            streams_[i]);
     }
     cudaDeviceSynchronize();

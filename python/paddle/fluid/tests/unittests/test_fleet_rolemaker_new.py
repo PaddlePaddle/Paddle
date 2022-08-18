@@ -104,8 +104,8 @@ class TestCloudRoleMaker(unittest.TestCase):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
 
-        ro = role_maker.PaddleCloudRoleMaker(
-            is_collective=False, init_gloo=False)
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False,
+                                             init_gloo=False)
         self.assertEqual(ro._server_index(), 0)
         self.assertFalse(ro._is_worker())
         self.assertTrue(ro._is_server())
@@ -116,7 +116,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         self.assertEqual(ro._all_gather(1, "worker"), 1)
         self.assertEqual(ro._all_reduce(1, "sum", "worker"), 1)
 
-    def test_traing_role(self):
+    def test_training_role(self):
         """Test training role."""
         os.environ["TRAINING_ROLE"] = "TEST"
 
@@ -161,6 +161,7 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
 
 
 class TestGlooWithCloudRoleMaker(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINERS_NUM"] = "1"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
@@ -443,9 +444,9 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
             x = paddle.fluid.layers.data(name='x', shape=[13], dtype='float32')
             y_predict = paddle.fluid.layers.fc(input=x, size=1, act=None)
             y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = paddle.fluid.layers.square_error_cost(
-                input=y_predict, label=y)
-            avg_cost = paddle.fluid.layers.mean(cost)
+            cost = paddle.fluid.layers.square_error_cost(input=y_predict,
+                                                         label=y)
+            avg_cost = paddle.mean(cost)
             return avg_cost
 
         from paddle.distributed import fleet

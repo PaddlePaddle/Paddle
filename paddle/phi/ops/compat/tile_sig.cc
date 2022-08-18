@@ -33,20 +33,14 @@ KernelSignature TileOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature TileGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("RepeatTimes")) {
-    return KernelSignature("tile_grad",
-                           {"X", GradVarName("Out")},
-                           {"RepeatTimes"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "tile_grad", {"X", "Out@GRAD"}, {"RepeatTimes"}, {"X@GRAD"});
   } else if (ctx.InputSize("repeat_times_tensor") > 0) {
-    return KernelSignature("tile_grad",
-                           {"X", GradVarName("Out")},
-                           {"repeat_times_tensor"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "tile_grad", {"X", "Out@GRAD"}, {"repeat_times_tensor"}, {"X@GRAD"});
   } else {
-    return KernelSignature("tile_grad",
-                           {"X", GradVarName("Out")},
-                           {"repeat_times"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "tile_grad", {"X", "Out@GRAD"}, {"repeat_times"}, {"X@GRAD"});
   }
 }
 

@@ -14,6 +14,7 @@
 
 from paddle.fluid import core
 from .fluid import framework
+
 __all__ = []
 
 _already_switch_to_eager_ = False

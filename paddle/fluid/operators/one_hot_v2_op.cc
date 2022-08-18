@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -36,13 +37,14 @@ class OneHotV2Op : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -99,11 +101,14 @@ Out is a LoDTensor:
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(one_hot_v2, OneHotInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(one_hot_v2,
+                            OneHotInferShapeFunctor,
                             PD_INFER_META(phi::OneHotRawInferMeta));
 
 REGISTER_OPERATOR(
-    one_hot_v2, ops::OneHotV2Op, ops::OneHotV2OpMaker,
+    one_hot_v2,
+    ops::OneHotV2Op,
+    ops::OneHotV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     OneHotInferShapeFunctor);

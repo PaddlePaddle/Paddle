@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
-
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 namespace paddle {
 namespace operators {
@@ -24,10 +23,11 @@ namespace math {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class ConcatFunctor<platform::CUDADeviceContext, T> {
+class ConcatFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const std::vector<framework::Tensor>& input, int axis,
+  void operator()(const phi::GPUContext& context,
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
                   framework::Tensor* output) {
     phi::funcs::ConcatFunctor<phi::GPUContext, T> functor;
     functor(context, input, axis, output);
@@ -39,20 +39,21 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class SplitFunctor<platform::CUDADeviceContext, T> {
+class SplitFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const phi::GPUContext& context,
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
-                  int axis, std::vector<framework::Tensor*>* outputs) {
+                  int axis,
+                  std::vector<framework::Tensor*>* outputs) {
     phi::funcs::SplitFunctor<phi::GPUContext, T> functor;
     functor(context, input, ref_inputs, axis, outputs);
   }
 };
 
-#define DEFINE_FUNCTOR(type)                                       \
-  template class ConcatFunctor<platform::CUDADeviceContext, type>; \
-  template class SplitFunctor<platform::CUDADeviceContext, type>
+#define DEFINE_FUNCTOR(type)                           \
+  template class ConcatFunctor<phi::GPUContext, type>; \
+  template class SplitFunctor<phi::GPUContext, type>
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "com_baidu_paddle_inference_Predictor.h"
+
 #include <jni.h>
+
 #include "jni_convert_util.h"  // NOLINT
 #include "pd_inference_api.h"  // NOLINT
 

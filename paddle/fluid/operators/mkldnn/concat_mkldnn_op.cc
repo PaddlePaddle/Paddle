@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/operators/concat_op.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -21,13 +22,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
-using framework::Tensor;
-using framework::LoDTensor;
+using dnnl::concat;
 using dnnl::memory;
 using dnnl::primitive;
-using dnnl::concat;
 using dnnl::stream;
+using framework::DataLayout;
+using framework::LoDTensor;
+using framework::Tensor;
 using platform::to_void_cast;
 
 template <typename T>
@@ -36,16 +37,20 @@ class ConcatMKLDNNHandler
  public:
   ConcatMKLDNNHandler(const framework::ExecutionContext& ctx,
                       const dnnl::engine mkldnn_engine,
-                      const std::vector<const Tensor*>& inputs, Tensor* output)
+                      const std::vector<const Tensor*>& inputs,
+                      Tensor* output)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::concat>(mkldnn_engine,
                                                            ctx.GetPlace()) {
     int concat_axis = ctx.Attr<int>("axis");
     const int rank = inputs[0]->dims().size();
     PADDLE_ENFORCE_EQ(
-        concat_axis >= -rank && concat_axis < rank, true,
+        concat_axis >= -rank && concat_axis < rank,
+        true,
         platform::errors::InvalidArgument(
             "The axis is expected to be in range of [%d, %d), but got %d",
-            -rank, rank, concat_axis));
+            -rank,
+            rank,
+            concat_axis));
 
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<Tensor>("AxisTensor");
@@ -68,12 +73,28 @@ class ConcatMKLDNNHandler
 
     // Create memory descriptors for each of inputs
     for (size_t i = 0; i < inputs.size(); ++i) {
-      const auto dims = phi::vectorize<int64_t>(inputs[i]->dims());
-      srcs_md.emplace_back(memory::desc(dims, dt, inputs[i]->format()));
+      srcs_md.push_back(inputs[i]->mem_desc());
     }
 
     auto dst_dims = phi::vectorize<int64_t>(output->dims());
-    auto dst_md = memory::desc(dst_dims, dt, MKLDNNMemoryFormat::any);
+
+    dnnl::memory::desc dst_md;
+
+    // if concat is being used as a stack op(all source memories dims on
+    // concat_axis are equal to 1), then it may choose a non-optimal memory
+    // format tag for destination, because concat primitive is chosing it based
+    // on source memory descriptors and f.e.200x1x10 can be described as both
+    // abc and bac and both would be using exact same physical layout, but in
+    // that scenario bac will be chosen for destination no matter which
+    // formats are being set in inputs. In that scenario we are enforcing using
+    // a dense format, because it is the most common one and should be the best
+    // in terms of the performance
+    if (dst_dims[concat_axis] == static_cast<int64_t>(srcs_md.size())) {
+      dst_md = memory::desc(
+          dst_dims, dt, platform::GetPlainMKLDNNFormat(dst_dims.size()));
+    } else {
+      dst_md = memory::desc(dst_dims, dt, MKLDNNMemoryFormat::any);
+    }
 
     this->AcquireForwardPrimitiveDescriptor(dst_md, concat_axis, srcs_md);
   }
@@ -81,7 +102,8 @@ class ConcatMKLDNNHandler
   // (jczaja) concat oneDNN prim is not having .desc attribute so
   // we cannot use base AcquireForwardPrimitiveDescriptor
   void AcquireForwardPrimitiveDescriptor(
-      const memory::desc& dst_md, const int concat_axis,
+      const memory::desc& dst_md,
+      const int concat_axis,
       const std::vector<memory::desc>& srcs_md) {
     this->fwd_pd_.reset(new dnnl::concat::primitive_desc(
         dst_md, concat_axis, srcs_md, this->engine_));
@@ -97,11 +119,9 @@ class ConcatMKLDNNHandler
 static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
   for (auto* input : inputs) {
     PADDLE_ENFORCE_EQ(
-        input->layout(), DataLayout::kMKLDNN,
+        input->layout(),
+        DataLayout::kMKLDNN,
         platform::errors::InvalidArgument("Wrong layout set for Input tensor"));
-    PADDLE_ENFORCE_NE(
-        input->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for Input tensor"));
   }
 }
 
@@ -109,8 +129,10 @@ static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
 static const std::vector<const Tensor*> ReduceMultiInput(
     const std::vector<const Tensor*>& inputs) {
   std::vector<const Tensor*> reduced(inputs.size());
-  auto end_it = std::copy_if(inputs.begin(), inputs.end(), reduced.begin(),
-                             [](const Tensor* t) { return t->numel() > 0; });
+  auto end_it = std::copy_if(
+      inputs.begin(), inputs.end(), reduced.begin(), [](const Tensor* t) {
+        return t->numel() > 0;
+      });
   reduced.resize(std::distance(reduced.begin(), end_it));
   return reduced;
 }
@@ -147,8 +169,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     concat_p->execute(astream, args);
     astream.wait();
 
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_mem));
+    output->set_mem_desc(dst_mem->get_desc());
   }
 };
 
@@ -189,10 +210,12 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
         framework::TransToProtoVarType(dout->dtype()));
     platform::ReorderMKLDNNHandler reorder_handler(
-        dout_vec_dims, framework::TransToProtoVarType(dout->dtype()), dout_type,
+        dout_vec_dims,
+        framework::TransToProtoVarType(dout->dtype()),
+        dout_type,
         onednn_engine);
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        dout->format(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
 
     for (size_t i = 0; i < dx.size(); ++i) {
       if (out_var_names[i] != framework::kEmptyVarName &&
@@ -202,7 +225,10 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             dx_vec_dims, offset, reorder_src_memory_p);
 
         auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-            dx[i], dx_vec_dims, dout->format(), ctx.GetPlace());
+            dx[i],
+            dx_vec_dims,
+            platform::GetPlainMKLDNNFormat(dx_vec_dims.size()),
+            ctx.GetPlace());
         auto reorder_p =
             reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
 
@@ -210,8 +236,7 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
         offset[axis] += dx[i]->dims()[axis];
 
-        dx[i]->set_layout(framework::DataLayout::kMKLDNN);
-        dx[i]->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
+        dx[i]->set_mem_desc(reorder_dst_memory_p->get_desc());
       }
     }
     astream.wait();
@@ -223,12 +248,16 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(concat, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(concat,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::ConcatMKLDNNOpKernel<float>,
                    ops::ConcatMKLDNNOpKernel<paddle::platform::bfloat16>,
                    ops::ConcatMKLDNNOpKernel<int8_t>,
                    ops::ConcatMKLDNNOpKernel<uint8_t>);
 
-REGISTER_OP_KERNEL(concat_grad, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(concat_grad,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::ConcatGradMKLDNNOpKernel<float>,
                    ops::ConcatGradMKLDNNOpKernel<paddle::platform::bfloat16>);

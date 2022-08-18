@@ -23,16 +23,21 @@ import unittest
 
 
 class TestMPClipGrad(TestDistMPTraning):
+
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
-        scheduler = paddle.optimizer.lr.ExponentialDecay(
-            learning_rate=0.001, gamma=0.999, verbose=True)
+        scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=0.001,
+                                                         gamma=0.999,
+                                                         verbose=True)
         optimizer = paddle.optimizer.SGD(scheduler,
                                          grad_clip=grad_clip,
                                          parameters=[{
-                                             'params': model.parameters(),
-                                             'weight_decay': 0.001,
-                                             'learning_rate': 0.1
+                                             'params':
+                                             model.parameters(),
+                                             'weight_decay':
+                                             0.001,
+                                             'learning_rate':
+                                             0.1
                                          }])
         return optimizer
 

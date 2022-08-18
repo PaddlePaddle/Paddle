@@ -29,35 +29,35 @@ KernelSignature StridedSliceOpArgumentMapping(
   bool use_attr_ends = !ctx.IsRuntime() && !ends.empty();
   bool use_attr_strides = !ctx.IsRuntime() && !strides.empty();
 
-  std::string starts_key =
+  const char* starts_key =
       ctx.HasInput("StartsTensor")
           ? "StartsTensor"
           : (ctx.InputSize("StartsTensorList") > 0
                  ? (use_attr_starts ? "starts" : "StartsTensorList")
                  : "starts");
-  std::string ends_key =
+  const char* ends_key =
       ctx.HasInput("EndsTensor")
           ? "EndsTensor"
           : (ctx.InputSize("EndsTensorList") > 0
                  ? (use_attr_ends ? "ends" : "EndsTensorList")
                  : "ends");
-  std::string strides_key =
+  const char* strides_key =
       ctx.HasInput("StridesTensor")
           ? "StridesTensor"
           : (ctx.InputSize("StridesTensorList") > 0
                  ? (use_attr_strides ? "strides" : "StridesTensorList")
                  : "strides");
 
-  paddle::SmallVector<std::string> inputs = {"Input"};
-  paddle::SmallVector<std::string> attrs = {"axes",
-                                            starts_key,
-                                            ends_key,
-                                            strides_key,
-                                            "infer_flags",
-                                            "decrease_axis"};
-  paddle::SmallVector<std::string> outputs = {"Out"};
+  paddle::small_vector<const char*> inputs = {"Input"};
+  paddle::small_vector<const char*> attrs = {"axes",
+                                             starts_key,
+                                             ends_key,
+                                             strides_key,
+                                             "infer_flags",
+                                             "decrease_axis"};
+  paddle::small_vector<const char*> outputs = {"Out"};
 
-  std::string kernel_name;
+  const char* kernel_name;
   if (ctx.IsDenseTensorVectorInput("Input")) {
     kernel_name = "strided_slice_array";
   } else {
@@ -78,35 +78,35 @@ KernelSignature StridedSliceGradOpArgumentMapping(
   bool use_attr_ends = !ctx.IsRuntime() && !ends.empty();
   bool use_attr_strides = !ctx.IsRuntime() && !strides.empty();
 
-  std::string starts_key =
+  const char* starts_key =
       ctx.HasInput("StartsTensor")
           ? "StartsTensor"
           : (ctx.InputSize("StartsTensorList") > 0
                  ? (use_attr_starts ? "starts" : "StartsTensorList")
                  : "starts");
-  std::string ends_key =
+  const char* ends_key =
       ctx.HasInput("EndsTensor")
           ? "EndsTensor"
           : (ctx.InputSize("EndsTensorList") > 0
                  ? (use_attr_ends ? "ends" : "EndsTensorList")
                  : "ends");
-  std::string strides_key =
+  const char* strides_key =
       ctx.HasInput("StridesTensor")
           ? "StridesTensor"
           : (ctx.InputSize("StridesTensorList") > 0
                  ? (use_attr_strides ? "strides" : "StridesTensorList")
                  : "strides");
 
-  paddle::SmallVector<std::string> inputs = {"Input", GradVarName("Out")};
-  paddle::SmallVector<std::string> attrs = {"axes",
-                                            starts_key,
-                                            ends_key,
-                                            strides_key,
-                                            "infer_flags",
-                                            "decrease_axis"};
-  paddle::SmallVector<std::string> outputs = {GradVarName("Input")};
+  paddle::small_vector<const char*> inputs = {"Input", "Out@GRAD"};
+  paddle::small_vector<const char*> attrs = {"axes",
+                                             starts_key,
+                                             ends_key,
+                                             strides_key,
+                                             "infer_flags",
+                                             "decrease_axis"};
+  paddle::small_vector<const char*> outputs = {"Input@GRAD"};
 
-  std::string kernel_name;
+  const char* kernel_name;
   if (ctx.IsDenseTensorVectorInput("Input")) {
     kernel_name = "strided_slice_array_grad";
   } else {

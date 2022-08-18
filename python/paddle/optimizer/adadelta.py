@@ -120,12 +120,11 @@ class Adadelta(Optimizer):
             raise ValueError("epsilon is not set.")
         if rho is None:
             raise ValueError("rho is not set.")
-        super(Adadelta, self).__init__(
-            learning_rate=learning_rate,
-            parameters=parameters,
-            weight_decay=weight_decay,
-            grad_clip=grad_clip,
-            name=name)
+        super(Adadelta, self).__init__(learning_rate=learning_rate,
+                                       parameters=parameters,
+                                       weight_decay=weight_decay,
+                                       grad_clip=grad_clip,
+                                       name=name)
         self.type = "adadelta"
         self._epsilon = epsilon
         self._rho = rho
@@ -157,22 +156,28 @@ class Adadelta(Optimizer):
             self._avg_squared_update_acc_str, param_and_grad[0])
 
         # Create the adadelta optimizer op
-        adadelta_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "AvgSquaredGrad": avg_squared_grad_acc,
-                "AvgSquaredUpdate": avg_squared_update_acc
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "AvgSquaredGradOut": avg_squared_grad_acc,
-                "AvgSquaredUpdateOut": avg_squared_update_acc
-            },
-            attrs={"epsilon": self._epsilon,
-                   "rho": self._rho},
-            stop_gradient=True)
+        adadelta_op = block.append_op(type=self.type,
+                                      inputs={
+                                          "Param": param_and_grad[0],
+                                          "Grad": param_and_grad[1],
+                                          "AvgSquaredGrad":
+                                          avg_squared_grad_acc,
+                                          "AvgSquaredUpdate":
+                                          avg_squared_update_acc
+                                      },
+                                      outputs={
+                                          "ParamOut":
+                                          param_and_grad[0],
+                                          "AvgSquaredGradOut":
+                                          avg_squared_grad_acc,
+                                          "AvgSquaredUpdateOut":
+                                          avg_squared_update_acc
+                                      },
+                                      attrs={
+                                          "epsilon": self._epsilon,
+                                          "rho": self._rho
+                                      },
+                                      stop_gradient=True)
 
         return adadelta_op
 

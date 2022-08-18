@@ -21,12 +21,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/distributed/collective/HCCLTools.h"
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #include "paddle/fluid/platform/device_context.h"
-
-#include "paddle/fluid/distributed/collective/HCCLTools.h"
-#include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
@@ -45,7 +44,9 @@ class ProcessGroupHCCL : public ProcessGroup {
   class HCCLTask : public ProcessGroup::Task,
                    public std::enable_shared_from_this<HCCLTask> {
    public:
-    HCCLTask(const std::vector<Place>& places, int rank, CommType CommType,
+    HCCLTask(const std::vector<Place>& places,
+             int rank,
+             CommType CommType,
              const std::vector<phi::DenseTensor>& inputs);
 
     bool IsCompleted();
@@ -70,7 +71,10 @@ class ProcessGroupHCCL : public ProcessGroup {
    private:
   };
 
-  ProcessGroupHCCL(const std::shared_ptr<Store>& store, int rank, int size,
+  ProcessGroupHCCL(const std::shared_ptr<Store>& store,
+                   int rank,
+                   int size,
+                   const platform::Place& place,
                    int gid);
 
   const std::string GetBackendName() const override {
@@ -89,7 +93,9 @@ class ProcessGroupHCCL : public ProcessGroup {
 
  protected:
   virtual std::shared_ptr<ProcessGroupHCCL::HCCLTask> CreateTask(
-      std::vector<Place> places, int rank, CommType opType,
+      std::vector<Place> places,
+      int rank,
+      CommType opType,
       const std::vector<phi::DenseTensor>& inputs);
 
   std::shared_ptr<Store> store_;
@@ -108,7 +114,8 @@ class ProcessGroupHCCL : public ProcessGroup {
   std::set<int> used_place_ids_;
 
  private:
-  void BcastHCCLId(std::vector<HcclRootInfo>& hccl_ids, int root,  // NOLINT
+  void BcastHCCLId(std::vector<HcclRootInfo>& hccl_ids,
+                   int root,  // NOLINT
                    int server_fd);
 
   void BroadcastUniqueHCCLID(std::vector<HcclRootInfo>& hccl_ids);  // NOLINT
@@ -117,7 +124,8 @@ class ProcessGroupHCCL : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Collective(
       std::vector<phi::DenseTensor>& inputs,   // NOLINT
       std::vector<phi::DenseTensor>& outputs,  // NOLINT
-      Fn fn, CommType op_type);
+      Fn fn,
+      CommType op_type);
 
   void CreateHCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);

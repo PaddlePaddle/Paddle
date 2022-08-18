@@ -26,9 +26,9 @@ KernelSignature RoiPoolOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature RoiPoolOpGradArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("roi_pool_grad",
-                         {"X", "ROIs", "RoisNum", "Argmax", GradVarName("Out")},
+                         {"X", "ROIs", "RoisNum", "Argmax", "Out@GRAD"},
                          {"pooled_height", "pooled_width", "spatial_scale"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

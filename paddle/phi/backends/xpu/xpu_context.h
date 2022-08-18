@@ -15,12 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
-#include "paddle/phi/backends/xpu/forwards.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/device_context.h"
 
+#include "paddle/phi/backends/xpu/forwards.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace xpu = baidu::xpu::api;
 
@@ -60,6 +60,8 @@ class XPUContext : public DeviceContext {
   void SetXContext(xpu::Context*);
 
   void SetL3Cache(int l3_size = 14155776);
+
+  void SetXPUStream(XPUStream stream);
 
  private:
   struct Impl;

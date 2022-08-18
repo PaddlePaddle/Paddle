@@ -17,8 +17,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/for_range.h"
 
 template <typename T>
-inline HOSTDEVICE T IOUSimilarity(T xmin1, T ymin1, T xmax1, T ymax1, T xmin2,
-                                  T ymin2, T xmax2, T ymax2, bool normalized,
+inline HOSTDEVICE T IOUSimilarity(T xmin1,
+                                  T ymin1,
+                                  T xmax1,
+                                  T ymax1,
+                                  T xmin2,
+                                  T ymin2,
+                                  T xmax2,
+                                  T ymax2,
+                                  bool normalized,
                                   T eps) {
   constexpr T zero = static_cast<T>(0);
   T area1;
@@ -51,8 +58,8 @@ inline HOSTDEVICE T IOUSimilarity(T xmin1, T ymin1, T xmax1, T ymax1, T xmin2,
 
 template <typename T>
 struct IOUSimilarityFunctor {
-  IOUSimilarityFunctor(const T* x, const T* y, T* z, int cols, bool normalized,
-                       T eps)
+  IOUSimilarityFunctor(
+      const T* x, const T* y, T* z, int cols, bool normalized, T eps)
       : x_(x),
         y_(y),
         z_(z),
@@ -74,8 +81,16 @@ struct IOUSimilarityFunctor {
     T x_max2 = y_[col_id * 4 + 2];
     T y_max2 = y_[col_id * 4 + 3];
 
-    T sim = IOUSimilarity(x_min1, y_min1, x_max1, y_max1, x_min2, y_min2,
-                          x_max2, y_max2, normalized_, eps_);
+    T sim = IOUSimilarity(x_min1,
+                          y_min1,
+                          x_max1,
+                          y_max1,
+                          x_min2,
+                          y_min2,
+                          x_max2,
+                          y_max2,
+                          normalized_,
+                          eps_);
 
     z_[row_id * cols_ + col_id] = sim;
   }
@@ -102,9 +117,12 @@ class IOUSimilarityKernel : public framework::OpKernel<T> {
     int x_n = in_x->dims()[0];
     int y_n = in_y->dims()[0];
     T eps = static_cast<T>(1e-10);
-    IOUSimilarityFunctor<T> functor(in_x->data<T>(), in_y->data<T>(),
-                                    out->mutable_data<T>(ctx.GetPlace()), y_n,
-                                    normalized, eps);
+    IOUSimilarityFunctor<T> functor(in_x->data<T>(),
+                                    in_y->data<T>(),
+                                    out->mutable_data<T>(ctx.GetPlace()),
+                                    y_n,
+                                    normalized,
+                                    eps);
 
     platform::ForRange<DeviceContext> for_range(
         static_cast<const DeviceContext&>(ctx.device_context()), x_n * y_n);

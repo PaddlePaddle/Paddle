@@ -44,6 +44,7 @@ def lstmp(
         act_cell=None,
         act_cand=None,
         act_proj=None):
+
     def _step(x, w_r, w_rh, w_c, r_pre, c_pre, proj_clip, cell_clip, act_gate,
               act_cell, act_cand, act_proj):
         g = np.dot(r_pre, w_r)  # 1 x 4D
@@ -126,6 +127,7 @@ def lstmp(
 
 
 class TestLstmpOp(LstmTest.TestLstmOp):
+
     def reset_argument(self):
         pass
 
@@ -196,13 +198,14 @@ class TestLstmpOp(LstmTest.TestLstmOp):
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
-        self.check_grad(
-            ['Input', 'Weight', 'ProjWeight', 'Bias'], ['Projection'],
-            numeric_grad_delta=0.0000005,
-            check_dygraph=False)
+        self.check_grad(['Input', 'Weight', 'ProjWeight', 'Bias'],
+                        ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        check_dygraph=False)
 
 
 class TestLstmpOpHasInitial(TestLstmpOp):
+
     def reset_argument(self):
         self.has_initial_state = True
 
@@ -213,11 +216,10 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
-        self.check_grad(
-            ['Input', 'Weight', 'ProjWeight', 'Bias', 'H0', 'C0'],
-            ['Projection'],
-            numeric_grad_delta=0.0000005,
-            check_dygraph=False)
+        self.check_grad(['Input', 'Weight', 'ProjWeight', 'Bias', 'H0', 'C0'],
+                        ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        check_dygraph=False)
 
     def test_check_grad_ingore_bias(self):
         N = len(self.lod[0])
@@ -225,11 +227,10 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
-        self.check_grad(
-            ['Input', 'ProjWeight', 'Weight'], ['Projection'],
-            numeric_grad_delta=0.0000005,
-            no_grad_set=set('Bias'),
-            check_dygraph=False)
+        self.check_grad(['Input', 'ProjWeight', 'Weight'], ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('Bias'),
+                        check_dygraph=False)
 
     def test_check_grad_ingore_weight(self):
         N = len(self.lod[0])
@@ -237,11 +238,10 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
-        self.check_grad(
-            ['Input', 'ProjWeight', 'Bias'], ['Projection'],
-            numeric_grad_delta=0.0000005,
-            no_grad_set=set('Weight'),
-            check_dygraph=False)
+        self.check_grad(['Input', 'ProjWeight', 'Bias'], ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('Weight'),
+                        check_dygraph=False)
 
     def test_check_grad_ingore_proj_weight(self):
         N = len(self.lod[0])
@@ -249,11 +249,10 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
-        self.check_grad(
-            ['Input', 'Weight', 'Bias'], ['Projection'],
-            numeric_grad_delta=0.0000005,
-            no_grad_set=set('ProjWeight'),
-            check_dygraph=False)
+        self.check_grad(['Input', 'Weight', 'Bias'], ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('ProjWeight'),
+                        check_dygraph=False)
 
     def test_check_grad_ingore_input(self):
         N = len(self.lod[0])
@@ -261,11 +260,10 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
-        self.check_grad(
-            ['Weight', 'ProjWeight', 'Bias'], ['Projection'],
-            numeric_grad_delta=0.0000005,
-            no_grad_set=set('Input'),
-            check_dygraph=False)
+        self.check_grad(['Weight', 'ProjWeight', 'Bias'], ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('Input'),
+                        check_dygraph=False)
 
     def test_check_grad_ingore_h0(self):
         N = len(self.lod[0])
@@ -273,11 +271,11 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
-        self.check_grad(
-            ['Input', 'Weight', 'ProjWeight', 'Bias', 'C0'], ['Projection'],
-            numeric_grad_delta=0.0000005,
-            no_grad_set=set('H0'),
-            check_dygraph=False)
+        self.check_grad(['Input', 'Weight', 'ProjWeight', 'Bias', 'C0'],
+                        ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('H0'),
+                        check_dygraph=False)
 
     def test_check_grad_ingore_c0(self):
         N = len(self.lod[0])
@@ -285,88 +283,93 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
-        self.check_grad(
-            ['Input', 'Weight', 'ProjWeight', 'Bias', 'H0'], ['Projection'],
-            numeric_grad_delta=0.0000005,
-            no_grad_set=set('C0'),
-            check_dygraph=False)
+        self.check_grad(['Input', 'Weight', 'ProjWeight', 'Bias', 'H0'],
+                        ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('C0'),
+                        check_dygraph=False)
 
 
 class TestLstmpOpRerverse(TestLstmpOp):
+
     def reset_argument(self):
         self.is_reverse = True
 
 
 class TestLstmpOpNotUsePeepholes(TestLstmpOp):
+
     def reset_argument(self):
         self.use_peepholes = False
 
 
 class TestLstmpOpLinearProjection(TestLstmpOp):
+
     def reset_argument(self):
         self.act_proj = 'identity'
 
 
 class TestLstmpOpLen0Case1(TestLstmpOp):
+
     def reset_argument(self):
         self.lod = [[0, 4, 0]]
 
 
 class TestLstmpOpLen0Case2(TestLstmpOp):
+
     def reset_argument(self):
         self.lod = [[2, 0, 3]]
 
 
 class TestLstmpOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 
             def test_Variable():
                 input_data = np.random.random((1, 2048)).astype("float32")
-                fluid.layers.dynamic_lstmp(
-                    input=input_data,
-                    size=2048,
-                    proj_size=256,
-                    use_peepholes=False,
-                    is_reverse=True,
-                    cell_activation="tanh",
-                    proj_activation="tanh")
+                fluid.layers.dynamic_lstmp(input=input_data,
+                                           size=2048,
+                                           proj_size=256,
+                                           use_peepholes=False,
+                                           is_reverse=True,
+                                           cell_activation="tanh",
+                                           proj_activation="tanh")
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_h_0():
-                in_data = fluid.data(
-                    name="input", shape=[None, 2048], dtype="float32")
+                in_data = fluid.data(name="input",
+                                     shape=[None, 2048],
+                                     dtype="float32")
                 h = fluid.data(name="h", shape=[None, 512], dtype="int32")
                 c = fluid.data(name="c", shape=[None, 512], dtype="float32")
-                fluid.layers.dynamic_lstmp(
-                    input=in_data,
-                    size=2048,
-                    proj_size=256,
-                    use_peepholes=False,
-                    is_reverse=True,
-                    cell_activation="tanh",
-                    proj_activation="tanh",
-                    h_0=h,
-                    c_0=c)
+                fluid.layers.dynamic_lstmp(input=in_data,
+                                           size=2048,
+                                           proj_size=256,
+                                           use_peepholes=False,
+                                           is_reverse=True,
+                                           cell_activation="tanh",
+                                           proj_activation="tanh",
+                                           h_0=h,
+                                           c_0=c)
 
             self.assertRaises(TypeError, test_h_0)
 
             def test_c_0():
-                in_data_ = fluid.data(
-                    name="input_", shape=[None, 2048], dtype="float32")
+                in_data_ = fluid.data(name="input_",
+                                      shape=[None, 2048],
+                                      dtype="float32")
                 h_ = fluid.data(name="h_", shape=[None, 512], dtype="float32")
                 c_ = fluid.data(name="c_", shape=[None, 512], dtype="int32")
-                fluid.layers.dynamic_lstmp(
-                    input=in_data_,
-                    size=2048,
-                    proj_size=256,
-                    use_peepholes=False,
-                    is_reverse=True,
-                    cell_activation="tanh",
-                    proj_activation="tanh",
-                    h_0=h_,
-                    c_0=c_)
+                fluid.layers.dynamic_lstmp(input=in_data_,
+                                           size=2048,
+                                           proj_size=256,
+                                           use_peepholes=False,
+                                           is_reverse=True,
+                                           cell_activation="tanh",
+                                           proj_activation="tanh",
+                                           h_0=h_,
+                                           c_0=c_)
 
             self.assertRaises(TypeError, test_c_0)
 

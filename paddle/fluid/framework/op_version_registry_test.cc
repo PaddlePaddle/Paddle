@@ -12,9 +12,9 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <gtest/gtest.h>
-
 #include "paddle/fluid/framework/op_version_registry.h"
+
+#include <gtest/gtest.h>
 
 namespace paddle {
 namespace framework {
@@ -31,8 +31,8 @@ TEST(test_operator_version, test_operator_version) {
         Upgrade reshape, modified one attribute [axis] and add a new attribute [size].
       )ROC",
           framework::compatible::OpVersionDesc()
-              .ModifyAttr("axis",
-                          "Increased from the original one method to two.", -1)
+              .ModifyAttr(
+                  "axis", "Increased from the original one method to two.", -1)
               .NewAttr("size",
                        "In order to represent a two-dimensional rectangle, the "
                        "parameter size is added.",

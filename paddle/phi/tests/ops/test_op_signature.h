@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -65,6 +66,10 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
+    return dense_tensor_inputs.count(name) > 0;
+  }
+
+  bool IsDenseTensorInputs(const std::string& name) const override {
     return dense_tensor_inputs.count(name) > 0;
   }
 

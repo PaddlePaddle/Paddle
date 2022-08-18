@@ -66,7 +66,7 @@ function do_cpython_build {
     # -Wformat added for https://bugs.python.org/issue17547 on Python 2.6
 
     if [ $(lex_pyver $py_ver) -ge $(lex_pyver 3.6) ]; then
-        wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz
+        wget -q --no-check-certificate https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz
         tar -zxf sqlite-autoconf-3250300.tar.gz
         cd sqlite-autoconf-3250300
         ./configure --prefix=/usr/local

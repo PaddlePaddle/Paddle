@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtaina copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -40,14 +40,17 @@ custom_ops = load(
 
 
 class TestCustomSimpleSliceJit(unittest.TestCase):
+
     def func_slice_output(self):
         np_x = np.random.random((5, 2)).astype("float32")
         x = paddle.to_tensor(np_x)
         custom_op_out = custom_ops.custom_simple_slice(x, 2, 3)
         np_out = np_x[2:3]
-        self.assertTrue(
-            np.array_equal(custom_op_out, np_out),
-            "custom op: {},\n numpy: {}".format(np_out, custom_op_out.numpy()))
+        np.testing.assert_array_equal(
+            custom_op_out,
+            np_out,
+            err_msg='custom op: {},\n numpy: {}'.format(np_out,
+                                                        custom_op_out.numpy()))
 
     def test_slice_output(self):
         with _test_eager_guard():

@@ -20,10 +20,10 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+
 #include "cuda.h"          // NOLINT
 #include "cuda_runtime.h"  // NOLINT
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
@@ -31,6 +31,70 @@
 
 namespace paddle {
 namespace platform {
+
+template <typename T>
+static bool IsBitwiseEqual(const T &x, const T &y) {
+  return std::memcmp(&x, &y, sizeof(T)) == 0;
+}
+
+class CUDAKernelParams {
+ public:
+  explicit CUDAKernelParams(const cudaKernelNodeParams *params)
+      : params_(params) {}
+
+  const void *func() const { return params_->func; }
+
+  template <typename T>
+  T &As(size_t idx) const {
+    return *reinterpret_cast<T *>(params_->kernelParams[idx]);
+  }
+
+ private:
+  const cudaKernelNodeParams *params_;
+};
+
+template <typename F, F f>
+struct IsSameKernelHelper;
+
+template <typename Return,
+          typename... FuncArgs,
+          Return (*kernel_fn)(FuncArgs...)>
+struct IsSameKernelHelper<Return (*)(FuncArgs...), kernel_fn> {
+ private:
+  using FuncArgsTuple = decltype(std::make_tuple(std::declval<FuncArgs>()...));
+
+  template <typename TupleT, size_t IDX, bool IsEnd /*=false*/>
+  struct Impl {
+    static bool Compare(const CUDAKernelParams &params, const TupleT &args) {
+      using CompareT = typename std::tuple_element<IDX, FuncArgsTuple>::type;
+      if (!IsBitwiseEqual<CompareT>(params.As<CompareT>(IDX),
+                                    std::get<IDX>(args))) {
+        return false;
+      }
+
+      constexpr auto NewIsEnd = (IDX + 1 == std::tuple_size<TupleT>::value);
+      return Impl<TupleT, IDX + 1, NewIsEnd>::Compare(params, args);
+    }
+  };
+
+  template <typename TupleT, size_t IDX>
+  struct Impl<TupleT, IDX, true> {
+    static bool Compare(const CUDAKernelParams &params, const TupleT &args) {
+      return true;
+    }
+  };
+
+ public:
+  template <typename... Args>
+  static bool Compare(const CUDAKernelParams &params, Args... args) {
+    constexpr auto kNumArgs = sizeof...(FuncArgs);
+    static_assert(kNumArgs == sizeof...(Args), "Argument number not match");
+
+    auto args_tuple = std::make_tuple(args...);
+    using TupleT = typename std::decay<decltype(args_tuple)>::type;
+    return Impl<TupleT, 0, kNumArgs == 0>::Compare(params, args_tuple);
+  }
+};
 
 #if CUDA_VERSION >= 10010
 static void ThrowErrorIfNotSupportCUDAGraph() {}
@@ -61,9 +125,36 @@ class CUDAGraph {
   }
 
  public:
+  static constexpr int64_t kDefaultPoolID = 0;
+  static constexpr int64_t kInvalidPoolID = -1;
+
   ~CUDAGraph() { Reset(); }
 
   CUDAGraphID ID() const { return id_; }
+
+  static int64_t SetMemoryPoolID(int64_t pool_id) {
+    auto &pool_id_ = capturing_graph_->pool_id_;
+    PADDLE_ENFORCE_EQ(
+        pool_id_,
+        kInvalidPoolID,
+        phi::errors::InvalidArgument("Cannot reset memory pool id twice, the "
+                                     "former memory pool id is %d.",
+                                     pool_id_));
+    if (pool_id <= kInvalidPoolID) {
+      pool_id_ = UniqueMemoryPoolID();
+    } else {
+      PADDLE_ENFORCE_GE(
+          pool_id,
+          kDefaultPoolID,
+          phi::errors::InvalidArgument("Invalid memory pool id %d.", pool_id));
+      pool_id_ = pool_id;
+    }
+    return pool_id_;
+  }
+
+  int64_t PoolID() const { return pool_id_; }
+
+  static int64_t CapturingPoolID() { return capturing_graph_->pool_id_; }
 
   void Replay();
 
@@ -76,7 +167,8 @@ class CUDAGraph {
 
   void PrintToDotFiles(const std::string &dirname, unsigned int flags);
 
-  static void BeginCapture(platform::CUDAPlace place, cudaStream_t stream,
+  static void BeginCapture(platform::CUDAPlace place,
+                           cudaStream_t stream,
                            cudaStreamCaptureMode mode);
   static std::unique_ptr<CUDAGraph> EndCapture();
 
@@ -120,11 +212,16 @@ class CUDAGraph {
     }
   }
 
- private:
-  static CUDAGraphID UniqueID() {
-    static std::atomic<CUDAGraphID> id;
-    return id.fetch_add(1);
+  using SetSeedFunc = std::function<bool(CUDAKernelParams *, bool)>;
+  static void RecordRandomKernelInfo(SetSeedFunc set_seed_func) {
+    std::lock_guard<std::mutex> guard(capturing_graph_->func_mtx_);
+    capturing_graph_->set_seed_funcs_.emplace_back(std::move(set_seed_func));
   }
+
+  static int64_t UniqueMemoryPoolID();
+
+ private:
+  static CUDAGraphID UniqueID();
 
  private:
 #if CUDA_VERSION >= 10010
@@ -135,9 +232,16 @@ class CUDAGraph {
   cudaStream_t stream_{nullptr};
   platform::CUDAPlace place_;
   CUDAGraphID id_;
+  int64_t pool_id_{kInvalidPoolID};
   std::vector<std::function<void()>> callbacks_;
   bool is_reset_{false};
   std::mutex mtx_;
+
+  std::vector<SetSeedFunc> set_seed_funcs_;
+  std::vector<std::vector<std::function<void(cudaGraphExec_t)>>> pre_hooks_;
+  std::mutex func_mtx_;
+
+  bool is_first_run_{true};
 
   static paddle::optional<std::thread::id> capturing_thread_id_;
   static std::unique_ptr<CUDAGraph> capturing_graph_;

@@ -85,7 +85,11 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
         runner.Run(dev_ctx.stream());
       };
 
-      NpuOpRunner::TypeAdapter({*x}, {cast_out}, attr_input, dev_ctx, op_func,
+      NpuOpRunner::TypeAdapter({*x},
+                               {cast_out},
+                               attr_input,
+                               dev_ctx,
+                               op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
     } else {
@@ -97,7 +101,9 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
     if (framework::TransToProtoVarType(x->type()) != cast_out_dtype) {
       auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
-          NpuOpRunner("Cast", {cast_out}, {*out},
+          NpuOpRunner("Cast",
+                      {cast_out},
+                      {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast.Run(dev_ctx.stream());
     }
@@ -110,7 +116,8 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    reduce_min, ops::ReduceMinNPUKernel<plat::NPUDeviceContext, float>,
+    reduce_min,
+    ops::ReduceMinNPUKernel<plat::NPUDeviceContext, float>,
     ops::ReduceMinNPUKernel<plat::NPUDeviceContext, plat::float16>,
 #ifdef PADDLE_WITH_ASCEND_INT64
     ops::ReduceMinNPUKernel<plat::NPUDeviceContext, int64_t>,

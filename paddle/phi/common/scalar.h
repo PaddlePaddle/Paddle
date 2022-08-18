@@ -27,6 +27,7 @@ template <typename T>
 class ScalarBase {
  public:
   // Constructor support implicit
+  ScalarBase() : ScalarBase(0) {}
   ScalarBase(double val) : dtype_(DataType::FLOAT64) {  // NOLINT
     data_.f64 = val;
   }

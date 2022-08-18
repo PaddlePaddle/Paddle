@@ -37,6 +37,7 @@ logger = get_logger()
 
 
 class AutoCheckpointTest3(AutoCheckPointACLBase):
+
     def setUp(self):
         get_logger()
         logger.info("enter tests")

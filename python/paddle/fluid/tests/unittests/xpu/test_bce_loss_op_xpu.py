@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import sys
+
 sys.path.append("..")
 import paddle
 import paddle.fluid as fluid
@@ -31,11 +32,13 @@ def bce_loss(input, label):
 
 
 class XPUTestBceLossOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'bce_loss'
         self.use_dynamic_create_class = False
 
     class TestBceLossOp(XPUOpTest):
+
         def setUp(self):
             self.op_type = "bce_loss"
             self.dtype = self.in_type
@@ -59,10 +62,12 @@ class XPUTestBceLossOp(XPUOpTestWrapper):
             self.shape = [10, 10]
 
     class TestBceLossOpCase1(TestBceLossOp):
+
         def init_test_cast(self):
             self.shape = [2, 3, 4, 5]
 
     class TestBceLossOpCase2(TestBceLossOp):
+
         def init_test_cast(self):
             self.shape = [2, 3, 20]
 

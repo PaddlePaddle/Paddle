@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <paddle/fluid/platform/device_context.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/sum_op.h"
@@ -25,7 +26,9 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 
 template <class T>
-__global__ void Sum2CUDAKernel(const T *in_0, const T *in_1, T *out,
+__global__ void Sum2CUDAKernel(const T *in_0,
+                               const T *in_1,
+                               T *out,
                                int64_t N) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
@@ -35,8 +38,8 @@ __global__ void Sum2CUDAKernel(const T *in_0, const T *in_1, T *out,
 }
 
 template <class T>
-__global__ void SumArrayCUDAKernel(T **in, T *out, int64_t N, size_t in_size,
-                                   bool read_dst) {
+__global__ void SumArrayCUDAKernel(
+    T **in, T *out, int64_t N, size_t in_size, bool read_dst) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
     T total(read_dst ? out[id] : static_cast<T>(0));
@@ -52,7 +55,8 @@ __global__ void SumArrayCUDAKernel(T **in, T *out, int64_t N, size_t in_size,
 }
 
 template <class T>
-__global__ void SumSelectedRowsCUDAKernel(T **sr_in_out, int64_t N,
+__global__ void SumSelectedRowsCUDAKernel(T **sr_in_out,
+                                          int64_t N,
                                           size_t rows) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
@@ -73,8 +77,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   const size_t in_num = in_vars.size();
 
   constexpr size_t theory_sm_threads = 1024;
-  auto &dev_ctx =
-      context.template device_context<platform::CUDADeviceContext>();
+  auto &dev_ctx = context.template device_context<phi::GPUContext>();
   auto stream = dev_ctx.stream();
 
   auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
@@ -134,10 +137,10 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 
   int start = in_place ? 1 : 0;
   if (!in_place) {
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;
-    constant_functor(
-        context.template device_context<platform::CUDADeviceContext>(), out,
-        static_cast<T>(0));
+    phi::funcs::SetConstant<phi::GPUContext, T> constant_functor;
+    constant_functor(context.template device_context<phi::GPUContext>(),
+                     out,
+                     static_cast<T>(0));
   }
 
   std::vector<const T *> in_data;
@@ -156,7 +159,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
     }
   }
 
-  // compute select rows seperately.
+  // compute select rows separately.
   if (!selectrow_index.empty()) {
     std::vector<const T *> sr_in_out_data;
     size_t rows = 0;
@@ -169,18 +172,22 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       auto row_numel = sr_value.numel() / sr_rows.size();
       auto out_dims = out->dims();
 
-      PADDLE_ENFORCE_EQ(sr.height(), out_dims[0],
+      PADDLE_ENFORCE_EQ(sr.height(),
+                        out_dims[0],
                         platform::errors::InvalidArgument(
                             "The table height of input must be same as output, "
                             "but received input height is %d"
                             ", output height is %d",
-                            sr.height(), out_dims[0]));
-      PADDLE_ENFORCE_EQ(row_numel, out->numel() / sr.height(),
+                            sr.height(),
+                            out_dims[0]));
+      PADDLE_ENFORCE_EQ(row_numel,
+                        out->numel() / sr.height(),
                         platform::errors::InvalidArgument(
                             "The table width of input must be same as output, "
                             "but received input width is %d"
                             ", output width is %d",
-                            row_numel, out->numel() / sr.height()));
+                            row_numel,
+                            out->numel() / sr.height()));
 
       auto *sr_data = sr_value.data<T>();
       auto *sr_out_data = out->data<T>();
@@ -196,17 +203,19 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       auto tmp_sr_in_out_array =
           memory::Alloc(dev_ctx, sr_in_out_data.size() * sizeof(T *));
 
-      memory::Copy(dev_ctx.GetPlace(), tmp_sr_in_out_array->ptr(),
+      memory::Copy(dev_ctx.GetPlace(),
+                   tmp_sr_in_out_array->ptr(),
                    platform::CPUPlace(),
                    reinterpret_cast<void *>(sr_in_out_data.data()),
-                   sr_in_out_data.size() * sizeof(T *), dev_ctx.stream());
+                   sr_in_out_data.size() * sizeof(T *),
+                   dev_ctx.stream());
 
       T **sr_in_out_array_data =
           reinterpret_cast<T **>(tmp_sr_in_out_array->ptr());
 
       ComputeKernelParameter(length);
-      SumSelectedRowsCUDAKernel<T><<<grids, blocks, 0, stream>>>(
-          sr_in_out_array_data, length, rows);
+      SumSelectedRowsCUDAKernel<T>
+          <<<grids, blocks, 0, stream>>>(sr_in_out_array_data, length, rows);
       dst_write = true;
     }
   }
@@ -214,21 +223,25 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   if (!in_data.empty()) {
     auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
 
-    memory::Copy(dev_ctx.GetPlace(), tmp_in_array->ptr(), platform::CPUPlace(),
+    memory::Copy(dev_ctx.GetPlace(),
+                 tmp_in_array->ptr(),
+                 platform::CPUPlace(),
                  reinterpret_cast<void *>(in_data.data()),
-                 in_data.size() * sizeof(T *), dev_ctx.stream());
+                 in_data.size() * sizeof(T *),
+                 dev_ctx.stream());
 
     T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
     ComputeKernelParameter(lod_length);
-    SumArrayCUDAKernel<T><<<grids, blocks, 0, stream>>>(
-        in_array_data, out->data<T>(), lod_length, in_data.size(),
-        dst_write | in_place);
+    SumArrayCUDAKernel<T><<<grids, blocks, 0, stream>>>(in_array_data,
+                                                        out->data<T>(),
+                                                        lod_length,
+                                                        in_data.size(),
+                                                        dst_write | in_place);
   }
 }
 
 template <typename T>
-class SumKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class SumKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto out_var = context.OutputVar("Out");
@@ -236,12 +249,12 @@ class SumKernel<platform::CUDADeviceContext, T>
     if (out_var->IsType<framework::LoDTensor>()) {
       SumToLoDTensor<T>(context);
     } else if (out_var->IsType<phi::SelectedRows>()) {
-      SelectedRowsCompute<platform::CUDADeviceContext, T>(context);
+      SelectedRowsCompute<phi::GPUContext, T>(context);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
-      LodTensorArrayCompute<platform::CUDADeviceContext, T>(context);
+      LodTensorArrayCompute<phi::GPUContext, T>(context);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Ouput(out) must be Tensor,  SelectedRows or "
+          "Expected type of Output(out) must be Tensor,  SelectedRows or "
           "LodTensorArray. But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
@@ -253,10 +266,10 @@ class SumKernel<platform::CUDADeviceContext, T>
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    sum, ops::SumKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::float16>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::bfloat16>);
+REGISTER_OP_CUDA_KERNEL(sum,
+                        ops::SumKernel<phi::GPUContext, float>,
+                        ops::SumKernel<phi::GPUContext, double>,
+                        ops::SumKernel<phi::GPUContext, int>,
+                        ops::SumKernel<phi::GPUContext, int64_t>,
+                        ops::SumKernel<phi::GPUContext, plat::float16>,
+                        ops::SumKernel<phi::GPUContext, plat::bfloat16>);

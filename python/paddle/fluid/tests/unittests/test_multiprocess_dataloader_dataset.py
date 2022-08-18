@@ -27,6 +27,7 @@ IMAGE_SIZE = 32
 
 
 class RandomDataset(Dataset):
+
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
@@ -41,6 +42,7 @@ class RandomDataset(Dataset):
 
 
 class RandomIterableDataset(IterableDataset):
+
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
@@ -53,6 +55,7 @@ class RandomIterableDataset(IterableDataset):
 
 
 class TestTensorDataset(unittest.TestCase):
+
     def run_main(self, num_workers, places):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
@@ -65,12 +68,11 @@ class TestTensorDataset(unittest.TestCase):
 
             dataset = TensorDataset([input, label])
             assert len(dataset) == 16
-            dataloader = DataLoader(
-                dataset,
-                places=place,
-                num_workers=num_workers,
-                batch_size=1,
-                drop_last=True)
+            dataloader = DataLoader(dataset,
+                                    places=place,
+                                    num_workers=num_workers,
+                                    batch_size=1,
+                                    drop_last=True)
 
             for i, (input, label) in enumerate(dataloader()):
                 assert len(input) == 1
@@ -98,6 +100,7 @@ class TestTensorDataset(unittest.TestCase):
 
 
 class TestComposeDataset(unittest.TestCase):
+
     def func_test_main(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
@@ -123,6 +126,7 @@ class TestComposeDataset(unittest.TestCase):
 
 
 class TestRandomSplitApi(unittest.TestCase):
+
     def func_test_main(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
@@ -149,6 +153,7 @@ class TestRandomSplitApi(unittest.TestCase):
 
 
 class TestRandomSplitError(unittest.TestCase):
+
     def func_test_errors(self):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
@@ -164,6 +169,7 @@ class TestRandomSplitError(unittest.TestCase):
 
 
 class TestSubsetDataset(unittest.TestCase):
+
     def run_main(self, num_workers, places):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
@@ -180,12 +186,11 @@ class TestSubsetDataset(unittest.TestCase):
         assert len(dataset) == 5
 
         def prepare_dataloader(dataset):
-            return DataLoader(
-                dataset,
-                places=places,
-                num_workers=num_workers,
-                batch_size=1,
-                drop_last=True)
+            return DataLoader(dataset,
+                              places=places,
+                              num_workers=num_workers,
+                              batch_size=1,
+                              drop_last=True)
 
         dataloader = prepare_dataloader(dataset)
         dataloader_even = prepare_dataloader(even_subset)
@@ -234,6 +239,7 @@ class TestSubsetDataset(unittest.TestCase):
 
 
 class TestChainDataset(unittest.TestCase):
+
     def run_main(self, num_workers, places):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
@@ -271,6 +277,7 @@ class TestChainDataset(unittest.TestCase):
 
 
 class NumpyMixTensorDataset(Dataset):
+
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
@@ -285,6 +292,7 @@ class NumpyMixTensorDataset(Dataset):
 
 
 class TestNumpyMixTensorDataset(TestTensorDataset):
+
     def run_main(self, num_workers, places):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
@@ -292,12 +300,11 @@ class TestNumpyMixTensorDataset(TestTensorDataset):
         with fluid.dygraph.guard(place):
             dataset = NumpyMixTensorDataset(16)
             assert len(dataset) == 16
-            dataloader = DataLoader(
-                dataset,
-                places=place,
-                num_workers=num_workers,
-                batch_size=1,
-                drop_last=True)
+            dataloader = DataLoader(dataset,
+                                    places=place,
+                                    num_workers=num_workers,
+                                    batch_size=1,
+                                    drop_last=True)
 
             for i, (input, label) in enumerate(dataloader()):
                 assert len(input) == 1
@@ -311,6 +318,7 @@ class TestNumpyMixTensorDataset(TestTensorDataset):
 
 
 class ComplextDataset(Dataset):
+
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
@@ -318,9 +326,10 @@ class ComplextDataset(Dataset):
         return self.sample_num
 
     def __getitem__(self, idx):
-        return (3.1, 'abc', paddle.to_tensor(
-            np.random.random([IMAGE_SIZE]).astype('float32'),
-            place=paddle.CPUPlace()),
+        return (3.1, 'abc',
+                paddle.to_tensor(np.random.random([IMAGE_SIZE
+                                                   ]).astype('float32'),
+                                 place=paddle.CPUPlace()),
                 [1, np.random.random([2]).astype('float32')], {
                     'a': 2.0,
                     'b': np.random.random([2]).astype('float32')
@@ -328,6 +337,7 @@ class ComplextDataset(Dataset):
 
 
 class TestComplextDataset(unittest.TestCase):
+
     def run_main(self, num_workers):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
@@ -335,12 +345,11 @@ class TestComplextDataset(unittest.TestCase):
         with fluid.dygraph.guard(place):
             dataset = ComplextDataset(16)
             assert len(dataset) == 16
-            dataloader = DataLoader(
-                dataset,
-                places=place,
-                num_workers=num_workers,
-                batch_size=2,
-                drop_last=True)
+            dataloader = DataLoader(dataset,
+                                    places=place,
+                                    num_workers=num_workers,
+                                    batch_size=2,
+                                    drop_last=True)
 
             for i, data in enumerate(dataloader()):
                 assert len(data) == 5
@@ -373,6 +382,7 @@ class TestComplextDataset(unittest.TestCase):
 
 
 class SingleFieldDataset(Dataset):
+
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
@@ -384,6 +394,7 @@ class SingleFieldDataset(Dataset):
 
 
 class TestSingleFieldDataset(unittest.TestCase):
+
     def init_dataset(self):
         self.sample_num = 16
         self.dataset = SingleFieldDataset(self.sample_num)
@@ -394,12 +405,11 @@ class TestSingleFieldDataset(unittest.TestCase):
         place = paddle.CPUPlace()
         with fluid.dygraph.guard(place):
             self.init_dataset()
-            dataloader = DataLoader(
-                self.dataset,
-                places=place,
-                num_workers=num_workers,
-                batch_size=2,
-                drop_last=True)
+            dataloader = DataLoader(self.dataset,
+                                    places=place,
+                                    num_workers=num_workers,
+                                    batch_size=2,
+                                    drop_last=True)
 
             for i, data in enumerate(dataloader()):
                 assert isinstance(data,
@@ -417,6 +427,7 @@ class TestSingleFieldDataset(unittest.TestCase):
 
 
 class SingleFieldIterableDataset(IterableDataset):
+
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
@@ -426,12 +437,14 @@ class SingleFieldIterableDataset(IterableDataset):
 
 
 class TestSingleFieldIterableDataset(TestSingleFieldDataset):
+
     def init_dataset(self):
         self.sample_num = 16
         self.dataset = SingleFieldIterableDataset(self.sample_num)
 
 
 class TestDataLoaderGenerateStates(unittest.TestCase):
+
     def setUp(self):
         self.inputs = [(0, 1), (0, 2), (1, 3)]
         self.outputs = [[1835504127, 1731038949, 1320224556, 2330041505],
@@ -451,16 +464,16 @@ class TestDataLoaderGenerateStates(unittest.TestCase):
 
 
 class TestDatasetWithDropLast(unittest.TestCase):
+
     def run_main(self, dataset, num_samples, batch_size):
         for num_workers in [0, 1]:
             for drop_last in [True, False]:
                 steps = (num_samples + (1 - int(drop_last)) * \
                         (batch_size - 1)) // batch_size
-                dataloader = DataLoader(
-                    dataset,
-                    batch_size=batch_size,
-                    drop_last=drop_last,
-                    num_workers=num_workers)
+                dataloader = DataLoader(dataset,
+                                        batch_size=batch_size,
+                                        drop_last=drop_last,
+                                        num_workers=num_workers)
                 datas = []
                 for data in dataloader:
                     datas.append(data)

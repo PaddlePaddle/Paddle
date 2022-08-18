@@ -37,6 +37,7 @@ NEED_TO_FIX_OP_LIST = [
     'dot',
     'elementwise_add',
     'elementwise_div',
+    'elementwise_heaviside',
     'elementwise_max',
     'elementwise_min',
     'elementwise_mul',

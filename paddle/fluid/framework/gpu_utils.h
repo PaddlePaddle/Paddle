@@ -17,6 +17,7 @@
 #define EIGEN_USE_GPU
 
 #include <array>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -104,15 +105,19 @@ ConvertTensorIndex(int index, const Dim3& dims) {
 
 template <typename IntType, bool ceil>
 IntType CeilOrFloor(IntType x, IntType deviser) {
-  PADDLE_ENFORCE_GT(deviser, 0, platform::errors::InvalidArgument(
-                                    "deviser should be greater than 0, "
-                                    "but received is:%d",
-                                    deviser));
+  PADDLE_ENFORCE_GT(
+      deviser,
+      0,
+      platform::errors::InvalidArgument("deviser should be greater than 0, "
+                                        "but received is:%d",
+                                        deviser));
 
   PADDLE_ENFORCE_GT(
-      x, 0, platform::errors::InvalidArgument("input should be greater than 0, "
-                                              "but received is:%d",
-                                              x));
+      x,
+      0,
+      platform::errors::InvalidArgument("input should be greater than 0, "
+                                        "but received is:%d",
+                                        x));
 
   const IntType round_to_zero = x / deviser;
   const IntType inte_result = round_to_zero * deviser;

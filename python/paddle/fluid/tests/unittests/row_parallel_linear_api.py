@@ -41,6 +41,7 @@ paddle.enable_static()
 
 
 class TestRowParallelLinearAPI(TestCollectiveAPIRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 
@@ -50,8 +51,9 @@ class TestRowParallelLinearAPI(TestCollectiveAPIRunnerBase):
             np.random.seed(2020)
             np_array = np.random.rand(1000, 16)
 
-            data = paddle.static.data(
-                name='tindata', shape=[10, 1000], dtype="float32")
+            data = paddle.static.data(name='tindata',
+                                      shape=[10, 1000],
+                                      dtype="float32")
             paddle.distributed.broadcast(data, src=0)
             data = paddle.split(data, 2, axis=1)[rank]
             if rank == 0:
@@ -70,7 +72,8 @@ class TestRowParallelLinearAPI(TestCollectiveAPIRunnerBase):
                 axis=0,
                 num_partitions=2,
                 weight_attr=param_attr,
-                bias_attr=True, )
+                bias_attr=True,
+            )
 
             return [linear_out]
 

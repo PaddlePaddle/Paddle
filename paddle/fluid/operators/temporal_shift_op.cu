@@ -19,10 +19,15 @@ namespace operators {
 using framework::Tensor;
 
 template <typename T>
-__global__ void KeTemporalShiftFwNCHW(const T* input, T* output,
-                                      const int ntchw, const int tchw,
-                                      const int chw, const int hw, const int t,
-                                      const int c1, const int c2) {
+__global__ void KeTemporalShiftFwNCHW(const T* input,
+                                      T* output,
+                                      const int ntchw,
+                                      const int tchw,
+                                      const int chw,
+                                      const int hw,
+                                      const int t,
+                                      const int c1,
+                                      const int c2) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   int src_it = 0;
@@ -48,10 +53,15 @@ __global__ void KeTemporalShiftFwNCHW(const T* input, T* output,
 }
 
 template <typename T>
-__global__ void KeTemporalShiftFwNHWC(const T* input, T* output,
-                                      const int nthwc, const int thwc,
-                                      const int hwc, const int t, const int c,
-                                      const int c1, const int c2) {
+__global__ void KeTemporalShiftFwNHWC(const T* input,
+                                      T* output,
+                                      const int nthwc,
+                                      const int thwc,
+                                      const int hwc,
+                                      const int t,
+                                      const int c,
+                                      const int c1,
+                                      const int c2) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   int src_it = 0;
@@ -77,10 +87,15 @@ __global__ void KeTemporalShiftFwNHWC(const T* input, T* output,
 }
 
 template <typename T>
-__global__ void KeTemporalShiftBwNCHW(const T* output_grad, T* input_grad,
-                                      const int ntchw, const int tchw,
-                                      const int chw, const int hw, const int t,
-                                      const int c1, const int c2) {
+__global__ void KeTemporalShiftBwNCHW(const T* output_grad,
+                                      T* input_grad,
+                                      const int ntchw,
+                                      const int tchw,
+                                      const int chw,
+                                      const int hw,
+                                      const int t,
+                                      const int c1,
+                                      const int c2) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   int src_it = 0;
@@ -106,10 +121,15 @@ __global__ void KeTemporalShiftBwNCHW(const T* output_grad, T* input_grad,
 }
 
 template <typename T>
-__global__ void KeTemporalShiftBwNHWC(const T* output_grad, T* input_grad,
-                                      const int nthwc, const int thwc,
-                                      const int hwc, const int t, const int c,
-                                      const int c1, const int c2) {
+__global__ void KeTemporalShiftBwNHWC(const T* output_grad,
+                                      T* input_grad,
+                                      const int nthwc,
+                                      const int thwc,
+                                      const int hwc,
+                                      const int t,
+                                      const int c,
+                                      const int c1,
+                                      const int c2) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   int src_it = 0;
@@ -138,7 +158,8 @@ template <typename T>
 class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+                      true,
                       platform::errors::InvalidArgument(
                           "This kernel only runs on GPU device."));
     auto* input = ctx.Input<Tensor>("X");
@@ -179,13 +200,13 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
     grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
 
     if (data_layout == DataLayout::kNCHW) {
-      KeTemporalShiftFwNCHW<
-          T><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
-          input_data, output_data, ntchw, tchw, chw, hw, t, c1, c2);
+      KeTemporalShiftFwNCHW<T>
+          <<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
+              input_data, output_data, ntchw, tchw, chw, hw, t, c1, c2);
     } else {
-      KeTemporalShiftFwNHWC<
-          T><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
-          input_data, output_data, ntchw, tchw, chw, t, c, c1, c2);
+      KeTemporalShiftFwNHWC<T>
+          <<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
+              input_data, output_data, ntchw, tchw, chw, t, c, c1, c2);
     }
   }
 };
@@ -249,10 +270,12 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    temporal_shift, ops::TemporalShiftOpCUDAKernel<float>,
+    temporal_shift,
+    ops::TemporalShiftOpCUDAKernel<float>,
     ops::TemporalShiftOpCUDAKernel<double>,
     ops::TemporalShiftOpCUDAKernel<paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
-    temporal_shift_grad, ops::TemporalShiftGradOpCUDAKernel<float>,
+    temporal_shift_grad,
+    ops::TemporalShiftGradOpCUDAKernel<float>,
     ops::TemporalShiftGradOpCUDAKernel<double>,
     ops::TemporalShiftGradOpCUDAKernel<paddle::platform::float16>);

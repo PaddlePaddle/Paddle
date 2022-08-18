@@ -20,6 +20,7 @@ from paddle.fluid.framework import _test_eager_guard, _non_static_mode
 
 
 class MyLayer(fluid.Layer):
+
     def __init__(self, num_channel, dim, num_filter=5):
         super(MyLayer, self).__init__()
         self.fc = fluid.dygraph.Linear(dim, dim)
@@ -32,6 +33,7 @@ class MyLayer(fluid.Layer):
 
 
 class TestImperativeNamedSubLayers(unittest.TestCase):
+
     def func_test_named_sublayers(self):
         with fluid.dygraph.guard():
             fc1 = fluid.Linear(10, 3)
@@ -43,14 +45,16 @@ class TestImperativeNamedSubLayers(unittest.TestCase):
 
             expected_sublayers = [fc1, fc2, custom, custom.fc, custom.conv]
             self.assertEqual(len(list_named_sublayers), len(expected_sublayers))
-            for (name, sublayer), expected_sublayer in zip(list_named_sublayers,
-                                                           expected_sublayers):
+            for (name,
+                 sublayer), expected_sublayer in zip(list_named_sublayers,
+                                                     expected_sublayers):
                 self.assertEqual(sublayer, expected_sublayer)
 
             list_sublayers = list(model.sublayers())
             self.assertEqual(len(list_named_sublayers), len(list_sublayers))
-            for (name, sublayer), expected_sublayer in zip(list_named_sublayers,
-                                                           list_sublayers):
+            for (name,
+                 sublayer), expected_sublayer in zip(list_named_sublayers,
+                                                     list_sublayers):
                 self.assertEqual(sublayer, expected_sublayer)
 
             self.assertListEqual(
@@ -64,6 +68,7 @@ class TestImperativeNamedSubLayers(unittest.TestCase):
 
 
 class TestImperativeNamedParameters(unittest.TestCase):
+
     def func_test_named_parameters(self):
         with fluid.dygraph.guard():
             fc1 = fluid.Linear(10, 3)
@@ -90,6 +95,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
         with fluid.dygraph.guard():
 
             class Mymodel(fluid.dygraph.Layer):
+
                 def __init__(self):
                     super(Mymodel, self).__init__()
                     self.linear1 = fluid.dygraph.Linear(10, 10)
@@ -98,11 +104,10 @@ class TestImperativeNamedParameters(unittest.TestCase):
                     self.embedding = fluid.dygraph.Embedding(size=[128, 16])
                     self.h_0 = fluid.dygraph.to_variable(
                         np.zeros([10, 10]).astype('float32'))
-                    self.weight = self.create_parameter(
-                        shape=[2, 3],
-                        attr=fluid.ParamAttr(),
-                        dtype="float32",
-                        is_bias=False)
+                    self.weight = self.create_parameter(shape=[2, 3],
+                                                        attr=fluid.ParamAttr(),
+                                                        dtype="float32",
+                                                        is_bias=False)
 
             model = Mymodel()
 

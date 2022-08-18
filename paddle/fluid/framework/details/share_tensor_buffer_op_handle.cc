@@ -48,7 +48,8 @@ ComputationOpHandle *GetUniquePendingComputationOpHandle(
         result_op = compute_op;
       } else {
         PADDLE_ENFORCE_EQ(
-            result_op, compute_op,
+            result_op,
+            compute_op,
             platform::errors::PreconditionNotMet(
                 "The pending OpHandle should be the unique one."));
       }
@@ -62,12 +63,21 @@ ComputationOpHandle *GetUniquePendingComputationOpHandle(
 }
 
 ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
-    ir::Node *node, Scope *scope, size_t scope_idx, const std::string &op_type,
+    ir::Node *node,
+    Scope *scope,
+    size_t scope_idx,
+    const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
-    const std::vector<std::string> &out_var_names, bool share_dims_and_dtype)
+    const std::vector<std::string> &out_var_names,
+    bool share_dims_and_dtype)
     : OpHandleBase(node),
-      functor_(scope, scope_idx, op_type, in_var_infos, out_var_names,
-               is_variant_scope_, share_dims_and_dtype) {}
+      functor_(scope,
+               scope_idx,
+               op_type,
+               in_var_infos,
+               out_var_names,
+               is_variant_scope_,
+               share_dims_and_dtype) {}
 
 std::unordered_map<std::string, std::string>
 ShareTensorBufferOpHandle::ReusedVars() const {

@@ -59,7 +59,8 @@ TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
   auto conditional_grad_op = paddle::framework::OpRegistry::CreateOp(
       "conditional_block_grad",
       {{"Input", {"input_lod_tensor_array"}}, {"Cond", {"condition"}}},
-      {{"Input@GRAD", {"input_lod_tensor_array@GRAD"}}}, attrs);
+      {{"Input@GRAD", {"input_lod_tensor_array@GRAD"}}},
+      attrs);
 
   conditional_grad_op->Run(scope, place);
 

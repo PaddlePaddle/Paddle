@@ -1,4 +1,5 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 NVIDIA Corporation.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@ paddle.enable_static()
 
 
 class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
+
     def test_sharding_optimizer(self):
         train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
         )
@@ -50,14 +52,14 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
             'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
             'mul', 'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh',
-            'mul', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'fill_constant', 'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
+            'mul', 'elementwise_add', 'softmax', 'cross_entropy2',
+            'reduce_mean', 'fill_constant', 'reduce_mean_grad',
+            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
+            'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'momentum',
-            'momentum', 'momentum'
+            'c_sync_comm_stream', 'momentum', 'momentum', 'momentum'
         ])
 
     def test_sharding_amp_optimizer(self):
@@ -90,16 +92,16 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'c_sync_comm_stream', 'cast', 'mul', 'elementwise_add', 'cast',
             'tanh', 'cast', 'mul', 'elementwise_add', 'cast', 'tanh', 'cast',
             'mul', 'elementwise_add', 'softmax', 'cast', 'cross_entropy2',
-            'mean', 'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
+            'reduce_mean', 'elementwise_mul', 'fill_constant',
+            'elementwise_mul_grad', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'cast', 'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad',
+            'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'cast',
-            'cast', 'cast', 'check_finite_and_unscale', 'cast',
-            'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
-            'momentum', 'momentum'
+            'c_sync_comm_stream', 'cast', 'cast', 'cast',
+            'check_finite_and_unscale', 'cast', 'c_allreduce_max', 'cast',
+            'update_loss_scaling', 'momentum', 'momentum', 'momentum'
         ])
 
     def test_sharding_recompute_optimizer(self):
@@ -130,11 +132,12 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
             'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
             'mul', 'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh',
-            'mul', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'fill_constant', 'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
+            'mul', 'elementwise_add', 'softmax', 'cross_entropy2',
+            'reduce_mean', 'fill_constant', 'reduce_mean_grad',
+            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
+            'mul_grad', 'mul', 'elementwise_add', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'mul', 'elementwise_add',
-            'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'mul',
-            'elementwise_add', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad',
             'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
             'c_sync_comm_stream', 'momentum', 'momentum', 'momentum'
@@ -175,9 +178,9 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
             'cast', 'mul', 'elementwise_add', 'cast', 'tanh', 'cast', 'mul',
             'elementwise_add', 'cast', 'tanh', 'cast', 'mul', 'elementwise_add',
-            'softmax', 'cast', 'cross_entropy2', 'mean', 'elementwise_mul',
-            'fill_constant', 'elementwise_mul_grad', 'mean_grad',
-            'cross_entropy_grad2', 'cast', 'softmax_grad',
+            'softmax', 'cast', 'cross_entropy2', 'reduce_mean',
+            'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
+            'reduce_mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
             'elementwise_add_grad', 'mul_grad', 'cast', 'cast', 'mul',
             'elementwise_add', 'cast', 'tanh_grad', 'cast',
             'elementwise_add_grad', 'mul_grad', 'cast', 'mul',
@@ -225,16 +228,17 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'c_sync_comm_stream', 'cast', 'mul', 'elementwise_add', 'cast',
             'tanh', 'cast', 'mul', 'elementwise_add', 'cast', 'tanh', 'cast',
             'mul', 'elementwise_add', 'softmax', 'cast', 'cross_entropy2',
-            'mean', 'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
+            'reduce_mean', 'elementwise_mul', 'fill_constant',
+            'elementwise_mul_grad', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'cast', 'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad',
+            'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'cast',
-            'cast', 'cast', 'check_finite_and_unscale', 'cast',
-            'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
-            'momentum', 'momentum', 'elementwise_mul'
+            'c_sync_comm_stream', 'cast', 'cast', 'cast',
+            'check_finite_and_unscale', 'cast', 'c_allreduce_max', 'cast',
+            'update_loss_scaling', 'momentum', 'momentum', 'momentum',
+            'elementwise_mul'
         ])
 
     def test_sharding_weight_decay(self):
@@ -243,12 +247,11 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
         regularization = paddle.fluid.regularizer.L2Decay(0.0001)
-        self.optimizer(
-            avg_cost,
-            strategy,
-            train_prog,
-            startup_prog,
-            regularization=regularization)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       regularization=regularization)
         parameters = [
             x.name for x in train_prog.list_vars() if x.persistable == True
         ]
@@ -267,15 +270,15 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
             'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
             'mul', 'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh',
-            'mul', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'fill_constant', 'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
+            'mul', 'elementwise_add', 'softmax', 'cross_entropy2',
+            'reduce_mean', 'fill_constant', 'reduce_mean_grad',
+            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
+            'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'scale',
-            'sum', 'scale', 'sum', 'scale', 'sum', 'momentum', 'momentum',
-            'momentum'
+            'c_sync_comm_stream', 'scale', 'sum', 'scale', 'sum', 'scale',
+            'sum', 'momentum', 'momentum', 'momentum'
         ])
 
     def test_sharding_gradient_clip(self):
@@ -284,8 +287,11 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         parameters = [
             x.name for x in train_prog.list_vars() if x.persistable == True
         ]
@@ -304,17 +310,18 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
             'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
             'mul', 'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh',
-            'mul', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'fill_constant', 'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
+            'mul', 'elementwise_add', 'softmax', 'cross_entropy2',
+            'reduce_mean', 'fill_constant', 'reduce_mean_grad',
+            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
+            'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
-            'squared_l2_norm', 'squared_l2_norm', 'squared_l2_norm', 'sum',
-            'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
-            'elementwise_div', 'elementwise_mul', 'elementwise_mul',
-            'elementwise_mul', 'momentum', 'momentum', 'momentum'
+            'c_sync_comm_stream', 'squared_l2_norm', 'squared_l2_norm',
+            'squared_l2_norm', 'sum', 'c_allreduce_sum', 'sqrt',
+            'fill_constant', 'elementwise_max', 'elementwise_div',
+            'elementwise_mul', 'elementwise_mul', 'elementwise_mul', 'momentum',
+            'momentum', 'momentum'
         ])
 
     def test_sharding_clone_for_test(self):
@@ -334,11 +341,12 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
             'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
             'mul', 'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh',
-            'mul', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean'
+            'mul', 'elementwise_add', 'softmax', 'cross_entropy2', 'reduce_mean'
         ])
 
 
 class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
         os.environ[
@@ -381,8 +389,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of MP group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -390,8 +398,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -428,8 +436,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -437,8 +445,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of dp group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
 
@@ -459,15 +467,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
             'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
             'mul', 'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh',
-            'mul', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'fill_constant', 'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
+            'mul', 'elementwise_add', 'softmax', 'cross_entropy2',
+            'reduce_mean', 'fill_constant', 'reduce_mean_grad',
+            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
+            'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_sync_comm_stream', 'momentum', 'momentum', 'momentum'
+            'c_sync_comm_stream', 'c_allreduce_sum', 'c_allreduce_sum',
+            'c_allreduce_sum', 'c_sync_comm_stream', 'momentum', 'momentum',
+            'momentum'
         ])
 
     def test_sharding_hybrid_dp_gm(self):
@@ -500,8 +509,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -509,8 +518,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of dp group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
 
@@ -522,15 +531,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
             'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
             'mul', 'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh',
-            'mul', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'fill_constant', 'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
+            'mul', 'elementwise_add', 'softmax', 'cross_entropy2',
+            'reduce_mean', 'fill_constant', 'reduce_mean_grad',
+            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
+            'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
-            'elementwise_add', 'elementwise_add', 'elementwise_add',
-            'increment', 'elementwise_mod', 'equal', 'conditional_block'
+            'c_sync_comm_stream', 'elementwise_add', 'elementwise_add',
+            'elementwise_add', 'increment', 'elementwise_mod', 'equal',
+            'conditional_block'
         ])
         self.assertEqual(opt_ops, [
             'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum', 'scale',
@@ -592,10 +602,11 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'c_broadcast', 'c_sync_comm_stream', 'recv_v2', 'mul',
             'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
             'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'softmax',
-            'cross_entropy2', 'mean', 'fill_constant', 'mean_grad',
-            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
-            'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
-            'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'cross_entropy2', 'reduce_mean', 'fill_constant',
+            'reduce_mean_grad', 'cross_entropy_grad2', 'softmax_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
             'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
@@ -617,8 +628,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of pp group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -626,8 +637,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -681,8 +692,11 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             "accumulate_steps": 4,
         }
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
 
@@ -712,26 +726,26 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
             'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
             'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
-            'elementwise_add', 'softmax', 'cast', 'cross_entropy2', 'mean',
-            'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'c_sync_calc_stream',
-            'partial_send', 'fill_constant', 'cast', 'sum', 'fill_constant',
-            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
-            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
-            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
-            'cast', 'sum', 'c_sync_comm_stream', 'check_finite_and_unscale',
-            'cast', 'c_allreduce_max', 'c_allreduce_max', 'cast',
-            'update_loss_scaling', 'fill_constant', 'c_allreduce_sum',
-            'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
-            'elementwise_div', 'elementwise_mul', 'elementwise_mul',
+            'elementwise_add', 'softmax', 'cast', 'cross_entropy2',
+            'reduce_mean', 'elementwise_mul', 'fill_constant',
+            'elementwise_mul_grad', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'cast', 'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'c_sync_calc_stream', 'partial_send', 'fill_constant', 'cast',
+            'sum', 'fill_constant', 'cast', 'sum', 'fill_constant', 'cast',
+            'sum', 'fill_constant', 'cast', 'sum', 'fill_constant', 'cast',
+            'sum', 'fill_constant', 'cast', 'sum', 'fill_constant', 'cast',
+            'sum', 'fill_constant', 'cast', 'sum', 'c_sync_comm_stream',
+            'check_finite_and_unscale', 'cast', 'c_allreduce_max',
+            'c_allreduce_max', 'cast', 'update_loss_scaling', 'fill_constant',
+            'c_allreduce_sum', 'c_allreduce_sum', 'sqrt', 'fill_constant',
+            'elementwise_max', 'elementwise_div', 'elementwise_mul',
             'elementwise_mul', 'elementwise_mul', 'elementwise_mul',
-            'elementwise_mul', 'elementwise_mul', 'elementwise_mul', 'momentum',
-            'momentum', 'momentum', 'momentum', 'momentum', 'momentum',
-            'momentum', 'momentum'
+            'elementwise_mul', 'elementwise_mul', 'elementwise_mul',
+            'elementwise_mul', 'momentum', 'momentum', 'momentum', 'momentum',
+            'momentum', 'momentum', 'momentum', 'momentum'
         ])
 
         # pp + mp, partial send recv
@@ -756,8 +770,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of pp group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 mp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(mp_group_waiting_ports, ['127.0.0.1:36003'])
@@ -765,8 +779,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -790,13 +804,12 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             "accumulate_steps": 4,
         }
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
-        self.optimizer(
-            avg_cost,
-            strategy,
-            train_prog,
-            startup_prog,
-            grad_clip=clip,
-            name="adamw")
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip,
+                       name="adamw")
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
 
@@ -832,25 +845,26 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
             'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
             'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
-            'elementwise_add', 'softmax', 'cast', 'cross_entropy2', 'mean',
-            'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'c_sync_calc_stream',
-            'partial_send', 'fill_constant', 'cast', 'sum', 'fill_constant',
-            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
-            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
-            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
-            'cast', 'sum', 'c_sync_comm_stream', 'check_finite_and_unscale',
-            'cast', 'c_allreduce_max', 'c_allreduce_max', 'cast',
-            'update_loss_scaling', 'memcpy', 'fill_constant', 'c_allreduce_sum',
-            'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
-            'elementwise_div', 'elementwise_mul', 'elementwise_mul',
+            'elementwise_add', 'softmax', 'cast', 'cross_entropy2',
+            'reduce_mean', 'elementwise_mul', 'fill_constant',
+            'elementwise_mul_grad', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'cast', 'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
+            'c_sync_calc_stream', 'partial_send', 'fill_constant', 'cast',
+            'sum', 'fill_constant', 'cast', 'sum', 'fill_constant', 'cast',
+            'sum', 'fill_constant', 'cast', 'sum', 'fill_constant', 'cast',
+            'sum', 'fill_constant', 'cast', 'sum', 'fill_constant', 'cast',
+            'sum', 'fill_constant', 'cast', 'sum', 'c_sync_comm_stream',
+            'check_finite_and_unscale', 'cast', 'c_allreduce_max',
+            'c_allreduce_max', 'cast', 'update_loss_scaling', 'memcpy',
+            'fill_constant', 'c_allreduce_sum', 'c_allreduce_sum', 'sqrt',
+            'fill_constant', 'elementwise_max', 'elementwise_div',
             'elementwise_mul', 'elementwise_mul', 'elementwise_mul',
-            'elementwise_mul', 'elementwise_mul', 'elementwise_mul', 'adamw',
-            'adamw', 'adamw', 'adamw', 'adamw', 'adamw', 'adamw', 'adamw'
+            'elementwise_mul', 'elementwise_mul', 'elementwise_mul',
+            'elementwise_mul', 'elementwise_mul', 'adamw', 'adamw', 'adamw',
+            'adamw', 'adamw', 'adamw', 'adamw', 'adamw'
         ])
 
         # pp + mp, partial send recv
@@ -875,8 +889,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of pp group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 mp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(mp_group_waiting_ports, ['127.0.0.1:36003'])
@@ -884,8 +898,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -895,7 +909,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,
@@ -939,8 +955,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'recv_v2', 'cast', 'mul', 'cast', 'elementwise_add', 'tanh', 'cast',
             'mul', 'cast', 'elementwise_add', 'tanh', 'cast', 'mul', 'cast',
             'elementwise_add', 'tanh', 'cast', 'mul', 'cast', 'elementwise_add',
-            'softmax', 'cross_entropy2', 'mean', 'elementwise_mul',
-            'fill_constant', 'elementwise_mul_grad', 'mean_grad',
+            'softmax', 'cross_entropy2', 'reduce_mean', 'elementwise_mul',
+            'fill_constant', 'elementwise_mul_grad', 'reduce_mean_grad',
             'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
             'cast', 'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
             'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
@@ -969,16 +985,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of dp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_3":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_3":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -988,7 +1004,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "segment_broadcast_MB": 0.1,
@@ -1042,16 +1060,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of sharding group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -1061,7 +1079,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,
@@ -1106,11 +1126,11 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         self.assertEqual(main_prog_op_types, [
             'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
             'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
-            'cast', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
-            'elementwise_add_grad', 'cast', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'cast', 'elementwise_add', 'softmax', 'cross_entropy2',
+            'reduce_mean', 'elementwise_mul', 'fill_constant',
+            'elementwise_mul_grad', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'softmax_grad', 'elementwise_add_grad', 'cast', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
             'fill_constant', 'cast', 'sum', 'fill_constant', 'sum',
@@ -1138,16 +1158,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of dp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_3":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_3":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -1157,7 +1177,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,
@@ -1203,11 +1225,11 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         self.assertEqual(main_prog_op_types, [
             'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
             'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
-            'cast', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
-            'elementwise_add_grad', 'cast', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'cast', 'elementwise_add', 'softmax', 'cross_entropy2',
+            'reduce_mean', 'elementwise_mul', 'fill_constant',
+            'elementwise_mul_grad', 'reduce_mean_grad', 'cross_entropy_grad2',
+            'softmax_grad', 'elementwise_add_grad', 'cast', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
             'fill_constant', 'cast', 'sum', 'fill_constant', 'sum',
@@ -1237,16 +1259,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of dp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_3":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_3":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -1257,7 +1279,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,
@@ -1303,13 +1327,13 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         self.assertEqual(main_prog_op_types, [
             'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
             'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
-            'cast', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'elementwise_mul', 'coalesce_tensor', 'coalesce_tensor',
-            'coalesce_tensor', 'coalesce_tensor', 'fill_constant',
-            'elementwise_mul_grad', 'mean_grad', 'cross_entropy_grad2',
-            'softmax_grad', 'elementwise_add_grad', 'cast', 'mul_grad',
+            'cast', 'elementwise_add', 'softmax', 'cross_entropy2',
+            'reduce_mean', 'elementwise_mul', 'coalesce_tensor',
+            'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
+            'fill_constant', 'elementwise_mul_grad', 'reduce_mean_grad',
+            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
+            'cast', 'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
             'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
-            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
             'sum', 'cast', 'sum', 'c_allreduce_sum', 'c_allreduce_sum', 'cast',
             'cast', 'cast', 'cast', 'cast', 'cast', 'cast', 'cast',
@@ -1333,16 +1357,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of dp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_3":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_3":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -1352,7 +1376,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,
@@ -1396,10 +1422,10 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'recv_v2', 'cast', 'mul', 'cast', 'elementwise_add', 'tanh', 'cast',
             'mul', 'cast', 'elementwise_add', 'tanh', 'cast', 'mul', 'cast',
             'elementwise_add', 'tanh', 'cast', 'mul', 'cast', 'elementwise_add',
-            'softmax', 'cross_entropy2', 'mean', 'elementwise_mul',
+            'softmax', 'cross_entropy2', 'reduce_mean', 'elementwise_mul',
             'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
             'coalesce_tensor', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
+            'reduce_mean_grad', 'cross_entropy_grad2', 'softmax_grad',
             'elementwise_add_grad', 'cast', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
@@ -1424,16 +1450,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of dp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_3":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_3":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -1443,7 +1469,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,
@@ -1490,10 +1518,10 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'recv_v2', 'cast', 'mul', 'cast', 'elementwise_add', 'tanh', 'cast',
             'mul', 'cast', 'elementwise_add', 'tanh', 'cast', 'mul', 'cast',
             'elementwise_add', 'tanh', 'cast', 'mul', 'cast', 'elementwise_add',
-            'softmax', 'cross_entropy2', 'mean', 'elementwise_mul',
+            'softmax', 'cross_entropy2', 'reduce_mean', 'elementwise_mul',
             'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
             'coalesce_tensor', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
+            'reduce_mean_grad', 'cross_entropy_grad2', 'softmax_grad',
             'elementwise_add_grad', 'cast', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
@@ -1553,11 +1581,12 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         self.assertEqual(main_prog_op_types, [
             'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
             'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
-            'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'coalesce_tensor', 'coalesce_tensor', 'fill_constant', 'mean_grad',
-            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
-            'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
-            'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add', 'softmax', 'cross_entropy2', 'reduce_mean',
+            'coalesce_tensor', 'coalesce_tensor', 'fill_constant',
+            'reduce_mean_grad', 'cross_entropy_grad2', 'softmax_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
             'sum', 'c_allreduce_sum', 'c_sync_comm_stream', 'scale', 'momentum',
             'momentum', 'momentum', 'momentum', 'momentum', 'momentum',
@@ -1619,10 +1648,10 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'recv_v2', 'cast', 'mul', 'cast', 'elementwise_add', 'tanh', 'cast',
             'mul', 'cast', 'elementwise_add', 'tanh', 'cast', 'mul', 'cast',
             'elementwise_add', 'tanh', 'cast', 'mul', 'cast', 'elementwise_add',
-            'softmax', 'cross_entropy2', 'mean', 'elementwise_mul',
+            'softmax', 'cross_entropy2', 'reduce_mean', 'elementwise_mul',
             'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
             'coalesce_tensor', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
+            'reduce_mean_grad', 'cross_entropy_grad2', 'softmax_grad',
             'elementwise_add_grad', 'cast', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',

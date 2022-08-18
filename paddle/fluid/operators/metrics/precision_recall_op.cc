@@ -23,27 +23,33 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("MaxProbs"), true,
+        ctx->HasInput("MaxProbs"),
+        true,
         platform::errors::NotFound(
             "PrecisionRecallOp Input(MaxProbs) should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Indices"), true,
+        ctx->HasInput("Indices"),
+        true,
         platform::errors::NotFound(
             "PrecisionRecallOp Input(Indices) should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Labels"), true,
+        ctx->HasInput("Labels"),
+        true,
         platform::errors::NotFound(
             "PrecisionRecallOp Input(Labels) should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("BatchMetrics"), true,
+        ctx->HasOutput("BatchMetrics"),
+        true,
         platform::errors::NotFound(
             "PrecisionRecallOp Output(BatchMetrics) should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("AccumMetrics"), true,
+        ctx->HasOutput("AccumMetrics"),
+        true,
         platform::errors::NotFound(
             "PrecisionRecallOp Output(AccumMetrics) should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("AccumStatesInfo"), true,
+        ctx->HasOutput("AccumStatesInfo"),
+        true,
         platform::errors::NotFound(
             "PrecisionRecallOp Output(AccumStatesInfo) should not be null."));
 
@@ -53,7 +59,8 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
     auto labels_dims = ctx->GetInputDim("Labels");
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(max_probs_dims[1], 1,
+      PADDLE_ENFORCE_EQ(max_probs_dims[1],
+                        1,
                         platform::errors::InvalidArgument(
                             "Each instance of PrecisionRecallOp "
                             "Input(MaxProbs) contains one max probability, "
@@ -63,23 +70,29 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
                             "dimension we received is %d",
                             max_probs_dims[1]));
       PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Indices"), max_probs_dims,
+          ctx->GetInputDim("Indices"),
+          max_probs_dims,
           platform::errors::InvalidArgument(
               "The shape of PrecisionRecallOp Input(Indices) should be same "
               "with "
               "max_probs_dims. But received the shape of Input(Indices) is "
               "[%d, %d], max_probs_dims is [%d, %d]",
-              ctx->GetInputDim("Indices")[0], ctx->GetInputDim("Indices")[1],
-              max_probs_dims[0], max_probs_dims[1]));
+              ctx->GetInputDim("Indices")[0],
+              ctx->GetInputDim("Indices")[1],
+              max_probs_dims[0],
+              max_probs_dims[1]));
       PADDLE_ENFORCE_EQ(
-          max_probs_dims[0], labels_dims[0],
+          max_probs_dims[0],
+          labels_dims[0],
           platform::errors::InvalidArgument(
               "The 1st dimension of PrecisionRecallOp Input(MaxProbs) and "
               "Input(Labels) both should be batch_size"
               "But the 1st dimension we received max_probs_dims[0] = %d, "
               "labels_dims[0] = %d",
-              max_probs_dims[0], labels_dims[0]));
-      PADDLE_ENFORCE_EQ(labels_dims[1], 1,
+              max_probs_dims[0],
+              labels_dims[0]));
+      PADDLE_ENFORCE_EQ(labels_dims[1],
+                        1,
                         platform::errors::InvalidArgument(
                             "The 2nd dimension of PrecisionRecallOp "
                             "Input(Labels) contains instance label and "
@@ -92,11 +105,13 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
 
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(
-            weights_dims, phi::make_ddim({max_probs_dims[0], 1}),
+            weights_dims,
+            phi::make_ddim({max_probs_dims[0], 1}),
             platform::errors::InvalidArgument(
                 "The shape of PrecisionRecallOp Input(Weights) should be "
                 "[batch_size, 1]. But the shape we received is [%d, %d]",
-                weights_dims[0], weights_dims[1]));
+                weights_dims[0],
+                weights_dims[1]));
       }
     }
     if (ctx->HasInput("StatesInfo")) {
@@ -104,11 +119,13 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
 
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(
-            states_dims, phi::make_ddim({cls_num, 4}),
+            states_dims,
+            phi::make_ddim({cls_num, 4}),
             platform::errors::InvalidArgument(
                 "The shape of PrecisionRecallOp Input(StatesInfo) should be "
                 "[class_number, 4]. But the shape we received is [%d, %d]",
-                states_dims[0], states_dims[1]));
+                states_dims[0],
+                states_dims[1]));
       }
     }
 
@@ -220,7 +237,9 @@ Output(AccumStatesInfo) is metrics of accumulation data.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    precision_recall, ops::PrecisionRecallOp, ops::PrecisionRecallOpMaker,
+    precision_recall,
+    ops::PrecisionRecallOp,
+    ops::PrecisionRecallOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(

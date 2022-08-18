@@ -16,6 +16,7 @@ import paddle
 import numpy as np
 import sys
 import unittest
+
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
@@ -43,6 +44,7 @@ def ref_softmax(x, axis=None, dtype=None):
 
 
 class XPUTestSoftmaxOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'softmax'
         self.use_dynamic_create_class = True
@@ -61,6 +63,7 @@ class XPUTestSoftmaxOp(XPUOpTestWrapper):
         return base_class, classes
 
     class TestSoftmaxOp(XPUOpTest):
+
         def setUp(self):
             self.op_type = "softmax"
             if not hasattr(self, 'shape'):

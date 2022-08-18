@@ -26,6 +26,7 @@ limitations under the License. */
 #include <thrust/sort.h>
 #include <thrust/transform.h>
 #include <thrust/unique.h>
+
 #include <ostream>
 
 #ifdef PADDLE_WITH_HIP
@@ -72,10 +73,18 @@ struct DegreeFunctor {
 };
 
 template <typename T, int BLOCK_WARPS, int TILE_SIZE>
-__global__ void GraphSampleNeighborsCUDAKernel(
-    const uint64_t rand_seed, int k, const int64_t num_rows, const T* in_rows,
-    const T* src, const T* dst_count, const T* src_eids, T* outputs,
-    T* outputs_eids, T* output_ptr, T* output_idxs, bool return_eids) {
+__global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
+                                               int k,
+                                               const int64_t num_rows,
+                                               const T* in_rows,
+                                               const T* src,
+                                               const T* dst_count,
+                                               const T* src_eids,
+                                               T* outputs,
+                                               T* outputs_eids,
+                                               T* output_ptr,
+                                               T* output_idxs,
+                                               bool return_eids) {
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
@@ -85,11 +94,15 @@ __global__ void GraphSampleNeighborsCUDAKernel(
 #ifdef PADDLE_WITH_HIP
   hiprandState rng;
   hiprand_init(rand_seed * gridDim.x + blockIdx.x,
-               threadIdx.y * WARP_SIZE + threadIdx.x, 0, &rng);
+               threadIdx.y * WARP_SIZE + threadIdx.x,
+               0,
+               &rng);
 #else
   curandState rng;
   curand_init(rand_seed * gridDim.x + blockIdx.x,
-              threadIdx.y * WARP_SIZE + threadIdx.x, 0, &rng);
+              threadIdx.y * WARP_SIZE + threadIdx.x,
+              0,
+              &rng);
 #endif
 
   while (out_row < last_row) {
@@ -143,9 +156,11 @@ __global__ void GraphSampleNeighborsCUDAKernel(
 }
 
 template <typename T, int BLOCK_WARPS, int TILE_SIZE>
-__global__ void GetDstEdgeCUDAKernel(const int64_t num_rows, const T* in_rows,
+__global__ void GetDstEdgeCUDAKernel(const int64_t num_rows,
+                                     const T* in_rows,
                                      const T* dst_sample_counts,
-                                     const T* dst_ptr, T* outputs) {
+                                     const T* dst_ptr,
+                                     T* outputs) {
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
@@ -169,25 +184,33 @@ __global__ void GetDstEdgeCUDAKernel(const int64_t num_rows, const T* in_rows,
 }
 
 template <typename T>
-void SampleNeighbors(const framework::ExecutionContext& ctx, const T* src,
-                     const T* dst_count, const T* src_eids,
+void SampleNeighbors(const framework::ExecutionContext& ctx,
+                     const T* src,
+                     const T* dst_count,
+                     const T* src_eids,
                      thrust::device_vector<T>* inputs,
                      thrust::device_vector<T>* outputs,
                      thrust::device_vector<T>* output_counts,
-                     thrust::device_vector<T>* outputs_eids, int k,
-                     bool is_first_layer, bool is_last_layer,
+                     thrust::device_vector<T>* outputs_eids,
+                     int k,
+                     bool is_first_layer,
+                     bool is_last_layer,
                      bool return_eids) {
   const size_t bs = inputs->size();
   output_counts->resize(bs);
 
   // 1. Get input nodes' degree.
-  thrust::transform(inputs->begin(), inputs->end(), output_counts->begin(),
+  thrust::transform(inputs->begin(),
+                    inputs->end(),
+                    output_counts->begin(),
                     DegreeFunctor<T>(dst_count));
 
   // 2. Apply sample size k to get final sample size.
   if (k >= 0) {
-    thrust::transform(output_counts->begin(), output_counts->end(),
-                      output_counts->begin(), MaxFunctor<T>(k));
+    thrust::transform(output_counts->begin(),
+                      output_counts->end(),
+                      output_counts->begin(),
+                      MaxFunctor<T>(k));
   }
 
   // 3. Get the number of total sample neighbors and some necessary datas.
@@ -195,7 +218,8 @@ void SampleNeighbors(const framework::ExecutionContext& ctx, const T* src,
       thrust::reduce(output_counts->begin(), output_counts->end());
   if (is_first_layer) {
     PADDLE_ENFORCE_GT(
-        total_sample_num, 0,
+        total_sample_num,
+        0,
         platform::errors::InvalidArgument(
             "The input nodes `X` should have at least one neighbor, "
             "but none of the input nodes have neighbors."));
@@ -209,23 +233,31 @@ void SampleNeighbors(const framework::ExecutionContext& ctx, const T* src,
   thrust::device_vector<T> output_idxs;
   output_ptr.resize(bs);
   output_idxs.resize(total_sample_num);
-  thrust::exclusive_scan(output_counts->begin(), output_counts->end(),
-                         output_ptr.begin(), 0);
+  thrust::exclusive_scan(
+      output_counts->begin(), output_counts->end(), output_ptr.begin(), 0);
 
   // 4. Run graph sample kernel.
   constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
   const dim3 block(WARP_SIZE, BLOCK_WARPS);
   const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
-  GraphSampleNeighborsCUDAKernel<T, BLOCK_WARPS, TILE_SIZE><<<
-      grid, block, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context())
-          .stream()>>>(
-      0, k, bs, thrust::raw_pointer_cast(inputs->data()), src, dst_count,
-      src_eids, thrust::raw_pointer_cast(outputs->data()),
-      thrust::raw_pointer_cast(outputs_eids->data()),
-      thrust::raw_pointer_cast(output_ptr.data()),
-      thrust::raw_pointer_cast(output_idxs.data()), return_eids);
+  GraphSampleNeighborsCUDAKernel<T, BLOCK_WARPS, TILE_SIZE>
+      <<<grid,
+         block,
+         0,
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
+             .stream()>>>(0,
+                          k,
+                          bs,
+                          thrust::raw_pointer_cast(inputs->data()),
+                          src,
+                          dst_count,
+                          src_eids,
+                          thrust::raw_pointer_cast(outputs->data()),
+                          thrust::raw_pointer_cast(outputs_eids->data()),
+                          thrust::raw_pointer_cast(output_ptr.data()),
+                          thrust::raw_pointer_cast(output_idxs.data()),
+                          return_eids);
 
   // 5. Get inputs = outputs - inputs:
   if (!is_last_layer) {
@@ -238,9 +270,11 @@ void SampleNeighbors(const framework::ExecutionContext& ctx, const T* src,
     outputs_sort.resize(
         thrust::distance(outputs_sort.begin(), outputs_sort_end));
     thrust::device_vector<T> unique_outputs(outputs_sort.size());
-    auto unique_outputs_end = thrust::set_difference(
-        outputs_sort.begin(), outputs_sort.end(), inputs->begin(),
-        inputs->end(), unique_outputs.begin());
+    auto unique_outputs_end = thrust::set_difference(outputs_sort.begin(),
+                                                     outputs_sort.end(),
+                                                     inputs->begin(),
+                                                     inputs->end(),
+                                                     unique_outputs.begin());
     inputs->resize(
         thrust::distance(unique_outputs.begin(), unique_outputs_end));
     thrust::copy(unique_outputs.begin(), unique_outputs_end, inputs->begin());
@@ -248,8 +282,10 @@ void SampleNeighbors(const framework::ExecutionContext& ctx, const T* src,
 }
 
 template <typename T>
-void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
-                   int64_t num_input, int64_t len_hashtable,
+void FillHashTable(const framework::ExecutionContext& ctx,
+                   const T* input,
+                   int64_t num_input,
+                   int64_t len_hashtable,
                    thrust::device_vector<T>* unique_items,
                    thrust::device_vector<T>* keys,
                    thrust::device_vector<T>* values,
@@ -264,39 +300,50 @@ void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
   int grid_tmp = (num_input + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   // 1. Insert data into keys and values.
-  BuildHashTable<
-      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                               ctx.device_context())
-                               .stream()>>>(
-      input, num_input, len_hashtable, thrust::raw_pointer_cast(keys->data()),
-      thrust::raw_pointer_cast(key_index->data()));
+  BuildHashTable<T>
+      <<<grid,
+         block,
+         0,
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
+             .stream()>>>(input,
+                          num_input,
+                          len_hashtable,
+                          thrust::raw_pointer_cast(keys->data()),
+                          thrust::raw_pointer_cast(key_index->data()));
 
   // 2. Get item index count.
   thrust::device_vector<int> item_count(num_input + 1, 0);
-  GetItemIndexCount<
-      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                               ctx.device_context())
-                               .stream()>>>(
-      input, thrust::raw_pointer_cast(item_count.data()), num_input,
-      len_hashtable, thrust::raw_pointer_cast(keys->data()),
-      thrust::raw_pointer_cast(key_index->data()));
+  GetItemIndexCount<T>
+      <<<grid,
+         block,
+         0,
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
+             .stream()>>>(input,
+                          thrust::raw_pointer_cast(item_count.data()),
+                          num_input,
+                          len_hashtable,
+                          thrust::raw_pointer_cast(keys->data()),
+                          thrust::raw_pointer_cast(key_index->data()));
 
-  thrust::exclusive_scan(item_count.begin(), item_count.end(),
-                         item_count.begin());
+  thrust::exclusive_scan(
+      item_count.begin(), item_count.end(), item_count.begin());
   size_t total_unique_items = item_count[num_input];
   unique_items->resize(total_unique_items);
 
   // 3. Get unique items.
-  FillUniqueItems<
-      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                               ctx.device_context())
-                               .stream()>>>(
-      input, num_input, len_hashtable,
-      thrust::raw_pointer_cast(unique_items->data()),
-      thrust::raw_pointer_cast(item_count.data()),
-      thrust::raw_pointer_cast(keys->data()),
-      thrust::raw_pointer_cast(values->data()),
-      thrust::raw_pointer_cast(key_index->data()));
+  FillUniqueItems<T>
+      <<<grid,
+         block,
+         0,
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
+             .stream()>>>(input,
+                          num_input,
+                          len_hashtable,
+                          thrust::raw_pointer_cast(unique_items->data()),
+                          thrust::raw_pointer_cast(item_count.data()),
+                          thrust::raw_pointer_cast(keys->data()),
+                          thrust::raw_pointer_cast(values->data()),
+                          thrust::raw_pointer_cast(key_index->data()));
 }
 
 template <typename T>
@@ -305,11 +352,12 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
                  thrust::device_vector<T>* outputs,
                  thrust::device_vector<T>* subset,
                  thrust::device_vector<T>* orig_nodes,
-                 thrust::device_vector<T>* reindex_nodes, int bs) {
+                 thrust::device_vector<T>* reindex_nodes,
+                 int bs) {
   subset->resize(inputs->size() + outputs->size());
   thrust::copy(inputs->begin(), inputs->end(), subset->begin());
-  thrust::copy(outputs->begin(), outputs->end(),
-               subset->begin() + inputs->size());
+  thrust::copy(
+      outputs->begin(), outputs->end(), subset->begin() + inputs->size());
   thrust::device_vector<T> unique_items;
   unique_items.clear();
 
@@ -320,8 +368,13 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
   thrust::device_vector<T> keys(size, -1);
   thrust::device_vector<T> values(size, -1);
   thrust::device_vector<int64_t> key_index(size, -1);
-  FillHashTable<T>(ctx, thrust::raw_pointer_cast(subset->data()),
-                   subset->size(), size, &unique_items, &keys, &values,
+  FillHashTable<T>(ctx,
+                   thrust::raw_pointer_cast(subset->data()),
+                   subset->size(),
+                   size,
+                   &unique_items,
+                   &keys,
+                   &values,
                    &key_index);
 
   subset->resize(unique_items.size());
@@ -337,23 +390,29 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
   int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (outputs->size() + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
-  ReindexSrcOutput<
-      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                               ctx.device_context())
-                               .stream()>>>(
-      thrust::raw_pointer_cast(outputs->data()), outputs->size(), size,
-      thrust::raw_pointer_cast(keys.data()),
-      thrust::raw_pointer_cast(values.data()));
+  ReindexSrcOutput<T>
+      <<<grid,
+         block,
+         0,
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
+             .stream()>>>(thrust::raw_pointer_cast(outputs->data()),
+                          outputs->size(),
+                          size,
+                          thrust::raw_pointer_cast(keys.data()),
+                          thrust::raw_pointer_cast(values.data()));
 
   int grid_ = (bs + block - 1) / block;
-  ReindexInputNodes<T><<<grid_, block, 0,
-                         reinterpret_cast<const platform::CUDADeviceContext&>(
-                             ctx.device_context())
-                             .stream()>>>(
-      thrust::raw_pointer_cast(orig_nodes->data()), bs,
-      thrust::raw_pointer_cast(reindex_nodes->data()), size,
-      thrust::raw_pointer_cast(keys.data()),
-      thrust::raw_pointer_cast(values.data()));
+  ReindexInputNodes<T>
+      <<<grid_,
+         block,
+         0,
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
+             .stream()>>>(thrust::raw_pointer_cast(orig_nodes->data()),
+                          bs,
+                          thrust::raw_pointer_cast(reindex_nodes->data()),
+                          size,
+                          thrust::raw_pointer_cast(keys.data()),
+                          thrust::raw_pointer_cast(values.data()));
 }
 
 template <typename DeviceContext, typename T>
@@ -405,9 +464,17 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
           is_first_layer = false;
           dst_vec.emplace_back(inputs);
         }
-        SampleNeighbors<T>(ctx, src_data, dst_count_data, src_eids_data,
-                           &inputs, &outputs, &output_counts, &outputs_eids,
-                           sample_sizes[i], is_first_layer, is_last_layer,
+        SampleNeighbors<T>(ctx,
+                           src_data,
+                           dst_count_data,
+                           src_eids_data,
+                           &inputs,
+                           &outputs,
+                           &output_counts,
+                           &outputs_eids,
+                           sample_sizes[i],
+                           is_first_layer,
+                           is_last_layer,
                            return_eids);
         outputs_vec.emplace_back(outputs);
         output_counts_vec.emplace_back(output_counts);
@@ -425,9 +492,17 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
           is_first_layer = false;
           dst_vec.emplace_back(inputs);
         }
-        SampleNeighbors<T>(ctx, src_data, dst_count_data, nullptr, &inputs,
-                           &outputs, &output_counts, &outputs_eids,
-                           sample_sizes[i], is_first_layer, is_last_layer,
+        SampleNeighbors<T>(ctx,
+                           src_data,
+                           dst_count_data,
+                           nullptr,
+                           &inputs,
+                           &outputs,
+                           &output_counts,
+                           &outputs_eids,
+                           sample_sizes[i],
+                           is_first_layer,
+                           is_last_layer,
                            return_eids);
         outputs_vec.emplace_back(outputs);
         output_counts_vec.emplace_back(output_counts);
@@ -455,16 +530,17 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
       if (i == 0) {
         unique_dst_merge_ptr = thrust::copy(
             dst_vec[i].begin(), dst_vec[i].end(), unique_dst_merge.begin());
-        src_merge_ptr = thrust::copy(outputs_vec[i].begin(),
-                                     outputs_vec[i].end(), src_merge.begin());
-        dst_sample_counts_merge_ptr = thrust::copy(
-            output_counts_vec[i].begin(), output_counts_vec[i].end(),
-            dst_sample_counts_merge.begin());
+        src_merge_ptr = thrust::copy(
+            outputs_vec[i].begin(), outputs_vec[i].end(), src_merge.begin());
+        dst_sample_counts_merge_ptr =
+            thrust::copy(output_counts_vec[i].begin(),
+                         output_counts_vec[i].end(),
+                         dst_sample_counts_merge.begin());
       } else {
         unique_dst_merge_ptr = thrust::copy(
             dst_vec[i].begin(), dst_vec[i].end(), unique_dst_merge_ptr);
-        src_merge_ptr = thrust::copy(outputs_vec[i].begin(),
-                                     outputs_vec[i].end(), src_merge_ptr);
+        src_merge_ptr = thrust::copy(
+            outputs_vec[i].begin(), outputs_vec[i].end(), src_merge_ptr);
         dst_sample_counts_merge_ptr = thrust::copy(output_counts_vec[i].begin(),
                                                    output_counts_vec[i].end(),
                                                    dst_sample_counts_merge_ptr);
@@ -478,13 +554,13 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
       auto eids_merge_ptr = eids_merge.begin();
       for (int i = 0; i < num_layers; i++) {
         if (i == 0) {
-          eids_merge_ptr =
-              thrust::copy(outputs_eids_vec[i].begin(),
-                           outputs_eids_vec[i].end(), eids_merge.begin());
+          eids_merge_ptr = thrust::copy(outputs_eids_vec[i].begin(),
+                                        outputs_eids_vec[i].end(),
+                                        eids_merge.begin());
         } else {
-          eids_merge_ptr =
-              thrust::copy(outputs_eids_vec[i].begin(),
-                           outputs_eids_vec[i].end(), eids_merge_ptr);
+          eids_merge_ptr = thrust::copy(outputs_eids_vec[i].begin(),
+                                        outputs_eids_vec[i].end(),
+                                        eids_merge_ptr);
         }
       }
       auto* out_eids = ctx.Output<Tensor>("Out_Eids");
@@ -497,7 +573,8 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
                                               dst_sample_counts_merge.end());
 
     PADDLE_ENFORCE_EQ(
-        src_merge.size(), num_sample_edges,
+        src_merge.size(),
+        num_sample_edges,
         platform::errors::PreconditionNotMet(
             "Number of sample edges dismatch, the sample kernel has error."));
 
@@ -508,8 +585,13 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
     thrust::copy(p_vertices, p_vertices + bs, orig_nodes.begin());
     thrust::device_vector<T> reindex_nodes(bs);
     thrust::device_vector<T> subset;
-    ReindexFunc<T>(ctx, &unique_dst_merge, &src_merge, &subset, &orig_nodes,
-                   &reindex_nodes, bs);
+    ReindexFunc<T>(ctx,
+                   &unique_dst_merge,
+                   &src_merge,
+                   &subset,
+                   &orig_nodes,
+                   &reindex_nodes,
+                   bs);
     auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
     T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
     thrust::copy(reindex_nodes.begin(), reindex_nodes.end(), p_reindex_x);
@@ -526,21 +608,24 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
                      unique_dst_merge_reindex.end());
     thrust::device_vector<T> dst_ptr(unique_dst_size);
     thrust::exclusive_scan(dst_sample_counts_merge.begin(),
-                           dst_sample_counts_merge.end(), dst_ptr.begin());
+                           dst_sample_counts_merge.end(),
+                           dst_ptr.begin());
     constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
     constexpr int TILE_SIZE = BLOCK_WARPS * 16;
     const dim3 block(WARP_SIZE, BLOCK_WARPS);
     const dim3 grid((unique_dst_size + TILE_SIZE - 1) / TILE_SIZE);
 
-    GetDstEdgeCUDAKernel<T, BLOCK_WARPS, TILE_SIZE><<<
-        grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                            ctx.device_context())
-                            .stream()>>>(
-        unique_dst_size,
-        thrust::raw_pointer_cast(unique_dst_merge_reindex.data()),
-        thrust::raw_pointer_cast(dst_sample_counts_merge.data()),
-        thrust::raw_pointer_cast(dst_ptr.data()),
-        thrust::raw_pointer_cast(dst_merge.data()));
+    GetDstEdgeCUDAKernel<T, BLOCK_WARPS, TILE_SIZE>
+        <<<grid,
+           block,
+           0,
+           reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
+               .stream()>>>(
+            unique_dst_size,
+            thrust::raw_pointer_cast(unique_dst_merge_reindex.data()),
+            thrust::raw_pointer_cast(dst_sample_counts_merge.data()),
+            thrust::raw_pointer_cast(dst_ptr.data()),
+            thrust::raw_pointer_cast(dst_merge.data()));
 
     // 8. Give operator's outputs.
     auto* out_src = ctx.Output<Tensor>("Out_Src");
@@ -558,7 +643,7 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(graph_khop_sampler,

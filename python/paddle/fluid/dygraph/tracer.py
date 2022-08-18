@@ -72,6 +72,17 @@ final_state_name_mapping = {
         "axis2": "axis2",
         "out": "Out",
     },
+    "roi_align": {
+        "final_op_name": "final_state_roi_align",
+        "x": "X",
+        "boxes": "ROIs",
+        "boxes_num": "RoisNum",
+        "pooled_height": "pooled_height",
+        "pooled_width": "pooled_width",
+        "spatial_scale": "spatial_scale",
+        "sampling_ratio": "sampling_ratio",
+        "aligned": "aligned",
+    },
     # "one_hot": {
     #     "final_op_name": "final_state_one_hot",
     #     "x": "X",
@@ -178,15 +189,15 @@ class Tracer(core.Tracer):
                     # Replaced outputs by function returns
                     if isinstance(returns[i], list):
                         for j in range(len(returns[i])):
-                            outputs[retname][j].reconstruct_from_(returns[i][j],
-                                                                  False)
+                            outputs[retname][j].reconstruct_from_(
+                                returns[i][j], False)
                     else:
                         if isinstance(outputs[retname], list):
-                            outputs[retname][0].reconstruct_from_(returns[i],
-                                                                  False)
+                            outputs[retname][0].reconstruct_from_(
+                                returns[i], False)
                         else:
-                            outputs[retname].reconstruct_from_(returns[i],
-                                                               False)
+                            outputs[retname].reconstruct_from_(
+                                returns[i], False)
         elif isinstance(returns, list):
             assert len(outputs.keys()) == 1
             key = list(outputs.keys())[0]
@@ -266,8 +277,8 @@ class Tracer(core.Tracer):
                     # Replaced outputs by function returns
                     if isinstance(returns[i], list):
                         for j in range(len(returns[i])):
-                            outputs[retname][j].reconstruct_from_(returns[i][j],
-                                                                  False)
+                            outputs[retname][j].reconstruct_from_(
+                                returns[i][j], False)
                     else:
                         outputs[retname][0].reconstruct_from_(returns[i], False)
         elif isinstance(returns, list):
@@ -305,8 +316,9 @@ class Tracer(core.Tracer):
                                     inplace_map)
         else:
             self.trace(type, inputs, outputs, attrs,
-                       framework._current_expected_place(), self._has_grad and
-                       not stop_gradient, inplace_map if inplace_map else {})
+                       framework._current_expected_place(), self._has_grad
+                       and not stop_gradient,
+                       inplace_map if inplace_map else {})
 
     def train_mode(self):
         self._train_mode = True

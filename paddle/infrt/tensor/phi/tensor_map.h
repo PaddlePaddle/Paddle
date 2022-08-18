@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <unsupported/Eigen/SpecialFunctions>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 

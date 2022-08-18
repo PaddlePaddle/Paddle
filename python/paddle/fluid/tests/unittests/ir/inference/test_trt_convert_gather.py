@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,11 +23,11 @@ import unittest
 
 
 class TrtConvertGatherTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         if len(inputs['input_data'].shape) <= attrs[0]['axis']:
             return False
@@ -35,6 +35,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -74,16 +75,21 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                                 ops=ops,
                                 weights={},
                                 inputs={
-                                    "input_data": TensorConfig(data_gen=partial(
+                                    "input_data":
+                                    TensorConfig(data_gen=partial(
                                         generate_input1, shape)),
-                                    "index_data": TensorConfig(data_gen=partial(
+                                    "index_data":
+                                    TensorConfig(data_gen=partial(
                                         generate_input2, index)),
                                 } if len(input) == 2 else {
-                                    "input_data": TensorConfig(data_gen=partial(
+                                    "input_data":
+                                    TensorConfig(data_gen=partial(
                                         generate_input1, shape)),
-                                    "index_data": TensorConfig(data_gen=partial(
+                                    "index_data":
+                                    TensorConfig(data_gen=partial(
                                         generate_input2, index)),
-                                    "axis_data": TensorConfig(data_gen=partial(
+                                    "axis_data":
+                                    TensorConfig(data_gen=partial(
                                         generate_input3, axis)),
                                 },
                                 outputs=["output_data"])
@@ -92,6 +98,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if len(self.shape) == 1:
                 self.dynamic_shape.min_input_shape = {
@@ -161,8 +168,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                     return 0, 4
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -188,8 +194,8 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             def teller1(program_config, predictor_config):
                 if len(self.dynamic_shape.min_input_shape) != 0:
                     inputs = program_config.inputs
-                    if len(inputs['input_data'].shape) == 1 or len(inputs[
-                            'index_data'].shape) == 1:
+                    if len(inputs['input_data'].shape) == 1 or len(
+                            inputs['index_data'].shape) == 1:
                         return True
                 return False
 

@@ -20,6 +20,7 @@ import argparse
 import os
 import six
 import sys
+
 sys.path.append("..")
 import subprocess
 import traceback
@@ -43,6 +44,7 @@ SEED = 10
 
 
 class TestSyncBatchNormRunnerBase(object):
+
     def get_model(self,
                   main,
                   startup,
@@ -61,9 +63,8 @@ class TestSyncBatchNormRunnerBase(object):
             not_ready_endpoints = []
             for ep in endpoints:
                 ip_port = ep.split(":")
-                with closing(
-                        socket.socket(socket.AF_INET,
-                                      socket.SOCK_STREAM)) as sock:
+                with closing(socket.socket(socket.AF_INET,
+                                           socket.SOCK_STREAM)) as sock:
                     sock.settimeout(2)
                     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     if hasattr(socket, 'SO_REUSEPORT'):
@@ -76,12 +77,13 @@ class TestSyncBatchNormRunnerBase(object):
                         not_ready_endpoints.append(ep)
             if not all_ok:
                 sys.stderr.write("server not ready, wait 3 sec to retry...\n")
-                sys.stderr.write("not ready endpoints:" + str(
-                    not_ready_endpoints) + "\n")
+                sys.stderr.write("not ready endpoints:" +
+                                 str(not_ready_endpoints) + "\n")
                 sys.stderr.flush()
                 time.sleep(3)
             else:
                 break
+
 
 #endpoints should be ["ip1:port1","ip2:port2"]
 
@@ -92,29 +94,26 @@ class TestSyncBatchNormRunnerBase(object):
         if rank == 0 and wait_port:
             self.wait_server_ready(other_endpoints)
         block = program.global_block()
-        hccl_id_var = block.create_var(
-            name=nameGen.generate('hccl_id'),
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        block.append_op(
-            type='c_gen_hccl_id',
-            inputs={},
-            outputs={'Out': hccl_id_var},
-            attrs={
-                'rank': rank,
-                'endpoint': current_endpoint,
-                'other_endpoints': other_endpoints
-            })
-        block.append_op(
-            type='c_comm_init_hccl',
-            inputs={'X': hccl_id_var},
-            outputs={},
-            attrs={
-                'rank': rank,
-                'ring_id': self.global_ring_id,
-                'device_id': int(os.getenv("FLAGS_selected_npus")),
-                'rank_ids': nranks
-            })
+        hccl_id_var = block.create_var(name=nameGen.generate('hccl_id'),
+                                       persistable=True,
+                                       type=core.VarDesc.VarType.RAW)
+        block.append_op(type='c_gen_hccl_id',
+                        inputs={},
+                        outputs={'Out': hccl_id_var},
+                        attrs={
+                            'rank': rank,
+                            'endpoint': current_endpoint,
+                            'other_endpoints': other_endpoints
+                        })
+        block.append_op(type='c_comm_init_hccl',
+                        inputs={'X': hccl_id_var},
+                        outputs={},
+                        attrs={
+                            'rank': rank,
+                            'ring_id': self.global_ring_id,
+                            'device_id': int(os.getenv("FLAGS_selected_npus")),
+                            'rank_ids': nranks
+                        })
 
     def run_trainer(self, args):
         device_id = int(os.getenv("FLAGS_selected_npus", "0"))
@@ -339,8 +338,8 @@ class TestSyncBatchNormRunnerBase(object):
 
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
-        sys.stderr.write("after init, startup_prog: " + startup_prog.to_string(
-            True) + "\n")
+        sys.stderr.write("after init, startup_prog: " +
+                         startup_prog.to_string(True) + "\n")
         train_prog.global_seed(SEED)
         train_prog._sync_with_cpp()
         startup_prog.global_seed(SEED)
@@ -350,8 +349,8 @@ class TestSyncBatchNormRunnerBase(object):
         self.rank = rank
         outs = self.get_model(train_prog, startup_prog, place, layout, SEED,
                               True, only_forward)
-        sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
-            True) + "\n")
+        sys.stderr.write("after get_model, train_prog: " +
+                         train_prog.to_string(True) + "\n")
         sys.stderr.write("after get_model, startup_prog: " +
                          startup_prog.to_string(True) + "\n")
 
@@ -405,6 +404,7 @@ from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
+
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
@@ -413,6 +413,7 @@ class TestDistBase(unittest.TestCase):
         self._python_interp = sys.executable
 
     def _find_free_port(self):
+
         def __free_port():
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as s:
@@ -454,18 +455,16 @@ class TestDistBase(unittest.TestCase):
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
         # print(tr0_cmd)
-        # print(tr1_cmd) 
-        tr0_proc = subprocess.Popen(
-            tr0_cmd.strip().split(),
-            stdout=subprocess.PIPE,
-            stderr=tr0_pipe,
-            env=env0)
+        # print(tr1_cmd)
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr0_pipe,
+                                    env=env0)
 
-        tr1_proc = subprocess.Popen(
-            tr0_cmd.strip().split(),
-            stdout=subprocess.PIPE,
-            stderr=tr1_pipe,
-            env=env1)
+        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr1_pipe,
+                                    env=env1)
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()

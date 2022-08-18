@@ -19,6 +19,7 @@ import paddle.fluid.layers as layers
 
 
 class TestDocString(unittest.TestCase):
+
     def test_layer_doc_string(self):
         print(layers.dropout.__doc__)
 

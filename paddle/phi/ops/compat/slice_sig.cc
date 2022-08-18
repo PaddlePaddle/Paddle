@@ -105,74 +105,74 @@ KernelSignature SliceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("StartsTensor")) {
     if (ctx.HasInput("EndsTensor")) {
       return KernelSignature("slice_grad",
-                             {"Input", GradVarName("Out")},
+                             {"Input", "Out@GRAD"},
                              {"axes",
                               "StartsTensor",
                               "EndsTensor",
                               "infer_flags",
                               "decrease_axis"},
-                             {GradVarName("Input")});
+                             {"Input@GRAD"});
     } else if (ctx.InputSize("EndsTensorList") > 0) {
       return KernelSignature("slice_grad",
-                             {"Input", GradVarName("Out")},
+                             {"Input", "Out@GRAD"},
                              {"axes",
                               "StartsTensor",
                               "EndsTensorList",
                               "infer_flags",
                               "decrease_axis"},
-                             {GradVarName("Input")});
+                             {"Input@GRAD"});
     } else {
       return KernelSignature(
           "slice_grad",
-          {"Input", GradVarName("Out")},
+          {"Input", "Out@GRAD"},
           {"axes", "StartsTensor", "ends", "infer_flags", "decrease_axis"},
-          {GradVarName("Input")});
+          {"Input@GRAD"});
     }
   } else if (ctx.InputSize("StartsTensorList") > 0) {
     if (ctx.HasInput("EndsTensor")) {
       return KernelSignature("slice_grad",
-                             {"Input", GradVarName("Out")},
+                             {"Input", "Out@GRAD"},
                              {"axes",
                               "StartsTensorList",
                               "EndsTensor",
                               "infer_flags",
                               "decrease_axis"},
-                             {GradVarName("Input")});
+                             {"Input@GRAD"});
     } else if (ctx.InputSize("EndsTensorList") > 0) {
       return KernelSignature("slice_grad",
-                             {"Input", GradVarName("Out")},
+                             {"Input", "Out@GRAD"},
                              {"axes",
                               "StartsTensorList",
                               "EndsTensorList",
                               "infer_flags",
                               "decrease_axis"},
-                             {GradVarName("Input")});
+                             {"Input@GRAD"});
     } else {
       return KernelSignature(
           "slice_grad",
-          {"Input", GradVarName("Out")},
+          {"Input", "Out@GRAD"},
           {"axes", "StartsTensorList", "ends", "infer_flags", "decrease_axis"},
-          {GradVarName("Input")});
+          {"Input@GRAD"});
     }
   } else {
     if (ctx.HasInput("EndsTensor")) {
       return KernelSignature(
           "slice_grad",
-          {"Input", GradVarName("Out")},
+          {"Input", "Out@GRAD"},
           {"axes", "starts", "EndsTensor", "infer_flags", "decrease_axis"},
-          {GradVarName("Input")});
+          {"Input@GRAD"});
     } else if (ctx.InputSize("EndsTensorList") > 0) {
       return KernelSignature(
           "slice_grad",
-          {"Input", GradVarName("Out")},
+          {"Input", "Out@GRAD"},
           {"axes", "starts", "EndsTensorList", "infer_flags", "decrease_axis"},
-          {GradVarName("Input")});
+          {"Input@GRAD"});
     } else {
       return KernelSignature(
           "slice_grad",
-          {"Input", GradVarName("Out")},
+          {"Input", "Out@GRAD"},
           {"axes", "starts", "ends", "infer_flags", "decrease_axis"},
-          {GradVarName("Input")});
+          {"Input@GRAD"});
     }
   }
 }

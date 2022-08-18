@@ -19,19 +19,25 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename DeviceContext, typename T, bool is_test,
+template <typename DeviceContext,
+          typename T,
+          bool is_test,
           typename Enable = void>
 class SoftmaxFunctor {
  public:
-  void operator()(const DeviceContext& context, const int axis_dim,
-                  const framework::Tensor* X, framework::Tensor* Y);
+  void operator()(const DeviceContext& context,
+                  const int axis_dim,
+                  const framework::Tensor* X,
+                  framework::Tensor* Y);
 };
 
 template <typename DeviceContext, typename T, typename Enable = void>
 class SoftmaxGradFunctor {
  public:
-  void operator()(const DeviceContext& context, const int axis_dim,
-                  const framework::Tensor* y, const framework::Tensor* y_grad,
+  void operator()(const DeviceContext& context,
+                  const int axis_dim,
+                  const framework::Tensor* y,
+                  const framework::Tensor* y_grad,
                   framework::Tensor* x_grad);
 };
 
@@ -39,15 +45,18 @@ class SoftmaxGradFunctor {
 template <typename T, typename DeviceContext>
 class SoftmaxCUDNNFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor* X,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor* X,
                   framework::Tensor* Y);
 };
 
 template <typename T, typename DeviceContext>
 class SoftmaxGradCUDNNFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor* Y,
-                  const framework::Tensor* y_grad, framework::Tensor* x_grad);
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor* Y,
+                  const framework::Tensor* y_grad,
+                  framework::Tensor* x_grad);
 };
 
 #endif

@@ -14,12 +14,10 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/operators/conv_miopen_helper.h"
 #else
@@ -27,13 +25,12 @@
 #endif
 
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/kernels/funcs/padding.h"
-
-#include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 
 DECLARE_bool(cudnn_deterministic);
 DECLARE_int64(conv_workspace_size_limit);

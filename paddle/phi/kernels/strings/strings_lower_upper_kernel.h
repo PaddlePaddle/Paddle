@@ -17,7 +17,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/infermeta/strings/unary.h"
 #include "paddle/phi/kernels/strings/case_utils.h"
@@ -94,7 +93,8 @@ struct AsciiCaseConverter {
 };
 
 template <typename DeviceContext,
-          template <typename DeviceContextT> typename CharConverter>
+          template <typename DeviceContextT>
+          typename CharConverter>
 struct UTF8CaseConverter {
   void operator()(const DeviceContext& dev_ctx,
                   const pstring* in,

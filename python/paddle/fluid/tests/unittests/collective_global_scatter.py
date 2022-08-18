@@ -28,6 +28,7 @@ paddle.enable_static()
 
 
 class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 
@@ -39,14 +40,15 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
             n_expert = 2
             world_size = 2
             tot_expert = n_expert * world_size
-            local_input_buf = paddle.static.data(
-                name="local_input_buf", shape=[-1, in_feat], dtype="float32")
-            local_expert_count = paddle.static.data(
-                name="local_expert_count", shape=[tot_expert], dtype="int64")
+            local_input_buf = paddle.static.data(name="local_input_buf",
+                                                 shape=[-1, in_feat],
+                                                 dtype="float32")
+            local_expert_count = paddle.static.data(name="local_expert_count",
+                                                    shape=[tot_expert],
+                                                    dtype="int64")
             global_expert_count = []
             paddle.distributed.alltoall(
-                paddle.split(
-                    local_expert_count, 2, axis=0),
+                paddle.split(local_expert_count, 2, axis=0),
                 global_expert_count)
             global_expert_count = paddle.concat(global_expert_count, axis=0)
             output = paddle.distributed.utils.global_scatter(
@@ -75,8 +77,8 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
         n_expert = 2
         world_size = 2
         tot_expert = n_expert * world_size
-        local_expert_count = np.random.randint(
-            1, 4, size=tot_expert).astype("int64")
+        local_expert_count = np.random.randint(1, 4,
+                                               size=tot_expert).astype("int64")
         fwd_expert_count = sum(local_expert_count)
         local_input_buf = np.random.rand(fwd_expert_count,
                                          in_feat).astype("float32")

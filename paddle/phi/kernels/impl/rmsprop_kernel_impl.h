@@ -16,12 +16,11 @@
 
 #include <math.h>
 
-#include "paddle/phi/kernels/rmsprop_kernel.h"
-
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/rmsprop_kernel.h"
 
 namespace phi {
 
@@ -146,7 +145,7 @@ void RmspropDenseKernel(const Context &ctx,
                         const DenseTensor &grad,
                         const DenseTensor &moment,
                         const DenseTensor &learning_rate,
-                        paddle::optional<const DenseTensor &> mean_grad_opt,
+                        const paddle::optional<DenseTensor> &mean_grad_opt,
                         float epsilon_t,
                         float decay_t,
                         float momentum_t,
@@ -196,11 +195,19 @@ void RmspropDenseKernel(const Context &ctx,
     if (centered) {
       auto mg_tensor = mean_grad_opt.get_ptr();
       auto mg = EigenVector<T>::Flatten(*mg_tensor);
-      PADDLE_ENFORCE_EQ(
-          mg_tensor,
-          mean_grad_out,
-          phi::errors::InvalidArgument(
-              "MeanGrad and MeanGradOut must be the same Tensor"));
+      if (mg_tensor) {
+        PADDLE_ENFORCE_EQ(
+            mg_tensor->Holder(),
+            mean_grad_out->Holder(),
+            phi::errors::InvalidArgument(
+                "MeanGrad and MeanGradOut must be the same Tensor"));
+      } else {
+        PADDLE_ENFORCE_EQ(
+            mg_tensor,
+            mean_grad_out,
+            phi::errors::InvalidArgument(
+                "MeanGrad and MeanGradOut must be the same Tensor"));
+      }
       auto mg_out = EigenVector<T>::Flatten(*mean_grad_out);
 
       mg_out.device(place) = rho * mg + (1 - rho) * g;
@@ -217,12 +224,20 @@ void RmspropDenseKernel(const Context &ctx,
     funcs::ForRange<Context> for_range(ctx, limit);
     if (centered) {
       auto mg_tensor = mean_grad_opt.get_ptr();
+      if (mg_tensor) {
+        PADDLE_ENFORCE_EQ(
+            mg_tensor->Holder(),
+            mean_grad_out->Holder(),
+            phi::errors::InvalidArgument(
+                "MeanGrad and MeanGradOut must be the same Tensor"));
+      } else {
+        PADDLE_ENFORCE_EQ(
+            mg_tensor,
+            mean_grad_out,
+            phi::errors::InvalidArgument(
+                "MeanGrad and MeanGradOut must be the same Tensor"));
+      }
 
-      PADDLE_ENFORCE_EQ(
-          mg_tensor,
-          mean_grad_out,
-          phi::errors::InvalidArgument(
-              "MeanGrad and MeanGradOut must be the same Tensor"));
       for_range(CenteredRmspropFunctor<T, DenseRmspropGradFunctor<T>>(
           ctx.template Alloc<T>(param_out),
           ctx.template Alloc<T>(mean_square_out),
@@ -254,7 +269,7 @@ void RmspropSparseKernel(const Context &ctx,
                          const SelectedRows &grad,
                          const DenseTensor &moment,
                          const DenseTensor &learning_rate,
-                         paddle::optional<const DenseTensor &> mean_grad_opt,
+                         const paddle::optional<DenseTensor> &mean_grad_opt,
                          float epsilon_t,
                          float decay_t,
                          float momentum_t,
@@ -305,11 +320,20 @@ void RmspropSparseKernel(const Context &ctx,
 
   if (centered) {
     auto mg_tensor = mean_grad_opt.get_ptr();
+    if (mg_tensor) {
+      PADDLE_ENFORCE_EQ(
+          mg_tensor->Holder(),
+          mean_grad_out->Holder(),
+          phi::errors::InvalidArgument(
+              "MeanGrad and MeanGradOut must be the same Tensor"));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          mg_tensor,
+          mean_grad_out,
+          phi::errors::InvalidArgument(
+              "MeanGrad and MeanGradOut must be the same Tensor"));
+    }
 
-    PADDLE_ENFORCE_EQ(mg_tensor,
-                      mean_grad_out,
-                      phi::errors::InvalidArgument(
-                          "MeanGrad and MeanGradOut must be the same Tensor"));
     for_range(CenteredRmspropFunctor<T, SparseRmspropGradFunctor<T>>(
         ctx.template Alloc<T>(param_out),
         ctx.template Alloc<T>(mean_square_out),

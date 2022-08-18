@@ -73,8 +73,11 @@ def default_mapper(is_train, sample):
     '''
     img, label = sample
     img = load_image_bytes(img)
-    img = simple_transform(
-        img, 256, 224, is_train, mean=[103.94, 116.78, 123.68])
+    img = simple_transform(img,
+                           256,
+                           224,
+                           is_train,
+                           mean=[103.94, 116.78, 123.68])
     return img.flatten().astype('float32'), label
 
 
@@ -164,15 +167,14 @@ def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     :return: train data reader
     :rtype: callable
     '''
-    return reader_creator(
-        download(DATA_URL, 'flowers', DATA_MD5),
-        download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5),
-        TRAIN_FLAG,
-        mapper,
-        buffered_size,
-        use_xmap,
-        cycle=cycle)
+    return reader_creator(download(DATA_URL, 'flowers', DATA_MD5),
+                          download(LABEL_URL, 'flowers', LABEL_MD5),
+                          download(SETID_URL, 'flowers', SETID_MD5),
+                          TRAIN_FLAG,
+                          mapper,
+                          buffered_size,
+                          use_xmap,
+                          cycle=cycle)
 
 
 @deprecated(
@@ -198,15 +200,14 @@ def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     :return: test data reader
     :rtype: callable
     '''
-    return reader_creator(
-        download(DATA_URL, 'flowers', DATA_MD5),
-        download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5),
-        TEST_FLAG,
-        mapper,
-        buffered_size,
-        use_xmap,
-        cycle=cycle)
+    return reader_creator(download(DATA_URL, 'flowers', DATA_MD5),
+                          download(LABEL_URL, 'flowers', LABEL_MD5),
+                          download(SETID_URL, 'flowers', SETID_MD5),
+                          TEST_FLAG,
+                          mapper,
+                          buffered_size,
+                          use_xmap,
+                          cycle=cycle)
 
 
 @deprecated(
@@ -230,11 +231,10 @@ def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     :return: test data reader
     :rtype: callable
     '''
-    return reader_creator(
-        download(DATA_URL, 'flowers', DATA_MD5),
-        download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5), VALID_FLAG, mapper,
-        buffered_size, use_xmap)
+    return reader_creator(download(DATA_URL, 'flowers', DATA_MD5),
+                          download(LABEL_URL, 'flowers', LABEL_MD5),
+                          download(SETID_URL, 'flowers', SETID_MD5), VALID_FLAG,
+                          mapper, buffered_size, use_xmap)
 
 
 def fetch():

@@ -25,6 +25,7 @@ import paddle.fluid.dygraph as dg
 import paddle.static as static
 import scipy.stats
 from numpy.random import random as rand
+
 sys.path.append("../")
 from op_test import OpTest
 from paddle.fluid import Program, program_guard
@@ -55,6 +56,5 @@ class TestDirichletOp(OpTest):
             scipy.stats.kstest(
                 outs[0][:, 0],
                 # scipy dirichlet have not cdf, use beta to replace it.
-                scipy.stats.beta(
-                    a=self.alpha[0], b=self.alpha[1]).cdf)[0],
+                scipy.stats.beta(a=self.alpha[0], b=self.alpha[1]).cdf)[0],
             0.01)

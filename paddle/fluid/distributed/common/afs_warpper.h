@@ -19,7 +19,8 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/distributed/ps.pb.h"
+
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -128,11 +129,15 @@ class AfsClient {
   AfsClient(const AfsClient&) = delete;
 
   int initialize(const FsClientParameter& fs_client_param);
-  int initialize(const std::string& hadoop_bin, const std::string& uri,
-                 const std::string& user, const std::string& passwd,
+  int initialize(const std::string& hadoop_bin,
+                 const std::string& uri,
+                 const std::string& user,
+                 const std::string& passwd,
                  int buffer_size_param = (1L << 25));
-  int initialize(const std::string& hadoop_bin, const std::string& uri,
-                 const std::string& ugi, int buffer_size_param = (1L << 25));
+  int initialize(const std::string& hadoop_bin,
+                 const std::string& uri,
+                 const std::string& ugi,
+                 int buffer_size_param = (1L << 25));
 
   // open file in 'w' or 'r'
   std::shared_ptr<FsReadChannel> open_r(const FsChannelConfig& config,

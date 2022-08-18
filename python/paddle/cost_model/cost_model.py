@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ from paddle.fluid import core
 
 
 class CostModel():
+
     def __init__(self):
         pass
 
@@ -29,10 +30,11 @@ class CostModel():
 
         main_program = static.Program()
         startup_program = static.Program()
-        with static.program_guard(
-                main_program=main_program, startup_program=startup_program):
-            data = paddle.static.data(
-                name='X', shape=[None, 1], dtype='float32')
+        with static.program_guard(main_program=main_program,
+                                  startup_program=startup_program):
+            data = paddle.static.data(name='X',
+                                      shape=[None, 1],
+                                      dtype='float32')
             hidden = paddle.static.nn.fc(data, 10)
             loss = paddle.mean(hidden)
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
@@ -59,8 +61,8 @@ class CostModel():
         cost_data = cost_model.ProfileMeasure(device)
 
     def static_cost_data(self):
-        static_cost_data_path = os.path.join(
-            os.path.dirname(__file__), "static_op_benchmark.json")
+        static_cost_data_path = os.path.join(os.path.dirname(__file__),
+                                             "static_op_benchmark.json")
         with open(static_cost_data_path, 'r') as load_f:
             load_dict = json.load(load_f)
         self._static_cost_data = load_dict

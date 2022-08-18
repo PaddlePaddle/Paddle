@@ -15,8 +15,7 @@ namespace phi {
 
 KernelSignature UnStackGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "unstack_grad", {GradVarName("Y")}, {"axis"}, {GradVarName("X")});
+  return KernelSignature("unstack_grad", {"Y@GRAD"}, {"axis"}, {"X@GRAD"});
 }
 
 }  // namespace phi

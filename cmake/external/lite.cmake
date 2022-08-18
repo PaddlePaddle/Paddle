@@ -18,39 +18,41 @@ if(NOT LINUX)
   return()
 endif()
 
-if (LITE_WITH_XPU)
+if(LITE_WITH_XPU)
   add_definitions(-DLITE_SUBGRAPH_WITH_XPU)
-  IF(WITH_AARCH64)
-    SET(XPU_SDK_ENV "kylin_aarch64")
-  ELSEIF(WITH_SUNWAY)
-    SET(XPU_SDK_ENV "deepin_sw6_64")
-  ELSEIF(WITH_BDCENTOS)
-    SET(XPU_SDK_ENV "bdcentos_x86_64")
-  ELSEIF(WITH_UBUNTU)
-    SET(XPU_SDK_ENV "ubuntu_x86_64")
-  ELSEIF(WITH_CENTOS)
-    SET(XPU_SDK_ENV "centos7_x86_64")
-  ELSE ()
-    SET(XPU_SDK_ENV "ubuntu_x86_64")
-  ENDIF()
-endif()
-
-if (LITE_WITH_NNADAPTER)
-  add_definitions(-DLITE_SUBGRAPH_WITH_NNADAPTER) 
-  if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
-    add_definitions(-DLITE_SUBGRAPH_WITH_NPU)
-    set(NPU_SDK_ROOT "/usr/local/Ascend/ascend-toolkit/latest" CACHE STRING "default NPU SDK ROOT")
+  if(WITH_AARCH64)
+    set(XPU_SDK_ENV "kylin_aarch64")
+  elseif(WITH_SUNWAY)
+    set(XPU_SDK_ENV "deepin_sw6_64")
+  elseif(WITH_BDCENTOS)
+    set(XPU_SDK_ENV "bdcentos_x86_64")
+  elseif(WITH_UBUNTU)
+    set(XPU_SDK_ENV "ubuntu_x86_64")
+  elseif(WITH_CENTOS)
+    set(XPU_SDK_ENV "centos7_x86_64")
+  else()
+    set(XPU_SDK_ENV "ubuntu_x86_64")
   endif()
 endif()
 
-if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
+if(LITE_WITH_NNADAPTER)
+  add_definitions(-DLITE_SUBGRAPH_WITH_NNADAPTER)
+  if(NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
+    add_definitions(-DLITE_SUBGRAPH_WITH_NPU)
+    set(NPU_SDK_ROOT
+        "/usr/local/Ascend/ascend-toolkit/latest"
+        CACHE STRING "default NPU SDK ROOT")
+  endif()
+endif()
+
+if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
   set(LITE_PREFIX_DIR ${THIRD_PARTY_PATH}/lite)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG 4ab64daecc11fbf74fffdc6a4733f388472e7d5d)
+    set(LITE_GIT_TAG 81ef66554099800c143a0feff6e0a491b3b0d12e)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -61,109 +63,115 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   if(WITH_ARM)
     set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
     message(WARNING "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
-    set(LITE_OPTIONAL_ARGS -DWITH_MKL=OFF
-                           -DLITE_WITH_CUDA=OFF
-                           -DWITH_MKLDNN=OFF
-                           -DLITE_WITH_X86=OFF
-                           -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON
-                           -DLITE_WITH_PROFILE=OFF
-                           -DARM_TARGET_OS=armlinux
-                           -DWITH_LITE=ON
-                           -DWITH_PYTHON=OFF
-                           -DWITH_TESTING=OFF
-                           -DLITE_BUILD_EXTRA=ON
-                           -DLITE_WITH_XPU=${LITE_WITH_XPU}
-                           -DXPU_SDK_URL=${XPU_BASE_URL}
-                           -DXPU_SDK_ENV=${XPU_SDK_ENV}
-                           -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
-                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}
-                           -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
-                           -DLITE_WITH_CODE_META_INFO=OFF
-                           -DLITE_WITH_ARM=ON)
+    set(LITE_OPTIONAL_ARGS
+        -DWITH_MKL=OFF
+        -DLITE_WITH_CUDA=OFF
+        -DWITH_MKLDNN=OFF
+        -DLITE_WITH_X86=OFF
+        -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=ON
+        -DLITE_WITH_PROFILE=OFF
+        -DARM_TARGET_OS=armlinux
+        -DWITH_LITE=ON
+        -DWITH_PYTHON=OFF
+        -DWITH_TESTING=OFF
+        -DLITE_BUILD_EXTRA=ON
+        -DLITE_WITH_XPU=${LITE_WITH_XPU}
+        -DXPU_SDK_URL=${XPU_BASE_URL}
+        -DXPU_SDK_ENV=${XPU_SDK_ENV}
+        -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
+        -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}
+        -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
+        -DLITE_WITH_CODE_META_INFO=OFF
+        -DLITE_WITH_ARM=ON)
     ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
-      GIT_TAG             ${LITE_GIT_TAG}
-      PREFIX              ${LITE_PREFIX_DIR}
-      PATCH_COMMAND       mkdir -p ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake
-      UPDATE_COMMAND      ""
-      BUILD_COMMAND       ${LITE_BUILD_COMMAND}
-      INSTALL_COMMAND     ""
-      CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                          -DCMAKE_CXX_FLAGS=${LITE_CMAKE_CXX_FLAGS}
-                          -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
-                          -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
-                          -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                          -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
-                          -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
-                          -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                          -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-                          ${EXTERNAL_OPTIONAL_ARGS}
-                          ${LITE_OPTIONAL_ARGS}
-    )
+      GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
+      GIT_TAG ${LITE_GIT_TAG}
+      PREFIX ${LITE_PREFIX_DIR}
+      PATCH_COMMAND
+        mkdir -p ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code && touch
+        ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc
+        && sed -i "/aarch64-linux-gnu-gcc/d"
+        ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake && sed -i
+        "/aarch64-linux-gnu-g++/d"
+        ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake
+      UPDATE_COMMAND ""
+      BUILD_COMMAND ${LITE_BUILD_COMMAND}
+      INSTALL_COMMAND ""
+      CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                 -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                 -DCMAKE_CXX_FLAGS=${LITE_CMAKE_CXX_FLAGS}
+                 -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                 -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+                 -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                 -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                 -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+                 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                 -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                 ${EXTERNAL_OPTIONAL_ARGS}
+                 ${LITE_OPTIONAL_ARGS})
   else()
     set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
-    set(LITE_OPTIONAL_ARGS -DWITH_MKL=ON
-                           -DLITE_WITH_CUDA=${WITH_GPU}
-                           -DWITH_MKLDNN=OFF
-                           -DLITE_WITH_X86=ON
-                           -DLITE_WITH_PROFILE=OFF
-                           -DWITH_LITE=OFF
-                           -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF
-                           -DWITH_PYTHON=OFF
-                           -DWITH_TESTING=OFF
-                           -DLITE_BUILD_EXTRA=ON
-                           -DCUDNN_ROOT=${CUDNN_ROOT}
-                           -DLITE_WITH_STATIC_CUDA=OFF
-                           -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
-                           -DLITE_WITH_XPU=${LITE_WITH_XPU}
-                           -DXPU_SDK_URL=${XPU_BASE_URL}
-                           -DXPU_SDK_ENV=${XPU_SDK_ENV}
-                           -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
-                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}
-                           -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
-                           -DLITE_WITH_CODE_META_INFO=OFF
-                           -DLITE_WITH_ARM=OFF)
+    set(LITE_OPTIONAL_ARGS
+        -DWITH_MKL=ON
+        -DLITE_WITH_CUDA=OFF
+        -DWITH_MKLDNN=OFF
+        -DLITE_WITH_X86=ON
+        -DLITE_WITH_PROFILE=OFF
+        -DWITH_LITE=OFF
+        -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF
+        -DWITH_PYTHON=OFF
+        -DWITH_TESTING=OFF
+        -DLITE_BUILD_EXTRA=ON
+        -DLITE_WITH_XPU=${LITE_WITH_XPU}
+        -DXPU_SDK_URL=${XPU_BASE_URL}
+        -DXPU_SDK_ENV=${XPU_SDK_ENV}
+        -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
+        -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}
+        -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
+        -DLITE_WITH_CODE_META_INFO=OFF
+        -DLITE_WITH_ARM=OFF)
 
     ExternalProject_Add(
-        ${LITE_PROJECT}
-        ${EXTERNAL_PROJECT_LOG_ARGS}
-        GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
-        GIT_TAG             ${LITE_GIT_TAG}
-        PREFIX              ${LITE_PREFIX_DIR}
-        UPDATE_COMMAND      ""
-        PATCH_COMMAND       sed -i "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?" ${LITE_PREFIX_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py
-        BUILD_COMMAND       ${LITE_BUILD_COMMAND}
-        INSTALL_COMMAND     ""
-        CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                            -DCMAKE_CXX_FLAGS=${LITE_CMAKE_CXX_FLAGS}
-                            -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
-                            -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
-                            -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                            -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
-                            -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
-                            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                            -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-                            ${EXTERNAL_OPTIONAL_ARGS}
-                            ${LITE_OPTIONAL_ARGS}
-    )
+      ${LITE_PROJECT}
+      ${EXTERNAL_PROJECT_LOG_ARGS}
+      GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
+      GIT_TAG ${LITE_GIT_TAG}
+      PREFIX ${LITE_PREFIX_DIR}
+      UPDATE_COMMAND ""
+      PATCH_COMMAND
+        sed -i
+        "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?"
+        ${LITE_PREFIX_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py
+      BUILD_COMMAND ${LITE_BUILD_COMMAND}
+      INSTALL_COMMAND ""
+      CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                 -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                 -DCMAKE_CXX_FLAGS=${LITE_CMAKE_CXX_FLAGS}
+                 -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                 -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+                 -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                 -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                 -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+                 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                 -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                 ${EXTERNAL_OPTIONAL_ARGS}
+                 ${LITE_OPTIONAL_ARGS})
   endif()
-  ExternalProject_Get_property(${LITE_PROJECT} BINARY_DIR)
-  ExternalProject_Get_property(${LITE_PROJECT} SOURCE_DIR)
+  ExternalProject_Get_Property(${LITE_PROJECT} BINARY_DIR)
+  ExternalProject_Get_Property(${LITE_PROJECT} SOURCE_DIR)
   set(LITE_BINARY_DIR ${BINARY_DIR})
   set(LITE_SOURCE_DIR ${SOURCE_DIR})
 
 endif()
 
-if (WITH_ARM)
+if(WITH_ARM)
   if(LITE_WITH_XPU)
     set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.xpu)
   elseif(LITE_WITH_NNADAPTER)
     message("Enable LITE_WITH_NNADAPTER")
-    if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
+    if(NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
       set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.nnadapter)
     endif()
   else()
@@ -184,22 +192,32 @@ endif()
 
 function(external_lite_libs alias path)
   add_library(${alias} SHARED IMPORTED GLOBAL)
-  SET_PROPERTY(TARGET ${alias} PROPERTY IMPORTED_LOCATION
-               ${path})
-  if (LITE_PROJECT)
+  set_property(TARGET ${alias} PROPERTY IMPORTED_LOCATION ${path})
+  if(LITE_PROJECT)
     add_dependencies(${alias} ${LITE_PROJECT})
   endif()
 endfunction()
 
-external_lite_libs(lite_full_static ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so)
-set(LITE_SHARED_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so)
+external_lite_libs(
+  lite_full_static
+  ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
+)
+set(LITE_SHARED_LIB
+    ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
+)
 
-if (LITE_WITH_NNADAPTER)
-  set(LITE_NNADAPTER_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so)
-  if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
-    external_lite_libs(lite_nnadapter ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
+if(LITE_WITH_NNADAPTER)
+  set(LITE_NNADAPTER_LIB
+      ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so)
+  if(NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
+    external_lite_libs(
+      lite_nnadapter
+      ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so
+      ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
     set(LITE_DEPS lite_full_static lite_nnadapter)
-    set(LITE_NNADAPTER_NPU_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
+    set(LITE_NNADAPTER_NPU_LIB
+        ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so
+    )
   endif()
 else()
   set(LITE_DEPS lite_full_static)

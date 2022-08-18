@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
@@ -83,7 +84,6 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
 
   Update();
 }
-
 void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
                                   int device_id) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -99,21 +99,28 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   Update();
 }
 
-void AnalysisConfig::DisableGpu() {
-  use_gpu_ = false;
-
+void AnalysisConfig::SetExecStream(void *stream) {
+  PADDLE_ENFORCE_NOT_NULL(
+      stream,
+      platform::errors::InvalidArgument("`stream` should not be nullptr"));
+  exec_stream_ = stream;
+  use_external_stream_ = true;
   Update();
 }
 
-void AnalysisConfig::Exp_EnableUseGpuFp16(
-    std::unordered_set<std::string> op_list) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  use_gpu_fp16_ = true;
-  gpu_fp16_disabled_op_types_.insert(op_list.begin(), op_list.end());
-#else
-  LOG(ERROR) << "Please compile with gpu to Exp_EnableUseGpuFp16()";
-  use_gpu_fp16_ = false;
-#endif
+void *AnalysisConfig::GetExecStream() const {
+  PADDLE_ENFORCE_NOT_NULL(
+      exec_stream_,
+      platform::errors::InvalidArgument("`stream` should not be nullptr"));
+  return exec_stream_;
+}
+
+bool AnalysisConfig::external_stream_enabled() const {
+  return use_external_stream_;
+}
+
+void AnalysisConfig::DisableGpu() {
+  use_gpu_ = false;
 
   Update();
 }
@@ -124,8 +131,10 @@ void AnalysisConfig::DisableFCPadding() {
   Update();
 }
 
-void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
-                               bool autotune, const std::string &autotune_file,
+void AnalysisConfig::EnableXpu(int l3_workspace_size,
+                               bool locked,
+                               bool autotune,
+                               const std::string &autotune_file,
                                const std::string &precision,
                                bool adaptive_seqlen) {
   use_xpu_ = true;
@@ -139,7 +148,8 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
 }
 
 void AnalysisConfig::SetXpuDeviceId(int device_id) {
-  PADDLE_ENFORCE_EQ(use_xpu_, true,
+  PADDLE_ENFORCE_EQ(use_xpu_,
+                    true,
                     platform::errors::PreconditionNotMet(
                         "Should call EnableXpu before SetXpuDeviceId."));
   xpu_device_id_ = device_id;
@@ -158,7 +168,21 @@ void AnalysisConfig::EnableNpu(int device_id) {
   Update();
 }
 
-void AnalysisConfig::EnableIpu(int ipu_device_num, int ipu_micro_batch_size,
+void AnalysisConfig::EnableCustomDevice(const std::string &device_type,
+                                        int device_id) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  use_custom_device_ = true;
+  custom_device_id_ = device_id;
+  custom_device_type_ = device_type;
+#else
+  LOG(ERROR) << "Please compile with CustomDevice to EnableCustomDevice()";
+  use_custom_device_ = false;
+#endif
+  Update();
+}
+
+void AnalysisConfig::EnableIpu(int ipu_device_num,
+                               int ipu_micro_batch_size,
                                bool ipu_enable_pipelining,
                                int ipu_batches_per_step) {
   enable_ir_optim_ = true;
@@ -172,7 +196,8 @@ void AnalysisConfig::EnableIpu(int ipu_device_num, int ipu_micro_batch_size,
   Update();
 }
 
-void AnalysisConfig::SetIpuConfig(bool ipu_enable_fp16, int ipu_replica_num,
+void AnalysisConfig::SetIpuConfig(bool ipu_enable_fp16,
+                                  int ipu_replica_num,
                                   float ipu_available_memory_proportion,
                                   bool ipu_enable_half_partial) {
   ipu_enable_fp16_ = ipu_enable_fp16;
@@ -225,11 +250,14 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_fc_padding_);
   // GPU related.
   CP_MEMBER(use_gpu_);
+  CP_MEMBER(use_external_stream_);
+  CP_MEMBER(exec_stream_);
   CP_MEMBER(use_cudnn_);
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
-  CP_MEMBER(use_gpu_fp16_);
-  CP_MEMBER(gpu_fp16_disabled_op_types_);
+
+  // Mixed related.
+  CP_MEMBER(mixed_black_list_);
 
   CP_MEMBER(enable_memory_optim_);
   // TensorRT related.
@@ -243,8 +271,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
-  CP_MEMBER(trt_use_oss_);
+  CP_MEMBER(trt_use_varseqlen_);
   CP_MEMBER(trt_with_interleaved_);
+  CP_MEMBER(tensorrt_transformer_posid_);
+  CP_MEMBER(tensorrt_transformer_maskid_);
   CP_MEMBER(trt_tuned_dynamic_shape_);
   CP_MEMBER(trt_allow_build_at_runtime_);
   CP_MEMBER(collect_shape_range_info_);
@@ -324,8 +354,14 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // fleet exe related
   CP_MEMBER(dist_config_);
 
+  // custom device related.
+  CP_MEMBER(use_custom_device_);
+  CP_MEMBER(custom_device_type_);
+  CP_MEMBER(custom_device_id_);
+
   if (use_gpu_) {
-    PADDLE_ENFORCE_EQ(use_xpu_, false,
+    PADDLE_ENFORCE_EQ(use_xpu_,
+                      false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
     pass_builder_.reset(new GpuPassStrategy(
@@ -365,12 +401,18 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
     std::sort(all_passes.begin(), all_passes.end());
     std::sort(other_passes.begin(), other_passes.end());
     std::vector<std::string> deleted_passes;
-    std::set_difference(all_passes.begin(), all_passes.end(),
-                        other_passes.begin(), other_passes.end(),
+    std::set_difference(all_passes.begin(),
+                        all_passes.end(),
+                        other_passes.begin(),
+                        other_passes.end(),
                         std::inserter(deleted_passes, deleted_passes.begin()));
     for (auto ps : deleted_passes) {
       pass_builder_->DeletePass(ps);
     }
+  }
+
+  for (auto &delete_pass : other.pass_builder()->GetAllDeletedPasses()) {
+    pass_builder_->DeletePass(delete_pass);
   }
 }
 
@@ -475,8 +517,11 @@ MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
 }
 
 void AnalysisConfig::EnableTensorRtEngine(
-    int workspace_size, int max_batch_size, int min_subgraph_size,
-    AnalysisConfig::Precision precision_mode, bool use_static,
+    int64_t workspace_size,
+    int max_batch_size,
+    int min_subgraph_size,
+    AnalysisConfig::Precision precision_mode,
+    bool use_static,
     bool use_calib_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!use_gpu()) {
@@ -528,7 +573,7 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
-void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
+void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
@@ -539,7 +584,8 @@ void AnalysisConfig::Update() {
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
       ((use_npu() ^ pass_builder_->use_npu())) ||
-      ((use_ipu() ^ pass_builder_->use_ipu()))) {
+      ((use_ipu() ^ pass_builder_->use_ipu())) ||
+      ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
 
@@ -552,16 +598,25 @@ void AnalysisConfig::Update() {
       pass_builder_.reset(new IpuPassStrategy);
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
-          use_gpu(), false,
+          use_gpu(),
+          false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
       pass_builder_.reset(new XpuPassStrategy);
     } else if (use_npu()) {
       PADDLE_ENFORCE_EQ(
-          use_gpu(), false,
+          use_gpu(),
+          false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between GPU and NPU."));
       pass_builder_.reset(new NpuPassStrategy);
+    } else if (use_custom_device()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(),
+          false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and CustomDevice."));
+      pass_builder_.reset(new CustomDevicePassStrategy);
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
@@ -576,18 +631,28 @@ void AnalysisConfig::Update() {
           *static_cast<IpuPassStrategy *>(pass_builder_.get())));
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
-          use_gpu(), false,
+          use_gpu(),
+          false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
       pass_builder_.reset(new XpuPassStrategy(
           *static_cast<XpuPassStrategy *>(pass_builder_.get())));
     } else if (use_npu()) {
       PADDLE_ENFORCE_EQ(
-          use_gpu(), false,
+          use_gpu(),
+          false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between GPU and NPU."));
       pass_builder_.reset(new NpuPassStrategy(
           *static_cast<NpuPassStrategy *>(pass_builder_.get())));
+    } else if (use_custom_device()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(),
+          false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and CustomDevice."));
+      pass_builder_.reset(new CustomDevicePassStrategy(
+          *static_cast<CustomDevicePassStrategy *>(pass_builder_.get())));
     } else {
       pass_builder_.reset(new CpuPassStrategy(
           *static_cast<CpuPassStrategy *>(pass_builder_.get())));
@@ -618,20 +683,6 @@ void AnalysisConfig::Update() {
       LOG(ERROR) << "EnableCUDNN() only works when IR optimization is enabled.";
     } else {
       pass_builder()->EnableCUDNN();
-    }
-#endif
-  }
-
-  if (use_gpu_fp16_) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (!enable_ir_optim_) {
-      LOG(ERROR) << "Exp_EnableUseGpuFp16() only works when IR optimization is "
-                    "enabled.";
-    } else if (!use_gpu()) {
-      LOG(ERROR)
-          << "Exp_EnableUseGpuFp16() only works when use_gpu is enabled.";
-    } else {
-      pass_builder()->Exp_EnableUseGpuFp16();
     }
 #endif
   }
@@ -694,7 +745,8 @@ void AnalysisConfig::Update() {
 #endif
     pass_builder()->ClearPasses();
     for (const auto &pass : kLiteSubgraphPasses) {
-      if (std::find(lite_passes_filter_.begin(), lite_passes_filter_.end(),
+      if (std::find(lite_passes_filter_.begin(),
+                    lite_passes_filter_.end(),
                     pass) == lite_passes_filter_.end()) {
         pass_builder()->AppendPass(pass);
       }
@@ -703,7 +755,8 @@ void AnalysisConfig::Update() {
 
   if (use_xpu_) {
 #if (defined LITE_SUBGRAPH_WITH_XPU) || (defined PADDLE_WITH_XPU)
-    PADDLE_ENFORCE_EQ(use_gpu_, false,
+    PADDLE_ENFORCE_EQ(use_gpu_,
+                      false,
                       platform::errors::Unavailable(
                           "Currently, XPU and GPU cannot be enabled in the "
                           "same analysis configuration."));
@@ -716,7 +769,8 @@ void AnalysisConfig::Update() {
 
   if (use_npu_) {
 #if defined(PADDLE_WITH_ASCEND_CL) || defined(LITE_SUBGRAPH_WITH_NPU)
-    PADDLE_ENFORCE_EQ(use_gpu_, false,
+    PADDLE_ENFORCE_EQ(use_gpu_,
+                      false,
                       platform::errors::Unavailable(
                           "Currently, NPU and GPU cannot be enabled in the "
                           "same analysis configuration."));
@@ -733,7 +787,13 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_IPU compiled."));
 #endif
   }
-
+  if (use_custom_device_) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to enable the custom device "
+        "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
+#endif
+  }
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }
@@ -746,8 +806,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
-  ss << use_gpu_fp16_;
-  for (auto &item : gpu_fp16_disabled_op_types_) ss << item;
+  ss << use_external_stream_;
+  ss << exec_stream_;
   ss << use_fc_padding_;
   ss << gpu_device_id_;
   ss << xpu_device_id_;
@@ -818,6 +878,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_available_memory_proportion_;
   ss << ipu_enable_half_partial_;
 
+  for (auto &op : mixed_black_list_) ss << op.c_str();
   return ss.str();
 }
 
@@ -894,7 +955,8 @@ void AnalysisConfig::DisableGlogInfo() {
 }
 
 void AnalysisConfig::EnableLiteEngine(
-    AnalysisConfig::Precision precision_mode, bool zero_copy,
+    AnalysisConfig::Precision precision_mode,
+    bool zero_copy,
     const std::vector<std::string> &passes_filter,
     const std::vector<std::string> &ops_filter) {
   use_lite_ = true;
@@ -945,6 +1007,8 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
+        {"use_external_stream", use_external_stream_ ? "true" : "false"});
+    os.InsertRow(
         {"thread_local_stream", thread_local_stream_ ? "true" : "false"});
 
     os.InsertRow({"use_tensorrt", use_tensorrt_ ? "true" : "false"});
@@ -992,13 +1056,17 @@ std::string AnalysisConfig::Summary() {
       // dynamic_shape
       os.InsertRow({"tensorrt_enable_dynamic_shape",
                     min_input_shape_.empty() ? "false" : "true"});
-      os.InsertRow({"tensorrt_tuned_dynamic_shape", trt_tuned_dynamic_shape_
-                                                        ? shape_range_info_path_
-                                                        : "false"});
+      os.InsertRow(
+          {"tensorrt_tuned_dynamic_shape",
+           trt_tuned_dynamic_shape_ ? shape_range_info_path_ : "false"});
 
-      os.InsertRow({"tensorrt_use_oss", trt_use_oss_ ? "true" : "false"});
+      os.InsertRow(
+          {"tensorrt_use_varseqlen", trt_use_varseqlen_ ? "true" : "false"});
       os.InsertRow({"tensorrt_with_interleaved",
                     trt_with_interleaved_ ? "true" : "false"});
+      os.InsertRow({"tensorrt_transformer_posid", tensorrt_transformer_posid_});
+      os.InsertRow(
+          {"tensorrt_transformer_maskid", tensorrt_transformer_maskid_});
       os.InsertRow({"tensorrt_use_dla", trt_use_dla_ ? "true" : "false"});
       if (trt_use_dla_) {
         os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});
@@ -1054,15 +1122,18 @@ LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheDir(
 LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheBuffers(
     const std::string &model_cache_token,
     const std::vector<char> &model_cache_buffer) {
-  PADDLE_ENFORCE_EQ(model_cache_token.empty(), false,
+  PADDLE_ENFORCE_EQ(model_cache_token.empty(),
+                    false,
                     platform::errors::InvalidArgument(
                         "model_cache_token should not be empty."));
-  PADDLE_ENFORCE_EQ(model_cache_buffer.empty(), false,
+  PADDLE_ENFORCE_EQ(model_cache_buffer.empty(),
+                    false,
                     platform::errors::InvalidArgument(
                         "model_cache_buffer should not be empty."));
   PADDLE_ENFORCE_EQ(nnadapter_model_cache_buffers.count(model_cache_token),
-                    false, platform::errors::InvalidArgument(
-                               "model_cache_token has already been set."));
+                    false,
+                    platform::errors::InvalidArgument(
+                        "model_cache_token has already been set."));
 
   nnadapter_model_cache_buffers[model_cache_token] = model_cache_buffer;
   return *this;
@@ -1095,7 +1166,8 @@ void AnalysisConfig::CollectShapeRangeInfo(
             << "all intermediate tensors in the compute graph and calculate "
                "the min_shape, max_shape and opt_shape.";
   collect_shape_range_info_ = true;
-  PADDLE_ENFORCE_EQ(shape_range_info_path.empty(), false,
+  PADDLE_ENFORCE_EQ(shape_range_info_path.empty(),
+                    false,
                     platform::errors::InvalidArgument(
                         "The shape_range_info_path should not be empty, please "
                         "re-check the argument."));
@@ -1124,4 +1196,10 @@ bool AnalysisConfig::tuned_tensorrt_dynamic_shape() {
 bool AnalysisConfig::trt_allow_build_at_runtime() {
   return trt_allow_build_at_runtime_;
 }
+
+void AnalysisConfig::Exp_SetBlackListOpsForMixedModel(
+    const std::unordered_set<std::string> &black_list) {
+  mixed_black_list_ = black_list;
+}
+
 }  // namespace paddle

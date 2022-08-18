@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -28,59 +30,83 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasInput("QKVW"), "Input", "QKVW", "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasInput("OutLinearW"), "Input", "OutLinearW",
-                   "FusedAttentionOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("OutLinearW"), "Input", "OutLinearW", "FusedAttentionOp");
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
-      OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
+      OP_INOUT_CHECK(
+          ctx->HasOutput("LnMean"), "Output", "LnMean", "FusedAttentionOp");
+      OP_INOUT_CHECK(ctx->HasOutput("LnVariance"),
+                     "Output",
+                     "LnVariance",
                      "FusedAttentionOp");
-      OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
-                     "FusedAttentionOp");
-      OP_INOUT_CHECK(ctx->HasOutput("LnOut"), "Output", "LnOut",
-                     "FusedAttentionOp");
+      OP_INOUT_CHECK(
+          ctx->HasOutput("LnOut"), "Output", "LnOut", "FusedAttentionOp");
     } else {
-      OP_INOUT_CHECK(ctx->HasOutput("Ln2Mean"), "Output", "Ln2Mean",
+      OP_INOUT_CHECK(
+          ctx->HasOutput("Ln2Mean"), "Output", "Ln2Mean", "FusedAttentionOp");
+      OP_INOUT_CHECK(ctx->HasOutput("Ln2Variance"),
+                     "Output",
+                     "Ln2Variance",
                      "FusedAttentionOp");
-      OP_INOUT_CHECK(ctx->HasOutput("Ln2Variance"), "Output", "Ln2Variance",
+      OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"),
+                     "Output",
+                     "BiasDropoutResidualOut",
                      "FusedAttentionOp");
-      OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"), "Output",
-                     "BiasDropoutResidualOut", "FusedAttentionOp");
     }
 
     // qkv_out: [batch_size, seq_len, 3, num_head, dim_head]
-    OP_INOUT_CHECK(ctx->HasOutput("QKVOut"), "Output", "QKVOut",
-                   "FusedAttentionOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("QKVOut"), "Output", "QKVOut", "FusedAttentionOp");
     if (ctx->HasInput("QKVBias")) {
-      OP_INOUT_CHECK(ctx->HasOutput("QKVBiasOut"), "Output", "QKVBiasOut",
+      OP_INOUT_CHECK(ctx->HasOutput("QKVBiasOut"),
+                     "Output",
+                     "QKVBiasOut",
                      "FusedAttentionOp");
     }
-    OP_INOUT_CHECK(ctx->HasOutput("TransposeOut2"), "Output", "TransposeOut2",
+    OP_INOUT_CHECK(ctx->HasOutput("TransposeOut2"),
+                   "Output",
+                   "TransposeOut2",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("QKOut"), "Output", "QKOut",
-                   "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("QKTVOut"), "Output", "QKTVOut",
-                   "FusedAttentionOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("QKOut"), "Output", "QKOut", "FusedAttentionOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("QKTVOut"), "Output", "QKTVOut", "FusedAttentionOp");
 
     if (ctx->HasInput("CacheKV")) {
-      OP_INOUT_CHECK(ctx->HasOutput("CacheKVOut"), "Output", "CacheKVOut",
+      OP_INOUT_CHECK(ctx->HasOutput("CacheKVOut"),
+                     "Output",
+                     "CacheKVOut",
                      "FusedAttentionOp");
     }
     if (ctx->HasInput("SrcMask")) {
-      OP_INOUT_CHECK(ctx->HasOutput("SrcMaskOut"), "Output", "SrcMaskOut",
+      OP_INOUT_CHECK(ctx->HasOutput("SrcMaskOut"),
+                     "Output",
+                     "SrcMaskOut",
                      "FusedAttentionOp");
     }
-    OP_INOUT_CHECK(ctx->HasOutput("SoftmaxOut"), "Output", "SoftmaxOut",
+    OP_INOUT_CHECK(ctx->HasOutput("SoftmaxOut"),
+                   "Output",
+                   "SoftmaxOut",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("AttnDropoutMaskOut"), "Output",
-                   "AttnDropoutMaskOut", "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("AttnDropoutOut"), "Output", "AttnDropoutOut",
+    OP_INOUT_CHECK(ctx->HasOutput("AttnDropoutMaskOut"),
+                   "Output",
+                   "AttnDropoutMaskOut",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("FMHAOut"), "Output", "FMHAOut",
+    OP_INOUT_CHECK(ctx->HasOutput("AttnDropoutOut"),
+                   "Output",
+                   "AttnDropoutOut",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("OutLinearOut"), "Output", "OutLinearOut",
+    OP_INOUT_CHECK(
+        ctx->HasOutput("FMHAOut"), "Output", "FMHAOut", "FusedAttentionOp");
+    OP_INOUT_CHECK(ctx->HasOutput("OutLinearOut"),
+                   "Output",
+                   "OutLinearOut",
                    "FusedAttentionOp");
 
-    OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"), "Output", "DropoutMaskOut",
+    OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"),
+                   "Output",
+                   "DropoutMaskOut",
                    "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "FusedAttentionOp");
 
@@ -88,29 +114,35 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("QKVW");
-    PADDLE_ENFORCE_EQ(x_dim.size(), 3, platform::errors::InvalidArgument(
-                                           "The dimensions of x must be 3"
-                                           "(batch_size, seq_len, dim_embed),"
-                                           "but received dimensions of"
-                                           "Input is [%d]",
-                                           x_dim.size()));
-    PADDLE_ENFORCE_EQ(y_dim.size(), 4,
+    PADDLE_ENFORCE_EQ(
+        x_dim.size(),
+        3,
+        platform::errors::InvalidArgument("The dimensions of x must be 3"
+                                          "(batch_size, seq_len, dim_embed),"
+                                          "but received dimensions of"
+                                          "Input is [%d]",
+                                          x_dim.size()));
+    PADDLE_ENFORCE_EQ(y_dim.size(),
+                      4,
                       platform::errors::InvalidArgument(
                           "The dimensions of qkv_weight must be 4"
                           "(3, num_head, dim_head, dim_embed),"
                           "but received dimensions of"
                           "Input is [%d]",
                           y_dim.size()));
-    PADDLE_ENFORCE_EQ(x_dim[2], y_dim[3],
+    PADDLE_ENFORCE_EQ(x_dim[2],
+                      y_dim[3],
                       platform::errors::InvalidArgument(
                           "ShapeError: the dimension of x_dim[2] and y_dim[3]"
                           "must be equal. But received: the shape "
                           "of input x = [%s], and the shape of "
                           "input qkv_weight = [%s]",
-                          x_dim, y_dim));
+                          x_dim,
+                          y_dim));
 
     if (ctx->Attrs().Get<int>("ring_id") == -1) {
-      PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2], y_dim[3],
+      PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
+                        y_dim[3],
                         platform::errors::InvalidArgument(
                             "The dimensions of qkv_weight must be 4"
                             "(3, num_head, dim_head, dim_embed),"
@@ -146,33 +178,46 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       auto c_dim = ctx->GetInputDim("CacheKV");
 
       PADDLE_ENFORCE_EQ(
-          c_dim.size(), 5,
+          c_dim.size(),
+          5,
           paddle::platform::errors::InvalidArgument(
               "The CacheKV must be 5 dims, but got %d", c_dim.size()));
-      PADDLE_ENFORCE_EQ(c_dim[0], 2,
+      PADDLE_ENFORCE_EQ(c_dim[0],
+                        2,
                         paddle::platform::errors::InvalidArgument(
                             "The first dim of CacheKV must be 2, but got %d",
                             c_dim[0]));  // 2
-      PADDLE_ENFORCE_EQ(c_dim[1], x_dim[0],
+      PADDLE_ENFORCE_EQ(c_dim[1],
+                        x_dim[0],
                         paddle::platform::errors::InvalidArgument(
                             "The second dim of CacheKV must be equal with "
                             "batch size %d, but got %d",
-                            x_dim[0], c_dim[1]));  // batch_size
-      PADDLE_ENFORCE_EQ(c_dim[2], y_dim[1],
+                            x_dim[0],
+                            c_dim[1]));  // batch_size
+      PADDLE_ENFORCE_EQ(c_dim[2],
+                        y_dim[1],
                         paddle::platform::errors::InvalidArgument(
                             "The third dim of CacheKV must be equal with num "
                             "head %d, but got %d",
-                            y_dim[1], c_dim[2]));  // num_head
-      PADDLE_ENFORCE_GE(
-          c_dim[3], 0,
-          paddle::platform::errors::InvalidArgument(
-              "The forth dim of CacheKV must be greater than 0, but got %d",
-              c_dim[3]));  // cache_seq_len
-      PADDLE_ENFORCE_EQ(c_dim[4], y_dim[2],
+                            y_dim[1],
+                            c_dim[2]));  // num_head
+      // In compile stage, input seq_len can be -1, in that case
+      // c_dim[3] may < 0 in while
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_GE(
+            c_dim[3],
+            0,
+            paddle::platform::errors::InvalidArgument(
+                "The forth dim of CacheKV must be greater than 0, but got %d",
+                c_dim[3]));  // cache_seq_len
+      }
+      PADDLE_ENFORCE_EQ(c_dim[4],
+                        y_dim[2],
                         paddle::platform::errors::InvalidArgument(
                             "The fifth dim of CacheKV must be equal with head "
                             "size %d, but got %d",
-                            y_dim[2], c_dim[4]));  // head_size
+                            y_dim[2],
+                            c_dim[4]));  // head_size
 
       out_seq_len += c_dim[3];
       // [3, batch_size, num_head, cache_seq_len + seq_len, head_size]
@@ -190,7 +235,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     // the same as QKOut's shape.
     ctx->SetOutputDim("AttnDropoutOut",
                       {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
-    if (ctx->Attrs().Get<bool>("attn_dropout_is_test") == false) {
+    if (ctx->Attrs().Get<bool>("is_test") == false) {
       ctx->SetOutputDim("AttnDropoutMaskOut",
                         {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
     }
@@ -202,7 +247,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("FMHAOut", {x_dim[0], x_dim[1], y_dim[1], y_dim[2]});
     ctx->SetOutputDim("OutLinearOut", ctx->GetInputDim("X"));
 
-    if (ctx->Attrs().Get<bool>("dropout_is_test") == false) {
+    if (ctx->Attrs().Get<bool>("is_test") == false) {
       ctx->SetOutputDim("DropoutMaskOut", ctx->GetInputDim("X"));
     }
 
@@ -281,7 +326,8 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
-          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
+          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'epsilon' in Op(LayerNorm) should be between"
                                 "0.0 and 0.001, But received [%s].",
@@ -293,11 +339,12 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(
-              drop_p >= 0.0f && drop_p <= 1.0f, true,
+              drop_p >= 0.0f && drop_p <= 1.0f,
+              true,
               platform::errors::InvalidArgument(
                   "'attn_dropout_rate' must be between 0.0 and 1.0."));
         });
-    AddAttr<bool>("attn_dropout_is_test",
+    AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
@@ -328,7 +375,8 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("upscale_in_train")
         .AddCustomChecker([](const std::string &type) {
           PADDLE_ENFORCE_EQ(
-              type == "downgrade_in_infer" || type == "upscale_in_train", true,
+              type == "downgrade_in_infer" || type == "upscale_in_train",
+              true,
               platform::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
@@ -337,15 +385,11 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
-          PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f, true,
+          PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
-
-    AddAttr<bool>("dropout_is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddAttr<bool>("dropout_fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
@@ -361,7 +405,8 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("downgrade_in_infer")
         .AddCustomChecker([](const std::string &type) {
           PADDLE_ENFORCE_EQ(
-              type == "downgrade_in_infer" || type == "upscale_in_train", true,
+              type == "downgrade_in_infer" || type == "upscale_in_train",
+              true,
               platform::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
@@ -370,26 +415,30 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &ln_epsilon) {
-          PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f, true,
+          PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'epsilon' of the second LayerNorm in Fused "
                                 "attention op should be between"
                                 "0.0 and 0.001, But received [%s].",
                                 ln_epsilon));
         });
+    AddAttr<bool>("add_residual", "Whether to add residual.").SetDefault(true);
     AddAttr<int>(
         "ring_id",
         "ring id for tensor model parallel. distributed training and inference")
         .SetDefault(-1);
 
     AddComment(R"DOC(
-  Add fused attention op whose logic is as follows:
-  // @input: [batch_size, seq_len, 3, num_head, head_dim] 
+  The fused_attention operator is the same as following pseudo codes:
+
+  // @input: [batch_size, seq_len, embed_dim] 
   // @final_out: [batch_size, seq_len, num_heads, head_dim] 
+  residual = input
   if (pre_layernorm)
-    out = layer_norm(input);
-	out = compute_qkv(out) + bias;
-	// fmha module
+    query = layer_norm(input);
+  out = compute_qkv(query) + qkv_bias;
+  // fmha module
   {
     out = transpose(out, perm=[2, 0, 3, 1, 4]);
     out = q * k^t;
@@ -400,11 +449,14 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     out = transpose(out, perm=[0, 2, 1, 3]);
                 
   }
-	out = out_linear(out);
-  if (pre_layernorm)
-    final_out = residual + dropout(bias + out);
-  else
-    final_out = layer_norm(residual + dropout(bias + out));
+  // out linear
+  out = linear(out);
+  if add_residual:
+    out = residual + dropout(out);
+  else:
+    out = dropout(out);
+  if (!pre_layernorm)
+    out = layer_norm(out);
     )DOC");
   }
 };
@@ -414,15 +466,17 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->Attrs().Get<bool>("attn_dropout_is_test"), false,
-        platform::errors::InvalidArgument(
-            "GradOp is only callable when attn_dropout_is_test is false"));
+    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"),
+                      false,
+                      platform::errors::InvalidArgument(
+                          "GradOp is only callable when is_test is false"));
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == false) {
-      OP_INOUT_CHECK(ctx->HasInput("Ln2Mean"), "Input", "Ln2Mean",
-                     "FusedAttentionGrad");
-      OP_INOUT_CHECK(ctx->HasInput("Ln2Variance"), "Input", "Ln2Variance",
+      OP_INOUT_CHECK(
+          ctx->HasInput("Ln2Mean"), "Input", "Ln2Mean", "FusedAttentionGrad");
+      OP_INOUT_CHECK(ctx->HasInput("Ln2Variance"),
+                     "Input",
+                     "Ln2Variance",
                      "FusedAttentionGrad");
       if (ctx->HasOutput(framework::GradVarName("Ln2Scale"))) {
         ctx->SetOutputDim(framework::GradVarName("Ln2Scale"),
@@ -433,18 +487,22 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
                           ctx->GetInputDim("Ln2Bias"));
       }
     } else {
-      OP_INOUT_CHECK(ctx->HasInput("LnMean"), "Input", "LnMean",
+      OP_INOUT_CHECK(
+          ctx->HasInput("LnMean"), "Input", "LnMean", "FusedAttentionGrad");
+      OP_INOUT_CHECK(ctx->HasInput("LnVariance"),
+                     "Input",
+                     "LnVariance",
                      "FusedAttentionGrad");
-      OP_INOUT_CHECK(ctx->HasInput("LnVariance"), "Input", "LnVariance",
-                     "FusedAttentionGrad");
-      OP_INOUT_CHECK(ctx->HasInput("LnOut"), "Input", "LnOut",
-                     "FusedAttentionGrad");
+      OP_INOUT_CHECK(
+          ctx->HasInput("LnOut"), "Input", "LnOut", "FusedAttentionGrad");
     }
 
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedAttentionGrad");
-    OP_INOUT_CHECK(ctx->HasInput("QKVW"), "Input", "QKVW",
-                   "FusedAttentionGrad");
-    OP_INOUT_CHECK(ctx->HasInput("OutLinearW"), "Input", "OutLinearW",
+    OP_INOUT_CHECK(
+        ctx->HasInput("QKVW"), "Input", "QKVW", "FusedAttentionGrad");
+    OP_INOUT_CHECK(ctx->HasInput("OutLinearW"),
+                   "Input",
+                   "OutLinearW",
                    "FusedAttentionGrad");
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
@@ -554,7 +612,7 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetAttrMap(this->Attrs());
     bool is_pre_layer_norm =
-        BOOST_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
+        PADDLE_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
     if (is_pre_layer_norm) {
       if (this->HasInput("LnScale")) {
         op->SetInput("LnScale", this->Input("LnScale"));
@@ -650,8 +708,18 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_attention, ops::FusedAttentionOp,
+REGISTER_OPERATOR(fused_attention,
+                  ops::FusedAttentionOp,
                   ops::FusedAttentionOpMaker,
                   ops::FusedAttentionGradOpMaker<paddle::framework::OpDesc>,
                   ops::FusedAttentionGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_attention_grad, ops::FusedAttentionGradOp);
+
+REGISTER_OP_VERSION(fused_attention)
+    .AddCheckpoint(
+        R"ROC(
+              Add a new attribute [add_residual] )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "add_residual",
+            "A flag to indicate whether to add residual.",
+            true));

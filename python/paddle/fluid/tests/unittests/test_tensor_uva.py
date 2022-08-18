@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +20,7 @@ from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestTensorCopyFrom(unittest.TestCase):
+
     def func_main(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             place = paddle.CPUPlace()
@@ -35,6 +36,7 @@ class TestTensorCopyFrom(unittest.TestCase):
 
 
 class TestUVATensorFromNumpy(unittest.TestCase):
+
     def func_uva_tensor_creation(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             dtype_list = [
@@ -45,10 +47,15 @@ class TestUVATensorFromNumpy(unittest.TestCase):
                 data = np.random.randint(10, size=[4, 5]).astype(dtype)
                 if _in_legacy_dygraph():
                     tensor = paddle.fluid.core.to_uva_tensor(data, 0)
+                    tensor2 = paddle.fluid.core.to_uva_tensor(data)
                 else:
                     tensor = core.eager.to_uva_tensor(data, 0)
+                    tensor2 = core.eager.to_uva_tensor(data)
+
                 self.assertTrue(tensor.place.is_gpu_place())
-                self.assertTrue(np.allclose(tensor.numpy(), data))
+                self.assertTrue(tensor2.place.is_gpu_place())
+                np.testing.assert_allclose(tensor.numpy(), data, rtol=1e-05)
+                np.testing.assert_allclose(tensor2.numpy(), data, rtol=1e-05)
 
     def test_uva_tensor_creation(self):
         with _test_eager_guard():

@@ -20,9 +20,8 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestWeightSharing(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -50,76 +49,63 @@ class TestWeightSharing(IPUOpTest):
     def set_op_attrs(self):
         self.attrs = {}
 
-    def _test_base(self, run_ipu=True):
-        scope = paddle.static.Scope()
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        main_prog.random_seed = self.SEED
-        startup_prog.random_seed = self.SEED
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='int64')
+        with paddle.static.ipu_shard_guard(index=0, stage=0):
+            y = paddle.fluid.layers.embedding(
+                input=x,
+                size=[768, 768],
+                dtype='float32',
+                param_attr=paddle.fluid.ParamAttr(name='word_embedding'),
+                is_sparse=False)
+        with paddle.static.ipu_shard_guard(index=1, stage=1):
+            z = paddle.fluid.layers.fc(
+                input=y, size=768, param_attr=paddle.fluid.ParamAttr(name="fc"))
+        with paddle.static.ipu_shard_guard(index=0, stage=2):
+            out = paddle.fluid.layers.matmul(
+                x=z,
+                y=self.main_prog.global_block().var('word_embedding'),
+                transpose_y=True)
+        self.feed_list = [x.name]
+        self.fetch_list = [out.name]
 
-        with paddle.static.scope_guard(scope):
-            with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.static.data(
-                    name=self.feed_list[0],
-                    shape=self.feed_shape[0],
-                    dtype='int64')
+    def run_model(self, run_ipu):
+        self.build_model()
+        if run_ipu:
+            place = paddle.IPUPlace()
+        else:
+            place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        exe.run(self.startup_prog)
+        if run_ipu:
+            ipu_strategy = paddle.static.IpuStrategy()
+            ipu_strategy.set_graph_config(num_ipus=2,
+                                          is_training=self.is_training,
+                                          enable_manual_shard=True)
+            ipu_strategy.set_pipelining_config(enable_pipelining=True,
+                                               batches_per_step=3)
+            program = paddle.static.IpuCompiledProgram(
+                self.main_prog,
+                ipu_strategy=ipu_strategy).compile(self.feed_list,
+                                                   self.fetch_list)
+        else:
+            program = self.main_prog
 
-                with paddle.static.ipu_shard_guard(index=0, stage=0):
-                    y = paddle.fluid.layers.embedding(
-                        input=x,
-                        size=[768, 768],
-                        dtype='float32',
-                        param_attr=paddle.fluid.ParamAttr(
-                            name='word_embedding'),
-                        is_sparse=False)
-
-                with paddle.static.ipu_shard_guard(index=1, stage=1):
-                    z = paddle.fluid.layers.fc(
-                        input=y,
-                        size=768,
-                        param_attr=paddle.fluid.ParamAttr(name="fc"))
-
-                with paddle.static.ipu_shard_guard(index=0, stage=2):
-                    out = paddle.fluid.layers.matmul(
-                        x=z,
-                        y=main_prog.global_block().var('word_embedding'),
-                        transpose_y=True)
-
-            fetch_list = [out.name]
-
-            if run_ipu:
-                place = paddle.IPUPlace()
-            else:
-                place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(startup_prog)
-
-            if run_ipu:
-                feed_list = self.feed_list
-                ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.set_graph_config(
-                    num_ipus=2,
-                    is_training=self.is_training,
-                    enable_manual_shard=True)
-                ipu_strategy.set_pipelining_config(
-                    enable_pipelining=True, batches_per_step=3)
-                program = paddle.static.IpuCompiledProgram(
-                    main_prog,
-                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
-            else:
-                program = main_prog
-
-            feed = self.feed_ipu if run_ipu else self.feed_cpu
-            result = exe.run(program, feed=feed, fetch_list=fetch_list)
-            return result[0]
+        feed = self.feed_ipu if run_ipu else self.feed_cpu
+        result = exe.run(program, feed=feed, fetch_list=self.fetch_list)
+        return result[0]
 
     def test_base(self):
-        res0 = self._test_base(False)
-        res1 = self._test_base(True)
+        res0 = self.run_model(False)
+        res1 = self.run_model(True)
 
-        self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1[0].flatten(), atol=self.atol))
+        np.testing.assert_allclose(res0.flatten(),
+                                   res1[0].flatten(),
+                                   rtol=1e-05,
+                                   atol=self.atol)
 
 
 if __name__ == "__main__":

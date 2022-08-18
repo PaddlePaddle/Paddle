@@ -21,8 +21,7 @@ KernelSignature AbsOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature AbsGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "abs_grad", {"X", GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("abs_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature AbsDoubleGradOpArgumentMapping(

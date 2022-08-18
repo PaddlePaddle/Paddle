@@ -19,9 +19,10 @@ import warnings
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static import utils
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 
-class GradTransformer(gast.NodeTransformer):
+class GradTransformer(BaseTransformer):
     """
     A class transforms dygraph paddle.grad to static graph paddle.gradients. The
     transformation is applied to support double grad mode.
@@ -69,8 +70,8 @@ class GradTransformer(gast.NodeTransformer):
                 warnings.warn("paddle.grad has unsupported parameter in jit: " +
                               kw.arg + ", jit will discard it")
                 continue
-            kw = gast.keyword(
-                arg=to_static_grad_param[arg_name], value=node.args[i])
+            kw = gast.keyword(arg=to_static_grad_param[arg_name],
+                              value=node.args[i])
             static_keywords.append(kw)
 
         node.func = gast.parse('paddle.static.gradients').body[0].value

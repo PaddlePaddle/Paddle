@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,6 +18,7 @@ from paddle.distributed.passes.pass_base import _make_rule_from_white_lists_dict
 
 
 class TestConcretePass(PassBase):
+
     def __init__(self):
         super(TestConcretePass, self).__init__()
 
@@ -33,35 +34,41 @@ class TestConcretePass(PassBase):
 
 @register_pass("A")
 class A(TestConcretePass):
+
     def __init__(self):
         super(A, self).__init__()
 
 
 @register_pass("B")
 class B(TestConcretePass):
+
     def __init__(self):
         super(B, self).__init__()
 
 
 @register_pass("C")
 class C(TestConcretePass):
+
     def __init__(self):
         super(C, self).__init__()
 
 
 @register_pass("D")
 class D(TestConcretePass):
+
     def __init__(self):
         super(D, self).__init__()
 
 
 @register_pass("E")
 class E(TestConcretePass):
+
     def __init__(self):
         super(E, self).__init__()
 
 
 class TestMakeWhiteListsRule(unittest.TestCase):
+
     def test_main(self):
         before_white_lists = {"A": ["B", "C"]}
         after_white_lists = {"D": ["C"]}

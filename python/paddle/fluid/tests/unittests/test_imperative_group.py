@@ -30,6 +30,7 @@ from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, in_dyg
 
 
 class TestDataParallelGroup(unittest.TestCase):
+
     def create_varbase(self, dtype, shape):
         return paddle.rand(shape=shape, dtype=dtype)
 
@@ -118,7 +119,8 @@ class TestDataParallelGroup(unittest.TestCase):
         var_list = []
         var_list.append(self.create_varbase(
             "float32",
-            [1, 50], ))
+            [1, 50],
+        ))
         var_list.append(self.create_varbase("float64", [1, 25]))
         var_list.append(self.create_varbase("float32", [1, 50]))
         var_list.append(self.create_varbase("float64", [1, 25]))

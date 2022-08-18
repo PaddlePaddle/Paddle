@@ -24,6 +24,7 @@ import random
 
 
 class TestElementwiseModOp(OpTest):
+
     def init_kernel_type(self):
         self.use_mkldnn = False
 
@@ -62,6 +63,7 @@ class TestElementwiseModOp(OpTest):
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
+
     def init_input_output(self):
         scale_x = random.randint(0, 100000000)
         scale_y = random.randint(1, 100000000)
@@ -71,6 +73,7 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
 
 
 class TestElementwiseModOpFloat(TestElementwiseModOp):
+
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -87,11 +90,13 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
+
     def init_dtype(self):
         self.dtype = np.float64
 
 
 class TestRemainderOp(unittest.TestCase):
+
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="int64")
@@ -117,7 +122,7 @@ class TestRemainderOp(unittest.TestCase):
             y = paddle.to_tensor(np_y)
             z = x % y
             z_expected = np.array([-0.9, 1.5, 1.3, -1.1])
-            self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+            np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
 
             np_x = np.array([-3, 11, -2, 3])
             np_y = np.array([-1, 2, 3, -2])
@@ -125,7 +130,7 @@ class TestRemainderOp(unittest.TestCase):
             y = paddle.to_tensor(np_y, dtype="int64")
             z = x % y
             z_expected = np.array([0, 1, 1, -1])
-            self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+            np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
 
 
 if __name__ == '__main__':

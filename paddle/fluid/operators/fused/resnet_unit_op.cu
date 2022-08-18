@@ -30,9 +30,11 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
-    PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type, CUDNN_DATA_HALF,
+    PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type,
+                      CUDNN_DATA_HALF,
                       platform::errors::Unavailable(
                           "ResNetUnitOp only supports float16 for now."));
 
@@ -81,24 +83,30 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     auto output_shape = phi::vectorize<int>(output->dims());
     auto bitmask_shape = phi::vectorize<int>(bitmask->dims());
     int output_channel = filter_x_shape[0];
-    int64_t ele_count =
-        std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                        std::multiplies<int>()) /
-        output_channel;
+    int64_t ele_count = std::accumulate(output_shape.begin(),
+                                        output_shape.end(),
+                                        1,
+                                        std::multiplies<int>()) /
+                        output_channel;
 
     auto place = ctx.GetPlace();
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     // 1. Conv
     Tensor sum_x;
     Tensor sum_of_squares_x;
     sum_x.Resize(param_dims);
     sum_of_squares_x.Resize(param_dims);
-    CudnnNormConvolution<T> conv_x_op(dev_ctx, input_x_shape, filter_x_shape,
-                                      output_shape, padding, stride, dilation,
+    CudnnNormConvolution<T> conv_x_op(dev_ctx,
+                                      input_x_shape,
+                                      filter_x_shape,
+                                      output_shape,
+                                      padding,
+                                      stride,
+                                      dilation,
                                       group);
-    conv_x_op.Forward(dev_ctx, *input_x, *filter_x, conv_out_x, &sum_x,
-                      &sum_of_squares_x);
+    conv_x_op.Forward(
+        dev_ctx, *input_x, *filter_x, conv_out_x, &sum_x, &sum_of_squares_x);
 
     // 2. BN
     Tensor equiv_scale_x;
@@ -106,14 +114,30 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     equiv_scale_x.Resize(param_dims);
     equiv_bias_x.Resize(param_dims);
     CudnnBNStatsFinalize<T> bn_x_op(dev_ctx, param_shape);
-    bn_x_op.Forward(dev_ctx, sum_x, sum_of_squares_x, *scale_x, *bias_x,
-                    saved_mean_x, saved_invstd_x, running_mean_x, running_var_x,
-                    &equiv_scale_x, &equiv_bias_x, eps, momentum, ele_count,
+    bn_x_op.Forward(dev_ctx,
+                    sum_x,
+                    sum_of_squares_x,
+                    *scale_x,
+                    *bias_x,
+                    saved_mean_x,
+                    saved_invstd_x,
+                    running_mean_x,
+                    running_var_x,
+                    &equiv_scale_x,
+                    &equiv_bias_x,
+                    eps,
+                    momentum,
+                    ele_count,
                     is_train);
 
     // 3. scale + bias + add + relu
-    CudnnScaleBiasAddRelu<T> sbar_op(dev_ctx, act_type, fuse_add, has_shortcut,
-                                     output_shape, param_shape, bitmask_shape);
+    CudnnScaleBiasAddRelu<T> sbar_op(dev_ctx,
+                                     act_type,
+                                     fuse_add,
+                                     has_shortcut,
+                                     output_shape,
+                                     param_shape,
+                                     bitmask_shape);
     if (has_shortcut) {
       // input z
       const Tensor *input_z = ctx.Input<Tensor>("Z");
@@ -136,11 +160,16 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
       Tensor sum_of_squares_z;
       sum_z.Resize(param_dims);
       sum_of_squares_z.Resize(param_dims);
-      CudnnNormConvolution<T> conv_z_op(dev_ctx, input_z_shape, filter_z_shape,
-                                        output_shape, padding, stride_z,
-                                        dilation, group);
-      conv_z_op.Forward(dev_ctx, *input_z, *filter_z, conv_out_z, &sum_z,
-                        &sum_of_squares_z);
+      CudnnNormConvolution<T> conv_z_op(dev_ctx,
+                                        input_z_shape,
+                                        filter_z_shape,
+                                        output_shape,
+                                        padding,
+                                        stride_z,
+                                        dilation,
+                                        group);
+      conv_z_op.Forward(
+          dev_ctx, *input_z, *filter_z, conv_out_z, &sum_z, &sum_of_squares_z);
 
       // 3.2 BN for second input
       Tensor equiv_scale_z;
@@ -148,18 +177,42 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
       equiv_scale_z.Resize(param_dims);
       equiv_bias_z.Resize(param_dims);
       CudnnBNStatsFinalize<T> bn_z_op(dev_ctx, param_shape);
-      bn_z_op.Forward(dev_ctx, sum_z, sum_of_squares_z, *scale_z, *bias_z,
-                      saved_mean_z, saved_invstd_z, running_mean_z,
-                      running_var_z, &equiv_scale_z, &equiv_bias_z, eps,
-                      momentum, ele_count, is_train);
+      bn_z_op.Forward(dev_ctx,
+                      sum_z,
+                      sum_of_squares_z,
+                      *scale_z,
+                      *bias_z,
+                      saved_mean_z,
+                      saved_invstd_z,
+                      running_mean_z,
+                      running_var_z,
+                      &equiv_scale_z,
+                      &equiv_bias_z,
+                      eps,
+                      momentum,
+                      ele_count,
+                      is_train);
       // 3.3 sbar
-      sbar_op.Forward(dev_ctx, *conv_out_x, equiv_scale_x, equiv_bias_x,
-                      conv_out_z, &equiv_scale_z, &equiv_bias_z, output,
+      sbar_op.Forward(dev_ctx,
+                      *conv_out_x,
+                      equiv_scale_x,
+                      equiv_bias_x,
+                      conv_out_z,
+                      &equiv_scale_z,
+                      &equiv_bias_z,
+                      output,
                       bitmask);
     } else {
       const Tensor *input_z = fuse_add ? ctx.Input<Tensor>("Z") : nullptr;
-      sbar_op.Forward(dev_ctx, *conv_out_x, equiv_scale_x, equiv_bias_x,
-                      input_z, nullptr, nullptr, output, bitmask);
+      sbar_op.Forward(dev_ctx,
+                      *conv_out_x,
+                      equiv_scale_x,
+                      equiv_bias_x,
+                      input_z,
+                      nullptr,
+                      nullptr,
+                      output,
+                      bitmask);
     }
   }
 };
@@ -169,9 +222,11 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
-    PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type, CUDNN_DATA_HALF,
+    PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type,
+                      CUDNN_DATA_HALF,
                       platform::errors::Unavailable(
                           "ResNetUnitOp only supports float16 for now."));
 
@@ -213,14 +268,18 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
     auto bitmask_shape = phi::vectorize<int>(bitmask->dims());
 
     auto place = ctx.GetPlace();
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     // 1. Backward of BN (+ Add + Relu) for x, get conv_out_x_grad,
     // scale_x_grad, bias_x_grad
     Tensor conv_out_x_grad;
     conv_out_x_grad.Resize(conv_out_x->dims());
-    CudnnScaleBiasAddRelu<T> sbar_x_op(dev_ctx, act_type, fuse_add,
-                                       has_shortcut, output_shape, param_shape,
+    CudnnScaleBiasAddRelu<T> sbar_x_op(dev_ctx,
+                                       act_type,
+                                       fuse_add,
+                                       has_shortcut,
+                                       output_shape,
+                                       param_shape,
                                        bitmask_shape);
     if (has_shortcut) {
       //       X                   Z
@@ -251,47 +310,89 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
       // scale_x_grad, bias_x_grad and z_grad_temp
       Tensor z_grad_temp;
       z_grad_temp.Resize(conv_out_z->dims());
-      sbar_x_op.Backward(dev_ctx, *y_grad, *conv_out_x, *scale_x, *bias_x,
-                         *saved_mean_x, *saved_invstd_x, bitmask,
-                         &conv_out_x_grad, &z_grad_temp, scale_x_grad,
-                         bias_x_grad, eps);
+      sbar_x_op.Backward(dev_ctx,
+                         *y_grad,
+                         *conv_out_x,
+                         *scale_x,
+                         *bias_x,
+                         *saved_mean_x,
+                         *saved_invstd_x,
+                         bitmask,
+                         &conv_out_x_grad,
+                         &z_grad_temp,
+                         scale_x_grad,
+                         bias_x_grad,
+                         eps);
 
       // 1.2 bn backward for z, get conv_out_z_grad, dscale_z, dbias_z
       Tensor conv_out_z_grad;
       conv_out_z_grad.Resize(conv_out_z->dims());
       CudnnScaleBiasAddRelu<T> sbar_z_op(
           dev_ctx, "", false, false, output_shape, param_shape, bitmask_shape);
-      sbar_z_op.Backward(dev_ctx, z_grad_temp, *conv_out_z, *scale_z, *bias_z,
-                         *saved_mean_z, *saved_invstd_z, nullptr,
-                         &conv_out_z_grad, nullptr, scale_z_grad, bias_z_grad,
+      sbar_z_op.Backward(dev_ctx,
+                         z_grad_temp,
+                         *conv_out_z,
+                         *scale_z,
+                         *bias_z,
+                         *saved_mean_z,
+                         *saved_invstd_z,
+                         nullptr,
+                         &conv_out_z_grad,
+                         nullptr,
+                         scale_z_grad,
+                         bias_z_grad,
                          eps);
 
       // 1.3 Backward of Conv for z, get z_grad and filter_z_grad
       auto z_shape = phi::vectorize<int>(z->dims());
       auto filter_z_shape = phi::vectorize<int>(filter_z->dims());
-      CudnnNormConvolutionGrad<T> conv_z_op(dev_ctx, z_shape, filter_z_shape,
-                                            output_shape, padding, stride_z,
-                                            dilation, group);
-      conv_z_op.Backward(dev_ctx, *z, *filter_z, conv_out_z_grad, z_grad,
-                         filter_z_grad);
+      CudnnNormConvolutionGrad<T> conv_z_op(dev_ctx,
+                                            z_shape,
+                                            filter_z_shape,
+                                            output_shape,
+                                            padding,
+                                            stride_z,
+                                            dilation,
+                                            group);
+      conv_z_op.Backward(
+          dev_ctx, *z, *filter_z, conv_out_z_grad, z_grad, filter_z_grad);
     } else {
       // 1.1 Backward of BN (+ Add + Relu) for x, get conv_out_x_grad,
       // scale_x_grad, bias_x_grad (and z_grad)
       Tensor *z_grad =
           fuse_add ? ctx.Output<Tensor>(framework::GradVarName("Z")) : nullptr;
-      sbar_x_op.Backward(dev_ctx, *y_grad, *conv_out_x, *scale_x, *bias_x,
-                         *saved_mean_x, *saved_invstd_x, bitmask,
-                         &conv_out_x_grad, z_grad, scale_x_grad, bias_x_grad,
+      sbar_x_op.Backward(dev_ctx,
+                         *y_grad,
+                         *conv_out_x,
+                         *scale_x,
+                         *bias_x,
+                         *saved_mean_x,
+                         *saved_invstd_x,
+                         bitmask,
+                         &conv_out_x_grad,
+                         z_grad,
+                         scale_x_grad,
+                         bias_x_grad,
                          eps);
     }
 
     // 2. Backward of Conv for x, get x_grad and filter_x_grad
     bool use_addto = ctx.Attr<bool>("use_addto");
-    CudnnNormConvolutionGrad<T> conv_x_op(dev_ctx, x_shape, filter_x_shape,
-                                          output_shape, padding, stride,
-                                          dilation, group);
-    conv_x_op.Backward(dev_ctx, *x, *filter_x, conv_out_x_grad, x_grad,
-                       filter_x_grad, use_addto);
+    CudnnNormConvolutionGrad<T> conv_x_op(dev_ctx,
+                                          x_shape,
+                                          filter_x_shape,
+                                          output_shape,
+                                          padding,
+                                          stride,
+                                          dilation,
+                                          group);
+    conv_x_op.Backward(dev_ctx,
+                       *x,
+                       *filter_x,
+                       conv_out_x_grad,
+                       x_grad,
+                       filter_x_grad,
+                       use_addto);
   }
 };
 

@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append('..')
 from op_test import OpTest
 import paddle
@@ -29,6 +30,7 @@ paddle.enable_static()
 
 
 class TestScaleOp(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.place = paddle.device.MLUPlace(0)
@@ -49,6 +51,7 @@ class TestScaleOp(OpTest):
 
 
 class TestScaleOpScaleVariable(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.place = paddle.device.MLUPlace(0)
@@ -71,6 +74,7 @@ class TestScaleOpScaleVariable(OpTest):
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
+
     def init_dtype_type(self):
         pass
 
@@ -129,7 +133,9 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 class TestScaleRaiseError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.scale([10])
 
@@ -140,6 +146,7 @@ class TestScaleRaiseError(unittest.TestCase):
 @unittest.skipIf(not core.is_compiled_with_mlu(),
                  "core is not compiled with MLU")
 class TestScaleFp16Op(TestScaleOp):
+
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -150,6 +157,7 @@ class TestScaleFp16Op(TestScaleOp):
 @unittest.skipIf(not core.is_compiled_with_mlu(),
                  "core is not compiled with MLU")
 class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
+
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -163,6 +171,7 @@ class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
 
 
 class TestScaleApiStatic(unittest.TestCase):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -176,15 +185,17 @@ class TestScaleApiStatic(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
         out = exe.run(main_prog, feed={"x": input}, fetch_list=[out])
-        self.assertEqual(np.array_equal(out[0], input * 2.0 + 3.0), True)
+        np.testing.assert_array_equal(out[0], input * 2.0 + 3.0)
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 
 
 class TestScaleApiDygraph(unittest.TestCase):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -193,11 +204,12 @@ class TestScaleApiDygraph(unittest.TestCase):
         input = np.random.random([2, 25]).astype("float32")
         x = paddle.to_tensor(input)
         out = self._executed_api(x, scale=2.0, bias=3.0)
-        self.assertEqual(np.array_equal(out.numpy(), input * 2.0 + 3.0), True)
+        np.testing.assert_array_equal(out.numpy(), input * 2.0 + 3.0)
         paddle.enable_static()
 
 
 class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 

@@ -19,6 +19,7 @@ import six
 
 
 class TestInferencePartialFeed(unittest.TestCase):
+
     def setUp(self):
         self.iterations = 10
         self.size = 10
@@ -46,12 +47,14 @@ class TestInferencePartialFeed(unittest.TestCase):
         prog = fluid.CompiledProgram(main_prog).with_data_parallel(
             places=places)
 
-        gen_random = lambda shape:np.random.uniform(low=-1.0, high=1.0, size=shape).astype('float32')
-        assert_result = lambda feed, result: self.assertTrue(np.array_equal(np.maximum(0, feed), result))
+        gen_random = lambda shape: np.random.uniform(
+            low=-1.0, high=1.0, size=shape).astype('float32')
+        assert_result = lambda feed, result: np.testing.assert_array_equal(
+            np.maximum(0, feed), result)
 
         def assert_merged_unmerged(merged, unmerged):
             unmerged = np.concatenate(unmerged, axis=0)
-            self.assertTrue(np.array_equal(merged, unmerged))
+            np.testing.assert_array_equal(merged, unmerged)
 
         def feed_split_test():
             for place_num in six.moves.range(1, len(places) * 3):
@@ -142,17 +145,20 @@ class TestInferencePartialFeed(unittest.TestCase):
         for p in places:
             for has_persistable in [False, True]:
                 for use_split in [False, True]:
-                    self.run_network(
-                        p, use_split=use_split, has_persistable=has_persistable)
+                    self.run_network(p,
+                                     use_split=use_split,
+                                     has_persistable=has_persistable)
 
 
 class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
+
     def setUp(self):
         self.epoch_num = 3
         self.batch_num = 101  # a prime number
         self.batch_size = 32
 
     def create_reader(self):
+
         def __impl__():
             for _ in six.moves.range(self.batch_num):
                 yield np.random.random([self.batch_size, 1]).astype('float32'),
@@ -162,20 +168,22 @@ class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
     def run_network(self, iterable, use_cuda, drop_last):
         x = fluid.data(shape=[None, 1], name='x', dtype='float32')
         places = fluid.cuda_places() if use_cuda else fluid.cpu_places(4)
-        loader = fluid.io.DataLoader.from_generator(
-            feed_list=[x], capacity=16, iterable=iterable, drop_last=drop_last)
+        loader = fluid.io.DataLoader.from_generator(feed_list=[x],
+                                                    capacity=16,
+                                                    iterable=iterable,
+                                                    drop_last=drop_last)
         y = fluid.layers.fc(x, size=10)
         loss = fluid.layers.reduce_mean(y)
 
         exe = fluid.Executor(places[0])
         exe.run(fluid.default_startup_program())
 
-        prog = fluid.CompiledProgram(fluid.default_main_program(
-        )).with_data_parallel(
-            places=places, loss_name=loss.name)
+        prog = fluid.CompiledProgram(
+            fluid.default_main_program()).with_data_parallel(
+                places=places, loss_name=loss.name)
 
-        loader.set_batch_generator(
-            self.create_reader(), places=places if iterable else None)
+        loader.set_batch_generator(self.create_reader(),
+                                   places=places if iterable else None)
 
         for _ in six.moves.range(self.epoch_num):
             actual_batch_num = 0
@@ -203,8 +211,8 @@ class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
                 self.assertGreater(self.batch_num, actual_batch_num)
 
     def test_main(self):
-        use_cuda_list = [False, True] if fluid.is_compiled_with_cuda(
-        ) else [False]
+        use_cuda_list = [False, True
+                         ] if fluid.is_compiled_with_cuda() else [False]
         iterable_list = [False, True]
         drop_last_list = [False, True]
         for iterable in iterable_list:

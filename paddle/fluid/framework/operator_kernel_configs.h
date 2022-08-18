@@ -18,6 +18,7 @@ limitations under the License. */
 #include <mutex>
 #include <unordered_map>
 #include <vector>
+
 #include "glog/logging.h"
 
 namespace paddle {
@@ -35,11 +36,14 @@ class AlgorithmsCache {
                           const std::vector<int64_t>& dims2,
                           const std::vector<int>& strides,
                           const std::vector<int>& paddings,
-                          const std::vector<int>& dilations, int algorithmFlags,
+                          const std::vector<int>& dilations,
+                          int algorithmFlags,
                           int64_t cudnn_dtype,
                           std::function<TAlgorithm()> gen_func);
 
-  TAlgorithm GetAlgorithm(int64_t area, int search_times, int algorithmFlags,
+  TAlgorithm GetAlgorithm(int64_t area,
+                          int search_times,
+                          int algorithmFlags,
                           std::function<TAlgorithm()> gen_func);
 
  private:
@@ -50,9 +54,13 @@ class AlgorithmsCache {
 
 template <typename TAlgorithm>
 TAlgorithm framework::AlgorithmsCache<TAlgorithm>::GetAlgorithm(
-    const std::vector<int64_t>& dims1, const std::vector<int64_t>& dims2,
-    const std::vector<int>& strides, const std::vector<int>& paddings,
-    const std::vector<int>& dilations, int algorithmFlags, int64_t cudnn_dtype,
+    const std::vector<int64_t>& dims1,
+    const std::vector<int64_t>& dims2,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::vector<int>& dilations,
+    int algorithmFlags,
+    int64_t cudnn_dtype,
     std::function<TAlgorithm()> gen_func) {
   int64_t seed = 0;
   // Hash all of the inputs, use to try and look up a previously
@@ -117,7 +125,9 @@ TAlgorithm framework::AlgorithmsCache<TAlgorithm>::GetAlgorithm(
 
 template <typename TAlgorithm>
 TAlgorithm AlgorithmsCache<TAlgorithm>::GetAlgorithm(
-    int64_t area, int search_times, int algorithmFlags,
+    int64_t area,
+    int search_times,
+    int algorithmFlags,
     std::function<TAlgorithm()> gen_func) {
   auto it = hash_.end();
   {

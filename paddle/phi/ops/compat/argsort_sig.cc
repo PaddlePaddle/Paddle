@@ -19,9 +19,9 @@ namespace phi {
 KernelSignature ArgsortGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("argsort_grad",
-                         {"Indices", "X", GradVarName("Out")},
+                         {"Indices", "X", "Out@GRAD"},
                          {"axis", "descending"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

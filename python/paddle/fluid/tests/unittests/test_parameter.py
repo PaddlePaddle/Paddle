@@ -30,15 +30,15 @@ main_program = default_main_program()
 
 
 class ParameterChecks(unittest.TestCase):
+
     def test_parameter(self):
         shape = [784, 100]
         val = 1.0625
         b = main_program.global_block()
-        param = b.create_parameter(
-            name='fc.w',
-            shape=shape,
-            dtype='float32',
-            initializer=ConstantInitializer(val))
+        param = b.create_parameter(name='fc.w',
+                                   shape=shape,
+                                   dtype='float32',
+                                   initializer=ConstantInitializer(val))
         self.assertIsNotNone(param)
         self.assertEqual('fc.w', param.name)
         self.assertEqual((784, 100), param.shape)
@@ -46,9 +46,9 @@ class ParameterChecks(unittest.TestCase):
         self.assertEqual(0, param.block.idx)
         exe = Executor(paddle.CPUPlace())
         p = exe.run(main_program, fetch_list=[param])[0]
-        self.assertTrue(np.array_equal(p, np.ones(shape) * val))
+        np.testing.assert_array_equal(p, np.ones(shape) * val)
         p = io.get_parameter_value_by_name('fc.w', exe, main_program)
-        self.assertTrue(np.array_equal(p, np.ones(shape) * val))
+        np.testing.assert_array_equal(p, np.ones(shape) * val)
 
     def func_parambase(self):
         with guard():
@@ -61,7 +61,7 @@ class ParameterChecks(unittest.TestCase):
             self.assertEqual(param_copy.type, param.type)
             self.assertEqual(param_copy.dtype, param.dtype)
             self.assertEqual(str(param_copy.place), str(param.place))
-            self.assertTrue(np.array_equal(param_copy.numpy(), param.numpy()))
+            np.testing.assert_array_equal(param_copy.numpy(), param.numpy())
             self.assertEqual(param_copy.optimize_attr, param.optimize_attr)
             self.assertEqual(param_copy.regularizer, param.regularizer)
             self.assertEqual(param_copy.do_model_average,
@@ -80,17 +80,25 @@ class ParameterChecks(unittest.TestCase):
     def func_exception(self):
         b = main_program.global_block()
         with self.assertRaises(ValueError):
-            b.create_parameter(
-                name='test', shape=None, dtype='float32', initializer=None)
+            b.create_parameter(name='test',
+                               shape=None,
+                               dtype='float32',
+                               initializer=None)
         with self.assertRaises(ValueError):
-            b.create_parameter(
-                name='test', shape=[1], dtype=None, initializer=None)
+            b.create_parameter(name='test',
+                               shape=[1],
+                               dtype=None,
+                               initializer=None)
         with self.assertRaises(ValueError):
-            b.create_parameter(
-                name='test', shape=[], dtype='float32', initializer=None)
+            b.create_parameter(name='test',
+                               shape=[],
+                               dtype='float32',
+                               initializer=None)
         with self.assertRaises(ValueError):
-            b.create_parameter(
-                name='test', shape=[-1], dtype='float32', initializer=None)
+            b.create_parameter(name='test',
+                               shape=[-1],
+                               dtype='float32',
+                               initializer=None)
 
     def func_parambase_to_vector(self):
         with guard():
@@ -108,12 +116,10 @@ class ParameterChecks(unittest.TestCase):
             paddle.nn.utils.vector_to_parameters(vec, linear2.parameters())
             self.assertEqual(linear2.weight.shape, [10, 15])
             self.assertEqual(linear2.bias.shape, [15])
-            self.assertTrue(
-                np.array_equal(linear1.weight.numpy(), linear2.weight.numpy()),
-                True)
-            self.assertTrue(
-                np.array_equal(linear1.bias.numpy(), linear2.bias.numpy()),
-                True)
+            np.testing.assert_array_equal(linear1.weight.numpy(),
+                                          linear2.weight.numpy())
+            np.testing.assert_array_equal(linear1.bias.numpy(),
+                                          linear2.bias.numpy())
             self.assertTrue(linear2.weight.is_leaf, True)
             self.assertTrue(linear2.bias.is_leaf, True)
 

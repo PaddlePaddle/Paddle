@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,6 +17,7 @@ import subprocess
 import sys, os
 import json
 import shutil
+import tempfile
 
 import random
 
@@ -51,19 +52,26 @@ def write_file(name, ct):
 
 def get_files(pth, prefix):
     return [
-        f for f in listdir(pth) if isfile(join(pth, f)) and f.startswith(prefix)
+        f for f in listdir(pth)
+        if isfile(join(pth, f)) and not f.endswith('gpu.log')
     ]
 
 
 class Collective_Test(unittest.TestCase):
+
     def setUp(self):
-        write_file(pyname, colpyfile)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.temp_dir.name, pyname)
+        write_file(self.path, colpyfile)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def pdrun(self, args, env=None):
         cmd = [sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"]
         if args:
             cmd.extend(args.split(" "))
-        cmd.extend([pyname])
+        cmd.extend([self.path])
         env = os.environ.copy()
         # virtual devies for testing
         env.update({'CUDA_VISIBLE_DEVICES': '0,1,2,3,4,5,6,7'})
@@ -71,99 +79,112 @@ class Collective_Test(unittest.TestCase):
         return proc
 
     def test_collective_1(self):
-        args = "--job_id test1"
+        log_dir = tempfile.TemporaryDirectory()
+        args = "--job_id test1 --log_dir {}".format(log_dir.name)
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
+        log_dir.cleanup()
 
     def test_collective_2(self):
-        if os.path.exists('./log'):
-            shutil.rmtree('./log')
-
-        args = "--job_id test2 --devices 0,1,2"
+        log_dir = tempfile.TemporaryDirectory()
+        args = "--job_id test2 --devices 0,1,2 --log_dir {}".format(
+            log_dir.name)
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
 
-        c = get_files('log', 'test2')
+        c = get_files(log_dir.name, 'test2')
         self.assertTrue(len(c) == 4)
+        log_dir.cleanup()
 
     def test_collective_3(self):
-        if os.path.exists('./log'):
-            shutil.rmtree('./log')
-
+        log_dir = tempfile.TemporaryDirectory()
         port = random.randrange(6000, 8000)
-        args = "--job_id test3 --devices 0,1 --master 127.0.0.1:{} --np 2".format(
-            port)
-        p1 = self.pdrun(args)
-        p2 = self.pdrun(args)
+        args = "--job_id test3 --devices 0,1 --log_dir {} --master 127.0.0.1:{} --nnodes 2"
+        p1 = self.pdrun(args.format(log_dir.name + "/1", port))
+        p2 = self.pdrun(args.format(log_dir.name + "/2", port))
         p1.wait()
         p2.wait()
         self.assertTrue(p1.poll() == 0)
         self.assertTrue(p2.poll() == 0)
 
-        c = get_files('log', 'test3')
-        self.assertTrue(len(c) == 6)
+        c1 = get_files(log_dir.name + "/1", 'test3')
+        c2 = get_files(log_dir.name + "/2", 'test3')
+        print(c1)
+        self.assertTrue(len(c1) == 3)
+        self.assertTrue(len(c2) == 3)
+        log_dir.cleanup()
 
 
 class PS_Test(unittest.TestCase):
+
     def setUp(self):
-        write_file(pyname, pspyfile)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.temp_dir.name, pyname)
+        write_file(self.path, pspyfile)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def pdrun(self, args, env=None):
         cmd = [sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"]
         if args:
             cmd.extend(args.split(" "))
-        cmd.extend([pyname])
+        cmd.extend([self.path])
         proc = subprocess.Popen(cmd, env)
         return proc
 
     def test_ps_1(self):
-        args = "--run_mode ps"
+        log_dir = tempfile.TemporaryDirectory()
+        args = "--run_mode ps --log_dir {}".format(log_dir.name)
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
+        log_dir.cleanup()
 
     def test_ps_2(self):
-        if os.path.exists('./log'):
-            shutil.rmtree('./log')
-
-        args = "--job_id ps2 --server_num=2 --trainer_num=2"
+        log_dir = tempfile.TemporaryDirectory()
+        args = "--job_id ps2 --server_num=2 --trainer_num=2 --log_dir {}".format(
+            log_dir.name)
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
 
-        c = get_files('log', 'ps2')
+        c = get_files(log_dir.name, 'ps2')
         self.assertTrue(len(c) == 5)
+        log_dir.cleanup()
 
     def test_ps_3(self):
-        if os.path.exists('./log'):
-            shutil.rmtree('./log')
-
+        log_dir = tempfile.TemporaryDirectory()
         port = random.randrange(6000, 8000)
-        args = "--job_id ps3 --master 127.0.0.1:{} --np 2 --server_num=1 --trainer_num=1".format(
-            port)
-        p1 = self.pdrun(args)
-        p2 = self.pdrun(args)
+        args = "--job_id ps3 --log_dir {} --master 127.0.0.1:{} --nnodes 2 --server_num=1 --trainer_num=1"
+        p1 = self.pdrun(args.format(log_dir.name + "/1", port))
+        p2 = self.pdrun(args.format(log_dir.name + "/2", port))
         p1.wait()
         p2.wait()
         self.assertTrue(p1.poll() == 0)
         self.assertTrue(p2.poll() == 0)
 
-        c = get_files('log', 'ps3')
-        self.assertTrue(len(c) == 6)
+        c1 = get_files(log_dir.name + "/1", 'ps3')
+        c2 = get_files(log_dir.name + "/2", 'ps3')
+        print(c1)
+        self.assertTrue(len(c1) == 3)
+        self.assertTrue(len(c2) == 3)
+        log_dir.cleanup()
 
     def test_ps_4(self):
-        if os.path.exists('./log'):
-            shutil.rmtree('./log')
-
-        args = "--job_id ps4 --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903"
+        log_dir = tempfile.TemporaryDirectory()
+        args = "--job_id ps4 --log_dir {} --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903".format(
+            log_dir.name)
         p1 = self.pdrun(args)
         p1.wait()
         self.assertTrue(p1.poll() == 0)
 
-        c = get_files('log', 'ps4')
+        c = get_files(log_dir.name, 'ps4')
+        print(c)
         self.assertTrue(len(c) == 5)
+        log_dir.cleanup()
 
 
 if __name__ == '__main__':

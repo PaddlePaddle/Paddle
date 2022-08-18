@@ -14,6 +14,7 @@
 
 #pragma once
 #include <string>
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 
@@ -21,8 +22,8 @@ namespace egr {
 
 static inline paddle::experimental::DataType GetPromoteType(
     const std::string& op_name,
-    const std::vector<std::vector<paddle::experimental::Tensor>>&
-        amp_tensors_vector,
+    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>& amp_tensors_vector,
     const paddle::experimental::DataType& amp_dtype) {
   auto dst_type = amp_dtype;
   if (egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype() ==
@@ -86,8 +87,8 @@ static inline paddle::experimental::DataType GetPromoteType(
 
 inline paddle::experimental::DataType GetAmpDestDtype(
     const std::string& op_name,
-    const std::vector<std::vector<paddle::experimental::Tensor>>&
-        amp_tensors_vector) {
+    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>& amp_tensors_vector) {
   auto amp_dtype =
       egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype();
   auto amp_level = egr::Controller::Instance().GetAMPLevel();
@@ -105,7 +106,8 @@ inline paddle::experimental::DataType GetAmpDestDtype(
                      ->count(op_name)) {
         return paddle::experimental::DataType::FLOAT32;
       } else {
-        auto dst_type = GetPromoteType(op_name, amp_tensors_vector,
+        auto dst_type = GetPromoteType(op_name,
+                                       amp_tensors_vector,
                                        paddle::experimental::DataType::FLOAT16);
         if (dst_type == paddle::experimental::DataType::FLOAT16 &&
             paddle::imperative::AmpOperators::Instance()
@@ -139,7 +141,8 @@ inline paddle::experimental::DataType GetAmpDestDtype(
         return paddle::experimental::DataType::FLOAT32;
       } else {
         auto dst_type =
-            GetPromoteType(op_name, amp_tensors_vector,
+            GetPromoteType(op_name,
+                           amp_tensors_vector,
                            paddle::experimental::DataType::BFLOAT16);
         if (dst_type == paddle::experimental::DataType::BFLOAT16 &&
             paddle::imperative::AmpOperators::Instance()

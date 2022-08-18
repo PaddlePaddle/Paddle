@@ -22,7 +22,8 @@ namespace details {
 struct VarHandleBase;
 
 FetchBarrierOpHandle::FetchBarrierOpHandle(
-    ir::Node *node, const std::vector<Scope *> &local_scopes,
+    ir::Node *node,
+    const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places)
     // fetch_barrier op always run on place0, but output on all places.
     : OpHandleBase(node),

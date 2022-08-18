@@ -67,6 +67,7 @@ def cnn_model(data):
 
 
 class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
+
     def get_model(self, batch_size=2, single_device=False):
         # Input data
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
@@ -75,20 +76,21 @@ class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
         # Train program
         predict = cnn_model(images)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         # Evaluator
         batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(
-            input=predict, label=label, total=batch_size_tensor)
+        batch_acc = fluid.layers.accuracy(input=predict,
+                                          label=label,
+                                          total=batch_size_tensor)
 
         test_program = fluid.default_main_program().clone(for_test=True)
 
         # Reader
-        train_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
-        test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+        train_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                    batch_size=batch_size)
+        test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                   batch_size=batch_size)
 
         optimizer = paddle.fluid.optimizer.Adam(0.01)
         if single_device:
@@ -101,8 +103,8 @@ class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
             strategy.fuse_all_reduce_ops = True
             strategy._calc_comm_same_stream = False
             strategy.fuse_grad_size_in_num = 8
-            optimizer = fleet.distributed_optimizer(
-                optimizer, strategy=strategy)
+            optimizer = fleet.distributed_optimizer(optimizer,
+                                                    strategy=strategy)
             optimizer.minimize(avg_cost)
 
         return test_program, avg_cost, train_reader, test_reader, batch_acc, predict

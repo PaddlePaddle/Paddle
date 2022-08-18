@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
+
 #include <vector>
+
 #include "gtest/gtest.h"
 
 namespace paddle {

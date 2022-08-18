@@ -26,6 +26,7 @@ IMAGE_SIZE = 32
 
 
 class RandomDataset(Dataset):
+
     def __init__(self, sample_num, class_num):
         self.sample_num = sample_num
         self.class_num = class_num
@@ -41,6 +42,7 @@ class RandomDataset(Dataset):
 
 
 class TestSampler(unittest.TestCase):
+
     def test_main(self):
         dataset = RandomDataset(100, 10)
         sampler = Sampler(dataset)
@@ -52,6 +54,7 @@ class TestSampler(unittest.TestCase):
 
 
 class TestSequenceSampler(unittest.TestCase):
+
     def test_main(self):
         dataset = RandomDataset(100, 10)
         sampler = SequenceSampler(dataset)
@@ -62,6 +65,7 @@ class TestSequenceSampler(unittest.TestCase):
 
 
 class TestRandomSampler(unittest.TestCase):
+
     def test_main(self):
         dataset = RandomDataset(100, 10)
         sampler = RandomSampler(dataset)
@@ -96,8 +100,10 @@ class TestRandomSampler(unittest.TestCase):
     def test_with_generator_num_samples(self):
         dataset = RandomDataset(100, 10)
         generator = iter(range(0, 60))
-        sampler = RandomSampler(
-            dataset, generator=generator, num_samples=50, replacement=True)
+        sampler = RandomSampler(dataset,
+                                generator=generator,
+                                num_samples=50,
+                                replacement=True)
         assert len(sampler) == 50
 
         rets = []
@@ -107,6 +113,7 @@ class TestRandomSampler(unittest.TestCase):
 
 
 class TestBatchSampler(unittest.TestCase):
+
     def setUp(self):
         self.num_samples = 1000
         self.num_classes = 10
@@ -116,11 +123,10 @@ class TestBatchSampler(unittest.TestCase):
 
     def init_batch_sampler(self):
         dataset = RandomDataset(self.num_samples, self.num_classes)
-        bs = BatchSampler(
-            dataset=dataset,
-            batch_size=self.batch_size,
-            shuffle=self.shuffle,
-            drop_last=self.drop_last)
+        bs = BatchSampler(dataset=dataset,
+                          batch_size=self.batch_size,
+                          shuffle=self.shuffle,
+                          drop_last=self.drop_last)
         return bs
 
     def test_main(self):
@@ -140,6 +146,7 @@ class TestBatchSampler(unittest.TestCase):
 
 
 class TestBatchSamplerDropLast(TestBatchSampler):
+
     def setUp(self):
         self.num_samples = 1000
         self.num_classes = 10
@@ -149,6 +156,7 @@ class TestBatchSamplerDropLast(TestBatchSampler):
 
 
 class TestBatchSamplerShuffle(TestBatchSampler):
+
     def setUp(self):
         self.num_samples = 1000
         self.num_classes = 10
@@ -158,17 +166,18 @@ class TestBatchSamplerShuffle(TestBatchSampler):
 
 
 class TestBatchSamplerWithSampler(TestBatchSampler):
+
     def init_batch_sampler(self):
         dataset = RandomDataset(1000, 10)
         sampler = SequenceSampler(dataset)
-        bs = BatchSampler(
-            sampler=sampler,
-            batch_size=self.batch_size,
-            drop_last=self.drop_last)
+        bs = BatchSampler(sampler=sampler,
+                          batch_size=self.batch_size,
+                          drop_last=self.drop_last)
         return bs
 
 
 class TestBatchSamplerWithSamplerDropLast(unittest.TestCase):
+
     def setUp(self):
         self.num_samples = 1000
         self.num_classes = 10
@@ -178,6 +187,7 @@ class TestBatchSamplerWithSamplerDropLast(unittest.TestCase):
 
 
 class TestBatchSamplerWithSamplerShuffle(unittest.TestCase):
+
     def setUp(self):
         self.num_samples = 1000
         self.num_classes = 10
@@ -189,17 +199,17 @@ class TestBatchSamplerWithSamplerShuffle(unittest.TestCase):
         try:
             dataset = RandomDataset(self.num_samples, self.num_classes)
             sampler = RandomSampler(dataset)
-            bs = BatchSampler(
-                sampler=sampler,
-                shuffle=self.shuffle,
-                batch_size=self.batch_size,
-                drop_last=self.drop_last)
+            bs = BatchSampler(sampler=sampler,
+                              shuffle=self.shuffle,
+                              batch_size=self.batch_size,
+                              drop_last=self.drop_last)
             self.assertTrue(False)
         except AssertionError:
             pass
 
 
 class TestWeightedRandomSampler(unittest.TestCase):
+
     def init_probs(self, total, pos):
         pos_probs = np.random.random((pos, )).astype('float32')
         probs = np.zeros((total, )).astype('float32')

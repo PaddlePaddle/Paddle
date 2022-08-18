@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <memory>
 
-#include "paddle/phi/kernels/concat_kernel.h"
+#include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/concat_kernel.h"
 
 namespace phi {
 namespace tests {
@@ -60,7 +60,6 @@ TEST(DEV_API, concat) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-  dev_ctx.Init();
   auto out = phi::Concat<float>(dev_ctx, inputs, 0);
 
   // 3. check result

@@ -46,7 +46,8 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_NPU_KERNEL(
-    increment, paddle::operators::IncrementalNPUKernel<float>,
+    increment,
+    paddle::operators::IncrementalNPUKernel<float>,
     paddle::operators::IncrementalNPUKernel<double>,
     paddle::operators::IncrementalNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64

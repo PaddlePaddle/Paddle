@@ -27,6 +27,7 @@ import paddle
 
 
 class TestInplaceANBOpTraining(unittest.TestCase):
+
     def setUp(self):
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.N = 4
@@ -50,12 +51,11 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         startup.random_seed = seed
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                data = fluid.layers.data(
-                    name='input',
-                    shape=self.dshape,
-                    dtype=self.dtype,
-                    append_batch_size=False,
-                    stop_gradient=False)
+                data = fluid.layers.data(name='input',
+                                         shape=self.dshape,
+                                         dtype=self.dtype,
+                                         append_batch_size=False,
+                                         stop_gradient=False)
                 if inplace:
                     bn = fluid.layers.inplace_abn(
                         data,
@@ -83,7 +83,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                         bn = fluid.layers.elu(bn, alpha)
 
                 # NOTE: in inplace mode input and output of bn
-                # may have same name, multiply 1. to generate 
+                # may have same name, multiply 1. to generate
                 # a new Variable for fetch
                 bn = bn * 1.
 
@@ -102,14 +102,13 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         fetch_outs = []
         fetch_names = []
         for inplace in [False, True]:
-            main, startup, outs = self.build_program(
-                place,
-                layout,
-                seed,
-                only_forward,
-                activation,
-                alpha,
-                inplace=inplace)
+            main, startup, outs = self.build_program(place,
+                                                     layout,
+                                                     seed,
+                                                     only_forward,
+                                                     activation,
+                                                     alpha,
+                                                     inplace=inplace)
             exe = fluid.Executor(place)
             exe.run(startup)
 
@@ -145,15 +144,17 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             fetch_outs.append(bn_fetches)
             fetch_names.append(fetch_name)
 
-        for bn_val, inplace_abn_val, name1, name2 in zip(*(
-                fetch_outs + fetch_names)):
-            self.assertTrue(
-                np.allclose(
-                    bn_val, inplace_abn_val, atol=1e-2),
-                "Output (" + name1 + ":" + name2 +
-                ") has diff on {} with {} layout and {} activation. \n".format(
-                    place, layout, activation) + "\nBN     " + str(bn_val) +
-                "\n" + "Inplace ABN " + str(inplace_abn_val))
+        for bn_val, inplace_abn_val, name1, name2 in zip(*(fetch_outs +
+                                                           fetch_names)):
+            np.testing.assert_allclose(
+                bn_val,
+                inplace_abn_val,
+                rtol=1e-05,
+                atol=0.01,
+                err_msg='Output (' + name1 + ':' + name2 +
+                ') has diff on {} with {} layout and {} activation. \n'.format(
+                    place, layout, activation) + '\nBN     ' + str(bn_val) +
+                '\n' + 'Inplace ABN ' + str(inplace_abn_val))
 
     def test_op(self):
         use_cudas = [False, True] if core.is_compiled_with_cuda() else [False]

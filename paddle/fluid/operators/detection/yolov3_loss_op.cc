@@ -10,10 +10,12 @@
    limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
@@ -177,18 +179,6 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
 class Yolov3LossOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) should not be null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Loss")), true,
-        platform::errors::NotFound("Input(Loss@GRAD) should not be null"));
-    auto dim_x = ctx->GetInputDim("X");
-    if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), dim_x);
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -228,10 +218,18 @@ class Yolov3LossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(yolov3_loss, Yolov3LossInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(yolov3_loss,
+                            Yolov3LossInferShapeFunctor,
                             PD_INFER_META(phi::Yolov3LossInferMeta));
-REGISTER_OPERATOR(yolov3_loss, ops::Yolov3LossOp, ops::Yolov3LossOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(yolov3_loss_grad,
+                            Yolov3LossGradInferShapeFunctor,
+                            PD_INFER_META(phi::Yolov3LossGradInferMeta));
+REGISTER_OPERATOR(yolov3_loss,
+                  ops::Yolov3LossOp,
+                  ops::Yolov3LossOpMaker,
                   ops::Yolov3LossGradMaker<paddle::framework::OpDesc>,
                   ops::Yolov3LossGradMaker<paddle::imperative::OpBase>,
                   Yolov3LossInferShapeFunctor);
-REGISTER_OPERATOR(yolov3_loss_grad, ops::Yolov3LossOpGrad);
+REGISTER_OPERATOR(yolov3_loss_grad,
+                  ops::Yolov3LossOpGrad,
+                  Yolov3LossGradInferShapeFunctor);

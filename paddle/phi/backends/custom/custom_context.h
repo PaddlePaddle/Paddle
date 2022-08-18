@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
+
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 

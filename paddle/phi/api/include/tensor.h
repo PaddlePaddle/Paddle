@@ -166,7 +166,7 @@ class PADDLE_API Tensor final {
    *
    * @return phi::DDim
    */
-  phi::DDim dims() const;
+  const phi::DDim& dims() const;
 
   /**
    * @brief Return the shape (dimensions) of Tensor.
@@ -260,7 +260,7 @@ class PADDLE_API Tensor final {
    *
    * @return Place
    */
-  Place place() const;
+  const Place& place() const;
 
   /**
    * @brief Determine whether the tensor device is CPU
@@ -285,6 +285,14 @@ class PADDLE_API Tensor final {
    * @return false
    */
   bool is_gpu_pinned() const;
+
+  /**
+   * @brief Determine whether the tensor device is CustomDevice
+   *
+   * @return true
+   * @return false
+   */
+  bool is_custom_device() const;
 
   /* Part 4: Data Access methods */
 
@@ -421,7 +429,7 @@ class PADDLE_API Tensor final {
    * @param blocking, Should we copy this in sync way.
    * @return Tensor
    */
-  Tensor copy_to(Place place, bool blocking) const;
+  Tensor copy_to(const Place& place, bool blocking) const;
 
   /**
    * @brief Transfer the source Tensor to current Tensor.

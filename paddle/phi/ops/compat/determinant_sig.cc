@@ -18,10 +18,8 @@ namespace phi {
 
 KernelSignature DeterminantGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("determinant_grad",
-                         {"Input", "Out", GradVarName("Out")},
-                         {},
-                         {GradVarName("Input")});
+  return KernelSignature(
+      "determinant_grad", {"Input", "Out", "Out@GRAD"}, {}, {"Input@GRAD"});
 }
 
 }  // namespace phi

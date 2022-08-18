@@ -23,6 +23,7 @@ from paddle.distributed.fleet.elastic.manager import LauncherInterface
 
 
 class CollectiveLauncher(LauncherInterface):
+
     def __init__(self, args):
         self.args = args
         self.procs = []

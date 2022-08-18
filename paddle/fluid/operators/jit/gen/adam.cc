@@ -80,7 +80,7 @@ void AdamJitCode::mainCode() {
   // beta2 * mom2 + (1 - beta2) * g * g
   vmulps(ymm7 | k1, ymm7, ymm7);
   vmulps(ymm7 | k1, ymm_one_sub_beta2, ymm7);
-  vfmadd231ps(ymm7 | k1, ymm1, ptr[reg_mom2_ptr + reg_offset]);
+  vfmadd231ps(ymm7 | k1, ymm_beta2, ptr[reg_mom2_ptr + reg_offset]);
 
   // store mom1 and mom2
   vmovups(ptr[reg_mom1_out_ptr + reg_offset] | k1, ymm8);
@@ -88,11 +88,11 @@ void AdamJitCode::mainCode() {
 
   // sqrt(mom2) + eps
   vsqrtps(ymm7 | k1, ymm7);
-  vaddps(ymm7 | k1, ymm7, ymm3);
+  vaddps(ymm7 | k1, ymm7, ymm_eps);
 
   // p + (-lr) * (mom1 / sqrt(mom2) + eps)
   vdivps(ymm7 | k1, ymm8, ymm7);
-  vfmadd213ps(ymm7 | k1, ymm2, ptr[reg_param_ptr + reg_offset]);
+  vfmadd213ps(ymm7 | k1, ymm_lr, ptr[reg_param_ptr + reg_offset]);
 
   // store p
   vmovups(ptr[reg_param_out_ptr + reg_offset] | k1, ymm7);

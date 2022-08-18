@@ -23,8 +23,8 @@ core_suffix = 'so'
 if os.name == 'nt':
     core_suffix = 'pyd'
 
-legacy_core = os.path.abspath(os.path.dirname(
-    __file__)) + os.sep + 'core.' + core_suffix
+legacy_core = os.path.abspath(
+    os.path.dirname(__file__)) + os.sep + 'core.' + core_suffix
 if os.path.exists(legacy_core):
     sys.stderr.write('Deleting legacy file ' + legacy_core + '\n')
     try:
@@ -159,8 +159,8 @@ def __bootstrap__():
     import platform
     from . import core
 
-    # NOTE(zhiqiu): When (1)numpy < 1.19; (2) python < 3.7, 
-    # unittest is always imported in numpy (maybe some versions not). 
+    # NOTE(zhiqiu): When (1)numpy < 1.19; (2) python < 3.7,
+    # unittest is always imported in numpy (maybe some versions not).
     # so is_test is True and p2p is not inited.
     in_test = 'unittest' in sys.modules
 
@@ -170,12 +170,11 @@ def __bootstrap__():
         num_threads = 1
 
     if num_threads > 1:
-        print(
-            'WARNING: OMP_NUM_THREADS set to {0}, not 1. The computation '
-            'speed will not be optimized if you use data parallel. It will '
-            'fail if this PaddlePaddle binary is compiled with OpenBlas since'
-            ' OpenBlas does not support multi-threads.'.format(num_threads),
-            file=sys.stderr)
+        print('WARNING: OMP_NUM_THREADS set to {0}, not 1. The computation '
+              'speed will not be optimized if you use data parallel. It will '
+              'fail if this PaddlePaddle binary is compiled with OpenBlas since'
+              ' OpenBlas does not support multi-threads.'.format(num_threads),
+              file=sys.stderr)
         print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
@@ -203,7 +202,7 @@ def __bootstrap__():
         read_env_flags += []
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
-    # Note(zhouwei25): sys may not have argv in some cases, 
+    # Note(zhouwei25): sys may not have argv in some cases,
     # Such as: use Python/C API to call Python from C++
     try:
         core.init_glog(sys.argv[0])
@@ -212,6 +211,7 @@ def __bootstrap__():
         core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices()
+    core.init_default_kernel_signatures()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
@@ -226,7 +226,9 @@ if core.is_compiled_with_npu():
     atexit.register(core.npu_finalize)
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
+
 # NOTE(Aganlengzi): clean up KernelFactory in advance manually.
-atexit.register(core.clear_kernel_factory)
 # NOTE(wangran16): clean up DeviceManger in advance manually.
+# Keep clear_kernel_factory running before clear_device_manager
 atexit.register(core.clear_device_manager)
+atexit.register(core.clear_kernel_factory)

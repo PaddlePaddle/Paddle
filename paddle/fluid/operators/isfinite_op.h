@@ -63,7 +63,8 @@ class OverflowKernel : public framework::OpKernel<T> {
       functor(in, out);
     } else {
       PADDLE_ENFORCE_EQ(
-          true, false,
+          true,
+          false,
           platform::errors::InvalidArgument(
               "The input type mismatch, the type of Input(X) must be Tensor or "
               "SelectedRows, please check your input."));

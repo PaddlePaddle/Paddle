@@ -40,12 +40,22 @@ namespace operators {
  * 2D grids: gridDim.y = rows
  */
 inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
-    const platform::CUDADeviceContext &ctx, const uint32_t rows,
-    const uint32_t cols, const int vec_size) {
+    const phi::GPUContext &ctx,
+    const uint32_t rows,
+    const uint32_t cols,
+    const int vec_size) {
   const uint32_t tmp_cols = cols / vec_size;
-  int threads = std::max(
-      static_cast<uint32_t>(32),
-      std::min(tmp_cols, static_cast<uint32_t>(ctx.GetMaxThreadsPerBlock())));
+  // NOTE(wangxi): We set max_block_size to 512, for `FusedResidualDropoutBias`
+  // needs too many register resources. If data_type is float16, CUDA
+  // error(701) will occur when block_size is 1024. Which error is
+  // 'cudaErrorLaunchOutOfResources', this indicates that a launch did not
+  // occur because it did not have appropriate resources.
+  // Of course, this kernel can be optimized later to reduce the use
+  // of registers.
+  int threads = std::max(static_cast<uint32_t>(32),
+                         std::min(tmp_cols,
+                                  static_cast<uint32_t>(std::min(
+                                      ctx.GetMaxThreadsPerBlock(), 512))));
   const auto blocks_x =
       std::max(static_cast<uint32_t>(1), (tmp_cols + threads - 1) / threads);
   const auto blocks_y = std::max(static_cast<uint32_t>(1), rows);
@@ -91,8 +101,7 @@ __forceinline__ __device__ void RandVec<8>(curandStatePhilox4_32_10_t *state,
 }
 
 template <typename T>
-inline void SetZero(const platform::CUDADeviceContext &ctx, T *ptr,
-                    const size_t size) {
+inline void SetZero(const phi::GPUContext &ctx, T *ptr, const size_t size) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(ptr, 0, size * sizeof(T), ctx.stream()));
 }
@@ -101,7 +110,8 @@ inline void SetZero(const platform::CUDADeviceContext &ctx, T *ptr,
  * reduce the sum of 128 cols data by 8*VecSize warps
  */
 template <typename T, int VecSize, int BlockSizeX, int BlockSizeY>
-inline __device__ void CalculateDBias(const T *tmp_sum, T *dbias,
+inline __device__ void CalculateDBias(const T *tmp_sum,
+                                      T *dbias,
                                       const int cols) {
   // save temporary sum to cache and do transpose
   __shared__ T cache[BlockSizeX * VecSize][BlockSizeY];

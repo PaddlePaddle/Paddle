@@ -32,7 +32,7 @@ DenseTensor Concat(const Context& dev_ctx,
                    const Scalar& axis) {
   std::vector<MetaTensor> meta_x;
   meta_x.reserve(x.size());
-  std::vector<MetaTensor*> meta_x_ptr;
+  std::vector<const MetaTensor*> meta_x_ptr;
   for (const auto* t : x) {
     meta_x.emplace_back(*t);
     meta_x_ptr.push_back(&meta_x.back());

@@ -22,6 +22,7 @@ from op_test import OpTest
 
 
 class LinearChainCrfForward(object):
+
     def __init__(self, seq_start_positions, emission_weights, emission_row_max,
                  emission_exps, transition_weights, transition_exps, labels):
         self.tag_num = emission_weights.shape[1]
@@ -47,8 +48,8 @@ class LinearChainCrfForward(object):
         # The output of linear chain crf operator.
         # alpha is a memo table in dynamic programming to calculate
         # nomalization factor.
-        self.alpha = np.zeros(
-            (seq_start_positions[-1], self.tag_num), dtype="float64")
+        self.alpha = np.zeros((seq_start_positions[-1], self.tag_num),
+                              dtype="float64")
         self.log_likelihood = np.zeros((self.seq_num, 1))
 
     def _l1_norm(self, x):
@@ -78,8 +79,8 @@ class LinearChainCrfForward(object):
         log_likelihood -= np.log(s)
 
         # calculate the nominator part.
-        log_likelihood += (
-            self.a[label[0]] + x[0, label[0]] + self.b[label[-1]])
+        log_likelihood += (self.a[label[0]] + x[0, label[0]] +
+                           self.b[label[-1]])
 
         for k in range(1, seq_len):
             log_likelihood += (x[k, label[k]] + self.w[label[k - 1], label[k]])
@@ -99,6 +100,7 @@ class LinearChainCrfForward(object):
 
 
 class TestLinearChainCrfOp(OpTest):
+
     def set_test_data(self):
         # TODO(caoying) Fix the unittest by: add the boundary cases when
         # sequence lengths are 1, 2, and 3.
@@ -122,8 +124,10 @@ class TestLinearChainCrfOp(OpTest):
                                        [TAG_NUM + 2, TAG_NUM]).astype("float64")
         transition_exps = np.exp(transition)
 
-        labels = np.random.randint(
-            low=0, high=TAG_NUM, size=(seq_start_pos[-1], 1), dtype="int64")
+        labels = np.random.randint(low=0,
+                                   high=TAG_NUM,
+                                   size=(seq_start_pos[-1], 1),
+                                   dtype="int64")
 
         self.inputs = {
             "Emission": (emission, lod),
@@ -153,11 +157,13 @@ class TestLinearChainCrfOp(OpTest):
         self.check_grad(["Emission", "Transition"], "LogLikelihood")
 
     def test_check_grad_ignore_transition(self):
-        self.check_grad(
-            ["Emission"], "LogLikelihood", no_grad_set=set("Transition"))
+        self.check_grad(["Emission"],
+                        "LogLikelihood",
+                        no_grad_set=set("Transition"))
 
 
 class TestLinearChainCrfPaddingTensor(OpTest):
+
     def seq_pad(self, data, length):
         max_len = np.max(length)
         shape = [len(length), max_len] + list(data.shape[1:])
@@ -180,7 +186,7 @@ class TestLinearChainCrfPaddingTensor(OpTest):
         return padded
 
     def set_test_data_1(self):
-        # Fix the unittest by: add padding tensor in inputs 
+        # Fix the unittest by: add padding tensor in inputs
         SEQ_NUM = 3
         TAG_NUM = 17
         MAX_SEQ_LEN = 5
@@ -199,8 +205,10 @@ class TestLinearChainCrfPaddingTensor(OpTest):
                                        [TAG_NUM + 2, TAG_NUM]).astype("float64")
         transition_exps = np.exp(transition)
 
-        labels = np.random.randint(
-            low=0, high=TAG_NUM, size=(seq_start_pos[-1], 1), dtype="int64")
+        labels = np.random.randint(low=0,
+                                   high=TAG_NUM,
+                                   size=(seq_start_pos[-1], 1),
+                                   dtype="int64")
         self.inputs = {
             "Emission": self.seq_pad(emission, lod[0]),
             "Transition": transition,
@@ -229,8 +237,9 @@ class TestLinearChainCrfPaddingTensor(OpTest):
         self.check_grad(["Emission", "Transition"], "LogLikelihood")
 
     def test_check_grad_ignore_transition(self):
-        self.check_grad(
-            ["Emission"], "LogLikelihood", no_grad_set=set("Transition"))
+        self.check_grad(["Emission"],
+                        "LogLikelihood",
+                        no_grad_set=set("Transition"))
 
 
 if __name__ == "__main__":

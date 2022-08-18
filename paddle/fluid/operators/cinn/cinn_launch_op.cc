@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
+
 #include <functional>
 #include <vector>
+
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/runtime/cinn_runtime.h"
 #include "cinn/runtime/flags.h"
@@ -53,7 +55,8 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
   std::vector<std::string> infos;
   auto cinn_var_names = cinn_scope.var_names();
   infos.reserve(cinn_var_names.size());
-  std::transform(cinn_var_names.begin(), cinn_var_names.end(),
+  std::transform(cinn_var_names.begin(),
+                 cinn_var_names.end(),
                  std::back_inserter(infos),
                  [](const auto& name_view) { return name_view.data(); });
   VLOG(4) << "Compiled scope variable names:["
@@ -61,8 +64,10 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
 
   infos.clear();
   infos.reserve(paddle2cinn_varmap.size());
-  std::transform(paddle2cinn_varmap.begin(), paddle2cinn_varmap.end(),
-                 std::back_inserter(infos), [](const auto& paddle2cinn) {
+  std::transform(paddle2cinn_varmap.begin(),
+                 paddle2cinn_varmap.end(),
+                 std::back_inserter(infos),
+                 [](const auto& paddle2cinn) {
                    return paddle2cinn.first + "->" + paddle2cinn.second;
                  });
   VLOG(4) << "Compiled paddle2cinn_varmap:[" << string::join_strings(infos, ',')
@@ -70,7 +75,8 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
 }
 
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
-                         const CinnLaunchContext& context, void* stream) {
+                         const CinnLaunchContext& context,
+                         void* stream) {
   compiled_obj.runtime_program->Execute(&context.FinalizeArguments(), stream);
 }
 
@@ -93,8 +99,8 @@ class CinnLaunchOp : public framework::OperatorWithKernel {
     //                "Input", string::format_string("%s|%s", kX,
     //                kNoNeedBufferX),
     //                "CinnLaunchOp");
-    OP_INOUT_CHECK(ctx->HasOutputs(kOutputs), "Output", kOutputs,
-                   "CinnLaunchOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutputs(kOutputs), "Output", kOutputs, "CinnLaunchOp");
   }
 
  protected:
@@ -136,7 +142,7 @@ class CinnLaunchOpMaker : public framework::OpProtoAndCheckerMaker {
               "(vector<LoDTensor>)"
               "which are the output of graph inside the CinnLaunchOp.")
         .AsDuplicable();
-    AddAttr<std::string>(
+    AddAttr<int64_t>(
         kCompilationKey,
         "(string)"
         "a hash key used to get the graph object or its computation result.");
@@ -176,11 +182,12 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(CinnLaunchOpNoBufVarsInferer,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    cinn_launch, ops::CinnLaunchOp, ops::CinnLaunchOpMaker,
+    cinn_launch,
+    ops::CinnLaunchOp,
+    ops::CinnLaunchOpMaker,
     ops::CinnLaunchOpNoBufVarsInferer,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 /* see [Why use single type kernel] */
-REGISTER_OP_CPU_KERNEL(
-    cinn_launch,
-    ops::CinnLaunchOpKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(cinn_launch,
+                       ops::CinnLaunchOpKernel<phi::CPUContext, float>);

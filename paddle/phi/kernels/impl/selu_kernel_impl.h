@@ -14,6 +14,7 @@
 
 #pragma once
 #include <string>
+
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/dense_tensor.h"

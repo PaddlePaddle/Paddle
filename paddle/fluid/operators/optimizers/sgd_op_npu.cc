@@ -32,9 +32,10 @@ class SGDNPUKernel : public framework::OpKernel<T> {
 
     param_out->mutable_data<T>(ctx.GetPlace());
 
-    const auto& runner =
-        NpuOpRunner("ApplyGradientDescent",
-                    {*param_var, *learning_rate, *grad_var}, {*param_out}, {});
+    const auto& runner = NpuOpRunner("ApplyGradientDescent",
+                                     {*param_var, *learning_rate, *grad_var},
+                                     {*param_out},
+                                     {});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -45,8 +46,10 @@ class SGDNPUKernel : public framework::OpKernel<T> {
     // if param and param_out is not same, we need to do copy.
     if (param_out->data<T>() != param_var->data<T>()) {
       framework::TensorCopy(
-          *param_var, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), param_out);
+          *param_var,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          param_out);
     }
   }
 };
@@ -57,7 +60,8 @@ class SGDNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    sgd, ops::SGDNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    sgd,
+    ops::SGDNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SGDNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::SGDNPUKernel<paddle::platform::NPUDeviceContext,
                       paddle::platform::float16>);

@@ -14,6 +14,7 @@
 
 #pragma once
 #include <mlir/Pass/Pass.h>
+
 #include "paddle/infrt/dialect/infrt/common/types.h"
 
 namespace infrt {

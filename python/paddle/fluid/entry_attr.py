@@ -39,6 +39,7 @@ class EntryAttr(object):
 
 
 class ProbabilityEntry(EntryAttr):
+
     def __init__(self, probability):
         super(ProbabilityEntry, self).__init__()
 
@@ -56,6 +57,7 @@ class ProbabilityEntry(EntryAttr):
 
 
 class CountFilterEntry(EntryAttr):
+
     def __init__(self, count_filter):
         super(CountFilterEntry, self).__init__()
 

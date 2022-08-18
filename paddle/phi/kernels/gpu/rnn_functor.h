@@ -14,11 +14,10 @@
 
 #pragma once
 
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
-
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
@@ -99,7 +98,7 @@ class RNNDescriptors {
 
     // ------------------- cudnn dropout descriptors ---------------------
     size_t state_size;
-    bool is_initialized = dropout_state->IsInitialized();
+    bool is_initialized = dropout_state->initialized();
     if (!is_test_ && !is_initialized) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(

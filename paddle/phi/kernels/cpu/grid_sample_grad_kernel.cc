@@ -73,8 +73,9 @@ static inline void ClipWithMask(const CPUContext& ctx,
                          .cwiseMin(static_cast<T>(max_val));
       auto in_bound = (clipped == reflected).template cast<T>();
       grid_scale_t.device(place) =
-          grid_scale_t * ((is_neg == one_more_flip).template cast<T>() -
-                          (is_neg != one_more_flip).template cast<T>()) *
+          grid_scale_t *
+          ((is_neg == one_more_flip).template cast<T>() -
+           (is_neg != one_more_flip).template cast<T>()) *
           in_bound;
       grid_slice_t.device(place) = clipped;
     }

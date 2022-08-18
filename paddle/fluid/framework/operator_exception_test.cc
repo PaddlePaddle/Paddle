@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/operator.h"
 #include <exception>
 #include <stdexcept>
 #include <string>
 #include <utility>
+
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
 

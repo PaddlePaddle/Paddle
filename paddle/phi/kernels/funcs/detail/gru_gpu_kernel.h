@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <type_traits>
+
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"

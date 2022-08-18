@@ -24,10 +24,8 @@ KernelSignature RollOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature RollGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("roll_grad",
-                         {"X", GradVarName("Out")},
-                         {"shifts", "axis"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "roll_grad", {"X", "Out@GRAD"}, {"shifts", "axis"}, {"X@GRAD"});
 }
 
 }  // namespace phi

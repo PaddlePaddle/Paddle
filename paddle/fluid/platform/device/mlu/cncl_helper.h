@@ -16,8 +16,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CNCL
 #include <cncl.h>
-
 #include <stdio.h>
+
 #include <memory>
 #include <string>
 #include <thread>  // NOLINT

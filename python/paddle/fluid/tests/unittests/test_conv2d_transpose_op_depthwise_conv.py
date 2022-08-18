@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+
 paddle.enable_static()
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -26,6 +27,7 @@ from test_conv2d_transpose_op import TestConv2DTransposeOp
 
 
 class TestDepthwiseConvTranspose(TestConv2DTransposeOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -39,6 +41,7 @@ class TestDepthwiseConvTranspose(TestConv2DTransposeOp):
 
 
 class TestDepthwiseConvTransposeAsymmetricPad(TestConv2DTransposeOp):
+
     def init_test_case(self):
         self.pad = [1, 1, 1, 2]
         self.stride = [1, 1]
@@ -53,6 +56,7 @@ class TestDepthwiseConvTransposeAsymmetricPad(TestConv2DTransposeOp):
 
 
 class TestDepthwiseConvTransposeSAMEPad(TestConv2DTransposeOp):
+
     def init_test_case(self):
         self.stride = [1, 1]
         self.dilations = [1, 1]
@@ -66,6 +70,7 @@ class TestDepthwiseConvTransposeSAMEPad(TestConv2DTransposeOp):
 
 
 class TestDepthwiseConvTransposeVALIDPad(TestConv2DTransposeOp):
+
     def init_test_case(self):
         self.stride = [1, 1]
         self.dilations = [1, 1]
@@ -79,6 +84,7 @@ class TestDepthwiseConvTransposeVALIDPad(TestConv2DTransposeOp):
 
 
 class TestDepthwiseConvTranspose_NHWC_3x3kernel(TestConv2DTransposeOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]

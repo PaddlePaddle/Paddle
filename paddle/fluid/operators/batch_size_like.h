@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -39,8 +40,8 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
     auto& shape = ctx->Attrs().Get<std::vector<int>>("shape");
     int x_batch_size_dim = ctx->Attrs().Get<int>("input_dim_idx");
     int out_batch_size_dim = ctx->Attrs().Get<int>("output_dim_idx");
-    phi::BatchSizeLikeInferMeta(x, shape, x_batch_size_dim, out_batch_size_dim,
-                                &out);
+    phi::BatchSizeLikeInferMeta(
+        x, shape, x_batch_size_dim, out_batch_size_dim, &out);
   }
 };
 

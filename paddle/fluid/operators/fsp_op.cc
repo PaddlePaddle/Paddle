@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fsp_op.h"
+
 #include <memory>
 
 namespace paddle {
@@ -31,27 +32,33 @@ class FSPOp : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 4UL,
+        x_dims.size(),
+        4UL,
         platform::errors::InvalidArgument(
             "The Input(X) must have shape [batch_size, channel, height, width]."
             "Now the dimension of 'X' is %d.",
             x_dims.size()));
     PADDLE_ENFORCE_EQ(
-        y_dims.size(), 4UL,
+        y_dims.size(),
+        4UL,
         platform::errors::InvalidArgument(
             "The Input(Y) must have shape [batch_size, channel, height, width]."
             "Now the dimension of 'Y' is %d.",
             y_dims.size()));
     PADDLE_ENFORCE_EQ(
-        x_dims[2], y_dims[2],
+        x_dims[2],
+        y_dims[2],
         platform::errors::InvalidArgument(
             "The Input(X)(%d) and Input(Y)(%d) should have the same height.",
-            x_dims[2], y_dims[2]));
+            x_dims[2],
+            y_dims[2]));
     PADDLE_ENFORCE_EQ(
-        x_dims[3], y_dims[3],
+        x_dims[3],
+        y_dims[3],
         platform::errors::InvalidArgument(
             "The Input(X)(%d) and Input(Y)(%d) should have the same width.",
-            x_dims[3], y_dims[3]));
+            x_dims[3],
+            y_dims[3]));
 
     ctx->SetOutputDim("Out", {x_dims[0], x_dims[1], y_dims[1]});
     ctx->ShareLoD("X", "Out");
@@ -63,8 +70,10 @@ class FSPOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context(),
-        layout_, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context(),
+        layout_,
+        library_);
   }
 };
 
@@ -105,8 +114,10 @@ class FSPOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fsp_grad");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "fsp_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "fsp_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "fsp_grad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -152,13 +163,15 @@ class FSPGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fsp, ops::FSPOp, ops::FSPOpMaker,
+REGISTER_OPERATOR(fsp,
+                  ops::FSPOp,
+                  ops::FSPOpMaker,
                   ops::FSPGradOpMaker<paddle::framework::OpDesc>,
                   ops::FSPGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fsp_grad, ops::FSPOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    fsp, ops::FSPOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FSPOpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    fsp_grad, ops::FSPGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FSPGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(fsp,
+                       ops::FSPOpKernel<phi::CPUContext, float>,
+                       ops::FSPOpKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(fsp_grad,
+                       ops::FSPGradOpKernel<phi::CPUContext, float>,
+                       ops::FSPGradOpKernel<phi::CPUContext, double>);

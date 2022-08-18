@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/infermeta/strings/nullary.h"

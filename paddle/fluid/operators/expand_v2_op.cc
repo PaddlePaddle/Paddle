@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_v2_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -41,7 +42,8 @@ class ExpandV2Op : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -50,13 +52,14 @@ class ExpandV2Op : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "expand_shapes_tensor" || var_name == "Shape") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -127,8 +130,10 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandV2Grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "ExpandV2Grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "ExpandV2Grad");
 
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> expand_shape = ctx->Attrs().Get<std::vector<int>>("shape");
@@ -147,11 +152,14 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
       } else {
         if (ctx->IsRuntime()) {
           PADDLE_ENFORCE_EQ(
-              expand_shape[i], out_dims[i],
+              expand_shape[i],
+              out_dims[i],
               platform::errors::InvalidArgument(
                   "The size (%d) of the dimension %d of Input(Out@GRAD) should "
                   "be equal to the crroresponding dimension size of shape(%d).",
-                  out_dims[i], i, expand_shape[i]));
+                  out_dims[i],
+                  i,
+                  expand_shape[i]));
         }
       }
     }
@@ -170,7 +178,8 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -179,13 +188,14 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "expand_shapes_tensor" || var_name == "Shape") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -231,15 +241,19 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ExpandV2GradNoNeedBufVarsInferer, "X");
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(expand_v2, ExpandInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(expand_v2,
+                            ExpandInferShapeFunctor,
                             PD_INFER_META(phi::ExpandInferMeta));
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(expand_v2, ops::ExpandV2Op, ops::ExpandV2OpMaker,
+REGISTER_OPERATOR(expand_v2,
+                  ops::ExpandV2Op,
+                  ops::ExpandV2OpMaker,
                   ops::ExpandV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandV2GradOpMaker<paddle::imperative::OpBase>,
                   ExpandInferShapeFunctor);
-REGISTER_OPERATOR(expand_v2_grad, ops::ExpandV2GradOp,
+REGISTER_OPERATOR(expand_v2_grad,
+                  ops::ExpandV2GradOp,
                   ops::ExpandV2DoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandV2DoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ExpandV2GradNoNeedBufVarsInferer);

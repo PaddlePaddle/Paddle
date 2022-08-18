@@ -14,9 +14,8 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -110,4 +109,20 @@ PD_REGISTER_KERNEL(empty_like,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_KERNEL(empty,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::EmptyKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16) {}
 #endif

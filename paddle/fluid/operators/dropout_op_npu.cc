@@ -54,7 +54,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    // only achive the default `upscale_in_train` method
+    // only achieve the default `upscale_in_train` method
     if (!is_test) {
       Tensor tmp_x(x->dtype());
       Tensor tmp_out(out->dtype());
@@ -73,8 +73,8 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       float keep_prob = 1. - dropout_prob;
       if (seed_tensor) {
         std::vector<int> seed_data;
-        paddle::framework::TensorToVector(*seed_tensor, ctx.device_context(),
-                                          &seed_data);
+        paddle::framework::TensorToVector(
+            *seed_tensor, ctx.device_context(), &seed_data);
         seed = seed_data[0];
       } else {
         seed = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;
@@ -122,7 +122,9 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype_bool =
           ConvertToNpuDtype(framework::TransToProtoVarType(cast_mask.dtype()));
       const auto& runner_cast_mask_bool =
-          NpuOpRunner("Cast", {*out}, {cast_mask},
+          NpuOpRunner("Cast",
+                      {*out},
+                      {cast_mask},
                       {{"dst_type", static_cast<int>(dst_dtype_bool)}});
       runner_cast_mask_bool.Run(stream);
 
@@ -130,13 +132,17 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype_uint8 =
           ConvertToNpuDtype(framework::TransToProtoVarType(mask->dtype()));
       const auto& runner_cast_mask_uint8 =
-          NpuOpRunner("Cast", {cast_mask}, {*mask},
+          NpuOpRunner("Cast",
+                      {cast_mask},
+                      {*mask},
                       {{"dst_type", static_cast<int>(dst_dtype_uint8)}});
       runner_cast_mask_uint8.Run(stream);
     } else {
       framework::TensorCopy(
-          *x, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), out);
+          *x,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          out);
     }
   }
 };
@@ -152,7 +158,8 @@ class DropoutGradNPUKernel : public framework::OpKernel<T> {
     auto dropout_prob = ctx.Attr<float>("dropout_prob");
     auto is_test = ctx.Attr<bool>("is_test");
 
-    PADDLE_ENFORCE_EQ(is_test, false,
+    PADDLE_ENFORCE_EQ(is_test,
+                      false,
                       platform::errors::PreconditionNotMet(
                           "GradOp is only callable when is_test is false"));
 
@@ -175,12 +182,16 @@ class DropoutGradNPUKernel : public framework::OpKernel<T> {
     auto dst_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(dx->dtype()));
     const auto& runner_cast_mask =
-        NpuOpRunner("Cast", {*mask}, {cast_mask},
+        NpuOpRunner("Cast",
+                    {*mask},
+                    {cast_mask},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     runner_cast_mask.Run(stream);
 
     const auto& runner =
-        NpuOpRunner("MaskedScale", {*dout, cast_mask}, {*dx},
+        NpuOpRunner("MaskedScale",
+                    {*dout, cast_mask},
+                    {*dx},
                     {{"value", static_cast<float>(1. / (1 - dropout_prob))}});
     runner.Run(stream);
   }
@@ -192,7 +203,8 @@ class DropoutGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    dropout, ops::DropoutNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    dropout,
+    ops::DropoutNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::DropoutNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
 

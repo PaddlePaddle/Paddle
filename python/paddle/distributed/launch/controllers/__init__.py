@@ -17,9 +17,11 @@ __all__ = []
 from .collective import CollectiveController
 from .collective import CollectiveElasticController
 from .ps import PSController
+from .ipu_controller import IPUController
 
 # the order is extremely important
 _controllers = [
+    IPUController,
     CollectiveElasticController,
     PSController,
     CollectiveController,
@@ -29,4 +31,5 @@ _controllers = [
 def init(ctx):
     for c in _controllers:
         if c.enable(ctx):
+            ctx.print()
             return c(ctx)

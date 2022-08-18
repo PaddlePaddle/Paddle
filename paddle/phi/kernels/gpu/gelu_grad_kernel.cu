@@ -81,11 +81,13 @@ void GeluGradKernel(const Context& dev_ctx,
       }
     }
 #endif
-    phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, GeluWithApproximateGradFunctor<T>());
+    using Functor = GeluWithApproximateGradFunctor<T>;
+    phi::funcs::ElementwiseKernel<T, Functor, 1>(
+        dev_ctx, ins, &outs, Functor());
   } else {
-    phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, GeluWithoutApproximateGradFunctor<T>());
+    using Functor = GeluWithoutApproximateGradFunctor<T>;
+    phi::funcs::ElementwiseKernel<T, Functor, 1>(
+        dev_ctx, ins, &outs, Functor());
   }
 }
 

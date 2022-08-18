@@ -23,8 +23,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 /*
-* Fuse the Conv and Elementwise_add to a ConvBiasOp.
-*/
+ * Fuse the Conv and Elementwise_add to a ConvBiasOp.
+ */
 class Graph;
 
 class ConvBiasFusePass : public FusePassBase {
@@ -38,8 +38,8 @@ class ConvBiasFusePass : public FusePassBase {
   const std::string name_scope_{"conv_bias_mkldnn_fuse"};
 };
 /*
-* Fuse the Conv3D and Elementwise_add to a Conv3DBiasOp.
-*/
+ * Fuse the Conv3D and Elementwise_add to a Conv3DBiasOp.
+ */
 class Conv2DTransposeBiasFusePass : public ConvBiasFusePass {
  public:
   Conv2DTransposeBiasFusePass();

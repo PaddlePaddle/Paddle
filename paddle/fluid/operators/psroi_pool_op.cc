@@ -125,13 +125,18 @@ class PSROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(psroi_pool, PsroiPoolInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(psroi_pool,
+                            PsroiPoolInferShapeFunctor,
                             PD_INFER_META(phi::PsroiPoolInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(psroi_pool_grad, PsroiPoolGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(psroi_pool_grad,
+                            PsroiPoolGradInferShapeFunctor,
                             PD_INFER_META(phi::PsroiPoolGradInferMeta));
-REGISTER_OPERATOR(psroi_pool, ops::PSROIPoolOp, ops::PSROIPoolOpMaker,
+REGISTER_OPERATOR(psroi_pool,
+                  ops::PSROIPoolOp,
+                  ops::PSROIPoolOpMaker,
                   ops::PSROIPoolGradMaker<paddle::framework::OpDesc>,
                   ops::PSROIPoolGradMaker<paddle::imperative::OpBase>,
                   PsroiPoolInferShapeFunctor);
-REGISTER_OPERATOR(psroi_pool_grad, ops::PSROIPoolGradOp,
+REGISTER_OPERATOR(psroi_pool_grad,
+                  ops::PSROIPoolGradOp,
                   PsroiPoolGradInferShapeFunctor);

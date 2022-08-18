@@ -81,7 +81,8 @@ struct ReduceOpHandle : public OpHandleBase {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   const platform::NCCLContextMap *nccl_ctxs_;
-  ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
+  ReduceOpHandle(ir::Node *node,
+                 const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places,
                  const platform::NCCLContextMap *nccl_ctxs)
       : OpHandleBase(node),
@@ -97,7 +98,8 @@ struct ReduceOpHandle : public OpHandleBase {
   }
 #elif defined(PADDLE_WITH_XPU_BKCL)
   const platform::BKCLContextMap *bkcl_ctxs_;
-  ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
+  ReduceOpHandle(ir::Node *node,
+                 const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places,
                  const platform::BKCLContextMap *bkcl_ctxs)
       : OpHandleBase(node),
@@ -112,7 +114,8 @@ struct ReduceOpHandle : public OpHandleBase {
     }
   }
 #else
-  ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
+  ReduceOpHandle(ir::Node *node,
+                 const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places)
       : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 #endif
@@ -133,7 +136,8 @@ struct ReduceOpHandle : public OpHandleBase {
       const std::vector<const phi::SelectedRows *> &src_selecte_rows_,
       const std::vector<platform::Place> &in_places,
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
-      VarHandle *out_var_handle, const platform::Place &out_place,
+      VarHandle *out_var_handle,
+      const platform::Place &out_place,
       phi::SelectedRows *dst_selecte_rows);
 #endif
 

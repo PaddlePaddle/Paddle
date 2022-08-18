@@ -65,9 +65,9 @@ void LogicalNotKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(logical_and, KPS, ALL_LAYOUT, phi::LogicalAndKernel, int) {}
-PD_REGISTER_KERNEL(logical_Or, KPS, ALL_LAYOUT, phi::LogicalOrKernel, int) {}
-PD_REGISTER_KERNEL(logical_Not, KPS, ALL_LAYOUT, phi::LogicalNotKernel, int) {}
-PD_REGISTER_KERNEL(logical_Xor, KPS, ALL_LAYOUT, phi::LogicalXorKernel, int) {}
+PD_REGISTER_KERNEL(logical_or, KPS, ALL_LAYOUT, phi::LogicalOrKernel, int) {}
+PD_REGISTER_KERNEL(logical_not, KPS, ALL_LAYOUT, phi::LogicalNotKernel, int) {}
+PD_REGISTER_KERNEL(logical_xor, KPS, ALL_LAYOUT, phi::LogicalXorKernel, int) {}
 #else
 #define REGISTER_LOGICAL_CUDA_KERNEL(logical_and, func_type) \
   PD_REGISTER_KERNEL(logical_and,                            \

@@ -85,8 +85,8 @@ class PSLib(Fleet):
                 if self._role_maker.is_xpu():
                     local_endpoint = self._role_maker.get_local_endpoint()
                     local_endpoint = local_endpoint.split(":")
-                    self._heter_ptr.start_xpu_service(
-                        str(local_endpoint[0]), int(local_endpoint[1]))
+                    self._heter_ptr.start_xpu_service(str(local_endpoint[0]),
+                                                      int(local_endpoint[1]))
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
             # worker_index * 2 is for compatible with older versions of pslib
@@ -103,9 +103,9 @@ class PSLib(Fleet):
             # prepare for client to client communication
             if self._role_maker.is_worker():
                 info = self._fleet_ptr.get_clients_info()
-                print("IIIIFO: {}".format(info))
+                print("Client Info: {}".format(info))
                 all_info = self._role_maker._worker_gather(info[0])
-                print("ALL info: {}".format(all_info))
+                print("All Client Info: {}".format(all_info))
                 self._fleet_ptr.gather_clients(all_info)
                 self._fleet_ptr.set_client2client_config(
                     self._client2client_request_timeout_ms,
@@ -136,8 +136,9 @@ class PSLib(Fleet):
                             var_name = table.dense_variable_name[i]
                             if scope.find_var(var_name) is None:
                                 raise ValueError(
-                                    "var " + var_name + " not found in scope, "
-                                    + "you should run startup program first")
+                                    "var " + var_name +
+                                    " not found in scope, " +
+                                    "you should run startup program first")
                             var_name_list.append(var_name)
                         if not self._opt_info["use_ps_gpu"]:
                             self._fleet_ptr.init_model(scope,
@@ -249,9 +250,10 @@ class PSLib(Fleet):
 
         """
 
-        trainer_instance = executor.start_heter_trainer(
-            program, scope, debug, fetch_list, fetch_info, print_period,
-            fetch_handler)
+        trainer_instance = executor.start_heter_trainer(program, scope, debug,
+                                                        fetch_list, fetch_info,
+                                                        print_period,
+                                                        fetch_handler)
         if self._role_maker.is_xpu():
             print("barrier heter")
             self._role_maker._barrier_heter()
@@ -1006,10 +1008,11 @@ class DownpourOptimizer(DistributedOptimizer):
         self._optimizer = optimizer
         self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
         if optimizer.type != "adam":
-            print("Currently, distributed optimizer only support Adam"
-                  "Will config built-in adam for you."
-                  "We will support more functions in DistributedOptimizer",
-                  sys.stderr)
+            print(
+                "Currently, distributed optimizer only support Adam"
+                "Will config built-in adam for you."
+                "We will support more functions in DistributedOptimizer",
+                sys.stderr)
             self._optimizer_name = "DistributedAdam"
 
         self._distributed_optimizer = globals()[self._optimizer_name](optimizer)
@@ -1139,10 +1142,11 @@ class DownpourOptimizer(DistributedOptimizer):
             from paddle.fluid.transpiler.collective import MultiThread
             # check start program
             if program_mode not in [
-                    "all_reduce", "fuse_all_reduce", "all_gather"
+                    "all_reduce", "fuse_all_reduce", "all_gather",
+                    "all_reduce_xpu"
             ]:
                 raise ValueError("You should set program_mode in [ all_reduce, \
-                                fuse_all_reduce, all_gather ]")
+                                fuse_all_reduce, all_gather, all_reduce_xpu ]")
             env = self.get_dist_env()
             if not isinstance(losses, list):
                 startup_programs = [startup_programs]
@@ -1151,13 +1155,12 @@ class DownpourOptimizer(DistributedOptimizer):
                 t = MultiThread(trans_mode=program_mode)
                 start_program = startup_programs[i]
                 main_program = programs[i]
-                t.transpile(
-                    startup_program=start_program,
-                    main_program=main_program,
-                    rank=env["trainer_id"],
-                    endpoints=env["trainer_endpoints"],
-                    current_endpoint=env['current_endpoint'],
-                    wait_port=False)
+                t.transpile(startup_program=start_program,
+                            main_program=main_program,
+                            rank=env["trainer_id"],
+                            endpoints=env["trainer_endpoints"],
+                            current_endpoint=env['current_endpoint'],
+                            wait_port=False)
                 if i > 0:
                     self._remove_collective_ops(start_program,
                                                 "c_comm_init_all")

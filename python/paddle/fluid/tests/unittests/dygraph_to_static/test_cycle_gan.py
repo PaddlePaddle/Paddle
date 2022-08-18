@@ -64,6 +64,7 @@ program_translator = ProgramTranslator()
 
 
 class Cycle_Gan(fluid.dygraph.Layer):
+
     def __init__(self, input_channel, istrain=True):
         super(Cycle_Gan, self).__init__()
 
@@ -88,11 +89,9 @@ class Cycle_Gan(fluid.dygraph.Layer):
         cyc_B = self.build_generator_resnet_9blocks_a(fake_A)
 
         diff_A = fluid.layers.abs(
-            fluid.layers.elementwise_sub(
-                x=input_A, y=cyc_A))
+            fluid.layers.elementwise_sub(x=input_A, y=cyc_A))
         diff_B = fluid.layers.abs(
-            fluid.layers.elementwise_sub(
-                x=input_B, y=cyc_B))
+            fluid.layers.elementwise_sub(x=input_B, y=cyc_B))
         cyc_A_loss = fluid.layers.reduce_mean(diff_A) * lambda_A
         cyc_B_loss = fluid.layers.reduce_mean(diff_B) * lambda_B
         cyc_loss = cyc_A_loss + cyc_B_loss
@@ -138,24 +137,23 @@ class Cycle_Gan(fluid.dygraph.Layer):
 
 
 class build_resnet_block(fluid.dygraph.Layer):
+
     def __init__(self, dim, use_bias=False):
         super(build_resnet_block, self).__init__()
 
-        self.conv0 = conv2d(
-            num_channels=dim,
-            num_filters=dim,
-            filter_size=3,
-            stride=1,
-            stddev=0.02,
-            use_bias=False)
-        self.conv1 = conv2d(
-            num_channels=dim,
-            num_filters=dim,
-            filter_size=3,
-            stride=1,
-            stddev=0.02,
-            relu=False,
-            use_bias=False)
+        self.conv0 = conv2d(num_channels=dim,
+                            num_filters=dim,
+                            filter_size=3,
+                            stride=1,
+                            stddev=0.02,
+                            use_bias=False)
+        self.conv1 = conv2d(num_channels=dim,
+                            num_filters=dim,
+                            filter_size=3,
+                            stride=1,
+                            stddev=0.02,
+                            relu=False,
+                            use_bias=False)
         self.dim = dim
 
     def forward(self, inputs):
@@ -168,30 +166,28 @@ class build_resnet_block(fluid.dygraph.Layer):
 
 
 class build_generator_resnet_9blocks(fluid.dygraph.Layer):
+
     def __init__(self, input_channel):
         super(build_generator_resnet_9blocks, self).__init__()
 
-        self.conv0 = conv2d(
-            num_channels=input_channel,
-            num_filters=32,
-            filter_size=7,
-            stride=1,
-            padding=0,
-            stddev=0.02)
-        self.conv1 = conv2d(
-            num_channels=32,
-            num_filters=64,
-            filter_size=3,
-            stride=2,
-            padding=1,
-            stddev=0.02)
-        self.conv2 = conv2d(
-            num_channels=64,
-            num_filters=128,
-            filter_size=3,
-            stride=2,
-            padding=1,
-            stddev=0.02)
+        self.conv0 = conv2d(num_channels=input_channel,
+                            num_filters=32,
+                            filter_size=7,
+                            stride=1,
+                            padding=0,
+                            stddev=0.02)
+        self.conv1 = conv2d(num_channels=32,
+                            num_filters=64,
+                            filter_size=3,
+                            stride=2,
+                            padding=1,
+                            stddev=0.02)
+        self.conv2 = conv2d(num_channels=64,
+                            num_filters=128,
+                            filter_size=3,
+                            stride=2,
+                            padding=1,
+                            stddev=0.02)
         self.build_resnet_block_list = []
         dim = 128
         for i in range(9):
@@ -205,25 +201,24 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
             stride=2,
             stddev=0.02,
             padding=[1, 1],
-            outpadding=[0, 1, 0, 1], )
-        self.deconv1 = DeConv2D(
-            num_channels=32 * 2,
-            num_filters=32,
-            filter_size=3,
-            stride=2,
-            stddev=0.02,
-            padding=[1, 1],
-            outpadding=[0, 1, 0, 1])
-        self.conv3 = conv2d(
-            num_channels=32,
-            num_filters=input_channel,
-            filter_size=7,
-            stride=1,
-            stddev=0.02,
-            padding=0,
-            relu=False,
-            norm=False,
-            use_bias=True)
+            outpadding=[0, 1, 0, 1],
+        )
+        self.deconv1 = DeConv2D(num_channels=32 * 2,
+                                num_filters=32,
+                                filter_size=3,
+                                stride=2,
+                                stddev=0.02,
+                                padding=[1, 1],
+                                outpadding=[0, 1, 0, 1])
+        self.conv3 = conv2d(num_channels=32,
+                            num_filters=input_channel,
+                            filter_size=7,
+                            stride=1,
+                            stddev=0.02,
+                            padding=0,
+                            relu=False,
+                            norm=False,
+                            use_bias=True)
 
     def forward(self, inputs):
         pad_input = fluid.layers.pad2d(inputs, [3, 3, 3, 3], mode="reflect")
@@ -241,53 +236,49 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
 
 
 class build_gen_discriminator(fluid.dygraph.Layer):
+
     def __init__(self, input_channel):
         super(build_gen_discriminator, self).__init__()
 
-        self.conv0 = conv2d(
-            num_channels=input_channel,
-            num_filters=64,
-            filter_size=4,
-            stride=2,
-            stddev=0.02,
-            padding=1,
-            norm=False,
-            use_bias=True,
-            relufactor=0.2)
-        self.conv1 = conv2d(
-            num_channels=64,
-            num_filters=128,
-            filter_size=4,
-            stride=2,
-            stddev=0.02,
-            padding=1,
-            relufactor=0.2)
-        self.conv2 = conv2d(
-            num_channels=128,
-            num_filters=IMAGE_SIZE,
-            filter_size=4,
-            stride=2,
-            stddev=0.02,
-            padding=1,
-            relufactor=0.2)
-        self.conv3 = conv2d(
-            num_channels=IMAGE_SIZE,
-            num_filters=512,
-            filter_size=4,
-            stride=1,
-            stddev=0.02,
-            padding=1,
-            relufactor=0.2)
-        self.conv4 = conv2d(
-            num_channels=512,
-            num_filters=1,
-            filter_size=4,
-            stride=1,
-            stddev=0.02,
-            padding=1,
-            norm=False,
-            relu=False,
-            use_bias=True)
+        self.conv0 = conv2d(num_channels=input_channel,
+                            num_filters=64,
+                            filter_size=4,
+                            stride=2,
+                            stddev=0.02,
+                            padding=1,
+                            norm=False,
+                            use_bias=True,
+                            relufactor=0.2)
+        self.conv1 = conv2d(num_channels=64,
+                            num_filters=128,
+                            filter_size=4,
+                            stride=2,
+                            stddev=0.02,
+                            padding=1,
+                            relufactor=0.2)
+        self.conv2 = conv2d(num_channels=128,
+                            num_filters=IMAGE_SIZE,
+                            filter_size=4,
+                            stride=2,
+                            stddev=0.02,
+                            padding=1,
+                            relufactor=0.2)
+        self.conv3 = conv2d(num_channels=IMAGE_SIZE,
+                            num_filters=512,
+                            filter_size=4,
+                            stride=1,
+                            stddev=0.02,
+                            padding=1,
+                            relufactor=0.2)
+        self.conv4 = conv2d(num_channels=512,
+                            num_filters=1,
+                            filter_size=4,
+                            stride=1,
+                            stddev=0.02,
+                            padding=1,
+                            norm=False,
+                            relu=False,
+                            use_bias=True)
 
     def forward(self, inputs):
         y = self.conv0(inputs)
@@ -320,18 +311,17 @@ class conv2d(fluid.dygraph.Layer):
             con_bias_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(0.0))
 
-        self.conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
-            stride=stride,
-            padding=padding,
-            use_cudnn=use_cudnn,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=stddev)),
-            bias_attr=con_bias_attr)
-        # Note(Aurelius84): The calculation of GPU kernel in BN is non-deterministic, 
+        self.conv = Conv2D(num_channels=num_channels,
+                           num_filters=num_filters,
+                           filter_size=filter_size,
+                           stride=stride,
+                           padding=padding,
+                           use_cudnn=use_cudnn,
+                           param_attr=fluid.ParamAttr(
+                               initializer=fluid.initializer.NormalInitializer(
+                                   loc=0.0, scale=stddev)),
+                           bias_attr=con_bias_attr)
+        # Note(Aurelius84): The calculation of GPU kernel in BN is non-deterministic,
         # failure rate is 1/100 in Dev but seems incremental in CE platform.
         # If on GPU, we disable BN temporarily.
         if fluid.is_compiled_with_cuda():
@@ -361,6 +351,7 @@ class conv2d(fluid.dygraph.Layer):
 
 
 class DeConv2D(fluid.dygraph.Layer):
+
     def __init__(self,
                  num_channels,
                  num_filters=64,
@@ -389,8 +380,8 @@ class DeConv2D(fluid.dygraph.Layer):
             padding=padding,
             use_cudnn=use_cudnn,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=stddev)),
+                initializer=fluid.initializer.NormalInitializer(loc=0.0,
+                                                                scale=stddev)),
             bias_attr=de_bias_attr)
         if fluid.is_compiled_with_cuda():
             norm = False
@@ -412,8 +403,10 @@ class DeConv2D(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         conv = self._deconv(inputs)
-        conv = fluid.layers.pad2d(
-            conv, paddings=self.outpadding, mode='constant', pad_value=0.0)
+        conv = fluid.layers.pad2d(conv,
+                                  paddings=self.outpadding,
+                                  mode='constant',
+                                  pad_value=0.0)
 
         if self.norm:
             conv = self.bn(conv)
@@ -423,6 +416,7 @@ class DeConv2D(fluid.dygraph.Layer):
 
 
 class ImagePool(object):
+
     def __init__(self, pool_size=50):
         self.pool = []
         self.count = 0
@@ -445,6 +439,7 @@ class ImagePool(object):
 
 
 def reader_creater():
+
     def reader():
         while True:
             fake_image = np.uint8(
@@ -482,15 +477,14 @@ class Args(object):
 
 def optimizer_setting(parameters):
     lr = 0.0002
-    optimizer = fluid.optimizer.Adam(
-        learning_rate=fluid.layers.piecewise_decay(
-            boundaries=[
-                100 * step_per_epoch, 120 * step_per_epoch,
-                140 * step_per_epoch, 160 * step_per_epoch, 180 * step_per_epoch
-            ],
-            values=[lr, lr * 0.8, lr * 0.6, lr * 0.4, lr * 0.2, lr * 0.1]),
-        parameter_list=parameters,
-        beta1=0.5)
+    optimizer = fluid.optimizer.Adam(learning_rate=fluid.layers.piecewise_decay(
+        boundaries=[
+            100 * step_per_epoch, 120 * step_per_epoch, 140 * step_per_epoch,
+            160 * step_per_epoch, 180 * step_per_epoch
+        ],
+        values=[lr, lr * 0.8, lr * 0.6, lr * 0.4, lr * 0.2, lr * 0.1]),
+                                     parameter_list=parameters,
+                                     beta1=0.5)
     return optimizer
 
 
@@ -534,11 +528,11 @@ def train(args, to_static):
 
                 s_time = time.time()
                 data_A = np.array(
-                    [data_A[0].reshape(3, IMAGE_SIZE, IMAGE_SIZE)]).astype(
-                        "float32")
+                    [data_A[0].reshape(3, IMAGE_SIZE,
+                                       IMAGE_SIZE)]).astype("float32")
                 data_B = np.array(
-                    [data_B[0].reshape(3, IMAGE_SIZE, IMAGE_SIZE)]).astype(
-                        "float32")
+                    [data_B[0].reshape(3, IMAGE_SIZE,
+                                       IMAGE_SIZE)]).astype("float32")
                 data_A = to_variable(data_A)
                 data_B = to_variable(data_B)
 
@@ -552,19 +546,19 @@ def train(args, to_static):
 
                 fake_pool_B = B_pool.pool_image(fake_B).numpy()
                 fake_pool_B = np.array(
-                    [fake_pool_B[0].reshape(3, IMAGE_SIZE, IMAGE_SIZE)]).astype(
-                        "float32")
+                    [fake_pool_B[0].reshape(3, IMAGE_SIZE,
+                                            IMAGE_SIZE)]).astype("float32")
                 fake_pool_B = to_variable(fake_pool_B)
 
                 fake_pool_A = A_pool.pool_image(fake_A).numpy()
                 fake_pool_A = np.array(
-                    [fake_pool_A[0].reshape(3, IMAGE_SIZE, IMAGE_SIZE)]).astype(
-                        "float32")
+                    [fake_pool_A[0].reshape(3, IMAGE_SIZE,
+                                            IMAGE_SIZE)]).astype("float32")
                 fake_pool_A = to_variable(fake_pool_A)
 
                 # optimize the d_A network
-                rec_B, fake_pool_rec_B = cycle_gan.discriminatorA(data_B,
-                                                                  fake_pool_B)
+                rec_B, fake_pool_rec_B = cycle_gan.discriminatorA(
+                    data_B, fake_pool_B)
                 d_loss_A = (fluid.layers.square(fake_pool_rec_B) +
                             fluid.layers.square(rec_B - 1)) / 2.0
                 d_loss_A = fluid.layers.reduce_mean(d_loss_A)
@@ -574,8 +568,8 @@ def train(args, to_static):
                 cycle_gan.clear_gradients()
 
                 # optimize the d_B network
-                rec_A, fake_pool_rec_A = cycle_gan.discriminatorB(data_A,
-                                                                  fake_pool_A)
+                rec_A, fake_pool_rec_A = cycle_gan.discriminatorB(
+                    data_A, fake_pool_A)
                 d_loss_B = (fluid.layers.square(fake_pool_rec_A) +
                             fluid.layers.square(rec_A - 1)) / 2.0
                 d_loss_B = fluid.layers.reduce_mean(d_loss_B)
@@ -596,8 +590,8 @@ def train(args, to_static):
                 t_time += batch_time
                 if batch_id % args.log_step == 0:
                     print(
-                        "batch: {}\t Batch_time_cost: {}\n g_loss: {}\t d_A_loss: {}\t d_B_loss:{}\n g_A_loss: {}\t g_A_cyc_loss: {}\t g_A_idt_loss: {}\n g_B_loss: {}\t g_B_cyc_loss: {}\t g_B_idt_loss: {}".
-                        format(batch_id, batch_time, *cur_batch_loss))
+                        "batch: {}\t Batch_time_cost: {}\n g_loss: {}\t d_A_loss: {}\t d_B_loss:{}\n g_A_loss: {}\t g_A_cyc_loss: {}\t g_A_idt_loss: {}\n g_B_loss: {}\t g_B_cyc_loss: {}\t g_B_idt_loss: {}"
+                        .format(batch_id, batch_time, *cur_batch_loss))
 
                 if batch_id > args.train_step:
                     break
@@ -607,6 +601,7 @@ def train(args, to_static):
 
 
 class TestCycleGANModel(unittest.TestCase):
+
     def setUp(self):
         self.args = Args()
 
@@ -619,15 +614,14 @@ class TestCycleGANModel(unittest.TestCase):
         dy_out = self.train(to_static=False)
 
         assert_func = np.allclose
-        # Note(Aurelius84): Because we disable BN on GPU, 
+        # Note(Aurelius84): Because we disable BN on GPU,
         # but here we enhance the check on CPU by `np.array_equal`
         # which means the dy_out and st_out shall be exactly same.
         if not fluid.is_compiled_with_cuda():
             assert_func = np.array_equal
 
-        self.assertTrue(
-            assert_func(dy_out, st_out),
-            msg="dy_out:\n {}\n st_out:\n{}".format(dy_out, st_out))
+        self.assertTrue(assert_func(dy_out, st_out),
+                        msg="dy_out:\n {}\n st_out:\n{}".format(dy_out, st_out))
 
 
 if __name__ == "__main__":

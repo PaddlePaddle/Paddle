@@ -25,6 +25,7 @@ alignment = 256
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestAllocContinuousSpace(OpTest):
+
     def setUp(self):
         self.op_type = "coalesce_tensor"
         self.dtype, self.fluid_dtype = self.init_dtype()
@@ -80,13 +81,15 @@ class TestAllocContinuousSpace(OpTest):
         return outputs, coalesce_tensor_var
 
     def test_check_output(self):
-        self.check_output_with_place(
-            place=core.CUDAPlace(0), no_check_set=["FusedOutput"], atol=1e-5)
+        self.check_output_with_place(place=core.CUDAPlace(0),
+                                     no_check_set=["FusedOutput"],
+                                     atol=1e-5)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
+
     def init_attr(self):
         return {
             "copy_data": False,
@@ -97,8 +100,9 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(
-            place=core.CUDAPlace(0), no_check_set=["FusedOutput"], atol=1e-5)
+        self.check_output_with_place(place=core.CUDAPlace(0),
+                                     no_check_set=["FusedOutput"],
+                                     atol=1e-5)
 
 
 if __name__ == '__main__':

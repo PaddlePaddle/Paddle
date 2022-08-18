@@ -47,10 +47,11 @@ CIFAR100_MD5 = 'eb9058c3a382ffc7106e4002c42a8d85'
 
 
 def reader_creator(filename, sub_name, cycle=False):
+
     def read_batch(batch):
         data = batch[six.b('data')]
-        labels = batch.get(
-            six.b('labels'), batch.get(six.b('fine_labels'), None))
+        labels = batch.get(six.b('labels'), batch.get(six.b('fine_labels'),
+                                                      None))
         assert labels is not None
         for sample, label in six.moves.zip(data, labels):
             yield (sample / 255.0).astype(numpy.float32), int(label)
@@ -129,10 +130,10 @@ def train10(cycle=False):
     :return: Training reader creator
     :rtype: callable
     """
-    return reader_creator(
-        paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
-        'data_batch',
-        cycle=cycle)
+    return reader_creator(paddle.dataset.common.download(
+        CIFAR10_URL, 'cifar', CIFAR10_MD5),
+                          'data_batch',
+                          cycle=cycle)
 
 
 @deprecated(
@@ -152,10 +153,10 @@ def test10(cycle=False):
     :return: Test reader creator.
     :rtype: callable
     """
-    return reader_creator(
-        paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
-        'test_batch',
-        cycle=cycle)
+    return reader_creator(paddle.dataset.common.download(
+        CIFAR10_URL, 'cifar', CIFAR10_MD5),
+                          'test_batch',
+                          cycle=cycle)
 
 
 @deprecated(

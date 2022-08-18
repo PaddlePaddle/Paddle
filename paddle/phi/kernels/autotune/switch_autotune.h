@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cmath>
+
 #include "paddle/phi/kernels/autotune/cache.h"
 
 namespace phi {

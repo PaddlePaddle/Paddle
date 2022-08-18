@@ -52,10 +52,13 @@ It will just return product(tensor.ddims()) > 0;
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(is_empty, IsEmptyInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(is_empty,
+                            IsEmptyInferShapeFunctor,
                             PD_INFER_META(phi::IsEmptyInferMeta));
 REGISTER_OPERATOR(
-    is_empty, ops::IsEmptyOp, ops::IsEmptyOpMaker,
+    is_empty,
+    ops::IsEmptyOp,
+    ops::IsEmptyOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     IsEmptyInferShapeFunctor);

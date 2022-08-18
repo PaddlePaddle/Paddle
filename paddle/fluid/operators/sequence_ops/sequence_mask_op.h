@@ -50,8 +50,8 @@ struct SequenceMaskForRangeFunctor {
 
 template <typename DeviceContext, typename Tx>
 struct SequenceMaskFunctor {
-  SequenceMaskFunctor(const DeviceContext &ctx, const Tx *x, Tensor *y,
-                      int limits, int maxlen)
+  SequenceMaskFunctor(
+      const DeviceContext &ctx, const Tx *x, Tensor *y, int limits, int maxlen)
       : ctx_(ctx), x_(x), y_(y), limits_(limits), maxlen_(maxlen) {}
 
   template <typename Ty>
@@ -86,8 +86,8 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
                                   "But received Input(MaxLenTensor) is NULL"));
       if (platform::is_gpu_place(max_len_tensor->place())) {
         framework::Tensor temp;
-        paddle::framework::TensorCopySync(*max_len_tensor, platform::CPUPlace(),
-                                          &temp);
+        paddle::framework::TensorCopySync(
+            *max_len_tensor, platform::CPUPlace(), &temp);
         maxlen = *temp.data<int32_t>();
       } else {
         maxlen = *max_len_tensor->data<int32_t>();
@@ -98,7 +98,8 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
       y->Resize(phi::make_ddim(y_dim));
 
       PADDLE_ENFORCE_GT(
-          maxlen, 0,
+          maxlen,
+          0,
           platform::errors::InvalidArgument(
               "Input(MaxLenTensor) value should be greater than 0. But "
               "received Input(MaxLenTensor) value = %d.",
@@ -114,7 +115,8 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
       maxlen = static_cast<int>(
           thrust::reduce(thrust::device_pointer_cast(x_data),
                          thrust::device_pointer_cast(x_data) + x_numel,
-                         static_cast<Tx>(0), thrust::maximum<Tx>()));
+                         static_cast<Tx>(0),
+                         thrust::maximum<Tx>()));
 #else
       maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
 #endif

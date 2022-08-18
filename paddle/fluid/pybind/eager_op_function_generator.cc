@@ -36,6 +36,11 @@
 // phi
 #include "paddle/phi/kernels/declarations.h"
 
+static std::string LegalizeVarName(const std::string& var_name) {
+  std::string ret = var_name;
+  std::replace(ret.begin(), ret.end(), '@', '_');  // replace all '-' to '_'
+  return ret;
+}
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";
@@ -133,8 +138,6 @@ const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, M
 // These operators will skip automatical code generatrion and
 // need to be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE
 std::unordered_set<std::string> CUSTOM_HANDWRITE_OPS_SET = {"run_program"};
-const char* CUSTOM_HANDWRITE_OP_FUNC_FILE =
-  "#include \"paddle/fluid/pybind/custom_handwrite_op_funcs.h\"\n";
 
 // clang-format on
 static inline bool FindInsMap(const std::string& op_type,
@@ -161,7 +164,8 @@ static inline std::string TempName(const std::string& name) {
 }
 
 std::string GenerateOpFunctionsBody(
-    const paddle::framework::proto::OpProto* op_proto, std::string func_name,
+    const paddle::framework::proto::OpProto* op_proto,
+    std::string func_name,
     std::map<std::string, std::string> inplace_map = {}) {
   auto& op_type = op_proto->type();
   std::string input_args = "";
@@ -185,18 +189,22 @@ std::string GenerateOpFunctionsBody(
       continue;
     }
     const auto in_type = input.duplicable() ? IN_VAR_LIST_TYPE : IN_VAR_TYPE;
-    auto input_arg =
-        paddle::string::Sprintf(ARG_TEMPLATE, in_type, TempName(in_name));
+    auto input_arg = paddle::string::Sprintf(
+        ARG_TEMPLATE, in_type, TempName(LegalizeVarName(in_name)));
     input_args += input_arg;
     input_args += ",";
     input_args_num++;
     const auto in_cast_type =
         input.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
     auto dispensable = input.dispensable() ? "true" : "false";
-    ins_cast_str += paddle::string::Sprintf(in_cast_type, in_name, op_type,
-                                            in_name, arg_idx++, dispensable);
+    ins_cast_str += paddle::string::Sprintf(in_cast_type,
+                                            LegalizeVarName(in_name),
+                                            op_type,
+                                            in_name,
+                                            arg_idx++,
+                                            dispensable);
 
-    call_api_str += in_name + ", ";
+    call_api_str += LegalizeVarName(in_name) + ", ";
   }
 
   if (!input_args.empty() && input_args.back() == ',') {
@@ -224,7 +232,7 @@ std::string GenerateOpFunctionsBody(
         input_args += ",";
       }
       input_args += out_type;
-      input_args += out_name;
+      input_args += LegalizeVarName(out_name);
       input_args_num++;
 
       if (output.dispensable()) {
@@ -237,18 +245,22 @@ std::string GenerateOpFunctionsBody(
         const auto out_template = output.duplicable()
                                       ? INPUT_LIST_INITIALIZER_TEMPLATE
                                       : INPUT_INITIALIZER_TEMPLATE;
-        outs_initializer +=
-            paddle::string::Sprintf(out_template, out_name, out_name);
+        outs_initializer += paddle::string::Sprintf(
+            out_template, out_name, LegalizeVarName(out_name));
         outs_initializer += ",";
       }
 
       const auto in_cast_type = output.duplicable() ? CAST_VAR_PTR_LIST_TEMPLATE
                                                     : CAST_VAR_PTR_TEMPLATE;
       auto dispensable = output.dispensable() ? "true" : "false";
-      ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
-                                              out_name, arg_idx++, dispensable);
+      ins_cast_str += paddle::string::Sprintf(in_cast_type,
+                                              LegalizeVarName(out_name),
+                                              op_type,
+                                              out_name,
+                                              arg_idx++,
+                                              dispensable);
 
-      call_api_str += out_name + ", ";
+      call_api_str += LegalizeVarName(out_name) + ", ";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
@@ -257,7 +269,8 @@ std::string GenerateOpFunctionsBody(
         if (input_args != "") {
           input_args += ",";
         }
-        auto out_num_str = paddle::string::Sprintf(ARG_OUT_NUM, out_name);
+        auto out_num_str =
+            paddle::string::Sprintf(ARG_OUT_NUM, LegalizeVarName(out_name));
         input_args += ARG_OUT_NUM_TYPE;
         input_args += out_num_str;
         input_args_num++;
@@ -265,9 +278,12 @@ std::string GenerateOpFunctionsBody(
             OUT_DUPLICABLE_INITIALIZER_TEMPLATE, out_name, out_num_str);
 
         auto dispensable = output.dispensable() ? "true" : "false";
-        ins_cast_str +=
-            paddle::string::Sprintf(CAST_SIZE_T_TEMPLATE, out_num_str, op_type,
-                                    out_num_str, arg_idx++, dispensable);
+        ins_cast_str += paddle::string::Sprintf(CAST_SIZE_T_TEMPLATE,
+                                                out_num_str,
+                                                op_type,
+                                                out_num_str,
+                                                arg_idx++,
+                                                dispensable);
         call_api_str += out_num_str + ", ";
       } else {
         outs_initializer +=
@@ -289,32 +305,33 @@ std::string GenerateOpFunctionsBody(
   if (FindViewOpMap(op_type)) {
     std::string viwe_input_name = view_op_map[op_type].first;
     std::string viwe_output_name = view_op_map[op_type].second;
-    view_strategy_str += paddle::string::Sprintf(
-        HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
-        viwe_input_name, viwe_output_name);
+    view_strategy_str +=
+        paddle::string::Sprintf(HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT,
+                                viwe_input_name,
+                                viwe_output_name,
+                                viwe_input_name,
+                                viwe_output_name);
   }
   if (!inplace_map.empty()) {
     // For inplace op, Use the input PyObject directly.
+    return_str = "std::map<ssize_t, ssize_t> inplace_var_idx_map;\n";
     for (auto& inplace_pair : inplace_map) {
       // Find index of inplace tensor, and directly use input PyObject.
       std::string inplace_arg_name = inplace_pair.second;
       std::string inplace_return_name = inplace_pair.first;
       const char* RETURN_INPLACE_TENSOR_TEMPLATE =
-          "ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_args_info, "
+          "    ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_args_info, "
           "\"%s\", \"%s\");\n"
           "    ssize_t return_id = "
           "GetIdxFromCoreOpsInfoMap(core_ops_returns_info, \"%s\", \"%s\");\n"
-          "    return ToPyObject(out, return_id, args, arg_id);";
-      return_str = paddle::string::Sprintf(RETURN_INPLACE_TENSOR_TEMPLATE,
-                                           op_type, inplace_arg_name, op_type,
-                                           inplace_return_name);
-      // only support one inplace_var in temporary.
-      PADDLE_ENFORCE_EQ(
-          inplace_map.size(), 1,
-          paddle::platform::errors::InvalidArgument(
-              "size of inplace_map must be 1, but got %d", inplace_map.size()));
-      break;
+          "    inplace_var_idx_map[return_id] = arg_id;";
+      return_str += paddle::string::Sprintf(RETURN_INPLACE_TENSOR_TEMPLATE,
+                                            op_type,
+                                            inplace_arg_name,
+                                            op_type,
+                                            inplace_return_name);
     }
+    return_str += "    return ToPyObject(out, args, inplace_var_idx_map);";
   } else {
     return_str = "return ToPyObject(out);";
   }
@@ -327,9 +344,13 @@ std::string GenerateOpFunctionsBody(
   }
 
   // generate op funtcion body
-  auto op_function_str = paddle::string::Sprintf(
-      OP_FUNCTION_TEMPLATE, func_name, ins_cast_str, op_type, input_args_num,
-      call_api_str, return_str);
+  auto op_function_str = paddle::string::Sprintf(OP_FUNCTION_TEMPLATE,
+                                                 func_name,
+                                                 ins_cast_str,
+                                                 op_type,
+                                                 input_args_num,
+                                                 call_api_str,
+                                                 return_str);
 
   return op_function_str;
 }
@@ -390,7 +411,6 @@ GenerateOpFunctions() {
 
   std::vector<std::string> op_function_list, bind_function_list;
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
-  bool append_custom_head_file = false;
   for (auto& pair : op_info_map) {
     auto& op_info = pair.second;
     auto op_proto = op_info.proto_;
@@ -400,7 +420,6 @@ GenerateOpFunctions() {
     auto& op_type = op_proto->type();
     // Skip operators that will be handwriten in CUSTOM_HANDWRITE_OP_FUNC_FILE.
     if (CUSTOM_HANDWRITE_OPS_SET.count(op_type)) {
-      append_custom_head_file = true;
       continue;
     }
     // Skip operator which is not inherit form OperatorWithKernel, like while,
@@ -448,16 +467,16 @@ GenerateOpFunctions() {
 
       // generate pybind item
       auto inplace_bind_function_str =
-          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE, inplace_op_type,
-                                  inplace_func_name, inplace_op_type);
+          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE,
+                                  inplace_op_type,
+                                  inplace_func_name,
+                                  inplace_op_type);
 
       op_function_list.emplace_back(std::move(inplace_op_function_str));
       bind_function_list.emplace_back(std::move(inplace_bind_function_str));
     }
   }
-  if (append_custom_head_file) {
-    op_function_list.emplace_back(CUSTOM_HANDWRITE_OP_FUNC_FILE);
-  }
+
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
@@ -473,16 +492,18 @@ int main(int argc, char* argv[]) {
 #endif
 
   std::vector<std::string> headers{
-      "\"pybind11/detail/common.h\"",
-      "\"paddle/fluid/pybind/eager_final_state_op_function_impl.h\"",
-      "\"paddle/fluid/pybind/op_function_common.h\"",
+      "<Python.h>",
+      "\"paddle/fluid/platform/enforce.h\"",
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
       "dygraph_forward_api.h\"",
-      "\"paddle/fluid/pybind/exception.h\"", "<Python.h>"};
+      "\"paddle/fluid/pybind/eager_utils.h\"",
+      "\"paddle/fluid/platform/profiler/event_tracing.h\"",
+      "\"paddle/fluid/pybind/exception.h\"",
+      "\"paddle/fluid/pybind/op_function_common.h\"",
+      "\"paddle/fluid/pybind/eager_custom_python_api.h\"",
+      "\"paddle/fluid/pybind/eager.h\""};
 
   std::ofstream out(argv[1], std::ios::out);
-
-  out << "#pragma once\n\n";
 
   for (auto& header : headers) {
     out << "#include  " + header + "\n";
@@ -516,22 +537,20 @@ int main(int argc, char* argv[]) {
       << core_ops_infos_registry << "\n  {nullptr,nullptr,0,nullptr}"
       << "};\n\n";
 
-  out << "inline void BindEagerOpFunctions(pybind11::module *module) {\n"
+  out << "void BindEagerOpFunctions(pybind11::module *module) {\n"
       << "  InitOpsAttrTypeMap();\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
-      << "  if (PyModule_AddFunctions(m.ptr(), EagerFinalStateMethods) < 0) {\n"
-      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
-         "core.eager.ops failed!\"));\n"
-      << "  }\n\n"
-      << "  if (PyModule_AddFunctions(m.ptr(), CustomEagerFinalStateMethods) < "
+      << "  if (PyModule_AddFunctions(m.ptr(), CustomEagerMethods) < "
          "0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
+
+      << "  BindFinalStateEagerOpFunctions(&m);\n\n"
       << "}\n\n"
       << "} // namespace pybind\n"
       << "} // namespace paddle\n";

@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ from paddle.distributed.launch.job.pod import Pod
 from paddle.distributed.launch.job.container import Container
 
 from .master import Master
+from .watcher import Watcher
 
 import time
 
@@ -28,9 +29,11 @@ import time
 class ControleMode:
     COLLECTIVE = "collective"
     PS = "ps"
+    IPU = "ipu"
 
 
 class ControllerBase(object):
+
     def __init__(self, ctx):
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)
@@ -39,10 +42,14 @@ class ControllerBase(object):
         self.ctx = ctx
         self.master = Master.factory(self.ctx)
 
+        self.watcher = Watcher(self.ctx)
+
         self.job = Job(nnodes=self.ctx.args.nnodes,
                        mode=self.ctx.args.run_mode,
                        jid=self.ctx.args.job_id)
         self.pod = Pod()
+
+        self.ctx.set_envs({"POD_NAME": self.pod.name})
 
         self.join_server = None
 
@@ -85,6 +92,9 @@ class ControllerBase(object):
 
                 self.master.set_status(status)
 
+                while self.pod.logs():
+                    pass
+
                 self.ctx.logger.info("Pod {}".format(status))
                 return True
 
@@ -98,24 +108,31 @@ class ControllerBase(object):
                 fc = self.pod.failed_container()
                 self.ctx.logger.info("Pod {}".format(status))
                 self.ctx.logger.error("Container failed !!!\n{}".format(fc[0]))
+                self.ctx.logger.info(
+                    "------------------------- ERROR LOG DETAIL -------------------------"
+                )
                 fc[0].tail()
-                self.pod.stop()
 
                 if self.ctx.args.elastic_level <= 0:
+                    self.pod.stop(timeout=3)
                     return True
                 else:
+                    self.pod.stop(timeout=30)
                     return False
 
             # peer failure
-            if self.ctx.status.is_restarting() and self.master.get_status(
-            ) != self.ctx.status.COMPLETED:
-                self.pod.stop()
+            if self.ctx.status.is_restarting(
+            ) and self.master.get_status() != self.ctx.status.COMPLETED:
+                self.pod.stop(timeout=30)
                 return False
 
     def stop(self, sigint=None):
         self.ctx.logger.debug("Controller stop")
+
+        self.watcher.stop()
+
         self.master.stop()
-        self.pod.stop(sigint)
+        self.pod.stop(timeout=30)
 
     def finalize(self):
         self.pod.join()
@@ -125,17 +142,17 @@ class ControllerBase(object):
         sys.exit(self.pod.exit_code)
 
     def signal_handler(self, sigint, frame):
-        self.ctx.logger.info("Terminating with signal {}".format(sigint))
-
         if hasattr(self, 'sigint'):
-            time.sleep(5)
+            self.ctx.logger.info("Force quit in 10 seconds...")
+            self.pod.stop(timeout=10)
             sys.exit(sigint)
+
+        self.ctx.logger.info("Terminating with signal {}".format(sigint))
 
         self.sigint = sigint
         self.ctx.status.done()
-        self.stop(sigint)
-        time.sleep(1)
-        self.ctx.logger.debug("Exit with signal {}".format(sigint))
+        self.stop(sigint=sigint)
+        self.ctx.logger.info("Exit with signal {}".format(sigint))
         sys.exit(sigint)
 
 
@@ -159,7 +176,11 @@ class Controller(ControllerBase):
         raise NotImplementedError
 
     def _get_entrypoint(self):
-        entrypoint = [sys.executable, "-u", self.ctx.args.training_script]
+        if self.ctx.args.training_script.endswith('.py'):
+            entrypoint = [sys.executable, "-u", self.ctx.args.training_script]
+        else:
+            entrypoint = [self.ctx.args.training_script]
+
         entrypoint.extend(self.ctx.args.training_script_args)
         return entrypoint
 
@@ -178,7 +199,8 @@ class Controller(ControllerBase):
                       err=None):
         c = Container(
             entrypoint=(entrypoint or self._get_entrypoint()),
-            env=(self.ctx.get_envs() if use_ctx_env else {}), )
+            env=(self.ctx.get_envs() if use_ctx_env else {}),
+        )
         c.outfile, c.errfile = self._get_out_err_file(out, err)
         c.update_env(envs)
         return c
@@ -187,17 +209,14 @@ class Controller(ControllerBase):
                       container=None,
                       entrypoint=None,
                       envs={},
-                      log_tag=None,
+                      log_file=None,
                       is_init=False):
-        if not is_init and log_tag is not None:
-            log_file = "{}.{}.{}.log".format(self.job.id, self.pod.name,
-                                             log_tag)
-        else:
-            log_file = None
 
         if not container:
-            container = self.new_container(
-                entrypoint=entrypoint, envs=envs, out=log_file, err=log_file)
+            container = self.new_container(entrypoint=entrypoint,
+                                           envs=envs,
+                                           out=log_file,
+                                           err=log_file)
 
         if is_init:
             self.pod.add_init_container(container)

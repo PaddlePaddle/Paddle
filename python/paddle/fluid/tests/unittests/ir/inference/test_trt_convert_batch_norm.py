@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,10 +22,12 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
                 if attrs[0]['data_layout'] == "NCHW":
@@ -82,30 +84,40 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
                                     "Variance": ["Variance"]
                                 }]
                                 dics_intputs = [{
-                                    "Bias": TensorConfig(data_gen=partial(
+                                    "Bias":
+                                    TensorConfig(data_gen=partial(
                                         generate_bias, dics, batch)),
-                                    "Mean": TensorConfig(data_gen=partial(
+                                    "Mean":
+                                    TensorConfig(data_gen=partial(
                                         generate_mean, dics, batch)),
-                                    "Scale": TensorConfig(data_gen=partial(
+                                    "Scale":
+                                    TensorConfig(data_gen=partial(
                                         generate_scale, dics, batch)),
-                                    "Variance": TensorConfig(data_gen=partial(
+                                    "Variance":
+                                    TensorConfig(data_gen=partial(
                                         generate_variance, dics, batch)),
                                     "MomentumTensor":
                                     TensorConfig(data_gen=partial(
                                         generate_MomentumTensor, dics, batch)),
                                 }, {
-                                    "Bias": TensorConfig(data_gen=partial(
+                                    "Bias":
+                                    TensorConfig(data_gen=partial(
                                         generate_bias, dics, batch)),
-                                    "Mean": TensorConfig(data_gen=partial(
+                                    "Mean":
+                                    TensorConfig(data_gen=partial(
                                         generate_mean, dics, batch)),
-                                    "Scale": TensorConfig(data_gen=partial(
+                                    "Scale":
+                                    TensorConfig(data_gen=partial(
                                         generate_scale, dics, batch)),
-                                    "Variance": TensorConfig(data_gen=partial(
+                                    "Variance":
+                                    TensorConfig(data_gen=partial(
                                         generate_variance, dics, batch))
                                 }]
                                 ops_config = [{
-                                    "op_type": "batch_norm",
-                                    "op_inputs": dics_intput[num_input],
+                                    "op_type":
+                                    "batch_norm",
+                                    "op_inputs":
+                                    dics_intput[num_input],
                                     "op_outputs": {
                                         "Y": ["batch_norm_out"],
                                         "MeanOut": ["Mean"],
@@ -113,16 +125,17 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
                                         "SavedMean": ["SavedMean"],
                                         "SavedVariance": ["SavedVariance"]
                                     },
-                                    "op_attrs": dics[0]
+                                    "op_attrs":
+                                    dics[0]
                                 }]
                                 ops = self.generate_op_config(ops_config)
                                 program_config = ProgramConfig(
                                     ops=ops,
                                     weights=dics_intputs[num_input],
                                     inputs={
-                                        "batch_norm_input": TensorConfig(
-                                            data_gen=partial(generate_input1,
-                                                             dics, batch))
+                                        "batch_norm_input":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input1, dics, batch))
                                     },
                                     outputs=["batch_norm_out"])
 
@@ -130,6 +143,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 if attrs[0]['data_layout'] == "NCHW":
@@ -182,8 +196,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
             return 1, 2
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         # for static_shape
         clear_dynamic_shape()
@@ -192,18 +205,19 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-3, 1e-3)
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if len(program_config.weights) == 5:
                 return True

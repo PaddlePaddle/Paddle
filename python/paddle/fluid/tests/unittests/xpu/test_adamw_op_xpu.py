@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sys
+
 sys.path.append("..")
 
 import unittest
@@ -76,11 +77,13 @@ def simple_lr_setting(param, decay_rate, n_layers):
 
 
 class XPUTestAdamwOp1(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'adamw'
         self.use_dynamic_create_class = False
 
     class TestAdamW(XPUOpTest):
+
         def setUp(self):
             #Test AdamW Op with supplied attributes
             self.op_type = "adamw"
@@ -136,20 +139,26 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
             self.check_output_with_place(place=paddle.XPUPlace(0))
 
     class TestAdamW2(TestAdamW):
+
         def init_shape(self):
-            self.shape = [1000, ]
+            self.shape = [
+                1000,
+            ]
 
     class TestAdamW3(TestAdamW):
+
         def init_shape(self):
             self.shape = [200, 3000]
 
 
 class XPUTestAdamwOp2(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'adamw'
         self.use_dynamic_create_class = False
 
     class TestAdamWOp(unittest.TestCase):
+
         def test_adamw_op_dygraph(self):
             paddle.disable_static()
             value = np.arange(26).reshape(2, 13).astype(self.in_type_str)
@@ -203,12 +212,11 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                         dtype=self.in_type_str,
                         persistable=True)
                     betas = [beta1, beta2]
-                    opt = paddle.optimizer.AdamW(
-                        learning_rate=1e-5,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=0.01,
-                        epsilon=1e-8)
+                    opt = paddle.optimizer.AdamW(learning_rate=1e-5,
+                                                 beta1=beta1,
+                                                 beta2=beta2,
+                                                 weight_decay=0.01,
+                                                 epsilon=1e-8)
                     opt.minimize(loss)
 
             exe.run(startup)
@@ -223,16 +231,20 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             paddle.disable_static()
             linear = paddle.nn.Linear(10, 10)
             with self.assertRaises(ValueError):
-                adam = paddle.optimizer.AdamW(
-                    0.1, beta1=-1, parameters=linear.parameters())
+                adam = paddle.optimizer.AdamW(0.1,
+                                              beta1=-1,
+                                              parameters=linear.parameters())
             with self.assertRaises(ValueError):
-                adam = paddle.optimizer.AdamW(
-                    0.1, beta2=-1, parameters=linear.parameters())
+                adam = paddle.optimizer.AdamW(0.1,
+                                              beta2=-1,
+                                              parameters=linear.parameters())
             with self.assertRaises(ValueError):
-                adam = paddle.optimizer.AdamW(
-                    0.1, epsilon=-1, parameters=linear.parameters())
+                adam = paddle.optimizer.AdamW(0.1,
+                                              epsilon=-1,
+                                              parameters=linear.parameters())
 
     class TestAdamWOpGroup(TestAdamWOp):
+
         def test_adamw_op_dygraph(self):
             paddle.disable_static()
             value = np.arange(26).reshape(2, 13).astype(self.in_type_str)
@@ -258,6 +270,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 adam.clear_gradients()
 
     class TestAdamWOpGroupWithLR(TestAdamWOp):
+
         def test_adamw_op_dygraph(self):
             paddle.disable_static()
             value = np.arange(26).reshape(2, 13).astype(self.in_type_str)

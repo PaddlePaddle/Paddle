@@ -14,16 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/impl/dot_grad_kernel_impl.h"
-#include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
-
-#include "paddle/phi/kernels/cpu/reduce.h"
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
-
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
+#include "paddle/phi/kernels/impl/dot_grad_kernel_impl.h"
+#include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
@@ -473,8 +471,8 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
-                            paddle::optional<const DenseTensor&> ddx,
-                            paddle::optional<const DenseTensor&> ddy,
+                            const paddle::optional<DenseTensor>& ddx,
+                            const paddle::optional<DenseTensor>& ddy,
                             bool transpose_x,
                             bool transpose_y,
                             DenseTensor* dx,
@@ -854,9 +852,9 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             const DenseTensor& dout,
                             const DenseTensor& ddx,
                             const DenseTensor& ddy,
-                            paddle::optional<const DenseTensor&> d_dx,
-                            paddle::optional<const DenseTensor&> d_dy,
-                            paddle::optional<const DenseTensor&> d_ddout,
+                            const paddle::optional<DenseTensor>& d_dx,
+                            const paddle::optional<DenseTensor>& d_dy,
+                            const paddle::optional<DenseTensor>& d_ddout,
                             bool transpose_x,
                             bool transpose_y,
                             DenseTensor* out_d_x,
@@ -1790,8 +1788,8 @@ void MatmulWithFlattenDoubleGradKernel(
     const DenseTensor& x,
     const DenseTensor& y,
     const DenseTensor& out_grad,
-    paddle::optional<const DenseTensor&> x_grad_grad,
-    paddle::optional<const DenseTensor&> y_grad_grad,
+    const paddle::optional<DenseTensor>& x_grad_grad,
+    const paddle::optional<DenseTensor>& y_grad_grad,
     int x_num_col_dims,
     int y_num_col_dims,
     DenseTensor* x_grad,

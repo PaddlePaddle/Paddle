@@ -22,6 +22,7 @@ import paddle
 
 
 class TestTopkOp(OpTest):
+
     def setUp(self):
         self.variable_k = False
         self.set_args()

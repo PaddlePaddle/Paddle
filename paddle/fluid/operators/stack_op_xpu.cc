@@ -15,6 +15,7 @@
 #ifdef PADDLE_WITH_XPU
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/concat_op.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
@@ -55,9 +56,11 @@ class StackXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     int r =
         xpu::concat<T>(dev_ctx.x_context(), x_list, y_data, xdims_list, axis);
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External(
-                          "The stack XPU API return wrong value[%d %s]", r,
+                          "The stack XPU API return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -81,12 +84,18 @@ class StackGradXPUKernel : public framework::OpKernel<T> {
       dx_lists.push_back(out->mutable_data<T>(ctx.GetPlace()));
     }
 
-    int r = xpu::split<T>(dev_ctx.x_context(), dy->data<T>(), dx_lists,
-                          dy_shape, dx_dims_list, axis);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    int r = xpu::split<T>(dev_ctx.x_context(),
+                          dy->data<T>(),
+                          dx_lists,
+                          dy_shape,
+                          dx_dims_list,
+                          axis);
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
                           "The stack_grad XPU kernel return wrong value[%d %s]",
-                          r, XPUAPIErrorMsg[r]));
+                          r,
+                          XPUAPIErrorMsg[r]));
   }
 };
 

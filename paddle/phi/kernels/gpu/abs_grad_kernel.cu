@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/abs_grad_kernel.h"
+
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/abs_grad_kernel.h"
 #include "paddle/phi/kernels/impl/abs_grad_kernel_impl.h"
 
 using phi::dtype::complex;

@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,8 +31,8 @@ def get_var_and_memory_size(block, var_name, batch_size=None):
             assert not has_none
             shape[i] = batch_size
             has_none = True
-    assert all(
-        [s >= 0 for s in shape]), "shape {} is not deterministic".format(shape)
+    assert all([s >= 0
+                for s in shape]), "shape {} is not deterministic".format(shape)
     mem_size = int(np.prod(shape)) * core.size_of_dtype(var.dtype)
     return var, mem_size
 
@@ -44,7 +44,7 @@ def pre_allocate_memory(size, place):
     del t
 
 
-# NOTE: does not consider inplace yet. 
+# NOTE: does not consider inplace yet.
 def get_max_memory_info(program, batch_size=None):
     assert program.num_blocks == 1, "only support to analysis program with only one block"
     cur_tmp_mem = 0

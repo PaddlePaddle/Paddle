@@ -322,10 +322,10 @@ class DatasetBase(object):
                                 "Please check if var's type in data_generator is correct."
                                 % (ele[0], "float", ele[1]))
 
-                        if (var_list[i].dtype == core.VarDesc.VarType.INT64 or
-                                var_list[i].dtype == core.VarDesc.VarType.INT32
-                            ) and not all(
-                                isinstance(ele, int) for ele in ele[1]):
+                        if (var_list[i].dtype == core.VarDesc.VarType.INT64
+                                or var_list[i].dtype
+                                == core.VarDesc.VarType.INT32) and not all(
+                                    isinstance(ele, int) for ele in ele[1]):
                             raise TypeError(
                                 "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-int value, which is %s \n"
                                 "Please check if order of var_list and data_generator are aligned. \n"
@@ -583,19 +583,20 @@ class InMemoryDataset(DatasetBase):
         pipe_command = kwargs.get("pipe_command", "cat")
         download_cmd = kwargs.get("download_cmd", "cat")
 
-        super(InMemoryDataset, self).init(
-            batch_size=batch_size,
-            thread_num=thread_num,
-            use_var=use_var,
-            pipe_command=pipe_command,
-            input_type=input_type,
-            fs_name=fs_name,
-            fs_ugi=fs_ugi,
-            download_cmd=download_cmd)
-
-        data_feed_type = kwargs.get("data_feed_type",
-                                    "MultiSlotInMemoryDataFeed")
+        if self.use_ps_gpu:
+            data_feed_type = "SlotRecordInMemoryDataFeed"
+        else:
+            data_feed_type = "MultiSlotInMemoryDataFeed"
         self._set_feed_type(data_feed_type)
+
+        super(InMemoryDataset, self).init(batch_size=batch_size,
+                                          thread_num=thread_num,
+                                          use_var=use_var,
+                                          pipe_command=pipe_command,
+                                          input_type=input_type,
+                                          fs_name=fs_name,
+                                          fs_ugi=fs_ugi,
+                                          download_cmd=download_cmd)
 
         if kwargs.get("queue_num", -1) > 0:
             queue_num = kwargs.get("queue_num", -1)
@@ -606,6 +607,8 @@ class InMemoryDataset(DatasetBase):
         Set data_feed_desc
         """
         self.proto_desc.name = data_feed_type
+        if (self.proto_desc.name == "SlotRecordInMemoryDataFeed"):
+            self.dataset = core.Dataset("SlotRecordDataset")
 
     def _prepare_to_run(self):
         """
@@ -779,8 +782,9 @@ class InMemoryDataset(DatasetBase):
 
     def _generate_local_tables_unlock(self, table_id, fea_dim, read_thread_num,
                                       consume_thread_num, shard_num):
-        self.dataset.generate_local_tables_unlock(
-            table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
+        self.dataset.generate_local_tables_unlock(table_id, fea_dim,
+                                                  read_thread_num,
+                                                  consume_thread_num, shard_num)
 
     def set_date(self, date):
         """

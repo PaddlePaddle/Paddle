@@ -17,12 +17,13 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 #if defined(_WIN32)
@@ -128,7 +129,8 @@ template <typename T>
 class CustomCode {
  public:
   CustomCode(const framework::Tensor& path_table,
-             const framework::Tensor& path_code, const int64_t* ids,
+             const framework::Tensor& path_code,
+             const int64_t* ids,
              int index) {
     seq_len_ = path_table.dims()[1];
     path_table_data_ = path_table.data<T>() + seq_len_ * index;
@@ -150,10 +152,11 @@ class CustomCode {
   int get_length() const {
     if (length_ < 0) {
       auto len = seq_len_;
-      length_ = static_cast<int>(
-          std::find_if(path_table_data_, path_table_data_ + len,
-                       [](const T& val) { return val < 0; }) -
-          path_table_data_);
+      length_ =
+          static_cast<int>(std::find_if(path_table_data_,
+                                        path_table_data_ + len,
+                                        [](const T& val) { return val < 0; }) -
+                           path_table_data_);
     }
     return length_;
   }
@@ -186,7 +189,8 @@ template <typename T>
 class CustomCodeTable {
  public:
   CustomCodeTable(const framework::Tensor& path_table,
-                  const framework::Tensor& path_code, const int64_t* ids)
+                  const framework::Tensor& path_code,
+                  const int64_t* ids)
       : ptable_(path_table), pcode_(path_code), ids_(ids) {}
 
   CustomCode<T> get_code(int64_t code) const {
@@ -204,7 +208,7 @@ class CustomCodeTable {
   const int64_t* ids_;
 };
 
-using CodeTable = boost::variant<SimpleCodeTable, CustomCodeTable<int64_t>>;
+using CodeTable = paddle::variant<SimpleCodeTable, CustomCodeTable<int64_t>>;
 
 template <typename T>
 class MatrixBitCodeFunctor {
@@ -215,7 +219,8 @@ class MatrixBitCodeFunctor {
         code_table_(SimpleCodeTable(num_classes, ids)) {}
 
   MatrixBitCodeFunctor(const framework::Tensor& path_table,
-                       const framework::Tensor& path_code, const int64_t* ids)
+                       const framework::Tensor& path_code,
+                       const int64_t* ids)
       : num_classes_(static_cast<size_t>(path_table.dims()[1])),
         ids_(ids),
         code_table_(CustomCodeTable<int64_t>(path_table, path_code, ids)) {}
@@ -241,24 +246,28 @@ class MatrixBitCodeFunctor {
   /* For j < code_length
        input.row(i) += tmat(i, j) * weight.row(index(i, j))
   */
-  void Mul(framework::Tensor* tmat, const framework::Tensor& weight,
+  void Mul(framework::Tensor* tmat,
+           const framework::Tensor& weight,
            const framework::Tensor& input);
 
   /* For index(i, j) >= 0:
       weight.row(index(i, j)) += tmat(i, j) * input.row(i)
   */
-  void MulGradWeight(const framework::Tensor& tmat, framework::Tensor* weight,
+  void MulGradWeight(const framework::Tensor& tmat,
+                     framework::Tensor* weight,
                      const framework::Tensor& input);
   /* For SelectedRows Weight, For index(i, j) >= 0:
       weight.row(index(i, j)) += tmat(i, j) * input.row(i)
   */
-  void MulGradWeight(const framework::Tensor& tmat, phi::SelectedRows* weight,
+  void MulGradWeight(const framework::Tensor& tmat,
+                     phi::SelectedRows* weight,
                      const framework::Tensor& input);
   /* For j < code_length
     input.row(i) += tmat(i, j) * weight.row(index(i, j))
   */
   void MulGradError(const framework::Tensor& tmat,
-                    const framework::Tensor& weight, framework::Tensor* input);
+                    const framework::Tensor& weight,
+                    framework::Tensor* input);
 
   size_t num_classes_;
   const int64_t* ids_;

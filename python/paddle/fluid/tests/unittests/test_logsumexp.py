@@ -36,6 +36,7 @@ def logsumexp_wrapper(x, axis=None, keepdim=False, allreduce=False):
 
 
 class TestLogsumexp(OpTest):
+
     def setUp(self):
         self.op_type = 'logsumexp'
         self.python_api = logsumexp_wrapper
@@ -85,16 +86,19 @@ class TestLogsumexp(OpTest):
 
 
 class TestLogsumexp_shape(TestLogsumexp):
+
     def set_attrs(self):
         self.shape = [4, 5, 6]
 
 
 class TestLogsumexp_axis(TestLogsumexp):
+
     def set_attrs(self):
         self.axis = [0, -1]
 
 
 class TestLogsumexp_axis_all(TestLogsumexp):
+
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
 
@@ -105,11 +109,13 @@ class TestLogsumexp_axis_all(TestLogsumexp):
 
 
 class TestLogsumexp_keepdim(TestLogsumexp):
+
     def set_attrs(self):
         self.keepdim = True
 
 
 class TestLogsumexp_reduce_all(TestLogsumexp):
+
     def set_attrs(self):
         self.reduce_all = True
 
@@ -120,6 +126,7 @@ class TestLogsumexp_reduce_all(TestLogsumexp):
 
 
 class TestLogsumexpError(unittest.TestCase):
+
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)
@@ -128,6 +135,7 @@ class TestLogsumexpError(unittest.TestCase):
 
 
 class TestLogsumexpAPI(unittest.TestCase):
+
     def setUp(self):
         self.shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
@@ -141,12 +149,12 @@ class TestLogsumexpAPI(unittest.TestCase):
             out = paddle.logsumexp(x, axis, keepdim)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
-        self.assertTrue(np.allclose(res[0], out_ref))
+        np.testing.assert_allclose(res[0], out_ref, rtol=1e-05)
 
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x)
         out = paddle.logsumexp(x, axis, keepdim)
-        self.assertTrue(np.allclose(out.numpy(), out_ref))
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
 
     def test_api(self):
@@ -165,7 +173,7 @@ class TestLogsumexpAPI(unittest.TestCase):
         out3 = paddle.tensor.math.logsumexp(x)
         out_ref = ref_logsumexp(self.x)
         for out in [out1, out2, out3]:
-            self.assertTrue(np.allclose(out.numpy(), out_ref))
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
 
 

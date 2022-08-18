@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -26,6 +27,7 @@ SEED = 2022
 
 
 class TestCheckFiniteAndUnscaleOp(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "check_finite_and_unscale"
@@ -54,6 +56,7 @@ class TestCheckFiniteAndUnscaleOp(OpTest):
 
 
 class TestCheckFiniteAndUnscaleOpWithNan(TestCheckFiniteAndUnscaleOp):
+
     def init_test_case(self):
         x = np.random.random((129, 129)).astype(self.dtype)
         x[128][128] = np.nan
@@ -66,12 +69,13 @@ class TestCheckFiniteAndUnscaleOpWithNan(TestCheckFiniteAndUnscaleOp):
         }
 
     def test_check_output(self):
-        # When input contains nan, do not check the output, 
+        # When input contains nan, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output_with_place(self.place, no_check_set=['Out'])
 
 
 class TestCheckFiniteAndUnscaleOpWithInf(TestCheckFiniteAndUnscaleOp):
+
     def init_test_case(self):
         x = np.random.random((129, 129)).astype(self.dtype)
         x[128][128] = np.inf
@@ -84,12 +88,13 @@ class TestCheckFiniteAndUnscaleOpWithInf(TestCheckFiniteAndUnscaleOp):
         }
 
     def test_check_output(self):
-        # When input contains inf, do not check the output, 
+        # When input contains inf, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output_with_place(self.place, no_check_set=['Out'])
 
 
 class TestCheckFiniteAndUnscaleOpMultiInput(TestCheckFiniteAndUnscaleOp):
+
     def init_test_case(self):
         x0 = np.random.random((129, 129)).astype(self.dtype)
         x1 = np.random.random((129, 129)).astype(self.dtype)
@@ -103,6 +108,7 @@ class TestCheckFiniteAndUnscaleOpMultiInput(TestCheckFiniteAndUnscaleOp):
 
 
 class TestCheckFiniteAndUnscaleOpMultiInputWithNan(TestCheckFiniteAndUnscaleOp):
+
     def init_test_case(self):
         x0 = np.random.random((129, 129)).astype(self.dtype)
         x0[128][128] = np.nan
@@ -116,12 +122,13 @@ class TestCheckFiniteAndUnscaleOpMultiInputWithNan(TestCheckFiniteAndUnscaleOp):
         }
 
     def test_check_output(self):
-        # When input contains inf, do not check the output, 
+        # When input contains inf, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output_with_place(self.place, no_check_set=['Out'])
 
 
 class TestCheckFiniteAndUnscaleOpMultiInputWithInf(TestCheckFiniteAndUnscaleOp):
+
     def init_test_case(self):
         x0 = np.random.random((129, 129)).astype(self.dtype)
         x0[128][128] = np.nan
@@ -136,7 +143,7 @@ class TestCheckFiniteAndUnscaleOpMultiInputWithInf(TestCheckFiniteAndUnscaleOp):
         }
 
     def test_check_output(self):
-        # When input contains inf, do not check the output, 
+        # When input contains inf, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output_with_place(self.place, no_check_set=['Out'])
 

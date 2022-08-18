@@ -18,10 +18,8 @@ namespace phi {
 
 KernelSignature MatrixPowerGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("matrix_power_grad",
-                         {"X", "Out", GradVarName("Out")},
-                         {"n"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "matrix_power_grad", {"X", "Out", "Out@GRAD"}, {"n"}, {"X@GRAD"});
 }
 
 }  // namespace phi

@@ -24,6 +24,7 @@ paddle.enable_static()
 
 
 class TestCAllgatherOp(TestDistBase):
+
     def _setup_config(self):
         pass
 

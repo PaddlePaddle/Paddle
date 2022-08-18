@@ -76,29 +76,46 @@ size_t NPUMinChunkSize();
 size_t NPUMaxChunkSize();
 
 //! Copy memory from address src to dst asynchronously.
-void NPUMemcpyAsync(void *dst, const void *src, size_t count,
-                    enum aclrtMemcpyKind kind, aclrtStream stream,
+void NPUMemcpyAsync(void *dst,
+                    const void *src,
+                    size_t count,
+                    enum aclrtMemcpyKind kind,
+                    aclrtStream stream,
                     size_t dst_max_count = 0);
 
 //! Copy memory from address src to dst synchronously.
-void NPUMemcpySync(void *dst, const void *src, size_t count,
-                   enum aclrtMemcpyKind kind, size_t dst_max_count = 0);
+void NPUMemcpySync(void *dst,
+                   const void *src,
+                   size_t count,
+                   enum aclrtMemcpyKind kind,
+                   size_t dst_max_count = 0);
 
 //! Set memory dst with value count size synchronously.
 void NPUMemsetSync(void *dst, int value, size_t count, size_t max_count = 0);
 
 //! Set memory dst with value count size asynchronously
-void NPUMemsetAsync(void *dst, int value, size_t count, aclrtStream stream,
+void NPUMemsetAsync(void *dst,
+                    int value,
+                    size_t count,
+                    aclrtStream stream,
                     size_t max_count = 0);
 
 //! Copy memory from one device to another device asynchronously.
-void NPUMemcpyPeerAsync(void *dst, int dst_device, const void *src,
-                        int src_device, size_t count, aclrtStream stream,
+void NPUMemcpyPeerAsync(void *dst,
+                        int dst_device,
+                        const void *src,
+                        int src_device,
+                        size_t count,
+                        aclrtStream stream,
                         size_t max_count = 0);
 
 //! Copy memory from one device to another device synchronously.
-void NPUMemcpyPeerSync(void *dst, int dst_device, const void *src,
-                       int src_device, size_t count, size_t max_count = 0);
+void NPUMemcpyPeerSync(void *dst,
+                       int dst_device,
+                       const void *src,
+                       int src_device,
+                       size_t count,
+                       size_t max_count = 0);
 
 //! Create NPU stream.
 void NPUStreamCreate(aclrtStream *stream);
@@ -121,6 +138,9 @@ void NPUEventQuery(aclrtEvent event, aclrtEventStatus *status);
 //! Record NPU event in the stream.
 void NPUEventRecord(aclrtEvent event, aclrtStream stream);
 
+//! Synchronize NPU event.
+void NPUEventSynchronize(aclrtEvent event);
+
 //! Makes a stream wait on an event.
 void NPUStreamWaitEvent(aclrtStream stream, aclrtEvent event);
 
@@ -137,8 +157,11 @@ aclError RecordedNPUMalloc(void **ptr, size_t size, int dev_id);
 void RecordedNPUFree(void *p, size_t size, int dev_id);
 
 //! Get available and total gpu memory with considering limitation
-bool RecordedNPUMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
-                           size_t *actual_total, int dev_id);
+bool RecordedNPUMemGetInfo(size_t *avail,
+                           size_t *total,
+                           size_t *actual_avail,
+                           size_t *actual_total,
+                           int dev_id);
 
 //! Get recorded actrtMalloc size. If record is disabled, return 0.
 uint64_t RecordedNPUMallocSize(int dev_id);
@@ -146,8 +169,10 @@ uint64_t RecordedNPUMallocSize(int dev_id);
 bool IsNPUMallocRecorded(int dev_id);
 
 //! Adds a callback function executed on the host or device to the stream.
-void NPULaunchCallback(aclrtCallback fn, void *userData,
-                       aclrtCallbackBlockType blockType, aclrtStream stream);
+void NPULaunchCallback(aclrtCallback fn,
+                       void *userData,
+                       aclrtCallbackBlockType blockType,
+                       aclrtStream stream);
 
 class NPUDeviceGuard {
  public:

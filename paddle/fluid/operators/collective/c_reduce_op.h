@@ -40,6 +40,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/reduce.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -87,7 +88,8 @@ class CReduceOpCPUKernel : public framework::OpKernel<T> {
     T* recv_buff = out->mutable_data<T>(in->dims(), place);
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(), true,
+        gloo->IsInitialized(),
+        true,
         platform::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::ReduceOptions opts(gloo->GetContext());
@@ -116,7 +118,8 @@ class CReduceOpCPUKernel : public framework::OpKernel<T> {
                 &gloo::product<T>));
         break;
       default:
-        PADDLE_ENFORCE_EQ(true, false,
+        PADDLE_ENFORCE_EQ(true,
+                          false,
                           platform::errors::InvalidArgument(
                               "Invalid reduce type: %d.", red_type));
     }
@@ -188,16 +191,23 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
             << "dtype: " << dtype << "hccl_red_type: " << hccl_red_type
             << ", group is: " << group;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
-        reinterpret_cast<void*>(stream)));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclAllReduce(sendbuff,
+                                         recvbuff,
+                                         numel,
+                                         dtype,
+                                         hccl_red_type,
+                                         comm->comm(),
+                                         reinterpret_cast<void*>(stream)));
 
     if (rank_id != root_id) {
       auto npu_place = place;
-      memory::Copy(npu_place, reinterpret_cast<void*>(out->data<T>()),
+      memory::Copy(npu_place,
+                   reinterpret_cast<void*>(out->data<T>()),
                    npu_place,
                    reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
-                   numel * sizeof(T), stream);
+                   numel * sizeof(T),
+                   stream);
     }
 
     out->Resize(in->dims());
@@ -261,10 +271,17 @@ class CReduceOpXPUKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    PADDLE_ENFORCE_EQ(bkcl_reduce(comm->comm(), sendbuff, recvbuff, numel,
-                                  dtype, bkcl_red_type, root, stream),
-                      BKCL_SUCCESS, platform::errors::PreconditionNotMet(
-                                        "BKCL all reduce failed"));
+    PADDLE_ENFORCE_EQ(
+        bkcl_reduce(comm->comm(),
+                    sendbuff,
+                    recvbuff,
+                    numel,
+                    dtype,
+                    bkcl_red_type,
+                    root,
+                    stream),
+        BKCL_SUCCESS,
+        platform::errors::PreconditionNotMet("BKCL all reduce failed"));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU."));
@@ -295,7 +312,7 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
@@ -319,16 +336,24 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
         break;
 
       default:
-        PADDLE_ENFORCE_EQ(true, false, platform::errors::InvalidArgument(
-                                           "red_type must be one of kRedSum, "
-                                           "kRedMax, kRedMin, kRedProd."));
+        PADDLE_ENFORCE_EQ(true,
+                          false,
+                          platform::errors::InvalidArgument(
+                              "red_type must be one of kRedSum, "
+                              "kRedMax, kRedMin, kRedProd."));
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
-        sendbuff, recvbuff, numel, dtype, nccl_red_type, root, comm->comm(),
-        stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(sendbuff,
+                                                             recvbuff,
+                                                             numel,
+                                                             dtype,
+                                                             nccl_red_type,
+                                                             root,
+                                                             comm->comm(),
+                                                             stream));
 #else
-    PADDLE_ENFORCE_EQ(true, false,
+    PADDLE_ENFORCE_EQ(true,
+                      false,
                       platform::errors::Unavailable(
                           "PaddlePaddle should compile with GPU.."));
 #endif
@@ -386,8 +411,13 @@ class CReduceOpMLUKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    PADDLE_ENFORCE_MLU_SUCCESS(cnclReduce(sendbuff, recvbuff, numel, dtype,
-                                          cncl_red_type, root, comm->comm(),
+    PADDLE_ENFORCE_MLU_SUCCESS(cnclReduce(sendbuff,
+                                          recvbuff,
+                                          numel,
+                                          dtype,
+                                          cncl_red_type,
+                                          root,
+                                          comm->comm(),
                                           stream));
 
 #else
@@ -419,7 +449,8 @@ CReduce %s Operator
 Call collective Reduce with reduce type %s. If input and output are
 the same variable, in-place reduce will be used.
 )DOC",
-                               GetName(), GetName()));
+                               GetName(),
+                               GetName()));
   }
 
  protected:

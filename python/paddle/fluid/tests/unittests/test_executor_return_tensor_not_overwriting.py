@@ -22,6 +22,7 @@ from op_test import OpTest, skip_check_grad_ci
 
 @skip_check_grad_ci(reason="Not op test but call the method of class OpTest.")
 class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
+
     def setUp(self):
         pass
 
@@ -64,10 +65,11 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
                 add_out1 = np.array(add_out[0])
                 mul_out = self.calc_mul_out(place, parallel)
                 add_out2 = np.array(add_out[0])
-                self.assertTrue(np.array_equal(add_out1, add_out2))
+                np.testing.assert_array_equal(add_out1, add_out2)
 
 
 class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
+
     def setUp(self):
         pass
 
@@ -106,7 +108,7 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
                 add_out1 = np.array(add_out[0])
                 sub_out = self.calc_sub_out(place, parallel)
                 add_out2 = np.array(add_out[0])
-                self.assertTrue(np.array_equal(add_out1, add_out2))
+                np.testing.assert_array_equal(add_out1, add_out2)
 
 
 if __name__ == '__main__':

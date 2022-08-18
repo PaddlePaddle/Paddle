@@ -63,7 +63,7 @@ class ReducePrimOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
     auto x_shape = x_var->GetShape();
     auto axis = ctx->Attrs().Get<std::vector<int64_t>>("axis");
     auto keepdim = ctx->Attrs().Get<bool>("keepdim");
@@ -83,7 +83,7 @@ class ReducePrimOpShapeInference : public framework::InferShapeBase {
       x_shape.push_back(1);
     }
 
-    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(x_shape);
+    PADDLE_GET(framework::VarDesc *, y_var_ptr)->SetShape(x_shape);
   }
 };
 
@@ -101,7 +101,8 @@ class ReducePrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(reduce_p, paddle::operators::ReducePrimOp,
+REGISTER_OPERATOR(reduce_p,
+                  paddle::operators::ReducePrimOp,
                   paddle::operators::ReducePrimOpMaker,
                   paddle::operators::ReducePrimOpShapeInference,
                   paddle::operators::ReducePrimOpVarTypeInference);
