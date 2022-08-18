@@ -67,7 +67,7 @@ class TestTriuIndicesAPICaseStatic(unittest.TestCase):
         else:
             place = paddle.CPUPlace()
         with paddle.static.program_guard(paddle.static.Program(),
-                                            paddle.static.Program()):
+                                        paddle.static.Program()):
             data = paddle.triu_indices(4, 4, -1)
         exe = paddle.static.Executor(place)
         result = exe.run(feed={}, fetch_list=[data])
