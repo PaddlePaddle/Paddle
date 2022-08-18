@@ -411,8 +411,8 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                 row,
                 colptr,
                 nodes,
-                eids,
                 sample_size=self.sample_size,
+                eids=eids,
                 return_eids=True)
             exe = paddle.static.Executor(paddle.CPUPlace())
             ret = exe.run(feed={

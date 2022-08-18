@@ -24,10 +24,10 @@ __all__ = []
 def sample_neighbors(row,
                      colptr,
                      input_nodes,
-                     eids=None,
-                     perm_buffer=None,
                      sample_size=-1,
+                     eids=None,
                      return_eids=False,
+                     perm_buffer=None,
                      has_perm_buffer=False,
                      name=None):
     """
@@ -51,15 +51,15 @@ def sample_neighbors(row,
                          The data type should be the same with `row`.
         input_nodes (Tensor): The input nodes we need to sample neighbors for, and the
                               data type should be the same with `row`.
+        sample_size (int): The number of neighbors we need to sample. Default value is
+                           -1, which means returning all the neighbors of the input nodes.
         eids (Tensor): The eid information of the input graph. If return_eids is True,
                             then `eids` should not be None. The data type should be the 
                             same with `row`. Default is None.
+        return_eids (bool): Whether to return eid information of sample edges. Default is False.
         perm_buffer (Tensor): Permutation buffer for fisher-yates sampling. If `has_perm_buffer`
                               is True, then `perm_buffer` should not be None. The data type should
                               be the same with `row`. Default is None. 
-        sample_size (int): The number of neighbors we need to sample. Default value is 
-                           -1, which means returning all the neighbors of the input nodes.
-        return_eids (bool): Whether to return eid information of sample edges. Default is False.
         has_perm_buffer (bool): Using the permutation for fisher-yates sampling in GPU. Default 
                                  value is false, means not using it. 
         name (str, optional): Name for the operation (optional, default is None).
