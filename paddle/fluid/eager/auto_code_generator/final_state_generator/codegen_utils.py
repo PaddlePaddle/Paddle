@@ -447,7 +447,7 @@ class FunctionGeneratorBase:
         no_output_name_idx = 1
         for i in range(len(forward_returns_list)):
             forward_return = forward_returns_list[i]
-            if forward_return[0] is '':
+            if len(forward_return[0]) == 0:
                 return_name = "out_{}".format(no_output_name_idx)
                 no_output_name_idx = no_output_name_idx + 1
             else:
