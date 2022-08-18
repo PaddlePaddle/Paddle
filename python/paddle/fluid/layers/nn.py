@@ -13150,6 +13150,8 @@ def merge_selected_rows(x, name=None):
                 type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
             y = fluid.layers.merge_selected_rows(var)
     """
+    if _non_static_mode():
+        return _C_ops.merge_selected_rows(x)
 
     helper = LayerHelper("merge_selected_rows", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
