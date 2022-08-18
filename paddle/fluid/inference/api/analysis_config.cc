@@ -250,7 +250,7 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
 
     auto string2bool = [](std::string s) {
       std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
-        return std::tolower(c);
+        return ::tolower(c);
       });
       return s == "true" || s == "1";
     };
