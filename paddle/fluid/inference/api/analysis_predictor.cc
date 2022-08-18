@@ -33,6 +33,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
@@ -1040,7 +1041,14 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseFcPadding(config_.use_fc_padding());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
-  argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
+  if (model_precision_ == phi::DataType::FLOAT32) {
+    argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
+  } else {
+    // TODO(inference): mixed precision temporarily not support memory_optim
+    LOG_FIRST_N(WARNING, 1) << "mixed precision model temporarily not support "
+                               "memory optim, so we just turn off that.";
+    argument_.SetEnableMemoryOptim(false);
+  }
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   argument_.SetPredictorID(predictor_id_);
@@ -1929,6 +1937,15 @@ AnalysisPredictor::~AnalysisPredictor() {
                               "./profile.log");
   }
   if (sub_scope_) {
+    if (framework::global_transfer_scope_key().find(sub_scope_) !=
+        framework::global_transfer_scope_key().end()) {
+      auto scope_key_set = framework::global_transfer_scope_key()[sub_scope_];
+      for (auto iter = scope_key_set.begin(); iter != scope_key_set.end();
+           iter++) {
+        framework::global_transfer_data_cache().erase(*iter);
+      }
+      framework::global_transfer_scope_key().erase(sub_scope_);
+    }
     scope_->DeleteScope(sub_scope_);
   }
 

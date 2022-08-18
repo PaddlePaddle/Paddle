@@ -13,7 +13,11 @@
 # limitations under the License.
 
 from .message_passing import send_u_recv  # noqa: F401
+from .message_passing import send_ue_recv  # noqa: F401
+from .message_passing import send_uv  # noqa: F401
 
 __all__ = [
     'send_u_recv',
+    'send_ue_recv',
+    'send_uv',
 ]

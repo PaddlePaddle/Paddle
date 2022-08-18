@@ -279,7 +279,7 @@ class Partitioner(object):
                 dist_op_opt_impl = _get_dist_op_backward_implement(
                     op, self._dist_context, forward_op_id2forward_op)
                 dist_op_opt_impl.backward(self._dist_context, **kinputs,
-                                          **koutputs)
+                                          **koutputs, **{"grad_var_to_var": {}})
             else:
                 raise NotImplementedError(
                     "partitioner only support forward and backward, optimize ops, but got {}"
