@@ -20,7 +20,7 @@
 
 namespace phi {
 
-// used in new executor, for memory copy from host to device
+// used in new executor, for memory copy from device to host
 template <typename T, typename Context>
 void MemcpyD2HKernel(const Context& dev_ctx,
                      const DenseTensor& x,
@@ -31,6 +31,6 @@ template <typename T, typename Context>
 void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
                             const std::vector<const DenseTensor*>& array,
                             int dst_place_type,
-                            const std::vector<DenseTensor*> out_array);
+                            std::vector<DenseTensor*> out_array);
 
 }  // namespace phi

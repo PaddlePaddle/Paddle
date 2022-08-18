@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
 
+#include <string_view>
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
-
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -135,9 +135,8 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   bool run_phi_kernel = false;
 
   // check if phi kernel exists
-  auto phi_kernel_map =
-      phi::KernelFactory::Instance().SelectKernelMap(op_with_kernel->Type());
-  if (phi_kernel_map.size() > 0) {
+  if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
+          op_with_kernel->Type())) {
     auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
     VLOG(6) << "phi_kernel_key " << phi_kernel_key << "\n";
 

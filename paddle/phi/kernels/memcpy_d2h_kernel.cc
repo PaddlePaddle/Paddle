@@ -32,14 +32,21 @@ void MemcpyD2HKernel(const Context& dev_ctx,
                      int dst_place_type,
                      DenseTensor* out) {
   // Copy will set the stream of the tensor while setting blocking to false
-  // it also handles asynchronous small data(<64kb) copy bewteen CpuPlace and
-  // CudaPlace so no need to do anything special
   switch (dst_place_type) {
     case 0:
       Copy(dev_ctx, x, CPUPlace(), false, out);
+      // NOTE(copy from Aurelius84): host <-> device memory copies of a memory
+      // block of 64 KB or less are asynchronous. See
+      // https://forums.developer.nvidia.com/t/host-device-memory-copies-up-to-64-kb-are-asynchronous/17907
+      if (src.memory_size() <= WAIT_THRESHOLD) {
+        dev_ctx_.Wait();
+      }
       break;
+
     case 1:
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
+      // paddle::memory::Copy use async copy for GPUPinnedPlace
+      dev_ctx.wait();
       break;
 
     default:
@@ -54,13 +61,21 @@ void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
                             const std::vector<const DenseTensor*>& array,
                             int dst_place_type,
                             std::vector<DenseTensor*> out_array) {
-  VLOG(10) << "using MemcpyD2HMultiIOKernel";
-  out_array.clear();
-  out_array.resize(array.size());
+  PADDLE_ENFORCE_EQ(
+      array.size(),
+      out_array.size(),
+      errors::PreconditionNotMet(
+          "input size %d != output size", array.size(), out_array.size()));
 
   for (size_t i = 0; i < array.size(); i++) {
-    const auto& x = *(out_array[i]);
-    VLOG(10) << i << " " << out_array[i] << " " << x.initialized();
+    PADDLE_ENFORCE_NOT_NULL(
+        array[i],
+        errors::PreconditionNotMet("input tesnor %d should not be nullptr", i));
+    PADDLE_ENFORCE_NOT_NULL(
+        out_array[i],
+        errors::PreconditionNotMet("input tesnor %d should not be nullptr", i));
+
+    const auto& x = *(array[i]);
     MemcpyD2HKernel<T, Context>(dev_ctx, x, dst_place_type, out_array[i]);
   }
 }

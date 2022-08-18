@@ -19,9 +19,7 @@
 namespace phi {
 
 KernelSignature MemcpyD2HOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  VLOG(10) << "choosing MemcpyD2H Kernel";
   if (ctx.IsDenseTensorVectorInput("X")) {
-    VLOG(10) << "choosing MemcpyD2HMultiIOKernel";
     return KernelSignature(
         "memcpy_d2h_multi_io", {"X"}, {"dst_place_type"}, {"Out"});
   }
