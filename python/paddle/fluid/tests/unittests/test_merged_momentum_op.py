@@ -314,9 +314,9 @@ class TestMergedMomentum(unittest.TestCase):
         self.assertEqual(len(outs1), len(outs2))
         for i, (out1, out2) in enumerate(zip(outs1, outs2)):
             if isinstance(place, paddle.CUDAPlace):
-                self.assertTrue(np.array_equal(out1, out2))
+                np.testing.assert_array_equal(out1, out2)
             else:
-                self.assertTrue(np.allclose(out1, out2, atol=1e-7))
+                np.testing.assert_allclose(out1, out2, rtol=1e-05, atol=1e-07)
 
     def get_places(self):
         places = [paddle.CPUPlace()]
@@ -378,18 +378,18 @@ class TestMergedMomentum2(unittest.TestCase):
         self.assertEqual(len(outs1), len(outs2))
         for i, (out1, out2) in enumerate(zip(outs1, outs2)):
             if isinstance(place, paddle.CUDAPlace):
-                self.assertTrue(np.array_equal(out1, out2))
+                np.testing.assert_array_equal(out1, out2)
             else:
-                self.assertTrue(np.allclose(out1, out2, atol=1e-7))
+                np.testing.assert_allclose(out1, out2, rtol=1e-05, atol=1e-07)
 
         outs3 = run_op(use_nesterov=False, use_merged=True)
         outs4 = run_op(use_nesterov=False, use_merged=False)
         self.assertEqual(len(outs3), len(outs4))
         for j, (out3, out4) in enumerate(zip(outs3, outs4)):
             if isinstance(place, paddle.CUDAPlace):
-                self.assertTrue(np.array_equal(out3, out4))
+                np.testing.assert_array_equal(out3, out4)
             else:
-                self.assertTrue(np.allclose(out3, out4, atol=1e-7))
+                np.testing.assert_allclose(out3, out4, rtol=1e-05, atol=1e-07)
 
     def get_places(self):
         places = [paddle.CPUPlace()]

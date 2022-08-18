@@ -599,7 +599,7 @@ def crop(x, shape=None, offsets=None, name=None):
 
     Parameters:
         x (Tensor): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
-        shape (list|tuple|Tensor): The output shape is specified
+        shape (list|tuple|Tensor, optional): The output shape is specified
             by `shape`. Its data type is int32. If a list/tuple, it's length must be
             the same as the dimension size of `x`. If a Tensor, it should be a 1-D Tensor.
             When it is a list, each element can be an integer or a Tensor of shape: [1].
@@ -777,8 +777,11 @@ def fill_(x, value):
         raise TypeError(
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
-    return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
-                            int(value))
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_(x, value)
+    else:
+        return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
+                                int(value))
 
 
 @dygraph_only
@@ -806,7 +809,10 @@ def zero_(x):
             print(tensor.tolist())   #[0, 0, 0, 0, 0]
 
     """
-    return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_(x, 0.)
+    else:
+        return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
 
 
 @dygraph_only
@@ -2008,12 +2014,23 @@ def squeeze(x, axis=None, name=None):
         'float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64',
         'complex64', 'complex128'
     ], 'squeeze')
-    check_type(axes, 'axis/axes', (list, tuple), 'squeeze')
+
+    check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'squeeze')
+    attrs = {}
+    if isinstance(axes, Variable):
+        axes.stop_gradient = True
+        attrs["axes"] = axes
+    elif isinstance(axes, (list, tuple)):
+        if utils._contain_var(axes):
+            attrs["axes"] = utils._convert_to_tensor_list(axes)
+        else:
+            attrs["axes"] = axes
+
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(type="squeeze2",
                      inputs={"X": input},
-                     attrs={"axes": axes},
+                     attrs=attrs,
                      outputs={
                          "Out": out,
                          "XShape": x_shape
@@ -4121,7 +4138,11 @@ def moveaxis(x, source, destination, name=None):
     for i in range(len(src_dims)):
         perm[dst_dims[i]] = src_dims[i]
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_transpose(x, perm)
+        return out
+
+    if _in_legacy_dygraph():
         out, _ = _C_ops.transpose2(x, 'axis', perm)
         return out
 

@@ -1,7 +1,7 @@
 cc_library(
   processgroup
   SRCS ProcessGroup.cc
-  DEPS phi_api eager_api)
+  DEPS dense_tensor)
 cc_library(
   eager_reducer
   SRCS reducer.cc
@@ -18,7 +18,8 @@ if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     processgroup_nccl
     SRCS ProcessGroupNCCL.cc NCCLTools.cc Common.cc
-    DEPS place enforce collective_helper device_context phi_api eager_api)
+    DEPS processgroup place enforce collective_helper device_context
+         dense_tensor)
   if(WITH_DISTRIBUTE AND WITH_PSCORE)
     cc_library(
       processgroup_heter

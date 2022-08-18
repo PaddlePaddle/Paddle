@@ -447,6 +447,13 @@ OperatorBase::OperatorBase(const std::string& type,
     GenerateTemporaryNames();
     CheckAllInputOutputSet();
   }
+  // In OperatorBase level, all attributes with VarDesc type will be considered
+  // as Input.
+  for (auto& attr : FilterAttrVar(attrs)) {
+    VLOG(3) << "found Attribute with Variable type: " << attr.first;
+    inputs_[attr.first] = std::move(AttrVarNames(attr.second));
+    attrs_.erase(attr.first);
+  }
 }
 
 std::vector<std::string> OperatorBase::InputVars() const {
@@ -2725,6 +2732,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
   for (size_t i = 0; i < attr_names.size(); ++i) {
     VLOG(6) << "BuildPhiKernelContext: " << attr_names[i] << ": "
             << attr_defs[i].type_index;
+    // attribute with Variable type has been placed into Inputs(), and
+    // we can parse them from RuntimeContext.inputs.
     auto attr_iter = Attrs().find(attr_names[i]);
     switch (attr_defs[i].type_index) {
       case phi::AttributeType::SCALAR:
@@ -2742,6 +2751,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
             case proto::AttrType::STRING:
               phi_kernel_context->EmplaceBackAttr(std::move(phi::Scalar(
                   PADDLE_GET_CONST(std::string, attr_iter->second))));
+              break;
+            case proto::AttrType::BOOLEAN:
+              phi_kernel_context->EmplaceBackAttr(std::move(
+                  phi::Scalar(PADDLE_GET_CONST(bool, attr_iter->second))));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(

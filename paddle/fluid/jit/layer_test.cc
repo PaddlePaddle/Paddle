@@ -26,6 +26,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+#include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/jit/function_utils.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
@@ -102,7 +103,7 @@ TEST(CpuLayerTest, Construct) {
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
   auto func = layer.Function("infer");
-  outs = (*func)(inputs);
+  outs = func(inputs);
   out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
   auto pow_out =
@@ -127,7 +128,7 @@ TEST(GpuLayerTest, Construct) {
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
   auto func = layer.Function("infer");
-  outs = (*func)(inputs);
+  outs = func(inputs);
   gpu_tensor = outs[0];
   cpu_tensor = paddle::experimental::copy_to(gpu_tensor, phi::CPUPlace(), true);
   out_data = cpu_tensor.data<float>();
