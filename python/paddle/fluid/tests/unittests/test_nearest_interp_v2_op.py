@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 import paddle.nn as nn
 import paddle
 from paddle.nn.functional import interpolate
-from paddle import _C_ops
 
 paddle.enable_static()
 
@@ -50,10 +49,11 @@ def nearest_interp_test(x,
         if not isinstance(SizeTensor, list) and not isinstance(
                 SizeTensor, tuple):
             SizeTensor = [SizeTensor]
-    return _C_ops.final_state_nearest_interp(x, OutSize, SizeTensor, Scale,
-                                             data_layout, out_d, out_h, out_w,
-                                             scale, interp_method,
-                                             align_corners, align_mode)
+    return paddle._C_ops.final_state_nearest_interp(x, OutSize, SizeTensor,
+                                                    Scale, data_layout, out_d,
+                                                    out_h, out_w, scale,
+                                                    interp_method,
+                                                    align_corners, align_mode)
 
 
 def nearest_neighbor_interp_np(X,

@@ -23,7 +23,6 @@ import paddle
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import interpolate
-from paddle._C_ops import final_state_bicubic_interp
 
 
 def bicubic_interp_test(x,
@@ -49,9 +48,11 @@ def bicubic_interp_test(x,
         if not isinstance(SizeTensor, list) and not isinstance(
                 SizeTensor, tuple):
             SizeTensor = [SizeTensor]
-    return final_state_bicubic_interp(x, OutSize, SizeTensor, Scale,
-                                      data_layout, out_d, out_h, out_w, scale,
-                                      interp_method, align_corners, align_mode)
+    return paddle._C_ops.final_state_bicubic_interp(x, OutSize, SizeTensor,
+                                                    Scale, data_layout, out_d,
+                                                    out_h, out_w, scale,
+                                                    interp_method,
+                                                    align_corners, align_mode)
 
 
 def cubic_1(x, a):
