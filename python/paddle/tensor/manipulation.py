@@ -3563,6 +3563,8 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             sliced_2 = paddle.strided_slice(x, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is x[:, 1:3:1, 0:2:1, 2:4:2].
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_strided_slice(x, axes, starts, ends, strides)
 
     helper = LayerHelper('strided_slice', **locals())
 
@@ -3606,7 +3608,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
     attrs = {'axes': axes}
     infer_flags = list(1 for i in range(len(axes)))
 
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         inputs = {'Input': x}
         attrs = {
             'axes': axes,
