@@ -68,6 +68,7 @@ from ..fluid.layers import create_parameter  # noqa: F401
 from ..fluid.layers import create_global_var  # noqa: F401
 from ..fluid.layers.metric_op import auc  # noqa: F401
 from ..fluid.layers.metric_op import accuracy  # noqa: F401
+from ..fluid.contrib.layers import loss_adaptation  # noqa: F401
 
 __all__ = [     #noqa
            'append_backward',
@@ -117,4 +118,5 @@ __all__ = [     #noqa
            'auc',
            'device_guard',
            'create_parameter'
+           'loss_adaptation'
 ]

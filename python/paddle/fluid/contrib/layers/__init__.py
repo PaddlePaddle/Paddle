@@ -19,12 +19,11 @@ from .nn import *
 
 from .rnn_impl import *
 from . import metric_op
-from . import loss_adaptation
 from .metric_op import *
+from . import loss_adaptation
 from .loss_adaptation import *
 
 __all__ = []
 __all__ += nn.__all__
 __all__ += rnn_impl.__all__
 __all__ += metric_op.__all__
-__all__ += loss_adaptation.__all__

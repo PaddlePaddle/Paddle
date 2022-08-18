@@ -23,7 +23,7 @@ from paddle.fluid.initializer import Normal, Constant
 from paddle.fluid.framework import Variable
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid import layers
-from paddle.fluid.backward import gradients
+import paddle
 
 __all__ = ['loss_adaptation']
 
@@ -54,34 +54,24 @@ def loss_adaptation(input, last_shared_layer):
     """
     assert len(input) > 0
     helper = LayerHelper("loss_adaptation", **locals())
-    grad_init_list = []
-    loss_num = len(input)
-    for i in range(loss_num):
-        grad_ = helper.create_global_variable(
-            persistable=False, dtype='float32', shape=[-1])
-        grad_init_list.append(grad_)
-
-    loss = helper.create_variable_for_type_inference(dtype=input[0].dtype)
-    helper.set_variable_initializer(loss, Constant(value=0.0, force_cpu=True))
 
     #get grad
     grad_list = []
-    for i, var in enumerate(grad_init_list):
-        helper.set_variable_initializer(
-            var, Constant(
-                value=1.0, force_cpu=True))
-        var = gradients(input[i], last_shared_layer)
+    for per_input in input:
+        var = paddle.static.gradients(per_input, last_shared_layer)
         grad_list.append(var)
 
     loss_w = []
     #comput loss weight 
     for grad in grad_list:
-        w_ = layers.sigmoid(grad)
-        w_ = layers.reciprocal(w_)
+        limit_v = paddle.full_like(grad[0], fill_value=0.000001)
+        w_ = layers.reciprocal(paddle.add(grad[0], limit_v))
         loss_w.append(w_)
 
     #compute the final loss
+    loss = []
     for i in range(len(loss_w)):
-        loss += loss_w[i] * input[i]
-
-    return loss
+        loss_ = paddle.multiply(paddle.mean(loss_w[i]), paddle.mean(input[i]))
+        loss.append(loss_)
+    loss_concat = paddle.concat(x=loss, axis=0)
+    return paddle.sum(loss_concat, axis=0)
