@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/plugin/cast_op_plugin.h"
 
 namespace paddle {
 namespace framework {
@@ -28,16 +29,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-#define CHECK_SET_TYPE(want, fact)                                             \
-  PADDLE_ENFORCE_EQ(                                                           \
-      (want),                                                                  \
-      (fact),                                                                  \
-      platform::errors::InvalidArgument(                                       \
-          "Errors occures in Paddle-TRT cast op, try to use C++ Api "          \
-          "config.Exp_DisableTensorRtOPs({\"cast\"})\n; or Python Api "        \
-          "config.exp_disable_tensorrt_ops([\"cast\"]) to forbid cat op into " \
-          "Paddle-TRT."));
-
 class CastOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -47,31 +38,19 @@ class CastOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
 
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
+    auto in_dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("in_dtype"));
     auto out_dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("out_dtype"));
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
-
-    switch (out_dtype) {
-      case 2:  // INT32 = 2
-        layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
-        CHECK_SET_TYPE(nvinfer1::DataType::kINT32,
-                       layer->getOutput(0)->getType());
-        break;
-      case 4:  // FP16 = 4
-        layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
-        CHECK_SET_TYPE(nvinfer1::DataType::kHALF,
-                       layer->getOutput(0)->getType());
-        break;
-      case 5:  // FP32 = 5
-        layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
-        CHECK_SET_TYPE(nvinfer1::DataType::kFLOAT,
-                       layer->getOutput(0)->getType());
-        break;
-      default:
-        LOG(ERROR) << "Unable to convert a fluid data type(" << out_dtype
-                   << ") to a nvinfer DataType";
-        break;
-    }
+    nvinfer1::ILayer* layer = nullptr;
+      if (engine_->with_dynamic_shape()) {
+        plugin::CastPluginDynamic* plugin =
+            new plugin::CastPluginDynamic(in_dtype, out_dtype);
+        layer = engine_->AddDynamicPlugin(&input, 1, plugin);
+      } else {
+        plugin::CastPlugin* plugin =
+            new plugin::CastPlugin(in_dtype, out_dtype);
+        layer = engine_->AddPlugin(&input, 1, plugin);
+      }
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "cast", {output_name}, test_mode);
