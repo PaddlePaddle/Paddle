@@ -200,13 +200,12 @@ class TestMergedMomentumBase(unittest.TestCase):
         outs2 = run_op(use_nesterov=True, use_merged=False)
         self.assertEqual(len(outs1), len(outs2))
         for i, (out1, out2) in enumerate(zip(outs1, outs2)):
-            self.assertTrue(np.allclose(out1, out2, atol=1e-7))
-
+            np.testing.assert_allclose(out1, out2, atol=1e-7)
         outs3 = run_op(use_nesterov=False, use_merged=True)
         outs4 = run_op(use_nesterov=False, use_merged=False)
         self.assertEqual(len(outs3), len(outs4))
         for j, (out3, out4) in enumerate(zip(outs3, outs4)):
-            self.assertTrue(np.allclose(out3, out4, atol=1e-7))
+            np.testing.assert_allclose(out3, out4, atol=1e-7)
 
 
 if __name__ == "__main__":

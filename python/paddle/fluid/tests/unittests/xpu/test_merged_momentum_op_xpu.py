@@ -40,47 +40,36 @@ class XPUTestMergedMomentumOP(XPUOpTestWrapper):
     class TestMergedMomentumOp(TestMergedMomentumBase):
 
         def setUp(self):
-            pass
+            super().setUp()
+            self.set_case()
 
-    class TestMergedMomentum1(TestMergedMomentumOp):
-
-        def setUp(self):
-            self.place = paddle.fluid.XPUPlace(0)
+        def set_case(self):
             self.shapes = [[3, 4], [2, 7], [5, 6, 8]]
+            self.place = paddle.fluid.XPUPlace(0)
             self.seed = 1
 
         def testalltype(self):
             self.check_with_place(self.place, self.in_type)
 
+    class TestMergedMomentum1(TestMergedMomentumOp):
+
+        def set_case(self):
+            self.shapes = [[3, 4], [2, 7], [5, 6, 8]]
+
     class TestMergedMomentum2(TestMergedMomentumOp):
 
-        def setUp(self):
-            self.place = paddle.fluid.XPUPlace(0)
+        def set_case(self):
             self.shapes = [[3, 4], [2, 7]]
-            self.seed = 10
-
-        def testalltype(self):
-            self.check_with_place(self.place, self.in_type)
 
     class TestMergedMomentum3(TestMergedMomentumOp):
 
-        def setUp(self):
-            self.place = paddle.fluid.XPUPlace(0)
+        def set_case(self):
             self.shapes = [[3, 4]]
-            self.seed = 100
-
-        def testalltype(self):
-            self.check_with_place(self.place, self.in_type)
 
     class TestMergedMomentum4(TestMergedMomentumOp):
 
-        def setUp(self):
-            self.place = paddle.fluid.XPUPlace(0)
+        def set_case(self):
             self.shapes = [[3, 4], [2, 7], [5, 6, 7], [9, 9], [10, 12]]
-            self.seed = 101
-
-        def testalltype(self):
-            self.check_with_place(self.place, self.in_type)
 
 
 support_types = get_xpu_op_support_types('merged_momentum')
