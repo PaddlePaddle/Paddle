@@ -1440,7 +1440,7 @@ void BicubicInterpKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(bilinear_interp_v2,
+PD_REGISTER_KERNEL(bilinear_interp,
                    GPU,
                    ALL_LAYOUT,
                    phi::BilinearInterpKernel,
@@ -1450,7 +1450,7 @@ PD_REGISTER_KERNEL(bilinear_interp_v2,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(nearest_interp_v2,
+PD_REGISTER_KERNEL(nearest_interp,
                    GPU,
                    ALL_LAYOUT,
                    phi::NearestInterpKernel,
@@ -1471,7 +1471,7 @@ PD_REGISTER_KERNEL(trilinear_interp_v2,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(linear_interp_v2,
+PD_REGISTER_KERNEL(linear_interp,
                    GPU,
                    ALL_LAYOUT,
                    phi::LinearInterpKernel,
@@ -1481,7 +1481,7 @@ PD_REGISTER_KERNEL(linear_interp_v2,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(bicubic_interp_v2,
+PD_REGISTER_KERNEL(bicubic_interp,
                    GPU,
                    ALL_LAYOUT,
                    phi::BicubicInterpKernel,

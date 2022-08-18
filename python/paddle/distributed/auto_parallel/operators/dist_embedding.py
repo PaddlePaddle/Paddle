@@ -34,7 +34,8 @@ from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_idx_in_axis, _get_corresponding_rank
 from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op
 from ..cost import build_comm_costs_from_descs, build_comp_costs_from_descs, build_dp_costs
-from ..cost import EmbeddingOpCost, EmbeddingGradOpCost, AllreduceSumOpCost, IdentityOpCost
+from ..cost import EmbeddingOpCost, EmbeddingGradOpCost
+from paddle.distributed.auto_parallel.cost.comm_op_cost import AllreduceSumOpCost, IdentityOpCost
 
 
 class DistributedEmbedding(DistributedOperatorImplContainer):
