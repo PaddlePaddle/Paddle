@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import re
+import os
+import argparse
 
 
 # function to process pythonpath env
@@ -135,6 +137,34 @@ def process_run_serial(run_serial):
     return rs
 
 
+def file_with_extension(prefix, suffixes):
+    """
+    Desc:
+        check whether test file exists. 
+    """
+    for ext in suffixes:
+        if os.path.isfile(prefix + ext):
+            return True
+    return False
+
+
+def process_name(name, curdir):
+    """
+    Desc:
+        check whether name is with a legal format and check whther the test file exists.
+    """
+    name = name.strip()
+    assert re.compile("^test_[0-9a-zA-Z_]+").search(name), \
+        f"""If line is not the header of table, the test name must begin with "test_" """ \
+        f"""and the following substring must include at least one char of "0-9", "a-z", "A-Z" or "_"."""
+    filepath_prefix = os.path.join(curdir, name)
+    suffix = [".py", ".sh"]
+    assert file_with_extension(filepath_prefix, suffix), \
+        f""" Please ensure the test file with the prefix '{filepath_prefix}' and one of the suffix {suffix} exists, because you specified a unittest named '{name}'"""
+
+    return name
+
+
 def process_run_type(run_type):
     rt = run_type.strip()
     assert re.compile("^(NIGHTLY|EXCLUSIVE|CINN|DIST|GPUPS|INFER|EXCLUSIVE:NIGHTLY|DIST:NIGHTLY)$").search(rt), \
@@ -143,7 +173,7 @@ def process_run_type(run_type):
     return rt
 
 
-def parse_line(line):
+def parse_line(line, curdir):
     """
     Desc:
         Input a line in csv file and output a string in cmake grammer, adding the specified test and setting its properties.
@@ -161,24 +191,14 @@ def parse_line(line):
             endif()"
     """
 
-    # A line contains name, os_, archs, timeout, run_type, launcher, dist_ut_port, run_serial, envs, conditions, etc.
-    # Following are descriptions of each variable:
-    #
-    # * `name`: the test's name
-    # * `os`: The supported operator system, ignoring case. If the test run in multiple operator systems, use ";" to split systems, forexample, `apple;linux` means the test runs on both Apple and Linux. The supported values are `linux`,`win32` and `apple`. If the value is empty, this means the test runs on all opertaor systems.
-    # * `arch`: the device's architecture. similar to `os`, multiple valuse ars splited by ";" and ignoring case. The supported arhchetectures are `gpu`, `xpu`, `npu` and `rocm`.
-    # * `timeout`: timeout of a unittest, whose unit is second.
-    # * `run_type`: run_type of a unittest. Supported values are `NIGHTLY`, `EXCLUSIVE`, `CINN`, `DIST`, `GPUPS`, `INFER`, `EXCLUSIVE:NIGHTLY`, `DIST:NIGHTLY`，which are case-insensitive.
-    # * `launcher`: the test launcher.Supported values are test_runner.py, dist_test.sh and custom scripts' name.
-    # * `dist_ut_port`: the starting port used in a distributed unit test
-    # * `run_serial`: whether in serial mode. the value can be 1 or 0. Default(empty) is 0
-    # * `ENVS`: required environments. multiple envirenmonts are splited by ";".
-    # * `conditions`: extra required conditions for some tests. the value is a boolean expression in cmake programmer.
     name, os_, archs, timeout, run_type, launcher, dist_ut_port, run_serial, envs, conditions = line.strip(
     ).split(",")
 
+    # name == "name" means the line being parsed is the header of the table
+    # we should skip this line and return empty here.
     if name == "name":
         return ""
+    name = process_name(name, curdir)
 
     envs = process_envs(envs)
     conditions = process_conditions(conditions)
@@ -229,7 +249,7 @@ set(LOCAL_ALL_PLAT ON)\n"""
     with open(f"{current_work_dir}/testslist.csv") as csv_file:
         for i, line in enumerate(csv_file.readlines()):
             try:
-                cmds += parse_line(line)
+                cmds += parse_line(line, current_work_dir)
             except Exception as e:
                 print("===============PARSE LINE ERRORS OCCUR==========")
                 print(e)
@@ -243,8 +263,6 @@ set(LOCAL_ALL_PLAT ON)\n"""
 
 
 if __name__ == "__main__":
-    import os
-    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--files",
