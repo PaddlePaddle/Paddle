@@ -111,9 +111,9 @@ __global__ void KernelUnpool3dMaxGrad(const int nthreads,
  */
 
 template <typename T>
-class Unpool2dMaxFunctor<platform::CUDADeviceContext, T> {
+class Unpool2dMaxFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const phi::GPUContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   framework::Tensor* output) {
@@ -148,9 +148,9 @@ class Unpool2dMaxFunctor<platform::CUDADeviceContext, T> {
  * All tensors are in NCHW format.
  */
 template <typename T>
-class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, T> {
+class Unpool2dMaxGradFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const phi::GPUContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
@@ -189,9 +189,9 @@ class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-class Unpool3dMaxFunctor<platform::CUDADeviceContext, T> {
+class Unpool3dMaxFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const phi::GPUContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   framework::Tensor* output) {
@@ -230,9 +230,9 @@ class Unpool3dMaxFunctor<platform::CUDADeviceContext, T> {
  * All tensors are in NCDHW format.
  */
 template <typename T>
-class Unpool3dMaxGradFunctor<platform::CUDADeviceContext, T> {
+class Unpool3dMaxGradFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const phi::GPUContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
@@ -274,14 +274,14 @@ class Unpool3dMaxGradFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, float>;
-template class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, double>;
-template class Unpool2dMaxFunctor<platform::CUDADeviceContext, float>;
-template class Unpool2dMaxFunctor<platform::CUDADeviceContext, double>;
-template class Unpool3dMaxGradFunctor<platform::CUDADeviceContext, float>;
-template class Unpool3dMaxGradFunctor<platform::CUDADeviceContext, double>;
-template class Unpool3dMaxFunctor<platform::CUDADeviceContext, float>;
-template class Unpool3dMaxFunctor<platform::CUDADeviceContext, double>;
+template class Unpool2dMaxGradFunctor<phi::GPUContext, float>;
+template class Unpool2dMaxGradFunctor<phi::GPUContext, double>;
+template class Unpool2dMaxFunctor<phi::GPUContext, float>;
+template class Unpool2dMaxFunctor<phi::GPUContext, double>;
+template class Unpool3dMaxGradFunctor<phi::GPUContext, float>;
+template class Unpool3dMaxGradFunctor<phi::GPUContext, double>;
+template class Unpool3dMaxFunctor<phi::GPUContext, float>;
+template class Unpool3dMaxFunctor<phi::GPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

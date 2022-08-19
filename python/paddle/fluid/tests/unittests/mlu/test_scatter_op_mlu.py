@@ -212,7 +212,7 @@ class TestScatterAPI(unittest.TestCase):
                 mlu_value = mlu_exe.run(feed=feed, fetch_list=fetch)[0]
                 return mlu_value
 
-        self.assertTrue(np.array_equal(test_dygraph(), test_static_graph()))
+        np.testing.assert_allclose(test_dygraph(), test_static_graph())
 
 
 class TestScatterOpFp16(OpTest):

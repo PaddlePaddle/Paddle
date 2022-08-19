@@ -24,13 +24,6 @@ limitations under the License. */
 #endif
 
 namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
@@ -254,7 +247,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       SequenceLength = operators::GetDataFromTensor<int>(sequence_length);
     }
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();
 
     int seq_length = x->dims()[0];
@@ -269,9 +262,9 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     int weight_numel;
     bool w_initialized = false;
     auto place = ctx.GetPlace();
-    auto stream = reinterpret_cast<const platform::CUDADeviceContext &>(
-                      ctx.device_context())
-                      .stream();
+    auto stream =
+        reinterpret_cast<const phi::GPUContext &>(ctx.device_context())
+            .stream();
     if (is_test && ctx.HasInput("W")) {
       auto *W = ctx.Input<Tensor>("W");
       w_initialized = W->IsInitialized() ? true : false;
@@ -467,7 +460,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto weight_grad_list = ctx.MultiOutput<framework::Tensor>(
         framework::GradVarName("WeightList"));
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();
 
     auto input_dims = input->dims();
@@ -486,9 +479,9 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     bool continuous =
         is_continuous<T, std::vector<const Tensor *>>(weight_list);
 
-    auto stream = reinterpret_cast<const platform::CUDADeviceContext &>(
-                      ctx.device_context())
-                      .stream();
+    auto stream =
+        reinterpret_cast<const phi::GPUContext &>(ctx.device_context())
+            .stream();
     Tensor weight_whole;
     T *weight_data = nullptr;
 
@@ -501,7 +494,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     }
 
     Tensor weight_grad;
-    phi::funcs::SetConstant<paddle::platform::CUDADeviceContext, T> zero;
+    phi::funcs::SetConstant<phi::GPUContext, T> zero;
     weight_grad.mutable_data<T>({weight_numel}, ctx.GetPlace());
     zero(dev_ctx, &weight_grad, static_cast<T>(0.0));
     T *weight_grad_data = weight_grad.data<T>();

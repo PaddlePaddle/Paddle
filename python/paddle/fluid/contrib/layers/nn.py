@@ -933,7 +933,7 @@ def shuffle_batch(x, seed=None):
         seed = helper.create_variable(
             name=unique_name.generate("shuffle_batch_seed"),
             dtype="int64",
-            persistable=True)
+            persistable=False)
     helper.append_op(type='shuffle_batch',
                      inputs={
                          'X': x,

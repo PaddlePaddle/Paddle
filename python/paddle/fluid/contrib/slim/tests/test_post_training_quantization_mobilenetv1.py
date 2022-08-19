@@ -454,5 +454,29 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
                       onnx_format=onnx_format)
 
 
+class TestPostTrainingPtfForMobilenetv1(TestPostTrainingQuantization):
+
+    def test_post_training_ptf_mobilenetv1(self):
+        model = "MobileNet-V1"
+        algo = "ptf"
+        round_type = "round"
+        data_urls = [
+            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+        ]
+        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
+        quantizable_op_type = [
+            "conv2d",
+            "mul",
+        ]
+        is_full_quantize = False
+        is_use_cache_file = False
+        is_optimize_model = False
+        # The accuracy diff of post-training quantization (abs_max) maybe bigger
+        diff_threshold = 0.05
+        self.run_test(model, algo, round_type, data_urls, data_md5s,
+                      quantizable_op_type, is_full_quantize, is_use_cache_file,
+                      is_optimize_model, diff_threshold)
+
+
 if __name__ == '__main__':
     unittest.main()

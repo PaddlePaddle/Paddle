@@ -313,10 +313,6 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   AddReluKernel(context.stream(), M, N, Y, B, relu);
 }
 
-template class FCFunctor<paddle::platform::CUDADeviceContext, float16>;
-template class FCFunctor<paddle::platform::CUDADeviceContext, float>;
-template class FCFunctor<paddle::platform::CUDADeviceContext, double>;
-
 template class FCFunctor<GPUContext, float16>;
 template class FCFunctor<GPUContext, float>;
 template class FCFunctor<GPUContext, double>;

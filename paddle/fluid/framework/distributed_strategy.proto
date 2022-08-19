@@ -168,6 +168,8 @@ message TrainerDescConfig {
   repeated string stat_var_names = 4;
   optional string trainer = 5;
   optional string device_worker = 6;
+  repeated string local_sparse = 7;
+  repeated string remote_sparse = 8;
 }
 
 message PipelineConfig {
@@ -207,6 +209,12 @@ message TableAccessorParameter {
   repeated TableAccessorSaveParameter table_accessor_save_param = 8;
   optional SGDParameter embed_sgd_param = 10;
   optional SGDParameter embedx_sgd_param = 11;
+  optional GraphSGDParameter graph_sgd_param = 12;
+}
+
+message GraphSGDParameter {
+  optional uint32 nodeid_slot = 1 [ default = 9008 ];
+  optional float feature_learning_rate = 2 [ default = 0.05 ];
 }
 
 message SGDParameter {

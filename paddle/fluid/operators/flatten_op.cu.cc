@@ -17,35 +17,31 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(
-    flatten,
-    ops::FlattenKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FlattenKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FlattenKernel<paddle::platform::CUDADeviceContext, uint8_t>,
-    ops::FlattenKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FlattenKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::FlattenKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    flatten_grad,
-    ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, uint8_t>,
-    ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    flatten2,
-    ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, float>,
-    ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, double>,
-    ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, uint8_t>,
-    ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int>,
-    ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    flatten2_grad,
-    ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, uint8_t>,
-    ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(flatten,
+                        ops::FlattenKernel<phi::GPUContext, float>,
+                        ops::FlattenKernel<phi::GPUContext, double>,
+                        ops::FlattenKernel<phi::GPUContext, uint8_t>,
+                        ops::FlattenKernel<phi::GPUContext, int>,
+                        ops::FlattenKernel<phi::GPUContext, int8_t>,
+                        ops::FlattenKernel<phi::GPUContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(flatten_grad,
+                        ops::FlattenGradKernel<phi::GPUContext, float>,
+                        ops::FlattenGradKernel<phi::GPUContext, double>,
+                        ops::FlattenGradKernel<phi::GPUContext, uint8_t>,
+                        ops::FlattenGradKernel<phi::GPUContext, int>,
+                        ops::FlattenGradKernel<phi::GPUContext, int8_t>,
+                        ops::FlattenGradKernel<phi::GPUContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(flatten2,
+                        ops::Flatten2Kernel<phi::GPUContext, float>,
+                        ops::Flatten2Kernel<phi::GPUContext, double>,
+                        ops::Flatten2Kernel<phi::GPUContext, uint8_t>,
+                        ops::Flatten2Kernel<phi::GPUContext, int>,
+                        ops::Flatten2Kernel<phi::GPUContext, int8_t>,
+                        ops::Flatten2Kernel<phi::GPUContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(flatten2_grad,
+                        ops::Flatten2GradKernel<phi::GPUContext, float>,
+                        ops::Flatten2GradKernel<phi::GPUContext, double>,
+                        ops::Flatten2GradKernel<phi::GPUContext, uint8_t>,
+                        ops::Flatten2GradKernel<phi::GPUContext, int>,
+                        ops::Flatten2GradKernel<phi::GPUContext, int8_t>,
+                        ops::Flatten2GradKernel<phi::GPUContext, int64_t>);

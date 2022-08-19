@@ -26,6 +26,7 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           int axis,
                           DenseTensor* x_grad) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   const int rank = out.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
 
@@ -40,24 +41,29 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_NE(
         tmp2_ptr, nullptr, phi::errors::External("no enough memory in xpu"));
 
-    int r =
-        xpu::exp(dev_ctx.x_context(), out.data<T>(), tmp_ptr, out_grad.numel());
+    int r = xpu::exp<XPUType>(dev_ctx.x_context(),
+                              reinterpret_cast<const XPUType*>(out.data<T>()),
+                              reinterpret_cast<XPUType*>(tmp_ptr),
+                              out_grad.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "exp");
-    r = xpu::reciprocal(
-        dev_ctx.x_context(), tmp_ptr, tmp2_ptr, out_grad.numel());
+    r = xpu::reciprocal<XPUType>(dev_ctx.x_context(),
+                                 reinterpret_cast<const XPUType*>(tmp_ptr),
+                                 reinterpret_cast<XPUType*>(tmp2_ptr),
+                                 out_grad.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "reciprocal");
-    r = xpu::mul(dev_ctx.x_context(),
-                 tmp2_ptr,
-                 out_grad.data<T>(),
-                 tmp2_ptr,
-                 out_grad.numel());
+    r = xpu::mul<XPUType>(dev_ctx.x_context(),
+                          reinterpret_cast<const XPUType*>(tmp2_ptr),
+                          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+                          reinterpret_cast<XPUType*>(tmp2_ptr),
+                          out_grad.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
-    r = xpu::softmax_grad(dev_ctx.x_context(),
-                          tmp_ptr,
-                          tmp2_ptr,
-                          x_grad->data<T>(),
-                          out_shape,
-                          axis);
+    r = xpu::softmax_grad<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(tmp_ptr),
+        reinterpret_cast<const XPUType*>(tmp2_ptr),
+        reinterpret_cast<XPUType*>(x_grad->data<T>()),
+        out_shape,
+        axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax_grad");
   }
 }

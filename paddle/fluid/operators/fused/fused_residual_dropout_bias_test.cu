@@ -58,7 +58,7 @@ struct FusedResidualDropoutBiasTester {
   std::vector<uint8_t> correct_mask;
 
   platform::CUDAPlace place;
-  platform::CUDADeviceContext *ctx;
+  phi::GPUContext *ctx;
 
   FusedResidualDropoutBiasTester() {
     rows = 32;
@@ -69,7 +69,7 @@ struct FusedResidualDropoutBiasTester {
     is_test = false;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto device_ctx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(device_ctx);
+    ctx = reinterpret_cast<phi::GPUContext *>(device_ctx);
   }
 
   FusedResidualDropoutBiasTester(int rows,
@@ -86,7 +86,7 @@ struct FusedResidualDropoutBiasTester {
         is_test(is_test) {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto device_ctx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(device_ctx);
+    ctx = reinterpret_cast<phi::GPUContext *>(device_ctx);
   }
 
   void SetUp() {

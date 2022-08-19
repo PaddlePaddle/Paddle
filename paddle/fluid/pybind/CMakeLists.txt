@@ -39,12 +39,12 @@ set(PYBIND_DEPS
     phi_utils
     tcp_store
     new_profiler
+    auto_parallel
     jit_layer
     jit_property)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
-  set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
   if(WITH_HETERPS)
     set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
   endif()
@@ -125,6 +125,7 @@ set(PYBIND_SRCS
     communication.cc
     cuda_streams_py.cc
     jit.cc
+    auto_parallel_py.cc
     op_function1.cc
     op_function2.cc
     op_function3.cc
@@ -154,6 +155,9 @@ if(NOT ON_INFER)
     if(WITH_PSCORE)
       set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
     endif()
+  endif()
+  if(WITH_CUSTOM_DEVICE)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_custom)
   endif()
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
@@ -197,7 +201,7 @@ if(WITH_PSCORE)
   endif()
   set_source_files_properties(
     fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  list(APPEND PYBIND_DEPS fleet communicator index_wrapper index_sampler)
+  list(APPEND PYBIND_DEPS fleet index_wrapper index_sampler)
   list(APPEND PYBIND_SRCS)
   set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
 endif()

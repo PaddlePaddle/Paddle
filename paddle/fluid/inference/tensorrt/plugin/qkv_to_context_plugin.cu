@@ -347,11 +347,11 @@ int QkvToContextPluginDynamic::enqueue(
     TransposeQKV(
         batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
 
-    auto *device_ctx = static_cast<platform::CUDADeviceContext *>(
+    auto *device_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(
             platform::CUDAPlace(device_id)));
 
-    const platform::CUDADeviceContext &dev_ctx = *device_ctx;
+    const phi::GPUContext &dev_ctx = *device_ctx;
     operators::math::MultiHeadGPUComputeFunctor<float> multihead_compute_func;
     multihead_compute_func(dev_ctx,
                            batch,
@@ -403,7 +403,7 @@ int QkvToContextPluginDynamic::enqueue(
     TransposeQKV(
         batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
 
-    auto *device_ctx = static_cast<platform::CUDADeviceContext *>(
+    auto *device_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(
             platform::CUDAPlace(device_id)));
 
@@ -414,7 +414,7 @@ int QkvToContextPluginDynamic::enqueue(
     apply_scale<<<blocks, threads, 0, stream>>>(
         tptr, static_cast<half>(scale_), n_q);
 
-    const platform::CUDADeviceContext &dev_ctx = *device_ctx;
+    const phi::GPUContext &dev_ctx = *device_ctx;
     operators::math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
     multihead_compute_func(dev_ctx,
                            batch,

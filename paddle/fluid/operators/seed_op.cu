@@ -53,6 +53,5 @@ class GPUSeedKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    seed,
-    paddle::operators::GPUSeedKernel<paddle::platform::CUDADeviceContext, int>);
+REGISTER_OP_CUDA_KERNEL(seed,
+                        paddle::operators::GPUSeedKernel<phi::GPUContext, int>);

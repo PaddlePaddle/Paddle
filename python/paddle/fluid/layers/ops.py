@@ -32,7 +32,6 @@ __activations_noattr__ = [
     'silu',
     'logsigmoid',
     'tanh_shrink',
-    'softplus',
     'softsign',
     'tanh',
 ]
@@ -53,7 +52,15 @@ __inplace_unary_func__ = [
     'reciprocal_',
 ]
 
-__all__ = []
+__all__ = [
+    'softplus',
+    'softshrink',
+    'hard_shrink',
+    'cumsum',
+    'thresholded_relu',
+    'gelu',
+    'erf',
+]
 
 for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
@@ -462,8 +469,40 @@ Examples:
 
 """)
 
-add_sample_code(
-    globals()["softplus"], r"""
+_softplus_ = generate_layer_fn('softplus')
+
+
+def softplus(x, beta: float = 1.0, threshold: float = 20.0, name=None):
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'softplus')
+    locals_val = locals().copy()
+    kwargs = dict()
+    for name, val in locals_val.items():
+        if val is not None:
+            kwargs[name] = val
+    return _softplus_(**kwargs)
+
+
+softplus.__doc__ = r"""
+    :alias_main: paddle.nn.functional.softplus
+    :alias: paddle.nn.functional.softplus, paddle.nn.functional.activation.softplus
+    :old_api: paddle.fluid.layers.softplus
+
+:strong:`Softplus Activation Operator`
+
+Equation:
+    .. math::
+        out = \\frac{1}{beta} * log(1 + e^{beta * x})
+        For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.
+
+Args:
+    x(Tensor): Input of Softplus op, Tensor, dtype: float32 or float64
+    beta(float, optional): The value of beta for softplus. Default is 1
+    threshold (float, optional): The value of threshold for softplus. Default is 20
+    name(str, optional): Name for the operation (optional, default is None)
+
+Returns:
+    Variable: The output of Softplus op, Tensor, dtype: float32 or float64
+
 Examples:
     .. code-block:: python
 
@@ -474,8 +513,7 @@ Examples:
         out = F.softplus(x) 
         print(out)
         # [0.513015, 0.598139, 0.744397, 0.854355]
-
-""")
+"""
 
 add_sample_code(
     globals()["softsign"], r"""
@@ -491,8 +529,6 @@ Examples:
         # [-0.285714, -0.166667, 0.0909091, 0.230769]
 
 """)
-
-__all__ += ['softshrink']
 
 _softshrink_ = generate_layer_fn('softshrink')
 
@@ -542,8 +578,6 @@ Examples:
         result = fluid.layers.softshrink(x=data, alpha=0.3)
 """
 
-__all__ += ['hard_shrink']
-
 _hard_shrink_ = generate_layer_fn('hard_shrink')
 
 
@@ -567,8 +601,6 @@ Examples:
     >>> data = fluid.layers.data(name="input", shape=[784])
     >>> result = fluid.layers.hard_shrink(x=data, threshold=0.3)
 """
-
-__all__ += ['cumsum']
 
 _cum_sum_ = generate_layer_fn('cumsum')
 
@@ -609,8 +641,6 @@ Examples:
         data = fluid.layers.data(name="input", shape=[32, 784])
         result = fluid.layers.cumsum(data, axis=0)
 """
-
-__all__ += ['thresholded_relu']
 
 _thresholded_relu_ = generate_layer_fn('thresholded_relu')
 
@@ -700,8 +730,6 @@ Examples:
         #        [-0.        , -0.        ,  1.0013918 ]], dtype=float32)
 """
 
-__all__ += ['gelu']
-
 _gelu_ = generate_layer_fn('gelu')
 
 
@@ -784,8 +812,6 @@ Examples:
         # array([[ 0.70456535, -0.15380788, -0.13207214],
         #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
 """
-
-__all__ += ['erf']
 
 _erf_ = generate_layer_fn('erf')
 

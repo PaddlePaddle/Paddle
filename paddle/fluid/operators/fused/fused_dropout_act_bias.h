@@ -125,7 +125,7 @@ void LaunchDropoutActBias(Functor act_functor,
                           const T *bias,
                           T *dst,
                           MaskType *mask_data,
-                          const platform::CUDADeviceContext &ctx) {
+                          const phi::GPUContext &ctx) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     SetZero<T>(ctx, dst, rows * cols);
@@ -277,7 +277,7 @@ void LaunchDropoutActBiasGrad(Functor act_functor,
                               const uint32_t cols,
                               T *dx,
                               T *dbias,
-                              const platform::CUDADeviceContext &ctx) {
+                              const phi::GPUContext &ctx) {
   const T zero = static_cast<T>(0.0);
   auto factor = dropout_prob == static_cast<float>(1.0f)
                     ? zero

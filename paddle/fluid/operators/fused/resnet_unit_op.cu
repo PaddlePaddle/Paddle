@@ -90,7 +90,7 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
                         output_channel;
 
     auto place = ctx.GetPlace();
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     // 1. Conv
     Tensor sum_x;
@@ -268,7 +268,7 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
     auto bitmask_shape = phi::vectorize<int>(bitmask->dims());
 
     auto place = ctx.GetPlace();
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     // 1. Backward of BN (+ Add + Relu) for x, get conv_out_x_grad,
     // scale_x_grad, bias_x_grad

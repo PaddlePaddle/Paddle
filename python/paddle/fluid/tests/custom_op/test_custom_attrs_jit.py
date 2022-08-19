@@ -66,7 +66,7 @@ class TestJitCustomAttrs(unittest.TestCase):
         out.stop_gradient = False
         out.backward()
 
-        self.assertTrue(np.array_equal(x.numpy(), out.numpy()))
+        np.testing.assert_array_equal(x.numpy(), out.numpy())
 
     def test_attr_value(self):
         with _test_eager_guard():
@@ -85,7 +85,7 @@ class TestJitCustomAttrs(unittest.TestCase):
         out.stop_gradient = False
         out.backward()
 
-        self.assertTrue(np.array_equal(x.numpy(), out.numpy()))
+        np.testing.assert_array_equal(x.numpy(), out.numpy())
 
     def test_const_attr_value(self):
         with _test_eager_guard():
