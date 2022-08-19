@@ -56,10 +56,27 @@ def class_center_sample_numpy(label, classes_list, num_samples):
     return np.array(remapped_label), np.array(pos_class_center_per_device)
 
 
+def python_api(
+    label,
+    num_classes=1,
+    num_samples=1,
+    ring_id=0,
+    rank=0,
+    nranks=0,
+    fix_seed=False,
+    seed=0,
+):
+    return paddle.nn.functional.class_center_sample(label,
+                                                    num_classes=num_classes,
+                                                    num_samples=num_samples,
+                                                    group=None)
+
+
 class TestClassCenterSampleOp(OpTest):
 
     def initParams(self):
         self.op_type = "class_center_sample"
+        self.python_api = python_api
         self.batch_size = 20
         self.num_samples = 6
         self.num_classes = 10
@@ -96,7 +113,8 @@ class TestClassCenterSampleOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=['SampledLocalClassCenter'])
+        self.check_output(no_check_set=['SampledLocalClassCenter'],
+                          check_eager=True)
 
 
 class TestClassCenterSampleOpINT32(TestClassCenterSampleOp):

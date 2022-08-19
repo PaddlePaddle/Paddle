@@ -105,10 +105,9 @@ class Device(object):
                 os.getenv('PADDLE_XCCL_BACKEND').upper())
             if visible_devices_str in os.environ:
                 visible_devices = os.getenv(visible_devices_str)
-        elif 'CUDA_VISIBLE_DEVICES' in os.environ or 'NVIDIA_VISIBLE_DEVICES' in os.environ:
+        elif 'CUDA_VISIBLE_DEVICES' in os.environ:
             dev._dtype = DeviceType.GPU
-            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES") or os.getenv(
-                "NVIDIA_VISIBLE_DEVICES")
+            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
         elif 'XPU_VISIBLE_DEVICES' in os.environ:
             dev._dtype = DeviceType.XPU
             visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
@@ -151,8 +150,7 @@ class Device(object):
         elif fluid.core.is_compiled_with_cuda():
             dev._dtype = DeviceType.GPU
             num = fluid.core.get_cuda_device_count()
-            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES") or os.getenv(
-                "NVIDIA_VISIBLE_DEVICES")
+            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
         elif fluid.core.is_compiled_with_xpu():
             dev._dtype = DeviceType.XPU
             num = fluid.core.get_xpu_device_count()

@@ -2014,12 +2014,23 @@ def squeeze(x, axis=None, name=None):
         'float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64',
         'complex64', 'complex128'
     ], 'squeeze')
-    check_type(axes, 'axis/axes', (list, tuple), 'squeeze')
+
+    check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'squeeze')
+    attrs = {}
+    if isinstance(axes, Variable):
+        axes.stop_gradient = True
+        attrs["axes"] = axes
+    elif isinstance(axes, (list, tuple)):
+        if utils._contain_var(axes):
+            attrs["axes"] = utils._convert_to_tensor_list(axes)
+        else:
+            attrs["axes"] = axes
+
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(type="squeeze2",
                      inputs={"X": input},
-                     attrs={"axes": axes},
+                     attrs=attrs,
                      outputs={
                          "Out": out,
                          "XShape": x_shape
@@ -4127,7 +4138,11 @@ def moveaxis(x, source, destination, name=None):
     for i in range(len(src_dims)):
         perm[dst_dims[i]] = src_dims[i]
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_transpose(x, perm)
+        return out
+
+    if _in_legacy_dygraph():
         out, _ = _C_ops.transpose2(x, 'axis', perm)
         return out
 

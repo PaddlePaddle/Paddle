@@ -117,10 +117,10 @@ class TestRecurrentFeed(unittest.TestCase):
                 static_dout = out[2]
                 original_np1 = static_out_value
 
-        self.assertTrue(np.array_equal(static_sum_out, sum_out_value))
-        self.assertTrue(np.array_equal(static_sum_out, eager_sum_out_value))
-        self.assertTrue(np.array_equal(static_dout, dyout))
-        self.assertTrue(np.array_equal(static_dout, eager_dyout))
+        np.testing.assert_array_equal(static_sum_out, sum_out_value)
+        np.testing.assert_array_equal(static_sum_out, eager_sum_out_value)
+        np.testing.assert_array_equal(static_dout, dyout)
+        np.testing.assert_array_equal(static_dout, eager_dyout)
 
 
 if __name__ == '__main__':

@@ -313,18 +313,21 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             self.load_and_train_static()
 
         # Phase 3. compare
-        self.assertTrue(np.array_equal(static_x_data, dy_x_data))
+        np.testing.assert_array_equal(static_x_data, dy_x_data)
 
         for key, value in six.iteritems(static_param_init_value):
             key = dict_old_new_init[key]
-            self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
+            np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
-        self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-4)
 
         for key, value in six.iteritems(static_param_value):
             key = dict_old_new_init[key]
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
+            np.testing.assert_allclose(value,
+                                       dy_param_value[key],
+                                       rtol=1e-05,
+                                       atol=1e-4)
 
     def test_mnist_train_with_params_filename(self):
         self.save_dirname = "mnist.inference.model"
@@ -341,17 +344,20 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             self.load_and_train_static()
 
         # Phase 3. compare
-        self.assertTrue(np.array_equal(static_x_data, dy_x_data))
+        np.testing.assert_array_equal(static_x_data, dy_x_data)
         for key, value in six.iteritems(static_param_init_value):
             key = dict_old_new_init[key]
-            self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
+            np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
-        self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-4)
 
         for key, value in six.iteritems(static_param_value):
             key = dict_old_new_init[key]
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
+            np.testing.assert_allclose(value,
+                                       dy_param_value[key],
+                                       rtol=1e-05,
+                                       atol=1e-4)
 
     def test_mnist_infer_no_params_filename(self):
         self.save_dirname = "mnist.inference.model.noname"
@@ -368,10 +374,10 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             self.load_and_infer_static()
 
         # Phase 3. compare
-        self.assertTrue(np.array_equal(static_x_data, dy_x_data))
+        np.testing.assert_array_equal(static_x_data, dy_x_data)
 
         np.testing.assert_array_almost_equal(static_out, dy_out)
-        self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-4)
 
 
 if __name__ == '__main__':

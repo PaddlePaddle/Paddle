@@ -75,7 +75,9 @@ class TestBaseLayer(unittest.TestCase):
             for name, _ in l.named_parameters(prefix='l1'):
                 self.assertEqual(name, expected_names[idx])
                 idx += 1
-            self.assertTrue(np.allclose(ret.numpy(), 0.2 * np.ones([2, 2])))
+            np.testing.assert_allclose(ret.numpy(),
+                                       0.2 * np.ones([2, 2]),
+                                       rtol=1e-05)
 
     def test_one_level(self):
         with _test_eager_guard():
@@ -100,7 +102,9 @@ class TestBaseLayer(unittest.TestCase):
                 self.assertEqual(name, expected_names[idx])
                 idx += 1
             ret = l()
-            self.assertTrue(np.allclose(ret.numpy(), 0.8 * np.ones([2, 2])))
+            np.testing.assert_allclose(ret.numpy(),
+                                       0.8 * np.ones([2, 2]),
+                                       rtol=1e-05)
 
     def test_three_level(self):
         with _test_eager_guard():
@@ -371,7 +375,7 @@ class TestBuffer(unittest.TestCase):
         self.func_test_buffer_state_dict()
 
     def assert_var_base_equal(self, var1, var2):
-        self.assertTrue(np.array_equal(var1.numpy(), var2.numpy()))
+        np.testing.assert_array_equal(var1.numpy(), var2.numpy())
 
 
 class BufferNetWithModification(paddle.nn.Layer):
@@ -414,8 +418,8 @@ class TestModifiedBuffer(unittest.TestCase):
         st_outs = self._run(True)
 
         for i in range(len(dy_outs)):
-            self.assertTrue(
-                np.array_equal(dy_outs[i].numpy(), st_outs[i].numpy()))
+            np.testing.assert_array_equal(dy_outs[i].numpy(),
+                                          st_outs[i].numpy())
 
     def test_modified(self):
         with _test_eager_guard():
@@ -442,8 +446,9 @@ class TestLayerTo(unittest.TestCase):
                          paddle.fluid.core.VarDesc.VarType.FP64)
         self.assertEqual(self.linear.buf_name.dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
-        self.assertTrue(
-            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
         self.assertEqual(self.linear.weight._grad_ivar().dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
 
@@ -452,8 +457,9 @@ class TestLayerTo(unittest.TestCase):
                          paddle.fluid.core.VarDesc.VarType.FP64)
         self.assertEqual(self.linear.buf_name.dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
-        self.assertTrue(
-            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
         self.assertEqual(self.linear.weight._grad_ivar().dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
         for p in self.linear.parameters():
@@ -511,8 +517,9 @@ class TestLayerTo(unittest.TestCase):
                          paddle.fluid.core.VarDesc.VarType.FP64)
         self.assertEqual(self.linear.buf_name.dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
-        self.assertTrue(
-            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
         self.assertEqual(self.linear.weight._grad_ivar().dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
 
@@ -521,8 +528,9 @@ class TestLayerTo(unittest.TestCase):
                          paddle.fluid.core.VarDesc.VarType.FP64)
         self.assertEqual(self.linear.buf_name.dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
-        self.assertTrue(
-            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
         self.assertEqual(self.linear.weight._grad_ivar().dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
         for p in self.linear.parameters():
@@ -538,8 +546,9 @@ class TestLayerTo(unittest.TestCase):
                          paddle.fluid.core.VarDesc.VarType.FP64)
         self.assertEqual(self.linear.buf_name.dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
-        self.assertTrue(
-            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
         self.assertEqual(self.linear.weight._grad_ivar().dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
 
@@ -548,8 +557,9 @@ class TestLayerTo(unittest.TestCase):
                          paddle.fluid.core.VarDesc.VarType.FP64)
         self.assertEqual(self.linear.buf_name.dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
-        self.assertTrue(
-            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
+        np.testing.assert_allclose(self.linear.weight.grad.numpy(),
+                                   self.new_grad,
+                                   rtol=1e-05)
         self.assertEqual(self.linear.weight._grad_ivar().dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
         for p in self.linear.parameters():

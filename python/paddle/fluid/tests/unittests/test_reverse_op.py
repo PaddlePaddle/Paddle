@@ -181,10 +181,10 @@ class TestReverseLoDTensorArray(unittest.TestCase):
         arr_len = len(res) - 1
         reversed_array = res[-1]
         # check output
-        self.assertTrue(np.array_equal(gt, reversed_array))
+        np.testing.assert_array_equal(gt, reversed_array)
         # check grad
         for i in range(arr_len):
-            self.assertTrue(np.array_equal(res[i], np.ones_like(res[i])))
+            np.testing.assert_array_equal(res[i], np.ones_like(res[i]))
 
     def test_raise_error(self):
         # The len(axis) should be 1 is input(X) is LoDTensorArray
