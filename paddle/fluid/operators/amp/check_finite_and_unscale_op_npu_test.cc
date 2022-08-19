@@ -33,7 +33,7 @@ namespace p = paddle::platform;
 
 using Tensor = paddle::framework::Tensor;
 
-USE_OP(check_finite_and_unscale);
+USE_OP_ITSELF(check_finite_and_unscale);
 USE_OP_DEVICE_KERNEL(check_finite_and_unscale, NPU);
 
 struct InputVars {

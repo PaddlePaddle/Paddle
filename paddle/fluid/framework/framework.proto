@@ -40,13 +40,6 @@ enum AttrType {
   VARS = 14;
 }
 
-message ProcessMeshDesc {
-  required int32 id = 1;
-  required int32 parent_id = 2;
-  repeated int32 topology = 3;
-  repeated int32 process_group = 4;
-};
-
 // OpDesc describes an instance of a C++ framework::OperatorBase
 // derived class type.
 message OpDesc {
@@ -109,6 +102,7 @@ message OpProto {
     optional bool generated = 4 [ default = false ];
     optional bool extra = 5 [ default = false ];
     optional bool quant = 6 [ default = false ];
+    optional bool support_tensor = 7 [ default = false];
   }
 
   required string type = 1;

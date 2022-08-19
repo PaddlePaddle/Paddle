@@ -125,4 +125,18 @@ inline paddle::optional<paddle::experimental::Tensor> EagerAmpAutoCast(
   return paddle::none;
 }
 
+inline paddle::optional<std::vector<paddle::experimental::Tensor>>
+EagerAmpAutoCasts(
+    const std::string& inputs_name,
+    const paddle::optional<std::vector<paddle::experimental::Tensor>>& inputs,
+    const paddle::experimental::DataType& dst_dtype,
+    std::string op_name,
+    bool trace_backward = true) {
+  if (inputs) {
+    return EagerAmpAutoCasts(
+        inputs_name, *inputs, dst_dtype, op_name, trace_backward);
+  }
+  return paddle::optional<std::vector<paddle::experimental::Tensor>>();
+}
+
 }  // namespace egr

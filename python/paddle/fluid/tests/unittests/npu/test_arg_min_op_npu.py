@@ -254,8 +254,9 @@ class TestArgMinAPI(unittest.TestCase):
             tensor_input = paddle.to_tensor(numpy_input)
             numpy_output = np.argmin(numpy_input, axis=self.axis)
             paddle_output = paddle.argmin(tensor_input, axis=self.axis)
-            self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
-                             True)
+            np.testing.assert_allclose(numpy_output,
+                                       paddle_output.numpy(),
+                                       rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:
@@ -287,8 +288,9 @@ class TestArgMaxAPI_2(unittest.TestCase):
             paddle_output = paddle.argmin(tensor_input,
                                           axis=self.axis,
                                           keepdim=self.keep_dims)
-            self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
-                             True)
+            np.testing.assert_allclose(numpy_output,
+                                       paddle_output.numpy(),
+                                       rtol=1e-05)
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 

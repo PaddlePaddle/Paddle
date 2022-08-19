@@ -316,7 +316,7 @@ class TestMergedMomentum(unittest.TestCase):
             if isinstance(place, paddle.CUDAPlace):
                 np.testing.assert_array_equal(out1, out2)
             else:
-                self.assertTrue(np.allclose(out1, out2, atol=1e-7))
+                np.testing.assert_allclose(out1, out2, rtol=1e-05, atol=1e-07)
 
     def get_places(self):
         places = [paddle.CPUPlace()]
@@ -380,7 +380,7 @@ class TestMergedMomentum2(unittest.TestCase):
             if isinstance(place, paddle.CUDAPlace):
                 np.testing.assert_array_equal(out1, out2)
             else:
-                self.assertTrue(np.allclose(out1, out2, atol=1e-7))
+                np.testing.assert_allclose(out1, out2, rtol=1e-05, atol=1e-07)
 
         outs3 = run_op(use_nesterov=False, use_merged=True)
         outs4 = run_op(use_nesterov=False, use_merged=False)
@@ -389,7 +389,7 @@ class TestMergedMomentum2(unittest.TestCase):
             if isinstance(place, paddle.CUDAPlace):
                 np.testing.assert_array_equal(out3, out4)
             else:
-                self.assertTrue(np.allclose(out3, out4, atol=1e-7))
+                np.testing.assert_allclose(out3, out4, rtol=1e-05, atol=1e-07)
 
     def get_places(self):
         places = [paddle.CPUPlace()]

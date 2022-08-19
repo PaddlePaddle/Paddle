@@ -36,6 +36,7 @@ from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
 from .fluid.dataset import *  # noqa: F401
+from .fluid.lazy_init import LazyInit  # noqa: F401
 
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
@@ -277,6 +278,7 @@ from .tensor.math import inner  # noqa: F401
 from .tensor.math import outer  # noqa: F401
 from .tensor.math import heaviside  # noqa: F401
 from .tensor.math import frac  # noqa: F401
+from .tensor.math import sgn  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -414,6 +416,7 @@ __all__ = [  # noqa
     'cumprod',
     'logcumsumexp',
     'logit',
+    'LazyInit',
     'sign',
     'is_empty',
     'equal',
@@ -650,4 +653,5 @@ __all__ = [  # noqa
     'put_along_axis',
     'heaviside',
     'tril_indices',
+    'sgn',
 ]
