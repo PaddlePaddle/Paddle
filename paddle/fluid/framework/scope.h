@@ -49,8 +49,6 @@ class ScopeBase {
   virtual ~ScopeBase() {}
 };
 
-class Scope;
-
 /**
  * @brief Scope that manage all variables.
  *
