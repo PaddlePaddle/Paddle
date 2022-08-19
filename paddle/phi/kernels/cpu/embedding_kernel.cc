@@ -48,7 +48,7 @@ struct EmbeddingCPUFunctor {
     dev_ctx_.template Alloc<T>(out_);
     auto* output = out_->data<T>();
 
-#if defined _OPENMP
+#ifndef PADDLE_WITH_GPU
 #pragma omp parallel for
 #endif
     for (int64_t i = 0; i < ids_numel; ++i) {
