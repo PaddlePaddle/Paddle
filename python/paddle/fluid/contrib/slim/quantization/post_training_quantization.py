@@ -1211,35 +1211,12 @@ class PostTrainingQuantizationProgram(PostTrainingQuantization):
                          same_scale_tensor_list, scale_trainable, cache_dir,
                          scale_dict, return_graph)
         self._program = program
-        if feed_list is None:
-            self._feed_list = self._get_feed_list(program)
-        else:
-            self._feed_list = feed_list
-
-        if fetch_list is None:
-            self._fetch_list = self._get_fetch_list(program)
-        else:
-            self._fetch_list = fetch_list
-
-    def _get_feed_list(self, program):
-        feed_list = []
-        for block in program.blocks:
-            ops = list(block.ops)
-            for op in ops:
-                if op.type == "feed":
-                    feed_list.extend(op.output_arg_names)
-
-        return feed_list
-
-    def _get_fetch_list(self, program):
-        fetch_list = []
-        for block in program.blocks:
-            ops = list(block.ops)
-            for op in ops:
-                if op.type == "fetch":
-                    fetch_list.extend(op.output_arg_names)
-
-        return fetch_list
+        assert feed_list is not None, \
+            "Feed list should not be None."
+        assert fetch_list is not None, \
+            "Fetch list should not be None."
+        self._feed_list = feed_list
+        self._fetch_list = fetch_list
 
 
 class WeightQuantization(object):
