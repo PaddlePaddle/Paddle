@@ -62,9 +62,10 @@ class TestCondInputOutput(unittest.TestCase):
         place = fluid.CUDAPlace(
             0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
-        ret = exe.run(main_program, fetch_list=[out.name])
-        self.assertTrue(
-            np.allclose(np.asarray(ret), np.full((3, 2), -1, np.int32)))
+        ret, = exe.run(main_program, fetch_list=[out.name])
+        np.testing.assert_allclose(np.asarray(ret),
+                                   np.full((3, 2), -1, np.int32),
+                                   rtol=1e-05)
 
     def test_return_var_tuple(self):
         """
@@ -103,10 +104,12 @@ class TestCondInputOutput(unittest.TestCase):
             0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
         ret = exe.run(main_program, fetch_list=out)
-        self.assertTrue(
-            np.allclose(np.asarray(ret[0]), np.full((1, 2), 1, np.int32)))
-        self.assertTrue(
-            np.allclose(np.asarray(ret[1]), np.full((2, 3), True, bool)))
+        np.testing.assert_allclose(np.asarray(ret[0]),
+                                   np.full((1, 2), 1, np.int32),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(ret[1]),
+                                   np.full((2, 3), True, bool),
+                                   rtol=1e-05)
 
     def test_pass_and_modify_var(self):
         """
@@ -142,12 +145,12 @@ class TestCondInputOutput(unittest.TestCase):
         exe = fluid.Executor(place)
         for feed_i in range(5):
             expected_a = 7 * (feed_i + 1) if feed_i % 2 == 0 else 8 - feed_i
-            ret = exe.run(main_program,
-                          feed={'i': np.full((1), feed_i, np.int32)},
-                          fetch_list=[a])
-            self.assertTrue(
-                np.allclose(np.asarray(ret),
-                            np.full((3, 2, 1), expected_a, np.int32)))
+            ret, = exe.run(main_program,
+                           feed={'i': np.full((1), feed_i, np.int32)},
+                           fetch_list=[a])
+            np.testing.assert_allclose(np.asarray(ret),
+                                       np.full((3, 2, 1), expected_a, np.int32),
+                                       rtol=1e-05)
 
     def test_return_none(self):
         """

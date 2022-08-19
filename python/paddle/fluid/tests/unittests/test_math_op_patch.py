@@ -36,11 +36,17 @@ class TestMathOpPatches(unittest.TestCase):
         b = a + 10
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
+
         a_np = numpy.random.random(size=self.a_shape).astype('float32')
         b_np = exe.run(fluid.default_main_program(),
                        feed={"a": a_np},
                        fetch_list=[b])
         self.assertTrue(np.allclose(a_np + 10, b_np))
+        a_np = np.random.random(size=self.a_shape).astype('float32')
+        b_np = exe.run(fluid.default_main_program(),
+                       feed={"a": a_np},
+                       fetch_list=[b])
+        np.testing.assert_allclose(a_np + 10, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_radd_scalar(self):
@@ -52,7 +58,7 @@ class TestMathOpPatches(unittest.TestCase):
         b_np = exe.run(fluid.default_main_program(),
                        feed={"a": a_np},
                        fetch_list=[b])
-        self.assertTrue(np.allclose(a_np + 10, b_np))
+        np.testing.assert_allclose(a_np + 10, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_sub_scalar(self):
@@ -61,10 +67,10 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
-        self.assertTrue(np.allclose(a_np - 10, b_np))
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+        np.testing.assert_allclose(a_np - 10, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_radd_scalar(self):
@@ -73,10 +79,10 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
-        self.assertTrue(np.allclose(10 - a_np, b_np))
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+        np.testing.assert_allclose(10 - a_np, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_mul_scalar(self):
@@ -85,10 +91,10 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
-        self.assertTrue(np.allclose(a_np * 10, b_np))
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+        np.testing.assert_allclose(a_np * 10, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_rmul_scalar(self):
@@ -97,10 +103,10 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
-        self.assertTrue(np.allclose(10 * a_np, b_np))
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+        np.testing.assert_allclose(10 * a_np, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_div_scalar(self):
@@ -109,10 +115,10 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
-        self.assertTrue(np.allclose(a_np / 10, b_np))
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+        np.testing.assert_allclose(a_np / 10, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_rdiv_scalar(self):
@@ -121,10 +127,11 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32') + 1e-2
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
-        self.assertTrue(np.allclose(10 / a_np, b_np))
+
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+        np.testing.assert_allclose(10 / a_np, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_div_two_tensor(self):
@@ -137,13 +144,13 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
         b_np = np.random.random(size=self.b_shape).astype('float32') + 1e-2
-        c_np = exe.run(fluid.default_main_program(),
-                       feed={
-                           "a": a_np,
-                           'b': b_np
-                       },
-                       fetch_list=[c])
-        self.assertTrue(np.allclose(a_np / b_np, c_np))
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
+        np.testing.assert_allclose(a_np / b_np, c_np, rtol=1e-05)
 
     @prog_scope()
     def test_mul_two_tensor(self):
@@ -156,13 +163,13 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
         b_np = np.random.random(size=self.b_shape).astype('float32')
-        c_np = exe.run(fluid.default_main_program(),
-                       feed={
-                           "a": a_np,
-                           'b': b_np
-                       },
-                       fetch_list=[c])
-        self.assertTrue(np.allclose(a_np * b_np, c_np))
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
+        np.testing.assert_allclose(a_np * b_np, c_np, rtol=1e-05)
 
     @prog_scope()
     def test_add_two_tensor(self):
@@ -175,13 +182,13 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
         b_np = np.random.random(size=self.b_shape).astype('float32')
-        c_np = exe.run(fluid.default_main_program(),
-                       feed={
-                           "a": a_np,
-                           'b': b_np
-                       },
-                       fetch_list=[c])
-        self.assertTrue(np.allclose(a_np + b_np, c_np))
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
+        np.testing.assert_allclose(a_np + b_np, c_np, rtol=1e-05)
 
     @prog_scope()
     def test_sub_two_tensor(self):
@@ -194,13 +201,13 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = np.random.random(size=self.a_shape).astype('float32')
         b_np = np.random.random(size=self.b_shape).astype('float32')
-        c_np = exe.run(fluid.default_main_program(),
-                       feed={
-                           "a": a_np,
-                           'b': b_np
-                       },
-                       fetch_list=[c])
-        self.assertTrue(np.allclose(a_np - b_np, c_np))
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            'b': b_np
+                        },
+                        fetch_list=[c])
+        np.testing.assert_allclose(a_np - b_np, c_np, rtol=1e-05)
 
     @prog_scope()
     def test_integer_div(self):
@@ -214,7 +221,7 @@ class TestMathOpPatches(unittest.TestCase):
                         fetch_list=[b])
 
         b_np_actual = (a_np / 7).astype('float32')
-        self.assertTrue(np.allclose(b_np, b_np_actual))
+        np.testing.assert_allclose(b_np, b_np_actual, rtol=1e-05)
 
     @prog_scope()
     def test_equal(self):
@@ -267,10 +274,11 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.uniform(-1, 1, size=self.a_shape).astype('float32')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
-        self.assertTrue(np.allclose(-a_np, b_np))
+
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+        np.testing.assert_allclose(-a_np, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_astype(self):
@@ -281,10 +289,11 @@ class TestMathOpPatches(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         a_np = np.random.uniform(-1, 1, size=self.a_shape).astype('float64')
-        b_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np},
-                       fetch_list=[b])
-        self.assertTrue(np.allclose(a_np.astype('float32'), b_np))
+
+        b_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np},
+                        fetch_list=[b])
+        np.testing.assert_allclose(a_np.astype('float32'), b_np, rtol=1e-05)
 
     def test_bitwise_and(self):
         x_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
@@ -391,13 +400,13 @@ class TestMathOpPatches(unittest.TestCase):
         b_np = np.random.uniform(-1, 1, size=[3, 5]).astype('float32')
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
-        c_np = exe.run(paddle.static.default_main_program(),
-                       feed={
-                           "a": a_np,
-                           "b": b_np
-                       },
-                       fetch_list=[c])
-        self.assertTrue(np.allclose(a_np @ b_np, c_np))
+        c_np, = exe.run(paddle.static.default_main_program(),
+                        feed={
+                            "a": a_np,
+                            "b": b_np
+                        },
+                        fetch_list=[c])
+        np.testing.assert_allclose(a_np @ b_np, c_np, rtol=1e-05)
 
 
 class TestMathOpPatches1(TestMathOpPatches):

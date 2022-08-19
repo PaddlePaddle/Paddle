@@ -41,6 +41,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
             self._test_eager_backward_api()
             self._test_eager_copy_to()
             self._test_fallback_kernel()
+            self._test_scalar()
         self._test_custom_device_dataloader()
         self._test_custom_device_mnist()
 
@@ -169,6 +170,13 @@ class TestCustomCPUPlugin(unittest.TestCase):
         y = paddle.to_tensor([1, 2, 3], 'int16')
         z = paddle.add(x, y)
         np.testing.assert_array_equal(z, r)
+
+    def _test_scalar(self):
+        import paddle
+        data_1 = paddle.to_tensor([[[[1.0, 4.0, 5.0, 7.0], [3.0, 4.0, 5.0,
+                                                            6.0]]]])
+        k_t = paddle.to_tensor([3], dtype="int32")
+        value_1, indices_1 = paddle.topk(data_1, k=k_t)
 
     def tearDown(self):
         del os.environ['CUSTOM_DEVICE_ROOT']

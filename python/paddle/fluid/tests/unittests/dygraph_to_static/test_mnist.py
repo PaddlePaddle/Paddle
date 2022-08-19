@@ -165,15 +165,21 @@ class TestMNISTWithToStatic(TestMNIST):
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
-        self.assertTrue(np.allclose(dygraph_loss, static_loss),
-                        msg='dygraph is {}\n static_res is \n{}'.format(
-                            dygraph_loss, static_loss))
+        np.testing.assert_allclose(
+            dygraph_loss,
+            static_loss,
+            rtol=1e-05,
+            err_msg='dygraph is {}\n static_res is \n{}'.format(
+                dygraph_loss, static_loss))
         with _test_eager_guard():
             dygraph_loss = self.train_dygraph()
             static_loss = self.train_static()
-            self.assertTrue(np.allclose(dygraph_loss, static_loss),
-                            msg='dygraph is {}\n static_res is \n{}'.format(
-                                dygraph_loss, static_loss))
+            np.testing.assert_allclose(
+                dygraph_loss,
+                static_loss,
+                rtol=1e-05,
+                err_msg='dygraph is {}\n static_res is \n{}'.format(
+                    dygraph_loss, static_loss))
 
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()
@@ -182,9 +188,12 @@ class TestMNISTWithToStatic(TestMNIST):
             dygraph_loss_mkldnn = self.train_dygraph()
         finally:
             fluid.set_flags({'FLAGS_use_mkldnn': False})
-        self.assertTrue(np.allclose(dygraph_loss_cpu, dygraph_loss_mkldnn),
-                        msg='cpu dygraph is {}\n mkldnn dygraph is \n{}'.format(
-                            dygraph_loss_cpu, dygraph_loss_mkldnn))
+        np.testing.assert_allclose(
+            dygraph_loss_cpu,
+            dygraph_loss_mkldnn,
+            rtol=1e-05,
+            err_msg='cpu dygraph is {}\n mkldnn dygraph is \n{}'.format(
+                dygraph_loss_cpu, dygraph_loss_mkldnn))
 
     def train(self, to_static=False):
 
@@ -250,15 +259,21 @@ class TestMNISTWithToStatic(TestMNIST):
             # load in static mode
             static_infer_out = self.jit_load_and_run_inference_static(
                 model_save_dir, model_filename, params_filename, inputs)
-            self.assertTrue(np.allclose(gt_out.numpy(), static_infer_out))
+            np.testing.assert_allclose(gt_out.numpy(),
+                                       static_infer_out,
+                                       rtol=1e-05)
             # load in dygraph mode
             dygraph_infer_out = self.jit_load_and_run_inference_dygraph(
                 model_save_prefix, inputs)
-            self.assertTrue(np.allclose(gt_out.numpy(), dygraph_infer_out))
+            np.testing.assert_allclose(gt_out.numpy(),
+                                       dygraph_infer_out,
+                                       rtol=1e-05)
             # load in Paddle-Inference
             predictor_infer_out = self.predictor_load_and_run_inference_analysis(
                 model_save_dir, model_filename, params_filename, inputs)
-            self.assertTrue(np.allclose(gt_out.numpy(), predictor_infer_out))
+            np.testing.assert_allclose(gt_out.numpy(),
+                                       predictor_infer_out,
+                                       rtol=1e-05)
 
     @switch_to_static_graph
     def jit_load_and_run_inference_static(self, model_path, model_filename,
@@ -287,7 +302,7 @@ class TestMNISTWithToStatic(TestMNIST):
                                                   params_filename, inputs):
         output = PredictorTools(model_path, model_filename, params_filename,
                                 inputs)
-        out = output()
+        out, = output()
         return out
 
 

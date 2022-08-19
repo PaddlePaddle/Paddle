@@ -236,6 +236,7 @@ def _elementwise_op_in_dygraph(x,
                                                        act,
                                                        use_mkldnn=use_mkldnn)
 
+
 def _get_reduce_dim(dim, input):
     """
     Internal function for reduce_sum, reduce_mean, reduce_max, reduce_min, reduce_prod. 
@@ -245,10 +246,11 @@ def _get_reduce_dim(dim, input):
         if isinstance(dim, (tuple, range)):
             dim = list(dim)
         elif isinstance(dim, int):
-            dim= [dim]
+            dim = [dim]
         else:
             raise TypeError(
-                "The type of dim must be int, list, tuple or range, but received {}".format(type(axis)))
+                "The type of dim must be int, list, tuple or range, but received {}"
+                .format(type(axis)))
     if dim is None:
         dim = []
     if dim == [] or len(dim) == len(input.shape):
@@ -257,6 +259,7 @@ def _get_reduce_dim(dim, input):
         reduce_all = False
 
     return reduce_all, dim
+
 
 def fc(input,
        size,
@@ -4675,15 +4678,11 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
     """
     reduce_all, dim = _get_reduce_dim(dim, input)
-    
+
     if _non_static_mode():
         return _C_ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
                                  'reduce_all', reduce_all)
-    attrs = {
-        'dim': dim,
-        'keep_dim': keep_dim,
-        'reduce_all': reduce_all
-    }
+    attrs = {'dim': dim, 'keep_dim': keep_dim, 'reduce_all': reduce_all}
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'reduce_sum')
@@ -4802,7 +4801,7 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_max(y, dim=[0, 1]) # [7.0, 8.0]
     """
     reduce_all, dim = _get_reduce_dim(dim, input)
-    
+
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
@@ -4997,7 +4996,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
 
     """
     reduce_all, dim = _get_reduce_dim(dim, input)
-    
+
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -5058,7 +5057,7 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
 
     """
     reduce_all, dim = _get_reduce_dim(dim, input)
-    
+
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_any')
     helper = LayerHelper('reduce_any', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -6601,12 +6600,22 @@ def squeeze(input, axes, name=None):
         'float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64',
         'complex64', 'complex128'
     ], 'squeeze')
-    check_type(axes, 'axis/axes', (list, tuple), 'squeeze')
+    check_type(axes, 'axis/axes', (list, tuple, Variable), 'squeeze')
+
+    attrs = {}
+    if isinstance(axes, Variable):
+        axes.stop_gradient = True
+        attrs["axes"] = axes
+    elif isinstance(axes, (list, tuple)):
+        if utils._contain_var(axes):
+            attrs["axes"] = utils._convert_to_tensor_list(axes)
+        else:
+            attrs["axes"] = axes
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(type="squeeze2",
                      inputs={"X": input},
-                     attrs={"axes": axes},
+                     attrs=attrs,
                      outputs={
                          "Out": out,
                          "XShape": x_shape
@@ -13129,6 +13138,8 @@ def merge_selected_rows(x, name=None):
                 type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
             y = fluid.layers.merge_selected_rows(var)
     """
+    if _non_static_mode():
+        return _C_ops.merge_selected_rows(x)
 
     helper = LayerHelper("merge_selected_rows", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

@@ -176,8 +176,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
-        return dygraph_utils._append_activation_in_dygraph(out)
+        return _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
     if _non_static_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = _C_ops.scale(x, 'scale',
@@ -386,8 +385,7 @@ def pow(x, y, name=None):
         if isinstance(y, (int, float)):
             return _C_ops.final_state_pow(x, y)
         elif isinstance(y, (paddle.Tensor, Variable)):
-            return _elementwise_op_in_dygraph(
-                x, y, axis=-1, act=None, op_name='elementwise_pow')
+            return _C_ops.final_state_elementwise_pow(x, y)
         else:
             raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
     if _in_legacy_dygraph():

@@ -15,6 +15,7 @@
 import unittest
 import os
 import json
+import copy
 
 import paddle
 import numpy as np
@@ -193,6 +194,32 @@ class TestDistributedContext(unittest.TestCase):
 
         dist_context._backup(serial=True, dist=True)
         dist_context._restore(serial=True, dist=True, dist_mode="to_nothing")
+
+    def test_deepcopy(self):
+        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program(
+        )
+        dist_context = DistributedContext(train_program, start_program,
+                                          optimizer, loss, feed_vars,
+                                          fetch_vars)
+        dist_context.initialize()
+
+        copy_dist_context = copy.deepcopy(dist_context)
+
+        copy_list = [
+                "_original_serial_main_program", "_original_serial_startup_program", \
+                "_serial_main_program", "_serial_startup_program", "_serial_graph", \
+                "_dist_main_programs", "_dist_startup_programs", \
+                "_serial_ordered_nodes", "_serial_ordered_tensor_nodes", \
+                "_serial_ordered_op_nodes", "_original_serial_loss", \
+                "_original_serial_feed_vars", "_original_serial_fetch_vars", \
+                "_serial_loss", "_serial_feed_vars", "_serial_fetch_vars", "_lr_optimizer", \
+                "_backup_serial_main_program_stack", "_backup_serial_startup_program_stack", \
+                "_pass_context"]
+
+        for i in range(len(copy_list)):
+            copy_obj = "copy_dist_context." + copy_list[i]
+            obj = "dist_context." + copy_list[i]
+            assert id(eval(copy_obj)) == id(eval(obj))
 
 
 if __name__ == "__main__":
