@@ -104,15 +104,15 @@ class TestHeavisideAPI_float64(unittest.TestCase):
                 out = paddle.heaviside(x, y)
 
             exe = paddle.static.Executor(place=place)
-            res = exe.run(prog,
-                          feed={
-                              f"x_{self.dtype}": self.x_np,
-                              f"y_{self.dtype}": self.y_np
-                          },
-                          fetch_list=out,
-                          use_prune=True)
+            res, = exe.run(prog,
+                           feed={
+                               f"x_{self.dtype}": self.x_np,
+                               f"y_{self.dtype}": self.y_np
+                           },
+                           fetch_list=out,
+                           use_prune=True)
 
-            self.assertTrue(np.allclose(res, self.out_np))
+            np.testing.assert_allclose(res, self.out_np, rtol=1e-05)
 
     def test_dygraph(self):
         for use_cuda in ([False, True]
@@ -122,7 +122,7 @@ class TestHeavisideAPI_float64(unittest.TestCase):
             result = paddle.heaviside(paddle.to_tensor(self.x_np),
                                       paddle.to_tensor(self.y_np))
 
-            self.assertTrue(np.allclose(result.numpy(), self.out_np))
+            np.testing.assert_allclose(result.numpy(), self.out_np, rtol=1e-05)
 
 
 class TestHeavisideAPI_float32(TestHeavisideAPI_float64):
