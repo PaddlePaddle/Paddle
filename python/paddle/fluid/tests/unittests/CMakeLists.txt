@@ -59,7 +59,7 @@ endif()
 # list(APPEND DIST_TEST_OPS test_parallel_dygraph_control_flow)
 # list(APPEND DIST_TEST_OPS test_parallel_dygraph_no_sync)
 # list(APPEND DIST_TEST_OPS test_parallel_dygraph_no_sync_gradient_check)
-# list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 # list(APPEND DIST_TEST_OPS test_parallel_dygraph_pipeline_parallel)
 # list(APPEND DIST_TEST_OPS test_parallel_dygraph_tensor_parallel)
 # list(APPEND DIST_TEST_OPS test_parallel_dygraph_sharding_parallel)
@@ -281,7 +281,7 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   #   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_control_flow)
   #   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_no_sync)
   #   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_no_sync_gradient_check)
-  #   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
+  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
   #   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_pipeline_parallel)
   #   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_tensor_parallel)
   #   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sharding_parallel)
@@ -1510,8 +1510,8 @@ set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
-  #   set_tests_properties(test_parallel_dygraph_dataparallel PROPERTIES TIMEOUT
-  #                                                                      120)
+  set_tests_properties(test_parallel_dygraph_dataparallel PROPERTIES TIMEOUT
+                                                                     120)
   set_tests_properties(test_parallel_dygraph_mnist PROPERTIES TIMEOUT 200)
   set_tests_properties(test_parallel_dygraph_se_resnext PROPERTIES TIMEOUT 200)
   #   set_tests_properties(test_parallel_dygraph_unused_variables PROPERTIES TIMEOUT
