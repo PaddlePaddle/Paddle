@@ -386,7 +386,7 @@ def pow(x, y, name=None):
         if isinstance(y, (int, float)):
             return _C_ops.final_state_pow(x, y)
         elif isinstance(y, (paddle.Tensor, Variable)):
-            return _C_ops.final_state_elementwise_pow(x,)
+            return _C_ops.final_state_elementwise_pow(x, y)
         else:
             raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
     if _in_legacy_dygraph():
