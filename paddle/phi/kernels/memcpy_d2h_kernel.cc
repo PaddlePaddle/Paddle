@@ -38,15 +38,15 @@ void MemcpyD2HKernel(const Context& dev_ctx,
       // NOTE(copy from Aurelius84): host <-> device memory copies of a memory
       // block of 64 KB or less are asynchronous. See
       // https://forums.developer.nvidia.com/t/host-device-memory-copies-up-to-64-kb-are-asynchronous/17907
-      if (src.memory_size() <= WAIT_THRESHOLD) {
-        dev_ctx_.Wait();
+      if (x.memory_size() <= WAIT_THRESHOLD) {
+        dev_ctx.Wait();
       }
       break;
 
     case 1:
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
       // paddle::memory::Copy use async copy for GPUPinnedPlace
-      dev_ctx.wait();
+      dev_ctx.Wait();
       break;
 
     default:
