@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,16 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_XPU
-
+#include "paddle/fluid/operators/beam_search_decode_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/beam_search_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    beam_search,
-    ops::BeamSearchOpKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::BeamSearchOpKernel<paddle::platform::XPUDeviceContext, double>,
-    ops::BeamSearchOpKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::BeamSearchOpKernel<paddle::platform::XPUDeviceContext, int64_t>);
-#endif
+REGISTER_OP_CUDA_KERNEL(
+    beam_search_decode,
+    ops::BeamSearchDecodeOpKernel<phi::GPUContext, float>,
+    ops::BeamSearchDecodeOpKernel<phi::GPUContext, double>,
+    ops::BeamSearchDecodeOpKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::BeamSearchDecodeOpKernel<phi::GPUContext, int>,
+    ops::BeamSearchDecodeOpKernel<phi::GPUContext, int64_t>);
