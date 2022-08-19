@@ -72,14 +72,6 @@ class Parallelizer:
             self._logger.info(
                 "within parallel apply_pre_optimization time: {}, mode {}".
                 format(time.time() - time0, self._mode))
-            # Generate optimizer
-            time0 = time.time()
-            self._generate_optimizer(serial_main_program,
-                                     serial_startup_program, serial_optimizer,
-                                     params_grads)
-            self._logger.info(
-                "within parallel optimizer time: {}, mode {}".format(
-                    time.time() - time0, self._mode))
             # Do logical partition
             time0 = time.time()
             partitioner = Partitioner(self._dist_context, rank)
@@ -87,6 +79,14 @@ class Parallelizer:
                 serial_main_program, serial_startup_program, params_grads)
             self._logger.info(
                 "within parallel partitioner time: {}, mode {}".format(
+                    time.time() - time0, self._mode))
+            # Generate optimizer
+            time0 = time.time()
+            self._generate_optimizer(serial_main_program,
+                                     serial_startup_program, serial_optimizer,
+                                     params_grads)
+            self._logger.info(
+                "within parallel optimizer time: {}, mode {}".format(
                     time.time() - time0, self._mode))
             # Do reshard process
             time0 = time.time()

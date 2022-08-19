@@ -1993,6 +1993,10 @@ class DistributedStrategy(object):
 
     @property
     def qat(self):
+        """
+        Indicating whether we are using quantization training
+        Default Value: False
+        """
         return self.strategy.qat
 
     @qat.setter
@@ -2004,6 +2008,36 @@ class DistributedStrategy(object):
 
     @property
     def qat_configs(self):
+        """
+        Set quantization training configurations. In general, qat has serveral configurable
+        settings that can be configured through a dict.
+
+        **Notes**:
+            channel_wise_abs_max(bool): Whether to use `per_channel` quantization training. Default is True.
+
+            weight_bits(int): quantization bit number for weight. Default is 8.
+
+            activation_bits(int): quantization bit number for activation. Default is 8.
+
+            not_quant_pattern(list[str]): When the skip pattern is detected in an op's name scope, 
+                the corresponding op will not be quantized.
+
+            algo(str): Other quantization training algorithm.
+
+        Exampless:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.qat = True
+            strategy.qat_configs = {
+                "channel_wise_abs_max": True,
+                "weight_bits": 8,
+                "activation_bits: 8,
+                "not_quant_pattern": ['skip_quant']}
+
+        """
         return get_msg_dict(self.strategy.qat_configs)
 
     @qat_configs.setter
