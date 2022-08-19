@@ -26,8 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/isfinite_kernel.h"
-#include "paddle/phi/kernels/reduce_all_kernel.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl_debug.h"  // NOLINT
@@ -35,73 +33,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
-#define FiniteVisitor(type)                                                  \
-  struct type##Visitor {                                                     \
-    type##Visitor(const phi::DenseTensor& in, phi::DenseTensor* out)         \
-        : in_(in), out_(out) {}                                              \
-    template <typename T>                                                    \
-    void apply() const {                                                     \
-      auto place = in_.place();                                              \
-      auto* ctx = platform::DeviceContextPool::Instance().Get(place);        \
-      Tensor tmp;                                                            \
-      tmp.Resize(in_.dims());                                                \
-      out_->Resize({1});                                                     \
-      std::vector<int64_t> dims(tmp.dims().size());                          \
-      std::iota(dims.begin(), dims.end(), 0);                                \
-      if (platform::is_cpu_place(place)) {                                   \
-        phi::type##Kernel<T, phi::CPUContext>(                               \
-            *static_cast<phi::CPUContext*>(ctx), in_, &tmp);                 \
-        phi::AllKernel<bool, phi::CPUContext>(                               \
-            *static_cast<phi::CPUContext*>(ctx), tmp, dims, false, out_);    \
-      } else if (platform::is_gpu_place(place)) {                            \
-        phi::type##Kernel<T, phi::GPUContext>(                               \
-            *static_cast<phi::GPUContext*>(ctx), in_, &tmp);                 \
-        phi::AllKernel<bool, phi::GPUContext>(                               \
-            *static_cast<phi::GPUContext*>(ctx), tmp, dims, false, out_);    \
-      } else {                                                               \
-        PADDLE_THROW(                                                        \
-            platform::errors::Unimplemented("Not supported on %s.", place)); \
-      }                                                                      \
-    }                                                                        \
-    const phi::DenseTensor& in_;                                             \
-    phi::DenseTensor* out_;                                                  \
-  };
-
-FiniteVisitor(Isnan);
-FiniteVisitor(Isinf);
-FiniteVisitor(Isfinite);
-
-// store the result bool in gpu tensor, async operation. Faster than above ones.
-void TensorContainsNAN(const framework::Tensor& tensor,
-                       framework::Tensor* out) {
-  VisitDataType(TransToProtoVarType(tensor.dtype()), IsnanVisitor(tensor, out));
-}
-void TensorContainsInf(const framework::Tensor& tensor,
-                       framework::Tensor* out) {
-  VisitDataType(TransToProtoVarType(tensor.dtype()), IsinfVisitor(tensor, out));
-}
-void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
-  VisitDataType(TransToProtoVarType(tensor.dtype()),
-                IsfiniteVisitor(tensor, out));
-}
-
-// copy the result bool to cpu
-bool TensorContainsNAN(const framework::Tensor& tensor) {
-  Tensor out;
-  TensorContainsNAN(tensor, &out);
-  return GetValue<bool>(&out);
-}
-bool TensorContainsInf(const framework::Tensor& tensor) {
-  Tensor out;
-  TensorContainsInf(tensor, &out);
-  return GetValue<bool>(&out);
-}
-bool TensorIsfinite(const framework::Tensor& tensor) {
-  Tensor out;
-  TensorIsfinite(tensor, &out);
-  return GetValue<bool>(&out);
-}
 
 template <typename TENSOR>
 void TensorCopyImpl(const TENSOR& src,
