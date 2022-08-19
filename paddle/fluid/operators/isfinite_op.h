@@ -23,6 +23,7 @@
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
+#include "paddle/phi/kernels/reduce_any_kernel.h"
 
 namespace phi {
 class DenseTensor;
@@ -40,7 +41,7 @@ bool TensorContainsNAN(const framework::Tensor& tensor);
 bool TensorContainsInf(const framework::Tensor& tensor);
 bool TensorIsfinite(const framework::Tensor& tensor);
 
-#define FiniteVisitor(type)                                                  \
+#define FiniteVisitor(type, reduce_type)                                     \
   struct type##Visitor {                                                     \
     type##Visitor(const phi::DenseTensor& in, phi::DenseTensor* out)         \
         : in_(in), out_(out) {}                                              \
@@ -56,12 +57,12 @@ bool TensorIsfinite(const framework::Tensor& tensor);
       if (platform::is_cpu_place(place)) {                                   \
         phi::type##Kernel<T, phi::CPUContext>(                               \
             *static_cast<phi::CPUContext*>(ctx), in_, &tmp);                 \
-        phi::AllKernel<bool, phi::CPUContext>(                               \
+        phi::reduce_type##Kernel<bool, phi::CPUContext>(                     \
             *static_cast<phi::CPUContext*>(ctx), tmp, dims, false, out_);    \
       } else if (platform::is_gpu_place(place)) {                            \
         phi::type##Kernel<T, phi::GPUContext>(                               \
             *static_cast<phi::GPUContext*>(ctx), in_, &tmp);                 \
-        phi::AllKernel<bool, phi::GPUContext>(                               \
+        phi::reduce_type##Kernel<bool, phi::GPUContext>(                     \
             *static_cast<phi::GPUContext*>(ctx), tmp, dims, false, out_);    \
       } else {                                                               \
         PADDLE_THROW(                                                        \
@@ -72,9 +73,9 @@ bool TensorIsfinite(const framework::Tensor& tensor);
     phi::DenseTensor* out_;                                                  \
   };
 
-FiniteVisitor(Isnan);
-FiniteVisitor(Isinf);
-FiniteVisitor(Isfinite);
+FiniteVisitor(Isnan, Any);
+FiniteVisitor(Isinf, Any);
+FiniteVisitor(Isfinite, All);
 
 // store the result bool in gpu tensor, async operation. Faster than above ones.
 inline void TensorContainsNAN(const framework::Tensor& tensor,
