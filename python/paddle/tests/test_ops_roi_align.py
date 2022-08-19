@@ -17,6 +17,7 @@ import numpy as np
 
 import paddle
 from paddle.vision.ops import roi_align, RoIAlign
+from paddle.fluid.framework import _non_static_mode
 
 
 class TestRoIAlign(unittest.TestCase):

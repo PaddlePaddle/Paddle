@@ -963,7 +963,7 @@ def cond(x, p=None, name=None):
             return out
 
     def empty_tensor(input, shape):
-        if paddle._non_static_mode():
+        if _non_static_mode():
             return input.reshape(shape)
         raise ValueError("only support x is nonempty tensor in static mode")
 
