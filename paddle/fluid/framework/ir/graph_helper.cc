@@ -498,22 +498,19 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   return desc;
 }
 
-static void UpdateControlOpSkipEagerDeletionVars(const Node &node) {
+static void UpdateControlOpSkipEagerDeletionVars(const Node &node,
+                                                 OpDesc *desc) {
   if (node.IsWrappedBy<details::OpHandleBase>()) {
     details::OpHandleBase &op_hander =
         const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
     // auto *compute_op = dynamic_cast<details::ComputationOpHandle
     // *>(&op_hander); auto *op_base = compute_op->GetOp();
-    if (dynamic_cast<details::ComputationOpHandle *>(&op_hander)
-            ->GetOp()
-            ->Attrs()
-            .count("skip_eager_deletion_vars")) {
-      node.Op()->SetAttr(
-          "skip_eager_deletion_vars",
-          dynamic_cast<details::ComputationOpHandle *>(&op_hander)
-              ->GetOp()
-              ->Attrs()
-              .at("skip_eager_deletion_vars"));
+    if (desc->HasAttr("skip_eager_deletion_vars")) {
+      desc->SetAttr("skip_eager_deletion_vars",
+                    dynamic_cast<details::ComputationOpHandle *>(&op_hander)
+                        ->GetOp()
+                        ->Attrs()
+                        .at("skip_eager_deletion_vars"));
     }
   }
 }
@@ -564,14 +561,15 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         ops->emplace_back(depend_desc);
         VLOG(4) << "add depend op";
       }
+      ops->emplace_back(*n->Op());
       if (n->Name() == "while" || n->Name() == "while_grad" ||
           n->Name() == "conditional_block" ||
           n->Name() == "conditional_block_grad" || n->Name() == "recurrent" ||
           n->Name() == "recurrent_grad") {
         VLOG(4) << "Update control op attr: skip_eager_deletion_vars";
-        UpdateControlOpSkipEagerDeletionVars(*n);
+        auto &desc = ops->back();
+        UpdateControlOpSkipEagerDeletionVars(*n, &desc);
       }
-      ops->emplace_back(*n->Op());
     }
     // delete no OpDesc op
   }
