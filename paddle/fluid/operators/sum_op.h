@@ -206,8 +206,6 @@ class SumKernel : public framework::OpKernel<T> {
       }
     } else if (out_var->IsType<phi::SelectedRows>()) {
       SelectedRowsCompute<DeviceContext, T>(context);
-    } else if (out_var->IsType<framework::LoDTensorArray>()) {
-      LodTensorArrayCompute<DeviceContext, T>(context);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Expected type of Output(out) must be Tensor, SelectedRows, "
