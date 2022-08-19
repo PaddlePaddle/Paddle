@@ -3267,7 +3267,7 @@ def reshape(x, shape, name=None):
             out = _C_ops.final_state_reshape(x, shape)
         elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
-            out, _ = _C_ops.reshape2(x, shape)
+            out, _ = _C_ops.final_state_reshape(x, shape)
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` or `Variable`,"

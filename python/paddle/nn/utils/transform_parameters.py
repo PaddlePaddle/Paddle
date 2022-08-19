@@ -152,10 +152,13 @@ def vector_to_parameters(vec, parameters, name=None):
         numel = reduce(lambda x, y: x * y, shape)
         sections.append(numel)
 
+    if len(sections) == 1:
+        sections.append(0)
+
     if in_dygraph_mode():
         with paddle.fluid.dygraph.no_grad():
             res = _C_ops.final_state_split(vec, sections, 0)
-            for i in range(0, len(res)):
+            for i in range(0, len(parameters)):
                 res[i]._share_underline_tensor_to(parameters[i])
     else:
         _dygraph_tracer().trace_op(type='split',

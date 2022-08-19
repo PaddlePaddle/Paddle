@@ -6446,7 +6446,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         elif isinstance(shape, tmp_tensor_type):
             # TODO: Tensor shape in final_state_reshape has not been tested
             shape.stop_gradient = True
-            out, _ = _C_ops.reshape2(x, shape)
+            out = _C_ops.final_state_reshape(x, shape)
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` or `Variable`,"
