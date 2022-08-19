@@ -887,14 +887,14 @@ if(WITH_DISTRIBUTE)
   # port range (20000, 23000) is reserved for dist-ops
   set(dist_ut_port 20001)
   if(NOT WIN32)
-    bash_test_modules(
-      test_tcp_store
-      START_BASH
-      dist_test.sh
-      LABELS
-      "RUN_TYPE=EXCLUSIVE"
-      ENVS
-      "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+    # bash_test_modules(
+    #   test_tcp_store
+    #   START_BASH
+    #   dist_test.sh
+    #   LABELS
+    #   "RUN_TYPE=EXCLUSIVE"
+    #   ENVS
+    #   "PADDLE_DIST_UT_PORT=${dist_ut_port}")
     math(EXPR dist_ut_port "${dist_ut_port}+1")
   endif()
 
