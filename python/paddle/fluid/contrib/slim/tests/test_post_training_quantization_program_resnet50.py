@@ -250,81 +250,6 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
         self.assertLess(delta_value, diff_threshold)
 
 
-class TestPostTrainingProgramKLForResnet50(TestPostTrainingQuantizationProgram):
-
-    def test_post_training_KL_resnet50(self):
-        model = "ResNet-50"
-        algo = "KL"
-        round_type = "round"
-        data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
-        ]
-        data_md5s = ['4a5194524823d9b76da6e738e1367881']
-        quantizable_op_type = [
-            "conv2d",
-            "depthwise_conv2d",
-            "mul",
-            "pool2d",
-        ]
-        is_full_quantize = False
-        is_use_cache_file = False
-        is_optimize_model = True
-        diff_threshold = 0.025
-        self.run_test(model, algo, round_type, data_urls, data_md5s,
-                      quantizable_op_type, is_full_quantize, is_use_cache_file,
-                      is_optimize_model, diff_threshold)
-
-
-class TestPostTrainingProgramAvgForResnet50(TestPostTrainingQuantizationProgram
-                                            ):
-
-    def test_post_training_avg_resnet50(self):
-        model = "ResNet-50"
-        algo = "avg"
-        round_type = "round"
-        data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
-        ]
-        data_md5s = ['4a5194524823d9b76da6e738e1367881']
-        quantizable_op_type = [
-            "conv2d",
-            "depthwise_conv2d",
-            "mul",
-        ]
-        is_full_quantize = False
-        is_use_cache_file = False
-        is_optimize_model = True
-        diff_threshold = 0.025
-        self.run_test(model, algo, round_type, data_urls, data_md5s,
-                      quantizable_op_type, is_full_quantize, is_use_cache_file,
-                      is_optimize_model, diff_threshold)
-
-
-class TestPostTrainingProgramHistForResnet50(TestPostTrainingQuantizationProgram
-                                             ):
-
-    def test_post_training_hist_resnet50(self):
-        model = "ResNet-50"
-        algo = "hist"
-        round_type = "round"
-        data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
-        ]
-        data_md5s = ['4a5194524823d9b76da6e738e1367881']
-        quantizable_op_type = [
-            "conv2d",
-            "depthwise_conv2d",
-            "mul",
-        ]
-        is_full_quantize = False
-        is_use_cache_file = False
-        is_optimize_model = True
-        diff_threshold = 0.03
-        self.run_test(model, algo, round_type, data_urls, data_md5s,
-                      quantizable_op_type, is_full_quantize, is_use_cache_file,
-                      is_optimize_model, diff_threshold)
-
-
 class TestPostTrainingProgramAbsMaxForResnet50(
         TestPostTrainingQuantizationProgram):
 
@@ -344,36 +269,6 @@ class TestPostTrainingProgramAbsMaxForResnet50(
         self.run_test(model, algo, round_type, data_urls, data_md5s,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold)
-
-
-class TestPostTrainingProgramAbsMaxONNXForResnet50(
-        TestPostTrainingQuantizationProgram):
-
-    def test_post_training_abs_max_onnx_resnet50(self):
-        model = "ResNet-50"
-        algo = "abs_max"
-        round_type = "round"
-        data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
-        ]
-        data_md5s = ['4a5194524823d9b76da6e738e1367881']
-        quantizable_op_type = ["conv2d", "mul"]
-        is_full_quantize = False
-        is_use_cache_file = False
-        is_optimize_model = True
-        onnx_format = True
-        diff_threshold = 0.025
-        self.run_test(model,
-                      algo,
-                      round_type,
-                      data_urls,
-                      data_md5s,
-                      quantizable_op_type,
-                      is_full_quantize,
-                      is_use_cache_file,
-                      is_optimize_model,
-                      diff_threshold,
-                      onnx_format=onnx_format)
 
 
 if __name__ == '__main__':
