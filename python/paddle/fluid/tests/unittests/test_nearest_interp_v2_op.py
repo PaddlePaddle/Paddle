@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.nn as nn
@@ -185,127 +185,6 @@ def nearest_neighbor_interp3d_np(X,
     if data_layout == "NDHWC":
         out = np.transpose(out, (0, 2, 3, 4, 1))  # NCDHW => NDHWC
     return out.astype(X.dtype)
-
-
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-@skip_check_grad_ci(reason="@liuyuanle \
-For the interpolation algorithm with input data of float16 type, \
-the gradient calculated by the numerical gradient method has a large error compared \
-with the theoretical gradient. Compared with the gradient results when the input \
-data type is float32, the correctness of the implementation is verified!")
-class TestNearestInterpOpFloat16(OpTest):
-
-    def setUp(self):
-        self.python_api = nearest_interp_test
-        self.out_size = None
-        self.actual_shape = None
-        self.data_layout = 'NCHW'
-        self.init_test_case()
-        self.op_type = "nearest_interp_v2"
-        input_np = np.random.random(self.input_shape).astype("float16")
-
-        if self.data_layout == "NCHW" and len(self.input_shape) == 4:
-            in_d = 1
-            in_h = self.input_shape[2]
-            in_w = self.input_shape[3]
-        else:
-            in_d = 1
-            in_h = self.input_shape[1]
-            in_w = self.input_shape[2]
-
-        if self.data_layout == "NCDHW" and len(self.input_shape) == 5:
-            in_d = self.input_shape[2]
-            in_h = self.input_shape[3]
-            in_w = self.input_shape[4]
-        else:
-            in_d = self.input_shape[1]
-            in_h = self.input_shape[2]
-            in_w = self.input_shape[3]
-        scale_d = 0
-        scale_h = 0
-        scale_w = 0
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0:
-                    scale_d = scale_h = scale_w = float(self.scale)
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                scale_d = scale_w = scale_h = self.scale[0]
-            elif isinstance(self.scale, list) and len(self.scale) > 1:
-                if len(self.scale) == 5:
-                    scale_w = self.scale[2]
-                    scale_h = self.scale[1]
-                    scale_d = self.scale[0]
-                else:
-                    scale_w = self.scale[1]
-                    scale_h = self.scale[0]
-
-            out_h = int(in_h * scale_h)
-            out_w = int(in_w * scale_w)
-            out_d = int(in_d * scale_d)
-        else:
-            if len(self.input_shape) == 5:
-                out_d = self.out_d
-            out_h = self.out_h
-            out_w = self.out_w
-
-        if len(self.input_shape) == 4:
-            output_np = nearest_neighbor_interp_np(
-                input_np, out_h, out_w, scale_h, scale_w, self.out_size,
-                self.actual_shape, self.align_corners, self.data_layout)
-        elif len(self.input_shape) == 5:
-            output_np = nearest_neighbor_interp3d_np(input_np, out_d, out_h,
-                                                     out_w, scale_d, scale_h,
-                                                     scale_w, self.out_size,
-                                                     self.actual_shape,
-                                                     self.align_corners,
-                                                     self.data_layout)
-        self.inputs = {'X': input_np}
-        if self.out_size is not None:
-            self.inputs['OutSize'] = self.out_size
-        if self.actual_shape is not None:
-            self.inputs['OutSize'] = self.actual_shape
-        if len(self.input_shape) == 5:
-            self.attrs = {
-                'out_d': self.out_d,
-                'out_h': self.out_h,
-                'out_w': self.out_w,
-                'interp_method': self.interp_method,
-                'align_corners': self.align_corners,
-                'data_layout': self.data_layout
-            }
-        else:
-            self.attrs = {
-                'out_h': self.out_h,
-                'out_w': self.out_w,
-                'interp_method': self.interp_method,
-                'align_corners': self.align_corners,
-                'data_layout': self.data_layout
-            }
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0:
-                    self.scale = [self.scale]
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                self.scale = [self.scale[0], self.scale[0]]
-            self.attrs['scale'] = self.scale
-        self.outputs = {'Out': output_np}
-
-    def test_check_output(self):
-        self.check_output(check_eager=True)
-
-    def test_check_grad(self):
-        pass
-
-    def init_test_case(self):
-        self.dtype = np.float16
-        self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 4, 5]
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3]).astype("int32")
-        self.align_corners = True
 
 
 class TestNearestInterpOp(OpTest):
@@ -889,60 +768,6 @@ class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestNearestInterpOpFloat16API(unittest.TestCase):
-
-    def test_case(self):
-        import paddle
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
-            input_data = np.random.random((2, 3, 6, 6)).astype("float16")
-            scale_np = np.array([2, 2]).astype("int64")
-            input_x = paddle.to_tensor(input_data)
-            scale = paddle.to_tensor(scale_np)
-            expect_res = nearest_neighbor_interp_np(input_data,
-                                                    out_h=12,
-                                                    out_w=12,
-                                                    align_corners=False)
-            out = interpolate(x=input_x,
-                              scale_factor=scale,
-                              mode="nearest",
-                              align_corners=False)
-            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
-
-
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestNearestInterp3DOpFloat16API(unittest.TestCase):
-
-    def test_case(self):
-        import paddle
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
-            input_data = np.random.random((2, 2, 6, 6, 6)).astype("float16")
-            scale_np = np.array([2, 2, 2]).astype("int64")
-            input_x = paddle.to_tensor(input_data)
-            scale = paddle.to_tensor(scale_np)
-            expect_res = nearest_neighbor_interp3d_np(input_data,
-                                                      out_d=12,
-                                                      out_h=12,
-                                                      out_w=12,
-                                                      align_corners=False)
-            out = interpolate(x=input_x,
-                              scale_factor=scale,
-                              mode="nearest",
-                              align_corners=False,
-                              data_format="NCDHW")
-            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
-
-
 class TestNearestInterpException(unittest.TestCase):
 
     def test_exception(self):
@@ -976,6 +801,82 @@ class TestNearestInterpException(unittest.TestCase):
         self.assertRaises(ValueError, attr_scale_value)
         self.assertRaises(ValueError, input_shape_error)
         self.assertRaises(ValueError, mode_error)
+
+
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestNearestInterp3DOpForFloat16(unittest.TestCase):
+
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [2, 2, 6, 6, 6]
+        self.scale = [2, 2, 2]
+        self.align_corners = False
+        self.data_layout = 'NCDHW'
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x_np = x_np.astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        y = interpolate(x,
+                        scale_factor=self.scale,
+                        mode=self.interp_method,
+                        align_corners=self.align_corners,
+                        data_format=self.data_layout)
+        x_g = paddle.grad(y, x)
+        y_np = y[0].numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        self.init_test_case()
+        x_np = np.random.random(self.input_shape).astype("float16")
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+        # forward
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
+        # backward
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2)
+
+
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestNearestInterpOpForFloat16(unittest.TestCase):
+
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [2, 2, 6, 6]
+        self.scale = [2, 2]
+        self.align_corners = False
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x_np = x_np.astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        y = interpolate(x,
+                        scale_factor=self.scale,
+                        mode=self.interp_method,
+                        align_corners=self.align_corners)
+        x_g = paddle.grad(y, x)
+        y_np = y[0].numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        self.init_test_case()
+        x_np = np.random.random(self.input_shape).astype("float16")
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+        # forward
+        np.testing.assert_allclose(y_np_1, y_np_2)
+        # backward
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2)
 
 
 if __name__ == "__main__":

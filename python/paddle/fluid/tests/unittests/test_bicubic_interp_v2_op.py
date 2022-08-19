@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, _in_eager_without_dygraph_check, skip_check_grad_ci
+from op_test import OpTest, _in_eager_without_dygraph_check
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle
@@ -159,94 +159,6 @@ def bicubic_interp_np(input,
     if data_layout == "NHWC":
         out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
     return out.astype(input.dtype)
-
-
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-@skip_check_grad_ci(reason="@liuyuanle \
-For the interpolation algorithm with input data of float16 type, \
-the gradient calculated by the numerical gradient method has a large error compared \
-with the theoretical gradient. Compared with the gradient results when the input \
-data type is float32, the correctness of the implementation is verified!")
-class TestBicubicInterpOpFloat16(OpTest):
-
-    def setUp(self):
-        self.python_api = bicubic_interp_test
-        self.out_size = None
-        self.actual_shape = None
-        self.data_layout = 'NCHW'
-        self.init_test_case()
-        self.op_type = "bicubic_interp_v2"
-        # NOTE(dev): some AsDispensible input is not used under imperative mode.
-        # Skip check_eager while found them in Inputs.
-        self.check_eager = True
-        input_np = np.random.random(self.input_shape).astype("float16")
-        scale_h = 0
-        scale_w = 0
-        if self.data_layout == "NCHW":
-            in_h = self.input_shape[2]
-            in_w = self.input_shape[3]
-        else:
-            in_h = self.input_shape[1]
-            in_w = self.input_shape[2]
-
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0.:
-                    scale_h = scale_w = float(self.scale)
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                scale_w = scale_h = self.scale[0]
-            elif isinstance(self.scale, list) and len(self.scale) > 1:
-                scale_w = self.scale[1]
-                scale_h = self.scale[0]
-            out_h = int(in_h * scale_h)
-            out_w = int(in_w * scale_w)
-        else:
-            out_h = self.out_h
-            out_w = self.out_w
-
-        output_np = bicubic_interp_np(input_np, out_h, out_w, scale_h, scale_w,
-                                      self.out_size, self.actual_shape,
-                                      self.align_corners, self.data_layout)
-        self.inputs = {'X': input_np}
-        if self.out_size is not None:
-            self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
-        if self.actual_shape is not None:
-            self.inputs['OutSize'] = self.actual_shape
-            self.check_eager = False
-
-        self.attrs = {
-            'out_h': self.out_h,
-            'out_w': self.out_w,
-            'interp_method': self.interp_method,
-            'align_corners': self.align_corners,
-            'data_layout': self.data_layout
-        }
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0.:
-                    self.scale = [self.scale]
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                self.scale = [self.scale[0], self.scale[0]]
-            self.attrs['scale'] = self.scale
-        self.outputs = {'Out': output_np}
-
-    def test_check_output(self):
-        self.check_output(check_eager=self.check_eager)
-
-    def test_check_grad(self):
-        pass
-
-    def init_test_case(self):
-        self.dtype = np.float16
-        self.interp_method = 'bicubic'
-        self.input_shape = [2, 3, 5, 5]
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3]).astype("int32")
-        self.align_corners = True
 
 
 class TestBicubicInterpOp(OpTest):
@@ -535,107 +447,6 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
             np.testing.assert_allclose(dy_result, expect, rtol=1e-05)
 
 
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestBicubicInterpOpFloat16API(unittest.TestCase):
-
-    def test_imperative_case(self):
-        with _test_eager_guard():
-            self.func_case()
-        self.func_case()
-
-    def func_case(self):
-        np.random.seed(200)
-        x_data = np.random.random((2, 3, 6, 6)).astype("float16")
-        dim_data = np.array([12]).astype("int32")
-        shape_data = np.array([12, 12]).astype("int32")
-        actual_size_data = np.array([12, 12]).astype("int32")
-        scale_data = np.array([2.0]).astype("float32")
-
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        place = fluid.CUDAPlace(
-            0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
-
-        with fluid.program_guard(prog, startup_prog):
-
-            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float16")
-
-            dim = fluid.data(name="dim", shape=[1], dtype="int32")
-            shape_tensor = fluid.data(name="shape_tensor",
-                                      shape=[2],
-                                      dtype="int32")
-            actual_size = fluid.data(name="actual_size",
-                                     shape=[2],
-                                     dtype="int32")
-            scale_tensor = fluid.data(name="scale_tensor",
-                                      shape=[1],
-                                      dtype="float32")
-
-            out1 = interpolate(x,
-                               size=[12, 12],
-                               mode='bicubic',
-                               align_corners=False)
-            out2 = interpolate(x,
-                               size=[12, dim],
-                               mode='bicubic',
-                               align_corners=False)
-            out3 = interpolate(x,
-                               size=shape_tensor,
-                               mode='bicubic',
-                               align_corners=False)
-            out4 = interpolate(x,
-                               size=[12, 12],
-                               mode='bicubic',
-                               align_corners=False)
-            out5 = interpolate(x,
-                               scale_factor=scale_tensor,
-                               mode='bicubic',
-                               align_corners=False)
-            out6 = interpolate(x,
-                               scale_factor=2.0,
-                               mode='bicubic',
-                               align_corners=False)
-            out7 = interpolate(x,
-                               scale_factor=[2.0, 2.0],
-                               mode='bicubic',
-                               align_corners=False)
-
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            results = exe.run(
-                fluid.default_main_program(),
-                feed={
-                    "x": x_data,
-                    "dim": dim_data,
-                    "shape_tensor": shape_data,
-                    "actual_size": actual_size_data,
-                    "scale_tensor": scale_data
-                },
-                fetch_list=[out1, out2, out3, out4, out5, out6, out7],
-                return_numpy=True)
-
-            expect_res = bicubic_interp_np(x_data,
-                                           out_h=12,
-                                           out_w=12,
-                                           align_corners=False)
-            for res in results:
-                np.testing.assert_allclose(res, expect_res, rtol=1e-02)
-
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(x_data)
-            interp = interpolate(x,
-                                 size=[12, 12],
-                                 mode='bicubic',
-                                 align_corners=False)
-            dy_result = interp.numpy()
-            expect = bicubic_interp_np(x_data,
-                                       out_h=12,
-                                       out_w=12,
-                                       align_corners=False)
-            np.testing.assert_allclose(dy_result, expect, rtol=1e-02)
-
-
 class TestBicubicOpError(unittest.TestCase):
 
     def test_imperative_errors(self):
@@ -810,6 +621,44 @@ class TestBicubicOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             self.test_imperative_errors()
+
+
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestBicubicInterpOpForFloat16(unittest.TestCase):
+
+    def init_test_case(self):
+        self.interp_method = 'bicubic'
+        self.input_shape = [2, 3, 5, 5]
+        self.out_size = np.array([3, 3]).astype("int32")
+        self.align_corners = True
+        self.data_layout = 'NCHW'
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x_np = x_np.astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        y = interpolate(x,
+                        size=self.out_size.tolist(),
+                        mode=self.interp_method,
+                        align_corners=self.align_corners,
+                        data_format=self.data_layout)
+        x_g = paddle.grad(y, x)
+        y_np = y[0].numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        self.init_test_case()
+        x_np = np.random.random(self.input_shape).astype("float16")
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+
+        np.testing.assert_allclose(y_np_1, y_np_2)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2)
 
 
 if __name__ == "__main__":

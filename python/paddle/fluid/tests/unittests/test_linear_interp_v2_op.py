@@ -16,7 +16,7 @@ from __future__ import print_function
 import platform
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -104,83 +104,6 @@ def linear_interp_np(input,
         out = np.transpose(out, (0, 2, 1))  # NCHW => NHWC
 
     return out.astype(input.dtype)
-
-
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-@skip_check_grad_ci(reason="@liuyuanle \
-For the interpolation algorithm with input data of float16 type, \
-the gradient calculated by the numerical gradient method has a large error compared \
-with the theoretical gradient. Compared with the gradient results when the input \
-data type is float32, the correctness of the implementation is verified!")
-class TestLinearInterpOpFlaot16(OpTest):
-
-    def setUp(self):
-        self.python_api = linear_interp_test
-        self.out_size = None
-        self.actual_shape = None
-        self.data_layout = 'NCHW'
-        self.init_test_case()
-        self.op_type = "linear_interp_v2"
-        input_np = np.random.random(self.input_shape).astype("float16")
-
-        scale_w = 0
-        if self.data_layout == "NCHW":
-            in_w = self.input_shape[2]
-        else:
-            in_w = self.input_shape[1]
-
-        if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                self.scale = float(self.scale)
-            if isinstance(self.scale, list):
-                self.scale = float(self.scale[0])
-            out_w = int(in_w * self.scale)
-        else:
-            out_w = self.out_w
-
-        output_np = linear_interp_np(input_np, out_w, self.scale, self.out_size,
-                                     self.actual_shape, self.align_corners,
-                                     self.align_mode, self.data_layout)
-        self.inputs = {'X': input_np}
-        if self.out_size is not None:
-            self.inputs['OutSize'] = self.out_size
-        if self.actual_shape is not None:
-            self.inputs['OutSize'] = self.actual_shape
-
-        self.attrs = {
-            'out_w': self.out_w,
-            'interp_method': self.interp_method,
-            'align_corners': self.align_corners,
-            'align_mode': self.align_mode,
-            'data_layout': self.data_layout
-        }
-        if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                self.scale = [float(self.scale)]
-            self.attrs['scale'] = self.scale
-        self.outputs = {'Out': output_np}
-
-    def test_check_output(self):
-        if platform.system() == "Linux":
-            self.check_output(atol=1e-7, check_eager=True)
-        else:
-            self.check_output(atol=1e-5, check_eager=True)
-
-    def test_check_grad(self):
-        pass
-
-    def init_test_case(self):
-        self.dtype = np.float16
-        self.interp_method = 'linear'
-        self.input_shape = [1, 3, 100]
-        self.out_w = 50
-        self.scale = 0.5
-        self.out_size = np.array([
-            50,
-        ]).astype("int32")
-        self.align_corners = False
-        self.align_mode = 1
 
 
 class TestLinearInterpOp(OpTest):
@@ -449,34 +372,6 @@ class TestResizeLinearAPI(unittest.TestCase):
             np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
 
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestLinearInterpFloat16API(unittest.TestCase):
-
-    def test_case(self):
-        import paddle
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
-            input_data = np.random.random((1, 3, 64)).astype("float16")
-            scale_np = np.array([2]).astype("int64")
-            input_x = paddle.to_tensor(input_data)
-            scale = paddle.to_tensor(scale_np)
-            expect_res = linear_interp_np(input_data,
-                                          out_w=128,
-                                          align_mode=1,
-                                          align_corners=False)
-            out = interpolate(x=input_x,
-                              scale_factor=scale,
-                              mode="linear",
-                              align_mode=1,
-                              align_corners=False,
-                              data_format='NCW')
-            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
-
-
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
 
     def test_case(self):
@@ -620,6 +515,47 @@ class TestLinearInterpOpError(unittest.TestCase):
             self.assertRaises(ValueError, input_shape_error)
             self.assertRaises(ValueError, data_format_error)
             self.assertRaises(ValueError, out_shape_error)
+
+
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestLinearInterpOpForFloat16(unittest.TestCase):
+
+    def init_test_case(self):
+        self.interp_method = 'linear'
+        self.input_shape = [1, 3, 64]
+        self.scale = 2
+        self.align_corners = False
+        self.align_mode = 1
+        self.data_layout = 'NCW'
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x_np = x_np.astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        y = interpolate(x,
+                        scale_factor=self.scale,
+                        mode=self.interp_method,
+                        align_mode=self.align_mode,
+                        align_corners=self.align_corners,
+                        data_format=self.data_layout)
+        x_g = paddle.grad(y, x)
+        y_np = y[0].numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        self.init_test_case()
+        x_np = np.random.random(self.input_shape).astype("float16")
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+        # forward
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
+        # backward
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2)
 
 
 if __name__ == "__main__":
