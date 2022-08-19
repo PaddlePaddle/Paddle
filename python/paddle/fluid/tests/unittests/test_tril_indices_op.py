@@ -71,9 +71,9 @@ class TestTrilIndicesAPICaseStatic(unittest.TestCase):
                                              paddle.static.Program()):
                 data1 = paddle.tril_indices(4, 4, -1)
                 exe1 = paddle.static.Executor(place)
-                result1 = exe1.run(feed={}, fetch_list=[data1])
+                result1, = exe1.run(feed={}, fetch_list=[data1])
             expected_result1 = np.tril_indices(4, -1, 4)
-            self.assertTrue(np.allclose(result1, expected_result1))
+            np.testing.assert_allclose(result1, expected_result1, rtol=1e-05)
 
 
 class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
@@ -121,9 +121,9 @@ class TestTrilIndicesAPICaseDefault(unittest.TestCase):
                                          paddle.static.Program()):
             data = paddle.tril_indices(4, None, 2)
             exe = paddle.static.Executor(paddle.CPUPlace())
-            result = exe.run(feed={}, fetch_list=[data])
+            result, = exe.run(feed={}, fetch_list=[data])
         expected_result = np.tril_indices(4, 2)
-        self.assertTrue(np.allclose(result, expected_result))
+        np.testing.assert_allclose(result, expected_result, rtol=1e-05)
 
         with fluid.dygraph.base.guard(paddle.CPUPlace()):
             out = paddle.tril_indices(4, None, 2)
