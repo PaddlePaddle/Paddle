@@ -23,24 +23,24 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/poisson_kernel.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 namespace phi {
 
 template <typename T>
 __global__ void GetPoisson(
     const T* in, T* out, const int N, unsigned int seed, unsigned int offset) {
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < N) {
-#ifdef __NVCC__
-    curandStatePhilox4_32_10_t state;
-    curand_init(seed, idx, offset, &state);
-    out[idx] = static_cast<T>(curand_poisson(&state, in[idx]));
-#elif __HIPCC__
-    hiprandStatePhilox4_32_10_t state;
-    hiprand_init(seed, idx, offset, &state);
-    out[idx] = static_cast<T>(hiprand_poisson(&state, in[idx]));
-#endif
-  }
+    CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t){
+      #ifdef __NVCC__
+          curandStatePhilox4_32_10_t state;
+          curand_init(seed, idx, offset, &state);
+          out[idx] = static_cast<T>(curand_poisson(&state, in[idx]));
+      #elif __HIPCC__
+          hiprandStatePhilox4_32_10_t state;
+          hiprand_init(seed, idx, offset, &state);
+          out[idx] = static_cast<T>(hiprand_poisson(&state, in[idx]));
+      #endif
+    }
 }
 
 template <typename T, typename Context>
@@ -53,6 +53,7 @@ void PoissonKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   int block_size = std::min(kMaxBlockDim, ctx.GetMaxThreadsPerBlock());
   dim3 dim_block(block_size);
   dim3 dim_grid((size + block_size - 1) / block_size);
+  paddle::platform::LimitGridDim(ctx, &dim_grid);
 
   auto gen_cuda = ctx.GetGenerator();
   auto seed_offset = gen_cuda->IncrementOffset(20);
