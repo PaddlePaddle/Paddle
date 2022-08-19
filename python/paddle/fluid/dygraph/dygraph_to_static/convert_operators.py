@@ -414,6 +414,8 @@ def convert_len(var):
             # Note: Length of var may be known ahead of time in dygraph,
             # but it probably represents batch size which can be variant.
             # so we return a variable dynamically inferred from var.shape.
+            if var.shape[0] > 0 and var.type == core.VarDesc.VarType.LOD_TENSOR:
+                return var.shape[0]
             return nn.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             return control_flow.array_length(var)
@@ -447,7 +449,10 @@ class VariableTuple:
     def __init__(self, var, start=0):
         self.var = var
         self.len = convert_len(var)
-        self.rag = paddle_range(start, start + self.len, 1, paddle.int64)
+        if isinstance(self.len, Variable):
+            self.rag = paddle_range(start, start + self.len, 1, paddle.int64)
+        else:
+            self.rag = range(start, start + self.len)
 
     def __getitem__(self, idx):
         return self.rag[idx], self.var[idx]

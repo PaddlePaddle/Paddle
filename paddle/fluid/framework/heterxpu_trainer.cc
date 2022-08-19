@@ -514,7 +514,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
     }
   }
 #ifdef PADDLE_WITH_CUDA
-  auto* dev_ctx = static_cast<platform::CUDADeviceContext*>(
+  auto* dev_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaEventRecord(context->event_, dev_ctx->stream()));

@@ -17,9 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    beam_search,
-    ops::BeamSearchOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::BeamSearchOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::BeamSearchOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::BeamSearchOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(beam_search,
+                        ops::BeamSearchOpKernel<phi::GPUContext, float>,
+                        ops::BeamSearchOpKernel<phi::GPUContext, double>,
+                        ops::BeamSearchOpKernel<phi::GPUContext, int>,
+                        ops::BeamSearchOpKernel<phi::GPUContext, int64_t>);

@@ -315,7 +315,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
             non_differentiable.end()) {
           outputs_autograd_meta[i][j]->SetStopGradient(true);
         } else {
-          outputs_autograd_meta[i][j]->WeakSetStopGradient(false);
+          outputs_autograd_meta[i][j]->SetStopGradient(false);
         }
       }
     }
@@ -383,6 +383,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   Py_XDECREF(kwargs_value_list);
   Py_XDECREF(backward_function);
   Py_XDECREF(forward_fn);
+  Py_XDECREF(ctx);
 
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL

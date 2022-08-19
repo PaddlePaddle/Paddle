@@ -206,11 +206,9 @@ class TestElementwiseMinOpFP16(unittest.TestCase):
         z_1, x_g_1, y_g_1 = self.get_out_and_grad(x_np, y_np, axis, place,
                                                   False)
         z_2, x_g_2, y_g_2 = self.get_out_and_grad(x_np, y_np, axis, place, True)
-        self.assertTrue(np.array_equal(z_1, z_2), "{} vs {}".format(z_1, z_2))
-        self.assertTrue(np.array_equal(x_g_1, x_g_2),
-                        "{} vs {}".format(x_g_1, x_g_2))
-        self.assertTrue(np.array_equal(y_g_1, y_g_2),
-                        "{} vs {}".format(y_g_1, y_g_2))
+        np.testing.assert_array_equal(z_1, z_2)
+        np.testing.assert_array_equal(x_g_1, x_g_2)
+        np.testing.assert_array_equal(y_g_1, y_g_2)
 
     def test_main(self):
         self.check_main((13, 17), (13, 17))

@@ -58,11 +58,9 @@ struct TensorCopyVisitor {
   void apply() const {
     // TODO(Yancey1989): support other place
     phi::CPUPlace cpu;
-    paddle::memory::Copy(cpu,
-                         dst_->mutable_data<T>(cpu) + dst_offset_,
-                         cpu,
-                         src_.data<T>() + src_offset_,
-                         size_ * sizeof(T));
+    std::memcpy(dst_->mutable_data<T>(cpu) + dst_offset_,
+                src_.data<T>() + src_offset_,
+                size_ * sizeof(T));
   }
 
   phi::DenseTensor* dst_;

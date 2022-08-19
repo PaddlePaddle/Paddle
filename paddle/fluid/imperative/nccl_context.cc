@@ -85,7 +85,7 @@ void NCCLParallelContext::Init() {
     VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
             << " ring id: " << ring_id;
-    // it will assign nccl_comm in CUDADeviceContext within ring_id
+    // it will assign nccl_comm in phi::GPUContext within ring_id
     platform::NCCLCommContext::Instance().CreateComm(&nccl_ids[ring_id],
                                                      strategy_.nranks_,
                                                      strategy_.local_rank_,
@@ -119,7 +119,7 @@ void NCCLParallelContext::InitWithRingID(int ring_id) {
   VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
           << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
           << " ring id: " << ring_id;
-  // it will assign nccl_comm in CUDADeviceContext within ring_id
+  // it will assign nccl_comm in phi::GPUContext within ring_id
   platform::NCCLCommContext::Instance().CreateComm(
       &nccl_ids[0], strategy_.nranks_, strategy_.local_rank_, gpu_id, ring_id);
 
@@ -177,7 +177,7 @@ void NCCLParallelContext::WaitCompute(int ring_id) {
                         ring_id,
                         compute_events_.size()));
 
-  auto compute_stream = static_cast<platform::CUDADeviceContext *>(
+  auto compute_stream = static_cast<phi::GPUContext *>(
                             platform::DeviceContextPool::Instance().Get(place_))
                             ->stream();
   auto comm_stream =
@@ -207,7 +207,7 @@ void NCCLParallelContext::WaitComm(int ring_id) {
                         ring_id,
                         comm_events_.size()));
 
-  auto compute_stream = static_cast<platform::CUDADeviceContext *>(
+  auto compute_stream = static_cast<phi::GPUContext *>(
                             platform::DeviceContextPool::Instance().Get(place_))
                             ->stream();
   auto comm_stream =
@@ -225,7 +225,7 @@ void NCCLParallelContext::WaitComm(int ring_id) {
 }
 
 void NCCLParallelContext::SynchronizeCompute() {
-  auto *compute_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+  auto *compute_dev_ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(place_));
   compute_dev_ctx->Wait();
 }

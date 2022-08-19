@@ -314,8 +314,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
                 learning_rate=0.003,
                 parameter_list=(linear.parameters() + linear2.parameters()))
             optimizer.minimize(out2)
-            self.assertTrue(
-                np.array_equal(linear2_origin, linear2.weight.numpy()))
+            np.testing.assert_array_equal(linear2_origin,
+                                          linear2.weight.numpy())
             self.assertFalse(
                 np.array_equal(linear_origin, linear.weight.numpy()))
 
@@ -344,10 +344,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
                 learning_rate=0.003,
                 parameter_list=(linear.parameters() + linear2.parameters()))
             optimizer.minimize(out2)
-            self.assertTrue(
-                np.array_equal(linear2_origin, linear2.weight.numpy()))
-            self.assertTrue(np.array_equal(linear_origin,
-                                           linear.weight.numpy()))
+            np.testing.assert_array_equal(linear2_origin,
+                                          linear2.weight.numpy())
+            np.testing.assert_array_equal(linear_origin, linear.weight.numpy())
             try:
                 linear2.weight.gradient()
             except ValueError as e:

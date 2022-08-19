@@ -77,18 +77,24 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
                     custom_ops.custom_tanh, device, dtype, x)
                 pd_out, pd_dx_grad, pd_dout = custom_tanh_double_grad_dynamic(
                     paddle.tanh, device, dtype, x)
-                self.assertTrue(
-                    np.allclose(out, pd_out),
-                    "custom op out: {},\n paddle api out: {}".format(
+                np.testing.assert_allclose(
+                    out,
+                    pd_out,
+                    rtol=1e-05,
+                    err_msg='custom op out: {},\n paddle api out: {}'.format(
                         out, pd_out))
-                self.assertTrue(
-                    np.allclose(dx_grad, pd_dx_grad),
-                    "custom op dx grad: {},\n paddle api dx grad: {}".format(
-                        dx_grad, pd_dx_grad))
-                self.assertTrue(
-                    np.allclose(dout, pd_dout),
-                    "custom op out grad: {},\n paddle api out grad: {}".format(
-                        dout, pd_dout))
+                np.testing.assert_allclose(
+                    dx_grad,
+                    pd_dx_grad,
+                    rtol=1e-05,
+                    err_msg='custom op dx grad: {},\n paddle api dx grad: {}'.
+                    format(dx_grad, pd_dx_grad))
+                np.testing.assert_allclose(
+                    dout,
+                    pd_dout,
+                    rtol=1e-05,
+                    err_msg='custom op out grad: {},\n paddle api out grad: {}'.
+                    format(dout, pd_dout))
 
     def test_func_double_grad_dynamic(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})

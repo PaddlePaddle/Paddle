@@ -150,7 +150,7 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using GPUCtx = paddle::platform::CUDADeviceContext;
+using GPUCtx = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(center_loss,
                         ops::CenterLossCUDAKernel<GPUCtx, float>,
                         ops::CenterLossCUDAKernel<GPUCtx, double>);

@@ -556,7 +556,7 @@ def predict_dygraph_jit(args, data):
 def predict_analysis_inference(args, data):
     output = PredictorTools(args.model_save_dir, args.model_filename,
                             args.params_filename, [data])
-    out = output()
+    out, = output()
     return out
 
 
@@ -585,8 +585,11 @@ class TestMobileNet(unittest.TestCase):
     def assert_same_loss(self, model_name):
         dy_out = self.train(model_name, to_static=False)
         st_out = self.train(model_name, to_static=True)
-        self.assertTrue(np.allclose(dy_out, st_out),
-                        msg="dy_out: {}, st_out: {}".format(dy_out, st_out))
+        np.testing.assert_allclose(dy_out,
+                                   st_out,
+                                   rtol=1e-05,
+                                   err_msg='dy_out: {}, st_out: {}'.format(
+                                       dy_out, st_out))
 
     def assert_same_predict(self, model_name):
         self.args.model = model_name
@@ -602,15 +605,24 @@ class TestMobileNet(unittest.TestCase):
         st_pre = predict_static(self.args, image)
         dy_jit_pre = predict_dygraph_jit(self.args, image)
         predictor_pre = predict_analysis_inference(self.args, image)
-        self.assertTrue(np.allclose(dy_pre, st_pre),
-                        msg="dy_pre:\n {}\n, st_pre: \n{}.".format(
-                            dy_pre, st_pre))
-        self.assertTrue(np.allclose(dy_jit_pre, st_pre),
-                        msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(
-                            dy_jit_pre, st_pre))
-        self.assertTrue(np.allclose(predictor_pre, st_pre, atol=1e-5),
-                        msg="inference_pred_res:\n {}\n, st_pre: \n{}.".format(
-                            predictor_pre, st_pre))
+        np.testing.assert_allclose(
+            dy_pre,
+            st_pre,
+            rtol=1e-05,
+            err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre))
+        np.testing.assert_allclose(
+            dy_jit_pre,
+            st_pre,
+            rtol=1e-05,
+            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
+                dy_jit_pre, st_pre))
+        np.testing.assert_allclose(
+            predictor_pre,
+            st_pre,
+            rtol=1e-05,
+            atol=1e-05,
+            err_msg='inference_pred_res:\n {}\n, st_pre: \n{}.'.format(
+                predictor_pre, st_pre))
 
     def test_mobile_net(self):
         # MobileNet-V1

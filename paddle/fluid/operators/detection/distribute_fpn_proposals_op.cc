@@ -109,7 +109,7 @@ class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The referring scale of FPN layer with"
                  " specified level");
     AddAttr<bool>("pixel_offset",
-                  "(bool, default True),",
+                  "(bool, default True),"
                   "If true, im_shape pixel offset is 1.")
         .SetDefault(true);
     AddComment(R"DOC(

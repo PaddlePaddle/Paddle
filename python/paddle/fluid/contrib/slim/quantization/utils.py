@@ -108,6 +108,7 @@ _act_supported_quantizable_op_type = [
     "square",
     "softplus",
     "shuffle_channel",
+    "reduce_max",
 ]
 
 _out_scale_op_list = list(
@@ -212,6 +213,7 @@ _op_real_in_out_name = {
     "square": [["X"], ["Out"]],
     "softplus": [["X"], ["Out"]],
     "shuffle_channel": [["X"], ["Out"]],
+    "reduce_max": [["X"], ["Out"]],
 }
 
 

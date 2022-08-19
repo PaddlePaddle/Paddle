@@ -37,7 +37,7 @@ template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 template <typename T>
-class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
+class FusedBatchNormActKernel<phi::GPUContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -88,7 +88,7 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
     const DataLayout data_layout = DataLayout::kNHWC;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     if ((N * H * W * D) == 1) {
       // Only 1 element in normalization dimension,
       // skip the batch norm calculation, let y = act(x).
@@ -217,7 +217,7 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
 };
 
 template <typename T>
-class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
+class FusedBatchNormActGradKernel<phi::GPUContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -268,7 +268,7 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
         platform::errors::PreconditionNotMet(
             "The size of scale is equal to the channel of Input(X)."));
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     if ((N * H * W * D) == 1) {
       if (act_type == "relu") {
         auto x_v = framework::EigenVector<T>::Flatten(*x);
@@ -281,9 +281,7 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
         PADDLE_THROW(
             platform::errors::Unimplemented("Unsupported activation type"));
       }
-      phi::funcs::SetConstant<platform::CUDADeviceContext,
-                              BatchNormParamType<T>>
-          functor;
+      phi::funcs::SetConstant<phi::GPUContext, BatchNormParamType<T>> functor;
       functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
       functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
       return;
@@ -402,12 +400,12 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     fused_batch_norm_act,
-    ops::FusedBatchNormActKernel<plat::CUDADeviceContext, float>,
-    ops::FusedBatchNormActKernel<plat::CUDADeviceContext, double>,
-    ops::FusedBatchNormActKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::FusedBatchNormActKernel<phi::GPUContext, float>,
+    ops::FusedBatchNormActKernel<phi::GPUContext, double>,
+    ops::FusedBatchNormActKernel<phi::GPUContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     fused_batch_norm_act_grad,
-    ops::FusedBatchNormActGradKernel<plat::CUDADeviceContext, float>,
-    ops::FusedBatchNormActGradKernel<plat::CUDADeviceContext, double>,
-    ops::FusedBatchNormActGradKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::FusedBatchNormActGradKernel<phi::GPUContext, float>,
+    ops::FusedBatchNormActGradKernel<phi::GPUContext, double>,
+    ops::FusedBatchNormActGradKernel<phi::GPUContext, plat::float16>);
 #endif

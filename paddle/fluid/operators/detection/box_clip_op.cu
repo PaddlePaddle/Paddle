@@ -75,7 +75,6 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    box_clip,
-    ops::GPUBoxClipKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GPUBoxClipKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(box_clip,
+                        ops::GPUBoxClipKernel<phi::GPUContext, float>,
+                        ops::GPUBoxClipKernel<phi::GPUContext, double>);

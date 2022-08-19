@@ -133,7 +133,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->bfloat16_enabled_op_types()));
 #endif
     } else if (pass_name == "tensorrt_subgraph_pass") {
-      pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
+      pass->Set("workspace_size",
+                new int64_t(argument->tensorrt_workspace_size()));
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
       pass->Set("min_subgraph_size",
                 new int(argument->tensorrt_min_subgraph_size()));

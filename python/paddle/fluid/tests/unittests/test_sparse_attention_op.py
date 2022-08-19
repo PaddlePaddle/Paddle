@@ -396,8 +396,10 @@ class TestSparseAttentionAPI(unittest.TestCase):
                 expected_result, __, __ = ref_batch_sparse_attention(
                     Q_np, K_np, V_np, offset_np, columns_np)
 
-            self.assertTrue(
-                np.allclose(fetches_result, expected_result, atol=1e-5))
+            np.testing.assert_allclose(fetches_result,
+                                       expected_result,
+                                       rtol=1e-05,
+                                       atol=1e-05)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -453,8 +455,10 @@ class TestSparseAttentionAPI(unittest.TestCase):
                 query, key, value, offset, columns)
             numpy_result = numpy_result.astype(self.dtype)
 
-        self.assertTrue(
-            np.allclose(paddle_result.numpy(), numpy_result, atol=1e-5))
+        np.testing.assert_allclose(paddle_result.numpy(),
+                                   numpy_result,
+                                   rtol=1e-05,
+                                   atol=1e-05)
 
 
 class TestSparseAttentionAPITestFloat(TestSparseAttentionAPI):

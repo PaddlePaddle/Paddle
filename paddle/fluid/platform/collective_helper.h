@@ -51,7 +51,6 @@ namespace platform {
 //
 // The NCCLComm instance is created and reversed in the NCCLCommContext
 // singleton with a global user specified group id.
-class CUDADeviceContext;
 
 class NCCLComm {
  public:
@@ -63,7 +62,7 @@ class NCCLComm {
   virtual gpuStream_t stream() const = 0;
   virtual gpuEvent_t compute_event() const = 0;
   virtual gpuEvent_t comm_event() const = 0;
-  virtual CUDADeviceContext* dev_context() const = 0;
+  virtual phi::GPUContext* dev_context() const = 0;
   virtual ~NCCLComm() = default;
 };
 

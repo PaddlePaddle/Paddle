@@ -35,6 +35,8 @@ env_args_mapping = {
     'PADDLE_TRAINERS_ENDPOINTS': 'trainers',
     'PADDLE_GLOO_PORT': 'gloo_port',
     'PADDLE_WITH_GLOO': 'with_gloo',
+    'PADDLE_START_PORT': 'start_port',
+    'PADDLE_IPS': 'ips',
 }
 
 
@@ -96,11 +98,24 @@ def parse_args():
                             help="unique id of the job. Default default")
 
     base_group.add_argument("--devices",
+                            "--gpus",
+                            "--npus",
+                            "--xpus",
                             type=str,
                             default=None,
-                            help="accelerate devices. as --gpus,npus,xps")
+                            help="accelerate devices. as --gpus,npus,xpus")
 
     base_group.add_argument("--host", type=str, default=None, help="host ip")
+
+    base_group.add_argument("--ips",
+                            type=str,
+                            default=None,
+                            help="nodes ips, e.g. 10.10.1.1,10.10.1.2")
+
+    base_group.add_argument("--start_port",
+                            type=int,
+                            default=6070,
+                            help="fix port start with")
 
     base_group.add_argument("training_script",
                             type=str,

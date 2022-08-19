@@ -420,6 +420,10 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(std::string, attr))));
               break;
+            case framework::proto::AttrType::BOOLEAN:
+              kernel_ctx->EmplaceBackAttr(
+                  std::move(phi::Scalar(PADDLE_GET_CONST(bool, attr))));
+              break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
