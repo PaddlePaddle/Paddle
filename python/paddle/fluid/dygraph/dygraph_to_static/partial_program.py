@@ -556,6 +556,7 @@ class PartialProgramLayer:
                 var_base = core.eager.Tensor(var_desc.dtype(), var_desc.shape(),
                                              var_desc.name(), var_desc.type(),
                                              False)
+            var_base.stop_gradient = var.stop_gradient
             out_varbase_map[var_desc.name()] = var_base
             return var_base
 
