@@ -1007,24 +1007,8 @@ class TestMaxPJVPAndTranspose(TestAddPJVPAndTranspose):
             'max_p',
             # jvp op:
             'fill_constant_p',
-            'fill_constant_p',
-            'fill_constant_p',
             'eq_p',
             'select_p',
-            'eq_p',
-            'select_p',
-            'div_p',
-            'mul_p',
-            'fill_constant_p',
-            'fill_constant_p',
-            'fill_constant_p',
-            'eq_p',
-            'select_p',
-            'eq_p',
-            'select_p',
-            'div_p',
-            'mul_p',
-            'add_p'
             # transpose op:
         ]
 

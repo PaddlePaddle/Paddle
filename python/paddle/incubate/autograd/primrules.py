@@ -752,27 +752,22 @@ def pow_jvp(op, x_dot, y_dot):
 
 @REGISTER_JVP('max_p')
 def max_jvp(op, x_dot, y_dot):
-
-    def _balanced_eq(x, z, y):
-        z_zeros = fill_const(value=0.0, shape=z.shape, dtype=z.dtype)
-        z_ones = fill_const(value=1.0, shape=z.shape, dtype=z.dtype)
-        z_twos = fill_const(value=2.0, shape=z.shape, dtype=z.dtype)
-        return div(select(eq(x, z), z_ones, z_zeros),
-                   select(eq(y, z), z_twos, z_ones))
-
     if x_dot is None and y_dot is None:
         return None
+
     x, y = op_position_inputs(op)
     z = op_position_output(op)
+    z_zeros = fill_const(value=0.0, shape=z.shape, dtype=z.dtype)
+
+    # To make the grad of max_p consistent with paddle.maximum when x==y,
+    # we just let z_dot = y_dot when compute z_dot to y and x==y,
+    # instead of using balance_eq like Jax.
     if y_dot is None:
-        return mul(x_dot, _balanced_eq(x, z, y))
+        return select(eq(y, z), z_zeros, x_dot)
     elif x_dot is None:
-        return mul(y_dot, _balanced_eq(y, z, x))
+        return select(eq(y, z), y_dot, z_zeros)
     else:
-        t1 = mul(x_dot, _balanced_eq(x, z, y))
-        t2 = mul(y_dot, _balanced_eq(y, z, x))
-        z_dot = add(t1, t2)
-        return z_dot
+        return select(eq(y, z), y_dot, x_dot)
 
 
 ## Register transpose rules
