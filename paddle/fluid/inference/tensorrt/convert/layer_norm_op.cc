@@ -60,14 +60,6 @@ class LayerNormOpConverter : public OpConverter {
       for (int i = 1; i < begin_norm_axis; i++) {
         statis_num *= X->getDimensions().d[i];
       }
-<<<<<<< HEAD
-      int statis_num = 1;
-      for (int i = 1; i < begin_norm_axis; i++){
-        statis_num *= X->getDimensions().d[i];
-      }
-=======
-
->>>>>>> b31345a75523908c7b5daab3e5b78529c71a3a46
       std::vector<int64_t> mean_shape{statis_num};
       std::vector<int64_t> variance_shape{statis_num};
       plugin::LayerNormPluginDynamic* plugin =

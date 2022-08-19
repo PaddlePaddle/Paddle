@@ -188,16 +188,10 @@ int LayerNormPluginDynamic::enqueue(
   for (int i = 0; i < input_dims.nbDims; i++) {
     input_shape.push_back(input_dims.d[i]);
   }
-<<<<<<< HEAD
 
   mean_shape_[0]*=input_dims.d[0]; // times batch
   variance_shape_[0]*=input_dims.d[0]; // times batch
 
-=======
-  mean_shape_[0] *= input_dims.d[0];  // times batch in dynamic shape runtime
-  variance_shape_[0] *=
-      input_dims.d[0];  // times batch in dynamic shape runtime
->>>>>>> b31345a75523908c7b5daab3e5b78529c71a3a46
   const auto input_ddim = phi::make_ddim(input_shape);
   auto matrix_dim = phi::flatten_to_2d(input_ddim, begin_norm_axis);
   int feature_size = static_cast<int>(matrix_dim[1]);
@@ -226,11 +220,13 @@ int LayerNormPluginDynamic::enqueue(
     bias_t.Resize(phi::make_ddim({feature_size}));
     mean_t.Resize(phi::make_ddim(mean_shape_));
     variance_t.Resize(phi::make_ddim(variance_shape_));
-    printf("@@@@ variance shape in plugin \r\n");
-    for(int i=0;i<variance_shape_.size();i++){
-      printf("%d, ", variance_shape_[i]);
-    }
-    printf("\r\n");
+    
+    // printf("@@@@ variance shape in plugin \r\n");
+    // for(int i=0;i<variance_shape_.size();i++){
+    //   printf("%d, ", variance_shape_[i]);
+    // }
+    // printf("\r\n");
+    
     float *scale_d =
         scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
     float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));

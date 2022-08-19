@@ -369,7 +369,7 @@ int QkvToContextPluginDynamic::enqueue(
     float *qk_bias = const_cast<float *>(static_cast<const float *>(inputs[1]));
     // printf("@@@ qkv input0 addres:%X, input1 address:%X \r\n",
     //       input0_data, qk_bias);
-    printf("@#@@@ qkv input0 data \r\n");
+    // printf("@#@@@ qkv input0 data \r\n");
     // print_float<float><<<1,1>>>(input0_data,0,input_num);
     print_float<float><<<1,1>>>(input0_data,0,49);
 
@@ -402,12 +402,15 @@ int QkvToContextPluginDynamic::enqueue(
           platform::CUDAPlace(device_id));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
-      broadcast_batch<float><<<grid, block, 0, stream>>>(
-          static_cast<const float *>(inputs[1]), 
-          temp_qk_bias, 
-          seq_len, 
-          head_number_, 
-          window_num);
+      // origin batch_num=1, batch==window_num, no need for broadcast
+      if(batch!=window_num){
+        broadcast_batch<float><<<grid, block, 0, stream>>>(
+            static_cast<const float *>(inputs[1]), 
+            temp_qk_bias, 
+            seq_len, 
+            head_number_, 
+            window_num);
+      }
       qk_bias = temp_qk_bias;
     }
 
@@ -453,12 +456,12 @@ int QkvToContextPluginDynamic::enqueue(
     transpose<float><<<grid, block, 0, stream>>>(
         tptr, output, batch, seq_len, head_number_, head_size_);
 
-    cudaDeviceSynchronize();
-    printf("@#@@@ qkv output data \r\n");
-    // print_float<float><<<1,1>>>(output,0,batch*seq_len*head_number_*head_size_);
-    print_float<float><<<1,1>>>(output,0,49);
-    cudaDeviceSynchronize();
-    printf("\r\n");
+    // cudaDeviceSynchronize();
+    // printf("@#@@@ qkv output data \r\n");
+    // // print_float<float><<<1,1>>>(output,0,batch*seq_len*head_number_*head_size_);
+    // print_float<float><<<1,1>>>(output,0,49);
+    // cudaDeviceSynchronize();
+    // printf("\r\n");
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
@@ -516,12 +519,14 @@ int QkvToContextPluginDynamic::enqueue(
               platform::CUDAPlace(device_id)));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
-      broadcast_batch<half><<<grid, block, 0, stream>>>(
-          static_cast<const half *>(inputs[1]), 
-          temp_qk_bias, 
-          seq_len, 
-          head_number_, 
-          window_num);
+      if(batch!=window_num){
+        broadcast_batch<half><<<grid, block, 0, stream>>>(
+            static_cast<const half *>(inputs[1]), 
+            temp_qk_bias, 
+            seq_len, 
+            head_number_, 
+            window_num);
+      }
       qk_bias = temp_qk_bias;
     }
     
