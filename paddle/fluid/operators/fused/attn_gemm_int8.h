@@ -20,9 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/cublaslt.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename T>
 __global__ void quantize_kernel(
