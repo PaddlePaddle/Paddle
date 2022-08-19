@@ -111,6 +111,66 @@ __global__ void FusedDropoutActBias(Functor act,
 
 /**
  * @brief dst = dropout(activation(src + bias));
+ * the src, mask and dst shape is (rows, cols)
+ * the bias shape is (1, cols)
+ */
+template <typename T, typename MaskType, int VecSize, typename Functor>
+__global__ void FusedDropoutActBiasQDQ(Functor act,
+                                       const uint64_t seed,
+                                       const uint64_t rows,
+                                       const uint64_t cols,
+                                       const int increment,
+                                       const float dropout_prob,
+                                       const bool is_upscale_in_train,
+                                       const bool is_test,
+                                       const int32_t *__restrict__ src,
+                                       const T *__restrict__ bias,
+                                       int8_t *dst,
+                                       MaskType *mask,
+                                       const float *quant_out_scale_data,
+                                       const int quant_layer_offset,
+                                       const float quant_in_scale_data) {
+  int col_id = blockDim.x * blockIdx.x + threadIdx.x;
+  int row_id = blockIdx.y;
+  int idx = row_id * cols + col_id;
+
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, idx, increment, &state);
+
+  const T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+
+  for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
+    for (int i = col_id * VecSize; i < cols;
+         i += blockDim.x * gridDim.x * VecSize) {
+      FusedResidualDropoutBiasOneThreadQDQ<T,
+                                           MaskType,
+                                           VecSize,
+                                           false,
+                                           true,
+                                           Functor>(r,
+                                                    i,
+                                                    cols,
+                                                    &state,
+                                                    dropout_prob,
+                                                    factor,
+                                                    src,
+                                                    nullptr,
+                                                    bias,
+                                                    dst,
+                                                    mask,
+                                                    is_test,
+                                                    nullptr,
+                                                    nullptr,
+                                                    act,
+                                                    quant_out_scale_data,
+                                                    quant_layer_offset,
+                                                    quant_in_scale_data);
+    }
+  }
+}
+
+/**
+ * @brief dst = dropout(activation(src + bias));
  */
 template <typename T, typename MaskType, typename Functor>
 void LaunchDropoutActBias(Functor act_functor,
@@ -166,6 +226,75 @@ void LaunchDropoutActBias(Functor act_functor,
             bias,
             dst,
             mask_data);
+  }
+}
+
+/**
+ * @brief dst = dropout(activation(src + bias));
+ */
+template <typename T, typename MaskType, typename Functor>
+void LaunchDropoutActBiasQDQ(Functor act_functor,
+                             const uint64_t seed,
+                             const uint32_t rows,
+                             const uint32_t cols,
+                             const int increment,
+                             const float dropout_prob,
+                             const bool is_upscale_in_train,
+                             const bool is_test,
+                             const int32_t *src,
+                             const T *bias,
+                             int8_t *dst,
+                             MaskType *mask_data,
+                             const phi::GPUContext &ctx,
+                             const float *quant_out_scale_data,
+                             const int quant_layer_offset,
+                             const float quant_in_scale_data) {
+  // dropout_prob == 1.0f
+  if (std::abs(dropout_prob - 1.0f) < 1e-5) {
+    SetZero<int8_t>(ctx, dst, rows * cols);
+    SetZero<MaskType>(ctx, mask_data, rows * cols);
+    return;
+  }
+
+  const int VecSize = MAX_CACHE_BYTES / sizeof(T);
+  const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
+  const auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
+  if (cols % VecSize == 0) {
+    FusedDropoutActBiasQDQ<T, MaskType, VecSize, Functor>
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            act_functor,
+            seed,
+            rows,
+            cols,
+            increment,
+            dropout_prob,
+            is_upscale_in_train,
+            is_test,
+            src,
+            bias,
+            dst,
+            mask_data,
+            quant_out_scale_data,
+            quant_layer_offset,
+            quant_in_scale_data);
+  } else {
+    FusedDropoutActBiasQDQ<T, MaskType, 1, Functor>
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            act_functor,
+            seed,
+            rows,
+            cols,
+            increment,
+            dropout_prob,
+            is_upscale_in_train,
+            is_test,
+            src,
+            bias,
+            dst,
+            mask_data,
+            quant_out_scale_data,
+            quant_layer_offset,
+            quant_in_scale_data);
   }
 }
 

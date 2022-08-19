@@ -329,11 +329,11 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       if (pre_layer_norm) {
         out_linear_compute.ComputeForward(
             out_linear_weights[i], &fmha_out, nullptr, buf1, nullptr);
-        AllReduce<T>(*buf1, ring_id, dev_ctx);
+        AllReduce<T>(*buf1, ring_id, buf1->numel(), dev_ctx);
       } else {
         out_linear_compute.ComputeForward(
             out_linear_weights[i], &fmha_out, nullptr, buf0, nullptr);
-        AllReduce<T>(*buf0, ring_id, dev_ctx);
+        AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step4";
@@ -412,9 +412,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       if (pre_layer_norm) {
-        AllReduce<T>(*buf1, ring_id, dev_ctx);
+        AllReduce<T>(*buf1, ring_id, buf1->numel(), dev_ctx);
       } else {
-        AllReduce<T>(*buf0, ring_id, dev_ctx);
+        AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.1";

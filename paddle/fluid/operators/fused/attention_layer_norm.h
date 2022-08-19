@@ -59,6 +59,34 @@ class AttnLayerNorm {
     }
   }
 
+  void ComputeForwardQ(const T* x_data,
+                       const LayerNormParamType<T>* scale_data,
+                       const LayerNormParamType<T>* bias_data,
+                       int8_t* y_data,
+                       LayerNormParamType<T>* mean_data,
+                       LayerNormParamType<T>* var_data,
+                       const float quant_in_scale_data) {
+    auto stream = dev_ctx_.stream();
+
+    switch (GetDesiredBlockDim(feature_size_)) {
+      FIXED_BLOCK_DIM_CASE(
+          LayerNormForwardQ<T, LayerNormParamType<T>, kBlockDim>
+          <<<batch_size_, kBlockDim, 0, stream>>>(x_data,
+                                                  scale_data,
+                                                  bias_data,
+                                                  y_data,
+                                                  mean_data,
+                                                  var_data,
+                                                  epsilon_,
+                                                  feature_size_,
+                                                  quant_in_scale_data));
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Feature_size must be larger than 1"));
+        break;
+    }
+  }
+
   void ComputeBackward(const T* x_data,
                        const T* d_y_data,
                        const LayerNormParamType<T>* scale_data,

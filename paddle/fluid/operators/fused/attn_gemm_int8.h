@@ -193,8 +193,8 @@ class AttnMatmulINT8 {
     if (compute_bias_) {
       // bias_out = output + bias
       VLOG(1) << "[DEBUG] compute_bias_";
-      std::vector<const Tensor*> ins = {output, bias};
-      std::vector<Tensor*> outs = {bias_out};
+      std::vector<const framework::Tensor*> ins = {output, bias};
+      std::vector<framework::Tensor*> outs = {bias_out};
       phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
           dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
       PADDLE_ENFORCE_EQ(
@@ -208,9 +208,7 @@ class AttnMatmulINT8 {
       framework::Tensor* input,  // [int8]  workspace
       const framework::Tensor* bias,  // [fp16/32]
       framework::Tensor* output,      // [int32]  workspace
-      framework::Tensor* bias_out,
-      cudaStream_t* streams,
-      cudaEvent_t* stream_events) {
+      framework::Tensor* bias_out) {
     int m = m_, k = k_, n = n_;
 
     VLOG(1) << "[DEBUG] GEMM";
@@ -232,8 +230,6 @@ class AttnMatmulINT8 {
           output,  // [fp16/32] has been dequantized/detranspose/detranbsform
       framework::Tensor* output_tmp,  // [int32]  workspace
       framework::Tensor* bias_out,
-      cudaStream_t* streams,
-      cudaEvent_t* stream_events,
       const framework::Tensor* quant_out_scale,
       const int layer_offset) {
     int m = m_, k = k_, n = n_;
@@ -262,8 +258,8 @@ class AttnMatmulINT8 {
     if (compute_bias_) {
       // bias_out = output + bias
       VLOG(1) << "[DEBUG] compute_bias_";
-      std::vector<const Tensor*> ins = {output, bias};
-      std::vector<Tensor*> outs = {bias_out};
+      std::vector<const framework::Tensor*> ins = {output, bias};
+      std::vector<framework::Tensor*> outs = {bias_out};
       phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
           dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
       PADDLE_ENFORCE_EQ(
@@ -279,9 +275,7 @@ class AttnMatmulINT8 {
       framework::Tensor* input_tmp,     // [int8]  workspace
       const framework::Tensor* bias,    // [fp16/32]
       framework::Tensor* output,        // [int32]
-      framework::Tensor* bias_out,
-      cudaStream_t* streams,
-      cudaEvent_t* stream_events) {
+      framework::Tensor* bias_out) {
     int m = m_, k = k_, n = n_;
     VLOG(1) << "[DEBUG] quantize_kernelLauncher";
     quantize_kernelLauncher<T>(input->data<T>(),

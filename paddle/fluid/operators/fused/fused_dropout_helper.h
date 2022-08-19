@@ -161,6 +161,32 @@ class FusedDropoutHelper {
                                            ctx);
   }
 
+  void ResidualDropoutBiasDQ(const phi::GPUContext& ctx,
+                             const int32_t* src,
+                             const T* residual,
+                             const T* bias,
+                             T* out,
+                             MaskType* mask,
+                             const float* quant_out_scale_data,
+                             const int quant_layer_offset) {
+    auto increment = GetIncrement(ctx);
+    LaunchResidualDropoutBiasDQ<T, MaskType>(rows_,
+                                             cols_,
+                                             increment,
+                                             dropout_param_.seed,
+                                             dropout_param_.dropout_prob,
+                                             dropout_param_.is_test,
+                                             dropout_param_.is_upscale_in_train,
+                                             src,
+                                             residual,
+                                             bias,
+                                             mask,
+                                             out,
+                                             ctx,
+                                             quant_out_scale_data,
+                                             quant_layer_offset);
+  }
+
   void ResidualDropoutBiasGrad(const phi::GPUContext& ctx,
                                const T* d_out,
                                const MaskType* mask,
@@ -227,6 +253,60 @@ class FusedDropoutHelper {
           out,
           mask,
           ctx);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Currently only supports gelu or relu activation functions!"));
+    }
+  }
+
+  void DropoutActBiasQDQ(const phi::GPUContext& ctx,
+                         const int32_t* src,
+                         const T* bias,
+                         const std::string& act_method,
+                         int8_t* out,
+                         MaskType* mask,
+                         const float* quant_out_scale_data,
+                         const int quant_layer_offset,
+                         const float quant_in_scale_data) {
+    auto increment = GetIncrement(ctx);
+    if (act_method == "gelu") {
+      GeluFunctor<T> gelu;
+      LaunchDropoutActBiasQDQ<T, MaskType, GeluFunctor<T>>(
+          gelu,
+          dropout_param_.seed,
+          rows_,
+          cols_,
+          dropout_param_.increment,
+          dropout_param_.dropout_prob,
+          dropout_param_.is_upscale_in_train,
+          dropout_param_.is_test,
+          src,
+          bias,
+          out,
+          mask,
+          ctx,
+          quant_out_scale_data,
+          quant_layer_offset,
+          quant_in_scale_data);
+    } else if (act_method == "relu") {
+      phi::funcs::ReluFunctor<T> relu;
+      LaunchDropoutActBiasQDQ<T, MaskType, phi::funcs::ReluFunctor<T>>(
+          relu,
+          dropout_param_.seed,
+          rows_,
+          cols_,
+          increment,
+          dropout_param_.dropout_prob,
+          dropout_param_.is_upscale_in_train,
+          dropout_param_.is_test,
+          src,
+          bias,
+          out,
+          mask,
+          ctx,
+          quant_out_scale_data,
+          quant_layer_offset,
+          quant_in_scale_data);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));
@@ -388,6 +468,54 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
         mean,
         variance,
         ctx);
+  }
+
+  template <typename P = LayerNormParamType<T>, bool is_same_type = false>
+  void LayernormResidualDropoutBiasQDQ(const phi::GPUContext& ctx,
+                                       const int32_t* src,
+                                       const T* residual,
+                                       const T* bias,
+                                       const P* gamma,
+                                       const P* beta,
+                                       T* dropout_out,
+                                       MaskType* mask,
+                                       int8_t* out,
+                                       LayerNormParamType<T>* mean,
+                                       LayerNormParamType<T>* variance,
+                                       const float* quant_out_scale_data,
+                                       const int quant_layer_offset,
+                                       const float quant_in_scale_data) {
+    using U = LayerNormParamType<T>;
+    int vec_size = MAX_CACHE_BYTES / sizeof(T);
+    if (this->cols_ % vec_size != 0) {
+      vec_size = 1;
+    }
+    int threads = GetDesiredBlockDim(this->cols_ / vec_size);
+    int increment = ((this->cols_ - 1) / (threads * vec_size) + 1) * vec_size;
+    increment = this->dropout_param_.UpdateSeedAndIncrement(ctx, increment);
+    LaunchLayernormResidualDropoutBiasQDQ<T, MaskType, U, is_same_type>(
+        this->rows_,
+        this->cols_,
+        increment,
+        this->dropout_param_.seed,
+        this->dropout_param_.dropout_prob,
+        epsilon_,
+        this->dropout_param_.is_upscale_in_train,
+        this->dropout_param_.is_test,
+        src,
+        residual,
+        bias,
+        gamma,
+        beta,
+        mask,
+        dropout_out,
+        out,
+        mean,
+        variance,
+        ctx,
+        quant_out_scale_data,
+        quant_layer_offset,
+        quant_in_scale_data);
   }
 
   template <typename P = LayerNormParamType<T>, bool is_same_type = false>
