@@ -4,7 +4,7 @@
 # and then run the command `python3 ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py -f ${CURRENT_DIRECTORY}/testslist.csv`
 set(LOCAL_ALL_ARCH ON)
 set(LOCAL_ALL_PLAT ON)
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_allreduce
     MODULES
@@ -14,7 +14,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   )
   set_tests_properties(test_allreduce PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_broadcast
     MODULES
@@ -24,7 +24,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   )
   set_tests_properties(test_broadcast PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_c_concat
     MODULES
@@ -34,7 +34,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   )
   set_tests_properties(test_c_concat PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_c_identity
     MODULES
@@ -44,7 +44,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   )
   set_tests_properties(test_c_identity PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_c_split
     MODULES
@@ -67,7 +67,7 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
   set_tests_properties(test_collective_split_embedding PROPERTIES TIMEOUT "300"
                                                                   RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_allgather_api
     MODULES
@@ -78,7 +78,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT "300"
                                                                 RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_allgather_object_api
     MODULES
@@ -89,7 +89,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_allgather_object_api
                        PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_allreduce_api
     MODULES
@@ -100,7 +100,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT "120"
                                                                 RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_alltoall_api
     MODULES
@@ -124,7 +124,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_collective_alltoall_single PROPERTIES TIMEOUT "350"
                                                                   RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_barrier_api
     MODULES
@@ -148,7 +148,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_collective_batch_isend_irecv
                        PROPERTIES TIMEOUT "350" RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_broadcast_api
     MODULES
@@ -159,7 +159,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT "120"
                                                                 RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_cpu_barrier_with_gloo
     MODULES
@@ -170,7 +170,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_cpu_barrier_with_gloo
                        PROPERTIES TIMEOUT "300" RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_global_gather
     MODULES
@@ -181,7 +181,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_global_gather PROPERTIES TIMEOUT "200"
                                                                 RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_global_scatter
     MODULES
@@ -192,7 +192,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_global_scatter PROPERTIES TIMEOUT "200"
                                                                  RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_optimizer
     MODULES
@@ -216,7 +216,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_collective_process_group PROPERTIES TIMEOUT "350"
                                                                 RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_reduce
     MODULES
@@ -227,7 +227,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_reduce PROPERTIES TIMEOUT "300"
                                                          RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_reduce_api
     MODULES
@@ -251,7 +251,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT "350"
                                                                  RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_scatter
     MODULES
@@ -262,7 +262,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT "300"
                                                           RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_scatter_api
     MODULES
@@ -273,7 +273,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_scatter_api PROPERTIES TIMEOUT "300"
                                                               RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_sendrecv
     MODULES
@@ -284,7 +284,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT "300"
                                                            RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_sendrecv_api
     MODULES
@@ -295,7 +295,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_sendrecv_api PROPERTIES TIMEOUT "120"
                                                                RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_split_col_linear
     MODULES
@@ -306,7 +306,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_split_col_linear
                        PROPERTIES TIMEOUT "300" RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_split_embedding_none_divisible
     MODULES
@@ -317,7 +317,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_split_embedding_none_divisible
                        PROPERTIES TIMEOUT "300" RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_split_row_linear
     MODULES
@@ -328,7 +328,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_split_row_linear
                        PROPERTIES TIMEOUT "300" RUN_SERIAL 1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_wait
     MODULES
@@ -339,7 +339,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_collective_wait PROPERTIES TIMEOUT "300" RUN_SERIAL
                                                        1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_eager_dist_api
     MODULES
@@ -350,7 +350,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT "120" RUN_SERIAL
                                                       1)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_new_group_api
     MODULES

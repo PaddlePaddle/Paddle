@@ -9,7 +9,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND LOCAL_ALL_PLAT [])
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_sharding_meta_optimizer
     MODULES
@@ -20,7 +20,7 @@ if((WITH_GPU
   set_tests_properties(test_fleet_sharding_meta_optimizer
                        PROPERTIES TIMEOUT "350" RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32) [])
+if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_static_mp_layers
     MODULES
@@ -32,7 +32,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32) [])
                                                               RUN_SERIAL 0)
 endif()
 if(WITH_DGC)
-  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT ['WITH_DGC'])
+  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
       test_dgc_op
       MODULES
@@ -44,7 +44,7 @@ if(WITH_DGC)
   endif()
 endif()
 if(WITH_DGC)
-  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT ['WITH_DGC'])
+  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
       test_dgc_optimizer
       MODULES
@@ -115,7 +115,7 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_transformer
                        PROPERTIES TIMEOUT "" RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32) [])
+if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_fp16_allreduce_meta_optimizer
     MODULES
@@ -202,7 +202,7 @@ if((WITH_GPU
                        PROPERTIES TIMEOUT "" RUN_SERIAL 0)
 endif()
 if(WITH_NCCL)
-  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT ['WITH_NCCL'])
+  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
       test_communicator_half_async
       MODULES
@@ -219,7 +219,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND LOCAL_ALL_PLAT [])
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_graph_executor
     MODULES
@@ -248,7 +248,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND (LINUX) [])
+   AND (LINUX))
   py_test_modules(
     test_fleet_localsgd_meta_optimizer
     MODULES
@@ -286,7 +286,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(test_pipeline PROPERTIES TIMEOUT "120" RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR APPLE) [])
+if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
   py_test_modules(
     test_fleet_utils
     MODULES
@@ -381,7 +381,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_hybrid_parallel_inference_helper
                        PROPERTIES TIMEOUT "120" RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT [])
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_rolemaker_new
     MODULES
@@ -392,7 +392,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT [])
   set_tests_properties(test_fleet_rolemaker_new PROPERTIES TIMEOUT ""
                                                            RUN_SERIAL 0)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX OR WIN32) [])
+if((WITH_GPU OR WITH_ROCM) AND (LINUX OR WIN32))
   py_test_modules(
     test_dist_mnist_gradient_merge
     MODULES
@@ -403,7 +403,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX OR WIN32) [])
   set_tests_properties(test_dist_mnist_gradient_merge PROPERTIES TIMEOUT "360"
                                                                  RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT [])
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_recv_save_op
     MODULES
@@ -413,7 +413,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT [])
   )
   set_tests_properties(test_recv_save_op PROPERTIES TIMEOUT "" RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT [])
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_communicator_sync
     MODULES
@@ -447,7 +447,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND LOCAL_ALL_PLAT [])
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_gradient_merge_meta_optimizer
     MODULES
@@ -458,7 +458,7 @@ if((WITH_GPU
   set_tests_properties(test_fleet_gradient_merge_meta_optimizer
                        PROPERTIES TIMEOUT "" RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32) [])
+if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_amp_init
     MODULES
@@ -481,7 +481,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_dygraph_sharding_optimizer_stage2
                        PROPERTIES TIMEOUT "120" RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32) [])
+if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_meta_optimizer_base
     MODULES
@@ -544,7 +544,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_dygraph_group_sharded_api_for_eager
                        PROPERTIES TIMEOUT "120" RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32) [])
+if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_distributed_strategy
     MODULES
@@ -556,7 +556,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32) [])
                                                                   RUN_SERIAL 0)
 endif()
 if(WITH_DGC)
-  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT ['WITH_DGC'])
+  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
       test_fleet_dgc_meta_optimizer
       MODULES
@@ -586,7 +586,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND (LINUX) [])
+   AND (LINUX))
   py_test_modules(
     test_fleet_lamb_meta_optimizer
     MODULES
@@ -598,7 +598,7 @@ if((WITH_GPU
                                                                  RUN_SERIAL 0)
 endif()
 if(WITH_DGC)
-  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT ['WITH_DGC'])
+  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
       test_dgc_momentum_op
       MODULES
@@ -646,7 +646,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND (WIN32 OR LINUX) [])
+   AND (WIN32 OR LINUX))
   py_test_modules(
     test_fleet_hybrid_meta_optimizer
     MODULES
@@ -705,7 +705,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND LOCAL_ALL_PLAT [])
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_amp_meta_optimizer
     MODULES
@@ -746,7 +746,7 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height
                        PROPERTIES TIMEOUT "350" RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR APPLE) [])
+if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
   py_test_modules(
     test_distributed_strategy
     MODULES
@@ -775,7 +775,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND (LINUX OR WIN32) [])
+   AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_recompute_meta_optimizer
     MODULES
@@ -799,7 +799,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_dygraph_group_sharded_api PROPERTIES TIMEOUT "120"
                                                                  RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32) [])
+if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_private_function
     MODULES
