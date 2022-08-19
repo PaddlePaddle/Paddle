@@ -1815,8 +1815,12 @@ class TestRelu6API(unittest.TestCase):
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
+    x_dtype = x.dtype
+    if x_dtype == 'float16':
+        x_dtype = 'float16'
+        x = x.astype('float32')
     return (x * np.minimum(np.maximum(x + offset, 0.), threshold) /
-            scale).astype(x.dtype)
+            scale).astype(x_dtype)
 
 
 class TestHardSwish(TestActivation):
@@ -1825,7 +1829,6 @@ class TestHardSwish(TestActivation):
         self.op_type = 'hard_swish'
         self.init_dtype()
         self.python_api = paddle.nn.functional.hardswish
-        skip_check_grad_ci(reason="not implemented yet")
 
         np.random.seed(1024)
         x = np.random.uniform(-6, 6, [10, 12]).astype(self.dtype)
@@ -1842,10 +1845,6 @@ class TestHardSwish(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-
-        return  # not implemented yet
         self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_check_output(self):
@@ -1873,11 +1872,11 @@ class TestHardswishAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x_np)
+        x = paddle.to_tensor([11648., 11448.])
         out1 = F.hardswish(x)
         m = paddle.nn.Hardswish()
         out2 = m(x)
-        out_ref = ref_hardswish(self.x_np)
+        out_ref = [11648., 11448.]
         for r in [out1, out2]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
