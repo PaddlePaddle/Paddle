@@ -23,11 +23,13 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
@@ -59,7 +61,8 @@ class InplaceABNActivation {
   }
 
   template <typename Functor, typename... Args>
-  void compute(const framework::ExecutionContext& ctx, Functor* functor,
+  void compute(const framework::ExecutionContext& ctx,
+               Functor* functor,
                Args... args) {
     setAttrs(ctx, functor);
     (*functor)(args...);
@@ -67,8 +70,11 @@ class InplaceABNActivation {
 
  public:
   template <typename Device, typename X, typename Y>
-  void Compute(const framework::ExecutionContext& ctx, const int act_type,
-               const Device& d, X x, Y y) {
+  void Compute(const framework::ExecutionContext& ctx,
+               const int act_type,
+               const Device& d,
+               X x,
+               Y y) {
     if (act_type == InplaceABNActivationType::identity) {
       y.device(d) = x;
     } else if (act_type == InplaceABNActivationType::leakyrelu) {
@@ -84,8 +90,13 @@ class InplaceABNActivation {
   }
 
   template <typename Device, typename X, typename Y, typename DX, typename DY>
-  void GradCompute(const framework::ExecutionContext& ctx, const int act_type,
-                   const Device& d, X x, Y y, DX dx, DY dy) {
+  void GradCompute(const framework::ExecutionContext& ctx,
+                   const int act_type,
+                   const Device& d,
+                   X x,
+                   Y y,
+                   DX dx,
+                   DY dy) {
     const float alpha = ctx.Attr<float>("alpha");
 
     if (act_type == InplaceABNActivationType::identity) {

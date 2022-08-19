@@ -115,7 +115,8 @@ class FixOpRunOrderPass : public Pass {
     for (auto *op_desc : program.Block(0).AllOps()) {
       auto op_desc_str = OpDescToString(*op_desc);
       PADDLE_ENFORCE_EQ(
-          op_to_idx.emplace(op_desc_str, i).second, true,
+          op_to_idx.emplace(op_desc_str, i).second,
+          true,
           platform::errors::PermissionDenied(
               "FixOpRunOrderPass cannot handle OpDesc with same "
               "type, inputs and outputs yet, error string repr: %s",
@@ -154,7 +155,8 @@ class FixOpRunOrderPass : public Pass {
       if (iter != op_to_idx.end()) {
         size_t idx = iter->second;
         PADDLE_ENFORCE_EQ(
-            found_node_indices.count(idx), 0,
+            found_node_indices.count(idx),
+            0,
             platform::errors::PermissionDenied(
                 "FixOpRunOrderPass cannot handle OpDesc with same "
                 "type, inputs and outputs yet, error repr: %s",
@@ -163,7 +165,8 @@ class FixOpRunOrderPass : public Pass {
         node_to_idx[node] = idx;
       } else {
         PADDLE_ENFORCE_EQ(
-            new_op_desc_nodes.emplace(node_str, node).second, true,
+            new_op_desc_nodes.emplace(node_str, node).second,
+            true,
             platform::errors::PermissionDenied(
                 "FixOpRunOrderPass cannot handle OpDesc with same "
                 "type, inputs and outputs yet, error repr: %s",
@@ -241,7 +244,8 @@ class FixOpRunOrderPass : public Pass {
     }
 
     PADDLE_ENFORCE_EQ(
-        sorted_ops.size(), op_handles.size(),
+        sorted_ops.size(),
+        op_handles.size(),
         platform::errors::PermissionDenied("There are unvisited ops"));
     if (VLOG_IS_ON(10)) {
       // print op order to debug
@@ -257,7 +261,8 @@ class FixOpRunOrderPass : public Pass {
     // Step 5: add sequential deps for ops to guarantee there is only one
     // toposort order
     AddSequentialDepsForSortedOps(graph, sorted_ops);
-    PADDLE_ENFORCE_EQ(IsTopologySortOperationsUnique(*graph), true,
+    PADDLE_ENFORCE_EQ(IsTopologySortOperationsUnique(*graph),
+                      true,
                       platform::errors::PermissionDenied(
                           "The topological order must be unique "
                           "after FixOpRunOrderPass is applied"));

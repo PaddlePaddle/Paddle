@@ -83,8 +83,15 @@ type_dict_str_to_numpy = {
 }
 
 xpu_test_op_white_list = []
-xpu_test_type_white_list = ['float64']
-xpu_test_op_type_white_list = ['dropout_float16', 'dropout_grad_float16']
+xpu_test_device_type_white_list = ['xpu1_float64']
+xpu_test_op_type_white_list = [
+    'dropout_float16',
+    'dropout_grad_float16',
+    "grad_add_float32",  # no api for grad_add, skip
+    "lars_momentum_float32",
+    "resnet_unit",
+    "resnet_unit_grad"
+]
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
 
@@ -106,7 +113,18 @@ def get_op_white_list():
 
 
 def get_type_white_list():
-    type_white_list = xpu_test_type_white_list
+    xpu_version = core.get_xpu_device_version(0)
+    version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
+    xpu1_type_white_list = []
+    xpu2_type_white_list = []
+    for device_type in xpu_test_device_type_white_list:
+        device, t_type = device_type.split("_")
+        if "xpu1" == device:
+            xpu1_type_white_list.append(t_type)
+        else:
+            xpu2_type_white_list.append(t_type)
+
+    type_white_list = xpu1_type_white_list if version_str == "xpu1" else xpu2_type_white_list
     if os.getenv('XPU_TEST_TYPE_WHITE_LIST') is not None:
         type_white_list.extend(
             os.getenv('XPU_TEST_TYPE_WHITE_LIST').strip().split(','))
@@ -227,13 +245,13 @@ def create_test_class(func_globals,
                       test_class,
                       test_type,
                       test_grad=True,
-                      ignore_deivce_version=[],
-                      test_deivce_version=[]):
+                      ignore_device_version=[],
+                      test_device_version=[]):
     xpu_version = core.get_xpu_device_version(0)
-    if xpu_version in ignore_deivce_version:
+    if xpu_version in ignore_device_version:
         return
 
-    if len(test_deivce_version) != 0 and xpu_version not in test_deivce_version:
+    if len(test_device_version) != 0 and xpu_version not in test_device_version:
         return
 
     test_class_obj = test_class()

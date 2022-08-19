@@ -19,7 +19,8 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
-    load, ops::LoadOpKernel<paddle::platform::XPUDeviceContext, float>,
+    load,
+    ops::LoadOpKernel<paddle::platform::XPUDeviceContext, float>,
     ops::LoadOpKernel<paddle::platform::XPUDeviceContext, double>,
     ops::LoadOpKernel<paddle::platform::XPUDeviceContext, int>,
     ops::LoadOpKernel<paddle::platform::XPUDeviceContext, int8_t>,

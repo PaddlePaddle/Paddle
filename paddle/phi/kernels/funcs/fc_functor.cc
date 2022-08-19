@@ -96,8 +96,6 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   }
 }
 
-template class FCFunctor<paddle::platform::CPUDeviceContext, float>;
-template class FCFunctor<paddle::platform::CPUDeviceContext, double>;
 template class FCFunctor<CPUContext, float>;
 template class FCFunctor<CPUContext, double>;
 

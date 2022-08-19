@@ -24,39 +24,48 @@ class ProximalAdagradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param",
-                   "ProximalAdagradOp");
-    OP_INOUT_CHECK(ctx->HasInput("Moment"), "Input", "Moment",
-                   "ProximalAdagradOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Param"), "Input", "Param", "ProximalAdagradOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Moment"), "Input", "Moment", "ProximalAdagradOp");
     OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "ProximalAdagradOp");
-    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
+    OP_INOUT_CHECK(ctx->HasInput("LearningRate"),
+                   "Input",
+                   "LearningRate",
                    "ProximalAdagradOp");
 
-    OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "ParamOut",
-                   "ProximalAdagradOp");
-    OP_INOUT_CHECK(ctx->HasOutput("MomentOut"), "Output", "MomentOut",
+    OP_INOUT_CHECK(
+        ctx->HasOutput("ParamOut"), "Output", "ParamOut", "ProximalAdagradOp");
+    OP_INOUT_CHECK(ctx->HasOutput("MomentOut"),
+                   "Output",
+                   "MomentOut",
                    "ProximalAdagradOp");
 
     auto param_dim = ctx->GetInputDim("Param");
-    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
+    PADDLE_ENFORCE_EQ(param_dim,
+                      ctx->GetInputDim("Grad"),
                       platform::errors::InvalidArgument(
                           "The shape of Intput(Param) should be equal to the "
                           "Input(Grad) of ProximalAdagrad Op. But received "
                           "Input(Param).dimensions=[%s], "
                           "Input(Grad).dimensions=[%s]",
-                          param_dim, ctx->GetInputDim("Grad")));
+                          param_dim,
+                          ctx->GetInputDim("Grad")));
 
-    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Moment"),
+    PADDLE_ENFORCE_EQ(param_dim,
+                      ctx->GetInputDim("Moment"),
                       platform::errors::InvalidArgument(
                           "The shape of Intput(Param) should be equal to the "
                           "Input(Moment) of ProximalAdagrad Op. But received "
                           "Input(Param).dimensions=[%s], "
                           "Input(Moment).dimensions=[%s]",
-                          param_dim, ctx->GetInputDim("Moment")));
+                          param_dim,
+                          ctx->GetInputDim("Moment")));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(
-        phi::product(lr_dim), 1,
+        phi::product(lr_dim),
+        1,
         platform::errors::InvalidArgument(
             "Learning Rate should be a scalar. But received dimension[%s]",
             lr_dim));
@@ -122,8 +131,8 @@ Here, we use the adagrad learning rate as specified here:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(proximal_adagrad, ops::ProximalAdagradOp,
+REGISTER_OP_WITHOUT_GRADIENT(proximal_adagrad,
+                             ops::ProximalAdagradOp,
                              ops::ProximalAdagradOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    proximal_adagrad,
-    ops::ProximalAdagradOpKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(proximal_adagrad,
+                       ops::ProximalAdagradOpKernel<phi::CPUContext, float>);

@@ -48,11 +48,15 @@ class SumMLUKernel : public framework::OpKernel<T> {
         inputs.push_back(GetBasePtr(ins[i]));
       }
       // init out tensors
-      MLUCnnlTensorDesc output_desc(*out, CNNL_LAYOUT_ARRAY,
-                                    ToCnnlDataType(out->dtype()));
+      MLUCnnlTensorDesc output_desc(
+          *out, CNNL_LAYOUT_ARRAY, ToCnnlDataType(out->dtype()));
       uint32_t ins_size_t = static_cast<uint32_t>(ins_size);
-      MLUCnnl::AddN(ctx, ins_size_t, desc_vector.data(), inputs.data(),
-                    output_desc.get(), GetBasePtr(out));
+      MLUCnnl::AddN(ctx,
+                    ins_size_t,
+                    desc_vector.data(),
+                    inputs.data(),
+                    output_desc.get(),
+                    GetBasePtr(out));
 
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -69,6 +73,7 @@ class SumMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_MLU_KERNEL(
-    sum, ops::SumMLUKernel<paddle::platform::MLUDeviceContext, float>,
+    sum,
+    ops::SumMLUKernel<paddle::platform::MLUDeviceContext, float>,
     ops::SumMLUKernel<paddle::platform::MLUDeviceContext,
                       paddle::platform::float16>);

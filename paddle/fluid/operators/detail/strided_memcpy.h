@@ -26,9 +26,12 @@ struct StridedMemcpyFunctor;
 
 template <typename T>
 struct StridedMemcpyFunctor<T, 0> {
-  void operator()(const platform::DeviceContext& dev_ctx, const T* src,
-                  const int64_t* src_stride, const int64_t* dst_dim,
-                  const int64_t* dst_stride, T* dst) const {
+  void operator()(const platform::DeviceContext& dev_ctx,
+                  const T* src,
+                  const int64_t* src_stride,
+                  const int64_t* dst_dim,
+                  const int64_t* dst_stride,
+                  T* dst) const {
     auto place = dev_ctx.GetPlace();
     if (platform::is_cpu_place(place)) {
       auto& cpu_place = place;
@@ -36,10 +39,9 @@ struct StridedMemcpyFunctor<T, 0> {
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto& gpu_place = place;
-      auto& cuda_ctx =
-          reinterpret_cast<const platform::CUDADeviceContext&>(dev_ctx);
-      memory::Copy(gpu_place, dst, gpu_place, src, sizeof(T),
-                   cuda_ctx.stream());
+      auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(dev_ctx);
+      memory::Copy(
+          gpu_place, dst, gpu_place, src, sizeof(T), cuda_ctx.stream());
 #else
       PADDLE_THROW(
           platform::errors::Unavailable("Paddle is not compiled with GPU."));
@@ -50,9 +52,12 @@ struct StridedMemcpyFunctor<T, 0> {
 
 template <typename T>
 struct StridedMemcpyFunctor<T, 1> {
-  void operator()(const platform::DeviceContext& dev_ctx, const T* src,
-                  const int64_t* src_stride, const int64_t* dst_dim,
-                  const int64_t* dst_stride, T* dst) const {
+  void operator()(const platform::DeviceContext& dev_ctx,
+                  const T* src,
+                  const int64_t* src_stride,
+                  const int64_t* dst_dim,
+                  const int64_t* dst_stride,
+                  T* dst) const {
     auto place = dev_ctx.GetPlace();
     if (platform::is_cpu_place(place)) {
       auto& cpu_place = place;
@@ -60,9 +65,12 @@ struct StridedMemcpyFunctor<T, 1> {
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto& gpu_place = place;
-      auto& cuda_ctx =
-          reinterpret_cast<const platform::CUDADeviceContext&>(dev_ctx);
-      memory::Copy(gpu_place, dst, gpu_place, src, sizeof(T) * dst_dim[0],
+      auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(dev_ctx);
+      memory::Copy(gpu_place,
+                   dst,
+                   gpu_place,
+                   src,
+                   sizeof(T) * dst_dim[0],
                    cuda_ctx.stream());
 #else
       PADDLE_THROW(
@@ -74,9 +82,12 @@ struct StridedMemcpyFunctor<T, 1> {
 
 template <typename T, int Rank>
 struct StridedMemcpyFunctor {
-  void operator()(const platform::DeviceContext& dev_ctx, const T* src,
-                  const int64_t* src_stride, const int64_t* dst_dim,
-                  const int64_t* dst_stride, T* dst) const {
+  void operator()(const platform::DeviceContext& dev_ctx,
+                  const T* src,
+                  const int64_t* src_stride,
+                  const int64_t* dst_dim,
+                  const int64_t* dst_stride,
+                  T* dst) const {
     for (int64_t i = 0; i < dst_dim[0]; ++i) {
       StridedMemcpyFunctor<T, Rank - 1> func;
       func(dev_ctx, src, src_stride + 1, dst_dim + 1, dst_stride + 1, dst);
@@ -88,9 +99,11 @@ struct StridedMemcpyFunctor {
 
 template <typename T>
 struct StridedCopyDimVisitor {
-  StridedCopyDimVisitor(const platform::DeviceContext& dev_ctx, const T* src,
+  StridedCopyDimVisitor(const platform::DeviceContext& dev_ctx,
+                        const T* src,
                         const framework::DDim& src_stride,
-                        const framework::DDim& dst_stride, T* dst)
+                        const framework::DDim& dst_stride,
+                        T* dst)
       : dev_ctx_(dev_ctx),
         src_(src),
         src_stride_(src_stride),
@@ -100,7 +113,11 @@ struct StridedCopyDimVisitor {
   template <int D>
   void operator()(const framework::Dim<D>& dst_dim) const {
     StridedMemcpyFunctor<T, D> functor;
-    functor(dev_ctx_, src_, src_stride_.Get(), dst_dim.Get(), dst_stride_.Get(),
+    functor(dev_ctx_,
+            src_,
+            src_stride_.Get(),
+            dst_dim.Get(),
+            dst_stride_.Get(),
             dst_);
   }
 

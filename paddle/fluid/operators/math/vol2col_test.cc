@@ -75,8 +75,13 @@ void testVol2col() {
   } else {
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
   }
-  output.mutable_data<float>({1, filter_size, filter_size, filter_size,
-                              output_depth, output_height, output_width},
+  output.mutable_data<float>({1,
+                              filter_size,
+                              filter_size,
+                              filter_size,
+                              output_depth,
+                              output_height,
+                              output_width},
                              *place);
 
   paddle::operators::math::Vol2ColFunctor<DeviceContext, float> vol2col;
@@ -87,8 +92,8 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output.data<float>();
   } else {
-    paddle::framework::TensorCopySync(output, paddle::platform::CPUPlace(),
-                                      &output_tmp);
+    paddle::framework::TensorCopySync(
+        output, paddle::platform::CPUPlace(), &output_tmp);
     out_cfo_ptr = output_tmp.data<float>();
   }
 
@@ -112,8 +117,8 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    paddle::framework::TensorCopySync(input, paddle::platform::CPUPlace(),
-                                      &input_tmp);
+    paddle::framework::TensorCopySync(
+        input, paddle::platform::CPUPlace(), &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
 
@@ -127,15 +132,14 @@ void testVol2col() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-void testVol2col<paddle::platform::CUDADeviceContext,
-                 paddle::platform::CUDAPlace>() {
+void testVol2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
   paddle::framework::Tensor input;
   paddle::framework::Tensor input_tmp;
   paddle::framework::Tensor output;
   paddle::framework::Tensor output_tmp;
 
   auto* place = new paddle::platform::CUDAPlace();
-  auto* context = new paddle::platform::CUDADeviceContext(*place);
+  auto* context = new phi::GPUContext(*place);
   context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(*place, context->stream())
                             .get());
@@ -188,13 +192,16 @@ void testVol2col<paddle::platform::CUDADeviceContext,
   } else {
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
   }
-  output.mutable_data<float>({1, filter_size, filter_size, filter_size,
-                              output_depth, output_height, output_width},
+  output.mutable_data<float>({1,
+                              filter_size,
+                              filter_size,
+                              filter_size,
+                              output_depth,
+                              output_height,
+                              output_width},
                              *place);
 
-  paddle::operators::math::Vol2ColFunctor<paddle::platform::CUDADeviceContext,
-                                          float>
-      vol2col;
+  paddle::operators::math::Vol2ColFunctor<phi::GPUContext, float> vol2col;
   vol2col(*context, input, dilations, strides, paddings, &output);
 
   float vol_2_col[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11};
@@ -202,8 +209,8 @@ void testVol2col<paddle::platform::CUDADeviceContext,
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output.data<float>();
   } else {
-    paddle::framework::TensorCopySync(output, paddle::platform::CPUPlace(),
-                                      &output_tmp);
+    paddle::framework::TensorCopySync(
+        output, paddle::platform::CPUPlace(), &output_tmp);
     out_cfo_ptr = output_tmp.data<float>();
   }
 
@@ -220,17 +227,15 @@ void testVol2col<paddle::platform::CUDADeviceContext,
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
   }
 
-  paddle::operators::math::Col2VolFunctor<paddle::platform::CUDADeviceContext,
-                                          float>
-      col2vol;
+  paddle::operators::math::Col2VolFunctor<phi::GPUContext, float> col2vol;
   col2vol(*context, output, dilations, strides, paddings, &input);
 
   float* in_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    paddle::framework::TensorCopySync(input, paddle::platform::CPUPlace(),
-                                      &input_tmp);
+    paddle::framework::TensorCopySync(
+        input, paddle::platform::CPUPlace(), &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
 
@@ -244,9 +249,8 @@ void testVol2col<paddle::platform::CUDADeviceContext,
 #endif
 
 TEST(math, vol2col) {
-  testVol2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
+  testVol2col<phi::CPUContext, paddle::platform::CPUPlace>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  testVol2col<paddle::platform::CUDADeviceContext,
-              paddle::platform::CUDAPlace>();
+  testVol2col<phi::GPUContext, paddle::platform::CUDAPlace>();
 #endif  // PADDLE_WITH_CUDA
 }

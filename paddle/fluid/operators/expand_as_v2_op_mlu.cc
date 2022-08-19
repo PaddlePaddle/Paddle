@@ -29,22 +29,27 @@ class ExpandAsV2MLUKernel : public framework::OpKernel<T> {
     auto rank = context.Input<Tensor>("X")->dims().size();
     auto target_shape = context.Attr<std::vector<int>>("target_shape");
     auto target_rank = target_shape.size();
-    PADDLE_ENFORCE_GE(target_rank, rank,
+    PADDLE_ENFORCE_GE(target_rank,
+                      rank,
                       platform::errors::InvalidArgument(
                           "The rank (%d) of the input 'target_tensor' for "
                           "expand_as_v2 op must be greater than or equal to "
                           "the rank (%d) of the input 'x'.",
-                          target_rank, rank));
+                          target_rank,
+                          rank));
     PADDLE_ENFORCE_GE(
-        rank, 1,
+        rank,
+        1,
         platform::errors::InvalidArgument("The rank (%d) of the input 'x' for "
                                           "expand_as_v2 op must be positive.",
                                           rank));
-    PADDLE_ENFORCE_LE(target_rank, MAX_RANK_SUPPORTED,
+    PADDLE_ENFORCE_LE(target_rank,
+                      MAX_RANK_SUPPORTED,
                       platform::errors::InvalidArgument(
                           "The rank (%d) of the input 'target_tensor' for "
                           "expand_as_v2 op must be less than or equal to %d.",
-                          target_rank, MAX_RANK_SUPPORTED));
+                          target_rank,
+                          MAX_RANK_SUPPORTED));
     ExpandAs(context);
   }
 
@@ -58,17 +63,20 @@ class ExpandAsV2MLUKernel : public framework::OpKernel<T> {
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
 
     for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-      PADDLE_ENFORCE_NE(target_shape[i], 0,
+      PADDLE_ENFORCE_NE(target_shape[i],
+                        0,
                         platform::errors::InvalidArgument(
                             "The value of target shape cannot be zero."));
       if (vec_in_dims[i] != 1) {
         PADDLE_ENFORCE_EQ(
-            vec_in_dims[i], target_shape[i],
+            vec_in_dims[i],
+            target_shape[i],
             platform::errors::InvalidArgument(
                 "The value (%d) of the non-singleton dimension does not match"
                 " the corresponding value (%d) in "
                 "target tensor for expand_as_v2 op.",
-                vec_in_dims[i], target_shape[i]));
+                vec_in_dims[i],
+                target_shape[i]));
       }
     }
     auto* out0 = context.Output<Tensor>("Out");
@@ -81,7 +89,10 @@ class ExpandAsV2MLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc x_desc(*in0);
     MLUCnnlTensorDesc out_desc(*out0);
 
-    MLUCnnl::BroadcastTo(context, x_desc.get(), GetBasePtr(in0), out_desc.get(),
+    MLUCnnl::BroadcastTo(context,
+                         x_desc.get(),
+                         GetBasePtr(in0),
+                         out_desc.get(),
                          GetBasePtr(out0));
   }
 };
@@ -90,7 +101,8 @@ class ExpandAsV2MLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(expand_as_v2, ops::ExpandAsV2MLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(expand_as_v2,
+                       ops::ExpandAsV2MLUKernel<float>,
                        ops::ExpandAsV2MLUKernel<int>,
                        ops::ExpandAsV2MLUKernel<int64_t>,
                        ops::ExpandAsV2MLUKernel<int8_t>,

@@ -36,10 +36,16 @@ struct IouFunction {
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc z_desc(*z);
 
-    MLUCnnlOpTensorDesc add_op_desc(CNNL_OP_TENSOR_ADD, ToCnnlDataType<T>(),
-                                    CNNL_NOT_PROPAGATE_NAN);
-    MLUCnnl::OpTensor(ctx, add_op_desc.get(), x_desc.get(), GetBasePtr(x),
-                      y_desc.get(), GetBasePtr(y), z_desc.get(), GetBasePtr(z),
+    MLUCnnlOpTensorDesc add_op_desc(
+        CNNL_OP_TENSOR_ADD, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+    MLUCnnl::OpTensor(ctx,
+                      add_op_desc.get(),
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      y_desc.get(),
+                      GetBasePtr(y),
+                      z_desc.get(),
+                      GetBasePtr(z),
                       ToCnnlDataType<T>());
   }
 
@@ -49,10 +55,16 @@ struct IouFunction {
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc z_desc(*z);
 
-    MLUCnnlOpTensorDesc sub_op_desc(CNNL_OP_TENSOR_SUB, ToCnnlDataType<T>(),
-                                    CNNL_NOT_PROPAGATE_NAN);
-    MLUCnnl::OpTensor(ctx, sub_op_desc.get(), x_desc.get(), GetBasePtr(x),
-                      y_desc.get(), GetBasePtr(y), z_desc.get(), GetBasePtr(z),
+    MLUCnnlOpTensorDesc sub_op_desc(
+        CNNL_OP_TENSOR_SUB, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+    MLUCnnl::OpTensor(ctx,
+                      sub_op_desc.get(),
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      y_desc.get(),
+                      GetBasePtr(y),
+                      z_desc.get(),
+                      GetBasePtr(z),
                       ToCnnlDataType<T>());
   }
   void Mul(const Tensor* x, const Tensor* y, Tensor* z) {
@@ -61,10 +73,16 @@ struct IouFunction {
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc z_desc(*z);
 
-    MLUCnnlOpTensorDesc mul_op_desc(CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(),
-                                    CNNL_NOT_PROPAGATE_NAN);
-    MLUCnnl::OpTensor(ctx, mul_op_desc.get(), x_desc.get(), GetBasePtr(x),
-                      y_desc.get(), GetBasePtr(y), z_desc.get(), GetBasePtr(z),
+    MLUCnnlOpTensorDesc mul_op_desc(
+        CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+    MLUCnnl::OpTensor(ctx,
+                      mul_op_desc.get(),
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      y_desc.get(),
+                      GetBasePtr(y),
+                      z_desc.get(),
+                      GetBasePtr(z),
                       ToCnnlDataType<T>());
   }
   void DivNoNan(const Tensor* x, const Tensor* y, Tensor* z) {
@@ -75,8 +93,14 @@ struct IouFunction {
 
     cnnlComputationPreference_t prefer = CNNL_COMPUTATION_FAST;
 
-    MLUCnnl::DivNoNan(ctx, prefer, x_desc.get(), GetBasePtr(x), y_desc.get(),
-                      GetBasePtr(y), z_desc.get(), GetBasePtr(z));
+    MLUCnnl::DivNoNan(ctx,
+                      prefer,
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      y_desc.get(),
+                      GetBasePtr(y),
+                      z_desc.get(),
+                      GetBasePtr(z));
   }
   void Adds(const Tensor* x, float scalar, Tensor* y) {
     //  y should be init first
@@ -84,8 +108,13 @@ struct IouFunction {
     MLUCnnlTensorDesc y_desc(*y);
     float alpha = 1.0;
     float beta = scalar;
-    MLUCnnl::Transform(ctx, &alpha, &beta, x_desc.get(), GetBasePtr(x),
-                       y_desc.get(), GetBasePtr(y));
+    MLUCnnl::Transform(ctx,
+                       &alpha,
+                       &beta,
+                       x_desc.get(),
+                       GetBasePtr(x),
+                       y_desc.get(),
+                       GetBasePtr(y));
   }
   void Maximum(const Tensor* x, const Tensor* y, Tensor* z) {
     //  z should be init first
@@ -93,8 +122,13 @@ struct IouFunction {
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc z_desc(*z);
 
-    MLUCnnl::Maximum(ctx, x_desc.get(), GetBasePtr(x), y_desc.get(),
-                     GetBasePtr(y), z_desc.get(), GetBasePtr(z));
+    MLUCnnl::Maximum(ctx,
+                     x_desc.get(),
+                     GetBasePtr(x),
+                     y_desc.get(),
+                     GetBasePtr(y),
+                     z_desc.get(),
+                     GetBasePtr(z));
   }
   void Minimum(const Tensor* x, const Tensor* y, Tensor* z) {
     //  z should be init first
@@ -102,8 +136,13 @@ struct IouFunction {
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc z_desc(*z);
 
-    MLUCnnl::Minimum(ctx, x_desc.get(), GetBasePtr(x), y_desc.get(),
-                     GetBasePtr(y), z_desc.get(), GetBasePtr(z));
+    MLUCnnl::Minimum(ctx,
+                     x_desc.get(),
+                     GetBasePtr(x),
+                     y_desc.get(),
+                     GetBasePtr(y),
+                     z_desc.get(),
+                     GetBasePtr(z));
   }
 
  private:
@@ -223,5 +262,6 @@ class IouSimilarityMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(iou_similarity, ops::IouSimilarityMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(iou_similarity,
+                       ops::IouSimilarityMLUKernel<float>,
                        ops::IouSimilarityMLUKernel<plat::float16>);

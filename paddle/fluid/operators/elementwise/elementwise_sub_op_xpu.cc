@@ -37,8 +37,8 @@ class ElementwiseSubGradXPUKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElemwiseGradKernel<T>::Compute(ctx);
-    XPUElementwiseGrad<T, XPUType>(ctx, xpu::broadcast_sub_grad<XPUType>,
-                                   false);
+    XPUElementwiseGrad<T, XPUType>(
+        ctx, xpu::broadcast_sub_grad<XPUType>, false);
   }
 };
 
@@ -46,10 +46,12 @@ class ElementwiseSubGradXPUKernel : public ElemwiseGradKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(elementwise_sub, ops::ElementwiseSubXPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(elementwise_sub,
+                       ops::ElementwiseSubXPUKernel<float>,
                        ops::ElementwiseSubXPUKernel<paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
-    elementwise_sub_grad, ops::ElementwiseSubGradXPUKernel<float>,
+    elementwise_sub_grad,
+    ops::ElementwiseSubGradXPUKernel<float>,
     ops::ElementwiseSubGradXPUKernel<paddle::platform::float16>);
 
 #endif

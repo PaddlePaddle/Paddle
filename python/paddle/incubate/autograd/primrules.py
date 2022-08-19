@@ -11,16 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import typing
 
 import paddle
 
-from .primreg import REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG, REGISTER_JVP, REGISTER_TRANSPOSE
-from .primreg import (lookup_fn, lookup_orig2prim, lookup_prim2orig, lookup_jvp,
-                      lookup_transpose, op_position_inputs, op_position_output)
-from .primops import (neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
-                      transpose, split, concat, reduce, matmul, slice_select,
-                      slice_assign, gather, scatter_add, fill_const, set_value)
-from .utils import get_input_var_list, get_output_var_list, INT_DTYPE_2_STRING
+from . import primops
+from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
+                      matmul, mul, neg, reduce, reshape, scatter_add, set_value,
+                      sin, slice_assign, slice_select, split, sqrt, sub, tanh,
+                      transpose, log, select, eq)
+from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
+                      REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
+                      lookup_orig2prim, lookup_prim2orig, lookup_transpose,
+                      op_position_inputs, op_position_output)
+from .utils import INT_DTYPE_2_STRING, get_input_var_list, get_output_var_list
 
 
 def _orig2prim(op, *args):
@@ -63,6 +67,10 @@ index_select
 scale
 assign
 sqrt
+log
+select
+equal
+elementwise_pow
 
 These original ops are partially supported:
 
@@ -146,6 +154,26 @@ def elementwise_mul_orig2prim(op, x, y):
 @REGISTER_ORIG2PRIM('tanh')
 def tanh_orig2prim(op, x):
     return tanh(x)
+
+
+@REGISTER_ORIG2PRIM('sin')
+def sin_orig2prim(op, x):
+    return sin(x)
+
+
+@REGISTER_ORIG2PRIM('cos')
+def cos_orig2prim(op, x):
+    return cos(x)
+
+
+@REGISTER_ORIG2PRIM('exp')
+def exp_orig2prim(op, x):
+    return exp(x)
+
+
+@REGISTER_ORIG2PRIM('log')
+def log_orig2prim(op, x):
+    return log(x)
 
 
 @REGISTER_ORIG2PRIM('fill_zeros_like')
@@ -267,6 +295,28 @@ def p_norm_orig2prim(op, x):
         raise RuntimeError('Only support lower l2/l1 norm currently')
 
 
+# TODO: support broadcast
+@REGISTER_ORIG2PRIM('where')
+def select_orig2prim(op, condition, x, y):
+    return select(condition, x, y)
+
+
+@REGISTER_ORIG2PRIM('equal')
+def equal_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return eq(x, y)
+
+
+@REGISTER_ORIG2PRIM('elementwise_pow')
+def elementwise_pow_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+
+    z = primops.pow(x, y)
+    return z
+
+
 ## Register prim2orig lower rules
 
 
@@ -298,6 +348,26 @@ def sqrt_prim2orig(op, x):
 @REGISTER_PRIM2ORIG('tanh_p')
 def tanh_prim2orig(op, x):
     return paddle.tanh(x)
+
+
+@REGISTER_PRIM2ORIG('sin_p')
+def sin_prim2orig(op, x):
+    return paddle.sin(x)
+
+
+@REGISTER_PRIM2ORIG('cos_p')
+def cos_prim2orig(op, x):
+    return paddle.cos(x)
+
+
+@REGISTER_PRIM2ORIG('exp_p')
+def exp_prim2orig(op, x):
+    return paddle.exp(x)
+
+
+@REGISTER_PRIM2ORIG('log_p')
+def log_prim2orig(op, x):
+    return paddle.log(x)
 
 
 @REGISTER_PRIM2ORIG('reshape_p')
@@ -381,6 +451,21 @@ def fill_constant_prim2orig(op):
                        dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
 
 
+@REGISTER_PRIM2ORIG('select_p')
+def select_prim2orig(op, condition, x, y):
+    return paddle.where(condition, x, y)
+
+
+@REGISTER_PRIM2ORIG('eq_p')
+def eq_prim2orig(op, x, y):
+    return paddle.equal(x, y)
+
+
+@REGISTER_PRIM2ORIG('pow_p')
+def pow_prim2orig(op, x, y):
+    return paddle.pow(x, y)
+
+
 ## Register linearize rules
 @REGISTER_JVP('add_p')
 def add_jvp(op, x_dot, y_dot):
@@ -450,6 +535,38 @@ def tanh_jvp(op, x_dot):
     c1 = fill_const(value=1.0, shape=y.shape, dtype=y.dtype)
     y_dot = mul(x_dot, sub(c1, mul(y, y)))
     return y_dot
+
+
+@REGISTER_JVP('sin_p')
+def sin_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    x, = op_position_inputs(op)
+    return mul(x_dot, cos(x))
+
+
+@REGISTER_JVP('cos_p')
+def cos_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    x, = op_position_inputs(op)
+    return mul(x_dot, neg(sin(x)))
+
+
+@REGISTER_JVP('exp_p')
+def exp_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    y = op_position_output(op)
+    return mul(x_dot, y)
+
+
+@REGISTER_JVP('log_p')
+def log_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    x, = op_position_inputs(op)
+    return div(x_dot, x)
 
 
 @REGISTER_JVP('reshape_p')
@@ -571,6 +688,55 @@ def scatter_add_jvp(op, x_dot, y_dot):
     return linear_jvp(op, x_dot, y_dot, indextensor, axis=axis)
 
 
+@REGISTER_JVP('select_p')
+def select_jvp(op, cond_dot, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+
+    cond, x, y = op_position_inputs(op)
+    if x_dot is None:
+        x_dot = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+    if y_dot is None:
+        y_dot = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+    return select(cond, x_dot, y_dot)
+
+
+@REGISTER_JVP('eq_p')
+def eq_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+    x, _ = op_position_inputs(op)
+    z_dot = fill_const(value=0., shape=x.shape, dtype=x.dtype)
+    return z_dot
+
+
+@REGISTER_JVP('pow_p')
+def pow_jvp(op, x_dot, y_dot):
+
+    def _compute_t1(x, y):
+        zero_y = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+        one_y = fill_const(value=1.0, shape=y.shape, dtype=y.dtype)
+
+        cond = eq(y, zero_y)
+        new_y = select(cond, one_y, sub(y, one_y))
+        t1 = mul(x_dot, mul(y, primops.pow(x, new_y)))
+        return t1
+
+    if x_dot is None and y_dot is None:
+        return None
+    x, y = op_position_inputs(op)
+    z = op_position_output(op)
+
+    if y_dot is None:
+        return _compute_t1(x, y)
+    elif x_dot is None:
+        return mul(y_dot, mul(log(x), z))
+    else:
+        t1, t2 = _compute_t1(x, y), mul(y_dot, mul(log(x), z))
+        z_dot = add(t1, t2)
+        return z_dot
+
+
 ## Register transpose rules
 
 
@@ -656,10 +822,14 @@ def split_transpose(op, check_dot, ys_bar):
 @REGISTER_TRANSPOSE('concat_p')
 def concat_transpose(op, check_dot, y_bar):
     xs, = op_position_inputs(op)
+    if not isinstance(xs, typing.Sequence):
+        xs = [xs]
     for x in xs:
         assert check_dot(x), 'check_dot(x) must be True'
     axis = op.attr('axis')
     sections = [x.shape[axis] for x in xs]
+    if len(sections) == 1:
+        return y_bar
     return split(y_bar, num_or_sections=sections, axis=axis)
 
 
@@ -752,3 +922,22 @@ def scatter_add_transpose(op, check_dot, z_bar):
     y_bar = gather(z_bar, indextensor, axis=axis)
     indextensor_bar = None
     return x_bar, y_bar, indextensor_bar
+
+
+@REGISTER_TRANSPOSE('select_p')
+def select_transpose(op, check_dot, z_bar):
+    cond, x, y = op_position_inputs(op)
+    assert check_dot(cond) or check_dot(x) or check_dot(y), (
+        f'check_dot(cond) ^ (check_dot(x) ^ check_dot(y)) must be True, '
+        f'but check_dot(cond)={check_dot(cond)}, check_dot(x)={check_dot(x)} and check_dot(y)={check_dot(y)}.'
+    )
+
+    zeros_x = fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
+    zeros_y = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+
+    cond_bar = fill_const(value=0.0, shape=y.shape,
+                          dtype=cond.dtype) if check_dot(cond) else None
+    x_bar = select(cond, z_bar, zeros_x) if check_dot(x) else None
+    y_bar = select(cond, zeros_y, z_bar) if check_dot(y) else None
+
+    return cond_bar, x_bar, y_bar

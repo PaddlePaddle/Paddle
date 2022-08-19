@@ -69,7 +69,9 @@ void PSCore::InitGFlag(const std::string& gflags) {
 
 int PSCore::InitServer(
     const std::string& dist_desc,
-    const std::vector<std::string>* host_sign_list, int node_num, int index,
+    const std::vector<std::string>* host_sign_list,
+    int node_num,
+    int index,
     int trainers,
     const std::vector<framework::ProgramDesc>& server_sub_program) {
   google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
@@ -88,7 +90,9 @@ int PSCore::InitServer(
 int PSCore::InitWorker(
     const std::string& dist_desc,
     const std::map<uint64_t, std::vector<paddle::distributed::Region>>& regions,
-    const std::vector<std::string>* host_sign_list, int node_num, int index) {
+    const std::vector<std::string>* host_sign_list,
+    int node_num,
+    int index) {
   google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
   InitGFlag(_ps_param.init_gflags());
   _ps_env = paddle::distributed::PaddlePSEnvironment();
@@ -96,8 +100,8 @@ int PSCore::InitWorker(
   int ret = 0;
   VLOG(1) << "PSCore::InitWorker";
   auto* communicator = Communicator::GetInstance();
-  ret = communicator->GetPsClient()->Configure(_ps_param, regions, _ps_env,
-                                               index);
+  ret = communicator->GetPsClient()->Configure(
+      _ps_param, regions, _ps_env, index);
   communicator->Start();
   return ret;
 }

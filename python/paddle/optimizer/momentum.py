@@ -327,7 +327,7 @@ class Momentum(Optimizer):
         if in_dygraph_mode():
             if isinstance(param_and_grad, dict):
                 self._update_regularization(param_and_grad['weight_decay'])
-            return _C_ops.final_state_momentum(
+            return _C_ops.final_state_momentum_(
                 param_and_grad[0], param_and_grad[1], velocity_acc, lr,
                 master_weight, self._momentum, self._use_nesterov,
                 regularization_method, regularization_coeff, find_master,

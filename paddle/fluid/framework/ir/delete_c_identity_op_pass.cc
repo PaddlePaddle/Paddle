@@ -71,7 +71,8 @@ void DeleteCIdentityOpPass::ApplyImpl(ir::Graph* graph) const {
     auto var_map = any_op2_desc->Inputs();
     std::string arg_name = "";
     for (auto& name_m : var_map) {
-      if (std::find(name_m.second.begin(), name_m.second.end(),
+      if (std::find(name_m.second.begin(),
+                    name_m.second.end(),
                     c_identity_op_out_name) != name_m.second.end()) {
         arg_name = name_m.first;
       }
@@ -84,7 +85,8 @@ void DeleteCIdentityOpPass::ApplyImpl(ir::Graph* graph) const {
 
     // modify the any_op2's inputs
     for (auto& name_m : var_map) {
-      if (std::find(name_m.second.begin(), name_m.second.end(),
+      if (std::find(name_m.second.begin(),
+                    name_m.second.end(),
                     c_identity_op_out_name) != name_m.second.end()) {
         std::vector<std::string> new_inputs;
         for (auto& i_n : name_m.second) {

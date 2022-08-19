@@ -29,15 +29,18 @@ class SequenceReverseOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound("Input(X) of SequenceReverse must exist"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Y"), true,
+        ctx->HasOutput("Y"),
+        true,
         platform::errors::NotFound("Output(Y) of SequenceReverse must exist"));
 
     auto x_dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(
-        x_dim.size(), 2,
+        x_dim.size(),
+        2,
         platform::errors::InvalidArgument(
             "The rank of SequenceReverseOp Input(X) must be greater "
             "than or equal to 2. But the Input(X) tensor's rank we received is "
@@ -89,8 +92,8 @@ This Operator only supports one-level lod currently.
 
 template <typename T>
 struct SequenceReverseFunctor {
-  SequenceReverseFunctor(const T *x, T *y, const size_t *lod, size_t lod_count,
-                         size_t row_numel)
+  SequenceReverseFunctor(
+      const T *x, T *y, const size_t *lod, size_t lod_count, size_t row_numel)
       : x_(x), y_(y), lod_(lod), lod_count_(lod_count), row_numel_(row_numel) {}
 
   HOSTDEVICE void operator()(size_t idx_x) const {
@@ -117,12 +120,14 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     auto &x = *ctx.Input<LoDTensor>("X");
     auto *y = ctx.Output<LoDTensor>("Y");
 
-    PADDLE_ENFORCE_EQ(x.lod().empty(), false,
+    PADDLE_ENFORCE_EQ(x.lod().empty(),
+                      false,
                       platform::errors::NotFound(
                           "Input(X) Tensor of SequenceReverseOp does not "
                           "contain LoD information."));
 
-    PADDLE_ENFORCE_EQ(x.lod().size(), 1,
+    PADDLE_ENFORCE_EQ(x.lod().size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "SequenceReverseOp only support one "
                           "level lod. But the Input(X) lod size is %d",
@@ -149,7 +154,8 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     auto *y_data = y->mutable_data<T>(ctx.GetPlace());
 
     PADDLE_ENFORCE_NE(
-        x_data, y_data,
+        x_data,
+        y_data,
         platform::errors::InvalidArgument(
             "SequenceReverse Op does not support in-place operation"));
 
@@ -159,15 +165,16 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
         auto end_pos = lod[idx + 1];
         for (auto pos = start_pos; pos < end_pos; pos++) {
           auto cur_pos = end_pos - pos - 1 + start_pos;
-          std::memcpy(y_data + pos * row_numel, x_data + cur_pos * row_numel,
+          std::memcpy(y_data + pos * row_numel,
+                      x_data + cur_pos * row_numel,
                       row_numel * sizeof(T));
         }
       }
     } else {
       auto &dev_ctx = ctx.template device_context<DeviceContext>();
 
-      SequenceReverseFunctor<T> functor(x_data, y_data, lod, lod_count,
-                                        row_numel);
+      SequenceReverseFunctor<T> functor(
+          x_data, y_data, lod, lod_count, row_numel);
       platform::ForRange<DeviceContext> for_range(dev_ctx, limit);
       for_range(functor);
     }

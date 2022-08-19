@@ -91,6 +91,8 @@ struct CommonMemEvent {
         type(type),
         increase_bytes(increase_bytes),
         place(place),
+        current_allocated(current_allocated),
+        current_reserved(current_reserved),
         peak_allocated(peak_allocated),
         peak_reserved(peak_reserved) {}
   uint64_t timestamp_ns;
@@ -121,6 +123,23 @@ struct OperatorSupplementOriginEvent {
     auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
     strncpy(buf, type_name.c_str(), type_name.length() + 1);
     op_type = buf;
+  }
+  OperatorSupplementOriginEvent(
+      std::function<void *(size_t)> arena_allocator,
+      uint64_t timestamp_ns,
+      const std::string &type_name,
+      const std::vector<std::pair<const char *, std::vector<framework::DDim>>>
+          &shapes,
+      const std::map<std::string, std::vector<framework::proto::VarType::Type>>
+          &dtypes,
+      const std::vector<std::string> callstack)
+      : timestamp_ns(timestamp_ns), dtypes(dtypes), callstack(callstack) {
+    auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
+    strncpy(buf, type_name.c_str(), type_name.length() + 1);
+    op_type = buf;
+    for (auto it = shapes.begin(); it != shapes.end(); it++) {
+      input_shapes[std::string((*it).first)] = (*it).second;
+    }
   }
   uint64_t timestamp_ns;
   const char *op_type = nullptr;  // not owned, designed for performance

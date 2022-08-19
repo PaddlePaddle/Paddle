@@ -26,7 +26,8 @@ namespace operators {
 
 class GeluOp : public framework::OperatorWithKernel {
  public:
-  GeluOp(const std::string &type, const framework::VariableNameMap &inputs,
+  GeluOp(const std::string &type,
+         const framework::VariableNameMap &inputs,
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -55,14 +56,17 @@ class GeluGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
         platform::errors::InvalidArgument(
             "Input(%s) of GeluGradOp should not be null.", "DOut"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(%s) of GeluGradOp should not be null.", "X"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
         platform::errors::InvalidArgument(
             "Output(%s) of GeluGradOp should not be null.", "DX"));
     auto x_grad_name = framework::GradVarName("X");
@@ -146,9 +150,12 @@ class GeluGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(gelu, GeluInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(gelu,
+                            GeluInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
-REGISTER_OPERATOR(gelu, ops::GeluOp, ops::GeluOpMaker,
+REGISTER_OPERATOR(gelu,
+                  ops::GeluOp,
+                  ops::GeluOpMaker,
                   ops::GeluGradOpMaker<paddle::framework::OpDesc>,
                   ops::GeluGradOpMaker<paddle::imperative::OpBase>,
                   GeluInferShapeFunctor);

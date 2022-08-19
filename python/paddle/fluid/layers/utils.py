@@ -125,6 +125,13 @@ def _yield_flat_nest(nest):
             yield n
 
 
+def to_sequence(nest):
+    if is_sequence(nest):
+        return nest
+    else:
+        return [nest]
+
+
 def flatten(nest):
     """
 	:alias_main: paddle.flatten
@@ -258,6 +265,26 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
     nest2_as_sequence = [n for n in _yield_value(nest2)]
     for n1, n2 in zip(nest1_as_sequence, nest2_as_sequence):
         _recursive_assert_same_structure(n1, n2, check_types)
+
+
+def padding_to_same_structure(nest1, nest2, obj=None):
+
+    def _padding_to_same_structure_single(value, obj):
+
+        def change_none_to_obj(x):
+            if x is None: return obj
+            return x
+
+        if is_sequence(value):
+            value = pack_sequence_as(
+                value, [change_none_to_obj(item) for item in flatten(value)])
+        else:
+            value = change_none_to_obj(value)
+        return value
+
+    nest1 = _padding_to_same_structure_single(nest1, obj)
+    nest2 = _padding_to_same_structure_single(nest2, obj)
+    return nest1, nest2
 
 
 def assert_same_structure(nest1, nest2, check_types=True):

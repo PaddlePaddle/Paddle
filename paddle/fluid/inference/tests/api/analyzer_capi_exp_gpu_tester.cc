@@ -50,8 +50,8 @@ TEST(PD_Config, gpu_interface) {
   bool cudnn = PD_ConfigCudnnEnabled(config);
   EXPECT_TRUE(cudnn);
 
-  PD_ConfigEnableTensorRtEngine(config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE,
-                                TRUE);
+  PD_ConfigEnableTensorRtEngine(
+      config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE, TRUE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
   EXPECT_TRUE(trt_enable);
 
@@ -63,9 +63,14 @@ TEST(PD_Config, gpu_interface) {
   int32_t* min_shape_ptr = min_shape;
   int32_t* max_shape_ptr = max_shape;
   int32_t* opt_shape_ptr = opt_shape;
-  PD_ConfigSetTrtDynamicShapeInfo(config, 1, &tensor_name, shapes_num,
-                                  &min_shape_ptr, &max_shape_ptr,
-                                  &opt_shape_ptr, FALSE);
+  PD_ConfigSetTrtDynamicShapeInfo(config,
+                                  1,
+                                  &tensor_name,
+                                  shapes_num,
+                                  &min_shape_ptr,
+                                  &max_shape_ptr,
+                                  &opt_shape_ptr,
+                                  FALSE);
   PD_ConfigDisableTensorRtOPs(config, 1, &ops_name);
   PD_ConfigEnableVarseqlen(config);
   bool oss_enabled = PD_ConfigTensorRtOssEnabled(config);
@@ -118,8 +123,8 @@ TEST(PD_Config, use_gpu) {
   bool ir_optim = PD_ConfigIrOptim(config);
   EXPECT_TRUE(ir_optim);
 
-  PD_ConfigEnableTensorRtEngine(config, 1 << 20, 1, 3, PD_PRECISION_FLOAT32,
-                                FALSE, FALSE);
+  PD_ConfigEnableTensorRtEngine(
+      config, 1 << 20, 1, 3, PD_PRECISION_FLOAT32, FALSE, FALSE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
   EXPECT_TRUE(trt_enable);
   PD_ConfigEnableMemoryOptim(config, true);
@@ -138,8 +143,8 @@ TEST(PD_Config, trt_int8) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   PD_Config* config = PD_ConfigCreate();
   PD_ConfigEnableUseGpu(config, 100, 0);
-  PD_ConfigEnableTensorRtEngine(config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE,
-                                TRUE);
+  PD_ConfigEnableTensorRtEngine(
+      config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE, TRUE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
   EXPECT_TRUE(trt_enable);
   PD_ConfigDestroy(config);
@@ -149,8 +154,8 @@ TEST(PD_Config, trt_fp16) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   PD_Config* config = PD_ConfigCreate();
   PD_ConfigEnableUseGpu(config, 100, 0);
-  PD_ConfigEnableTensorRtEngine(config, 1 << 20, 1, 3, PD_PRECISION_HALF, FALSE,
-                                FALSE);
+  PD_ConfigEnableTensorRtEngine(
+      config, 1 << 20, 1, 3, PD_PRECISION_HALF, FALSE, FALSE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
   EXPECT_TRUE(trt_enable);
   PD_Predictor* predictor = PD_PredictorCreate(config);

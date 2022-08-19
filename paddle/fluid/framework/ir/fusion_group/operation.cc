@@ -39,12 +39,16 @@ std::unordered_set<std::string> OperationMap::Find(int type) {
   return res;
 }
 
-void OperationMap::Insert(int type, int num_operands, std::string op_type,
-                          std::string expr, std::vector<std::string> grad_exprs,
+void OperationMap::Insert(int type,
+                          int num_operands,
+                          std::string op_type,
+                          std::string expr,
+                          std::vector<std::string> grad_exprs,
                           std::vector<std::string> input_names,
                           std::vector<std::string> output_names) {
   Operation op(type, num_operands, op_type, {expr}, input_names, output_names);
-  PADDLE_ENFORCE_EQ(op.IsValid(), true,
+  PADDLE_ENFORCE_EQ(op.IsValid(),
+                    true,
                     platform::errors::InvalidArgument(
                         "Operation %s is invalid. Please set correct "
                         "expression for forward calculation.",
@@ -67,9 +71,14 @@ void OperationMap::Insert(int type, int num_operands, std::string op_type,
     for (auto name : input_names) {
       grad_output_names.push_back(GradVarName(name));
     }
-    Operation grad_op(type, num_operands, grad_op_type, grad_exprs,
-                      grad_input_names, grad_output_names);
-    PADDLE_ENFORCE_EQ(grad_op.IsValid(), true,
+    Operation grad_op(type,
+                      num_operands,
+                      grad_op_type,
+                      grad_exprs,
+                      grad_input_names,
+                      grad_output_names);
+    PADDLE_ENFORCE_EQ(grad_op.IsValid(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Operation %s is invalid. Please set correct "
                           "expression for backward calculation.",
@@ -83,7 +92,8 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   //  ${0} - x
   //  ${1} - out
   //  ${2} - dout
-  auto insert_handler = [&](std::string op_type, std::string expr,
+  auto insert_handler = [&](std::string op_type,
+                            std::string expr,
                             std::vector<std::string> grad_exprs) {
     int type = 0;
     int num_oprands = 1;
@@ -93,17 +103,19 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   // relu:
   //  out = f(x) = x > 0 ? x : 0
   //  dx = dout * (out > 0 ? 1 : 0)
-  insert_handler("relu", "${0} > %{0} ? ${0} : %{0.0}",
-                 {"${1} > %{0.0} ? ${2} : %{0.0}"});
+  insert_handler(
+      "relu", "${0} > %{0} ? ${0} : %{0.0}", {"${1} > %{0.0} ? ${2} : %{0.0}"});
   // sigmoid:
   //  out = f(x) = 1.0 / (1.0 + exp(-x))
   //  dx = dout * out * (1 - out)
-  insert_handler("sigmoid", "%{1.0} / (%{1.0} + Exp(- ${0}))",
+  insert_handler("sigmoid",
+                 "%{1.0} / (%{1.0} + Exp(- ${0}))",
                  {"${2} * ${1} * (%{1.0} - ${1})"});
   // tanh:
   //  out = f(x) = 2.0 / (1.0 + exp(-2.0 * x)) - 1.0;
   //  dx = dout * (1 - out * out)
-  insert_handler("tanh", "%{2.0} / (%{1.0} + Exp(-%{2.0} * ${0})) - %{1.0}",
+  insert_handler("tanh",
+                 "%{2.0} / (%{1.0} + Exp(-%{2.0} * ${0})) - %{1.0}",
                  {"${2} * (%{1.0} - ${1} * ${1})"});
 
   // sqrt:
@@ -144,7 +156,8 @@ void OperationMap::InsertBinaryElementwiseOperations() {
   //  ${1} - y
   //  ${2} - out
   //  ${3} - dout
-  auto insert_handler = [&](std::string op_type, std::string expr,
+  auto insert_handler = [&](std::string op_type,
+                            std::string expr,
                             std::vector<std::string> grad_exprs) {
     int type = 0;
     int num_oprands = 2;
@@ -165,30 +178,34 @@ void OperationMap::InsertBinaryElementwiseOperations() {
   //  out = x * y
   //  dx = dout * y
   //  dy = dout * x
-  insert_handler("elementwise_mul", "${0} * ${1}",
-                 {"${3} * ${1}", "${3} * ${0}"});
+  insert_handler(
+      "elementwise_mul", "${0} * ${1}", {"${3} * ${1}", "${3} * ${0}"});
   // elementwise_div:
   //  out = x / y
   //  dx = dout / y
   //  dy = - dout * out / y
-  insert_handler("elementwise_div", "${0} / ${1}",
+  insert_handler("elementwise_div",
+                 "${0} / ${1}",
                  {"${3} / ${1}", "- ${3} * ${2} / ${1}"});
   // elementwise_min:
   //  out = x < y ? x : y
   //  dx = dout * (x < y)
   //  dy = dout * (x >= y)
-  insert_handler("elementwise_min", "${0} < ${1} ? ${0} : ${1}",
+  insert_handler("elementwise_min",
+                 "${0} < ${1} ? ${0} : ${1}",
                  {"${3} * (${0} < ${1})", "${3} * (${0} >= ${1})"});
   // elementwise_max:
   //  out = x > y ? x : y
   //  dx = dout * (x > y)
   //  dy = dout * (x <= y)
-  insert_handler("elementwise_max", "${0} > ${1} ? ${0} : ${1}",
+  insert_handler("elementwise_max",
+                 "${0} > ${1} ? ${0} : ${1}",
                  {"${3} * (${0} > ${1})", "${3} * (${0} <= ${1})"});
 }
 
 void OperationMap::InsertMultivariateElementwiseOperations() {
-  auto insert_handler = [&](std::string op_type, std::string expr,
+  auto insert_handler = [&](std::string op_type,
+                            std::string expr,
                             std::vector<std::string> grad_exprs) {
     int type = 0;
     int num_oprands = -1;
@@ -204,7 +221,8 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
   //  ${0} + ${1} + ${2} + ${3}
   insert_handler("sum", "${0}[ + ${?}]", {});
 
-  auto insert_handler_without_input = [&](std::string op_type, std::string expr,
+  auto insert_handler_without_input = [&](std::string op_type,
+                                          std::string expr,
                                           std::vector<std::string> grad_exprs) {
     int type = 0;
     int num_oprands = 0;

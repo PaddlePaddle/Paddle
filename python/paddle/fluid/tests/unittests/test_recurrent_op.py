@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import numpy as np
@@ -134,7 +135,7 @@ class RecurrentOpTest1(unittest.TestCase):
         self.py_rnn = PySimpleRNN1(self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -199,17 +200,21 @@ class RecurrentOpTest1(unittest.TestCase):
         num_grad = self.get_numerical_gradient()
         for idx, name in enumerate(self.grad_data_field):
             self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
-            self.assertTrue(
-                np.isclose(num_grad[idx], ana_grad[idx], rtol=rtol).all(),
-                "num_grad (" + name + ") has diff at " + str(self.place) +
-                "\nExpect " + str(num_grad[idx]) + "\n" + "But Got" +
-                str(ana_grad[idx]) + " in class " + self.__class__.__name__)
+            np.testing.assert_allclose(
+                num_grad[idx],
+                ana_grad[idx],
+                rtol=rtol,
+                atol=1e-8,
+                err_msg='num_grad (' + name + ') has diff at ' +
+                str(self.place) + '\nExpect ' + str(num_grad[idx]) + '\n' +
+                'But Got' + str(ana_grad[idx]) + ' in class ' +
+                self.__class__.__name__)
 
     def check_forward(self):
         pd_output = self.forward()
         py_output = self.py_rnn.forward()
         self.assertEqual(pd_output.shape, py_output.shape)
-        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.01).all())
+        np.testing.assert_allclose(pd_output, py_output, rtol=0.01)
 
     def get_numerical_gradient(self, delta=0.005):
         dloss_dout = 1.0
@@ -262,7 +267,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
         self.py_rnn = PySimpleRNN2(self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -364,7 +369,7 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
             self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -446,7 +451,7 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
             self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -553,7 +558,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
 
         with fluid.program_guard(self.main_program, self.startup_program):
             rnn_out = self.create_rnn_op()
-            self.output = layers.mean(rnn_out)
+            self.output = paddle.mean(rnn_out)
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -637,7 +642,7 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
         self.py_rnn = PySimpleRNN2(self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],

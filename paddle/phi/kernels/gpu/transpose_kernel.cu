@@ -31,12 +31,11 @@ void TransposeKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
-  int rank = axis.size();
   ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
     return;
   }
-  paddle::operators::TransposeGPUKernelDriver<T>(ctx, rank, x, axis, out);
+  paddle::operators::TransposeGPUKernelDriver<T>(ctx, x, axis, out);
 }
 
 }  // namespace phi

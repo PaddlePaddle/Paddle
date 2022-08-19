@@ -18,7 +18,7 @@ set_source_files_properties(
 cc_library(
   graph_node
   SRCS ${graphDir}/graph_node.cc
-  DEPS WeightedSampler)
+  DEPS WeightedSampler enforce)
 set_source_files_properties(
   memory_dense_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(
@@ -54,10 +54,6 @@ set_source_files_properties(
   tensor_accessor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
 cc_library(
-  tensor_accessor
-  SRCS tensor_accessor.cc
-  DEPS ${TABLE_DEPS} eigen3 ps_framework_proto device_context)
-cc_library(
   tensor_table
   SRCS
   DEPS eigen3
@@ -89,37 +85,28 @@ set_source_files_properties(
                                         ${DISTRIBUTE_COMPILE_FLAGS})
 
 cc_library(
-  sparse_sgd_rule
-  SRCS sparse_sgd_rule.cc
-  DEPS ${TABLE_DEPS} ps_framework_proto)
-cc_library(
-  ctr_accessor
-  SRCS ctr_accessor.cc ctr_double_accessor.cc sparse_accessor.cc
-       ctr_dymf_accessor.cc
-  DEPS ${TABLE_DEPS} ps_framework_proto sparse_sgd_rule)
-cc_library(
-  sparse_table
-  SRCS memory_sparse_table.cc ssd_sparse_table.cc memory_sparse_geo_table.cc
-  DEPS ps_framework_proto
-       ${TABLE_DEPS}
-       fs
-       afs_wrapper
-       ctr_accessor
-       common_table
-       rocksdb)
-
-cc_library(
   table
-  SRCS table.cc
-  DEPS sparse_table
+  SRCS sparse_sgd_rule.cc
+       ctr_accessor.cc
+       ctr_double_accessor.cc
+       sparse_accessor.cc
+       ctr_dymf_accessor.cc
+       tensor_accessor.cc
+       memory_sparse_table.cc
+       ssd_sparse_table.cc
+       memory_sparse_geo_table.cc
+       table.cc
+  DEPS ${TABLE_DEPS}
        common_table
-       tensor_accessor
        tensor_table
        ps_framework_proto
        string_helper
        device_context
        gflags
        glog
-       boost)
+       fs
+       afs_wrapper
+       rocksdb
+       eigen3)
 
 target_link_libraries(table -fopenmp)

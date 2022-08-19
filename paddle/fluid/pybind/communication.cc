@@ -39,12 +39,14 @@ void BindTCPStore(py::module *m) {
           .def(py::init<>())
           .def(
               "set",
-              [](distributed::Store &self, const std::string &key,
+              [](distributed::Store &self,
+                 const std::string &key,
                  const std::string &value) {
                 std::vector<uint8_t> data(value.begin(), value.end());
                 self.set(key, data);
               },
-              py::arg("key"), py::arg("value"),
+              py::arg("key"),
+              py::arg("value"),
               py::call_guard<py::gil_scoped_release>())
           .def(
               "get",
@@ -54,24 +56,29 @@ void BindTCPStore(py::module *m) {
                 return py::bytes(reinterpret_cast<char *>(data.data()),
                                  data.size());
               },
-              py::arg("key"), py::call_guard<py::gil_scoped_release>())
-          .def("add", &distributed::Store::add,
+              py::arg("key"),
+              py::call_guard<py::gil_scoped_release>())
+          .def("add",
+               &distributed::Store::add,
                py::call_guard<py::gil_scoped_release>())
-          .def("wait", &distributed::Store::wait,
+          .def("wait",
+               &distributed::Store::wait,
                py::call_guard<py::gil_scoped_release>());
 
   py::class_<TCPStore, std::shared_ptr<TCPStore>>(*m, "TCPStore", Store)
-      .def(py::init([](std::string hostname, uint16_t port, bool is_master,
-                       size_t world_size, std::chrono::seconds timeout,
-                       int stop_check_timeout) {
-             return std::make_shared<TCPStore>(hostname, port, is_master,
-                                               world_size, timeout,
-                                               stop_check_timeout);
+      .def(py::init([](std::string hostname,
+                       uint16_t port,
+                       bool is_master,
+                       size_t world_size,
+                       int timeout) {
+             return std::make_shared<TCPStore>(
+                 hostname, port, is_master, world_size, timeout);
            }),
-           py::arg("hostname"), py::arg("port"), py::arg("is_master"),
+           py::arg("hostname"),
+           py::arg("port"),
+           py::arg("is_master"),
            py::arg("world_size"),
-           py::arg("timeout") = distributed::tcputils::kNoTimeout,
-           py::arg("stop_check_timeout") = 900,
+           py::arg("timeout") = 900,
            py::call_guard<py::gil_scoped_release>());
 }
 

@@ -33,11 +33,12 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(place),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "AllReduce op can run on gpu place only for now."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
@@ -70,9 +71,14 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
         red_type = ncclMin;
         break;
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), red_type,
-        comm, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::ncclAllReduce(sendbuff,
+                                         recvbuff,
+                                         numel,
+                                         static_cast<ncclDataType_t>(dtype),
+                                         red_type,
+                                         comm,
+                                         stream));
     if (ctx.Attr<bool>("sync_mode")) {
       platform::GpuStreamSync(stream);
     }

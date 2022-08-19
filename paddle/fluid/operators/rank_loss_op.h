@@ -37,8 +37,8 @@ class RankLossKernel : public framework::OpKernel<T> {
     auto right = framework::EigenVector<T>::Flatten(*right_t);
 
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    EigenRankLoss<std::decay_t<decltype(dev)>, T>::Eval(dev, out, label, left,
-                                                        right);
+    EigenRankLoss<std::decay_t<decltype(dev)>, T>::Eval(
+        dev, out, label, left, right);
   }
 };
 

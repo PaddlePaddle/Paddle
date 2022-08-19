@@ -38,7 +38,8 @@ template <typename DeviceContext, typename T>
 class ConcatFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const std::vector<framework::Tensor>& input, int axis,
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
                   framework::Tensor* output);
 };
 
@@ -57,9 +58,11 @@ class ConcatFunctor {
 template <typename DeviceContext, typename T>
 class SplitFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
-                  int axis, std::vector<framework::Tensor*>* outputs);
+                  int axis,
+                  std::vector<framework::Tensor*>* outputs);
 };
 
 }  // namespace math

@@ -180,13 +180,16 @@ Conv3DBiasFusePass::Conv3DBiasFusePass() {
 }
 
 template <typename BinaryOperation>
-LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
+LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a,
+                               const LoDTensor& vec_b,
                                BinaryOperation f) {
-  PADDLE_ENFORCE_EQ(vec_a.dims(), vec_b.dims(),
+  PADDLE_ENFORCE_EQ(vec_a.dims(),
+                    vec_b.dims(),
                     platform::errors::InvalidArgument(
                         "Input two tensors must have same shape, but they are "
                         "different: %s, %s.",
-                        vec_a.dims(), vec_b.dims()));
+                        vec_a.dims(),
+                        vec_b.dims()));
   LoDTensor vec_y;
   vec_y.Resize(vec_a.dims());
   const float* a = vec_a.data<float>();
@@ -219,7 +222,8 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle ConvBias fuse";
-    GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight,
+    GET_IR_NODE_FROM_SUBGRAPH(conv_weight,
+                              conv_weight,
                               conv_bias_pattern);                      // Filter
     GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, conv_bias_pattern);  // tmp
     GET_IR_NODE_FROM_SUBGRAPH(conv, conv, conv_bias_pattern);  // CONV op
@@ -231,7 +235,8 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(eltwise, eltwise, conv_bias_pattern);
 
     PADDLE_ENFORCE_NE(
-        subgraph.count(conv_input), 0,
+        subgraph.count(conv_input),
+        0,
         platform::errors::NotFound("Detector did not find conv input."));
 
     // check compat
@@ -257,16 +262,19 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
     if (has_bias && conv->Op()->Input("Bias").size() > 0) {
       auto conv_bias_names = conv->Op()->Input("Bias");
       // add eltwise bias to existing conv bias
-      PADDLE_ENFORCE_EQ(conv_bias_names.size(), 1,
+      PADDLE_ENFORCE_EQ(conv_bias_names.size(),
+                        1,
                         platform::errors::NotFound("Can not find var Bias."));
       auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
       auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
       PADDLE_ENFORCE_EQ(
-          conv_bias_tensor->dims(), eltwise_bias_tensor->dims(),
+          conv_bias_tensor->dims(),
+          eltwise_bias_tensor->dims(),
           platform::errors::InvalidArgument(
               "Conv bias tensor and eltwise bias tensor "
               "must have same shape, but they are different: %s, %s.",
-              conv_bias_tensor->dims(), eltwise_bias_tensor->dims()));
+              conv_bias_tensor->dims(),
+              eltwise_bias_tensor->dims()));
       *conv_bias_tensor = tensor_apply_eltwise(
           *conv_bias_tensor, *eltwise_bias_tensor, std::plus<float>());
 

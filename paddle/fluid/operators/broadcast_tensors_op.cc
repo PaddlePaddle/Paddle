@@ -65,7 +65,8 @@ class BroadcastTensorsOpVarTypeInference : public framework::VarTypeInference {
     // We need at least two tensors to satisfy broadcast semantics
     size_t input_size = ctx->InputSize("X");
     PADDLE_ENFORCE_GT(
-        input_size, 0,
+        input_size,
+        0,
         platform::errors::InvalidArgument(
             "BroadcastTensorsOp should have at least one input variables,"
             "but only received %d ",
@@ -79,7 +80,8 @@ class BroadcastTensorsOpVarTypeInference : public framework::VarTypeInference {
     for (size_t ind = 1; ind < input_size; ind++) {
       auto cur_var_type = ctx->GetInputType("X", ind);
       PADDLE_ENFORCE_EQ(
-          var_type, cur_var_type,
+          var_type,
+          cur_var_type,
           platform::errors::InvalidArgument(
               "inputs to BroadcastTensorsOp should have the same variable type,"
               "but detected %d v.s %d ",
@@ -88,7 +90,8 @@ class BroadcastTensorsOpVarTypeInference : public framework::VarTypeInference {
 
       auto cur_data_type = ctx->GetInputDataType("X", ind);
       PADDLE_ENFORCE_EQ(
-          data_type, cur_data_type,
+          data_type,
+          cur_data_type,
           platform::errors::InvalidArgument(
               "inputs to BroadcastTensorsOp should have the same data type,"
               "but detected %d v.s %d ",
@@ -108,11 +111,15 @@ class BroadcastTensorsGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutputs(framework::GradVarName("X")), "Output",
-                   "X@grad", "broadcast_tensors");
+    OP_INOUT_CHECK(ctx->HasOutputs(framework::GradVarName("X")),
+                   "Output",
+                   "X@grad",
+                   "broadcast_tensors");
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "broadcast_tensors");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
-                   "Out@grad", "broadcast_tensors");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@grad",
+                   "broadcast_tensors");
 
     const auto& forward_input_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim(framework::GradVarName("X"), forward_input_dims);
@@ -151,10 +158,10 @@ class BroadcastTensorsGradOpVarTypeInference
     auto var_type = ctx->GetInputType("X", 0);
     auto data_type = ctx->GetInputDataType("X", 0);
 
-    ctx->SetOutputType(framework::GradVarName("X"), var_type,
-                       framework::ALL_ELEMENTS);
-    ctx->SetOutputDataType(framework::GradVarName("X"), data_type,
-                           framework::ALL_ELEMENTS);
+    ctx->SetOutputType(
+        framework::GradVarName("X"), var_type, framework::ALL_ELEMENTS);
+    ctx->SetOutputDataType(
+        framework::GradVarName("X"), data_type, framework::ALL_ELEMENTS);
   }
 };
 
@@ -171,13 +178,15 @@ DECLARE_INFER_SHAPE_FUNCTOR(broadcast_tensors,
                             BroadcastTensorsInferShapeFunctor,
                             PD_INFER_META(phi::BroadcastTensorsInferMeta));
 
-REGISTER_OPERATOR(broadcast_tensors, ops::BroadcastTensorsOp,
+REGISTER_OPERATOR(broadcast_tensors,
+                  ops::BroadcastTensorsOp,
                   ops::BroadcastTensorsOpMaker,
                   ops::BroadcastTensorsGradOpMaker<paddle::framework::OpDesc>,
                   ops::BroadcastTensorsGradOpMaker<paddle::imperative::OpBase>,
                   ops::BroadcastTensorsOpVarTypeInference,
                   BroadcastTensorsInferShapeFunctor);
 
-REGISTER_OPERATOR(broadcast_tensors_grad, ops::BroadcastTensorsGradOp,
+REGISTER_OPERATOR(broadcast_tensors_grad,
+                  ops::BroadcastTensorsGradOp,
                   ops::BroadcastTensorsGradOpVarTypeInference,
                   ops::BroadcastTensorsGradNoNeedBufVarsInferer);

@@ -21,6 +21,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
@@ -63,14 +64,25 @@ void InstanceNormKernel(const Context& dev_ctx,
 #endif
 
   phi::funcs::SetConstant<CPUContext, T> set_constant;
-  dev_ctx.template Alloc<T>(saved_mean);
-  dev_ctx.template Alloc<T>(saved_variance);
-  set_constant(dev_ctx, saved_mean, static_cast<T>(0));
-  set_constant(dev_ctx, saved_variance, static_cast<T>(0));
+  DenseTensor saved_mean_tmp, saved_variance_tmp;
+  if (saved_mean) {
+    dev_ctx.template Alloc<T>(saved_mean);
+    set_constant(dev_ctx, saved_mean, static_cast<T>(0));
+  } else {
+    saved_mean_tmp = phi::Full<T>(dev_ctx, {NxC}, 0);
+  }
+  if (saved_variance) {
+    dev_ctx.template Alloc<T>(saved_variance);
+    set_constant(dev_ctx, saved_variance, static_cast<T>(0));
+  } else {
+    saved_variance_tmp = phi::Full<T>(dev_ctx, {NxC}, 0);
+  }
 
-  auto saved_mean_a = EigenVector<T>::Flatten(*saved_mean);
+  auto saved_mean_a =
+      EigenVector<T>::Flatten(saved_mean ? *saved_mean : saved_mean_tmp);
   auto saved_mean_e = saved_mean_a.reshape(NxC_shape);
-  auto saved_variance_a = EigenVector<T>::Flatten(*saved_variance);
+  auto saved_variance_a = EigenVector<T>::Flatten(
+      saved_variance ? *saved_variance : saved_variance_tmp);
   auto saved_variance_e = saved_variance_a.reshape(NxC_shape);
 
   auto x_e = EigenVector<T>::Flatten(x);

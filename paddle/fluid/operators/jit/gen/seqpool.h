@@ -128,12 +128,14 @@ class SeqPoolJitCode : public JitCode {
         reg_idx++;
       }
       PADDLE_ENFORCE_EQ(
-          reg_idx, rest_used_num_regs,
+          reg_idx,
+          rest_used_num_regs,
           platform::errors::InvalidArgument(
               "All heights of SeqPool should use the same number of registers."
               "It equals to the numbr of rest registers. But use %d registers "
               "and the numbr of rest registers is %d.",
-              reg_idx, rest_used_num_regs));
+              reg_idx,
+              rest_used_num_regs));
       for (int i = 0; i < reg_idx; ++i) {
         vaddps(xmm_t(i), xmm_t(i), xmm_t(i + max_num_regs));
       }
@@ -155,7 +157,9 @@ class SeqPoolJitCode : public JitCode {
   }
 
   // return the number of used regs, use start from reg 0
-  int load_rest(int rest, int w_offset, const int num_shift_regs,
+  int load_rest(int rest,
+                int w_offset,
+                const int num_shift_regs,
                 const int reg_start = 0) {
     const bool has_block4 = rest / 4 > 0;
     const bool has_block2 = (rest % 4) / 2 > 0;

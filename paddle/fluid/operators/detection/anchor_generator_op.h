@@ -25,14 +25,21 @@ namespace operators {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
-extern __global__ void GenAnchors(T* out, const T* aspect_ratios,
-                                  const int ar_num, const T* anchor_sizes,
-                                  const int as_num, const T* stride,
-                                  const int sd_num, const int height,
-                                  const int width, const T offset);
+extern __global__ void GenAnchors(T* out,
+                                  const T* aspect_ratios,
+                                  const int ar_num,
+                                  const T* anchor_sizes,
+                                  const int as_num,
+                                  const T* stride,
+                                  const int sd_num,
+                                  const int height,
+                                  const int width,
+                                  const T offset);
 
 template <typename T>
-extern __global__ void SetVariance(T* out, const T* var, const int vnum,
+extern __global__ void SetVariance(T* out,
+                                   const T* var,
+                                   const int vnum,
                                    const int num);
 #endif
 

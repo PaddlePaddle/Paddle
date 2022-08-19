@@ -1,12 +1,25 @@
+add_subdirectory(engine)
+proto_library(paddle_jit_property_proto SRCS property.proto)
+
+cc_library(
+  jit_property
+  SRCS property.cc
+  DEPS paddle_jit_property_proto tensor)
+
 cc_library(
   jit_serializer
   SRCS serializer.cc
-  DEPS lod_tensor device_context)
+  DEPS lod_tensor device_context jit_property)
 
 cc_library(
-  jit_layer_utils
-  SRCS layer_utils.cc
-  DEPS scope proto_desc)
+  jit_function_utils
+  SRCS function_utils.cc
+  DEPS lod_tensor scope proto_desc)
+
+cc_library(
+  jit_serializer_utils
+  SRCS serializer_utils.cc
+  DEPS proto_desc)
 
 cc_library(
   jit_compilation_unit
@@ -14,24 +27,37 @@ cc_library(
   DEPS proto_desc executor parallel_executor executor_cache)
 
 cc_library(
-  jit_layer
-  SRCS layer.cc
-  DEPS jit_compilation_unit)
-
-cc_library(
   jit_function_schema
   SRCS function_schema.cc
-  DEPS jit_layer_utils)
+  DEPS jit_function_utils)
 
-if(WITH_TESTING
-   AND NOT WIN32
-   AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+cc_library(
+  jit_function
+  SRCS function.cc
+  DEPS jit_function_utils jit_executor_engine jit_pe_engine)
+
+cc_library(
+  jit_layer
+  SRCS layer.cc
+  DEPS jit_serializer
+       jit_function_utils
+       jit_serializer_utils
+       jit_compilation_unit
+       jit_function_schema
+       jit_executor_engine
+       jit_pe_engine
+       jit_function)
+
+if(WITH_TESTING AND NOT WIN32)
   add_custom_target(
     jit_download_program
-    COMMAND wget -nc https://paddle-ci.gz.bcebos.com/dy2st/Testing.tar.gz
-    COMMAND tar zxvf Testing.tar.gz)
+    COMMAND
+      wget -nc -q
+      https://paddle-ci.gz.bcebos.com/dy2st/multi_program_load_with_property.tar.gz
+    COMMAND tar zxf multi_program_load_with_property.tar.gz)
   set(JIT_DEPS
       phi
+      phi_api
       elementwise_add_op
       matmul_v2_op
       activation_op
@@ -39,11 +65,7 @@ if(WITH_TESTING
       feed_op
       fetch_op
       scale_op
-      jit_serializer
-      jit_layer
-      jit_layer_utils
-      jit_function_schema
-      jit_compilation_unit)
+      jit_layer)
   cc_test(
     layer_test
     SRCS layer_test.cc

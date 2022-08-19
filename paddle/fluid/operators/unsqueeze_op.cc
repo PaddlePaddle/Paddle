@@ -30,11 +30,13 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) of "
                           "Unsqueeze operator should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of "
                           "Unsqueeze operator should not be null."));
@@ -42,7 +44,8 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     const auto &x_dims = ctx->GetInputDim("X");
     // Validity Check: input tensor dims (<6).
-    PADDLE_ENFORCE_LE(x_dims.size(), 6,
+    PADDLE_ENFORCE_LE(x_dims.size(),
+                      6,
                       platform::errors::InvalidArgument(
                           "Invalid "
                           "dimensions, the rank of Input(X) "
@@ -58,28 +61,33 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
     } else if (ctx->HasInputs("AxesTensorList")) {
       auto AxesTensorList = ctx->Inputs("AxesTensorList");
       int output_size = x_dims.size() + static_cast<int>(AxesTensorList.size());
-      PADDLE_ENFORCE_LE(output_size, 6,
+      PADDLE_ENFORCE_LE(output_size,
+                        6,
                         platform::errors::InvalidArgument(
                             "The output tensor's rank should be less than 6."));
       std::vector<int> vec_out_dims(output_size, -1);
       ctx->SetOutputDim("Out", phi::make_ddim(vec_out_dims));
     } else if (ctx->HasInput("AxesTensor")) {
       auto axes_dims = ctx->GetInputDim("AxesTensor");
-      PADDLE_ENFORCE_EQ(axes_dims.size(), 1,
+      PADDLE_ENFORCE_EQ(axes_dims.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Input(AxesTensor)'s dimension of "
                             "Op(unsqueeze) must be 1. "
                             "But received AxesTensor's shape = [%s], "
                             "AxesTensor's dimension = %d.",
-                            axes_dims, axes_dims.size()));
+                            axes_dims,
+                            axes_dims.size()));
       PADDLE_ENFORCE_GE(
-          axes_dims[0], 0,
+          axes_dims[0],
+          0,
           platform::errors::InvalidArgument(
               "Input(AxesTensor)'s shape must be known. But received "
               "AxesTensor's shape = [%s]",
               axes_dims));
       int output_size = x_dims.size() + static_cast<int>(axes_dims[0]);
-      PADDLE_ENFORCE_LE(output_size, 6,
+      PADDLE_ENFORCE_LE(output_size,
+                        6,
                         platform::errors::InvalidArgument(
                             "The output tensor's rank should be less than 6."));
       std::vector<int> vec_out_dims(output_size, -1);
@@ -94,7 +102,8 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
     std::vector<int64_t> output_shape(output_size, 0);
 
     // Validity Check: rank range.
-    PADDLE_ENFORCE_LE(output_size, 6,
+    PADDLE_ENFORCE_LE(output_size,
+                      6,
                       platform::errors::InvalidArgument(
                           "The output tensor's rank should be less than 6."));
 
@@ -102,10 +111,12 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
       int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
       // Vaildity Check: the axis bound
       PADDLE_ENFORCE_GE(
-          cur, 0,
+          cur,
+          0,
           platform::errors::InvalidArgument("The insert dimension value should "
                                             "not be less than 0"));
-      PADDLE_ENFORCE_LE(cur, cur_output_size,
+      PADDLE_ENFORCE_LE(cur,
+                        cur_output_size,
                         platform::errors::InvalidArgument(
                             "The insert dimension value shoud not be larger "
                             "than the dimension size of input tensor"));
@@ -142,13 +153,14 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxesTensor" || var_name == "AxesTensorList") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -174,14 +186,16 @@ class UnsqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({})
         .AddCustomChecker([](const std::vector<int> &axes) {
           // Validity Check: axes dims (<6).
-          PADDLE_ENFORCE_LT(static_cast<int>(axes.size()), 6,
+          PADDLE_ENFORCE_LT(static_cast<int>(axes.size()),
+                            6,
                             platform::errors::InvalidArgument(
                                 "Invalid "
                                 "dimensions, dynamic dimensions should be "
                                 "within [1, 6] dimensions (Eigen limit)."));
           // Validity Check: the range of unsqueeze axis.
           for (int axis : axes) {
-            PADDLE_ENFORCE_LT(axis, 6,
+            PADDLE_ENFORCE_LT(axis,
+                              6,
                               platform::errors::InvalidArgument(
                                   "Invalid "
                                   "dimensions, input axis should be"
@@ -287,9 +301,11 @@ class Unsqueeze2GradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
-        context->HasInput("XShape"), true,
+        context->HasInput("XShape"),
+        true,
         platform::errors::InvalidArgument("Input(XShape) shouldn't be null."));
-    PADDLE_ENFORCE_EQ(context->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(context->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) shouldn't be null."));
     auto xshape_dims = context->GetInputDim("XShape");
@@ -329,57 +345,61 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnsqueezeGradOpNoNeedBufferVarInferer, "X");
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(unsqueeze2, Unsqueeze2InferShapeFunctor,
-                            PD_INFER_META(phi::UnsqueezeInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(unsqueeze2,
+                            Unsqueeze2InferShapeFunctor,
+                            PD_INFER_META(phi::UnsqueezeWithXShapeInferMeta));
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(unsqueeze, ops::UnsqueezeOp, ops::UnsqueezeOpMaker,
+REGISTER_OPERATOR(unsqueeze,
+                  ops::UnsqueezeOp,
+                  ops::UnsqueezeOpMaker,
                   ops::UnsqueezeGradOpMaker<paddle::framework::OpDesc>,
                   ops::UnsqueezeGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(unsqueeze_grad, ops::UnsqueezeGradOp,
+REGISTER_OPERATOR(unsqueeze_grad,
+                  ops::UnsqueezeGradOp,
                   ops::UnsqueezeDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::UnsqueezeDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::UnsqueezeGradOpNoNeedBufferVarInferer);
 
-REGISTER_OPERATOR(unsqueeze2, ops::Unsqueeze2Op, ops::Unsqueeze2OpMaker,
+REGISTER_OPERATOR(unsqueeze2,
+                  ops::Unsqueeze2Op,
+                  ops::Unsqueeze2OpMaker,
                   ops::Unsqueeze2GradOpMaker<paddle::framework::OpDesc>,
                   ops::Unsqueeze2GradOpMaker<paddle::imperative::OpBase>,
-                  Unsqueeze2InferShapeFunctor, ops::UnsqueezeInplaceInferer);
+                  Unsqueeze2InferShapeFunctor,
+                  ops::UnsqueezeInplaceInferer);
 
-REGISTER_OPERATOR(unsqueeze2_grad, ops::Unsqueeze2GradOp,
+REGISTER_OPERATOR(unsqueeze2_grad,
+                  ops::Unsqueeze2GradOp,
                   ops::Unsqueeze2DoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::Unsqueeze2DoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::UnsqueezeGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
-    unsqueeze, ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>);
+    unsqueeze,
+    ops::UnsqueezeKernel<phi::CPUContext, float>,
+    ops::UnsqueezeKernel<phi::CPUContext, double>,
+    ops::UnsqueezeKernel<phi::CPUContext, bool>,
+    ops::UnsqueezeKernel<phi::CPUContext, int>,
+    ops::UnsqueezeKernel<phi::CPUContext, int16_t>,
+    ops::UnsqueezeKernel<phi::CPUContext, uint8_t>,
+    ops::UnsqueezeKernel<phi::CPUContext, int8_t>,
+    ops::UnsqueezeKernel<phi::CPUContext, int64_t>,
+    ops::UnsqueezeKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::UnsqueezeKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::UnsqueezeKernel<phi::CPUContext, paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     unsqueeze_grad,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
+    ops::UnsqueezeGradKernel<phi::CPUContext, float>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, double>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, bool>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, int>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, int16_t>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, uint8_t>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, int8_t>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, int64_t>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::UnsqueezeGradKernel<phi::CPUContext,
                              paddle::platform::complex<double>>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>);
+    ops::UnsqueezeGradKernel<phi::CPUContext, paddle::platform::bfloat16>);

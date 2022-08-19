@@ -25,7 +25,8 @@ namespace egr {
 class RunCustomOpNode : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
-  explicit RunCustomOpNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num,
+  explicit RunCustomOpNode(size_t bwd_in_slot_num,
+                           size_t bwd_out_slot_num,
                            const std::string& op_type)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num), op_type_(op_type) {
     VLOG(6) << "Construct RunCustomOpNode for op: " << op_type;

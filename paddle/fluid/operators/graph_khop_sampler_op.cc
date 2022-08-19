@@ -19,17 +19,21 @@ namespace operators {
 
 void InputShapeCheck(const framework::DDim& dims, std::string tensor_name) {
   if (dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(dims[1], 1,
+    PADDLE_ENFORCE_EQ(dims[1],
+                      1,
                       platform::errors::InvalidArgument(
                           "The last dim of %s should be 1 when it "
                           "is 2D, but we get %d",
-                          tensor_name, dims[1]));
+                          tensor_name,
+                          dims[1]));
   } else {
     PADDLE_ENFORCE_EQ(
-        dims.size(), 1,
+        dims.size(),
+        1,
         platform::errors::InvalidArgument(
             "The %s should be 1D, when it is not 2D, but we get %d",
-            tensor_name, dims.size()));
+            tensor_name,
+            dims.size()));
   }
 }
 
@@ -39,17 +43,19 @@ class GraphKhopSamplerOP : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Row"), "Input", "Row", "GraphKhopSampler");
-    OP_INOUT_CHECK(ctx->HasInput("Col_Ptr"), "Input", "Col_Ptr",
-                   "GraphKhopSampler");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Col_Ptr"), "Input", "Col_Ptr", "GraphKhopSampler");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GraphKhopSampler");
-    OP_INOUT_CHECK(ctx->HasOutput("Out_Src"), "Output", "Out_Src",
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out_Src"), "Output", "Out_Src", "GraphKhopSampler");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out_Dst"), "Output", "Out_Dst", "GraphKhopSampler");
+    OP_INOUT_CHECK(ctx->HasOutput("Sample_Index"),
+                   "Output",
+                   "Sample_Index",
                    "GraphKhopSampler");
-    OP_INOUT_CHECK(ctx->HasOutput("Out_Dst"), "Output", "Out_Dst",
-                   "GraphKhopSampler");
-    OP_INOUT_CHECK(ctx->HasOutput("Sample_Index"), "Output", "Sample_Index",
-                   "GraphKhopSampler");
-    OP_INOUT_CHECK(ctx->HasOutput("Reindex_X"), "Output", "Reindex_X",
-                   "GraphKhopSampler");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Reindex_X"), "Output", "Reindex_X", "GraphKhopSampler");
 
     // Restrict all the inputs as 1-dim tensor, or 2-dim tensor with the second
     // dim as 1.
@@ -60,17 +66,18 @@ class GraphKhopSamplerOP : public framework::OperatorWithKernel {
     const std::vector<int>& sample_sizes =
         ctx->Attrs().Get<std::vector<int>>("sample_sizes");
     PADDLE_ENFORCE_EQ(
-        !sample_sizes.empty(), true,
+        !sample_sizes.empty(),
+        true,
         platform::errors::InvalidArgument(
             "The parameter 'sample_sizes' in GraphSampleOp must be set. "
             "But received 'sample_sizes' is empty."));
     const bool& return_eids = ctx->Attrs().Get<bool>("return_eids");
     if (return_eids) {
-      OP_INOUT_CHECK(ctx->HasInput("Eids"), "Input", "Eids",
-                     "GraphKhopSampler");
+      OP_INOUT_CHECK(
+          ctx->HasInput("Eids"), "Input", "Eids", "GraphKhopSampler");
       InputShapeCheck(ctx->GetInputDim("Eids"), "Eids");
-      OP_INOUT_CHECK(ctx->HasOutput("Out_Eids"), "Output", "Out_Eids",
-                     "GraphKhopSampler");
+      OP_INOUT_CHECK(
+          ctx->HasOutput("Out_Eids"), "Output", "Out_Eids", "GraphKhopSampler");
       ctx->SetOutputDim("Out_Eids", {-1});
     }
 
@@ -125,9 +132,10 @@ Graph Learning Sampling Neighbors operator, for graphsage sampling method.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
-REGISTER_OPERATOR(graph_khop_sampler, ops::GraphKhopSamplerOP,
+REGISTER_OPERATOR(graph_khop_sampler,
+                  ops::GraphKhopSamplerOP,
                   ops::GraphKhopSamplerOpMaker);
 REGISTER_OP_CPU_KERNEL(graph_khop_sampler,
                        ops::GraphKhopSamplerOpKernel<CPU, int32_t>,

@@ -1,5 +1,0 @@
-- api : trace
-  inputs :
-    x : Input
-  outputs :
-    out : Out

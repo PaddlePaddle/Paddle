@@ -28,7 +28,8 @@ class ReduceProdXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(context.GetPlace()), true,
+        platform::is_xpu_place(context.GetPlace()),
+        true,
         platform::errors::Unavailable("This kernel only runs on XPU."));
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto* input = context.Input<Tensor>("X");
@@ -57,13 +58,17 @@ class ReduceProdXPUKernel : public framework::OpKernel<T> {
         }
       }
     }
-    int r = xpu::reduce_prod(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(input->data<T>()),
-        reinterpret_cast<XPUType*>(output->data<T>()), xdims, reduce_dims);
+    int r = xpu::reduce_prod(dev_ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(input->data<T>()),
+                             reinterpret_cast<XPUType*>(output->data<T>()),
+                             xdims,
+                             reduce_dims);
 
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU reduce_prod kernel return wrong value[%d %s]", r,
+                          "XPU reduce_prod kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };

@@ -45,8 +45,10 @@ class ReduceMeanGradMKLDNNKernel : public ReduceGradMKLDNNKernel<T> {
       number_of_elements = input_x->numel();
     }
 
-    this->RunKernel(ctx, dnnl::algorithm::binary_add,
-                    dnnl::algorithm::reduction_mean, 0.0f,
+    this->RunKernel(ctx,
+                    dnnl::algorithm::binary_add,
+                    dnnl::algorithm::reduction_mean,
+                    0.0f,
                     1.0L / number_of_elements);
   }
 };
@@ -55,10 +57,14 @@ class ReduceMeanGradMKLDNNKernel : public ReduceGradMKLDNNKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(reduce_mean, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(reduce_mean,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::ReduceMeanMKLDNNKernel<float>,
                    ops::ReduceMeanMKLDNNKernel<paddle::platform::bfloat16>);
 
-REGISTER_OP_KERNEL(reduce_mean_grad, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(reduce_mean_grad,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::ReduceMeanGradMKLDNNKernel<float>,
                    ops::ReduceMeanGradMKLDNNKernel<paddle::platform::bfloat16>);

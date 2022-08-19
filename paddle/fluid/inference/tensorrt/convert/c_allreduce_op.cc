@@ -28,7 +28,8 @@ std::map<std::string, ReduceType> op_to_reduce_type = {
 class CAllReduceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid callreduce op to tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(platform::errors::Fatal(
@@ -41,7 +42,8 @@ class CAllReduceOpConverter : public OpConverter {
     // Declare inputs
     int input_num = op_desc.Input("X").size();
     PADDLE_ENFORCE_EQ(
-        input_num, 1,
+        input_num,
+        1,
         platform::errors::InvalidArgument(
             "The input X's size must equal to 1 in TRT c_allreduce op."
             " But received X's size %d.",
@@ -50,15 +52,16 @@ class CAllReduceOpConverter : public OpConverter {
     // Get output
     size_t output_num = op_desc.Output("Out").size();
     PADDLE_ENFORCE_EQ(
-        output_num, 1UL,
+        output_num,
+        1UL,
         platform::errors::InvalidArgument(
             "The ouput Out's size must equal to 1 in TRT c_allreduce op. "
             "But received Out's size %u.",
             output_num));
     // Get attrs
-    int ring_id = BOOST_GET_CONST(int, op_desc.GetAttr("ring_id"));
+    int ring_id = PADDLE_GET_CONST(int, op_desc.GetAttr("ring_id"));
     bool use_calc_stream =
-        BOOST_GET_CONST(bool, op_desc.GetAttr("use_calc_stream"));
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("use_calc_stream"));
 
     nvinfer1::ILayer* layer = nullptr;
 #if IS_TRT_VERSION_GE(6000)
@@ -69,8 +72,8 @@ class CAllReduceOpConverter : public OpConverter {
     }
 
     plugin::CAllReducePluginDynamic* plugin =
-        new plugin::CAllReducePluginDynamic(ring_id, use_calc_stream, red_type,
-                                            with_fp16);
+        new plugin::CAllReducePluginDynamic(
+            ring_id, use_calc_stream, red_type, with_fp16);
     layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
 #else
     PADDLE_THROW(platform::errors::Fatal(

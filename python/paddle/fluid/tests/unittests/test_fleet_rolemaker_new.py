@@ -446,7 +446,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
             y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = paddle.fluid.layers.square_error_cost(input=y_predict,
                                                          label=y)
-            avg_cost = paddle.fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
             return avg_cost
 
         from paddle.distributed import fleet

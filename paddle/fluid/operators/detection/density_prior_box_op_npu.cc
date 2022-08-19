@@ -97,7 +97,9 @@ struct DensityPriorBoxFunction {
     //  y should be init first
     if (x->dims() == y->dims()) {
       framework::TensorCopy(
-          *x, place, ctx.template device_context<platform::NPUDeviceContext>(),
+          *x,
+          place,
+          ctx.template device_context<platform::NPUDeviceContext>(),
           y);
       return;
     }
@@ -359,8 +361,8 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
     F.Tile(&outbox3, &box3, vec_exp_out13);
     F.Concat({box0, box1, box2, box3}, 3, &boxes_share);
 
-    std::vector<int> multiples = {layer_h, layer_w,
-                                  ratios_size * num_priors_per_ratio, 1};
+    std::vector<int> multiples = {
+        layer_h, layer_w, ratios_size * num_priors_per_ratio, 1};
     Tensor variances_t(_type);
     //  variances.size() == 4
     variances_t.mutable_data<T>({4}, place);

@@ -30,8 +30,13 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
   auto custom_ops = Get<std::unordered_set<std::string>>("custom_ops");
   std::vector<std::string> missing_ops;
   auto sorted_ops = TopologySortOperations(*graph);
+  std::unordered_set<Node*> delete_nodes;
   for (auto* node : sorted_ops) {
     auto* op = node->Op();
+    if (platform::ipu::IsMarkedForDeletion(node)) {
+      delete_nodes.insert(node);
+      continue;
+    }
     auto op_type = op->Type();
 
     ir::Node* new_node = nullptr;
@@ -65,6 +70,12 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
     }
     PADDLE_THROW(platform::errors::Unimplemented(
         "Found unimplemented op_handler(s) for IPU"));
+  }
+
+  for (auto* node : delete_nodes) {
+    // TODO(czr): possible remove
+    platform::ipu::ClearNode(node);
+    graph->RemoveNode(node);
   }
 
   // post popart_canonicalization

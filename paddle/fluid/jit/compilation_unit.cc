@@ -14,30 +14,29 @@
 
 #include "paddle/fluid/jit/compilation_unit.h"
 
+#include "paddle/phi/core/enforce.h"
+
+#include "paddle/fluid/jit/engine/base_engine.h"
+
 namespace paddle {
 namespace jit {
 
-void CompilationUnit::AddExecutorFunction(
-    const std::string &func_name,
-    const std::shared_ptr<FunctionInfo> &info,
-    const Name2VariableMap &params_dict,
-    const phi::Place &place) {
-  function_dict_[func_name] =
-      std::make_shared<ExecutorFunction>(info, params_dict, place);
-}
-
-void CompilationUnit::AddPEFunction(const std::string &func_name,
-                                    const std::shared_ptr<FunctionInfo> &info,
-                                    const Name2VariableMap &params_dict,
-                                    const phi::Place &place) {
-  function_dict_[func_name] =
-      std::make_shared<PEFunction>(info, params_dict, place);
-}
-
-std::shared_ptr<BaseFunction> CompilationUnit::GetFunction(
+std::shared_ptr<BaseEngine> CompilationUnit::GetEngine(
     const std::string &name) const {
-  return function_dict_.at(name);
+  PADDLE_ENFORCE_EQ(
+      engine_map_.count(name),
+      1,
+      phi::errors::InvalidArgument(
+          "Funciton named %s is not existed in engine_map_.", name));
+  return engine_map_.at(name);
 }
+
+void CompilationUnit::SetEngine(const std::string &name,
+                                const std::shared_ptr<BaseEngine> &engine) {
+  engine_map_[name] = engine;
+}
+
+const jit::EngineMap &CompilationUnit::EngineMap() const { return engine_map_; }
 
 }  // namespace jit
 }  // namespace paddle

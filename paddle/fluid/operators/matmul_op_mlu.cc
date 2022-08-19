@@ -21,28 +21,43 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-static void Mul(const framework::ExecutionContext& ctx, const Tensor& X,
-                const Tensor& Y, Tensor* Out, const float alpha) {
+static void Mul(const framework::ExecutionContext& ctx,
+                const Tensor& X,
+                const Tensor& Y,
+                Tensor* Out,
+                const float alpha) {
   Out->mutable_data<T>(ctx.GetPlace());
 
   MLUCnnlTensorDesc x_desc(X, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
   MLUCnnlTensorDesc y_desc(Y, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
   MLUCnnlTensorDesc out_desc(*Out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
 
-  MLUCnnlOpTensorDesc mul_op_desc(CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(),
-                                  CNNL_NOT_PROPAGATE_NAN);
-  MLUCnnl::OpTensor(ctx, mul_op_desc.get(), x_desc.get(), GetBasePtr(&X),
-                    y_desc.get(), GetBasePtr(&Y), out_desc.get(),
-                    GetBasePtr(Out), ToCnnlDataType<T>(), alpha);
+  MLUCnnlOpTensorDesc mul_op_desc(
+      CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+  MLUCnnl::OpTensor(ctx,
+                    mul_op_desc.get(),
+                    x_desc.get(),
+                    GetBasePtr(&X),
+                    y_desc.get(),
+                    GetBasePtr(&Y),
+                    out_desc.get(),
+                    GetBasePtr(Out),
+                    ToCnnlDataType<T>(),
+                    alpha);
 }
 
 template <typename T>
-static void MatMul2D(const framework::ExecutionContext& ctx, const Tensor& X,
-                     const Tensor& Y, Tensor* Out, const bool trans_x,
-                     const bool trans_y, const float alpha) {
+static void MatMul2D(const framework::ExecutionContext& ctx,
+                     const Tensor& X,
+                     const Tensor& Y,
+                     Tensor* Out,
+                     const bool trans_x,
+                     const bool trans_y,
+                     const float alpha) {
   Out->mutable_data<T>(ctx.GetPlace());
 
-  PADDLE_ENFORCE_LT(fabs(alpha - 1.0), std::numeric_limits<float>::epsilon(),
+  PADDLE_ENFORCE_LT(fabs(alpha - 1.0),
+                    std::numeric_limits<float>::epsilon(),
                     platform::errors::InvalidArgument(
                         "MLU(matmul): alpha should be equal to 1.0! "
                         "Other values are not supported yet."
@@ -53,20 +68,31 @@ static void MatMul2D(const framework::ExecutionContext& ctx, const Tensor& X,
   MLUCnnlTensorDesc y_desc(Y, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
   MLUCnnlTensorDesc out_desc(*Out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
 
-  MLUCnnl::Matmul(ctx, trans_x, trans_y, x_desc.get(), GetBasePtr(&X),
-                  y_desc.get(), GetBasePtr(&Y), out_desc.get(),
+  MLUCnnl::Matmul(ctx,
+                  trans_x,
+                  trans_y,
+                  x_desc.get(),
+                  GetBasePtr(&X),
+                  y_desc.get(),
+                  GetBasePtr(&Y),
+                  out_desc.get(),
                   GetBasePtr(Out));
 }
 
 template <typename T>
-static void MatMulND(const framework::ExecutionContext& ctx, const Tensor& X,
-                     const Tensor& Y, Tensor* Out, const bool trans_x,
-                     const bool trans_y, const float alpha) {
+static void MatMulND(const framework::ExecutionContext& ctx,
+                     const Tensor& X,
+                     const Tensor& Y,
+                     Tensor* Out,
+                     const bool trans_x,
+                     const bool trans_y,
+                     const float alpha) {
   if (!Out->initialized()) {
     Out->mutable_data<T>(ctx.GetPlace());
   }
 
-  PADDLE_ENFORCE_LT(fabs(alpha - 1.0), std::numeric_limits<float>::epsilon(),
+  PADDLE_ENFORCE_LT(fabs(alpha - 1.0),
+                    std::numeric_limits<float>::epsilon(),
                     platform::errors::InvalidArgument(
                         "MLU(matmul): alpha should be equal to 1.0! "
                         "Other values are not supported yet."
@@ -77,15 +103,22 @@ static void MatMulND(const framework::ExecutionContext& ctx, const Tensor& X,
   MLUCnnlTensorDesc y_desc(Y, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
   MLUCnnlTensorDesc out_desc(*Out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
 
-  MLUCnnl::BatchMatmul(ctx, trans_x, trans_y, x_desc.get(), GetBasePtr(&X),
-                       y_desc.get(), GetBasePtr(&Y), out_desc.get(),
+  MLUCnnl::BatchMatmul(ctx,
+                       trans_x,
+                       trans_y,
+                       x_desc.get(),
+                       GetBasePtr(&X),
+                       y_desc.get(),
+                       GetBasePtr(&Y),
+                       out_desc.get(),
                        GetBasePtr(Out));
 }
 
 template <typename T>
 static void ReduceDims(const framework::ExecutionContext& ctx,
                        const std::vector<int64_t>& dims,
-                       const std::vector<int64_t>& bcast_dims, const Tensor& in,
+                       const std::vector<int64_t>& bcast_dims,
+                       const Tensor& in,
                        Tensor* out) {
   std::vector<int64_t> axes;
   int64_t size = bcast_dims.size();
@@ -105,13 +138,24 @@ static void ReduceDims(const framework::ExecutionContext& ctx,
   MLUCnnlTensorDesc out_desc(*out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
 
   std::vector<int> reduce_dims(axes.begin(), axes.end());
-  MLUCnnlReduceDesc reduce_desc(reduce_dims, CNNL_REDUCE_ADD,
-                                ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN,
-                                CNNL_REDUCE_NO_INDICES, CNNL_32BIT_INDICES);
+  MLUCnnlReduceDesc reduce_desc(reduce_dims,
+                                CNNL_REDUCE_ADD,
+                                ToCnnlDataType<T>(),
+                                CNNL_NOT_PROPAGATE_NAN,
+                                CNNL_REDUCE_NO_INDICES,
+                                CNNL_32BIT_INDICES);
 
-  MLUCnnl::Reduce(ctx, true /*need_workspace*/, reduce_desc.get(), nullptr,
-                  in_desc.get(), GetBasePtr(&in), 0 /*indices_size*/, nullptr,
-                  nullptr, out_desc.get(), GetBasePtr(out));
+  MLUCnnl::Reduce(ctx,
+                  true /*need_workspace*/,
+                  reduce_desc.get(),
+                  nullptr,
+                  in_desc.get(),
+                  GetBasePtr(&in),
+                  0 /*indices_size*/,
+                  nullptr,
+                  nullptr,
+                  out_desc.get(),
+                  GetBasePtr(out));
 }
 
 template <typename T>
@@ -167,19 +211,27 @@ class MatMulMLUKernel : public framework::OpKernel<T> {
 
     const int K = transpose_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
     if (transpose_y) {
-      PADDLE_ENFORCE_EQ(y_dims[y_ndim - 1], K,
-                        platform::errors::InvalidArgument(
-                            "Input(Y) has error dim."
-                            "Y'dims[%d] must be equal to %d"
-                            "But received Y'dims[%d] is %d",
-                            y_ndim - 1, K, y_ndim - 1, y_dims[y_ndim - 1]));
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 1],
+          K,
+          platform::errors::InvalidArgument("Input(Y) has error dim."
+                                            "Y'dims[%d] must be equal to %d"
+                                            "But received Y'dims[%d] is %d",
+                                            y_ndim - 1,
+                                            K,
+                                            y_ndim - 1,
+                                            y_dims[y_ndim - 1]));
     } else {
-      PADDLE_ENFORCE_EQ(y_dims[y_ndim - 2], K,
-                        platform::errors::InvalidArgument(
-                            "Input(Y) has error dim."
-                            "Y'dims[%d] must be equal to %d"
-                            "But received Y'dims[%d] is %d",
-                            y_ndim - 2, K, y_ndim - 2, y_dims[y_ndim - 2]));
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 2],
+          K,
+          platform::errors::InvalidArgument("Input(Y) has error dim."
+                                            "Y'dims[%d] must be equal to %d"
+                                            "But received Y'dims[%d] is %d",
+                                            y_ndim - 2,
+                                            K,
+                                            y_ndim - 2,
+                                            y_dims[y_ndim - 2]));
     }
 
     if (x_ndim == 2 && y_ndim == 2) {
@@ -294,8 +346,8 @@ class MatMulGradMLUKernel : public framework::OpKernel<T> {
       if (transpose_x) {
         MatMulND<T>(ctx, y_temp, dout_temp, &dx_temp, transpose_y, true, alpha);
       } else {
-        MatMulND<T>(ctx, dout_temp, y_temp, &dx_temp, false, !transpose_y,
-                    alpha);
+        MatMulND<T>(
+            ctx, dout_temp, y_temp, &dx_temp, false, !transpose_y, alpha);
       }
 
       if (x_dims != x_bcast_dims) {
@@ -315,8 +367,8 @@ class MatMulGradMLUKernel : public framework::OpKernel<T> {
       if (transpose_y) {
         MatMulND<T>(ctx, dout_temp, x_temp, &dy_temp, true, transpose_x, alpha);
       } else {
-        MatMulND<T>(ctx, x_temp, dout_temp, &dy_temp, !transpose_x, false,
-                    alpha);
+        MatMulND<T>(
+            ctx, x_temp, dout_temp, &dy_temp, !transpose_x, false, alpha);
       }
 
       if (y_dims != y_bcast_dims) {
@@ -331,7 +383,9 @@ class MatMulGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(matmul, ops::MatMulMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(matmul,
+                       ops::MatMulMLUKernel<float>,
                        ops::MatMulMLUKernel<plat::float16>);
-REGISTER_OP_MLU_KERNEL(matmul_grad, ops::MatMulGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(matmul_grad,
+                       ops::MatMulGradMLUKernel<float>,
                        ops::MatMulGradMLUKernel<plat::float16>);

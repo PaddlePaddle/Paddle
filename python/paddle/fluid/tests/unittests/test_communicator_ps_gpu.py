@@ -59,7 +59,7 @@ class TestCommunicator(unittest.TestCase):
         slots_vars = [x, y]
 
         cost = fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         optimizer = fluid.optimizer.Adam(0.01)
 

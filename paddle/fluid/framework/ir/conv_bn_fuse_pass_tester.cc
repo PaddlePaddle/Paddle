@@ -27,7 +27,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void AddVarToScope(Scope* param_scope, const std::string& name,
+void AddVarToScope(Scope* param_scope,
+                   const std::string& name,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
   tensor->Resize(dims);
@@ -78,12 +79,14 @@ void TestMain(const std::string& conv_type) {
   VLOG(3) << DebugString(graph);
 
   PADDLE_ENFORCE_EQ(
-      num_bn_nodes_before, 1,
+      num_bn_nodes_before,
+      1,
       platform::errors::InvalidArgument(
           "Before conv_bn_fuse_pass, number of batch norm op(%d) must be 1.",
           num_bn_nodes_before));
   PADDLE_ENFORCE_EQ(
-      num_bn_nodes_after, 0,
+      num_bn_nodes_after,
+      0,
       platform::errors::InvalidArgument(
           "After conv_bn_fuse_pass, number of batch norm op(%d) must be 0.",
           num_bn_nodes_after));

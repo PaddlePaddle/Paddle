@@ -21,7 +21,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs) {
   auto* op = prog->MutableBlock(0)->AppendOp();
@@ -61,7 +62,9 @@ int CountOpType(const ir::Graph* graph,
 }
 
 std::unique_ptr<ir::Graph> GetNumNodesOfBeforeAfter(
-    std::unique_ptr<ir::Graph> graph, int* before, int* after,
+    std::unique_ptr<ir::Graph> graph,
+    int* before,
+    int* after,
     const std::string& pass_type = "seqpool_cvm_concat_fuse_pass") {
   auto pass = PassRegistry::Instance().Get(pass_type);
   *before = graph->Nodes().size();
@@ -100,26 +103,51 @@ std::unique_ptr<ir::Graph> GetNumNodesOfBeforeAfter(
  */
 TEST(SeqPoolCVMConcatFusePass, basic) {
   ProgramDesc prog;
-  for (auto& v :
-       std::vector<std::string>({"a", "b", "c", "d", "e", "f", "g", "h", "i",
-                                 "j", "k", "l", "m", "n"})) {
+  for (auto& v : std::vector<std::string>({"a",
+                                           "b",
+                                           "c",
+                                           "d",
+                                           "e",
+                                           "f",
+                                           "g",
+                                           "h",
+                                           "i",
+                                           "j",
+                                           "k",
+                                           "l",
+                                           "m",
+                                           "n"})) {
     auto* var = prog.MutableBlock(0)->Var(v);
     var->SetType(proto::VarType::LOD_TENSOR);
   }
 
-  SetOp(&prog, "sequence_pool", std::vector<std::string>({"a"}),
+  SetOp(&prog,
+        "sequence_pool",
+        std::vector<std::string>({"a"}),
         std::vector<std::string>({"d", "e"}));
-  SetOp(&prog, "sequence_pool", std::vector<std::string>({"b"}),
+  SetOp(&prog,
+        "sequence_pool",
+        std::vector<std::string>({"b"}),
         std::vector<std::string>({"f", "g"}));
-  SetOp(&prog, "sequence_pool", std::vector<std::string>({"c"}),
+  SetOp(&prog,
+        "sequence_pool",
+        std::vector<std::string>({"c"}),
         std::vector<std::string>({"h", "i"}));
-  SetOp(&prog, "cvm", std::vector<std::string>({"e", "n"}),
+  SetOp(&prog,
+        "cvm",
+        std::vector<std::string>({"e", "n"}),
         std::vector<std::string>({"j"}));
-  SetOp(&prog, "cvm", std::vector<std::string>({"g", "n"}),
+  SetOp(&prog,
+        "cvm",
+        std::vector<std::string>({"g", "n"}),
         std::vector<std::string>({"k"}));
-  SetOp(&prog, "cvm", std::vector<std::string>({"i", "n"}),
+  SetOp(&prog,
+        "cvm",
+        std::vector<std::string>({"i", "n"}),
         std::vector<std::string>({"l"}));
-  SetOp(&prog, "concat", std::vector<std::string>({"j", "k", "l"}),
+  SetOp(&prog,
+        "concat",
+        std::vector<std::string>({"j", "k", "l"}),
         std::vector<std::string>({"m"}));
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
@@ -165,17 +193,29 @@ TEST(SeqPoolCVMConcatFusePass, advanced) {
     var->SetType(proto::VarType::LOD_TENSOR);
   }
 
-  SetOp(&prog, "sequence_pool", std::vector<std::string>({"a"}),
+  SetOp(&prog,
+        "sequence_pool",
+        std::vector<std::string>({"a"}),
         std::vector<std::string>({"c", "d"}));
-  SetOp(&prog, "sequence_pool", std::vector<std::string>({"b"}),
+  SetOp(&prog,
+        "sequence_pool",
+        std::vector<std::string>({"b"}),
         std::vector<std::string>({"e", "f"}));
-  SetOp(&prog, "op3", std::vector<std::string>({"b"}),
+  SetOp(&prog,
+        "op3",
+        std::vector<std::string>({"b"}),
         std::vector<std::string>({"g"}));
-  SetOp(&prog, "cvm", std::vector<std::string>({"d", "k"}),
+  SetOp(&prog,
+        "cvm",
+        std::vector<std::string>({"d", "k"}),
         std::vector<std::string>({"h"}));
-  SetOp(&prog, "cvm", std::vector<std::string>({"f", "k"}),
+  SetOp(&prog,
+        "cvm",
+        std::vector<std::string>({"f", "k"}),
         std::vector<std::string>({"i"}));
-  SetOp(&prog, "concat", std::vector<std::string>({"h", "i"}),
+  SetOp(&prog,
+        "concat",
+        std::vector<std::string>({"h", "i"}),
         std::vector<std::string>({"j"}));
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
@@ -200,21 +240,23 @@ ProgramDesc BuildProgramDesc(int num_inputs_of_concat) {
     new_var(seqpool_prefix + "in");
     new_var(seqpool_prefix + "out");
     new_var(seqpool_prefix + "out_unused");
-    SetOp(&prog, "sequence_pool",
+    SetOp(&prog,
+          "sequence_pool",
           std::vector<std::string>({seqpool_prefix + "in"}),
           std::vector<std::string>(
               {seqpool_prefix + "out_unused", seqpool_prefix + "out"}));
 
     std::string cvm_prefix = "cvm_op_" + std::to_string(i);
     new_var(cvm_prefix + "out");
-    SetOp(&prog, "cvm",
+    SetOp(&prog,
+          "cvm",
           std::vector<std::string>({seqpool_prefix + "out", "cvm_in"}),
           std::vector<std::string>({cvm_prefix + "out"}));
 
     concat_inputs.push_back(cvm_prefix + "out");
   }
-  SetOp(&prog, "concat", concat_inputs,
-        std::vector<std::string>({"concat_out"}));
+  SetOp(
+      &prog, "concat", concat_inputs, std::vector<std::string>({"concat_out"}));
   return prog;
 }
 

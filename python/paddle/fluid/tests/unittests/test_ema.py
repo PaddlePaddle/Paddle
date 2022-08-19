@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 
 
@@ -36,7 +37,7 @@ class TestExponentialMovingAverage(unittest.TestCase):
                 hidden = fluid.layers.fc(input=data,
                                          size=10,
                                          param_attr=self._param_name)
-                cost = fluid.layers.mean(hidden)
+                cost = paddle.mean(hidden)
 
                 self._test_program = fluid.default_main_program().clone(
                     for_test=True)
@@ -79,7 +80,7 @@ class TestExponentialMovingAverage(unittest.TestCase):
                     manu_ema = self._ema_decay * manu_ema + (
                         1 - self._ema_decay) * param
                 manu_ema = manu_ema / (1.0 - self._ema_decay**len(params))
-            self.assertTrue(np.allclose(manu_ema, final_ema))
+            np.testing.assert_allclose(manu_ema, final_ema, rtol=1e-05)
 
 
 if __name__ == '__main__':

@@ -368,7 +368,7 @@ void SetTensorFromPyArrayT(
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
+    dims.push_back(static_cast<int64_t>(array.shape()[i]));
   }
   self->Resize(phi::make_ddim(dims));
 
@@ -439,7 +439,11 @@ void SetTensorFromPyArrayT(
     platform::Place tmp_place = place;
     platform::MLUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
-    paddle::platform::MLUMemcpyH2DSync(dst, array.data(), array.nbytes());
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto dev_ctx = static_cast<platform::MLUDeviceContext *>(pool.Get(place));
+    paddle::platform::MLUMemcpyH2DAsync(
+        dst, array.data(), array.nbytes(), dev_ctx->stream());
+    dev_ctx->Wait();
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use MLUPlace in CPU/GPU version, "
@@ -612,8 +616,8 @@ void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
   dims.reserve(array.ndim());
   int64_t numel = 1;
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.emplace_back(static_cast<int>(array.shape()[i]));
-    numel *= static_cast<int>(array.shape()[i]);
+    dims.emplace_back(static_cast<int64_t>(array.shape()[i]));
+    numel *= static_cast<int64_t>(array.shape()[i]);
   }
   self_tensor->Resize(phi::make_ddim(dims));
 
@@ -676,7 +680,7 @@ void SetUVATensorFromPyArray(
 template <typename T, size_t D>
 void _sliceCompute(const framework::Tensor *in,
                    framework::Tensor *out,
-                   const platform::CPUDeviceContext &ctx,
+                   const phi::CPUContext &ctx,
                    const std::vector<int> &axes,
                    const std::vector<int> &starts) {
   auto &eigen_place = *ctx.eigen_device();
@@ -711,7 +715,7 @@ void _sliceCompute(const framework::Tensor *in,
 template <typename T>
 void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
                     paddle::framework::Tensor *out,
-                    const platform::CPUDeviceContext &ctx,
+                    const phi::CPUContext &ctx,
                     int64_t axis) {
   if (axis == 0 && ins.size() < 10) {
     size_t output_offset = 0;
@@ -729,8 +733,7 @@ void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
       output_offset += in_stride[axis];
     }
   } else {
-    paddle::operators::math::ConcatFunctor<platform::CPUDeviceContext, T>
-        concat_functor;
+    paddle::operators::math::ConcatFunctor<phi::CPUContext, T> concat_functor;
     concat_functor(ctx, ins, static_cast<int>(axis), out);
   }
 }
@@ -817,7 +820,7 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
 template <typename T>
 void _sliceDapper(const framework::Tensor *in,
                   framework::Tensor *out,
-                  const platform::CPUDeviceContext &ctx,
+                  const phi::CPUContext &ctx,
                   const std::vector<int> &axes,
                   const std::vector<int> &starts,
                   int size) {
@@ -858,7 +861,7 @@ void _sliceDapper(const framework::Tensor *in,
 
 template <typename T>
 inline framework::Tensor *_sliceWrapper(const framework::Tensor &self,
-                                        const platform::CPUDeviceContext &ctx,
+                                        const phi::CPUContext &ctx,
                                         py::object obj,
                                         int dim,
                                         int64_t start,
@@ -876,7 +879,7 @@ template <typename T>
 inline framework::Tensor *_sliceAndConcat(const framework::Tensor &self,
                                           py::object obj,
                                           int dim) {
-  platform::CPUDeviceContext ctx;
+  phi::CPUContext ctx;
   int64_t start, stop, step, slicelength;
   _getSliceinfo(self, obj, dim, &start, &stop, &step, &slicelength);
   if (step == 1 || slicelength == 1) {

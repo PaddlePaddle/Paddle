@@ -27,7 +27,8 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
 
     auto input_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
-        input_dims.size(), 4,
+        input_dims.size(),
+        4,
         platform::errors::InvalidArgument("The layout of input is NCHW."));
 
     ctx->SetOutputDim("Out", input_dims);
@@ -41,7 +42,8 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -62,7 +64,8 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("group", "the number of groups.")
         .SetDefault(1)
         .AddCustomChecker([](const int& group) {
-          PADDLE_ENFORCE_GE(group, 1,
+          PADDLE_ENFORCE_GE(group,
+                            1,
                             platform::errors::InvalidArgument(
                                 "group should be larger than 0."));
         });
@@ -92,7 +95,8 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto input_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE_EQ(
-        input_dims.size(), 4,
+        input_dims.size(),
+        4,
         platform::errors::InvalidArgument("The layout of input is NCHW."));
 
     ctx->SetOutputDim(framework::GradVarName("X"), input_dims);
@@ -125,20 +129,19 @@ class ShuffleChannelGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(shuffle_channel, ops::ShuffleChannelOp,
+REGISTER_OPERATOR(shuffle_channel,
+                  ops::ShuffleChannelOp,
                   ops::ShuffleChannelOpMaker,
                   ops::ShuffleChannelGradMaker<paddle::framework::OpDesc>,
                   ops::ShuffleChannelGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(shuffle_channel_grad, ops::ShuffleChannelGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    shuffle_channel,
-    ops::ShuffleChannelOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ShuffleChannelOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(shuffle_channel,
+                       ops::ShuffleChannelOpKernel<phi::CPUContext, float>,
+                       ops::ShuffleChannelOpKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     shuffle_channel_grad,
-    ops::ShuffleChannelGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ShuffleChannelGradOpKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
+    ops::ShuffleChannelGradOpKernel<phi::CPUContext, float>,
+    ops::ShuffleChannelGradOpKernel<phi::CPUContext, double>);

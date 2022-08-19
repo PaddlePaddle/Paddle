@@ -74,5 +74,6 @@ class ArgMaxNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(arg_max, ops::ArgMaxNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(arg_max,
+                       ops::ArgMaxNPUKernel<float>,
                        ops::ArgMaxNPUKernel<paddle::platform::float16>);

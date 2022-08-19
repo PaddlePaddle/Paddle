@@ -39,7 +39,8 @@ class AbsOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -76,10 +77,14 @@ class AbsGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "AbsGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "AbsGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@Grad",
+                   "AbsGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "AbsGrad");
 
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
@@ -93,7 +98,8 @@ class AbsGradOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -155,10 +161,12 @@ class AbsDoubleGradOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
     return framework::OpKernelType(
-        framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+        framework::TransToProtoVarType(tensor.dtype()),
+        tensor.place(),
         tensor.layout());
   }
 };
@@ -166,17 +174,21 @@ class AbsDoubleGradOp : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(abs, AbsInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(abs,
+                            AbsInferShapeFunctor,
                             PD_INFER_META(phi::RealAndImagInferMeta));
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(abs, ops::AbsOp, ops::AbsOpMaker,
+REGISTER_OPERATOR(abs,
+                  ops::AbsOp,
+                  ops::AbsOpMaker,
                   ops::AbsGradMaker<paddle::framework::OpDesc>,
                   ops::AbsGradMaker<paddle::imperative::OpBase>,
                   AbsInferShapeFunctor);
 
-REGISTER_OPERATOR(abs_grad, ops::AbsGradOp,
+REGISTER_OPERATOR(abs_grad,
+                  ops::AbsGradOp,
                   ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
 

@@ -55,6 +55,9 @@ set(paddle_inference_api_deps
 if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps paddle_crypto)
 endif()
+if(WITH_CUSTOM_DEVICE)
+  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi_capi)
+endif()
 
 cc_library(
   paddle_inference_api
@@ -82,6 +85,7 @@ if(WITH_ONNXRUNTIME)
          ir_pass_manager
          op_compatible_info
          infer_io_utils
+         model_utils
          onnxruntime
          paddle2onnx)
 else()
@@ -90,13 +94,19 @@ else()
     SRCS analysis_predictor.cc resource_manager.cc infer_context.cc
          ${mkldnn_quantizer_src}
     DEPS ${inference_deps} zero_copy_tensor ir_pass_manager op_compatible_info
-         infer_io_utils)
+         infer_io_utils model_utils)
 endif()
 
 cc_test(
   test_paddle_inference_api
   SRCS api_tester.cc
   DEPS paddle_inference_api)
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(test_paddle_inference_api)
+endif()
 
 if(WITH_TESTING)
   if(NOT APPLE AND NOT WIN32)

@@ -23,20 +23,29 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename DeviceContext, typename T, size_t D, size_t R_D,
+template <typename DeviceContext,
+          typename T,
+          size_t D,
+          size_t R_D,
           typename Functor>
-void ReduceFunctor(const DeviceContext& context, const framework::Tensor& input,
-                   framework::Tensor* output, const std::vector<int>& dims,
+void ReduceFunctor(const DeviceContext& context,
+                   const framework::Tensor& input,
+                   framework::Tensor* output,
+                   const std::vector<int>& dims,
                    bool keep_dim) {
   auto x = EigenTensor<T, D>::From(input);
   auto x_rank = static_cast<int>(x.dimensions().size());
@@ -75,7 +84,8 @@ void ReduceGradFunctor(const DeviceContext& context,
                        const framework::Tensor& input0,
                        const framework::Tensor& input1,
                        const framework::Tensor& input2,
-                       framework::Tensor* output, Functor functor,
+                       framework::Tensor* output,
+                       Functor functor,
                        const std::vector<int>& dims) {
   auto x = EigenTensor<T, D>::From(input0);
   auto x_grad = EigenTensor<T, D>::From(*output);
@@ -101,7 +111,12 @@ void ReduceGradFunctor(const DeviceContext& context,
 
   auto& place = *context.eigen_device();
 
-  functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
+  functor(place,
+          &x,
+          &x_reduce,
+          &x_grad,
+          &x_reduce_grad,
+          broadcast_dim,
           broad_cats_times);
 }
 

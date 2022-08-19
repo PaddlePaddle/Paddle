@@ -27,10 +27,12 @@ class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     OpComment comment;
-    AddInput("X", string::Sprintf("the left hand operand of %s operator",
-                                  comment.type));
-    AddInput("Y", string::Sprintf("the right hand operand of %s operator",
-                                  comment.type));
+    AddInput(
+        "X",
+        string::Sprintf("the left hand operand of %s operator", comment.type));
+    AddInput(
+        "Y",
+        string::Sprintf("the right hand operand of %s operator", comment.type));
     AddAttr<int>(
         "axis",
         "The start dimension index for broadcasting Y onto X. [default -1]")
@@ -41,8 +43,9 @@ class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                   "memory. Otherwise, fill output variable to the running "
                   "device [default true].")
         .SetDefault(false);
-    AddOutput("Out", string::Sprintf("n-dim bool tensor. Each element is %s",
-                                     comment.equation));
+    AddOutput("Out",
+              string::Sprintf("n-dim bool tensor. Each element is %s",
+                              comment.equation));
     AddComment(string::Sprintf(R"DOC(
 It operates element-wise on X and Y, and returns the Out. Each of them is a
 N-dim tensor. X and Y could be any type.  The each element of the Out tensor is
@@ -85,7 +88,8 @@ class CompareOp : public framework::OperatorWithKernel {
       R"ROC(Upgrade compare ops, add a new attribute [force_cpu])ROC", \
       paddle::framework::compatible::OpVersionDesc().ModifyAttr(       \
           "force_cpu",                                                 \
-          "In order to force fill output variable to gpu memory.", false));
+          "In order to force fill output variable to gpu memory.",     \
+          false));
 
 #define REGISTER_COMPARE_OP(op_type, _equation)                          \
   struct _##op_type##Comment {                                           \
@@ -94,10 +98,12 @@ class CompareOp : public framework::OperatorWithKernel {
   };                                                                     \
   char _##op_type##Comment::type[]{#op_type};                            \
   char _##op_type##Comment::equation[]{_equation};                       \
-  DECLARE_INFER_SHAPE_FUNCTOR(op_type, op_type##_InferShapeFunctor,      \
+  DECLARE_INFER_SHAPE_FUNCTOR(op_type,                                   \
+                              op_type##_InferShapeFunctor,               \
                               PD_INFER_META(phi::CompareInferMeta));     \
   REGISTER_OPERATOR(                                                     \
-      op_type, ::paddle::operators::CompareOp<_##op_type##Comment>,      \
+      op_type,                                                           \
+      ::paddle::operators::CompareOp<_##op_type##Comment>,               \
       ::paddle::operators::CompareOpProtoMaker<_##op_type##Comment>,     \
       ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,  \
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>, \

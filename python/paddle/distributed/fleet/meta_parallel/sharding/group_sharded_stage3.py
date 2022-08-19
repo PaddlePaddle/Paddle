@@ -20,7 +20,7 @@ from collections import OrderedDict
 
 import paddle
 from paddle import nn
-from paddle.autograd import EagerPyLayer
+from paddle.autograd import PyLayer
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.framework import EagerParamBase
@@ -398,7 +398,7 @@ class GroupShardedStage3(nn.Layer):
 
     def _register_forward_hooks(self, layer):
         """
-        Register EagerPyLayer to manage memory slices.
+        Register PyLayer to manage memory slices.
         There are four stages:
         FW
         1. Before the forward layers, synchronize the full parameters.
@@ -653,7 +653,7 @@ def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer_size,
     return
 
 
-class ForwardPostHooks(EagerPyLayer):
+class ForwardPostHooks(PyLayer):
 
     @staticmethod
     def forward(ctx, inputs, layer, order_tracer, trainable_params,

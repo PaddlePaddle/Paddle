@@ -49,7 +49,7 @@ class TestExceptionNoCStack(unittest.TestCase):
         y = fluid.layers.data(name='Y', shape=[-1, 1], dtype='float32')
         predict = fluid.layers.fc(input=x, size=1, act=None)
         loss = fluid.layers.square_error_cost(input=predict, label=y)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
 
         fluid.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
 

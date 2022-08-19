@@ -60,9 +60,12 @@ class SignGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(sign, SignInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(sign,
+                            SignInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
-REGISTER_OPERATOR(sign, ops::SignOp, ops::SignOpMaker<float>,
+REGISTER_OPERATOR(sign,
+                  ops::SignOp,
+                  ops::SignOpMaker<float>,
                   ops::SignGradMaker<paddle::framework::OpDesc>,
                   ops::SignGradMaker<paddle::imperative::OpBase>,
                   SignInferShapeFunctor);

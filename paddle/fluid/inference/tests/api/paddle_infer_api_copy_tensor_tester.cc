@@ -55,8 +55,10 @@ TEST(Tensor, copy_to_cpu_async_stream) {
   auto pred_clone = predictor->Clone();
 
   std::vector<int> in_shape = {1, 3, 318, 318};
-  int in_num = std::accumulate(in_shape.begin(), in_shape.end(), 1,
-                               [](int &a, int &b) { return a * b; });
+  int in_num =
+      std::accumulate(in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
+        return a * b;
+      });
 
   std::vector<float> input(in_num, 1.0);
 
@@ -71,15 +73,23 @@ TEST(Tensor, copy_to_cpu_async_stream) {
   const auto &output_names = predictor->GetOutputNames();
   auto output_tensor = predictor->GetOutputHandle(output_names[0]);
   std::vector<int> output_shape = output_tensor->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
 
   float *out_data = static_cast<float *>(
       contrib::TensorUtils::CudaMallocPinnedMemory(sizeof(float) * out_num));
   memset(out_data, 0, sizeof(float) * out_num);
   std::vector<float> correct_out_data = {
-      127.78,   1.07353,  -229.42, 1127.28, -177.365,
-      -292.412, -271.614, 466.054, 540.436, -214.223,
+      127.78,
+      1.07353,
+      -229.42,
+      1127.28,
+      -177.365,
+      -292.412,
+      -271.614,
+      466.054,
+      540.436,
+      -214.223,
   };
 
   for (int i = 0; i < 100; i++) {
@@ -110,8 +120,10 @@ TEST(Tensor, copy_to_cpu_async_callback) {
   auto pred_clone = predictor->Clone();
 
   std::vector<int> in_shape = {1, 3, 318, 318};
-  int in_num = std::accumulate(in_shape.begin(), in_shape.end(), 1,
-                               [](int &a, int &b) { return a * b; });
+  int in_num =
+      std::accumulate(in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
+        return a * b;
+      });
 
   std::vector<float> input(in_num, 1.0);
 
@@ -126,8 +138,8 @@ TEST(Tensor, copy_to_cpu_async_callback) {
   const auto &output_names = predictor->GetOutputNames();
   auto output_tensor = predictor->GetOutputHandle(output_names[0]);
   std::vector<int> output_shape = output_tensor->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
 
   float *out_data = static_cast<float *>(
       contrib::TensorUtils::CudaMallocPinnedMemory(sizeof(float) * out_num));
@@ -142,8 +154,16 @@ TEST(Tensor, copy_to_cpu_async_callback) {
       [](void *cb_params) {
         float *data = static_cast<float *>(cb_params);
         std::vector<float> correct_out_data = {
-            127.78,   1.07353,  -229.42, 1127.28, -177.365,
-            -292.412, -271.614, 466.054, 540.436, -214.223,
+            127.78,
+            1.07353,
+            -229.42,
+            1127.28,
+            -177.365,
+            -292.412,
+            -271.614,
+            466.054,
+            540.436,
+            -214.223,
         };
         for (int i = 0; i < 10; i++) {
           EXPECT_NEAR(data[i] / correct_out_data[i], 1.0, 1e-3);
@@ -319,7 +339,8 @@ TEST(CopyTensor, async_callback) {
   tensor_dst->CopyFromCpu(data_dst.data());
 
   paddle_infer::contrib::TensorUtils::CopyTensorAsync(
-      tensor_dst.get(), *tensor_src,
+      tensor_dst.get(),
+      *tensor_src,
       [](void *cb_params) {
         Tensor *tensor = static_cast<Tensor *>(cb_params);
         EXPECT_EQ(tensor->shape().size(), (size_t)2);

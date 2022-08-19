@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
@@ -43,7 +44,7 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
 
                 select_output(x, outputs, mask)
                 y = select_input(outputs, mask)
-                mean = layers.mean(y)
+                mean = paddle.mean(y)
                 append_backward(mean)
 
             place = fluid.CUDAPlace(
@@ -60,8 +61,12 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
                               },
                               fetch_list=[y.name, x.grad_name])
                 x_grad = np.asarray([0.5, 0.5]).astype(np.float32)
-                self.assertTrue(np.allclose(np.asarray(ret[0]), feed_x))
-                self.assertTrue(np.allclose(np.asarray(ret[1]), x_grad))
+                np.testing.assert_allclose(np.asarray(ret[0]),
+                                           feed_x,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(np.asarray(ret[1]),
+                                           x_grad,
+                                           rtol=1e-05)
 
 
 class TestSelectInputOpError(unittest.TestCase):

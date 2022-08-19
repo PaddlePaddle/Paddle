@@ -106,13 +106,15 @@ ConvertTensorIndex(int index, const Dim3& dims) {
 template <typename IntType, bool ceil>
 IntType CeilOrFloor(IntType x, IntType deviser) {
   PADDLE_ENFORCE_GT(
-      deviser, 0,
+      deviser,
+      0,
       platform::errors::InvalidArgument("deviser should be greater than 0, "
                                         "but received is:%d",
                                         deviser));
 
   PADDLE_ENFORCE_GT(
-      x, 0,
+      x,
+      0,
       platform::errors::InvalidArgument("input should be greater than 0, "
                                         "but received is:%d",
                                         x));

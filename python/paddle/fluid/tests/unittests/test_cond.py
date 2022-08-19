@@ -17,7 +17,7 @@ from __future__ import print_function
 import numpy as np
 import os
 import unittest
-
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
@@ -25,6 +25,7 @@ import paddle.fluid.framework as framework
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 from simple_nets import simple_fc_net_with_inputs, batchnorm_fc_with_inputs
+import paddle
 
 np.random.seed(123)
 
@@ -40,6 +41,8 @@ class TestCondInputOutput(unittest.TestCase):
         else:
             return -1
         """
+
+        paddle.enable_static()
 
         def true_func():
             return layers.fill_constant(shape=[2, 3], dtype='int32', value=2)
@@ -59,9 +62,10 @@ class TestCondInputOutput(unittest.TestCase):
         place = fluid.CUDAPlace(
             0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
-        ret = exe.run(main_program, fetch_list=[out.name])
-        self.assertTrue(
-            np.allclose(np.asarray(ret), np.full((3, 2), -1, np.int32)))
+        ret, = exe.run(main_program, fetch_list=[out.name])
+        np.testing.assert_allclose(np.asarray(ret),
+                                   np.full((3, 2), -1, np.int32),
+                                   rtol=1e-05)
 
     def test_return_var_tuple(self):
         """
@@ -72,6 +76,8 @@ class TestCondInputOutput(unittest.TestCase):
         else:
             return 3, 2
         """
+
+        paddle.enable_static()
 
         def true_func():
             return layers.fill_constant(shape=[1, 2], dtype='int32',
@@ -98,10 +104,12 @@ class TestCondInputOutput(unittest.TestCase):
             0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
         ret = exe.run(main_program, fetch_list=out)
-        self.assertTrue(
-            np.allclose(np.asarray(ret[0]), np.full((1, 2), 1, np.int32)))
-        self.assertTrue(
-            np.allclose(np.asarray(ret[1]), np.full((2, 3), True, bool)))
+        np.testing.assert_allclose(np.asarray(ret[0]),
+                                   np.full((1, 2), 1, np.int32),
+                                   rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(ret[1]),
+                                   np.full((2, 3), True, bool),
+                                   rtol=1e-05)
 
     def test_pass_and_modify_var(self):
         """
@@ -113,6 +121,8 @@ class TestCondInputOutput(unittest.TestCase):
             else:
                 a = a - (i - 1)
         """
+
+        paddle.enable_static()
 
         def true_func(a, i):
             a = a * (i + 1)
@@ -135,12 +145,12 @@ class TestCondInputOutput(unittest.TestCase):
         exe = fluid.Executor(place)
         for feed_i in range(5):
             expected_a = 7 * (feed_i + 1) if feed_i % 2 == 0 else 8 - feed_i
-            ret = exe.run(main_program,
-                          feed={'i': np.full((1), feed_i, np.int32)},
-                          fetch_list=[a])
-            self.assertTrue(
-                np.allclose(np.asarray(ret),
-                            np.full((3, 2, 1), expected_a, np.int32)))
+            ret, = exe.run(main_program,
+                           feed={'i': np.full((1), feed_i, np.int32)},
+                           fetch_list=[a])
+            np.testing.assert_allclose(np.asarray(ret),
+                                       np.full((3, 2, 1), expected_a, np.int32),
+                                       rtol=1e-05)
 
     def test_return_none(self):
         """
@@ -151,6 +161,8 @@ class TestCondInputOutput(unittest.TestCase):
             else:
                 pass
         """
+
+        paddle.enable_static()
 
         def true_func():
             pass
@@ -180,6 +192,8 @@ class TestCondInputOutput(unittest.TestCase):
         """
         test returning different number of tensors cannot merge into output
         """
+
+        paddle.enable_static()
 
         def func_return_none():
             return None
@@ -223,10 +237,11 @@ class TestCondInputOutput(unittest.TestCase):
                 out = layers.cond(pred, func_return_one_tensor,
                                   func_return_two_tensors)
             self.assertTrue(
-                "Incompatible return values of true_fn and false_fn in cond" in
-                str(e.exception))
+                "true fn returns 1 vars, but false fn returns 2 vars, which is not equals"
+                in str(e.exception))
 
     def test_extremely_simple_net_with_op_in_condition(self):
+        paddle.enable_static()
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
@@ -272,6 +287,8 @@ class TestCondNestedControlFlow(unittest.TestCase):
                     return a / a
         """
 
+        paddle.enable_static()
+
         def less_than_branch(i, a):
             return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a),
                                lambda: layers.elementwise_sub(a, a))
@@ -287,7 +304,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             a = 2.0 * i
             out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),
                               lambda: greater_equal_branch(i, a))
-            mean = layers.mean(out)
+            mean = paddle.mean(out)
             append_backward(mean)
 
         place = fluid.CUDAPlace(
@@ -308,6 +325,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             self.assertEqual(ret[1][0], expected_a_grad)
 
     def test_cond_op_in_condition(self):
+        paddle.enable_static()
         main_program = fluid.Program()
         startup_program = fluid.Program()
 
@@ -344,6 +362,7 @@ class TestCondBackward(unittest.TestCase):
         """
         Helper function that compares calculated backward value is close to dy/dx
         """
+        paddle.enable_static()
         main_program = Program()
         main_program.random_seed = 123
         startup_program = Program()
@@ -422,9 +441,10 @@ class TestCondBackward(unittest.TestCase):
                     numerical_grad[0][j] = (loss_delta[0] -
                                             loss_value[0]) / delta
                 feed_img_delta[0][j] = feed_img[0][j]
-            self.assertTrue(
-                np.isclose(img_grad, numerical_grad, atol=0.05,
-                           rtol=0.05).all())
+            np.testing.assert_allclose(img_grad,
+                                       numerical_grad,
+                                       rtol=0.05,
+                                       atol=0.05)
 
     def add_optimizer_helper(self, cond_func, use_cuda, use_parallel_exe):
         """
@@ -474,6 +494,8 @@ class TestCondBackward(unittest.TestCase):
 
     def test_cond_backward(self):
 
+        paddle.enable_static()
+
         def cond_func(i, img, label):
             predicate = ((i % 2) == 0)
             return layers.cond(
@@ -494,6 +516,7 @@ class TestCondBackward(unittest.TestCase):
                                       use_parallel_exe)
 
     def test_half_nested_cond_backward(self):
+        paddle.enable_static()
 
         def branch(i, img, label):
             return layers.cond(
@@ -503,10 +526,10 @@ class TestCondBackward(unittest.TestCase):
 
         def cond_func_simple_net_at_true(i, img, label):
             return layers.cond(i < 5, lambda: branch(i, img, label),
-                               lambda: layers.mean(img))
+                               lambda: paddle.mean(img))
 
         def cond_func_simple_net_at_false(i, img, label):
-            return layers.cond(i < 5, lambda: layers.mean(img),
+            return layers.cond(i < 5, lambda: paddle.mean(img),
                                lambda: branch(i, img, label))
 
         for use_parallel_exe in [False, True]:
@@ -530,6 +553,7 @@ class TestCondBackward(unittest.TestCase):
                                       use_parallel_exe)
 
     def test_nested_cond_backward(self):
+        paddle.enable_static()
 
         def branch(i, img, label, mod_two):
             if mod_two:
@@ -560,6 +584,7 @@ class TestCondBackward(unittest.TestCase):
 class TestCondWithError(unittest.TestCase):
 
     def test_input_type_error(self):
+        paddle.enable_static()
         main_program = framework.Program()
         startup_program = framework.Program()
         with framework.program_guard(main_program, startup_program):

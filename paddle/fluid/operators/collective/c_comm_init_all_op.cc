@@ -90,8 +90,11 @@ class CCommInitAllOp : public framework::OperatorBase {
 
       for (size_t i = 0; i < devices.size(); ++i) {
         platform::BKCLCommContext::Instance().AssignBKCLComm(
-            ptr->contexts_.at(devices[i]).comm_, devices.size(), devices[i],
-            devices[i], ring_id);
+            ptr->contexts_.at(devices[i]).comm_,
+            devices.size(),
+            devices[i],
+            devices[i],
+            ring_id);
 
         VLOG(0) << "bkcl communicator of rank " << devices[i] << " in ring "
                 << ring_id << " has been created on device " << devices[i];
@@ -137,5 +140,7 @@ Initialize all collective communicatoin context
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_comm_init_all, ops::CCommInitAllOp,
-                  ops::CCommInitAllInferShape, ops::CCommInitAllOpMaker);
+REGISTER_OPERATOR(c_comm_init_all,
+                  ops::CCommInitAllOp,
+                  ops::CCommInitAllInferShape,
+                  ops::CCommInitAllOpMaker);

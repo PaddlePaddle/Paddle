@@ -61,9 +61,13 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
             << ", group is " << group << ", ring_id is " << ring_id
             << ", nranks is " << nranks;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllGather(
-        send_buff, recv_buff, send_numel, dtype, comm->comm(),
-        reinterpret_cast<void *>(stream)));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclAllGather(send_buff,
+                                         recv_buff,
+                                         send_numel,
+                                         dtype,
+                                         comm->comm(),
+                                         reinterpret_cast<void *>(stream)));
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -78,7 +82,8 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(c_allgather, ops::CAllGatherOpASCENDKernel<int8_t>,
+REGISTER_OP_NPU_KERNEL(c_allgather,
+                       ops::CAllGatherOpASCENDKernel<int8_t>,
                        ops::CAllGatherOpASCENDKernel<int>,
                        ops::CAllGatherOpASCENDKernel<int64_t>,
                        ops::CAllGatherOpASCENDKernel<float>,

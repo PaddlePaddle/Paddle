@@ -37,13 +37,15 @@ using SelectedRows = phi::SelectedRows;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
 
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 void PrepareSamples(const framework::ExecutionContext &context,
-                    Sampler *sampler, Tensor *sample_labels) {
+                    Sampler *sampler,
+                    Tensor *sample_labels) {
   auto label = context.Input<Tensor>("Label");
   const int64_t *label_data = label->data<int64_t>();
   auto label_dims = label->dims();
@@ -101,36 +103,45 @@ class NCEKernel : public framework::OpKernel<T> {
         auto dist_alias_probs = context.Input<Tensor>("CustomDistAliasProbs");
 
         PADDLE_ENFORCE_EQ(
-            dist_probs->numel(), num_total_classes,
+            dist_probs->numel(),
+            num_total_classes,
             platform::errors::InvalidArgument(
                 "ShapeError: The number of elements in Input(CustomDistProbs) "
                 "should be equal to the number of total classes. But Received: "
                 "Input(CustomDistProbs).numel() = %d, Attr(num_total_classes) "
                 "= %d.",
-                dist_probs->numel(), num_total_classes));
+                dist_probs->numel(),
+                num_total_classes));
         PADDLE_ENFORCE_EQ(
-            dist_alias->numel(), num_total_classes,
+            dist_alias->numel(),
+            num_total_classes,
             platform::errors::InvalidArgument(
                 "ShapeError: The number of elements in Input(CustomDistAlias) "
                 "should be equal to the number of total classes. But Received: "
                 "Input(CustomDistAlias).numel() = %d, Attr(num_total_classes) "
                 "= %d.",
-                dist_alias->numel(), num_total_classes));
+                dist_alias->numel(),
+                num_total_classes));
         PADDLE_ENFORCE_EQ(
-            dist_alias_probs->numel(), num_total_classes,
+            dist_alias_probs->numel(),
+            num_total_classes,
             platform::errors::InvalidArgument(
                 "ShapeError: The number of elements in "
                 "Input(CustomDistAliasProbs) "
                 "should be equal to the number of total classes. But Received: "
                 "Input(CustomDistAliasProbs).numel() = %d, "
                 "Attr(num_total_classes) = %d.",
-                dist_alias_probs->numel(), num_total_classes));
+                dist_alias_probs->numel(),
+                num_total_classes));
 
         const float *probs_data = dist_probs->data<float>();
         const int *alias_data = dist_alias->data<int>();
         const float *alias_probs_data = dist_alias_probs->data<float>();
-        sampler = new math::CustomSampler(num_total_classes - 1, probs_data,
-                                          alias_data, alias_probs_data, seed);
+        sampler = new math::CustomSampler(num_total_classes - 1,
+                                          probs_data,
+                                          alias_data,
+                                          alias_probs_data,
+                                          seed);
         break;
       }
       default: {
@@ -167,12 +178,14 @@ class NCEKernel : public framework::OpKernel<T> {
     const int64_t *sample_labels_data = sample_labels->data<int64_t>();
 
     for (int x = 0; x < sample_labels->numel(); x++) {
-      PADDLE_ENFORCE_GE(sample_labels_data[x], 0,
+      PADDLE_ENFORCE_GE(sample_labels_data[x],
+                        0,
                         platform::errors::InvalidArgument(
                             "ValueError: Every sample label should be "
                             "non-negative. But received: "
                             "Input(SampleLabels)[%d] = %d",
-                            x, sample_labels_data[x]));
+                            x,
+                            sample_labels_data[x]));
     }
 
     T *sample_out_data = sample_out->mutable_data<T>(context.GetPlace());
@@ -271,36 +284,45 @@ class NCEGradKernel : public framework::OpKernel<T> {
         auto dist_alias_probs = context.Input<Tensor>("CustomDistAliasProbs");
 
         PADDLE_ENFORCE_EQ(
-            dist_probs->numel(), num_total_classes,
+            dist_probs->numel(),
+            num_total_classes,
             platform::errors::InvalidArgument(
                 "ShapeError: The number of elements in Input(CustomDistProbs) "
                 "should be equal to the number of total classes. But Received: "
                 "Input(CustomDistProbs).numel() = %d, Attr(num_total_classes) "
                 "= %d.",
-                dist_probs->numel(), num_total_classes));
+                dist_probs->numel(),
+                num_total_classes));
         PADDLE_ENFORCE_EQ(
-            dist_alias->numel(), num_total_classes,
+            dist_alias->numel(),
+            num_total_classes,
             platform::errors::InvalidArgument(
                 "ShapeError: The number of elements in Input(CustomDistAlias) "
                 "should be equal to the number of total classes. But Received: "
                 "Input(CustomDistAlias).numel() = %d, Attr(num_total_classes) "
                 "= %d.",
-                dist_alias->numel(), num_total_classes));
+                dist_alias->numel(),
+                num_total_classes));
         PADDLE_ENFORCE_EQ(
-            dist_alias_probs->numel(), num_total_classes,
+            dist_alias_probs->numel(),
+            num_total_classes,
             platform::errors::InvalidArgument(
                 "ShapeError: The number of elements in "
                 "Input(CustomDistAliasProbs) "
                 "should be equal to the number of total classes. But Received: "
                 "Input(CustomDistAliasProbs).numel() = %d, "
                 "Attr(num_total_classes) = %d.",
-                dist_alias_probs->numel(), num_total_classes));
+                dist_alias_probs->numel(),
+                num_total_classes));
 
         const float *probs_data = dist_probs->data<float>();
         const int *alias_data = dist_alias->data<int>();
         const float *alias_probs_data = dist_alias_probs->data<float>();
-        sampler = new math::CustomSampler(num_total_classes - 1, probs_data,
-                                          alias_data, alias_probs_data, seed);
+        sampler = new math::CustomSampler(num_total_classes - 1,
+                                          probs_data,
+                                          alias_data,
+                                          alias_probs_data,
+                                          seed);
         break;
       }
       default: {

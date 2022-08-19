@@ -1,8 +1,8 @@
 set(api_yaml_path
-    "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/legacy_api.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_api.yaml"
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/api.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_api.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_api.yaml"
 )
 set(backward_yaml_path
-    "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/backward.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/legacy_backward.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api.yaml"
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/backward.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_backward.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_bw_api.yaml"
 )
 set(tmp_forwards_cc_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/tmp_dygraph_functions.cc"
@@ -30,7 +30,7 @@ set(nodes_h_path
 )
 # StringTensor only needs forward api
 set(fwd_api_yaml_path
-    "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/strings_api.yaml")
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/strings_api.yaml")
 
 message("Final State Eager CodeGen")
 add_custom_target(
@@ -38,7 +38,7 @@ add_custom_target(
   COMMAND
     "${PYTHON_EXECUTABLE}"
     "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/final_state_generator/eager_gen.py"
-    "--api_yaml_path=${api_yaml_path}"
+    "--api_yaml_path=${api_yaml_path},${fwd_api_yaml_path}"
     "--backward_yaml_path=${backward_yaml_path}"
     "--forwards_cc_path=${tmp_forwards_cc_path}"
     "--forwards_h_path=${tmp_forwards_h_path}"
@@ -54,11 +54,10 @@ add_custom_target(
   VERBATIM)
 
 set(tmp_python_c_output_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/tmp_eager_final_state_op_function_impl.h"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function.cc.tmp"
 )
 set(python_c_output_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function_impl.h"
-)
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function.cc")
 
 add_custom_target(
   eager_final_state_python_c_codegen

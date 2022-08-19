@@ -25,13 +25,16 @@ void CheckAttrs(const framework::ExecutionContext& ctx) {
   // cnnl not support normalize and ignore_index
   bool normalize = ctx.Attr<bool>("normalize");
   int ignore_index = ctx.Attr<int>("ignore_index");
-  PADDLE_ENFORCE_EQ(normalize, false,
+  PADDLE_ENFORCE_EQ(normalize,
+                    false,
                     platform::errors::InvalidArgument(
                         "attr normalize must be false, but got true"));
-  PADDLE_ENFORCE_EQ(ignore_index, kIgnoreIndex,
+  PADDLE_ENFORCE_EQ(ignore_index,
+                    kIgnoreIndex,
                     platform::errors::InvalidArgument(
                         "attr ignore_index must be default %d, but got %d",
-                        kIgnoreIndex, ignore_index));
+                        kIgnoreIndex,
+                        ignore_index));
 }
 
 template <typename T>
@@ -52,9 +55,17 @@ class SigmoidCrossEntropyWithLogitsMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc label_desc(*label);
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::BceWithLogits(ctx, CNNL_BCE_WITH_LOGITS_NONE, x_desc.get(),
-                           GetBasePtr(x), label_desc.get(), GetBasePtr(label),
-                           nullptr, nullptr, nullptr, nullptr, out_desc.get(),
+    MLUCnnl::BceWithLogits(ctx,
+                           CNNL_BCE_WITH_LOGITS_NONE,
+                           x_desc.get(),
+                           GetBasePtr(x),
+                           label_desc.get(),
+                           GetBasePtr(label),
+                           nullptr,
+                           nullptr,
+                           nullptr,
+                           nullptr,
+                           out_desc.get(),
                            GetBasePtr(out));
   }
 };
@@ -79,10 +90,20 @@ class SigmoidCrossEntropyWithLogitsMLUGradKernel
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc label_desc(*label);
     MLUCnnlTensorDesc dout_desc(*dout);
-    MLUCnnl::BceWithLogitsBackward(
-        ctx, CNNL_BCE_WITH_LOGITS_NONE, dout_desc.get(), GetBasePtr(dout),
-        x_desc.get(), GetBasePtr(x), label_desc.get(), GetBasePtr(label),
-        nullptr, nullptr, nullptr, nullptr, x_desc.get(), GetBasePtr(dx));
+    MLUCnnl::BceWithLogitsBackward(ctx,
+                                   CNNL_BCE_WITH_LOGITS_NONE,
+                                   dout_desc.get(),
+                                   GetBasePtr(dout),
+                                   x_desc.get(),
+                                   GetBasePtr(x),
+                                   label_desc.get(),
+                                   GetBasePtr(label),
+                                   nullptr,
+                                   nullptr,
+                                   nullptr,
+                                   nullptr,
+                                   x_desc.get(),
+                                   GetBasePtr(dx));
   }
 };
 

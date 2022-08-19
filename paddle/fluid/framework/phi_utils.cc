@@ -35,8 +35,9 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
   explicit KernelArgsNameMakerByOpProto(
       const framework::proto::OpProto* op_proto)
       : op_proto_(op_proto) {
-    PADDLE_ENFORCE_NOT_NULL(op_proto_, platform::errors::InvalidArgument(
-                                           "Op proto cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        op_proto_,
+        platform::errors::InvalidArgument("Op proto cannot be nullptr."));
   }
 
   ~KernelArgsNameMakerByOpProto() {}
@@ -65,7 +66,7 @@ OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
   platform::Place place = phi::TransToPhiPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
-  if (kernel_key.backend() == phi::Backend::MKLDNN) {
+  if (kernel_key.backend() == phi::Backend::ONEDNN) {
     library_type = LibraryType::kMKLDNN;
   } else if (kernel_key.backend() == phi::Backend::GPUDNN) {
     library_type = LibraryType::kCUDNN;
@@ -86,7 +87,7 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
       backend = phi::Backend::GPUDNN;
       break;
     case LibraryType::kMKLDNN:
-      backend = phi::Backend::MKLDNN;
+      backend = phi::Backend::ONEDNN;
       break;
     case LibraryType::kKP:
       backend = phi::Backend::KPS;
@@ -94,7 +95,8 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
     default:
       break;
   }
-  return phi::KernelKey(backend, kernel_type.data_layout_,
+  return phi::KernelKey(backend,
+                        kernel_type.data_layout_,
                         framework::TransToPhiDataType(kernel_type.data_type_));
 }
 
@@ -107,8 +109,8 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
     VLOG(3) << "phi missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
-                          kernel_key.dtype());
+    return phi::KernelKey(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -116,8 +118,8 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
     VLOG(3) << "phi missing NPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
-                          kernel_key.dtype());
+    return phi::KernelKey(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_MLU
@@ -125,8 +127,8 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
     VLOG(3) << "phi missing MLU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
-                          kernel_key.dtype());
+    return phi::KernelKey(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_IPU
@@ -134,8 +136,8 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
     VLOG(3) << "phi missing IPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
-                          kernel_key.dtype());
+    return phi::KernelKey(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -144,8 +146,8 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
             << " kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
-                          kernel_key.dtype());
+    return phi::KernelKey(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
   return phi::KernelKey();
@@ -169,7 +171,8 @@ KernelArgsNameMakerByOpProto::GetInputArgsNames() {
   if (VLOG_IS_ON(10)) {
     std::ostringstream sout;
     sout << "PhiKernel inputs: ";
-    std::copy(input_names_.begin(), input_names_.end(),
+    std::copy(input_names_.begin(),
+              input_names_.end(),
               std::ostream_iterator<const char*>(sout, ", "));
     VLOG(10) << sout.str();
   }
@@ -189,7 +192,8 @@ KernelArgsNameMakerByOpProto::GetOutputArgsNames() {
   if (VLOG_IS_ON(10)) {
     std::ostringstream sout;
     sout << "PhiKernel outputs: ";
-    std::copy(output_names_.begin(), output_names_.end(),
+    std::copy(output_names_.begin(),
+              output_names_.end(),
               std::ostream_iterator<const char*>(sout, ", "));
     VLOG(10) << sout.str();
   }
@@ -216,7 +220,8 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
   if (VLOG_IS_ON(10)) {
     std::ostringstream sout;
     sout << "PhiKernel attributes: ";
-    std::copy(attr_names_.begin(), attr_names_.end(),
+    std::copy(attr_names_.begin(),
+              attr_names_.end(),
               std::ostream_iterator<const char*>(sout, ", "));
     VLOG(10) << sout.str();
   }
@@ -225,8 +230,10 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 
 phi::KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
   return phi::KernelSignature(
-      phi::TransToPhiKernelName(op_proto_->type()).c_str(), GetInputArgsNames(),
-      GetAttrsArgsNames(), GetOutputArgsNames());
+      phi::TransToPhiKernelName(op_proto_->type()).c_str(),
+      GetInputArgsNames(),
+      GetAttrsArgsNames(),
+      GetOutputArgsNames());
 }
 
 std::once_flag kernel_sig_map_init_flag;

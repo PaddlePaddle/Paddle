@@ -21,7 +21,8 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-static void CumsumImp(const Tensor& input, Tensor* output,
+static void CumsumImp(const Tensor& input,
+                      Tensor* output,
                       const framework::NPUAttributeMap& attr_input,
                       const framework::ExecutionContext& ctx) {
   auto stream =
@@ -34,7 +35,9 @@ static void CumsumImp(const Tensor& input, Tensor* output,
     auto dst_acl_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(tmp_input.type()));
     const auto& cast_runner_1 =
-        NpuOpRunner("Cast", {input}, {tmp_input},
+        NpuOpRunner("Cast",
+                    {input},
+                    {tmp_input},
                     {{"dst_type", static_cast<int>(dst_acl_dtype)}});
     cast_runner_1.Run(stream);
 
@@ -47,7 +50,9 @@ static void CumsumImp(const Tensor& input, Tensor* output,
     dst_acl_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(output->type()));
     const auto& cast_runner_2 =
-        NpuOpRunner("Cast", {tmp_output}, {*output},
+        NpuOpRunner("Cast",
+                    {tmp_output},
+                    {*output},
                     {{"dst_type", static_cast<int>(dst_acl_dtype)}});
     cast_runner_2.Run(stream);
   } else {
@@ -74,10 +79,12 @@ class CumSumNPUKernel : public framework::OpKernel<T> {
     bool flatten = ctx.Attr<bool>("flatten");
     if (flatten) {
       PADDLE_ENFORCE_EQ(
-          axis, -1,
+          axis,
+          -1,
           platform::errors::InvalidArgument(
               "when flatten is true, attr axis must be default %d, but got %d",
-              -1, axis));
+              -1,
+              axis));
 
       Tensor new_x(x->type());
       new_x.ShareDataWith(*x);
@@ -97,7 +104,8 @@ class CumSumNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    cumsum, ops::CumSumNPUKernel<plat::NPUDeviceContext, int>,
+    cumsum,
+    ops::CumSumNPUKernel<plat::NPUDeviceContext, int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
     ops::CumSumNPUKernel<plat::NPUDeviceContext, int64_t>,
 #endif

@@ -27,7 +27,8 @@ class FillZerosLikeKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
 
     phi::funcs::SetConstant<DeviceContext, T> setter;
-    setter(context.template device_context<DeviceContext>(), out,
+    setter(context.template device_context<DeviceContext>(),
+           out,
            static_cast<T>(0));
   }
 };

@@ -27,18 +27,23 @@ inline static void CheckArgument(const framework::ExecutionContext& ctx) {
   const std::string interp_method = ctx.Attr<std::string>("interp_method");
   bool align_corners = ctx.Attr<bool>("align_corners");
   PADDLE_ENFORCE_EQ(
-      align_corners, false,
+      align_corners,
+      false,
       platform::errors::InvalidArgument(
           "NPU Interpolate Kernel has diff when align_corners is true."));
   PADDLE_ENFORCE_EQ(
-      interp_method, "nearest",
+      interp_method,
+      "nearest",
       platform::errors::InvalidArgument(
           "NPU Interpolate Kernel only support nearest interpolotion."));
 }
 
 inline static void ExtractNCHW(const framework::DDim& dims,
-                               const DataLayout& data_layout, int32_t* n,
-                               int32_t* c, int32_t* h, int32_t* w) {
+                               const DataLayout& data_layout,
+                               int32_t* n,
+                               int32_t* c,
+                               int32_t* h,
+                               int32_t* w) {
   *n = dims[0];
   if (data_layout == DataLayout::kNCHW) {
     *c = dims[1];
@@ -51,8 +56,11 @@ inline static void ExtractNCHW(const framework::DDim& dims,
   }
 }
 
-static void CalcOutSize(const framework::ExecutionContext& ctx, int32_t in_h,
-                        int32_t in_w, int32_t* out_h, int32_t* out_w) {
+static void CalcOutSize(const framework::ExecutionContext& ctx,
+                        int32_t in_h,
+                        int32_t in_w,
+                        int32_t* out_h,
+                        int32_t* out_w) {
   // Priority: SizeTensor > OutSize > Scale > scale > out_h & out_w
   *out_h = ctx.Attr<int>("out_h");
   *out_w = ctx.Attr<int>("out_w");
@@ -92,11 +100,13 @@ static void CalcOutSize(const framework::ExecutionContext& ctx, int32_t in_h,
     }
   }
 
-  PADDLE_ENFORCE_GT(*out_h, 0,
+  PADDLE_ENFORCE_GT(*out_h,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
-  PADDLE_ENFORCE_GT(*out_w, 0,
+  PADDLE_ENFORCE_GT(*out_w,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
@@ -209,7 +219,8 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(nearest_interp, ops::InterpolateNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(nearest_interp,
+                       ops::InterpolateNPUKernel<float>,
                        ops::InterpolateNPUKernel<uint8_t>);
 REGISTER_OP_NPU_KERNEL(nearest_interp_grad,
                        ops::InterpolateGradNPUKernel<float>);

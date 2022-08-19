@@ -19,11 +19,13 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename XPUType>
-void XPUCompare(
-    const framework::ExecutionContext& ctx,
-    std::function<int(xpu::Context*, const XPUType*, const XPUType*, bool*,
-                      const std::vector<int>&, const std::vector<int>&)>
-        func) {
+void XPUCompare(const framework::ExecutionContext& ctx,
+                std::function<int(xpu::Context*,
+                                  const XPUType*,
+                                  const XPUType*,
+                                  bool*,
+                                  const std::vector<int>&,
+                                  const std::vector<int>&)> func) {
   auto* x = ctx.Input<framework::Tensor>("X");
   auto* y = ctx.Input<framework::Tensor>("Y");
   auto* z = ctx.Output<framework::Tensor>("Out");
@@ -40,9 +42,11 @@ void XPUCompare(
 
   int ret = func(dev_ctx.x_context(), x_data, y_data, z_data, x_shape, y_shape);
   PADDLE_ENFORCE_EQ(
-      ret, xpu::SUCCESS,
+      ret,
+      xpu::SUCCESS,
       platform::errors::External(
-          "XPU kernel compare op occur error[%d %s] in XPUCompare.", ret,
+          "XPU kernel compare op occur error[%d %s] in XPUCompare.",
+          ret,
           XPUAPIErrorMsg[ret]));
 }
 
@@ -128,17 +132,20 @@ REGISTER_OP_XPU_KERNEL(less_than,
                        ops::LessThanXPUKernel<plat::XPUDeviceContext, int64_t>);
 
 REGISTER_OP_XPU_KERNEL(
-    less_equal, ops::LessEqualXPUKernel<plat::XPUDeviceContext, float>,
+    less_equal,
+    ops::LessEqualXPUKernel<plat::XPUDeviceContext, float>,
     ops::LessEqualXPUKernel<plat::XPUDeviceContext, int>,
     ops::LessEqualXPUKernel<plat::XPUDeviceContext, int64_t>);
 
 REGISTER_OP_XPU_KERNEL(
-    greater_than, ops::GreaterThanXPUKernel<plat::XPUDeviceContext, float>,
+    greater_than,
+    ops::GreaterThanXPUKernel<plat::XPUDeviceContext, float>,
     ops::GreaterThanXPUKernel<plat::XPUDeviceContext, int>,
     ops::GreaterThanXPUKernel<plat::XPUDeviceContext, int64_t>);
 
 REGISTER_OP_XPU_KERNEL(
-    greater_equal, ops::GreaterEqualXPUKernel<plat::XPUDeviceContext, float>,
+    greater_equal,
+    ops::GreaterEqualXPUKernel<plat::XPUDeviceContext, float>,
     ops::GreaterEqualXPUKernel<plat::XPUDeviceContext, int>,
     ops::GreaterEqualXPUKernel<plat::XPUDeviceContext, int64_t>);
 

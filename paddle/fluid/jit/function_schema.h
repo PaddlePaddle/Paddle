@@ -14,16 +14,16 @@
 
 #pragma once
 
-#include <ostream>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/phi/core/enforce.h"
-
-#include "paddle/fluid/jit/layer_utils.h"
-
 namespace paddle {
+
+namespace framework {
+class ProgramDesc;
+}  // namespace framework
+
 namespace jit {
 
 class Argument {
@@ -42,9 +42,9 @@ class FunctionSchema {
  public:
   FunctionSchema() = default;
 
-  const std::vector<std::string> GetInputArgNames() const;
+  const std::vector<std::string> InputArgNames() const;
 
-  const std::vector<std::string> GetOutputArgNames() const;
+  const std::vector<std::string> OutputArgNames() const;
 
   void AddInputArg(const std::string& name);
 
@@ -62,20 +62,22 @@ class FunctionInfo {
                const std::vector<std::string>& param_names,
                const framework::ProgramDesc& program_desc);
 
-  const std::string& GetFunctionName() const;
+  const std::string& FunctionName() const;
 
-  const framework::ProgramDesc& GetProgramDesc() const;
+  const framework::ProgramDesc& ProgramDesc() const;
 
-  const std::vector<std::string>& GetParamNames() const;
+  const std::vector<std::string>& ParamNames() const;
 
-  const std::vector<std::string> GetInputArgNames() const;
+  const std::vector<std::string> InputArgNames() const;
 
-  const std::vector<std::string> GetOutputArgNames() const;
+  const std::vector<std::string> OutputArgNames() const;
+
+  void RemoveDescFeedFetch();
 
  private:
   std::string func_name_;
   std::vector<std::string> param_names_;
-  framework::ProgramDesc program_desc_;
+  std::shared_ptr<framework::ProgramDesc> program_desc_;
   FunctionSchema schema_;
 };
 

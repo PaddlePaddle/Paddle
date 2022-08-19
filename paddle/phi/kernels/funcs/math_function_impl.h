@@ -92,9 +92,9 @@ void ColwiseSum<DeviceContext, T>::operator()(
 // colwise-sum can be easily implemented. General reduce has a huge overhead in
 // CPU
 template <typename T>
-class ColwiseSum<paddle::platform::CPUDeviceContext, T> {
+class ColwiseSum<phi::CPUContext, T> {
  public:
-  void operator()(const paddle::platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const paddle::framework::Tensor& input,
                   paddle::framework::Tensor* out) {
     auto& in_dims = input.dims();
@@ -155,9 +155,9 @@ void RowwiseMean<DeviceContext, T>::operator()(
 // rowwise-sum can be easily implemented. General reduce has a huge overhead in
 // CPU
 template <typename T>
-class RowwiseMean<paddle::platform::CPUDeviceContext, T> {
+class RowwiseMean<phi::CPUContext, T> {
  public:
-  void operator()(const paddle::platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const paddle::framework::Tensor& input,
                   paddle::framework::Tensor* out) {
     auto& in_dims = input.dims();
@@ -222,9 +222,9 @@ void RowwiseSum<DeviceContext, T>::operator()(
 // rowwise-sum can be easily implemented. General reduce has a huge overhead in
 // CPU
 template <typename T>
-class RowwiseSum<paddle::platform::CPUDeviceContext, T> {
+class RowwiseSum<phi::CPUContext, T> {
  public:
-  void operator()(const paddle::platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const paddle::framework::Tensor& input,
                   paddle::framework::Tensor* out) {
     auto& in_dims = input.dims();

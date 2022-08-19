@@ -66,9 +66,11 @@ class NCCLWrapper {
   void InitNCCL();
   void SetNCCLId(const NCCLInfo& nccl_info);
   NCCLInfo GetNCCLId();
-  void SetRankInfo(const int local_rank, const int global_rank,
+  void SetRankInfo(const int local_rank,
+                   const int global_rank,
                    const int ranks);
-  void SyncVar(const int root_rank, const Scope& scope,
+  void SyncVar(const int root_rank,
+               const Scope& scope,
                const std::vector<std::string>& var_names);
 
   static std::shared_ptr<NCCLWrapper> GetInstance() {

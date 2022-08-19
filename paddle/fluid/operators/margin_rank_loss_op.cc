@@ -27,8 +27,8 @@ class MarginRankLossOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     // input check
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
-                   "margin_rank_loss");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Label"), "Input", "Label", "margin_rank_loss");
     OP_INOUT_CHECK(ctx->HasInput("X1"), "Input", "X1", "margin_rank_loss");
     OP_INOUT_CHECK(ctx->HasInput("X2"), "Input", "X2", "margin_rank_loss");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "margin_rank_loss");
@@ -38,27 +38,34 @@ class MarginRankLossOp : public framework::OperatorWithKernel {
     auto x2_dims = ctx->GetInputDim("X2");
 
     PADDLE_ENFORCE_EQ(
-        label_dims, x1_dims,
+        label_dims,
+        x1_dims,
         platform::errors::InvalidArgument(
             "The shape of Input(Label) shape should equals the shape of "
             "Input(X1). Received: Input(Label)'s shape: [%s], Input(X1)'s "
             "shape: [%s].",
-            label_dims, x1_dims));
+            label_dims,
+            x1_dims));
     PADDLE_ENFORCE_EQ(
-        x1_dims, x2_dims,
+        x1_dims,
+        x2_dims,
         platform::errors::InvalidArgument(
             "The shape of Input(X1) shape should equals the shape of "
             "Input(X2). Received: Input(X1)'s shape: [%s], Input(X2)'s shape: "
             "[%s].",
-            x1_dims, x2_dims));
+            x1_dims,
+            x2_dims));
     PADDLE_ENFORCE_EQ(
-        label_dims.size(), 2,
+        label_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The dimensions of Input(Label) should be 2. Received: "
             "the shape of Input(Label): [%s], the dimensions of Input(Label): "
             "%d.",
-            label_dims, label_dims.size()));
-    PADDLE_ENFORCE_EQ(label_dims[1], 1,
+            label_dims,
+            label_dims.size()));
+    PADDLE_ENFORCE_EQ(label_dims[1],
+                      1,
                       platform::errors::InvalidArgument(
                           "The second dimension of Input(Lable) should be 1"
                           "Received: the shape of Input(Label): [%s].",
@@ -122,16 +129,24 @@ class MarginRankLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Label"), "Input", "Label", "margin_rank_loss_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
                    "margin_rank_loss_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "margin_rank_loss_grad");
-    OP_INOUT_CHECK(ctx->HasInput("Activated"), "Input", "Activated",
+    OP_INOUT_CHECK(ctx->HasInput("Activated"),
+                   "Input",
+                   "Activated",
                    "margin_rank_loss_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X1")), "Output",
-                   framework::GradVarName("X1"), "margin_rank_loss_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X2")), "Output",
-                   framework::GradVarName("X2"), "margin_rank_loss_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X1")),
+                   "Output",
+                   framework::GradVarName("X1"),
+                   "margin_rank_loss_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X2")),
+                   "Output",
+                   framework::GradVarName("X2"),
+                   "margin_rank_loss_grad");
 
     auto dims = ctx->GetInputDim("Label");
     ctx->SetOutputDim(framework::GradVarName("X1"), dims);
@@ -160,14 +175,13 @@ class MarginRankLossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(margin_rank_loss, ops::MarginRankLossOp,
+REGISTER_OPERATOR(margin_rank_loss,
+                  ops::MarginRankLossOp,
                   ops::MarginRankLossOpMaker<float>,
                   ops::MarginRankLossGradMaker<paddle::framework::OpDesc>,
                   ops::MarginRankLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(margin_rank_loss_grad, ops::MarginRankLossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    margin_rank_loss,
-    ops::MarginRankLossKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    margin_rank_loss_grad,
-    ops::MarginRankLossGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(margin_rank_loss,
+                       ops::MarginRankLossKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(margin_rank_loss_grad,
+                       ops::MarginRankLossGradKernel<phi::CPUContext, float>);

@@ -20,8 +20,8 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-struct GRUUnitFunctor<paddle::platform::CUDADeviceContext, T> {
-  static void compute(const paddle::platform::CUDADeviceContext &context,
+struct GRUUnitFunctor<phi::GPUContext, T> {
+  static void compute(const phi::GPUContext &context,
                       GRUMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -93,8 +93,7 @@ struct GRUUnitFunctor<paddle::platform::CUDADeviceContext, T> {
       threads = dim3(32, 32);
       grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 32 - 1) / 32);
     }
-    auto blas =
-        phi::funcs::GetBlas<paddle::platform::CUDADeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(context);
     if (value.prev_out_value) {
       blas.GEMM(false,
                 false,
@@ -184,8 +183,8 @@ struct GRUUnitFunctor<paddle::platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-struct GRUUnitGradFunctor<paddle::platform::CUDADeviceContext, T> {
-  static void compute(const paddle::platform::CUDADeviceContext &context,
+struct GRUUnitGradFunctor<phi::GPUContext, T> {
+  static void compute(const phi::GPUContext &context,
                       GRUMetaValue<T> value,
                       GRUMetaGrad<T> grad,
                       int frame_size,
@@ -236,8 +235,7 @@ struct GRUUnitGradFunctor<paddle::platform::CUDADeviceContext, T> {
           origin_mode);
     }
 
-    auto blas =
-        phi::funcs::GetBlas<paddle::platform::CUDADeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(context);
 
     if (value.prev_out_value && grad.prev_out_grad) {
       blas.GEMM(false,
@@ -333,10 +331,10 @@ struct GRUUnitGradFunctor<paddle::platform::CUDADeviceContext, T> {
   }
 };
 
-template struct GRUUnitFunctor<paddle::platform::CUDADeviceContext, float>;
-template struct GRUUnitFunctor<paddle::platform::CUDADeviceContext, double>;
-template struct GRUUnitGradFunctor<paddle::platform::CUDADeviceContext, float>;
-template struct GRUUnitGradFunctor<paddle::platform::CUDADeviceContext, double>;
+template struct GRUUnitFunctor<phi::GPUContext, float>;
+template struct GRUUnitFunctor<phi::GPUContext, double>;
+template struct GRUUnitGradFunctor<phi::GPUContext, float>;
+template struct GRUUnitGradFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

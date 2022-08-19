@@ -72,18 +72,19 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    return framework::OpKernelType(data_type, ctx.device_context(), layout,
-                                   library);
+    return framework::OpKernelType(
+        data_type, ctx.device_context(), layout, library);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -142,11 +143,14 @@ Used to initialize tensors with gaussian random generator.
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random, GaussianRandomInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random,
+                            GaussianRandomInferShapeFunctor,
                             PD_INFER_META(phi::GaussianRandomInferMeta));
 
 REGISTER_OPERATOR(
-    gaussian_random, ops::GaussianRandomOp, ops::GaussianRandomOpMaker,
+    gaussian_random,
+    ops::GaussianRandomOp,
+    ops::GaussianRandomOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     GaussianRandomInferShapeFunctor);

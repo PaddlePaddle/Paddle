@@ -420,7 +420,18 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                  keepdim=False,
                  asvector=False,
                  name=None):
-        helper = LayerHelper('frobenius_norm', **locals())
+        if in_dygraph_mode():
+            out = _C_ops.final_state_abs(input)
+            reduce_all = True if axis == None or axis == [] or asvector == True else False
+            axis = axis if axis != None and axis != [] else [0]
+            if reduce_all:
+                assert (axis == []) or (axis is None)
+            if porder == np.float64('inf'):
+                return _C_ops.final_state_max(out, axis, keepdim)
+            else:
+                return _C_ops.final_state_min(out, axis, keepdim)
+
+        helper = LayerHelper('inf_norm', **locals())
         out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
         helper.append_op(type='abs', inputs={'X': input}, outputs={'Out': out})
@@ -448,6 +459,13 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         NOTE:
             This function actually treats the matrix as flattened vector to calculate vector norm instead of matrix norm.
         """
+        if in_dygraph_mode():
+            abs_out = _C_ops.final_state_abs(input)
+            pow_out = _C_ops.final_state_pow(abs_out, porder)
+            sum_out = _C_ops.final_state_sum(pow_out, axis, None, keepdim)
+            out = _C_ops.final_state_pow(sum_out, float(1. / porder))
+            return out
+
         block = LayerHelper('norm', **locals())
         out = block.create_variable_for_type_inference(
             dtype=block.input_dtype())
@@ -473,7 +491,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                             'keep_dim': keepdim,
                             'reduce_all': True if axis is None else False
                         })
-        porder
         block.append_op(type='pow',
                         inputs={'X': sum_out},
                         outputs={'Out': out},
@@ -1017,11 +1034,12 @@ def dot(x, y, name=None):
         print(z)
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_dot(x, y)
+    if _in_legacy_dygraph():
+        return _C_ops.dot(x, y)
+
     op_type = 'dot'
-    # skip var type check in dygraph mode to improve efficiency
-    if paddle.in_dynamic_mode():
-        op = getattr(_C_ops, op_type)
-        return op(x, y)
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
@@ -1520,6 +1538,9 @@ def bmm(x, y, name=None):
             "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}"
             .format(x_shape, y_shape))
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_bmm(x, y)
+
     if paddle.in_dynamic_mode():
         return _C_ops.bmm(x, y)
 
@@ -1780,7 +1801,10 @@ def slogdet(x, name=None):
         # [-0.98610914, -0.43010661, -0.10872950]])
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_slogdet(x)
+
+    elif paddle.in_dynamic_mode():
         return _C_ops.slogdeterminant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
@@ -1853,8 +1877,9 @@ def svd(x, full_matrices=False, name=None):
             #                  U * UH == I
             #                  V * VH == I
     """
-
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_svd(x, full_matrices)
+    if _in_legacy_dygraph():
         return _C_ops.svd(x, 'full_matrices', full_matrices)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
     check_type(full_matrices, 'full_matrices', bool, 'svd')
@@ -1991,7 +2016,13 @@ def qr(x, mode="reduced", name=None):
             
             # one can verify : X = Q * R ;     
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        q, r = _C_ops.final_state_qr(x, mode)
+        if mode == "r":
+            return r
+        else:
+            return q, r
+    if _in_legacy_dygraph():
         q, r = _C_ops.qr(x, 'mode', mode)
         if mode == "r":
             return r
@@ -2094,27 +2125,27 @@ def lu(x, pivot=True, get_infos=False, name=None):
 
             # one can verify : X = P @ L @ U ;     
     """
-    if paddle.in_dynamic_mode():
-        LU, Piv, Info = _C_ops.lu(x, 'pivots', pivot)
-        if get_infos:
-            return LU, Piv, Info
-        else:
-            return LU, Piv
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
-    helper = LayerHelper('lu', **locals())
-    lu = helper.create_variable_for_type_inference(dtype=x.dtype)
-    p = helper.create_variable_for_type_inference(dtype='int')
-    info = helper.create_variable_for_type_inference(dtype='int')
-    attrs = dict()
-    attrs['pivots'] = pivot
-    helper.append_op(type='lu',
-                     inputs={'X': x},
-                     outputs={
-                         'Out': lu,
-                         'Pivots': p,
-                         'Infos': info
-                     },
-                     attrs=attrs)
+
+    if in_dygraph_mode():
+        lu, p, info = _C_ops.final_state_lu(x, pivot)
+    elif paddle.in_dynamic_mode():
+        lu, p, info = _C_ops.lu(x, 'pivot', pivot)
+    else:
+        check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
+        helper = LayerHelper('lu', **locals())
+        lu = helper.create_variable_for_type_inference(dtype=x.dtype)
+        p = helper.create_variable_for_type_inference(dtype='int')
+        info = helper.create_variable_for_type_inference(dtype='int')
+        attrs = dict()
+        attrs['pivot'] = pivot
+        helper.append_op(type='lu',
+                         inputs={'X': x},
+                         outputs={
+                             'Out': lu,
+                             'Pivots': p,
+                             'Infos': info
+                         },
+                         attrs=attrs)
     if get_infos:
         return lu, p, info
     else:
@@ -2192,6 +2223,11 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
             # one can verify : X = P @ L @ U ;   
     """
 
+    if in_dygraph_mode():
+        P, L, U = _C_ops.final_state_lu_unpack(x, y, unpack_ludata,
+                                               unpack_pivots)
+        return P, L, U
+
     if paddle.in_dynamic_mode():
         P, L, U = _C_ops.lu_unpack(x, y, 'unpack_ludata', unpack_ludata,
                                    'unpack_pivots', unpack_pivots)
@@ -2268,7 +2304,9 @@ def eig(x, name=None):
             #       [ (16.50471283351188+0j)  , (-5.5034820550763515+0j) ,
             #         (-0.21026087843552282+0j)])
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_eig(x)
+    elif paddle.in_dynamic_mode():
         w, v = _C_ops.eig(x)
         return w, v
 
@@ -2338,7 +2376,9 @@ def eigvals(x, name=None):
             "The last two dimensions of Input(x) should be equal, but received x's shape = {}"
             .format(x_shape))
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_eigvals(x)
+    elif paddle.in_dynamic_mode():
         return _C_ops.eigvals(x)
 
     helper = LayerHelper('eigvals', **locals())
@@ -2566,8 +2606,55 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             # one can verify : x * out * x = x ;
             # or              out * x * out = x ;
     """
+    if in_dygraph_mode():
+        if not hermitian:
+            # combine svd and matmul op
+            u, s, vt = _C_ops.final_state_svd(x, False)
+            max_singular_val = _C_ops.final_state_max(s, [-1], True)
+            rcond = paddle.to_tensor(rcond, dtype=x.dtype)
+            cutoff = rcond * max_singular_val
+            y = float('inf')
+            y = paddle.to_tensor(y, dtype=x.dtype)
 
-    if _non_static_mode():
+            condition = s > cutoff
+            cond_int = cast(condition, s.dtype)
+            cond_not_int = cast(logical_not(condition), s.dtype)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
+            st = _C_ops.final_state_unsqueeze(singular, [-2])
+
+            dims = list(range(len(vt.shape)))
+            perm = dims[:-2] + [dims[-1]] + [dims[-2]]
+            v = _C_ops.final_state_transpose(vt, perm)
+
+            out_1 = v * st
+            out_2 = _C_ops.final_state_matmul(out_1, u, False, True)
+            return out_2
+        else:
+            # combine eigh and matmul op
+            s, u = _C_ops.final_state_eigh(x, 'UPLO')
+            s_abs = paddle.abs(s)
+            max_singular_val = _C_ops.final_state_max(s_abs, [-1], True)
+            rcond = paddle.to_tensor(rcond, dtype=s.dtype)
+            cutoff = rcond * max_singular_val
+            y = float('inf')
+            y = paddle.to_tensor(y, dtype=s.dtype)
+
+            condition = s_abs > cutoff
+            cond_int = cast(condition, s.dtype)
+            cond_not_int = cast(logical_not(condition), s.dtype)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
+            st = _C_ops.final_state_unsqueeze(singular, [-2])
+
+            out_1 = u * st
+            u_conj = _C_ops.final_state_conj(u)
+            out_2 = _C_ops.final_state_matmul(out_1, u_conj, False, True)
+            return out_2
+
+    if _in_legacy_dygraph():
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, 'full_matrices', False)
@@ -2850,7 +2937,10 @@ def solve(x, y, name=None):
         print(out)
         # [2., 3.])
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_solve(x, y)
+
+    if _in_legacy_dygraph():
         return _C_ops.solve(x, y)
 
     inputs = {"X": [x], "Y": [y]}
@@ -3027,7 +3117,11 @@ def eigvalsh(x, UPLO='L', name=None):
             print(out_value)
             #[0.17157288, 5.82842712]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        values, _ = _C_ops.final_state_eigvalsh(x, UPLO, x.stop_gradient)
+        return values
+
+    elif paddle.in_dynamic_mode():
         is_test = x.stop_gradient
         values, _ = _C_ops.eigvalsh(x, 'UPLO', UPLO, 'is_test', is_test)
         return values
@@ -3159,21 +3253,12 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
     if _non_static_mode():
-        solution, rank, singular_values = _C_ops.lstsq(x, y, "rcond", rcond,
-                                                       "driver", driver)
-        if x.shape[-2] > x.shape[-1]:
-            matmul_out = _varbase_creator(dtype=x.dtype)
-            _C_ops.matmul(x, solution, matmul_out, 'trans_x', False, 'trans_y',
-                          False)
-            minus_out = _C_ops.elementwise_sub(matmul_out, y)
-            pow_out = _C_ops.pow(minus_out, 'factor', 2)
-            if in_dygraph_mode():
-                residuals = _C_ops.final_state_sum(pow_out, [-2], None, False)
-            else:
-                residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
-                                              False, 'reduce_all', False)
+        if in_dygraph_mode():
+            solution, residuals, rank, singular_values = _C_ops.final_state_lstsq(
+                x, y, rcond, driver)
         else:
-            residuals = paddle.empty(shape=[0], dtype=x.dtype)
+            solution, residuals, rank, singular_values = _C_ops.lstsq(
+                x, y, 'rcond', rcond, 'driver', driver)
 
         if driver == "gels":
             rank = paddle.empty(shape=[0], dtype=paddle.int32)
@@ -3203,47 +3288,13 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
                      },
                      outputs={
                          'Solution': solution,
+                         'Residuals': residuals,
                          'Rank': rank,
                          'SingularValues': singular_values
                      },
                      attrs={
                          'rcond': rcond,
                          'driver': driver
-                     })
-
-    matmul_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    minus_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    pow_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='matmul_v2',
-                     inputs={
-                         'X': x,
-                         'Y': solution
-                     },
-                     outputs={'Out': matmul_out},
-                     attrs={
-                         'trans_x': False,
-                         'trans_y': False,
-                     })
-
-    helper.append_op(type='elementwise_sub',
-                     inputs={
-                         'X': matmul_out,
-                         'Y': y
-                     },
-                     outputs={'Out': minus_out})
-
-    helper.append_op(type='pow',
-                     inputs={'X': minus_out},
-                     outputs={'Out': pow_out},
-                     attrs={'factor': 2})
-
-    helper.append_op(type='reduce_sum',
-                     inputs={'X': pow_out},
-                     outputs={'Out': residuals},
-                     attrs={
-                         'dim': [-2],
-                         'keep_dim': False,
-                         'reduce_all': False
                      })
 
     if driver == "gels":
@@ -3281,8 +3332,7 @@ def corrcoef(x, rowvar=True, name=None):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
-        
+
             import paddle
 
             xt = paddle.rand((3,4))

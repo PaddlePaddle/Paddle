@@ -56,8 +56,8 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
     } else {
       Tensor transformed_in;
       transformed_in.mutable_data<int32_t>(in->dims(), dev_ctx.GetPlace());
-      const auto& cast_runner = NpuOpRunner("Cast", {*in}, {transformed_in},
-                                            {{"dst_type", ACL_INT32}});
+      const auto& cast_runner = NpuOpRunner(
+          "Cast", {*in}, {transformed_in}, {{"dst_type", ACL_INT32}});
       cast_runner.Run(dev_ctx.stream());
       NpuOpRunner runner;
       runner.SetType("OneHot")
@@ -78,5 +78,6 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(one_hot, ops::OneHotNPUKernel<int32_t>,
+REGISTER_OP_NPU_KERNEL(one_hot,
+                       ops::OneHotNPUKernel<int32_t>,
                        ops::OneHotNPUKernel<int64_t>);

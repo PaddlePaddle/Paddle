@@ -37,9 +37,11 @@ using DataLayout = framework::DataLayout;
 
 class TransferLayoutFunctor {
  public:
-  TransferLayoutFunctor(const framework::Variable *in, framework::Variable *out,
+  TransferLayoutFunctor(const framework::Variable *in,
+                        framework::Variable *out,
                         const platform::DeviceContext &dev_ctx,
-                        const int src_layout, const int dst_layout,
+                        const int src_layout,
+                        const int dst_layout,
                         std::string in_name)
       : in_(in),
         out_(out),
@@ -70,7 +72,8 @@ class TransferLayoutFunctor {
     }
     if (in_layout == DataLayout::kMKLDNN || out_layout == DataLayout::kMKLDNN) {
       PADDLE_ENFORCE_NE(
-          in_layout, out_layout,
+          in_layout,
+          out_layout,
           platform::errors::PreconditionNotMet(
               "No layout transform needed between two MKLDNN OPKernels."));
 
@@ -105,9 +108,11 @@ class TransferLayoutFunctor {
                 << target_layout;
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
-        paddle::framework::innerTransDataLayoutFromMKLDNN(
-            in_layout, target_layout, in_tensor, &out_tensor,
-            dev_ctx_.GetPlace());
+        paddle::framework::innerTransDataLayoutFromMKLDNN(in_layout,
+                                                          target_layout,
+                                                          in_tensor,
+                                                          &out_tensor,
+                                                          dev_ctx_.GetPlace());
       }
     } else {
       // Case3 - transfrom between Non-MKLDNN OPKernels
@@ -125,7 +130,8 @@ class TransferLayoutFunctor {
                        const framework::Tensor &in,
                        framework::Tensor *out) const {
     PADDLE_ENFORCE_EQ(
-        phi::arity(in.dims()), 4,
+        phi::arity(in.dims()),
+        4,
         platform::errors::InvalidArgument(
             "Input dimension arity only can be 4, the input dimension is %s.",
             in.dims()));

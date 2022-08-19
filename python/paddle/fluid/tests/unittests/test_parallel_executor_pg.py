@@ -55,7 +55,7 @@ class TestMNIST(TestParallelExecutorBase):
             return
 
         img, label = init_data()
-        single_first_loss, single_last_loss = self.check_network_convergence(
+        single_first_loss, single_last_loss, _ = self.check_network_convergence(
             method=simple_fc_net,
             feed_dict={
                 "image": img,
@@ -63,7 +63,7 @@ class TestMNIST(TestParallelExecutorBase):
             },
             use_device=use_device,
             use_parallel_executor=False)
-        parallel_first_loss, parallel_last_loss = self.check_network_convergence(
+        parallel_first_loss, parallel_last_loss, _ = self.check_network_convergence(
             method=simple_fc_net,
             feed_dict={
                 "image": img,

@@ -17,7 +17,8 @@
 namespace paddle {
 namespace platform {
 
-void CudaProfilerInit(std::string output_file, std::string output_mode,
+void CudaProfilerInit(std::string output_file,
+                      std::string output_mode,
                       std::string config_file) {
   PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv",
                  platform::errors::InvalidArgument(

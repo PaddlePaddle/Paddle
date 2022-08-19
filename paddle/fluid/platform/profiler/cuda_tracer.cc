@@ -51,7 +51,8 @@ CudaTracer::CudaTracer() {}
 
 void CudaTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
-      state_ == TracerState::UNINITED || state_ == TracerState::STOPED, true,
+      state_ == TracerState::UNINITED || state_ == TracerState::STOPED,
+      true,
       platform::errors::PreconditionNotMet("Tracer must be UNINITED"));
   EnableCuptiActivity();
   state_ = TracerState::READY;
@@ -59,7 +60,8 @@ void CudaTracer::PrepareTracing() {
 
 void CudaTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
-      state_ == TracerState::READY, true,
+      state_ == TracerState::READY,
+      true,
       platform::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
   ConsumeBuffers();
   tracing_start_ns_ = PosixInNsec();
@@ -68,7 +70,8 @@ void CudaTracer::StartTracing() {
 
 void CudaTracer::StopTracing() {
   PADDLE_ENFORCE_EQ(
-      state_, TracerState::STARTED,
+      state_,
+      TracerState::STARTED,
       platform::errors::PreconditionNotMet("Tracer must be STARTED"));
   DisableCuptiActivity();
   state_ = TracerState::STOPED;
@@ -76,7 +79,8 @@ void CudaTracer::StopTracing() {
 
 void CudaTracer::CollectTraceData(TraceEventCollector* collector) {
   PADDLE_ENFORCE_EQ(
-      state_, TracerState::STOPED,
+      state_,
+      TracerState::STOPED,
       platform::errors::PreconditionNotMet("Tracer must be STOPED"));
   ProcessCuptiActivity(collector);
 }
@@ -97,8 +101,8 @@ int CudaTracer::ProcessCuptiActivity(TraceEventCollector* collector) {
       CUptiResult status = dynload::cuptiActivityGetNextRecord(
           buffer.addr, buffer.valid_size, &record);
       if (status == CUPTI_SUCCESS) {
-        details::ProcessCuptiActivityRecord(record, tracing_start_ns_, mapping,
-                                            collector);
+        details::ProcessCuptiActivityRecord(
+            record, tracing_start_ns_, mapping, collector);
         ++record_cnt;
       } else if (status == CUPTI_ERROR_MAX_LIMIT_REACHED) {
         break;
@@ -150,7 +154,8 @@ void CUPTIAPI CudaTracer::BufferRequestedCallback(uint8_t** buffer,
 
 void CUPTIAPI CudaTracer::BufferCompletedCallback(CUcontext ctx,
                                                   uint32_t stream_id,
-                                                  uint8_t* buffer, size_t size,
+                                                  uint8_t* buffer,
+                                                  size_t size,
                                                   size_t valid_size) {
   GetInstance().ProduceBuffer(buffer, valid_size);
   size_t dropped = 0;

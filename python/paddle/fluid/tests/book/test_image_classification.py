@@ -126,7 +126,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
     predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
     cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
     acc = fluid.layers.accuracy(input=predict, label=label)
 
     # Test program

@@ -34,7 +34,8 @@ namespace operators {
 static void GenBKCLID(std::vector<BKCLUniqueId>* bkcl_ids) {
   for (size_t i = 0; i < bkcl_ids->size(); ++i) {
     BKCLResult_t ret = bkcl_get_unique_id(&(*bkcl_ids)[i]);
-    PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret,
+    PADDLE_ENFORCE_EQ(BKCL_SUCCESS,
+                      ret,
                       platform::errors::PreconditionNotMet(
                           "bkcl get unique id failed [%d]", ret));
   }
@@ -47,8 +48,9 @@ static void CopyBKCLIDToVar(const std::vector<BKCLUniqueId>& bkcl_ids,
     std::string var_name = func(i);
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable with name %s is not found",
-                                        var_name.c_str()));
+        var,
+        platform::errors::NotFound("Variable with name %s is not found",
+                                   var_name.c_str()));
     auto bkcl_id = var->GetMutable<BKCLUniqueId>();
     memcpy(bkcl_id, &bkcl_ids[i], sizeof(BKCLUniqueId));
   }
@@ -56,7 +58,8 @@ static void CopyBKCLIDToVar(const std::vector<BKCLUniqueId>& bkcl_ids,
 
 class GenBKCLIdOp : public framework::OperatorBase {
  public:
-  GenBKCLIdOp(const std::string& type, const framework::VariableNameMap& inputs,
+  GenBKCLIdOp(const std::string& type,
+              const framework::VariableNameMap& inputs,
               const framework::VariableNameMap& outputs,
               const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -69,11 +72,13 @@ class GenBKCLIdOp : public framework::OperatorBase {
     std::string endpoint = trainers[trainer_id];
 
     PADDLE_ENFORCE_GE(
-        trainer_id, 0,
+        trainer_id,
+        0,
         platform::errors::InvalidArgument("trainer_id %d is less than 0. Its "
                                           "valid range is [0, trainer_size)"));
     PADDLE_ENFORCE_LT(
-        trainer_id, static_cast<int>(trainers.size()),
+        trainer_id,
+        static_cast<int>(trainers.size()),
         platform::errors::OutOfRange("trainer_id %d is out of range. Its valid "
                                      "range is [0, trainer_size)",
                                      trainer_id));
@@ -86,19 +91,23 @@ class GenBKCLIdOp : public framework::OperatorBase {
 
     if (use_hierarchical_allreduce) {
       PADDLE_ENFORCE_GT(
-          trainers.size(), 1,
+          trainers.size(),
+          1,
           platform::errors::PreconditionNotMet(
               "The number of collective trainers %llu <= 1", trainers.size()));
       PADDLE_ENFORCE_GT(
-          inter_nranks, 1,
+          inter_nranks,
+          1,
           platform::errors::PreconditionNotMet(
               "inter_nranks %d <= 1 while in hierarchical allreduce mode",
               inter_nranks));
       PADDLE_ENFORCE_EQ(
-          trainers.size() % inter_nranks, 0,
+          trainers.size() % inter_nranks,
+          0,
           platform::errors::PreconditionNotMet(
               "The number of trainers %llu mod inter_nranks %d is not equal 0",
-              trainers.size(), inter_nranks));
+              trainers.size(),
+              inter_nranks));
 
       inter_trainer_id = trainer_id % inter_nranks;
 
@@ -132,8 +141,8 @@ class GenBKCLIdOp : public framework::OperatorBase {
 
       // server endpoints
       std::vector<std::string> flat_endpoints;
-      flat_endpoints.insert(flat_endpoints.begin(), trainers.begin() + 1,
-                            trainers.end());
+      flat_endpoints.insert(
+          flat_endpoints.begin(), trainers.begin() + 1, trainers.end());
       platform::SendBroadCastCommID(flat_endpoints, &bkcl_ids);
     } else {
       server_fd = platform::CreateListenSocket(endpoint);

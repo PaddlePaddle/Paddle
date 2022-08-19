@@ -98,7 +98,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
             predict = cnn_model(images)
         with fluid.device_guard("gpu:0"):
             cost = fluid.layers.cross_entropy(input=predict, label=label)
-            avg_cost = fluid.layers.mean(x=cost)
+            avg_cost = paddle.mean(x=cost)
 
         # Evaluator
         with fluid.device_guard("gpu:0"):

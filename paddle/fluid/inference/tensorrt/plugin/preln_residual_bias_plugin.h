@@ -29,10 +29,14 @@ using half = phi::dtype::float16;
 #if IS_TRT_VERSION_GE(6000)
 class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit PrelnResidualBiasPluginDynamic(const float* bias, const float* scale,
-                                          const half* ele_bias, int bias_size,
-                                          int scale_size, int ele_bias_size,
-                                          const float eps, bool with_fp16)
+  explicit PrelnResidualBiasPluginDynamic(const float* bias,
+                                          const float* scale,
+                                          const half* ele_bias,
+                                          int bias_size,
+                                          int scale_size,
+                                          int ele_bias_size,
+                                          const float eps,
+                                          bool with_fp16)
       : bias_size_(bias_size),
         scale_size_(scale_size),
         ele_bias_size_(ele_bias_size),
@@ -47,10 +51,14 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
     std::copy(scale, scale + scale_size, scale_.data());
   }
 
-  explicit PrelnResidualBiasPluginDynamic(const float* bias, const float* scale,
-                                          const float* ele_bias, int bias_size,
-                                          int scale_size, int ele_bias_size,
-                                          const float eps, bool with_fp16)
+  explicit PrelnResidualBiasPluginDynamic(const float* bias,
+                                          const float* scale,
+                                          const float* ele_bias,
+                                          int bias_size,
+                                          int scale_size,
+                                          int ele_bias_size,
+                                          const float eps,
+                                          bool with_fp16)
       : bias_size_(bias_size),
         scale_size_(scale_size),
         ele_bias_size_(ele_bias_size),
@@ -87,9 +95,11 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
-  nvinfer1::DimsExprs getOutputDimensions(
-      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* in_out,
@@ -108,11 +118,14 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
 
   int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
               const nvinfer1::PluginTensorDesc* output_desc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* input_types,
-      int nb_inputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) const
+      TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override;
   void terminate() TRT_NOEXCEPT override;
@@ -141,9 +154,10 @@ class PrelnResidualBiasPluginDynamicCreator : public TensorRTPluginCreator {
 
   const char* getPluginVersion() const TRT_NOEXCEPT override;
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override;
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override;
 };
 REGISTER_TRT_PLUGIN_V2(PrelnResidualBiasPluginDynamicCreator);
 #endif

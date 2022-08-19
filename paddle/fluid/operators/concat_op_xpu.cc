@@ -34,24 +34,29 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
     framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
     int axis = ctx.Attr<int>("axis");
     PADDLE_ENFORCE_NE(
-        ins[0], nullptr,
+        ins[0],
+        nullptr,
         platform::errors::InvalidArgument("The input should not be null."));
-    PADDLE_ENFORCE_NE(ctx.HasInput("AxisTensor"), true,
+    PADDLE_ENFORCE_NE(ctx.HasInput("AxisTensor"),
+                      true,
                       platform::errors::InvalidArgument(
                           "XPU donot surpport AxisTensor for now"));
     axis = ComputeAxis(static_cast<int64_t>(axis),
                        static_cast<int64_t>(ins[0]->dims().size()));
-    PADDLE_ENFORCE_GE(axis, 0,
+    PADDLE_ENFORCE_GE(axis,
+                      0,
                       platform::errors::InvalidArgument(
                           "concat: axis should be larger than or "
                           "equal to 0, but received axis is %d.",
                           axis));
-    PADDLE_ENFORCE_LT(axis, ins[0]->dims().size(),
+    PADDLE_ENFORCE_LT(axis,
+                      ins[0]->dims().size(),
                       platform::errors::InvalidArgument(
                           "concat: axis should be less than ins[0]->dims()!"
                           "But received axis is %d, while ins[0]->dims()"
                           "size is %d.",
-                          axis, ins[0]->dims().size()));
+                          axis,
+                          ins[0]->dims().size()));
 
     // If axis is 0, the lod of the output is not the same as inputs.
     if (axis == 0 && ins[0]->lod().size() > 0) {
@@ -60,13 +65,16 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
       for (size_t i = 1; i < ins.size(); ++i) {
         if (ins[i]->lod().size() > 0) {
           PADDLE_ENFORCE_EQ(
-              ins[i]->lod().size(), lod_size_0,
+              ins[i]->lod().size(),
+              lod_size_0,
               platform::errors::Unimplemented(
                   "The lod level of all input LoDTensors should be same. "
                   "Maybe different lod level of input LoDTensors can concat,"
                   "it is not supported currently. The lod level of %dth input "
                   "is %d and first input is %d.",
-                  i, ins[i]->lod().size(), lod_size_0));
+                  i,
+                  ins[i]->lod().size(),
+                  lod_size_0));
         } else {
           lod_size = 0;
           break;
@@ -97,16 +105,21 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_GT(
-        xdims_list.size(), 0,
+        xdims_list.size(),
+        0,
         platform::errors::InvalidArgument("No tensor need concat"));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    int r = xpu::concat<XPUType>(dev_ctx.x_context(), ptrs,
+    int r = xpu::concat<XPUType>(dev_ctx.x_context(),
+                                 ptrs,
                                  reinterpret_cast<XPUType*>(out->data<T>()),
-                                 xdims_list, axis);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                                 xdims_list,
+                                 axis);
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU concat kernel return wrong value[%d %s]", r,
+                          "XPU concat kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -133,7 +146,8 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
       }
     }
     PADDLE_ENFORCE_NE(
-        ins[0], nullptr,
+        ins[0],
+        nullptr,
         platform::errors::InvalidArgument("The input should not be null."));
     auto axis = ctx.Attr<int>("axis");
     if (ctx.HasInput("AxisTensor")) {
@@ -153,18 +167,21 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
         ptrs[j] = nullptr;
       }
     }
-    PADDLE_ENFORCE_GE(axis, 0,
+    PADDLE_ENFORCE_GE(axis,
+                      0,
                       platform::errors::InvalidArgument(
                           "concat_grad: axis should be larger than or "
                           "equal to 0, but received axis is %d.",
                           axis));
     PADDLE_ENFORCE_LT(
-        axis, out_grad->dims().size(),
+        axis,
+        out_grad->dims().size(),
         platform::errors::InvalidArgument(
             "concat_grad: axis should be less than ins[0]->dims()!"
             "But received axis is %d, while ins[0]->dims()"
             "size is %d.",
-            axis, out_grad->dims().size()));
+            axis,
+            out_grad->dims().size()));
 
     auto input_dims = ins[0]->dims();
     std::vector<int> split_list(ins.size());
@@ -185,10 +202,14 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     int r = xpu::split<XPUType>(
         dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(out_grad->data<T>()), ptrs, xdims_list,
-        split_list, axis);
+        reinterpret_cast<const XPUType*>(out_grad->data<T>()),
+        ptrs,
+        xdims_list,
+        split_list,
+        axis);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External(
             "XPU API return wrong value[%d], please check whether "
             "Baidu Kunlun Card is properly installed.",
@@ -201,7 +222,8 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    concat, ops::ConcatXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    concat,
+    ops::ConcatXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::ConcatXPUKernel<paddle::platform::XPUDeviceContext,
                          paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(

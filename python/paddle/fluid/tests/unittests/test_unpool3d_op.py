@@ -63,10 +63,30 @@ def unpool3dmax_forward_naive(input, indices, ksize, strides, paddings,
     return out
 
 
+def max_unpool3d_wrapper(x,
+                         indices,
+                         kernel_size,
+                         stride=None,
+                         padding=0,
+                         output_size=None,
+                         data_format="NCDHW",
+                         name=None):
+    out = paddle.nn.functional.max_unpool3d(x,
+                                            indices,
+                                            kernel_size,
+                                            stride=stride,
+                                            padding=padding,
+                                            data_format=data_format,
+                                            output_size=output_size,
+                                            name=name)
+    return out
+
+
 class TestUnpool3DOp(OpTest):
 
     def setUp(self):
         self.op_type = "unpool3d"
+        self.python_api = max_unpool3d_wrapper
         self.init_test_case()
         inputs = np.random.randint(0, 100, self.shape)
         nsize, csize, dsize, hsize, wsize = inputs.shape
@@ -102,10 +122,10 @@ class TestUnpool3DOp(OpTest):
         self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def init_test_case(self):
         self.unpool3d_forward_naive = unpool3dmax_forward_naive
@@ -215,8 +235,9 @@ class TestUnpool3DOpAPI_dygraph(unittest.TestCase):
             expected_output_unpool = unpool3dmax_forward_naive(
                 output.numpy(), indices.numpy(), [2, 2, 2], [2, 2, 2],
                 [0, 0, 0], [4, 4, 6])
-            self.assertTrue(
-                np.allclose(output_unpool.numpy(), expected_output_unpool))
+            np.testing.assert_allclose(output_unpool.numpy(),
+                                       expected_output_unpool,
+                                       rtol=1e-05)
 
         paddle.enable_static()
 
@@ -242,8 +263,9 @@ class TestUnpool3DOpAPI_dygraph2(unittest.TestCase):
             expected_output_unpool = unpool3dmax_forward_naive(
                 output.numpy(), indices.numpy(), [2, 2, 2], [2, 2, 2],
                 [0, 0, 0], [4, 4, 6])
-            self.assertTrue(
-                np.allclose(output_unpool.numpy(), expected_output_unpool))
+            np.testing.assert_allclose(output_unpool.numpy(),
+                                       expected_output_unpool,
+                                       rtol=1e-05)
 
         paddle.enable_static()
 
@@ -268,8 +290,9 @@ class TestUnpool3DOpAPI_dygraph3(unittest.TestCase):
             expected_output_unpool = unpool3dmax_forward_naive(
                 output.numpy(), indices.numpy(), [2, 2, 2], [2, 2, 2],
                 [0, 0, 0], [4, 4, 6])
-            self.assertTrue(
-                np.allclose(output_unpool.numpy(), expected_output_unpool))
+            np.testing.assert_allclose(output_unpool.numpy(),
+                                       expected_output_unpool,
+                                       rtol=1e-05)
 
         paddle.enable_static()
 
@@ -311,7 +334,9 @@ class TestUnpool3DOpAPI_static(unittest.TestCase):
                 expected_output_unpool = unpool3dmax_forward_naive(
                     pool3d_out_np, indices_np, [2, 2, 2], [2, 2, 2], [0, 0, 0],
                     [2, 4, 4])
-                self.assertTrue(np.allclose(fetches[0], expected_output_unpool))
+                np.testing.assert_allclose(fetches[0],
+                                           expected_output_unpool,
+                                           rtol=1e-05)
 
 
 if __name__ == '__main__':

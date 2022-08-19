@@ -25,23 +25,27 @@ class PartialConcatOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(
-        ctx->Inputs("X").size(), 1UL,
+        ctx->Inputs("X").size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Inputs(X) of Partial ConcatOp should not be empty."));
 
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::InvalidArgument(
             "Output(Out) of Partial ConcatOp should not be null."));
 
     auto inputs_dims = ctx->GetInputsDim("X");
-    PADDLE_ENFORCE_EQ(inputs_dims[0].size(), 2,
+    PADDLE_ENFORCE_EQ(inputs_dims[0].size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Only supports 2-D array with batch size in the 1st "
                           "dimension and data in the 2nd."));
 
     const size_t inputs_num = inputs_dims.size();
-    PADDLE_ENFORCE_GT(inputs_num, 0,
+    PADDLE_ENFORCE_GT(inputs_num,
+                      0,
                       platform::errors::InvalidArgument(
                           "ShapeError: Input tensors count should > 0. But "
                           "recevied inputs' length is 0."));
@@ -52,17 +56,20 @@ class PartialConcatOp : public framework::OperatorWithKernel {
     int64_t batch_size = -1;
     int64_t input_len = -1;
     for (size_t i = 0; i < inputs_num; ++i) {
-      PADDLE_ENFORCE_EQ(inputs_dims[i].size(), 2,
+      PADDLE_ENFORCE_EQ(inputs_dims[i].size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "It only supports two dimensions input now."));
       if (i == 0) {
         batch_size = inputs_dims[0][0];
         input_len = inputs_dims[0][1];
       } else {
-        PADDLE_ENFORCE_EQ(inputs_dims[i][0], batch_size,
+        PADDLE_ENFORCE_EQ(inputs_dims[i][0],
+                          batch_size,
                           platform::errors::InvalidArgument(
                               "The batch size of all inputs must be same"));
-        PADDLE_ENFORCE_EQ(inputs_dims[i][1], input_len,
+        PADDLE_ENFORCE_EQ(inputs_dims[i][1],
+                          input_len,
                           platform::errors::InvalidArgument(
                               "The input length of all inputs must be same"));
       }
@@ -76,8 +83,9 @@ class PartialConcatOp : public framework::OperatorWithKernel {
       partial_len = inputs_dims[0][1] - start_index;
     }
 
-    ctx->SetOutputDim("Out", {inputs_dims[0][0],
-                              static_cast<int64_t>(partial_len * inputs_num)});
+    ctx->SetOutputDim(
+        "Out",
+        {inputs_dims[0][0], static_cast<int64_t>(partial_len * inputs_num)});
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -94,17 +102,19 @@ class PartialConcatOp : public framework::OperatorWithKernel {
         break;
       }
     }
-    PADDLE_ENFORCE_EQ(flag, 1,
+    PADDLE_ENFORCE_EQ(flag,
+                      1,
                       platform::errors::InvalidArgument(
                           "All Inputs of PartialSum OP are Empty!"));
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -121,10 +131,14 @@ class PartialConcatGradOp : public framework::OperatorWithKernel {
     auto out_names = ctx->Outputs(out_x_g_n);
 
     PADDLE_ENFORCE_EQ(
-        in_names.size(), out_names.size(),
+        in_names.size(),
+        out_names.size(),
         platform::errors::InvalidArgument(
-            "The number of arguments in %s[%d] and %s[%d] is not equal.", in_x,
-            in_names.size(), out_x_g_n, out_names.size()));
+            "The number of arguments in %s[%d] and %s[%d] is not equal.",
+            in_x,
+            in_names.size(),
+            out_x_g_n,
+            out_names.size()));
     for (size_t i = 0; i < in_names.size(); ++i) {
       if (out_names[i] != framework::kEmptyVarName) {
         ctx->ShareLoD(in_x, out_x_g_n, i, i);
@@ -189,19 +203,19 @@ class PartialConcatGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(partial_concat, ops::PartialConcatOp,
+REGISTER_OPERATOR(partial_concat,
+                  ops::PartialConcatOp,
                   ops::PartialConcatOpMaker,
                   ops::PartialConcatGradMaker<paddle::framework::OpDesc>,
                   ops::PartialConcatGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(partial_concat_grad, ops::PartialConcatGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    partial_concat,
-    ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_CPU_KERNEL(partial_concat,
+                       ops::PartialConcatKernel<phi::CPUContext, double>,
+                       ops::PartialConcatKernel<phi::CPUContext, float>,
+                       ops::PartialConcatKernel<phi::CPUContext, int64_t>,
+                       ops::PartialConcatKernel<phi::CPUContext, int>);
 
 REGISTER_OP_CPU_KERNEL(partial_concat_grad,
                        ops::PartialConcatGradientOpKernel<float>,

@@ -26,6 +26,8 @@ void Poly2Boxes(const std::vector<std::vector<std::vector<float>>>& polys,
                 float* boxes);
 
 void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
-                      const float* box, int M, uint8_t* mask);
+                      const float* box,
+                      int M,
+                      uint8_t* mask);
 }  // namespace operators
 }  // namespace paddle

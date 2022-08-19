@@ -137,17 +137,15 @@ int32_t GraphBrpcService::add_graph_node(Table *table,
                                          brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
-    set_response_code(response, -1,
-                      "add_graph_node request requires at least 2 arguments");
+    set_response_code(
+        response, -1, "add_graph_node request requires at least 2 arguments");
     return 0;
   }
 
   int idx_ = *(int *)(request.params(0).c_str());
   size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = (int64_t *)(request.params(1).c_str());
-  // size_t node_num = request.params(0).size() / sizeof(int64_t);
-  // int64_t *node_data = (int64_t *)(request.params(0).c_str());
-  std::vector<int64_t> node_ids(node_data, node_data + node_num);
+  uint64_t *node_data = (uint64_t *)(request.params(1).c_str());
+  std::vector<uint64_t> node_ids(node_data, node_data + node_num);
   std::vector<bool> is_weighted_list;
   if (request.params_size() == 3) {
     size_t weight_list_size = request.params(2).size() / sizeof(bool);
@@ -173,16 +171,15 @@ int32_t GraphBrpcService::remove_graph_node(Table *table,
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
     set_response_code(
-        response, -1,
+        response,
+        -1,
         "remove_graph_node request requires at least 2 arguments");
     return 0;
   }
   int idx_ = *(int *)(request.params(0).c_str());
-  size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = (int64_t *)(request.params(1).c_str());
-  // size_t node_num = request.params(0).size() / sizeof(int64_t);
-  // int64_t *node_data = (int64_t *)(request.params(0).c_str());
-  std::vector<int64_t> node_ids(node_data, node_data + node_num);
+  size_t node_num = request.params(1).size() / sizeof(uint64_t);
+  uint64_t *node_data = (uint64_t *)(request.params(1).c_str());
+  std::vector<uint64_t> node_ids(node_data, node_data + node_num);
 
   ((GraphTable *)table)->remove_graph_node(idx_, node_ids);
   return 0;
@@ -216,11 +213,6 @@ int32_t GraphBrpcService::Initialize() {
       &GraphBrpcService::graph_set_node_feat;
   _service_handler_map[PS_GRAPH_SAMPLE_NODES_FROM_ONE_SERVER] =
       &GraphBrpcService::sample_neighbors_across_multi_servers;
-  // _service_handler_map[PS_GRAPH_USE_NEIGHBORS_SAMPLE_CACHE] =
-  //     &GraphBrpcService::use_neighbors_sample_cache;
-  // _service_handler_map[PS_GRAPH_LOAD_GRAPH_SPLIT_CONFIG] =
-  //     &GraphBrpcService::load_graph_split_config;
-  // shard初始化,server启动后才可从env获取到server_list的shard信息
   InitializeShardInfo();
 
   return 0;
@@ -275,13 +267,15 @@ void GraphBrpcService::service(google::protobuf::RpcController *cntl_base,
   }
 }
 
-int32_t GraphBrpcService::Barrier(Table *table, const PsRequestMessage &request,
+int32_t GraphBrpcService::Barrier(Table *table,
+                                  const PsRequestMessage &request,
                                   PsResponseMessage &response,
                                   brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
 
   if (request.params_size() < 1) {
-    set_response_code(response, -1,
+    set_response_code(response,
+                      -1,
                       "PsRequestMessage.params is requeired at "
                       "least 1 for num of sparse_key");
     return 0;
@@ -314,7 +308,8 @@ int32_t GraphBrpcService::LoadOneTable(Table *table,
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
     set_response_code(
-        response, -1,
+        response,
+        -1,
         "PsRequestMessage.datas is requeired at least 2 for path & load_param");
     return -1;
   }
@@ -376,8 +371,8 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
                                           brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 5) {
-    set_response_code(response, -1,
-                      "pull_graph_list request requires at least 5 arguments");
+    set_response_code(
+        response, -1, "pull_graph_list request requires at least 5 arguments");
     return 0;
   }
   int type_id = *(int *)(request.params(0).c_str());
@@ -385,41 +380,37 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
   int start = *(int *)(request.params(2).c_str());
   int size = *(int *)(request.params(3).c_str());
   int step = *(int *)(request.params(4).c_str());
-  // int start = *(int *)(request.params(0).c_str());
-  // int size = *(int *)(request.params(1).c_str());
-  // int step = *(int *)(request.params(2).c_str());
   std::unique_ptr<char[]> buffer;
   int actual_size;
   ((GraphTable *)table)
-      ->pull_graph_list(type_id, idx, start, size, buffer, actual_size, false,
-                        step);
+      ->pull_graph_list(
+          type_id, idx, start, size, buffer, actual_size, false, step);
   cntl->response_attachment().append(buffer.get(), actual_size);
   return 0;
 }
 int32_t GraphBrpcService::graph_random_sample_neighbors(
-    Table *table, const PsRequestMessage &request, PsResponseMessage &response,
+    Table *table,
+    const PsRequestMessage &request,
+    PsResponseMessage &response,
     brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 4) {
     set_response_code(
-        response, -1,
+        response,
+        -1,
         "graph_random_sample_neighbors request requires at least 3 arguments");
     return 0;
   }
   int idx_ = *(int *)(request.params(0).c_str());
-  size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = (int64_t *)(request.params(1).c_str());
-  int sample_size = *(int64_t *)(request.params(2).c_str());
+  size_t node_num = request.params(1).size() / sizeof(uint64_t);
+  uint64_t *node_data = (uint64_t *)(request.params(1).c_str());
+  int sample_size = *(int *)(request.params(2).c_str());
   bool need_weight = *(bool *)(request.params(3).c_str());
-  // size_t node_num = request.params(0).size() / sizeof(int64_t);
-  // int64_t *node_data = (int64_t *)(request.params(0).c_str());
-  // int sample_size = *(int64_t *)(request.params(1).c_str());
-  // bool need_weight = *(bool *)(request.params(2).c_str());
   std::vector<std::shared_ptr<char>> buffers(node_num);
   std::vector<int> actual_sizes(node_num, 0);
   ((GraphTable *)table)
-      ->random_sample_neighbors(idx_, node_data, sample_size, buffers,
-                                actual_sizes, need_weight);
+      ->random_sample_neighbors(
+          idx_, node_data, sample_size, buffers, actual_sizes, need_weight);
 
   cntl->response_attachment().append(&node_num, sizeof(size_t));
   cntl->response_attachment().append(actual_sizes.data(),
@@ -430,11 +421,13 @@ int32_t GraphBrpcService::graph_random_sample_neighbors(
   return 0;
 }
 int32_t GraphBrpcService::graph_random_sample_nodes(
-    Table *table, const PsRequestMessage &request, PsResponseMessage &response,
+    Table *table,
+    const PsRequestMessage &request,
+    PsResponseMessage &response,
     brpc::Controller *cntl) {
   int type_id = *(int *)(request.params(0).c_str());
   int idx_ = *(int *)(request.params(1).c_str());
-  size_t size = *(int64_t *)(request.params(2).c_str());
+  size_t size = *(uint64_t *)(request.params(2).c_str());
   // size_t size = *(int64_t *)(request.params(0).c_str());
   std::unique_ptr<char[]> buffer;
   int actual_size;
@@ -455,16 +448,15 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 3) {
     set_response_code(
-        response, -1,
+        response,
+        -1,
         "graph_get_node_feat request requires at least 3 arguments");
     return 0;
   }
   int idx_ = *(int *)(request.params(0).c_str());
-  size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = (int64_t *)(request.params(1).c_str());
-  // size_t node_num = request.params(0).size() / sizeof(int64_t);
-  // int64_t *node_data = (int64_t *)(request.params(0).c_str());
-  std::vector<int64_t> node_ids(node_data, node_data + node_num);
+  size_t node_num = request.params(1).size() / sizeof(uint64_t);
+  uint64_t *node_data = (uint64_t *)(request.params(1).c_str());
+  std::vector<uint64_t> node_ids(node_data, node_data + node_num);
 
   std::vector<std::string> feature_names =
       paddle::string::split_string<std::string>(request.params(2), "\t");
@@ -486,33 +478,29 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
   return 0;
 }
 int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
-    Table *table, const PsRequestMessage &request, PsResponseMessage &response,
+    Table *table,
+    const PsRequestMessage &request,
+    PsResponseMessage &response,
     brpc::Controller *cntl) {
   // sleep(5);
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 4) {
-    set_response_code(response, -1,
+    set_response_code(response,
+                      -1,
                       "sample_neighbors_across_multi_servers request requires "
                       "at least 4 arguments");
     return 0;
   }
 
   int idx_ = *(int *)(request.params(0).c_str());
-  size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = (int64_t *)(request.params(1).c_str());
-  int sample_size = *(int64_t *)(request.params(2).c_str());
-  bool need_weight = *(int64_t *)(request.params(3).c_str());
+  size_t node_num = request.params(1).size() / sizeof(uint64_t);
+  uint64_t *node_data = (uint64_t *)(request.params(1).c_str());
+  int sample_size = *(int *)(request.params(2).c_str());
+  bool need_weight = *(bool *)(request.params(3).c_str());
 
-  // size_t node_num = request.params(0).size() / sizeof(int64_t),
-  //        size_of_size_t = sizeof(size_t);
-  // int64_t *node_data = (int64_t *)(request.params(0).c_str());
-  // int sample_size = *(int64_t *)(request.params(1).c_str());
-  // bool need_weight = *(int64_t *)(request.params(2).c_str());
-  // std::vector<int64_t> res = ((GraphTable
-  // *)table).filter_out_non_exist_nodes(node_data, sample_size);
   std::vector<int> request2server;
   std::vector<int> server2request(server_size, -1);
-  std::vector<int64_t> local_id;
+  std::vector<uint64_t> local_id;
   std::vector<int> local_query_idx;
   size_t rank = GetRank();
   for (size_t query_idx = 0; query_idx < node_num; ++query_idx) {
@@ -535,7 +523,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   std::vector<std::shared_ptr<char>> local_buffers;
   std::vector<int> local_actual_sizes;
   std::vector<size_t> seq;
-  std::vector<std::vector<int64_t>> node_id_buckets(request_call_num);
+  std::vector<std::vector<uint64_t>> node_id_buckets(request_call_num);
   std::vector<std::vector<int>> query_idx_buckets(request_call_num);
   for (size_t query_idx = 0; query_idx < node_num; ++query_idx) {
     int server_index =
@@ -556,7 +544,9 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   auto local_promise = std::make_shared<std::promise<int32_t>>();
   std::future<int> local_fut = local_promise->get_future();
   std::vector<bool> failed(server_size, false);
-  std::function<void(void *)> func = [&, node_id_buckets, query_idx_buckets,
+  std::function<void(void *)> func = [&,
+                                      node_id_buckets,
+                                      query_idx_buckets,
                                       request_call_num](void *done) {
     local_fut.get();
     std::vector<int> actual_size;
@@ -624,7 +614,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
 
     closure->request(request_idx)
         ->add_params((char *)node_id_buckets[request_idx].data(),
-                     sizeof(int64_t) * node_num);
+                     sizeof(uint64_t) * node_num);
     closure->request(request_idx)
         ->add_params((char *)&sample_size, sizeof(int));
     closure->request(request_idx)
@@ -634,14 +624,19 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     // GraphPsService_Stub rpc_stub =
     //     getServiceStub(GetCmdChannel(server_index));
     closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
-    rpc_stub.service(closure->cntl(request_idx), closure->request(request_idx),
-                     closure->response(request_idx), closure);
+    rpc_stub.service(closure->cntl(request_idx),
+                     closure->request(request_idx),
+                     closure->response(request_idx),
+                     closure);
   }
   if (server2request[rank] != -1) {
     ((GraphTable *)table)
-        ->random_sample_neighbors(idx_, node_id_buckets.back().data(),
-                                  sample_size, local_buffers,
-                                  local_actual_sizes, need_weight);
+        ->random_sample_neighbors(idx_,
+                                  node_id_buckets.back().data(),
+                                  sample_size,
+                                  local_buffers,
+                                  local_actual_sizes,
+                                  need_weight);
   }
   local_promise.get()->set_value(0);
   if (remote_call_num == 0) func(closure);
@@ -655,17 +650,16 @@ int32_t GraphBrpcService::graph_set_node_feat(Table *table,
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 4) {
     set_response_code(
-        response, -1,
+        response,
+        -1,
         "graph_set_node_feat request requires at least 3 arguments");
     return 0;
   }
   int idx_ = *(int *)(request.params(0).c_str());
 
-  // size_t node_num = request.params(0).size() / sizeof(int64_t);
-  // int64_t *node_data = (int64_t *)(request.params(0).c_str());
-  size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = (int64_t *)(request.params(1).c_str());
-  std::vector<int64_t> node_ids(node_data, node_data + node_num);
+  size_t node_num = request.params(1).size() / sizeof(uint64_t);
+  uint64_t *node_data = (uint64_t *)(request.params(1).c_str());
+  std::vector<uint64_t> node_ids(node_data, node_data + node_num);
 
   // std::vector<std::string> feature_names =
   //     paddle::string::split_string<std::string>(request.params(1), "\t");

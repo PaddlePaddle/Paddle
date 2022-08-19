@@ -33,7 +33,8 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   if (!argument->scope_valid()) {
     argument->SetScope(new framework::Scope);
   }
-  PADDLE_ENFORCE_EQ(argument->use_gpu_valid(), true,
+  PADDLE_ENFORCE_EQ(argument->use_gpu_valid(),
+                    true,
                     platform::errors::PreconditionNotMet(
                         "The use_gpu field should be valid"));
 
@@ -50,8 +51,10 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   } else if (argument->model_program_path_valid() &&
              argument->model_params_path_valid()) {
     auto program = LoadModel(
-        argument->model_program_path(), argument->model_params_path(),
-        argument->scope_ptr(), place,
+        argument->model_program_path(),
+        argument->model_params_path(),
+        argument->scope_ptr(),
+        place,
         argument->model_from_memory_valid() && argument->model_from_memory());
     argument->SetMainProgram(program.release());
   } else {
@@ -95,15 +98,18 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
-    const std::string &path, framework::Scope *scope,
+    const std::string &path,
+    framework::Scope *scope,
     const platform::Place &place) {
   framework::Executor exe(place);
   return Load(&exe, scope, path);
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
-    const std::string &program_path, const std::string &params_path,
-    framework::Scope *scope, const platform::Place &place,
+    const std::string &program_path,
+    const std::string &params_path,
+    framework::Scope *scope,
+    const platform::Place &place,
     bool model_from_memory) {
   framework::Executor exe(place);
   if (!model_from_memory) {

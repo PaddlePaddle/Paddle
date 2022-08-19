@@ -28,30 +28,37 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SquaredL2DistanceOp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "SquaredL2DistanceOp");
-    OP_INOUT_CHECK(ctx->HasOutput("sub_result"), "Output", "sub_result",
+    OP_INOUT_CHECK(ctx->HasOutput("sub_result"),
+                   "Output",
+                   "sub_result",
                    "SquaredL2DistanceOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "SquaredL2DistanceOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "SquaredL2DistanceOp");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(
-        phi::arity(x_dims), phi::arity(y_dims),
-        platform::errors::InvalidArgument(
-            "Input(X) and Input(X) of SquaredL2DistanceOp should "
-            "have same dimensions. "
-            "But received X's shape = [%s] and Y's shape = [%s], "
-            "the dimensions are %d and %d respectively",
-            x_dims, y_dims, phi::arity(x_dims), phi::arity(y_dims)));
+    PADDLE_ENFORCE_EQ(phi::arity(x_dims),
+                      phi::arity(y_dims),
+                      platform::errors::InvalidArgument(
+                          "Input(X) and Input(X) of SquaredL2DistanceOp should "
+                          "have same dimensions. "
+                          "But received X's shape = [%s] and Y's shape = [%s], "
+                          "the dimensions are %d and %d respectively",
+                          x_dims,
+                          y_dims,
+                          phi::arity(x_dims),
+                          phi::arity(y_dims)));
 
     int rank = phi::arity(x_dims);
     PADDLE_ENFORCE_GE(
-        rank, 2,
+        rank,
+        2,
         platform::errors::InvalidArgument(
             "Input dimensions of SquaredL2DistanceOp should be at least 2."
             "But received shape = [%s] and dimension is %d.",
-            x_dims, rank));
+            x_dims,
+            rank));
     bool check = true;
     if ((!ctx->IsRuntime()) &&
         (phi::product(x_dims) <= 0 || phi::product(y_dims) <= 0)) {
@@ -59,13 +66,16 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
     }
     if (check) {
       PADDLE_ENFORCE_EQ(
-          product(x_dims) / x_dims[0], product(y_dims) / y_dims[0],
+          product(x_dims) / x_dims[0],
+          product(y_dims) / y_dims[0],
           platform::errors::InvalidArgument(
               "Input(X) and Input(Y) of SquaredL2DistanceOp should "
               "have same dimensions."
               "But received X's shape = [%s] and Y's shape = [%s]"
               ", the products are %d and %d respectively",
-              x_dims, y_dims, product(x_dims) / x_dims[0],
+              x_dims,
+              y_dims,
+              product(x_dims) / x_dims[0],
               product(y_dims) / y_dims[0]));
     }
     check = true;
@@ -74,13 +84,17 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
     }
     if (check) {
       PADDLE_ENFORCE_EQ(
-          y_dims[0] == 1 || y_dims[0] == x_dims[0], true,
+          y_dims[0] == 1 || y_dims[0] == x_dims[0],
+          true,
           platform::errors::InvalidArgument(
               "First dimension of Input(Y) of SquaredL2DistanceOp "
               "must be equal to 1 or to first dimension of Input(X)."
               "But received X's shape = [%s] and Y's shape = [%s],"
               "the first dimensions are %d and %d respectively",
-              x_dims, y_dims, x_dims[0], y_dims[0]));
+              x_dims,
+              y_dims,
+              x_dims[0],
+              y_dims[0]));
     }
     ctx->SetOutputDim("sub_result", {x_dims[0], product(x_dims) / x_dims[0]});
     ctx->SetOutputDim("Out", {x_dims[0], 1});
@@ -89,7 +103,8 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 };
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(SquaredL2DistanceGradOpNoBufferVarsInferer,
-                                    "X", "Y");
+                                    "X",
+                                    "Y");
 
 template <typename T>
 class SquaredL2DistanceGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -144,29 +159,39 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("sub_result"), "Input", "sub_result",
+    OP_INOUT_CHECK(ctx->HasInput("sub_result"),
+                   "Input",
+                   "sub_result",
                    "SquaredL2DistanceGradOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "SquaredL2DistanceGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "SquaredL2DistanceGradOp");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
-          out_dims[0], x_dims[0],
+          out_dims[0],
+          x_dims[0],
           platform::errors::InvalidArgument(
               "First dimension of output gradient and Input(X) "
               "of SquaredL2DistanceGradOp must be equal "
               "But received X's shape = [%s] and grad's shape = [%s], "
               "the first dimensions are %d and %d respectively",
-              x_dims, out_dims, x_dims[0], out_dims[0]));
-      PADDLE_ENFORCE_EQ(out_dims[1], 1,
+              x_dims,
+              out_dims,
+              x_dims[0],
+              out_dims[0]));
+      PADDLE_ENFORCE_EQ(out_dims[1],
+                        1,
                         platform::errors::InvalidArgument(
                             "Second dimension of output gradient of "
                             "SquaredL2DistanceGradOp must be 1. "
                             "But received grad's shape = [%s], "
                             "with second dimension %d",
-                            out_dims, out_dims[1]));
+                            out_dims,
+                            out_dims[1]));
     }
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
@@ -188,15 +213,16 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    squared_l2_distance, ops::SquaredL2DistanceOp,
+    squared_l2_distance,
+    ops::SquaredL2DistanceOp,
     ops::SquaredL2DistanceOpMaker,
     ops::SquaredL2DistanceGradOpMaker<paddle::framework::OpDesc>,
     ops::SquaredL2DistanceGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp,
+REGISTER_OPERATOR(squared_l2_distance_grad,
+                  ops::SquaredL2DistanceGradOp,
                   ops::SquaredL2DistanceGradOpNoBufferVarsInferer);
+REGISTER_OP_CPU_KERNEL(squared_l2_distance,
+                       ops::SquaredL2DistanceKernel<phi::CPUContext, float>);
 REGISTER_OP_CPU_KERNEL(
-    squared_l2_distance,
-    ops::SquaredL2DistanceKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(squared_l2_distance_grad,
-                       ops::SquaredL2DistanceGradKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+    squared_l2_distance_grad,
+    ops::SquaredL2DistanceGradKernel<phi::CPUContext, float>);

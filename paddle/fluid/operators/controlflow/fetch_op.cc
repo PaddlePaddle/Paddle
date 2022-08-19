@@ -40,11 +40,13 @@ static void DataCopy(const framework::LoDTensor &src_item,
               ? framework::DataLayout::kNCHW
               : paddle::platform::MKLDNNDeviceContext::tls()
                     .get_cur_paddle_data_layout(),
-          src_item, &out, platform::CPUPlace());
+          src_item,
+          &out,
+          platform::CPUPlace());
       paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
     } else {
-      paddle::framework::TensorCopySync(src_item, platform::CPUPlace(),
-                                        dst_item);
+      paddle::framework::TensorCopySync(
+          src_item, platform::CPUPlace(), dst_item);
     }
 #else
     paddle::framework::TensorCopySync(src_item, platform::CPUPlace(), dst_item);
@@ -59,7 +61,8 @@ static void DataCopy(const framework::LoDTensor &src_item,
 
 class FetchOp : public framework::OperatorBase {
  public:
-  FetchOp(const std::string &type, const framework::VariableNameMap &inputs,
+  FetchOp(const std::string &type,
+          const framework::VariableNameMap &inputs,
           const framework::VariableNameMap &outputs,
           const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -82,18 +85,21 @@ class FetchOp : public framework::OperatorBase {
             "words, the format of "
             "`executor.run(fetch_list=[fetch_var])`(fetch_var is a "
             "Variable) is recommended.",
-            fetch_var_name, fetch_var_name));
+            fetch_var_name,
+            fetch_var_name));
 
     auto out_name = Output("Out");
     auto *out_var = scope.FindVar(out_name);
-    PADDLE_ENFORCE_NOT_NULL(out_var, platform::errors::NotFound(
-                                         "Output variable(%s) cannot be found "
-                                         "in scope for operator 'Fetch'.",
-                                         out_name));
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var,
+        platform::errors::NotFound("Output variable(%s) cannot be found "
+                                   "in scope for operator 'Fetch'.",
+                                   out_name));
 
     int col = Attr<int>("col");
     PADDLE_ENFORCE_GE(
-        col, 0,
+        col,
+        0,
         platform::errors::InvalidArgument(
             "Expected the column index (the attribute 'col' of "
             "operator 'Fetch') of current fetching variable to be "
@@ -111,18 +117,18 @@ class FetchOp : public framework::OperatorBase {
 
     if (fetch_var->IsType<framework::LoDTensor>()) {
       auto &src_item = fetch_var->Get<framework::LoDTensor>();
-      auto *dst_item = &(BOOST_GET(framework::LoDTensor, fetch_list->at(col)));
+      auto *dst_item = &(PADDLE_GET(framework::LoDTensor, fetch_list->at(col)));
       DataCopy(src_item, fetch_var_name, dst_item);
     } else if (fetch_var->IsType<framework::Vocab>()) {
       auto &src_item = fetch_var->Get<framework::Vocab>();
-      auto *dst_item = &(BOOST_GET(framework::Vocab, fetch_list->at(col)));
+      auto *dst_item = &(PADDLE_GET(framework::Vocab, fetch_list->at(col)));
       *dst_item = src_item;
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       framework::LoDTensorArray tmp(src_item.size());
       fetch_list->at(col) = tmp;
       auto &dst_item =
-          BOOST_GET(framework::LoDTensorArray, fetch_list->at(col));
+          PADDLE_GET(framework::LoDTensorArray, fetch_list->at(col));
       for (size_t i = 0; i < src_item.size(); ++i) {
         DataCopy(src_item[i], fetch_var_name, &dst_item[i]);
       }
@@ -154,7 +160,8 @@ It should not be configured by users directly.
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    fetch, paddle::operators::FetchOp,
+    fetch,
+    paddle::operators::FetchOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FetchOpInfoMaker);

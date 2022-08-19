@@ -52,8 +52,13 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
 
     int axis_dim = x->dims()[rank - 1];
     math::CrossEntropyFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), &y_2d, &x_2d, &labels_2d,
-        ctx.Attr<bool>("soft_label"), ctx.Attr<int>("ignore_index"), axis_dim);
+        ctx.template device_context<DeviceContext>(),
+        &y_2d,
+        &x_2d,
+        &labels_2d,
+        ctx.Attr<bool>("soft_label"),
+        ctx.Attr<int>("ignore_index"),
+        axis_dim);
   }
 };
 
@@ -87,7 +92,8 @@ class XeGradFunctor {
                 const T* dy,           // NOLINT
                 const T* x,            // NOLINT
                 const int64_t* label,  // NOLINT
-                size_t num_classes, size_t ignore_index)
+                size_t num_classes,
+                size_t ignore_index)
       : dx_(dx),
         dy_(dy),
         x_(x),
@@ -98,7 +104,8 @@ class XeGradFunctor {
   HOSTDEVICE void operator()(size_t sample_id) {
     auto x_is_true_offset = sample_id * num_classes_ + label_[sample_id];
     for (size_t x_offset = sample_id * num_classes_;
-         x_offset < (sample_id + 1) * num_classes_; ++x_offset) {
+         x_offset < (sample_id + 1) * num_classes_;
+         ++x_offset) {
       dx_[x_offset] = (x_offset != x_is_true_offset ||
                        label_[sample_id] == static_cast<int64_t>(ignore_index_))
                           ? static_cast<T>(0)
@@ -131,7 +138,9 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
     int64_t class_num = x->dims()[rank - 1];
     int64_t ignore_index = ctx.Attr<int>("ignore_index");
     if (ctx.Attr<bool>("soft_label")) {
-      XeSoftlabelGradFunctor<T> functor(dx_data, dy->data<T>(), x->data<T>(),
+      XeSoftlabelGradFunctor<T> functor(dx_data,
+                                        dy->data<T>(),
+                                        x->data<T>(),
                                         label->data<T>(),
                                         static_cast<size_t>(class_num));
       platform::ForRange<DeviceContext> for_range(
@@ -139,9 +148,12 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
           static_cast<size_t>(dx->numel()));
       for_range(functor);
     } else {
-      XeGradFunctor<T> functor(
-          dx_data, dy->data<T>(), x->data<T>(), label->data<int64_t>(),
-          static_cast<size_t>(class_num), static_cast<size_t>(ignore_index));
+      XeGradFunctor<T> functor(dx_data,
+                               dy->data<T>(),
+                               x->data<T>(),
+                               label->data<int64_t>(),
+                               static_cast<size_t>(class_num),
+                               static_cast<size_t>(ignore_index));
       platform::ForRange<DeviceContext> for_range(
           ctx.template device_context<DeviceContext>(),
           static_cast<size_t>(dy->numel()));
@@ -152,7 +164,9 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
 
 template <typename T>
 struct HardLabelCrossEntropyForwardFunctor {
-  HardLabelCrossEntropyForwardFunctor(const T* x, T* y, T* match_x,
+  HardLabelCrossEntropyForwardFunctor(const T* x,
+                                      T* y,
+                                      T* match_x,
                                       const int64_t* label,
                                       int64_t ignore_index,
                                       int64_t feature_size)
@@ -172,7 +186,8 @@ struct HardLabelCrossEntropyForwardFunctor {
                      "Variable value (label) of "
                      "OP(fluid.layers.cross_entropy) expected >= 0 "
                      "and < %ld, but got %ld. Please check label value.",
-                     feature_size_, label);
+                     feature_size_,
+                     label);
 
       auto match_x = x_[idx * feature_size_ + label];
       y_[idx] = -math::TolerableValue<T>()(real_log(match_x));
@@ -193,7 +208,9 @@ struct HardLabelCrossEntropyForwardFunctor {
 
 template <typename T>
 struct HardLabelCrossEntropyBackwardFunctor {
-  HardLabelCrossEntropyBackwardFunctor(T* dx, const T* dy, const T* match_x,
+  HardLabelCrossEntropyBackwardFunctor(T* dx,
+                                       const T* dy,
+                                       const T* match_x,
                                        const int64_t* label,
                                        int64_t ignore_index,
                                        int64_t feature_size)

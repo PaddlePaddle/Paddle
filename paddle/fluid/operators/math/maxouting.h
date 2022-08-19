@@ -25,18 +25,22 @@ namespace math {
 template <typename DeviceContext, typename T>
 class MaxOutFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  framework::Tensor* output, const int groups,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& input,
+                  framework::Tensor* output,
+                  const int groups,
                   const int axis = 1);
 };
 
 template <typename DeviceContext, typename T>
 class MaxOutGradFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& input,
                   framework::Tensor* input_grad,
                   const framework::Tensor& output,
-                  const framework::Tensor& output_grad, const int groups,
+                  const framework::Tensor& output_grad,
+                  const int groups,
                   const int axis = 1);
 };
 }  // namespace math

@@ -63,7 +63,9 @@ class ShapeMKLDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(shape, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(shape,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::ShapeMKLDNNKernel<float>,
                    ops::ShapeMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::ShapeMKLDNNKernel<int8_t>,

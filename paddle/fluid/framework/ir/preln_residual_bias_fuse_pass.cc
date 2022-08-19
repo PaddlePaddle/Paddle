@@ -61,7 +61,8 @@ void PrelnResidualBias::operator()(PDNode *x, PDNode *y) {
   auto *elementwise0 =
       pattern->NewNode(elementwise0_repr())->assert_is_op("elementwise_add");
   auto *elementwise_bias_var = pattern->NewNode(elementwise_bias_repr())
-                                   ->assert_is_op_input("elementwise_add", "Y");
+                                   ->assert_is_op_input("elementwise_add", "Y")
+                                   ->assert_is_persistable_var();
   auto *elementwise0_out_var = pattern->NewNode(elementwise0_out_repr())
                                    ->assert_is_op_output("elementwise_add")
                                    ->assert_is_op_input("elementwise_add")
@@ -147,22 +148,22 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
       return;
     }
     VLOG(4) << "handle PrelnResidualBias fuse";
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_bias, elementwise_bias,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_bias, elementwise_bias, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise0, elementwise0, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise0_out, elementwise0_out,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise0_out, elementwise0_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise1, elementwise1, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise1_out, elementwise1_out,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise1_out, elementwise1_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_variance, layer_norm_variance, fused_pattern);
     std::unordered_set<const Node *> del_node_set;
     // Create an PrelnResidualBias op node
     OpDesc new_desc;

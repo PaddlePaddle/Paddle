@@ -22,8 +22,8 @@ namespace ipu {
 namespace {
 
 Node *activation_op_handler(Graph *graph, Node *node, const std::string &type) {
-  auto new_node = CreateBaseOp(graph, node, type, {GetInputVarNode("X", node)},
-                               node->outputs);
+  auto new_node = CreateBaseOp(
+      graph, node, type, {GetInputVarNode("X", node)}, node->outputs);
   return new_node;
 }
 
@@ -121,71 +121,99 @@ Node *tanh_handler(Graph *graph, Node *node) {
 
 Node *brelu_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto t_min_ = BOOST_GET_CONST(float, op->GetAttr("t_min"));
-  auto t_max_ = BOOST_GET_CONST(float, op->GetAttr("t_max"));
+  auto t_min_ = PADDLE_GET_CONST(float, op->GetAttr("t_min"));
+  auto t_max_ = PADDLE_GET_CONST(float, op->GetAttr("t_max"));
   auto x = GetInputVarNode("X", node);
-  auto cli_min = CreateConst(graph, node, std::vector<float>{t_min_}, {1},
-                             ONNXDataType::FLOAT)
-                     ->outputs.front();
-  auto clip_max = CreateConst(graph, node, std::vector<float>{t_max_}, {1},
-                              ONNXDataType::FLOAT)
-                      ->outputs.front();
-  return CreateBaseOp(graph, node, "popart_clip", {x, cli_min, clip_max},
-                      node->outputs);
+  auto cli_min =
+      CreateConst(
+          graph, node, std::vector<float>{t_min_}, {1}, ONNXDataType::FLOAT)
+          ->outputs.front();
+  auto clip_max =
+      CreateConst(
+          graph, node, std::vector<float>{t_max_}, {1}, ONNXDataType::FLOAT)
+          ->outputs.front();
+  return CreateBaseOp(
+      graph, node, "popart_clip", {x, cli_min, clip_max}, node->outputs);
 }
 
 Node *gelu_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto approximate_ = BOOST_GET_CONST(bool, op->GetAttr("approximate"));
+  auto approximate_ = PADDLE_GET_CONST(bool, op->GetAttr("approximate"));
   if (approximate_) {
     return activation_op_handler(graph, node, "popart_gelu_v2");
   } else {
-    auto sqrt2 = CreateConst(graph, node, {}, {},
+    auto sqrt2 = CreateConst(graph,
+                             node,
+                             {},
+                             {},
                              {{"value", std::vector<float>{1.4142135623730951}},
                               {"dims", std::vector<int64_t>{1}},
                               {"dtype", GetOutputVarDType(node)}});
-    auto zero_point_five = CreateConst(graph, node, {}, {},
+    auto zero_point_five = CreateConst(graph,
+                                       node,
+                                       {},
+                                       {},
                                        {{"value", std::vector<float>{0.5}},
                                         {"dims", std::vector<int64_t>{1}},
                                         {"dtype", GetOutputVarDType(node)}});
-    auto one = CreateConst(graph, node, {}, {},
+    auto one = CreateConst(graph,
+                           node,
+                           {},
+                           {},
                            {{"value", std::vector<float>{1}},
                             {"dims", std::vector<int64_t>{1}},
                             {"dtype", GetOutputVarDType(node)}});
-    auto div =
-        CreateBaseOp(graph, node, "popart_div",
-                     {GetInputVarNode("X", node), sqrt2->outputs[0]}, {}, {});
+    auto div = CreateBaseOp(graph,
+                            node,
+                            "popart_div",
+                            {GetInputVarNode("X", node), sqrt2->outputs[0]},
+                            {},
+                            {});
     auto erf =
         CreateBaseOp(graph, node, "popart_erf", {div->outputs[0]}, {}, {});
-    auto add = CreateBaseOp(graph, node, "popart_add",
-                            {erf->outputs[0], one->outputs[0]}, {}, {});
-    auto mul1 =
-        CreateBaseOp(graph, node, "popart_mul",
-                     {GetInputVarNode("X", node), add->outputs[0]}, {}, {});
-    return CreateBaseOp(graph, node, "popart_mul",
+    auto add = CreateBaseOp(
+        graph, node, "popart_add", {erf->outputs[0], one->outputs[0]}, {}, {});
+    auto mul1 = CreateBaseOp(graph,
+                             node,
+                             "popart_mul",
+                             {GetInputVarNode("X", node), add->outputs[0]},
+                             {},
+                             {});
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_mul",
                         {mul1->outputs[0], zero_point_five->outputs[0]},
-                        {GetOutputVarNode("Out", node)}, {});
+                        {GetOutputVarNode("Out", node)},
+                        {});
   }
 }
 
 Node *log_softmax_handler(Graph *graph, Node *node) {
-  auto axis = BOOST_GET_CONST(int, node->Op()->GetAttr("axis"));
+  auto axis = PADDLE_GET_CONST(int, node->Op()->GetAttr("axis"));
   auto new_softmax = CreateSoftmaxOpset11(graph, node, node->inputs, {}, axis);
-  return CreateBaseOp(graph, node, "popart_log", new_softmax->outputs,
-                      node->outputs);
+  return CreateBaseOp(
+      graph, node, "popart_log", new_softmax->outputs, node->outputs);
 }
 
 Node *elu_handler(Graph *graph, Node *node) {
-  auto alpha_ = BOOST_GET_CONST(float, node->Op()->GetAttr("alpha"));
-  return CreateBaseOp(graph, node, "popart_elu", node->inputs, node->outputs,
+  auto alpha_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("alpha"));
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_elu",
+                      node->inputs,
+                      node->outputs,
                       {
                           {"alpha", alpha_},
                       });
 }
 
 Node *hard_shrink_handler(Graph *graph, Node *node) {
-  auto threshold_ = BOOST_GET_CONST(float, node->Op()->GetAttr("threshold"));
-  return CreateBaseOp(graph, node, "popart_shrink", node->inputs, node->outputs,
+  auto threshold_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("threshold"));
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_shrink",
+                      node->inputs,
+                      node->outputs,
                       {
                           {"lambd", threshold_},
                           {"bias", 0.0f},
@@ -193,9 +221,12 @@ Node *hard_shrink_handler(Graph *graph, Node *node) {
 }
 
 Node *hard_sigmoid_handler(Graph *graph, Node *node) {
-  auto slope_ = BOOST_GET_CONST(float, node->Op()->GetAttr("slope"));
-  auto offset_ = BOOST_GET_CONST(float, node->Op()->GetAttr("offset"));
-  return CreateBaseOp(graph, node, "popart_hardsigmoid", node->inputs,
+  auto slope_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("slope"));
+  auto offset_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("offset"));
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_hardsigmoid",
+                      node->inputs,
                       node->outputs,
                       {
                           {"alpha", slope_},
@@ -205,9 +236,9 @@ Node *hard_sigmoid_handler(Graph *graph, Node *node) {
 
 Node *hard_swish_handler(Graph *graph, Node *node) {
   auto x = GetInputVarNode("X", node);
-  auto scale_ = BOOST_GET_CONST(float, node->Op()->GetAttr("scale"));
-  auto offset_ = BOOST_GET_CONST(float, node->Op()->GetAttr("offset"));
-  auto threshold_ = BOOST_GET_CONST(float, node->Op()->GetAttr("threshold"));
+  auto scale_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("scale"));
+  auto offset_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("offset"));
+  auto threshold_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("threshold"));
   auto scale_node =
       CreateConst(graph, node, std::vector<float>{scale_}, {1}, GetVarDType(x))
           ->outputs.front();
@@ -216,24 +247,33 @@ Node *hard_swish_handler(Graph *graph, Node *node) {
           ->outputs.front();
   auto add_node = CreateBaseOp(graph, node, "popart_add", {x, offset_node}, {})
                       ->outputs.front();
-  auto cli_min = CreateConst(graph, node, std::vector<float>{0.0}, {1},
-                             ONNXDataType::FLOAT)
-                     ->outputs.front();
-  auto clip_max = CreateConst(graph, node, std::vector<float>{threshold_}, {1},
-                              ONNXDataType::FLOAT)
-                      ->outputs.front();
-  auto clip_node = CreateBaseOp(graph, node, "popart_clip",
-                                {add_node, cli_min, clip_max}, {})
-                       ->outputs.front();
+  auto cli_min =
+      CreateConst(
+          graph, node, std::vector<float>{0.0}, {1}, ONNXDataType::FLOAT)
+          ->outputs.front();
+  auto clip_max =
+      CreateConst(
+          graph, node, std::vector<float>{threshold_}, {1}, ONNXDataType::FLOAT)
+          ->outputs.front();
+  auto clip_node =
+      CreateBaseOp(
+          graph, node, "popart_clip", {add_node, cli_min, clip_max}, {})
+          ->outputs.front();
   auto mul_node = CreateBaseOp(graph, node, "popart_mul", {x, clip_node}, {})
                       ->outputs.front();
-  return CreateBaseOp(graph, node, "popart_div", {mul_node, scale_node},
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_div",
+                      {mul_node, scale_node},
                       {GetOutputVarNode("Out", node)});
 }
 
 Node *leaky_relu_handler(Graph *graph, Node *node) {
-  auto alpha_ = BOOST_GET_CONST(float, node->Op()->GetAttr("alpha"));
-  return CreateBaseOp(graph, node, "popart_leakyrelu", node->inputs,
+  auto alpha_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("alpha"));
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_leakyrelu",
+                      node->inputs,
                       node->outputs,
                       {
                           {"alpha", alpha_},
@@ -247,8 +287,8 @@ Node *log10_handler(Graph *graph, Node *node) {
       CreateConst(graph, node, std::vector<float>{ln10}, {1}, GetVarDType(x))
           ->outputs.front();
   auto log = CreateBaseOp(graph, node, "popart_log", {x}, {})->outputs.front();
-  return CreateBaseOp(graph, node, "popart_div", {log, ln10_tensor},
-                      node->outputs);
+  return CreateBaseOp(
+      graph, node, "popart_div", {log, ln10_tensor}, node->outputs);
 }
 
 Node *log1p_handler(Graph *graph, Node *node) {
@@ -268,19 +308,20 @@ Node *log2_handler(Graph *graph, Node *node) {
       CreateConst(graph, node, std::vector<float>{ln2}, {1}, GetVarDType(x))
           ->outputs.front();
   auto log = CreateBaseOp(graph, node, "popart_log", {x}, {})->outputs.front();
-  return CreateBaseOp(graph, node, "popart_div", {log, ln2_tensor},
-                      node->outputs);
+  return CreateBaseOp(
+      graph, node, "popart_div", {log, ln2_tensor}, node->outputs);
 }
 
 Node *logsigmoid_handler(Graph *graph, Node *node) {
-  auto sigmoid = CreateBaseOp(graph, node, "popart_sigmoid",
-                              {GetInputVarNode("X", node)}, {})
-                     ->outputs.front();
+  auto sigmoid =
+      CreateBaseOp(
+          graph, node, "popart_sigmoid", {GetInputVarNode("X", node)}, {})
+          ->outputs.front();
   return CreateBaseOp(graph, node, "popart_log", {sigmoid}, node->outputs);
 }
 
 Node *mish_handler(Graph *graph, Node *node) {
-  auto threshold_ = BOOST_GET_CONST(float, node->Op()->GetAttr("threshold"));
+  auto threshold_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("threshold"));
   if (!is_float_equal(threshold_, 20.0f)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "For mish op, only support threshold = 20.0"));
@@ -333,14 +374,18 @@ Node *prelu_handler(Graph *graph, Node *node) {
 }
 
 Node *relu6_handler(Graph *graph, Node *node) {
-  auto threshold_ = BOOST_GET_CONST(float, node->Op()->GetAttr("threshold"));
-  auto cli_min = CreateConst(graph, node, std::vector<float>{0.0}, {1},
-                             ONNXDataType::FLOAT)
-                     ->outputs.front();
-  auto clip_max = CreateConst(graph, node, std::vector<float>{threshold_}, {1},
-                              ONNXDataType::FLOAT)
-                      ->outputs.front();
-  return CreateBaseOp(graph, node, "popart_clip",
+  auto threshold_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("threshold"));
+  auto cli_min =
+      CreateConst(
+          graph, node, std::vector<float>{0.0}, {1}, ONNXDataType::FLOAT)
+          ->outputs.front();
+  auto clip_max =
+      CreateConst(
+          graph, node, std::vector<float>{threshold_}, {1}, ONNXDataType::FLOAT)
+          ->outputs.front();
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_clip",
                       {GetInputVarNode("X", node), cli_min, clip_max},
                       node->outputs);
 }
@@ -353,9 +398,13 @@ Node *rsqrt_handler(Graph *graph, Node *node) {
 }
 
 Node *selu_handler(Graph *graph, Node *node) {
-  auto alpha_ = BOOST_GET_CONST(float, node->Op()->GetAttr("alpha"));
-  auto scale_ = BOOST_GET_CONST(float, node->Op()->GetAttr("scale"));
-  return CreateBaseOp(graph, node, "popart_selu", node->inputs, node->outputs,
+  auto alpha_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("alpha"));
+  auto scale_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("scale"));
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_selu",
+                      node->inputs,
+                      node->outputs,
                       {
                           {"alpha", alpha_},
                           {"gamma", scale_},
@@ -370,8 +419,12 @@ Node *silu_handler(Graph *graph, Node *node) {
 }
 
 Node *softshrink_handler(Graph *graph, Node *node) {
-  auto lambda_ = BOOST_GET_CONST(float, node->Op()->GetAttr("lambda"));
-  return CreateBaseOp(graph, node, "popart_shrink", node->inputs, node->outputs,
+  auto lambda_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("lambda"));
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_shrink",
+                      node->inputs,
+                      node->outputs,
                       {
                           {"lambd", lambda_},
                           {"bias", lambda_},
@@ -386,7 +439,7 @@ Node *square_handler(Graph *graph, Node *node) {
 Node *swish_handler(Graph *graph, Node *node) {
   auto x = GetInputVarNode("X", node);
   auto out = GetOutputVarNode("Out", node);
-  auto beta_ = BOOST_GET_CONST(float, node->Op()->GetAttr("beta"));
+  auto beta_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("beta"));
   auto beta_node =
       CreateConst(graph, node, std::vector<float>{beta_}, {1}, GetVarDType(x))
           ->outputs.front();
@@ -406,9 +459,13 @@ Node *tanh_shrink_handler(Graph *graph, Node *node) {
 }
 
 Node *thresholded_relu_handler(Graph *graph, Node *node) {
-  auto threshold_ = BOOST_GET_CONST(float, node->Op()->GetAttr("threshold"));
+  auto threshold_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("threshold"));
   auto x = GetInputVarNode("X", node);
-  return CreateBaseOp(graph, node, "popart_thresholdedrelu", {x}, node->outputs,
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_thresholdedrelu",
+                      {x},
+                      node->outputs,
                       {
                           {"alpha", threshold_},
                       });

@@ -1037,6 +1037,51 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.set_heter_ps(enable_heter_ps)
 
+    def set_graph_config(self, config):
+        """
+        Set graph config, user can set graph config in gpu graph mode. 
+
+        Args:
+            config(dict): config dict.
+
+        Returns:
+            The size of shuffle data.
+
+        Examples:
+            .. code-block:: python
+
+              # required: skiptest
+              import paddle.fluid as fluid
+              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              graph_config = {"walk_len": 24,
+                    "walk_degree": 10,
+                    "once_sample_startid_len": 80000,
+                    "sample_times_one_chunk": 5,
+                    "window": 3,
+                    "debug_mode": 0,
+                    "batch_size": 800,
+                    "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
+                    "gpu_graph_training": 1}
+              dataset.set_graph_config(graph_config)
+
+        """
+        self.proto_desc.graph_config.walk_degree = config.get("walk_degree", 1)
+        self.proto_desc.graph_config.walk_len = config.get("walk_len", 20)
+        self.proto_desc.graph_config.window = config.get("window", 5)
+        self.proto_desc.graph_config.once_sample_startid_len = config.get(
+            "once_sample_startid_len", 8000)
+        self.proto_desc.graph_config.sample_times_one_chunk = config.get(
+            "sample_times_one_chunk", 10)
+        self.proto_desc.graph_config.batch_size = config.get("batch_size", 1)
+        self.proto_desc.graph_config.debug_mode = config.get("debug_mode", 0)
+        self.proto_desc.graph_config.first_node_type = config.get(
+            "first_node_type", "")
+        self.proto_desc.graph_config.meta_path = config.get("meta_path", "")
+        self.proto_desc.graph_config.gpu_graph_training = config.get(
+            "gpu_graph_training", True)
+        self.dataset.set_gpu_graph_mode(True)
+
 
 class QueueDataset(DatasetBase):
     """

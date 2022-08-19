@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
+os.environ['FLAGS_enable_eager_mode'] = '0'
+
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -19,13 +23,11 @@ import paddle.fluid.core as core
 import numpy as np
 import six
 import cv2
-import os
 import tempfile
 from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
 import paddle.nn as nn
 from paddle.static import InputSpec
 from paddle.autograd import PyLayer
-from paddle.fluid.framework import _test_eager_guard
 
 if fluid.core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
@@ -73,8 +75,6 @@ class TestAutoCast(unittest.TestCase):
         self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
 
     def test_amp_guard_white_op(self):
-        with _test_eager_guard():
-            self.amp_guard_white_op()
         self.amp_guard_white_op()
 
     def amp_guard_black_op(self):
@@ -82,14 +82,12 @@ class TestAutoCast(unittest.TestCase):
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
             with fluid.dygraph.amp_guard(True):
-                out_fp32 = fluid.layers.mean(data)
+                out_fp32 = paddle.mean(data)
 
         self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
         self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
 
     def test_amp_guard_black_op(self):
-        with _test_eager_guard():
-            self.amp_guard_black_op()
         self.amp_guard_black_op()
 
     def custom_op_list(self):
@@ -123,8 +121,6 @@ class TestAutoCast(unittest.TestCase):
                     | {"conv2d"})
 
     def test_custom_op_list(self):
-        with _test_eager_guard():
-            self.custom_op_list()
         self.custom_op_list()
 
     def custom_op_list_exception(self):
@@ -145,8 +141,6 @@ class TestAutoCast(unittest.TestCase):
         self.assertRaises(ValueError, func)
 
     def test_custom_op_list_exception(self):
-        with _test_eager_guard():
-            self.custom_op_list_exception()
         self.custom_op_list_exception()
 
     def amp_guard_upsupported_fp16_op(self):
@@ -174,8 +168,6 @@ class TestAutoCast(unittest.TestCase):
             out_purefp16_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
 
     def test_amp_guard_upsupported_fp16_op(self):
-        with _test_eager_guard():
-            self.amp_guard_upsupported_fp16_op()
         self.amp_guard_upsupported_fp16_op()
 
     def mode_exception(self):
@@ -195,8 +187,6 @@ class TestAutoCast(unittest.TestCase):
         self.assertRaises(ValueError, func)
 
     def test_mode_exception(self):
-        with _test_eager_guard():
-            self.mode_exception()
         self.mode_exception()
 
 
@@ -212,8 +202,6 @@ class TestAmpScaler(unittest.TestCase):
                                data.numpy() * 1024), True)
 
     def test_scale(self):
-        with _test_eager_guard():
-            self.scale()
         self.scale()
 
     def minimize(self):
@@ -234,7 +222,7 @@ class TestAmpScaler(unittest.TestCase):
                 data = fluid.dygraph.to_variable(inp_np)
 
                 out = model(data)
-                loss = fluid.layers.mean(out)
+                loss = paddle.mean(out)
                 if use_scaler:
                     print('use scaler')
                     scaled_loss = scaler.scale(loss)
@@ -256,17 +244,15 @@ class TestAmpScaler(unittest.TestCase):
                          [])  # optimize_ops is [] in dygraph mode
         for i in range(len(outs_with_scaler[1])):
             # check each grad
-            self.assertEqual(
-                np.allclose(outs_with_scaler[1][i][1].numpy(),
-                            outs_no_scaler[1][i][1].numpy()), True)
+            np.testing.assert_allclose(outs_with_scaler[1][i][1].numpy(),
+                                       outs_no_scaler[1][i][1].numpy(),
+                                       rtol=1e-05)
             # check each parameter
-            self.assertEqual(
-                np.allclose(outs_with_scaler[1][i][0].numpy(),
-                            outs_no_scaler[1][i][0].numpy()), True)
+            np.testing.assert_allclose(outs_with_scaler[1][i][0].numpy(),
+                                       outs_no_scaler[1][i][0].numpy(),
+                                       rtol=1e-05)
 
     def test_minimize(self):
-        with _test_eager_guard():
-            self.minimize()
         self.minimize()
 
     def step(self):
@@ -287,7 +273,7 @@ class TestAmpScaler(unittest.TestCase):
                 data = fluid.dygraph.to_variable(inp_np)
 
                 out = model(data)
-                loss = fluid.layers.mean(out)
+                loss = paddle.mean(out)
                 if use_scaler:
                     print('use scaler')
                     scaled_loss = scaler.scale(loss)
@@ -305,13 +291,11 @@ class TestAmpScaler(unittest.TestCase):
 
         for i in range(len(outs_with_scaler)):
             # check each parameter
-            self.assertEqual(
-                np.allclose(outs_with_scaler[i].numpy(),
-                            outs_no_scaler[i].numpy()), True)
+            np.testing.assert_allclose(outs_with_scaler[i].numpy(),
+                                       outs_no_scaler[i].numpy(),
+                                       rtol=1e-05)
 
     def test_step(self):
-        with _test_eager_guard():
-            self.step()
         self.step()
 
     def nan_inf(self):
@@ -332,7 +316,7 @@ class TestAmpScaler(unittest.TestCase):
             data = fluid.dygraph.to_variable(inp_np)
 
             out = model(data)
-            loss = fluid.layers.mean(out)
+            loss = paddle.mean(out)
             scaled_loss = scaler.scale(loss)
             scaled_loss.backward()
             optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
@@ -340,12 +324,10 @@ class TestAmpScaler(unittest.TestCase):
 
             for param in model.parameters():
                 # param not update when tensor contains nan or inf
-                self.assertTrue(
-                    np.array_equal(param.numpy(), params_init[param.name]))
+                np.testing.assert_array_equal(param.numpy(),
+                                              params_init[param.name])
 
     def test_nan_inf(self):
-        with _test_eager_guard():
-            self.nan_inf()
         self.nan_inf()
 
     def step_update_exception(self):
@@ -396,8 +378,6 @@ class TestAmpScaler(unittest.TestCase):
         self.assertRaises(RuntimeError, func3)
 
     def test_step_update_exception(self):
-        with _test_eager_guard():
-            self.step_update_exception()
         self.step_update_exception()
 
     def test_get_and_set(self):
@@ -575,11 +555,10 @@ class TestGradScalerStateDict(unittest.TestCase):
                                                       use_data_loader=True,
                                                       use_save_load=False)
             print('save_load:', out_use_state_dict[0], out_no_state_dict[0])
-            self.assertTrue(
-                np.allclose(out_use_state_dict[0], out_no_state_dict[0]))
+            np.testing.assert_allclose(out_use_state_dict[0],
+                                       out_no_state_dict[0],
+                                       rtol=1e-05)
 
-        with _test_eager_guard():
-            func_isinstance()
         func_isinstance()
 
 
@@ -742,8 +721,6 @@ class TestStateDictHookForAMP(unittest.TestCase):
             for key in param_value_ori.keys():
                 print(np.equal(param_value_ori[key], param_value_now[key]))
 
-        with _test_eager_guard():
-            func_isinstance()
         func_isinstance()
 
 
@@ -896,11 +873,10 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                                                      use_data_loader=True,
                                                      use_save_load=False)
             print('save_load:', out_use_save_load[0], out_no_save_load[0])
-            self.assertTrue(
-                np.allclose(out_use_save_load[0], out_no_save_load[0]))
+            np.testing.assert_allclose(out_use_save_load[0],
+                                       out_no_save_load[0],
+                                       rtol=1e-05)
 
-        with _test_eager_guard():
-            func_isinstance()
         func_isinstance()
 
 
@@ -1000,13 +976,11 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
                           fetch_list=fetch_targets)
         print("pred.numpy()", pred.numpy())
         print("result", results[0])
-        self.assertTrue(np.array_equal(pred.numpy(), results[0]))
+        np.testing.assert_array_equal(pred.numpy(), results[0])
         paddle.disable_static()
 
     def test_inference_save_load(self):
         self.inference_save_load()
-        with _test_eager_guard():
-            self.inference_save_load()
 
 
 class TestResnet2(unittest.TestCase):
@@ -1142,12 +1116,15 @@ class TestResnet2(unittest.TestCase):
                 out_amp = self.train_resnet(enable_amp=True)
                 out_pure_fp16 = self.train_resnet(enable_amp=True, level='O2')
             print(out_fp32[0], out_amp[0], out_pure_fp16[0])
-            self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
-            self.assertTrue(
-                np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-2))
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
 
-        with _test_eager_guard():
-            func_isinstance()
         func_isinstance()
 
     def test_with_data_loader(self):
@@ -1162,12 +1139,15 @@ class TestResnet2(unittest.TestCase):
                                                   use_data_loader=True,
                                                   level='O2')
             print(out_fp32[0], out_amp[0], out_pure_fp16[0])
-            self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
-            self.assertTrue(
-                np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-2))
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
 
-        with _test_eager_guard():
-            func_isinstance()
         func_isinstance()
 
     def test_param_group(self):
@@ -1185,12 +1165,15 @@ class TestResnet2(unittest.TestCase):
                                                   use_param_group=True,
                                                   level='O2')
             print(out_fp32[0], out_amp[0], out_pure_fp16[0])
-            self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
-            self.assertTrue(
-                np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-2))
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
 
-        with _test_eager_guard():
-            func_isinstance()
         func_isinstance()
 
 
@@ -1249,7 +1232,7 @@ class TestResnet(unittest.TestCase):
                     out = resnet(img)
 
                 loss = fluid.layers.cross_entropy(input=out, label=label)
-                avg_loss = fluid.layers.mean(x=loss)
+                avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
 
@@ -1281,12 +1264,15 @@ class TestResnet(unittest.TestCase):
             out_amp = self.train_resnet(enable_amp=True)
             out_pure_fp16 = self.train_resnet(enable_amp=True, level='O2')
             print(out_fp32[0], out_amp[0], out_pure_fp16[0])
-            self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
-            self.assertTrue(
-                np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-1))
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_amp[0],
+                                       rtol=1e-05,
+                                       atol=0.01)
+            np.testing.assert_allclose(out_fp32[0],
+                                       out_pure_fp16[0],
+                                       rtol=1e-05,
+                                       atol=0.1)
 
-        with _test_eager_guard():
-            func_isinstance()
         func_isinstance()
 
 
@@ -1308,8 +1294,6 @@ class TestLayerNormFp16(unittest.TestCase):
                     self.assertTrue(
                         out.dtype == fluid.core.VarDesc.VarType.FP16)
 
-        with _test_eager_guard():
-            func_isinstance()
         func_isinstance()
 
 
@@ -1339,13 +1323,15 @@ class TestBf16(unittest.TestCase):
             out_fp32 = self.train(enable_amp=False)
             out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
             out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
-            self.assertTrue(
-                np.allclose(out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
-            self.assertTrue(
-                np.allclose(out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
+            np.testing.assert_allclose(out_fp32,
+                                       out_bf16_O1,
+                                       rtol=0.001,
+                                       atol=0.1)
+            np.testing.assert_allclose(out_fp32,
+                                       out_bf16_O2,
+                                       rtol=0.001,
+                                       atol=0.1)
 
-        with _test_eager_guard():
-            func_isinstance()
         func_isinstance()
 
 
@@ -1399,8 +1385,6 @@ class TestAmpWithHook(unittest.TestCase):
                     loss = a.sum()
                     self.assertRaises(RuntimeError, loss.backward)
 
-        with _test_eager_guard():
-            func_isinstance()
         func_isinstance()
 
     def test_hook_change_place(self):
@@ -1420,8 +1404,6 @@ class TestAmpWithHook(unittest.TestCase):
                     loss = a.sum()
                     self.assertRaises(RuntimeError, loss.backward)
 
-        with _test_eager_guard():
-            func_isinstance()
         func_isinstance()
 
 

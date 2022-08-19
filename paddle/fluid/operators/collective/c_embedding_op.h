@@ -30,8 +30,12 @@ using LoDTensor = framework::LoDTensor;
 inline void CheckTableValid() {}
 
 template <typename TIds, typename TData>
-void GetIdsEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
-                     const TData* table, int64_t height, int64_t width,
+void GetIdsEmbedding(const TIds* ids,
+                     size_t ids_len,
+                     int64_t start_idx,
+                     const TData* table,
+                     int64_t height,
+                     int64_t width,
                      TData* out) {
   for (size_t i = 0; i < ids_len; i++) {
     TIds id = ids[i];
@@ -68,11 +72,21 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
 
     const auto& index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
-      GetIdsEmbedding(ids_t->data<int32_t>(), ids_t->numel(), start_idx,
-                      table_data, height, width, output_data);
+      GetIdsEmbedding(ids_t->data<int32_t>(),
+                      ids_t->numel(),
+                      start_idx,
+                      table_data,
+                      height,
+                      width,
+                      output_data);
     } else if (index_type == framework::proto::VarType::INT64) {
-      GetIdsEmbedding(ids_t->data<int64_t>(), ids_t->numel(), start_idx,
-                      table_data, height, width, output_data);
+      GetIdsEmbedding(ids_t->data<int64_t>(),
+                      ids_t->numel(),
+                      start_idx,
+                      table_data,
+                      height,
+                      width,
+                      output_data);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
           "CPU c_embedding ids only support int32 or int64."));
@@ -81,8 +95,12 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename TIds, typename TData>
-void UpdateEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
-                     TData* table, int64_t height, int64_t width,
+void UpdateEmbedding(const TIds* ids,
+                     size_t ids_len,
+                     int64_t start_idx,
+                     TData* table,
+                     int64_t height,
+                     int64_t width,
                      const TData* out) {
   for (size_t i = 0; i < ids_len; i++) {
     TIds id = ids[i];
@@ -129,11 +147,21 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
 
     const auto& index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
-      UpdateEmbedding(ids_t->data<int32_t>(), ids_t->numel(), start_idx,
-                      table_grad_data, height, width, d_output_data);
+      UpdateEmbedding(ids_t->data<int32_t>(),
+                      ids_t->numel(),
+                      start_idx,
+                      table_grad_data,
+                      height,
+                      width,
+                      d_output_data);
     } else if (index_type == framework::proto::VarType::INT64) {
-      UpdateEmbedding(ids_t->data<int64_t>(), ids_t->numel(), start_idx,
-                      table_grad_data, height, width, d_output_data);
+      UpdateEmbedding(ids_t->data<int64_t>(),
+                      ids_t->numel(),
+                      start_idx,
+                      table_grad_data,
+                      height,
+                      width,
+                      d_output_data);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
           "CPU c_embedding ids only support int32 or int64."));

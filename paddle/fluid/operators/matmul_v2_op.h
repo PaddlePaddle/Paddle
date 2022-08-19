@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/dot_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -94,7 +93,8 @@ static void ReshapeTensorIntoMatrixSequence(
 
 static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
                                            framework::Tensor* y,
-                                           framework::Tensor* out, bool trans_x,
+                                           framework::Tensor* out,
+                                           bool trans_x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
   auto y_dim = ColumnMatrixFromVector(y->dims());
@@ -104,7 +104,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
     out->Resize({(std::max)(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
-                 mat_dim_x.height_, mat_dim_y.width_});
+                 mat_dim_x.height_,
+                 mat_dim_y.width_});
   }
 
   ReshapeTensorIntoMatrixSequence(x, mat_dim_x);

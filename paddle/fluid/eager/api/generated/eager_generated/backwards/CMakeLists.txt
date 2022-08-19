@@ -6,7 +6,7 @@ cc_library(
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(
     final_dygraph_node
-    SRCS nodes.cc
+    SRCS nodes.cc ${eager_manual_nodes}
     DEPS ${eager_deps})
   add_dependencies(final_dygraph_node eager_final_state_codegen)
 endif()

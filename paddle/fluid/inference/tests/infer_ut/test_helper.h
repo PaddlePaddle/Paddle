@@ -20,8 +20,10 @@ namespace paddle {
 namespace test {
 
 // split string to vector<string> by sep
-static void split(const std::string &str, char sep,
-                  std::vector<std::string> *pieces, bool ignore_null = true) {
+static void split(const std::string &str,
+                  char sep,
+                  std::vector<std::string> *pieces,
+                  bool ignore_null = true) {
   pieces->clear();
   if (str.empty()) {
     if (!ignore_null) {

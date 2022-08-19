@@ -42,7 +42,7 @@ class TestMeanOp(OpTest):
 
     def setUp(self):
         self.op_type = "mean"
-        self.python_api = fluid.layers.mean
+        self.python_api = paddle.mean
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
@@ -64,12 +64,12 @@ class TestMeanOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
             input1 = 12
-            self.assertRaises(TypeError, fluid.layers.mean, input1)
+            self.assertRaises(TypeError, paddle.mean, input1)
             # The input dtype of mean_op must be float16, float32, float64.
             input2 = fluid.layers.data(name='input2',
                                        shape=[12, 10],
                                        dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.mean, input2)
+            self.assertRaises(TypeError, paddle.mean, input2)
             input3 = fluid.layers.data(name='input3',
                                        shape=[4],
                                        dtype="float16")
@@ -96,11 +96,11 @@ class TestFP16MeanOp(TestMeanOp):
                 x_np = np.random.random((10, 10)).astype(self.dtype)
                 x = paddle.to_tensor(x_np)
                 x.stop_gradient = False
-                y = fluid.layers.mean(x)
+                y = paddle.mean(x)
                 dx = paddle.grad(y, x)[0].numpy()
                 dx_expected = self.dtype(1.0 / np.prod(x_np.shape)) * np.ones(
                     x_np.shape).astype(self.dtype)
-                self.assertTrue(np.array_equal(dx, dx_expected))
+                np.testing.assert_array_equal(dx, dx_expected)
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -193,7 +193,7 @@ class TestReduceMeanOp(OpTest):
                 dx_expected = ref_reduce_mean_grad(self.inputs['X'],
                                                    self.attrs['dim'],
                                                    self.dtype)
-                self.assertTrue(np.array_equal(dx, dx_expected))
+                np.testing.assert_array_equal(dx, dx_expected)
 
 
 class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
@@ -353,7 +353,7 @@ class TestMeanAPI(unittest.TestCase):
                           fetch_list=[out1, out2, out3, out4, out5])
         out_ref = np.mean(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-04), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.0001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
@@ -366,8 +366,7 @@ class TestMeanAPI(unittest.TestCase):
                 if len(axis) == 0:
                     axis = None
             out_ref = np.mean(x, axis, keepdims=keepdim)
-            self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-04),
-                             True)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
 
         test_case(self.x)
         test_case(self.x, [])
@@ -387,13 +386,15 @@ class TestMeanAPI(unittest.TestCase):
             exe = fluid.Executor(place)
             x_np = np.random.rand(10, 10).astype(np.float32)
             res = exe.run(feed={"x": x_np}, fetch_list=[out])
-        self.assertEqual(np.allclose(res[0], np.mean(x_np, axis=1)), True)
+        np.testing.assert_allclose(res[0], np.mean(x_np, axis=1), rtol=1e-05)
 
         with fluid.dygraph.guard():
             x_np = np.random.rand(10, 10).astype(np.float32)
             x = fluid.dygraph.to_variable(x_np)
             out = fluid.layers.reduce_mean(input=x, dim=1)
-        self.assertEqual(np.allclose(out.numpy(), np.mean(x_np, axis=1)), True)
+        np.testing.assert_allclose(out.numpy(),
+                                   np.mean(x_np, axis=1),
+                                   rtol=1e-05)
 
     def test_errors(self):
         paddle.disable_static()

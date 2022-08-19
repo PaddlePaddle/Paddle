@@ -33,13 +33,15 @@ class ExpandV2MLUKernel : public framework::OpKernel<T> {
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     std::vector<int> final_expand_shape(vec_in_dims.size());
     for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-      PADDLE_ENFORCE_NE(expand_shape[i], 0,
+      PADDLE_ENFORCE_NE(expand_shape[i],
+                        0,
                         platform::errors::InvalidArgument(
                             "The expanded size cannot be zero."));
       if (i < diff) {  // expand_shape = [3,4,-1,-1], X = [10,2] -->
                        // final_expand_shape = [3,4,10,2]
         PADDLE_ENFORCE_GT(
-            expand_shape[i], 0,
+            expand_shape[i],
+            0,
             platform::errors::InvalidArgument(
                 "The expanded size (%d) for non-existing dimensions must be "
                 "positive for expand_v2 op.",
@@ -50,11 +52,13 @@ class ExpandV2MLUKernel : public framework::OpKernel<T> {
                                          // [3,4,10,4]
         if (vec_in_dims[i] != 1) {
           PADDLE_ENFORCE_EQ(
-              vec_in_dims[i], expand_shape[i],
+              vec_in_dims[i],
+              expand_shape[i],
               platform::errors::InvalidArgument(
                   "The value (%d) of the non-singleton dimension does not match"
                   " the corresponding value (%d) in shape for expand_v2 op.",
-                  vec_in_dims[i], expand_shape[i]));
+                  vec_in_dims[i],
+                  expand_shape[i]));
           final_expand_shape[i] = expand_shape[i];
         } else {
           final_expand_shape[i] = expand_shape[i];
@@ -62,7 +66,8 @@ class ExpandV2MLUKernel : public framework::OpKernel<T> {
       } else {  // expand_shape = [3,4,-1,-1], X = [10,2] --> final_expand_shape
                 // = [3,4,10,2]
         PADDLE_ENFORCE_EQ(
-            expand_shape[i], -1,
+            expand_shape[i],
+            -1,
             platform::errors::InvalidArgument(
                 "When the value in shape is negative for expand_v2 op, "
                 "only -1 is supported, but the value received is %d.",
@@ -73,19 +78,22 @@ class ExpandV2MLUKernel : public framework::OpKernel<T> {
 
     auto rank = X->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1,
+        rank,
+        1,
         platform::errors::InvalidArgument(
             "The rank of the input 'X' for expand_v2_mlu op must be positive, "
             "but the value received is %d.",
             rank));
     auto shape_size = final_expand_shape.size();
     PADDLE_ENFORCE_GE(
-        shape_size, rank,
+        shape_size,
+        rank,
         platform::errors::InvalidArgument(
             "The number (%d) of elements of 'shape' for expand_v2_mlu op must "
             "be "
             "greater than or equal to the rank (%d) of the input 'X'.",
-            shape_size, rank));
+            shape_size,
+            rank));
 
     framework::DDim out_dims = phi::make_ddim(final_expand_shape);
     Out->Resize(out_dims);
@@ -93,8 +101,8 @@ class ExpandV2MLUKernel : public framework::OpKernel<T> {
     Out->mutable_data<T>(place);
     MLUCnnlTensorDesc x_desc(*X);
     MLUCnnlTensorDesc out_desc(*Out);
-    MLUCnnl::BroadcastTo(ctx, x_desc.get(), GetBasePtr(X), out_desc.get(),
-                         GetBasePtr(Out));
+    MLUCnnl::BroadcastTo(
+        ctx, x_desc.get(), GetBasePtr(X), out_desc.get(), GetBasePtr(Out));
   }
 };
 
@@ -102,7 +110,8 @@ class ExpandV2MLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(expand_v2, ops::ExpandV2MLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(expand_v2,
+                       ops::ExpandV2MLUKernel<float>,
                        ops::ExpandV2MLUKernel<paddle::platform::float16>,
                        ops::ExpandV2MLUKernel<bool>,
                        ops::ExpandV2MLUKernel<int>,

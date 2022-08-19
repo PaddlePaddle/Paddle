@@ -32,8 +32,11 @@ class XPUBCELossKernel : public framework::OpKernel<T> {
 
     auto x_numel = x->numel();
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::bce_loss<T>(dev_ctx.x_context(), x->data<T>(),
-                             labels->data<T>(), out->data<T>(), x_numel);
+    int r = xpu::bce_loss<T>(dev_ctx.x_context(),
+                             x->data<T>(),
+                             labels->data<T>(),
+                             out->data<T>(),
+                             x_numel);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "bce_loss");
   }
 };
@@ -50,9 +53,12 @@ class XPUBCELossGradKernel : public framework::OpKernel<T> {
 
     auto x_numel = x->numel();
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::bce_loss_grad<T>(dev_ctx.x_context(), x->data<T>(),
-                                  labels->data<T>(), dout->data<T>(),
-                                  dx->data<T>(), x_numel);
+    int r = xpu::bce_loss_grad<T>(dev_ctx.x_context(),
+                                  x->data<T>(),
+                                  labels->data<T>(),
+                                  dout->data<T>(),
+                                  dx->data<T>(),
+                                  x_numel);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "bce_loss_grad");
   }
 };

@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
-
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
@@ -59,7 +59,7 @@ class Linear(fluid.dygraph.Layer):
     @declarative
     def forward(self, x):
         pre = self.fc(x)
-        loss = fluid.layers.mean(pre)
+        loss = paddle.mean(pre)
         return pre, loss
 
 
@@ -92,9 +92,12 @@ class TestPool2D(unittest.TestCase):
         dygraph_res = self.train_dygraph()
         static_res = self.train_static()
 
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph_res is {}\n static_res is \n{}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph_res is {}\n static_res is \n{}'.format(
+                dygraph_res, static_res))
 
 
 class TestLinear(TestPool2D):

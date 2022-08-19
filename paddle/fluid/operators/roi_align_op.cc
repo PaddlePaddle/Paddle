@@ -42,10 +42,12 @@ class ROIAlignGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
         platform::errors::NotFound("The GRAD@Out of ROIAlignGradOp "
                                    "is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutputs(framework::GradVarName("X")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutputs(framework::GradVarName("X")),
+                      true,
                       platform::errors::NotFound("The GRAD@X of ROIAlignGradOp "
                                                  "is not found."));
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
@@ -152,14 +154,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(RoiAlignGradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(roi_align, RoiAlignInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(roi_align,
+                            RoiAlignInferShapeFunctor,
                             PD_INFER_META(phi::RoiAlignInferMeta));
 
-REGISTER_OPERATOR(roi_align, ops::ROIAlignOp, ops::ROIAlignOpMaker,
+REGISTER_OPERATOR(roi_align,
+                  ops::ROIAlignOp,
+                  ops::ROIAlignOpMaker,
                   ops::ROIAlignGradMaker<paddle::framework::OpDesc>,
                   ops::ROIAlignGradMaker<paddle::imperative::OpBase>,
                   RoiAlignInferShapeFunctor);
-REGISTER_OPERATOR(roi_align_grad, ops::ROIAlignGradOp,
+REGISTER_OPERATOR(roi_align_grad,
+                  ops::ROIAlignGradOp,
                   ops::RoiAlignGradNoNeedBufVarsInferer);
 
 REGISTER_OP_VERSION(roi_align)

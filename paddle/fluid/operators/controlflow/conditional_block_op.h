@@ -47,12 +47,14 @@ class ConditionalOp : public framework::OperatorBase {
     auto xs = Inputs(in_name);
     retv.resize(xs.size(), nullptr);
     std::transform(
-        xs.begin(), xs.end(), retv.begin(),
+        xs.begin(),
+        xs.end(),
+        retv.begin(),
         [&scope](const std::string &var_name) -> const framework::LoDTensor * {
           auto *var = scope.FindVar(var_name);
-          PADDLE_ENFORCE_NOT_NULL(
-              var, platform::errors::InvalidArgument("Cannot find variable %s",
-                                                     var_name));
+          PADDLE_ENFORCE_NOT_NULL(var,
+                                  platform::errors::InvalidArgument(
+                                      "Cannot find variable %s", var_name));
           return &var->Get<framework::LoDTensor>();
         });
     return retv;
@@ -61,7 +63,8 @@ class ConditionalOp : public framework::OperatorBase {
   bool ScalarCondition(
       const std::vector<const framework::LoDTensor *> &ips) const {
     PADDLE_ENFORCE_EQ(
-        ips.size() == 1UL && ips[0]->IsInitialized(), true,
+        ips.size() == 1UL && ips[0]->IsInitialized(),
+        true,
         platform::errors::InvalidArgument(
             "condition should have one initialized input as condition"));
 

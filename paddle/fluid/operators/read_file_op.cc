@@ -51,7 +51,8 @@ class ReadFileOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of ReadFileOp is null."));
 
@@ -85,7 +86,9 @@ This operator read a file.
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    read_file, ops::ReadFileOp, ops::ReadFileOpMaker,
+    read_file,
+    ops::ReadFileOp,
+    ops::ReadFileOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 

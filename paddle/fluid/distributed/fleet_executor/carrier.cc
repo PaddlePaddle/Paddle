@@ -50,8 +50,10 @@ void Carrier::Init(
     int64_t rank,
     const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
-    const framework::ProgramDesc& program, framework::Scope* scope,
-    int64_t num_micro_batches, const platform::Place& place,
+    const framework::ProgramDesc& program,
+    framework::Scope* scope,
+    int64_t num_micro_batches,
+    const platform::Place& place,
     const std::vector<std::string>& inference_root_scope_vars) {
   rank_ = rank;
   interceptor_id_to_rank_ = interceptor_id_to_rank;
@@ -60,8 +62,9 @@ void Carrier::Init(
   root_scope_ = scope;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
 
-  PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
-                                           "root_scope can not be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      root_scope_,
+      platform::errors::InvalidArgument("root_scope can not be nullptr"));
   minibatch_scope_ = &root_scope_->NewScope();
   microbatch_scopes_.resize(num_micro_batches);
   for (int i = 0; i < num_micro_batches; ++i) {
@@ -87,7 +90,8 @@ void Carrier::Release() {
 Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
 
 void Carrier::CopyParameters(
-    int microbatch_id, const framework::ProgramDesc& program,
+    int microbatch_id,
+    const framework::ProgramDesc& program,
     const std::vector<std::string>& inference_root_scope_vars) {
   auto& global_block = program.Block(0);
 
@@ -119,7 +123,8 @@ void Carrier::CopyParameters(
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
   PADDLE_ENFORCE_EQ(
-      interceptor_message.ctrl_message(), false,
+      interceptor_message.ctrl_message(),
+      false,
       platform::errors::Fatal(
           "Control message should be only send inter rank using message bus."));
   int64_t dst_id = interceptor_message.dst_id();
@@ -130,7 +135,8 @@ bool Carrier::EnqueueInterceptorMessage(
 
 Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   auto iter = interceptor_idx_to_interceptor_.find(interceptor_id);
-  PADDLE_ENFORCE_NE(iter, interceptor_idx_to_interceptor_.end(),
+  PADDLE_ENFORCE_NE(iter,
+                    interceptor_idx_to_interceptor_.end(),
                     platform::errors::InvalidArgument(
                         "Cannot find interceptor instance for interceptor "
                         "id %lld. Wrong dst? Call before init?",
@@ -149,7 +155,8 @@ void Carrier::WakeUp() {
 }
 
 void Carrier::Start() {
-  PADDLE_ENFORCE_EQ(is_init_, true,
+  PADDLE_ENFORCE_EQ(is_init_,
+                    true,
                     platform::errors::PreconditionNotMet(
                         "Using carrier before initialized."));
   for (int64_t id : source_interceptor_ids_) {
@@ -199,10 +206,12 @@ bool Carrier::Send(const InterceptorMessage& msg) {
   int64_t src_rank = GetRank(src_id);
   int64_t dst_rank = GetRank(dst_id);
   PADDLE_ENFORCE_EQ(
-      src_rank, rank_,
+      src_rank,
+      rank_,
       platform::errors::Fatal("The source rank id %lld, which is not equal to "
                               "the carrier rank id %lld.",
-                              src_rank, rank_));
+                              src_rank,
+                              rank_));
   if (src_rank == dst_rank) {
     VLOG(3) << "Send a message from interceptor " << src_id
             << " to interceptor " << dst_id << ", which are in the same ranks.";
@@ -218,7 +227,8 @@ bool Carrier::Send(const InterceptorMessage& msg) {
 Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
                                      std::unique_ptr<Interceptor> interceptor) {
   auto iter = interceptor_idx_to_interceptor_.find(interceptor_id);
-  PADDLE_ENFORCE_EQ(iter, interceptor_idx_to_interceptor_.end(),
+  PADDLE_ENFORCE_EQ(iter,
+                    interceptor_idx_to_interceptor_.end(),
                     platform::errors::AlreadyExists(
                         "The interceptor id %lld has already been created! "
                         "The interceptor id should be unique.",
@@ -267,19 +277,22 @@ void Carrier::CreateInterceptors() {
     TaskNode* task_node = item.second;
 
     PADDLE_ENFORCE_LT(
-        task_node->run_at_offset(), task_node->run_per_steps(),
+        task_node->run_at_offset(),
+        task_node->run_per_steps(),
         platform::errors::InvalidArgument(
             "Interceptor's run_at_offset must < run_per_steps, must now "
             "run_at_offset=%ld run_per_steps=%ld",
-            task_node->run_at_offset(), task_node->run_per_steps()));
+            task_node->run_at_offset(),
+            task_node->run_per_steps()));
 
     std::unique_ptr<Interceptor> interceptor;
-    PADDLE_ENFORCE_NE(task_node->type().empty(), true,
+    PADDLE_ENFORCE_NE(task_node->type().empty(),
+                      true,
                       platform::errors::NotFound(
                           "Cannot found type for task node with id %lld",
                           task_node->task_id()));
-    interceptor = InterceptorFactory::Create(task_node->type(), interceptor_id,
-                                             task_node);
+    interceptor = InterceptorFactory::Create(
+        task_node->type(), interceptor_id, task_node);
     interceptor->SetPlace(place_);
     interceptor->SetMiniBatchScope(minibatch_scope_);
     interceptor->SetMicroBatchScope(microbatch_scopes_);

@@ -50,20 +50,23 @@ class YoloBoxHeadPlugin : public PluginTensorRT {
 
   int initialize() TRT_NOEXCEPT override { return 0; }
 
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
+  nvinfer1::Dims getOutputDimensions(int index,
+                                     const nvinfer1::Dims* inputs,
                                      int nb_input_dims) TRT_NOEXCEPT override {
     assert(index == 0);
     assert(nb_input_dims == 1);
     return inputs[0];
   }
 
-  int enqueue(int batch_size, const void* const* inputs,
+  int enqueue(int batch_size,
+              const void* const* inputs,
 #if IS_TRT_VERSION_LT(8000)
               void** outputs,
 #else
               void* const* outputs,
 #endif
-              void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return getBaseSerializationSize() + SerializedSize(anchors_) +
@@ -90,9 +93,10 @@ class YoloBoxHeadPluginCreator : public TensorRTPluginCreator {
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     return new YoloBoxHeadPlugin(serial_data, serial_length);
   }
 };

@@ -39,10 +39,9 @@ enum class AllocationType : int8_t {
 
 const char* AllocationTypeStr(AllocationType type);
 
-PADDLE_API size_t
-GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
+size_t GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
 
-PADDLE_API std::string GetGlobalDeviceType(size_t device_type_id_);
+std::string GetGlobalDeviceType(size_t device_type_id_);
 
 /// \brief The place is used to specify where the data is stored.
 class PADDLE_API Place {

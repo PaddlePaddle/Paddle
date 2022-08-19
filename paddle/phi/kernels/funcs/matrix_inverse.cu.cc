@@ -131,10 +131,5 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
 template class MatrixInverseFunctor<GPUContext, float>;
 template class MatrixInverseFunctor<GPUContext, double>;
 
-// TODO(chenweihang): remove these instantiations later
-template class MatrixInverseFunctor<paddle::platform::CUDADeviceContext, float>;
-template class MatrixInverseFunctor<paddle::platform::CUDADeviceContext,
-                                    double>;
-
 }  // namespace funcs
 }  // namespace phi

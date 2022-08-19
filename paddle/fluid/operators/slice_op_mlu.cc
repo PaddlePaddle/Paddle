@@ -51,11 +51,13 @@ class SliceMLUKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_EQ(
-        starts.size(), axes.size(),
+        starts.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of starts must be equal to the size of axes."));
     PADDLE_ENFORCE_EQ(
-        ends.size(), axes.size(),
+        ends.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of ends must be equal to the size of axes."));
 
@@ -77,8 +79,8 @@ class SliceMLUKernel : public framework::OpKernel<T> {
       }
 
       phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-      slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
-                                                 nullptr, nullptr);
+      slice_dims = phi::funcs::GetSliceDims<int>(
+          in_dims, axes, starts, ends, nullptr, nullptr);
       reset_slice_dims = true;
       auto out_dims = phi::funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
@@ -86,8 +88,8 @@ class SliceMLUKernel : public framework::OpKernel<T> {
     }
     if (slice_dims.size() != in_dims.size() && !reset_slice_dims) {
       phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-      slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
-                                                 nullptr, nullptr);
+      slice_dims = phi::funcs::GetSliceDims<int>(
+          in_dims, axes, starts, ends, nullptr, nullptr);
     }
 
     int in_dim_size = input->dims().size();
@@ -110,8 +112,13 @@ class SliceMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc out_desc(slice_dims.size(),
                                phi::vectorize(slice_dims).data(),
                                ToCnnlDataType<T>());
-    MLUCnnl::StridedSlice(ctx, starts.data(), ends.data(), strides.data(),
-                          input_desc.get(), GetBasePtr(input), out_desc.get(),
+    MLUCnnl::StridedSlice(ctx,
+                          starts.data(),
+                          ends.data(),
+                          strides.data(),
+                          input_desc.get(),
+                          GetBasePtr(input),
+                          out_desc.get(),
                           GetBasePtr(out));
   }
 };
@@ -147,8 +154,8 @@ class SliceGradMLUKernel : public framework::OpKernel<T> {
     auto slice_dims = dout->dims();
     if (slice_dims.size() != in_dims.size()) {
       phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-      slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
-                                                 nullptr, nullptr);
+      slice_dims = phi::funcs::GetSliceDims<int>(
+          in_dims, axes, starts, ends, nullptr, nullptr);
     }
 
     int in_dim_size = input->dims().size();
@@ -171,9 +178,14 @@ class SliceGradMLUKernel : public framework::OpKernel<T> {
                                 phi::vectorize(slice_dims).data(),
                                 ToCnnlDataType<T>());
     MLUCnnlTensorDesc dinput_desc(*dinput);
-    MLUCnnl::StridedSliceGrad(ctx, starts.data(), ends.data(), strides.data(),
-                              dout_desc.get(), GetBasePtr(dout),
-                              dinput_desc.get(), GetBasePtr(dinput));
+    MLUCnnl::StridedSliceGrad(ctx,
+                              starts.data(),
+                              ends.data(),
+                              strides.data(),
+                              dout_desc.get(),
+                              GetBasePtr(dout),
+                              dinput_desc.get(),
+                              GetBasePtr(dinput));
   }
 };
 
@@ -182,13 +194,16 @@ class SliceGradMLUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_MLU_KERNEL(slice, ops::SliceMLUKernel<float>,
-                       ops::SliceMLUKernel<int>, ops::SliceMLUKernel<bool>,
+REGISTER_OP_MLU_KERNEL(slice,
+                       ops::SliceMLUKernel<float>,
+                       ops::SliceMLUKernel<int>,
+                       ops::SliceMLUKernel<bool>,
                        ops::SliceMLUKernel<int64_t>,
                        ops::SliceMLUKernel<double>,
                        ops::SliceMLUKernel<paddle::platform::float16>);
 
-REGISTER_OP_MLU_KERNEL(slice_grad, ops::SliceGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(slice_grad,
+                       ops::SliceGradMLUKernel<float>,
                        ops::SliceGradMLUKernel<int>,
                        ops::SliceGradMLUKernel<bool>,
                        ops::SliceGradMLUKernel<int64_t>,
