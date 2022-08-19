@@ -156,6 +156,9 @@ void TrilIndicesInferMeta(
 void TriuIndicesInferMeta(
     int rows, int cols, int offset, DataType dtype, MetaTensor* out) {
   // number of elements in the first row of the tril,bounded by [0, cols]
+  // use total item number minus bottom rectangle item number to get the above rectangle item number
+  //     triu_size = rows * cols - tril_size
+  // so the `offset` need to be set as `offset-1` in order to include the item on the diagonal line
   offset = offset - 1;
   auto n_first_row =
       offset > 0 ? std::min<int64_t>(cols, 1 + offset) : rows + offset > 0;
