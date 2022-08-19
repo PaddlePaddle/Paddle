@@ -20,11 +20,13 @@
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
 namespace phi {
-template<typename T>
-__global__ void print_float(const T *src, int64_t start_index, int64_t end_index){
-  for (int i=start_index;i<end_index;i++){
-    printf("%f ",static_cast<double>(src[i]));
-    if(i%49==48){
+template <typename T>
+__global__ void print_float(const T *src,
+                            int64_t start_index,
+                            int64_t end_index) {
+  for (int i = start_index; i < end_index; i++) {
+    printf("%f ", static_cast<double>(src[i]));
+    if (i % 49 == 48) {
       printf("\r\n");
     }
   }
@@ -40,12 +42,11 @@ void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                T *variance,
                                                int begin_norm_axis,
                                                float eps) {
-
   const auto x_dims = phi::make_ddim(input_shape);
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
-        
+
   switch (paddle::operators::GetDesiredBlockDim(feature_size)) {
     FIXED_BLOCK_DIM_CASE(
         paddle::operators::LayerNormForward<T, T, kBlockDim, true>
@@ -72,9 +73,6 @@ void LayerNormKernel(const Context &dev_ctx,
                      DenseTensor *y,
                      DenseTensor *mean,
                      DenseTensor *var) {
-
-
-
   using U = paddle::operators::LayerNormParamType<T>;
   auto *scale = scale_opt.get_ptr();
   auto *bias = bias_opt.get_ptr();
@@ -82,11 +80,9 @@ void LayerNormKernel(const Context &dev_ctx,
   const auto x_dims = x.dims();
   auto *x_data = x.data<T>();
 
-
   auto *y_data = dev_ctx.template Alloc<T>(y);
   auto *mean_data = dev_ctx.template Alloc<U>(mean);
   auto *var_data = dev_ctx.template Alloc<U>(var);
-
 
   auto *void_scale_data = (scale == nullptr ? nullptr : scale->data());
   auto *void_bias_data = (bias == nullptr ? nullptr : bias->data());
@@ -225,7 +221,6 @@ void LayerNormKernel(const Context &dev_ctx,
 
 #undef PADDLE_LAUNCH_LAYERNORM_FWD
 #undef PADDLE_LAUNCH_FAST_LAYERNORM_FWD
-
 }
 
 }  // namespace phi
