@@ -56,14 +56,18 @@ class LayerNormOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layernorm_layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      int input_num = 1;
-      for (int i = begin_norm_axis; i < X->getDimensions().nbDims; i++) {
-        input_num *= X->getDimensions().d[i];
+      int statis_num = 1;
+      for (int i = 1; i < begin_norm_axis; i++) {
+        statis_num *= X->getDimensions().d[i];
       }
+<<<<<<< HEAD
       int statis_num = 1;
       for (int i = 1; i < begin_norm_axis; i++){
         statis_num *= X->getDimensions().d[i];
       }
+=======
+
+>>>>>>> b31345a75523908c7b5daab3e5b78529c71a3a46
       std::vector<int64_t> mean_shape{statis_num};
       std::vector<int64_t> variance_shape{statis_num};
       plugin::LayerNormPluginDynamic* plugin =
@@ -78,12 +82,12 @@ class LayerNormOpConverter : public OpConverter {
               variance_shape);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
-      int input_num = 1;
-      for (int i = begin_norm_axis - 1; i < X->getDimensions().nbDims; i++) {
-        input_num *= X->getDimensions().d[i];
+      int statis_num = 1;
+      for (int i = 0; i < begin_norm_axis; i++) {
+        statis_num *= X->getDimensions().d[i];
       }
-      std::vector<int64_t> mean_shape{input_num};
-      std::vector<int64_t> variance_shape{input_num};
+      std::vector<int64_t> mean_shape{statis_num};
+      std::vector<int64_t> variance_shape{statis_num};
       plugin::LayerNormPlugin* plugin = new plugin::LayerNormPlugin(
           static_cast<const float*>(bias_weight.get().values),
           bias_weight.get().count,
