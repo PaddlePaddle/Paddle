@@ -403,16 +403,21 @@ def divide(x, y, name=None):
 
 def values_add(x, y, name=None):
     """
-    Add two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
-    type（SparseCooTensor or SparseCsrTensor）.If input is SparseCooTensor, x and y's sparse_dim should be identical.
-    The equation is:
+    The `values_add` is to perform the addition of two sparse tensors in COO format, or the addition of one spare tensor in COO format and 
+    one dense tensor. 
+    If both x and y are sparse tensor: 
 
     .. math::
-        out = x + y
+        out.values() = x.values() + y.values()
+
+    if y is dense tensor:
+
+    .. math::
+        out.values() = x.values() + y
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be float16, float32, float64.
+        y (Tensor): the input tensor, it's data type should be float16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -423,21 +428,24 @@ def values_add(x, y, name=None):
     ..  code-block:: python
 
         import paddle
-        from paddle.fluid.framework import _test_eager_guard
+        import paddle.incubate.sparse as sparse
 
-        paddle.device.set_device("cpu")
+        indices_data = [[0, 1], [1, 2]]
+        values1_data = [[1.0], [2.0]]
+        values2_data = [[3.0], [4.0]]
+        x = paddle.to_tensor(indices_data, values1_data)
+        y = paddle.to_tensor(indices_data, values2_data)
+        out = sparse.values_add(x, y)
+        print(out.values())
+        # [[4.0], [6.0]]
 
-        with _test_eager_guard():
-            x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
-            y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
-            sparse_x = x.to_sparse_csr()
-            sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.incubate.sparse.add(sparse_x, sparse_y)
-            print(sparse_z.to_dense())
-
-        # [[ 0., -1.,  0.,  0.],
-        # [ 0.,  2., -6.,  0.],
-        # [ 6.,  8.,  4.,  8.]]
-
+        values3_data = [[3.0]]
+        y_dense = paddle.to_tensor(values3_data)
+        out = sparse.values_add(x, y_dense)
+        print(out)
+        # [[4.0], [6.0]]
     """
+    assert x.is_sparse_coo(), 'the x must be a sparse tensor in COO format.'
+    assert y.is_sparse_coo() or y.is_dense(
+    ), 'the input y must be a sparse tensor in COO format or a dense tensor.'
     return _C_ops.final_state_sparse_values_add(x, y)
