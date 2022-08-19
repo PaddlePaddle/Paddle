@@ -284,8 +284,8 @@ class TestGroupNormAPI_With_NHWC(unittest.TestCase):
                                        epsilon=1e-5,
                                        groups=2,
                                        data_layout="NCHW")
-        self.assertTrue(np.allclose(results[0], expect_res1[0]))
-        self.assertTrue(np.allclose(results[1], expect_res2[0]))
+        np.testing.assert_allclose(results[0], expect_res1[0], rtol=1e-05)
+        np.testing.assert_allclose(results[1], expect_res2[0], rtol=1e-05)
 
 
 class TestGroupNormException(unittest.TestCase):

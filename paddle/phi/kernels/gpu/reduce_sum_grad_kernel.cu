@@ -37,6 +37,9 @@ void ReduceSumGradKernel(const Context& dev_ctx,
 
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = in_x->dims().size();
+  if (dims.size() == 0) {
+    reduce_all = true;
+  }
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims, dim_size, reduce_all);
 

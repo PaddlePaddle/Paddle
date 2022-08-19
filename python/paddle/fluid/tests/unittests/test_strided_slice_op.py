@@ -748,10 +748,11 @@ class TestStridedSliceTensorArray(unittest.TestCase):
         net.clear_all_grad()
         # compare result of dygraph and static
         self.is_grads_equal(grads_static, grads_dy)
-        self.assertTrue(
-            np.array_equal(s1, s2),
-            msg="dygraph graph result:\n{} \nstatic dygraph result:\n{}".format(
-                l1.numpy(), l2.numpy()))
+        np.testing.assert_array_equal(
+            s1,
+            s2,
+            err_msg='dygraph graph result:\n{} \nstatic dygraph result:\n{}'.
+            format(l1.numpy(), l2.numpy()))
 
     def test_strided_slice_tensor_array_cuda_pinned_place(self):
         if paddle.device.is_compiled_with_cuda():

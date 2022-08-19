@@ -378,7 +378,6 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   DenseTensor sum_exp_logits;
   sum_exp_logits.Resize({N, 1});
   dev_ctx.template Alloc<T>(&sum_exp_logits);
-  // T* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
   T* sum_exp_logits_buff = dev_ctx.template Alloc<T>(&sum_exp_logits);
   phi::funcs::ReduceKernel<T, T, phi::kps::AddFunctor, phi::kps::ExpFunctor<T>>(
       static_cast<const phi::GPUContext&>(dev_ctx),
