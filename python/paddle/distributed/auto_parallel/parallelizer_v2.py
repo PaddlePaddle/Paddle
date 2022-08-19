@@ -124,7 +124,6 @@ class Parallelizer:
             self._logger.info(
                 "within parallel reshard time: {}, mode {}".format(
                     time.time() - time0, self._mode))
-
         # Clone program for test
         if self._mode != 'train':
             dist_main_prog = dist_main_prog.clone(for_test=True)
