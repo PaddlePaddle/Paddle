@@ -94,24 +94,12 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
     auto bias_qkv_dims = phi::make_ddim({3, bias_qkv_tensor->dims()[0] / 3});
     bias_qkv_tensor->Resize(bias_qkv_dims);
 
-    // auto * bias_qk_1_var = scope->FindVar(elementwise_70_in_y->Name());
-    // auto* bias_qk_1_tensor = bias_qk_1_var->GetMutable<LoDTensor>();
-    // auto bias_qk_1_dims = bias_qk_1_tensor->dims();
-    // auto* bias_qk_1_data =
-    // bias_qk_1_tensor->mutable_data<float>(platform::CPUPlace()); printf("@#@@
-    // in pass biasqk 0: %f, %f, %f, %f
-    // ",bias_qk_1_data[0],bias_qk_1_data[1],bias_qk_1_data[2],bias_qk_1_data[3]);
-    // VLOG(1)<<"@@@ bias_qk_1_tensor:";
-    // VLOG(1)<<bias_qk_1_dims;
-
     std::vector<int64_t> softmax_shape = softmax_80_out->Var()->GetShape();
     float alpha = PADDLE_GET_CONST(float, scale_50_op->Op()->GetAttr("scale"));
 
     desc.SetInput("W", {matmul_00_in_y->Name()});
     desc.SetInput("Bias", {elementwise_10_in_y->Name()});
     desc.SetInput("BiasQK", {elementwise_70_in_y->Name()});
-    // VLOG(1)<<"@@@ swin attention1, biasqk name:
-    // "<<elementwise_70_in_y->Name();
     desc.SetOutput("Out", {reshape_b0_out->Name()});
     desc.SetAttr("head_number", static_cast<int>(softmax_shape[1]));
     desc.SetAttr("alpha", alpha);

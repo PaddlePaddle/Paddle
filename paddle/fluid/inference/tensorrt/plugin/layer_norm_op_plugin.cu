@@ -161,17 +161,6 @@ nvinfer1::DataType LayerNormPluginDynamic::getOutputDataType(
   return input_types[0];
 }
 
-// TODO wangbojun for debug
-template <typename T>
-__global__ void print_float(const T *src, int start_index, int end_index) {
-  for (int i = start_index; i < end_index; i++) {
-    printf("%f ", static_cast<double>(src[i]));
-    if (i % 49 == 48) {
-      printf("\r\n");
-    }
-  }
-}
-
 int LayerNormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc,
@@ -219,13 +208,6 @@ int LayerNormPluginDynamic::enqueue(
     bias_t.Resize(phi::make_ddim({feature_size}));
     mean_t.Resize(phi::make_ddim(mean_shape_));
     variance_t.Resize(phi::make_ddim(variance_shape_));
-
-    // printf("@@@@ variance shape in plugin \r\n");
-    // for(int i=0;i<variance_shape_.size();i++){
-    //   printf("%d, ", variance_shape_[i]);
-    // }
-    // printf("\r\n");
-
     float *scale_d =
         scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
     float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));

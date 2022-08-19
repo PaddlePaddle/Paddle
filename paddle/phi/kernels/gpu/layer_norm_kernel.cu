@@ -21,17 +21,6 @@
 
 namespace phi {
 template <typename T>
-__global__ void print_float(const T *src,
-                            int64_t start_index,
-                            int64_t end_index) {
-  for (int i = start_index; i < end_index; i++) {
-    printf("%f ", static_cast<double>(src[i]));
-    if (i % 49 == 48) {
-      printf("\r\n");
-    }
-  }
-}
-template <typename T>
 void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                const T *input,
                                                std::vector<int> input_shape,

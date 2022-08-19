@@ -1437,7 +1437,6 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     multihead_op_desc.SetInput("W", {mul0_w->Name()});
     multihead_op_desc.SetInput("Bias", {eltadd0_b->Name()});
     multihead_op_desc.SetInput("BiasQK", {eltadd_qk_b->Name()});
-    // VLOG(1)<<"@@@ multihead matmul fuse pass, biasqk name:"<<eltadd_qk_b->Name();
 
     multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
     multihead_op_desc.SetAttr("alpha", scale_attr);

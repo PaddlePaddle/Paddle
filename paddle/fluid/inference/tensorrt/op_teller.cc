@@ -293,7 +293,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
-  // VLOG(1)<<"@@@ in op teller, optype: "<<op_type;
   const framework::OpDesc desc = *node->Op();
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
@@ -1817,7 +1816,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                    "the pass.";
         return false;
       }
-      // return true; //TODO !!! important, wangbojun test only, remove befaule pr
+      // return true; //TODO !!! important, wangbojun test only, remove befaule
+      // pr
       auto* input_desc = block->FindVar(desc.Input("Input").front());
       const auto input_shape = input_desc->GetShape();
       const auto head_number =

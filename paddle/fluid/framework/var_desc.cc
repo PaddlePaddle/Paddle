@@ -92,7 +92,6 @@ void VarDesc::SetShapes(
 }
 
 std::vector<int64_t> VarDesc::GetShape() const {
-  // VLOG(1)<<"@@@ VarDesc::GetShape()"<<tensor_desc().dims();
   return RepeatedToVector(tensor_desc().dims());
 }
 
@@ -219,7 +218,6 @@ std::vector<int32_t> VarDesc::GetLoDLevels() const {
 }
 
 const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
-  // VLOG(1)<<"@@@ tensor name: "<<this->Name();
   PADDLE_ENFORCE_EQ(
       desc_.has_type(),
       true,

@@ -532,17 +532,6 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(half2 *qk_buf_,
 #endif
 }
 
-// TODO wangbojun for debug
-template<typename T>
-__global__ void print_float(const T *src, int start_index, int end_index){
-  for (int i=start_index;i<end_index;i++){
-    printf("%f ",static_cast<double>(src[i]));
-    if(i%49==48){
-      printf("\r\n");
-    }
-  }
-}
-
 template <typename T>
 inline void MatMulWithHeadQK(const phi::GPUContext &context,
                              int head_num,
@@ -559,21 +548,6 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
                              T beta) {
   CBLAS_TRANSPOSE transA = !q_trans ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !k_trans ? CblasNoTrans : CblasTrans;
-  // printf("@@@ MatMulWithHeadQK: batch_size:%d, head_num:%d, seq_len:%d\r\n",
-        //  batch_size,head_num,seq_len);
-  // printf("@@@@ biasqk\r\n");
-  // print_float<T><<<1,1,0,context.stream()>>>(bias_qk,0,batch_size*head_num*seq_len*seq_len);
-  // cudaDeviceSynchronize();
-  // printf("\r\n");
-  // printf("@@@@ q\r\n");
-  // print_float<T><<<1,1,0,context.stream()>>>(q_buf_,0,batch_size*head_num*size_per_head*seq_len);
-  // cudaDeviceSynchronize();
-  // printf("\r\n");
-
-  // printf("@@@@ k\r\n");
-  // print_float<T><<<1,1,0,context.stream()>>>(k_buf_,0,batch_size*head_num*size_per_head*seq_len);
-  // cudaDeviceSynchronize();
-  // printf("\r\n");
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
   auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(context);
@@ -592,11 +566,7 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
                    batch_size * head_num,
                    seq_len * size_per_head,
                    seq_len * size_per_head);
-  // printf("@@@ in functor, qk gemm result: \r\n");
-  // cudaDeviceSynchronize();
-  // print_float<run_type><<<1,1>>>(reinterpret_cast<run_type *>(qk_buf_),0,batch_size*head_num*seq_len*seq_len);
-  // cudaDeviceSynchronize();
-  // printf("\r\n");
+
   if (seq_len <= 1024) {
     int grid = batch_size * head_num * seq_len;
     int block = seq_len;
@@ -652,11 +622,6 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
           qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
     }
   }
-  // printf("@@@ in functor, qk softmax result: \r\n");
-  // cudaDeviceSynchronize();
-  // print_float<run_type><<<1,1>>>(reinterpret_cast<run_type *>(qk_buf_),0,batch_size*head_num*seq_len*seq_len);
-  // cudaDeviceSynchronize();
-  // printf("\r\n");
 }
 
 template <typename T>
@@ -709,8 +674,7 @@ void MultiHeadGPUComputeFunctor<T>::operator()(const phi::GPUContext &dev_ctx,
                                                T beta) {
   auto stream = dev_ctx.stream();
   const int tsize = batch * head_num * seq_len * head_size;
-  
-  
+
   T *qptr = tptr;
   T *kptr = qptr + tsize;
   T *vptr = kptr + tsize;

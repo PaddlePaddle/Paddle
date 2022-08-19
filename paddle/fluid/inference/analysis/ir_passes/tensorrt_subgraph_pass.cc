@@ -262,7 +262,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   // The node->inputs contains input tensors and parameters.
   for (auto *x : node->inputs) {
-    // VLOG(3)<<"@@@ trt sub pass input name:"<<x->Name();
     input_names.insert(x->Name());
     input_names_with_id.insert(x->Name() + std::to_string(x->id()));
     if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0) {
