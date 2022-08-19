@@ -192,9 +192,13 @@ class InferencePassTest(unittest.TestCase):
                 paddle_out = paddle_out.flatten()
                 inference_out = inference_out.flatten()
 
-            self.assertTrue(
-                np.allclose(paddle_out, inference_out, atol=atol),
-                "Output has diff between inference and training forward at {} ".
+            np.testing.assert_allclose(
+                paddle_out,
+                inference_out,
+                rtol=1e-05,
+                atol=atol,
+                err_msg=
+                'Output has diff between inference and training forward at {} '.
                 format(device))
 
         # Check whether the trt results and the GPU results are the same.
@@ -220,12 +224,12 @@ class InferencePassTest(unittest.TestCase):
                     paddle_out = paddle_out.flatten()
                     tensorrt_output = tensorrt_output.flatten()
 
-                self.assertTrue(
-                    np.allclose(paddle_out,
-                                tensorrt_output,
-                                rtol=rtol,
-                                atol=atol),
-                    "Output has diff between GPU and TensorRT. ")
+                np.testing.assert_allclose(
+                    paddle_out,
+                    tensorrt_output,
+                    rtol=rtol,
+                    atol=atol,
+                    err_msg='Output has diff between GPU and TensorRT. ')
 
         # Check whether the mkldnn results and the CPU results are the same.
         if (not use_gpu) and self.enable_mkldnn:
@@ -240,9 +244,12 @@ class InferencePassTest(unittest.TestCase):
             if self.enable_mkldnn_bfloat16:
                 atol = 0.01
             for paddle_out, mkldnn_output in zip(paddle_outs, mkldnn_outputs):
-                self.assertTrue(
-                    np.allclose(np.array(paddle_out), mkldnn_output, atol=atol),
-                    "Output has diff between CPU and MKLDNN. ")
+                np.testing.assert_allclose(
+                    np.array(paddle_out),
+                    mkldnn_output,
+                    rtol=1e-05,
+                    atol=atol,
+                    err_msg='Output has diff between CPU and MKLDNN. ')
 
     class TensorRTParam:
         '''

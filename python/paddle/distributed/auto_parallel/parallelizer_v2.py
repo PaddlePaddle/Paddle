@@ -20,7 +20,7 @@ from collections import defaultdict
 import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import _non_static_mode, unique_name
 from paddle.distributed.passes import new_pass
 from paddle.distributed.utils import get_logger
 
@@ -145,15 +145,18 @@ class Parallelizer:
 
     def _generate_optimizer(self, main_program, startup_program, optimizer,
                             params_grads):
+        # NOTE: `apply_gradients` will add an Accumulator for a parameter only once,
+        # but optimizer will be called repeatedly in re-launch, so optimizer need to be copied.
         if self._dist_context._dygraph_mode:
             paddle.disable_static()
             optimizer = copy.deepcopy(optimizer)
             paddle.enable_static()
         else:
             optimizer = copy.deepcopy(optimizer)
-        self._dist_context._serial_optimizer = optimizer
+        self._dist_context._lr_optimizer = optimizer
         with program_guard(main_program, startup_program):
-            optimizer_ops = optimizer.apply_gradients(params_grads)
+            with unique_name.guard("opt_"):
+                optimizer_ops = optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
 

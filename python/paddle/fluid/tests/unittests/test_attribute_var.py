@@ -18,6 +18,7 @@ import tempfile
 import paddle
 import paddle.inference as paddle_infer
 from paddle.fluid.framework import program_guard, Program
+from paddle.fluid.framework import OpProtoHolder
 import numpy as np
 
 paddle.enable_static()
@@ -152,6 +153,38 @@ class TestTileTensor(UnittestBase):
             # Test for Inference Predictor
             infer_out = self.infer_prog()
             self.assertEqual(infer_out.shape, (6, 6, 10))
+
+
+class TestRegiterSupportTensorInOpMaker(unittest.TestCase):
+
+    def setUp(self):
+        self.all_protos = OpProtoHolder.instance()
+        self.support_tensor_attrs = {
+            'dropout': ['dropout_prob'],
+            'tile': ['repeat_times'],
+            'concat': ['axis']
+        }
+        # Just add a op example to test not support tensor
+        self.not_support_tensor_attrs = {'svd': ['full_matrices']}
+
+    def test_support_tensor(self):
+        # All Attribute tagged with .SupportTensor() in OpMaker will return True
+        for op_type, attr_names in self.support_tensor_attrs.items():
+            for attr_name in attr_names:
+                self.assertTrue(self.is_support_tensor_attr(op_type, attr_name))
+
+        # All Attribute not tagged with .SupportTensor() in OpMaker will return False
+        for op_type, attr_names in self.not_support_tensor_attrs.items():
+            for attr_name in attr_names:
+                self.assertFalse(self.is_support_tensor_attr(
+                    op_type, attr_name))
+
+    def is_support_tensor_attr(self, op_type, attr_name):
+        proto = self.all_protos.get_op_proto(op_type)
+        for attr in proto.attrs:
+            if attr.name == attr_name:
+                return attr.support_tensor
+        raise RuntimeError("Not found attribute : ", attr_name)
 
 
 if __name__ == '__main__':

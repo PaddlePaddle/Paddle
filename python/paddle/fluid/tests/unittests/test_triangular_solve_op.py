@@ -272,7 +272,7 @@ class TestTriangularSolveAPI(unittest.TestCase):
                                   "y": y_np
                               },
                               fetch_list=[z])
-            self.assertTrue(np.allclose(fetches[0], z_np))
+            np.testing.assert_allclose(fetches[0], z_np, rtol=1e-05)
 
     def test_static(self):
         for place in self.place:
@@ -290,7 +290,7 @@ class TestTriangularSolveAPI(unittest.TestCase):
             y = paddle.to_tensor(y_np)
             z = paddle.linalg.triangular_solve(x, y, upper=False)
 
-            self.assertTrue(np.allclose(z_np, z.numpy()))
+            np.testing.assert_allclose(z_np, z.numpy(), rtol=1e-05)
             self.assertEqual(z_np.shape, z.numpy().shape)
             paddle.enable_static()
 
