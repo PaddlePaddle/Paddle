@@ -1822,19 +1822,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       const auto input_shape = input_desc->GetShape();
       const auto head_number =
           PADDLE_GET_CONST(int, desc.GetAttr("head_number"));
-<<<<<<< HEAD
-      // VLOG(1)<<"@@@ desc.Input(Input).front()"<<desc.Input("Input").front();
-      // VLOG(1)<<"@@@ multihead input name :"<<input_desc->Name();
-      // VLOG(1)<<"@@@ biasQK name :"<<block->FindVar(desc.Input("BiasQK").front())->Name();
-      auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
-      const auto biasqk_shape = biasqk_desc->GetShape();
-      // The BiasQK's shape requires to be
-      // [batch, 1, 1, length] or [batch, head, length, length].
-      bool has_same_shape = head_number == biasqk_shape[1] &&
-                            input_shape[1] == biasqk_shape[2] &&
-                            input_shape[1] == biasqk_shape[3];
-      bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
-=======
       auto inputs = desc.Inputs();
       bool has_bias_qk = (inputs.find("BiasQK") == inputs.end()) ? false : true;
       if (has_bias_qk) {
@@ -1844,7 +1831,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         // [batch, 1, 1, length] or [batch, head, length, length].
         bool has_same_shape = head_number == biasqk_shape[1] &&
                               input_shape[1] == biasqk_shape[2] &&
->>>>>>> e31a0a508764cc23b539d1dc2f2511d69811736c
                               input_shape[1] == biasqk_shape[3];
         bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
                                 input_shape[1] == biasqk_shape[3];

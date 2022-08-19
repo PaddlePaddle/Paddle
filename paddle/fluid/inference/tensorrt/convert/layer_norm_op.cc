@@ -60,8 +60,12 @@ class LayerNormOpConverter : public OpConverter {
       for (int i = begin_norm_axis; i < X->getDimensions().nbDims; i++) {
         input_num *= X->getDimensions().d[i];
       }
-      std::vector<int64_t> mean_shape{input_num};
-      std::vector<int64_t> variance_shape{input_num};
+      int statis_num = 1;
+      for (int i = 1; i < begin_norm_axis; i++){
+        statis_num *= X->getDimensions().d[i];
+      }
+      std::vector<int64_t> mean_shape{statis_num};
+      std::vector<int64_t> variance_shape{statis_num};
       plugin::LayerNormPluginDynamic* plugin =
           new plugin::LayerNormPluginDynamic(
               static_cast<const float*>(bias_weight.get().values),

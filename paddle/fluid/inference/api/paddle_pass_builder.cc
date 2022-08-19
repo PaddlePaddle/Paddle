@@ -101,12 +101,9 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_c_identity_op_pass",                    //
       "trt_multihead_matmul_fuse_pass_v2",            //
       "trt_multihead_matmul_fuse_pass_v3",            //
-<<<<<<< HEAD
       "swin_attention_biasqk_fold_pass",              //
       "swin_attention1_fuse_pass",                    //
-=======
       "vit_attention_fuse_pass",                      //
->>>>>>> e31a0a508764cc23b539d1dc2f2511d69811736c
       "trt_skip_layernorm_fuse_pass",                 //
       "preln_skip_layernorm_fuse_pass",               //
       "preln_residual_bias_fuse_pass",                //

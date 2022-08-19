@@ -20,7 +20,15 @@
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
 namespace phi {
-
+template<typename T>
+__global__ void print_float(const T *src, int64_t start_index, int64_t end_index){
+  for (int i=start_index;i<end_index;i++){
+    printf("%f ",static_cast<double>(src[i]));
+    if(i%49==48){
+      printf("\r\n");
+    }
+  }
+}
 template <typename T>
 void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                const T *input,
@@ -32,13 +40,56 @@ void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                T *variance,
                                                int begin_norm_axis,
                                                float eps) {
+  cudaDeviceSynchronize();
+  int inputnum_print=1;
+  for(int i=0;i<input_shape.size();i++){
+    inputnum_print*=input_shape[i];
+  }
+  inputnum_print=49;
+  cudaDeviceSynchronize();
+
+  printf("@#@@@ LayerNormDirectCUDAFunctor input data \r\n");
+  print_float<T><<<1,1>>>(input,0,inputnum_print);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormDirectCUDAFunctor scale data \r\n");
+  print_float<T><<<1,1>>>(scale,0,inputnum_print);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormDirectCUDAFunctor bias data \r\n");
+  print_float<T><<<1,1>>>(bias,0,inputnum_print);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormDirectCUDAFunctor mean data before calculation \r\n");
+  print_float<T><<<1,1>>>(mean,0,5);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormDirectCUDAFunctor variance data before calculation \r\n");
+  print_float<T><<<1,1>>>(variance,0,5);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
+  printf("@@@ begin_norm_axis: %d \r\n", begin_norm_axis);
+  printf("@@@ eps: %f\r\n", eps);
   const auto x_dims = phi::make_ddim(input_shape);
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
+
+  printf("@@ batch_size: %d, feature_size: %d \r\n",
+        batch_size, feature_size);
+        
   switch (paddle::operators::GetDesiredBlockDim(feature_size)) {
     FIXED_BLOCK_DIM_CASE(
-        paddle::operators::LayerNormForward<T, T, kBlockDim>
+        paddle::operators::LayerNormForward<T, T, kBlockDim, true>
         <<<batch_size, kBlockDim, 0, stream>>>(
             input, scale, bias, output, mean, variance, eps, feature_size));
     default:
@@ -47,6 +98,23 @@ void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
           "than 1"));
       break;
   }
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormDirectCUDAFunctor output data \r\n");
+  print_float<T><<<1,1>>>(output,0,inputnum_print);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormDirectCUDAFunctor mean data after calculation \r\n");
+  print_float<T><<<1,1>>>(mean,0,5);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormDirectCUDAFunctor variance data after calculation \r\n");
+  print_float<T><<<1,1>>>(variance,0,5);
+  cudaDeviceSynchronize();
+  printf("\r\n");
 }
 
 template class LayerNormDirectCUDAFunctor<float>;
@@ -62,15 +130,58 @@ void LayerNormKernel(const Context &dev_ctx,
                      DenseTensor *y,
                      DenseTensor *mean,
                      DenseTensor *var) {
+  //print shape of var
+  const auto var_dim=var->dims();
+  printf("@@@@ var shape in LayerNormKernel \r\n");
+  for(int i=0;i<var_dim.size();i++){
+    printf("%d, ", var_dim[i]);
+  }
+  printf("\r\n");
   using U = paddle::operators::LayerNormParamType<T>;
   auto *scale = scale_opt.get_ptr();
   auto *bias = bias_opt.get_ptr();
 
   const auto x_dims = x.dims();
   auto *x_data = x.data<T>();
+
+  int inputnum_print=x.numel();
+  inputnum_print=49;
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormKernel input data \r\n");
+  print_float<T><<<1,1>>>(x_data,0,inputnum_print);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormKernel scale data \r\n");
+  print_float<float><<<1,1>>>(static_cast<const float *>(scale->data()),0,inputnum_print);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormKernel bias data \r\n");
+  print_float<float><<<1,1>>>(static_cast<const float *>(bias->data()),0,inputnum_print);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
   auto *y_data = dev_ctx.template Alloc<T>(y);
   auto *mean_data = dev_ctx.template Alloc<U>(mean);
   auto *var_data = dev_ctx.template Alloc<U>(var);
+
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormKernel mean data before calculation \r\n");
+  print_float<U><<<1,1>>>(mean_data,0,5);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
+  cudaDeviceSynchronize();
+  printf("@#@@@ LayerNormKernel variance data before calculation \r\n");
+  print_float<U><<<1,1>>>(var_data,0,5);
+  cudaDeviceSynchronize();
+  printf("\r\n");
+
+  printf("@@@ begin_norm_axis: %d \r\n", begin_norm_axis);
+  printf("@@@ eps: %f\r\n", epsilon);
 
   auto *void_scale_data = (scale == nullptr ? nullptr : scale->data());
   auto *void_bias_data = (bias == nullptr ? nullptr : bias->data());
@@ -103,7 +214,8 @@ void LayerNormKernel(const Context &dev_ctx,
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
 
   auto stream = dev_ctx.stream();
-
+  printf("@@ batch_size: %d, feature_size: %d \r\n",
+        batch_size,feature_size);
 #define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX) \
   do {                                                                     \
     switch (paddle::operators::GetDesiredBlockDim(feature_size)) {         \
@@ -209,6 +321,25 @@ void LayerNormKernel(const Context &dev_ctx,
 
 #undef PADDLE_LAUNCH_LAYERNORM_FWD
 #undef PADDLE_LAUNCH_FAST_LAYERNORM_FWD
+
+cudaDeviceSynchronize();
+printf("@#@@@ LayerNormKernel output data \r\n");
+print_float<T><<<1,1>>>(y_data,0,inputnum_print);
+cudaDeviceSynchronize();
+printf("\r\n");
+
+cudaDeviceSynchronize();
+printf("@#@@@ LayerNormKernel mean data after calculation \r\n");
+print_float<U><<<1,1>>>(mean_data,0,5);
+cudaDeviceSynchronize();
+printf("\r\n");
+
+cudaDeviceSynchronize();
+printf("@#@@@ LayerNormKernel variance data after calculation \r\n");
+print_float<U><<<1,1>>>(var_data,0,5);
+cudaDeviceSynchronize();
+printf("\r\n");
+
 }
 
 }  // namespace phi
