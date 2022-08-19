@@ -35,7 +35,7 @@ test_fleet_gradient_merge_meta_optimizer,,GPU;XPU;ASCEND;ASCEND_CL,,DIST,test_ru
 test_fleet_amp_init,linux;win32,,,DIST,test_runner.py,20139,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dygraph_sharding_optimizer_stage2,,,120,DIST,../../dist_test.sh,20141,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_fleet_meta_optimizer_base,linux;win32,,,DIST,test_runner.py,20143,,http_proxy=;https_proxy=;PYTHONPATH=../..,
-test_fleet_raw_program_meta_optimizer,,,,DIST,../../dist_test.sh,20145,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_fleet_raw_program_meta_optimizer,,GPU;XPU;ASCEND;ASCEND_CL,,DIST,../../dist_test.sh,20145,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_sharding_parallel,,,120,DIST,../../dist_test.sh,20147,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_tensor_parallel,,,200,DIST,../../dist_test.sh,20149,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dygraph_group_sharded_api_for_eager,,,120,DIST,../../dist_test.sh,20151,,http_proxy=;https_proxy=;PYTHONPATH=../..,

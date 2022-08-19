@@ -486,7 +486,12 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   )
   set_tests_properties(test_fleet_meta_optimizer_base PROPERTIES RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+if((WITH_GPU
+    OR WITH_XPU
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_raw_program_meta_optimizer
     START_BASH
